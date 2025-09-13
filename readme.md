@@ -6,6 +6,8 @@
 
 ## 前端
 
+**仓库: https://github.com/Zhongye1/ASF-RAG--GZHU-**
+
 一个基于 Vue 3 和 TDesign 组件库开发的前端，主要提供处理文档解析，知识库管理，知识图谱生成，RAG 检索，Ollama 服务管理，智能问答的UI界面
 
 - **前端框架**：Vue 3 + TypeScript
@@ -29,6 +31,8 @@ npm run build
 
 
 ## 后端
+
+**仓库：https://github.com/Zhongye1/ASF-RAG-backend**
 
 基于 FastAPI  提供服务的 RAG (检索增强生成) 后端服务，用于处理文档解析，知识库管理，知识图谱生成，RAG 检索，向量存储，Ollama 服务管理，智能问答。
 
@@ -228,3 +232,4 @@ python main.py --host 0.0.0.0 --port 8000 --reload
 7. 实现文档协作功能
 8. 打包并支持 docker 部署
 9. 其余需求补充
+
