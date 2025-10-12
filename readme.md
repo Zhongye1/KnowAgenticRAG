@@ -71,7 +71,7 @@ python main.py --host 0.0.0.0 --port 8000 --reload
             <a href="https://github.com/Zhongye1">
                 <img src="https://avatars.githubusercontent.com/u/145737758?v=4" alt="Vaibhav" width="100" height="100" border="0" />
                 <br />
-                <strong>Gotoh Hitori</strong>
+                <strong>Rosmontis</strong>
                 <br />
                 <em>GitHub: <a href="https://github.com/Zhongye1">@Zhongye1</a></em>
                 <br />
@@ -232,5 +232,6 @@ python main.py --host 0.0.0.0 --port 8000 --reload
 7. 实现文档协作功能
 8. 打包并支持 docker 部署
 9. 其余需求补充
+
 
 
