@@ -1,344 +1,637 @@
 <template>
-  <main class="max-w-7xl mx-auto px-6 py-8">
-    <!-- 欢迎区域 -->
-    <div class="flex flex-col md:flex-row justify-between mb-8">
-      <div>
-        <h1 class="text-2xl font-semibold text-gray-800">Welcome back, mmk</h1>
-        <p class="text-gray-600 mt-1">
-          Which knowledge bases will you use today?
-        </p>
+  <main class="kb-page">
+    <!-- 顶部欢迎区域 -->
+    <div class="kb-header">
+      <div class="kb-header__left">
+        <h1 class="kb-title">知识库</h1>
+        <p class="kb-subtitle">管理和检索你的所有知识内容</p>
       </div>
-
-      <div class="flex space-x-4 mt-4 md:mt-0">
+      <div class="kb-header__right">
         <!-- 搜索框 -->
-        <search @search="handleSearch" class="h-[40px]" />
-        <!-- 创建知识库按钮 -->
-        <t-button theme="primary" class="h-[40px]" @click="toggleUploadModal">
-          <template #icon><add-icon /></template>
-          新建知识库
-        </t-button>
-      </div>
-    </div>
-
-    <!-- 创建知识库弹出界面 -->
-    <div v-if="showCreateModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
-        <div class="p-6">
-          <h3 class="text-xl font-semibold text-gray-800 mb-4">创建知识库</h3>
-          <form @submit.prevent="createKnowledgeBase">
-            <div class="mb-4">
-              <label for="kbName" class="block text-sm font-medium text-gray-700">知识库名称</label>
-              <input type="text" id="kbName" v-model="kbName" required
-                class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" />
-            </div>
-            <div class="mt-6 flex justify-end">
-              <button type="button" @click="showCreateModal = false"
-                class="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-md font-medium mr-3 hover:bg-gray-50">
-                取消
-              </button>
-              <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-medium">
-                创建
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-
-    <!-- 知识库卡片网格 - 瀑布流布局 -->
-    <div class="knowledge-grid">
-      <!-- 知识库卡片 -->
-      <knowledge-cards v-for="card in filteredCards" :key="card.id" :card="card" :go-to-detail="goToDetail"
-        @click="goToDetail(card.id)" class="knowledge-card" />
-
-      <!-- 结束占位符 -->
-      <div class="knowledge-card-placeholder knowledge-card-final">
-        <div class="placeholder-content">
-          <svg class="w-12 h-12 text-gray-400 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+        <div class="kb-search-wrapper">
+          <svg class="kb-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
           </svg>
-          <p class="text-gray-500 text-center">That's all. Nothing more.</p>
+          <input
+            v-model="searchKeyword"
+            type="text"
+            placeholder="搜索知识库..."
+            class="kb-search-input"
+            @input="handleSearch"
+          />
+          <button v-if="searchKeyword" class="kb-search-clear" @click="searchKeyword = ''; handleSearch()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <!-- 新建按钮 -->
+        <button class="kb-create-btn" @click="toggleUploadModal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" d="M12 4v16m8-8H4"/>
+          </svg>
+          新建知识库
+        </button>
+      </div>
+    </div>
+
+    <!-- 创建知识库弹窗 -->
+    <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>新建知识库</h3>
+          <button class="modal-close" @click="showCreateModal = false">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <label class="modal-label">知识库名称</label>
+          <input
+            type="text" v-model="kbName"
+            placeholder="输入知识库名称..."
+            class="modal-input"
+            @keydown.enter="createKnowledgeBase"
+          />
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" @click="showCreateModal = false">取消</button>
+          <button class="btn-confirm" @click="createKnowledgeBase" :disabled="!kbName.trim()">创建</button>
         </div>
       </div>
     </div>
+
+    <!-- 搜索状态 -->
+    <div v-if="isSearching" class="kb-section">
+      <div class="kb-section__header">
+        <span class="kb-section__title">搜索结果</span>
+        <span class="kb-section__count">{{ filteredCards.length }} 个知识库</span>
+      </div>
+      <div v-if="filteredCards.length > 0" class="kb-grid">
+        <KbCard
+          v-for="card in filteredCards" :key="card.id"
+          :card="card"
+          :starred="starredIds.has(card.id)"
+          @click="goToDetail(card.id)"
+          @star="toggleStar(card.id)"
+          @delete="deleteCard(card)"
+        />
+      </div>
+      <div v-else class="kb-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+        </svg>
+        <p>没有找到 "{{ searchKeyword }}" 相关知识库</p>
+      </div>
+    </div>
+
+    <template v-else>
+      <!-- 星标知识库 -->
+      <div v-if="starredCards.length > 0" class="kb-section">
+        <div class="kb-section__header">
+          <span class="kb-section__title">
+            <svg viewBox="0 0 24 24" fill="#f59e0b" stroke="#f59e0b" stroke-width="1.5">
+              <path stroke-linecap="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+            </svg>
+            星标知识库
+          </span>
+          <span class="kb-section__count">{{ starredCards.length }}</span>
+        </div>
+        <div class="kb-grid">
+          <KbCard
+            v-for="card in starredCards" :key="card.id"
+            :card="card"
+            :starred="true"
+            @click="goToDetail(card.id)"
+            @star="toggleStar(card.id)"
+            @delete="deleteCard(card)"
+          />
+        </div>
+      </div>
+
+      <!-- 最近访问 -->
+      <div v-if="recentCards.length > 0" class="kb-section">
+        <div class="kb-section__header">
+          <span class="kb-section__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2">
+              <path stroke-linecap="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            最近访问
+          </span>
+          <span class="kb-section__count">{{ recentCards.length }}</span>
+        </div>
+        <div class="kb-grid kb-grid--compact">
+          <KbCard
+            v-for="card in recentCards" :key="card.id"
+            :card="card"
+            :starred="starredIds.has(card.id)"
+            compact
+            @click="goToDetail(card.id)"
+            @star="toggleStar(card.id)"
+            @delete="deleteCard(card)"
+          />
+        </div>
+      </div>
+
+      <!-- 全部知识库 -->
+      <div class="kb-section">
+        <div class="kb-section__header">
+          <span class="kb-section__title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="2">
+              <path stroke-linecap="round" d="M4 6h16M4 10h16M4 14h16M4 18h16"/>
+            </svg>
+            全部知识库
+          </span>
+          <span class="kb-section__count">{{ allCards.length }}</span>
+        </div>
+
+        <div v-if="cardDataStore.loading" class="kb-loading">
+          <div class="kb-spinner"></div>
+          <span>加载知识库...</span>
+        </div>
+        <div v-else-if="allCards.length > 0" class="kb-grid">
+          <KbCard
+            v-for="card in allCards" :key="card.id"
+            :card="card"
+            :starred="starredIds.has(card.id)"
+            @click="goToDetail(card.id)"
+            @star="toggleStar(card.id)"
+            @delete="deleteCard(card)"
+          />
+          <!-- 结束占位符 -->
+          <div class="kb-card-end">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            <p>Nothing more</p>
+          </div>
+        </div>
+        <div v-else class="kb-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+          </svg>
+          <p>还没有知识库，点击右上角创建一个吧</p>
+        </div>
+      </div>
+    </template>
   </main>
 </template>
 
 <script setup lang="ts">
-import { useRouter } from "vue-router";
-import { AddIcon } from "tdesign-icons-vue-next";
-import knowledgeCards from "@/components/knowledge-unit/knowledge-cards.vue";
-import { ref } from "vue";
-import search from "@/components/search-unit/search.vue";
-import { useCardDataStore } from "../../store";
-import { storeToRefs } from "pinia";
-import { MessagePlugin } from "tdesign-vue-next";
-import axios from "axios";
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import { MessagePlugin } from 'tdesign-vue-next';
+import axios from 'axios';
+import { useCardDataStore } from '../../store';
+import { storeToRefs } from 'pinia';
+import KbCard from '@/components/knowledge-unit/KbCard.vue';
 
 const router = useRouter();
 const cardDataStore = useCardDataStore();
+const { allCards, filteredCards } = storeToRefs(cardDataStore);
+
+// 搜索
+const searchKeyword = ref('');
+const isSearching = computed(() => searchKeyword.value.trim() !== '');
+const handleSearch = () => {
+  cardDataStore.filterCardData(searchKeyword.value);
+};
+
+// 导航
 const goToDetail = (id: string) => {
+  // 记录最近访问
+  recordRecent(id);
   router.push(`/knowledge/knowledgeDetail/${id}`);
 };
 
-const handleSearch = (keyword: string) => {
-  console.log("搜索关键词:", keyword);
-  // 执行搜索逻辑，比如调用接口、过滤列表等
-};
+// ======= 星标功能（localStorage持久化） =======
+const STAR_KEY = 'kb_starred_ids';
+const RECENT_KEY = 'kb_recent_ids';
 
-const { filteredCards } = storeToRefs(cardDataStore);
+const starredIds = ref<Set<string>>(new Set());
+const recentIds = ref<string[]>([]);
 
-//创建知识库的界面
-// 添加模态框显示状态和表单数据
-const showCreateModal = ref(false);
-const kbName = ref("");
-const kbCover = ref("");
-
-//模态框的显示和隐藏
-const toggleUploadModal = () => {
-  showCreateModal.value = !showCreateModal.value;
-};
-
-// 处理表单提交的方法
-const createKnowledgeBase = async () => {
+const loadStarred = () => {
   try {
-    // 发送 POST 请求到后端接口
-    console.log("创建知识库:", kbName.value);
+    const raw = localStorage.getItem(STAR_KEY);
+    starredIds.value = new Set(raw ? JSON.parse(raw) : []);
+  } catch { starredIds.value = new Set(); }
+};
+
+const loadRecent = () => {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY);
+    recentIds.value = raw ? JSON.parse(raw) : [];
+  } catch { recentIds.value = []; }
+};
+
+const toggleStar = (id: string) => {
+  if (starredIds.value.has(id)) {
+    starredIds.value.delete(id);
+    MessagePlugin.info('已取消星标');
+  } else {
+    starredIds.value.add(id);
+    MessagePlugin.success('已加入星标');
+  }
+  localStorage.setItem(STAR_KEY, JSON.stringify([...starredIds.value]));
+};
+
+const recordRecent = (id: string) => {
+  const list = [id, ...recentIds.value.filter(i => i !== id)].slice(0, 6);
+  recentIds.value = list;
+  localStorage.setItem(RECENT_KEY, JSON.stringify(list));
+};
+
+const starredCards = computed(() =>
+  allCards.value.filter(c => starredIds.value.has(c.id))
+);
+
+const recentCards = computed(() => {
+  const MAX = 6;
+  return recentIds.value
+    .map(id => allCards.value.find(c => c.id === id))
+    .filter(Boolean)
+    .slice(0, MAX) as any[];
+});
+
+// ======= 创建知识库 =======
+const showCreateModal = ref(false);
+const kbName = ref('');
+
+const toggleUploadModal = () => {
+  showCreateModal.value = true;
+  kbName.value = '';
+};
+
+const createKnowledgeBase = async () => {
+  if (!kbName.value.trim()) return;
+  try {
     const formData = new FormData();
-    formData.append("kbName", kbName.value);
-
-    await axios.post("/api/create-knowledgebase/", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
+    formData.append('kbName', kbName.value);
+    await axios.post('/api/create-knowledgebase/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
-
-    // 处理成功响应
-    console.log("创建知识库:", kbName.value);
-    MessagePlugin.success("创建知识库：" + kbName.value + "  成功");
-
-    // 清空表单数据并关闭模态框
-    kbName.value = "";
-    kbCover.value = "";
+    MessagePlugin.success('知识库 "' + kbName.value + '" 创建成功');
+    kbName.value = '';
     showCreateModal.value = false;
-
-    // 重新获取卡片数据，更新界面
     await cardDataStore.fetchCards();
-  } catch (error:any) {
-    if (error.response) {
-      // 处理后端返回的错误
-      if (error.response.status === 400) {
-        MessagePlugin.error("知识库已存在");
-      } else {
-        MessagePlugin.error("创建知识库失败，请稍后重试");
-      }
+  } catch (error: any) {
+    if (error.response?.status === 400) {
+      MessagePlugin.error('知识库已存在');
     } else {
-      // 处理网络错误
-      MessagePlugin.error("网络错误，请检查网络连接");
+      MessagePlugin.error('创建失败，请稍后重试');
     }
-    console.error("创建知识库失败:", error);
   }
 };
 
-import { onMounted } from "vue";
+// ======= 删除知识库 =======
+const deleteCard = async (card: any) => {
+  try {
+    await axios.delete(`/api/delete-knowledgebase/${card.id}`);
+    MessagePlugin.success(`知识库「${card.title}」已删除`);
+    // 从星标/最近移除
+    starredIds.value.delete(card.id);
+    recentIds.value = recentIds.value.filter(id => id !== card.id);
+    localStorage.setItem(STAR_KEY, JSON.stringify([...starredIds.value]));
+    localStorage.setItem(RECENT_KEY, JSON.stringify(recentIds.value));
+    await cardDataStore.fetchCards();
+  } catch {
+    MessagePlugin.error('删除失败');
+  }
+};
 
-// 组件挂载时获取数据
 onMounted(async () => {
-  await cardDataStore.fetchCards(); // 组件挂载时获取数据
+  loadStarred();
+  loadRecent();
+  await cardDataStore.fetchCards();
 });
 </script>
 
 <style scoped>
-/* 主容器样式 */
-main {
-  max-width: 100vw;
-  overflow-x: hidden;
+.kb-page {
+  height: 100vh;
+  overflow-y: auto;
+  padding: 28px 32px;
+  background: #f9fafb;
+  scrollbar-width: thin;
 }
 
-/* 瀑布流网格布局 */
-.knowledge-grid {
-  /* 使用 CSS Grid 实现瀑布流 */
+/* ===== 顶部 ===== */
+.kb-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.kb-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.kb-subtitle {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 3px 0 0;
+}
+
+.kb-header__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 搜索框 */
+.kb-search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 7px 12px;
+  width: 220px;
+  transition: all 0.2s;
+}
+
+.kb-search-wrapper:focus-within {
+  border-color: #4f7ef8;
+  box-shadow: 0 0 0 3px rgba(79,126,248,0.1);
+  width: 280px;
+}
+
+.kb-search-icon {
+  width: 16px;
+  height: 16px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.kb-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 13px;
+  color: #111827;
+  background: transparent;
+  min-width: 0;
+}
+
+.kb-search-input::placeholder { color: #9ca3af; }
+
+.kb-search-clear {
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 0;
+  display: flex;
+  align-items: center;
+}
+.kb-search-clear svg { width: 14px; height: 14px; }
+
+/* 新建按钮 */
+.kb-create-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #4f7ef8, #6366f1);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.kb-create-btn:hover {
+  background: linear-gradient(135deg, #3b6de8, #5355e0);
+  box-shadow: 0 4px 12px rgba(79,126,248,0.3);
+}
+.kb-create-btn svg { width: 16px; height: 16px; }
+
+/* ===== 弹窗 ===== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-card {
+  background: white;
+  border-radius: 14px;
+  width: 400px;
+  max-width: 92vw;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.modal-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+.modal-close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #9ca3af;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-close:hover { background: #f3f4f6; color: #374151; }
+.modal-close svg { width: 16px; height: 16px; }
+
+.modal-body { padding: 16px 24px; }
+.modal-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  margin-bottom: 6px;
+}
+.modal-input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+  box-sizing: border-box;
+}
+.modal-input:focus {
+  border-color: #4f7ef8;
+  box-shadow: 0 0 0 3px rgba(79,126,248,0.1);
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 24px 20px;
+}
+.btn-cancel {
+  padding: 8px 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  color: #6b7280;
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-cancel:hover { background: #f9fafb; }
+.btn-confirm {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 8px;
+  background: #4f7ef8;
+  color: white;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-confirm:hover:not(:disabled) { background: #3b6de8; }
+.btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ===== 区块 ===== */
+.kb-section {
+  margin-bottom: 32px;
+}
+
+.kb-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.kb-section__title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+}
+.kb-section__title svg {
+  width: 16px;
+  height: 16px;
+}
+
+.kb-section__count {
+  font-size: 12px;
+  color: #9ca3af;
+  background: #f3f4f6;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+/* ===== 网格 ===== */
+.kb-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-
-  /* 针对不同屏幕尺寸的响应式调整 */
-  @media (min-width: 640px) {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.25rem;
-  }
-
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1.5rem;
-  }
-
-  @media (min-width: 1024px) {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 2rem;
-  }
-
-  @media (min-width: 1280px) {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 2.5rem;
-  }
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
 }
 
-/* 知识库卡片样式 */
-.knowledge-card {
-  /* 卡片基础样式 */
-  break-inside: avoid;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* 悬停效果 */
-  &:hover {
-    transform: translateY(-8px) scale(1.02);
-    box-shadow:
-      0 20px 25px -5px rgba(0, 0, 0, 0.1),
-      0 10px 10px -5px rgba(0, 0, 0, 0.04);
-    cursor: pointer;
-    z-index: 10;
-  }
-
-  /* 点击效果 */
-  &:active {
-    transform: translateY(-4px) scale(1.01);
-    transition: all 0.1s ease;
-  }
+.kb-grid--compact {
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
 }
 
-/* 占位符卡片样式 */
-.knowledge-card-placeholder {
-  height: 100%;
-  padding: 7.5rem 2.5rem;
-  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-  border: 2px dashed #cbd5e1;
-  border-radius: 1rem;
-}
-
-.placeholder-content {
+/* ===== 结束占位符 ===== */
+.kb-card-end {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  text-align: center;
-
-  p {
-    font-size: 1.1rem;
-    font-weight: 500;
-    color: #64748b;
-  }
+  padding: 40px 20px;
+  border: 2px dashed #e5e7eb;
+  border-radius: 12px;
+  color: #9ca3af;
+}
+.kb-card-end svg {
+  width: 32px;
+  height: 32px;
+  margin-bottom: 8px;
+  opacity: 0.5;
+}
+.kb-card-end p {
+  font-size: 12px;
 }
 
-/* 滚动条隐藏 */
-::-webkit-scrollbar {
-  display: none;
+/* ===== 空状态 ===== */
+.kb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #9ca3af;
+  gap: 12px;
+}
+.kb-empty svg {
+  width: 48px;
+  height: 48px;
+  opacity: 0.4;
+}
+.kb-empty p {
+  font-size: 14px;
 }
 
-/* 响应式调整 */
+/* ===== 加载 ===== */
+.kb-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+.kb-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #4f7ef8;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
 @media (max-width: 640px) {
-  .knowledge-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-    padding: 0 0.5rem;
-  }
-
-  .knowledge-card:hover {
-    transform: translateY(-4px);
-  }
-}
-
-@media (max-width: 1024px) {
-  .knowledge-grid {
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  }
-}
-
-/* 加载动画 */
-
-.knowledge-card {
-  animation: fadeInUp 0.6s ease-out backwards;
-}
-
-.knowledge-card:nth-child(1) {
-  animation-delay: 0.1s;
-}
-
-.knowledge-card:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.knowledge-card:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-.knowledge-card:nth-child(4) {
-  animation-delay: 0.4s;
-}
-
-.knowledge-card:nth-child(5) {
-  animation-delay: 0.5s;
-}
-
-.knowledge-card:nth-child(6) {
-  animation-delay: 0.6s;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 改进的焦点样式 */
-.knowledge-card:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
-}
-
-/* 平滑的页面过渡 */
-main {
-  animation: pageSlideIn 0.5s ease-out;
-}
-
-@keyframes pageSlideIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-
-
-.knowledge-card-final {
-  animation: fadeInUp 0.8s ease-out backwards;
-  animation-delay: 1.2s;
-  /* 在前6个卡片之后显示 */
-}
-
-
-@keyframes ripple {
-  0% {
-    width: 0;
-    height: 0;
-    opacity: 1;
-  }
-
-  100% {
-    width: 200px;
-    height: 200px;
-    opacity: 0;
-  }
+  .kb-page { padding: 16px; }
+  .kb-grid { grid-template-columns: 1fr; }
+  .kb-search-wrapper { width: 160px; }
+  .kb-search-wrapper:focus-within { width: 190px; }
 }
 </style>

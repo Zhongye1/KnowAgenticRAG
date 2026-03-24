@@ -1,51 +1,90 @@
 <template>
   <t-config-provider :global-config="{ classPrefix: 't' }">
-    <div class="app-container">
-      <!-- 应用导航栏 -->
-      <thea v-if="showHeader"></thea>
-      <!-- <app-navbar class="navbar"/> -->
-      <!-- 路由视图 -->
-      <router-view class="router-view" />
+    <!-- 登录页：不显示侧边栏 -->
+    <div v-if="!showSidebar" class="app-fullpage">
+      <router-view />
     </div>
+
+    <!-- 主应用布局：左侧导航 + 右侧内容 -->
+    <div v-else class="app-layout">
+      <SideBar @openSearch="openSearch" />
+      <main class="app-main">
+        <router-view />
+      </main>
+    </div>
+
+    <!-- 全局快捷搜索 -->
+    <GlobalSearch :visible="searchVisible" @close="searchVisible = false" />
   </t-config-provider>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
-//import AppNavbar from './components/AppNavbar.vue';
-import thea from './components/T-HeadBar.vue'
-//import '@/assets/fadeIn.css';
-import "@/assets/scroll.css"
+import SideBar from './components/SideBar.vue';
+import GlobalSearch from './components/GlobalSearch.vue';
+import "@/assets/scroll.css";
 
 const route = useRoute();
 
-// 定义不需要显示头部的路由路径
-const hideHeaderRoutes = ['/LogonOrRegister'];
+// 不需要显示侧边栏的路由（登录/注册页）
+const hideSidebarRoutes = ['/LogonOrRegister'];
+const showSidebar = computed(() => !hideSidebarRoutes.includes(route.path));
 
-// 根据当前路由决定是否显示头部
-const showHeader = computed(() => {
-  return !hideHeaderRoutes.includes(route.path);
-});
+// 全局搜索开关
+const searchVisible = ref(false);
+const openSearch = () => { searchVisible.value = true; };
+
+// 全局 Ctrl+K 快捷键
+const handleKeydown = (e: KeyboardEvent) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+    e.preventDefault();
+    searchVisible.value = true;
+  }
+};
+
+onMounted(() => document.addEventListener('keydown', handleKeydown));
+onUnmounted(() => document.removeEventListener('keydown', handleKeydown));
 </script>
 
 <style>
-.app-container {
-  background-color: #f9fafb;
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+}
+
+#app {
   height: 100vh;
   width: 100vw;
-  position: fixed;
-  z-index: -1;
+}
+
+/* 登录页全屏 */
+.app-fullpage {
+  height: 100vh;
+  width: 100vw;
+  background-color: #f9fafb;
+}
+
+/* 主布局：左侧导航 + 右侧内容 */
+.app-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  background-color: #f9fafb;
   overflow: hidden;
 }
 
-.navbar {
-  height: 8vh;
-  /* 设置导航栏高度 */
-}
-
-.router-view {
-  height: 92vh;
-  /* 设置路由视图高度 */
+/* 右侧主内容区 */
+.app-main {
+  flex: 1;
+  height: 100vh;
+  overflow: hidden;
+  min-width: 0;
 }
 </style>

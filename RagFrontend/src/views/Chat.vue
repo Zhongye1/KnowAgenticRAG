@@ -56,6 +56,39 @@
         </div>
       </div>
 
+      <!-- RAG 模式区域 -->
+      <div class="rag-panel">
+        <!-- RAG 模式开关 -->
+        <div class="rag-toggle-row">
+          <div class="rag-toggle-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
+            <span>知识库问答</span>
+          </div>
+          <t-switch v-model="ragMode" size="small" />
+        </div>
+
+        <!-- 知识库选择器（RAG模式下展示） -->
+        <div v-if="ragMode" class="rag-kb-selector">
+          <div class="rag-kb-label">选择知识库</div>
+          <t-select
+            v-model="selectedKbId"
+            placeholder="请选择知识库"
+            size="small"
+            clearable
+            :options="kbSelectOptions"
+            class="rag-kb-select"
+          />
+          <div v-if="selectedKbId" class="rag-kb-hint">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+              <path stroke-linecap="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            已启用知识库增强
+          </div>
+        </div>
+      </div>
+
       <!-- 底部操作按钮 -->
       <div class="p-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
         <button @click="createNewSession" :disabled="loading"
@@ -92,6 +125,7 @@
 
       <chatMainUnit v-if="currentSession" :history="currentSession.history" :title="currentSession.title"
         :lastMessage="currentSession.lastMessage" :key="currentSession.id" :loading="isStreamLoad"
+        :ragMode="ragMode" :ragKbId="selectedKbId"
         @chat-updated="handleChatUpdated" @send-message="inputEnter" />
 
       <!-- 无会话状态 -->
@@ -130,6 +164,7 @@ import { ref, computed, nextTick, watch, reactive, onMounted } from "vue";
 import chatMainUnit from "../components/chat-main-unit/chat-main-unit.vue";
 import { useRouter, useRoute } from "vue-router";
 import { MessagePlugin } from "tdesign-vue-next";
+import axios from "axios";
 
 
 
@@ -142,6 +177,13 @@ interface ChatMessage {
   role: "user" | "assistant";
   reasoning?: string;
   duration?: number;
+  sources?: SourceItem[];
+}
+
+interface SourceItem {
+  filename: string;
+  content: string;
+  score?: number;
 }
 
 interface ChatSession {
@@ -166,6 +208,26 @@ const maxRetries = 3;
 
 // 聊天会话数据
 const chatSessions = ref<ChatSession[]>([]);
+
+// ====== RAG 模式 ======
+const ragMode = ref(false);
+const selectedKbId = ref<string>('');
+const kbList = ref<any[]>([]);
+
+const kbSelectOptions = computed(() =>
+  kbList.value.map((kb: any) => ({
+    label: kb.kbName || kb.title || kb.name,
+    value: kb.kbId || kb.id,
+  }))
+);
+
+const loadKbList = async () => {
+  try {
+    const res = await axios.get('/api/get-knowledge-item/');
+    const data = res.data?.data || res.data || [];
+    kbList.value = Array.isArray(data) ? data : [];
+  } catch { kbList.value = []; }
+};
 
 // 计算属性
 const currentSession = computed(() => {
@@ -520,6 +582,9 @@ const inputEnter = async (inputValue: string) => {
         message: inputValue.trim(),
         sessionId: currentId,
         history: chatSessions.value[sessionIndex].history,
+        // RAG 模式参数
+        rag_mode: ragMode.value,
+        kb_id: ragMode.value ? selectedKbId.value : undefined,
         // 添加Ollama设置到请求中
         ollamaSettings: {
           serverUrl: settings.serverUrl,
@@ -531,7 +596,8 @@ const inputEnter = async (inputValue: string) => {
     // 模拟流式响应（可以根据实际API调整）
     await simulateStreamResponse(
       response.reply || `这是对"${inputValue}"的回复`,
-      sessionIndex
+      sessionIndex,
+      response.sources || []
     );
   } catch (error) {
     console.error("发送消息失败:", error);
@@ -559,7 +625,7 @@ const inputEnter = async (inputValue: string) => {
 };
 
 // 模拟流式响应
-const simulateStreamResponse = async (content: string, sessionIndex: number) => {
+const simulateStreamResponse = async (content: string, sessionIndex: number, sources: SourceItem[] = []) => {
   const assistantMessage: ChatMessage = {
     avatar: "https://tdesign.gtimg.com/site/chat-avatar.png",
     name: "ASF助手",
@@ -571,6 +637,7 @@ const simulateStreamResponse = async (content: string, sessionIndex: number) => 
     role: "assistant",
     reasoning: "",
     duration: 0,
+    sources: sources,
   };
 
   // 添加空的助手消息
@@ -680,6 +747,9 @@ onMountedHook(async () => {
   // 注册键盘事件
   document.addEventListener("keydown", handleKeyDown);
 
+  // 加载知识库列表（RAG模式使用）
+  await loadKbList();
+
   // 获取会话历史数据
   await fetchChatSessions();
 
@@ -716,6 +786,63 @@ onUnmounted(() => {
   width: 100%;
   overflow: hidden;
   min-height: calc(100vh - var(--header-height, 0px));
+}
+
+/* RAG 模式面板 */
+.rag-panel {
+  padding: 10px 12px;
+  border-top: 1px solid #e5e7eb;
+  background: #fafafa;
+}
+
+.rag-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.rag-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.rag-toggle-label svg {
+  width: 14px;
+  height: 14px;
+  color: #4f7ef8;
+}
+
+.rag-kb-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rag-kb-label {
+  font-size: 11.5px;
+  color: #6b7280;
+}
+
+.rag-kb-select {
+  width: 100%;
+}
+
+.rag-kb-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #22c55e;
+}
+
+.rag-kb-hint svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* 动画效果 */

@@ -622,6 +622,89 @@
         </div>
       </div>
     </div>
+
+    <!-- 📝 笔记模块 -->
+    <div class="note-section">
+      <div class="note-header" @click="noteExpanded = !noteExpanded">
+        <div class="note-header-left">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+          </svg>
+          <span>知识库笔记</span>
+          <span class="note-count" v-if="noteList.length > 0">{{ noteList.length }}</span>
+        </div>
+        <div class="note-header-right">
+          <button class="note-add-btn" @click.stop="addNote" title="新建笔记">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" d="M12 4v16m8-8H4"/>
+            </svg>
+          </button>
+          <svg :class="['note-chevron', { 'note-chevron--open': noteExpanded }]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </div>
+      </div>
+
+      <div v-if="noteExpanded" class="note-body">
+        <!-- 笔记列表 -->
+        <div v-if="noteList.length === 0 && !activeNote" class="note-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path stroke-linecap="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+          <p>还没有笔记，点击右上角 + 新建</p>
+        </div>
+
+        <div v-else class="note-layout">
+          <!-- 笔记列表侧栏 -->
+          <div class="note-list">
+            <div
+              v-for="note in noteList"
+              :key="note.id"
+              :class="['note-item', { 'note-item--active': activeNote?.id === note.id }]"
+              @click="selectNote(note)"
+            >
+              <div class="note-item-title">{{ note.title || '无标题笔记' }}</div>
+              <div class="note-item-meta">
+                <span>{{ formatNoteTime(note.updatedAt) }}</span>
+                <button class="note-item-del" @click.stop="deleteNote(note.id)" title="删除笔记">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 笔记编辑区 -->
+          <div v-if="activeNote" class="note-editor">
+            <input
+              v-model="activeNote.title"
+              placeholder="笔记标题..."
+              class="note-title-input"
+              @input="markNoteUnsaved"
+            />
+            <textarea
+              v-model="activeNote.content"
+              placeholder="开始记录你的想法... 支持 Markdown 格式"
+              class="note-textarea"
+              @input="markNoteUnsaved"
+            ></textarea>
+            <div class="note-toolbar">
+              <span class="note-status">{{ noteSaveStatus }}</span>
+              <div class="note-toolbar-right">
+                <button class="note-tool-btn" @click="insertMarkdown('**', '**')" title="粗体">B</button>
+                <button class="note-tool-btn note-tool-italic" @click="insertMarkdown('*', '*')" title="斜体">I</button>
+                <button class="note-tool-btn" @click="insertMarkdown('`', '`')" title="代码">&lt;&gt;</button>
+                <button class="note-tool-btn" @click="insertMarkdown('- ', '')" title="列表">≡</button>
+                <button class="note-save-btn" @click="saveNote" :class="{ 'note-save-btn--unsaved': noteUnsaved }">
+                  {{ noteUnsaved ? '保存' : '已保存' }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1251,6 +1334,94 @@ onUnmounted(() => {
     window.clearInterval(intervalId);
   }
 });
+
+// ============ 笔记模块 ============
+interface Note {
+  id: string;
+  title: string;
+  content: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+const noteExpanded = ref(false);
+const noteList = ref<Note[]>([]);
+const activeNote = ref<Note | null>(null);
+const noteUnsaved = ref(false);
+const noteSaveStatus = ref('');
+let noteAutoSaveTimer: ReturnType<typeof setTimeout>;
+
+const getNoteStorageKey = () => `kb_notes_${id.value}`;
+
+const loadNotes = () => {
+  try {
+    const raw = localStorage.getItem(getNoteStorageKey());
+    noteList.value = raw ? JSON.parse(raw) : [];
+  } catch { noteList.value = []; }
+};
+
+const saveNotesToStorage = () => {
+  localStorage.setItem(getNoteStorageKey(), JSON.stringify(noteList.value));
+};
+
+const addNote = () => {
+  const newNote: Note = {
+    id: Date.now().toString(),
+    title: '',
+    content: '',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  noteList.value.unshift(newNote);
+  activeNote.value = newNote;
+  noteExpanded.value = true;
+  saveNotesToStorage();
+};
+
+const selectNote = (note: Note) => {
+  activeNote.value = note;
+};
+
+const deleteNote = (id: string) => {
+  noteList.value = noteList.value.filter(n => n.id !== id);
+  if (activeNote.value?.id === id) activeNote.value = noteList.value[0] || null;
+  saveNotesToStorage();
+};
+
+const markNoteUnsaved = () => {
+  noteUnsaved.value = true;
+  noteSaveStatus.value = '未保存';
+  clearTimeout(noteAutoSaveTimer);
+  noteAutoSaveTimer = setTimeout(saveNote, 1500);
+};
+
+const saveNote = () => {
+  if (!activeNote.value) return;
+  activeNote.value.updatedAt = Date.now();
+  const idx = noteList.value.findIndex(n => n.id === activeNote.value!.id);
+  if (idx !== -1) noteList.value[idx] = { ...activeNote.value };
+  saveNotesToStorage();
+  noteUnsaved.value = false;
+  noteSaveStatus.value = '已保存';
+};
+
+const formatNoteTime = (ts: number) => {
+  const d = new Date(ts);
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - d.getTime()) / 60000);
+  if (diff < 1) return '刚刚';
+  if (diff < 60) return `${diff}分钟前`;
+  if (diff < 1440) return `${Math.floor(diff / 60)}小时前`;
+  return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+};
+
+const insertMarkdown = (before: string, after: string) => {
+  if (!activeNote.value) return;
+  activeNote.value.content += `${before}文本${after}`;
+  markNoteUnsaved();
+};
+
+onMounted(() => { loadNotes(); });
 </script>
 
 
@@ -1267,5 +1438,248 @@ onUnmounted(() => {
   position: fixed;
   z-index: -1;
   overflow-x: hidden;
+}
+
+/* ===== 笔记模块 ===== */
+.note-section {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  margin-bottom: 32px;
+  overflow: hidden;
+}
+
+.note-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+  border-bottom: 1px solid transparent;
+}
+
+.note-header:hover { background: #f9fafb; }
+
+.note-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.note-header-left svg {
+  width: 18px;
+  height: 18px;
+  color: #4f7ef8;
+}
+
+.note-count {
+  background: #eff6ff;
+  color: #4f7ef8;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+
+.note-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.note-add-btn {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: #eff6ff;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4f7ef8;
+  transition: all 0.15s;
+}
+.note-add-btn:hover { background: #dbeafe; }
+.note-add-btn svg { width: 14px; height: 14px; }
+
+.note-chevron {
+  width: 16px;
+  height: 16px;
+  color: #9ca3af;
+  transition: transform 0.2s;
+}
+.note-chevron--open { transform: rotate(180deg); }
+
+.note-body {
+  border-top: 1px solid #f0f0f0;
+}
+
+.note-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: #9ca3af;
+  gap: 10px;
+}
+.note-empty svg {
+  width: 40px;
+  height: 40px;
+  opacity: 0.4;
+}
+.note-empty p { font-size: 14px; }
+
+.note-layout {
+  display: flex;
+  height: 380px;
+}
+
+.note-list {
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid #f0f0f0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.note-item {
+  padding: 10px 14px;
+  cursor: pointer;
+  border-bottom: 1px solid #f5f5f5;
+  transition: background 0.12s;
+}
+.note-item:hover { background: #f9fafb; }
+.note-item--active { background: #eff6ff; border-left: 3px solid #4f7ef8; }
+
+.note-item-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+
+.note-item-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.note-item-del {
+  width: 16px;
+  height: 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 0;
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  transition: opacity 0.15s;
+}
+.note-item-del svg { width: 12px; height: 12px; }
+.note-item:hover .note-item-del { opacity: 1; }
+.note-item-del:hover { color: #ef4444; }
+
+.note-editor {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.note-title-input {
+  padding: 14px 18px 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  border: none;
+  outline: none;
+  border-bottom: 1px solid #f0f0f0;
+}
+.note-title-input::placeholder { color: #9ca3af; }
+
+.note-textarea {
+  flex: 1;
+  padding: 12px 18px;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: #374151;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: 'SF Mono', Consolas, 'Courier New', monospace;
+}
+.note-textarea::placeholder { color: #9ca3af; }
+
+.note-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  border-top: 1px solid #f0f0f0;
+  background: #f9fafb;
+}
+
+.note-status {
+  font-size: 11.5px;
+  color: #9ca3af;
+}
+
+.note-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.note-tool-btn {
+  width: 28px;
+  height: 24px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+}
+.note-tool-btn:hover { background: #f3f4f6; border-color: #d1d5db; }
+.note-tool-italic { font-style: italic; }
+
+.note-save-btn {
+  padding: 4px 12px;
+  background: #4f7ef8;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 12px;
+  cursor: pointer;
+  margin-left: 4px;
+  transition: all 0.15s;
+}
+.note-save-btn:hover { background: #3b6de8; }
+.note-save-btn--unsaved {
+  background: #f59e0b;
+  animation: pulse-save 1.5s infinite;
+}
+
+@keyframes pulse-save {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
 }
 </style>
