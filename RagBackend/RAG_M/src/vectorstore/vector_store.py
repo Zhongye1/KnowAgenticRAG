@@ -1,6 +1,5 @@
 import os
 import warnings
-from functools import lru_cache
 from typing import List, Optional
 
 from dotenv import load_dotenv
@@ -13,7 +12,6 @@ import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from models.model_config import get_model_config
 
-import os
 import json
 
 
@@ -56,10 +54,9 @@ class VectorStoreManager:
 
 
     @property
-    @lru_cache(maxsize=1)
     def embeddings(self) -> HuggingFaceEmbeddings:
-        """Lazy load and cache embeddings model"""
-        if not self._embeddings:
+        """Lazy load and cache embeddings model（单例，只初始化一次）"""
+        if self._embeddings is None:
             self._embeddings = HuggingFaceEmbeddings(model_name=self._embedding_model)
         return self._embeddings
 

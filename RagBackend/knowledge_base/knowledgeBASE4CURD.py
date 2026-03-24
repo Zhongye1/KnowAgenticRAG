@@ -86,7 +86,7 @@ async def create_knowledgebase(kbName: str = Form(...)):
             'description': '新建知识库',
             'createdTime': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'cover': "https://picx.zhimg.com/80/v2-381cc3f4ba85f62cdc483136e5fa4f47_720w.webp?source=d16d100b'",
-            "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+            "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
             "chunk_size": 1000,
             "chunk_overlap": 200,
             "pdfParser": 'PyPDFLoader',
