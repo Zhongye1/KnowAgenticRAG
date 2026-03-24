@@ -23,6 +23,24 @@ logger = logging.getLogger(__name__)
 # 初始化FastAPI应用
 app = FastAPI(title="RAG Backend Service", version="1.0")
 
+
+# ── MySQL 延迟初始化 ──────────────────────────────────────────
+# 原来在 LogonAndLogin.py 模块级直接调用 create_user_table()，
+# 若 MySQL 未启动则整个后端启动失败。
+# 修复：移到 startup 事件，连接失败只记录警告，不阻断启动。
+@app.on_event("startup")
+async def _init_db_tables():
+    """应用启动后尝试初始化 MySQL 表，连接失败只警告不崩溃"""
+    try:
+        from RAGF_User_Management.LogonAndLogin import ensure_tables_exist
+        ensure_tables_exist()
+        logger.info("MySQL 数据表初始化完成")
+    except Exception as e:
+        logger.warning(
+            f"MySQL 数据表初始化失败（MySQL 可能未启动）: {e}\n"
+            "用户相关功能暂不可用，其他服务正常运行。"
+        )
+
 # 配置CORS
 app.add_middleware(
     CORSMiddleware,
