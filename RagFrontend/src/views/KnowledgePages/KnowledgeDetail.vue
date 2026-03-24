@@ -392,10 +392,8 @@
 
           <div class="mt-4 border-t pt-4">
             <h4 class="font-medium text-gray-700 mb-2">详细处理过程：</h4>
-            <div class="max-h-80 overflow-auto font-mono text-sm">
-              <div v-for="(result, index) in queryResults" :key="index" class="pb-1 text-gray-700">
-                {{ result }}
-              </div>
+            <div class="max-h-80 overflow-auto font-mono text-sm text-gray-700 whitespace-pre-wrap break-words leading-6">
+              {{ queryResults.join('') }}
             </div>
           </div>
         </div>
