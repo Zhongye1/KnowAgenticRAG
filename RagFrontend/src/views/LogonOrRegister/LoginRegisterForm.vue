@@ -88,7 +88,7 @@
                 </div>
 
                 <!-- 注册表单 -->
-                <div v-else>
+                <div v-else-if="currentMode === 'register'">
                     <!-- 用户名或邮箱 -->
                     <div class="mb-4">
                         <label class="block text-white/80 text-sm font-light mb-2">用户名</label>
@@ -153,7 +153,7 @@
                 </div>
 
                 <!-- ── 找回密码表单 ───────────────────────────────────── -->
-                <div v-else-if="currentMode === 'forgot'">
+                <div v-else>
                     <!-- Step 1: 选择验证方式 + 输入账号 -->
                     <div v-if="forgotStep === 1" class="space-y-5">
                         <!-- 验证方式选择 -->
