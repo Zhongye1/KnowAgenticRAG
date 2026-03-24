@@ -1,28 +1,48 @@
-aiofiles==24.1.0
-beautifulsoup4==4.13.4
-camelot-py==0.11.0
+# KnowledgeRAG-GZHU 后端依赖
+# 按体积从大到小排列，可选依赖注明用途
+
+# ── 核心框架
 fastapi==0.116.1
-google_api_python_client==2.109.0
-Jinja2==3.1.6
-langchain==0.3.27
-langchain_community==0.3.27
-langchain_huggingface==0.3.1
-langchain_ollama==0.3.6
-layoutparser==0.3.4
-pdf2image==1.17.0
-pdfplumber==0.11.7
-Pillow==11.3.0
-protobuf==6.31.1
-pydantic==2.11.7
-PyJWT==2.10.1
-PyMySQL==1.1.1
-PyPDF2==3.0.1
-pytesseract==0.3.13
-python-dotenv==1.1.1
-python_docx==1.1.2
-Requests==2.32.4
 uvicorn==0.35.0
-docx2txt>=0.9
-faiss-cpu>=1.12.0
+pydantic==2.11.7
 python-multipart>=0.0.6
+
+# ── LangChain & RAG
+langchain==0.3.27
+langchain-community==0.3.27
+langchain-huggingface==0.3.1
+langchain-ollama==0.3.6
+faiss-cpu>=1.12.0
 sentence-transformers>=5.1.0
+
+# ── 文档处理
+pdfplumber==0.11.7
+pypdf2==3.0.1
+python-docx==1.1.2
+docx2txt>=0.9
+aiofiles==24.1.0
+
+# ── 数据库 & 认证
+pymysql==1.1.1
+pyjwt==2.10.1
+python-dotenv==1.1.1
+
+# ── 网络
+requests==2.32.4
+beautifulsoup4==4.13.4
+
+# ── 其他
+pillow==11.3.0
+jinja2==3.1.6
+protobuf==6.31.1
+
+# ── 可选（OCR 支持，不需要可注释掉，节省 ~200MB）
+# pytesseract==0.3.13
+# pdf2image==1.17.0
+
+# ── 可选（知识图谱高级布局解析，不需要可注释掉，节省 ~100MB）
+# layoutparser==0.3.4
+# camelot-py==0.11.0
+
+# ── 可选（Google Drive 集成，不需要可注释掉）
+# google-api-python-client==2.109.0

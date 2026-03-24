@@ -1,46 +1,125 @@
 version: "3.8"
 
+# ═══════════════════════════════════════════════════════════
+# KnowledgeRAG-GZHU  —  轻量封装方案
+# 镜像大小目标：
+#   asf-backend : ~500MB（python:3.11-slim + PyTorch CPU only）
+#   asf-frontend: ~45MB （nginx:alpine）
+#   ollama      : ~800MB 镜像（模型权重不计，按需 pull）
+#   mysql       : ~600MB
+# 总镜像大小（不含模型）：< 2GB，运行内存 < 2GB
+# ═══════════════════════════════════════════════════════════
+
 services:
+
+  # ── 后端服务
   asf-backend:
-    build: ./RagBackend
+    build:
+      context: ./RagBackend
+      dockerfile: Dockerfile
+    image: rag-backend:latest
     container_name: asf-backend
+    restart: unless-stopped
     ports:
       - "8000:8000"
-    restart: unless-stopped
+    volumes:
+      # 数据持久化（知识库文件、向量存储、对话记录）
+      - ./data/local-KLB-files:/app/local-KLB-files
+      - ./data/metadata:/app/metadata
+      - ./data/user_avatars:/app/user_avatars
+      - ./data/covers:/app/knowledge_base/uploaded_pics/covers
     networks:
       - apn-network
+    depends_on:
+      mysql:
+        condition: service_healthy
     environment:
-      - OLLAMA_BASE_URL=http://ollama:11434
-      # 数据库配置——通过环境变量注入，不再硬编码在代码中
-      - DB_HOST=${DB_HOST:-172.22.121.2}
-      - DB_PORT=${DB_PORT:-3306}
-      - DB_USER=${DB_USER:-root}
+      # 数据库（从 .env 文件读取，不在此处硬编码）
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_USER=${DB_USER:-mmk}
       - DB_PASSWORD=${DB_PASSWORD:-changeme}
-      - DB_NAME=${DB_NAME:-mysql}
-      # JWT 密钥——生产环境请替换为强随机字符串
+      - DB_NAME=${DB_NAME:-ASF}
+      # JWT（生产环境务必替换为强随机字符串）
       - JWT_SECRET=${JWT_SECRET:-changeme_jwt_secret}
+      # Ollama 服务地址（容器内互通）
+      - OLLAMA_BASE_URL=http://ollama:11434
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
-  frontend:
+  # ── 前端服务
+  asf-frontend:
     build:
       context: ./RagFrontend
       dockerfile: Dockerfile
+    image: rag-frontend:latest
     container_name: asf-frontend
+    restart: unless-stopped
     ports:
       - "8089:80"
     networks:
       - apn-network
+    depends_on:
+      - asf-backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 20s
+      timeout: 5s
+      retries: 3
 
+  # ── MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: asf-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./data/mysql:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - apn-network
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-changeme}
+      - MYSQL_DATABASE=ASF
+      - MYSQL_USER=${DB_USER:-mmk}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-changeme}
+      - TZ=Asia/Shanghai
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-changeme}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Ollama 模型服务
   ollama:
     image: ollama/ollama:latest
+    container_name: asf-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      # 模型文件持久化（避免每次重建都重新下载）
+      - ./data/ollama:/root/.ollama
+    networks:
+      - apn-network
     environment:
       - OLLAMA_ORIGINS=*
       - OLLAMA_HOST=0.0.0.0:11434
-    ports:
-      - 11434:11434
-    networks:
-      - apn-network
+    # GPU 支持（有 NVIDIA GPU 时取消注释）
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
 
 networks:
   apn-network:
     driver: bridge
-
