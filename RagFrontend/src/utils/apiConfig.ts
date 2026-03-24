@@ -25,8 +25,12 @@ export const API_ENDPOINTS = {
   KNOWLEDGE: {
     GET_ITEM: (id: string) => `${BASE_URL}/api/get-knowledge-item/${id}/`,
     DOCUMENTS_LIST: (id: string) => `${BASE_URL}/api/documents-list/${id}/`,
+    // LangChain RAG
     INGEST: `${BASE_URL}/api/RAG/ingest`,
-    QUERY: `${BASE_URL}/api/RAG/RAG_query`
+    QUERY: `${BASE_URL}/api/RAG/RAG_query`,
+    // 原生 RAG（不依赖 LangChain）
+    NATIVE_INGEST: `${BASE_URL}/api/RAG/native_ingest`,
+    NATIVE_QUERY: `${BASE_URL}/api/RAG/native_query`,
   },
 
   // 知识图谱相关

@@ -212,17 +212,67 @@
     <div class="bg-white shadow rounded-lg p-6 mb-8">
       <div class="flex justify-between items-center mb-4">
         <h2 class="text-xl font-medium">检索模块</h2>
-        <button @click="isHelpVisible = !isHelpVisible" class="text-gray-500 hover:text-blue-600">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-        </button>
+        <div class="flex items-center gap-3">
+          <!-- 实现方式切换 Tab -->
+          <div class="flex items-center bg-gray-100 rounded-lg p-1">
+            <button
+              @click="ragMode = 'langchain'"
+              :class="[
+                'px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200',
+                ragMode === 'langchain'
+                  ? 'bg-white text-blue-700 shadow-sm border border-blue-200'
+                  : 'text-gray-500 hover:text-gray-700'
+              ]"
+            >
+              🔗 LangChain
+            </button>
+            <button
+              @click="ragMode = 'native'"
+              :class="[
+                'px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200',
+                ragMode === 'native'
+                  ? 'bg-white text-green-700 shadow-sm border border-green-200'
+                  : 'text-gray-500 hover:text-gray-700'
+              ]"
+            >
+              ⚡ 原生实现
+            </button>
+          </div>
+          <button @click="isHelpVisible = !isHelpVisible" class="text-gray-500 hover:text-blue-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 模式说明 -->
+      <div class="mb-4">
+        <div v-if="ragMode === 'langchain'" class="flex items-start gap-2 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-800">
+          <span class="mt-0.5">🔗</span>
+          <div>
+            <span class="font-semibold">LangChain 实现</span>：使用 LangChain + langchain_huggingface + langchain_community（FAISS）进行向量化，通过 LangChain OllamaLLM 生成回答。
+            优点：生态完善、链式组合灵活；缺点：依赖较重、版本复杂。
+          </div>
+        </div>
+        <div v-else class="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800">
+          <span class="mt-0.5">⚡</span>
+          <div>
+            <span class="font-semibold">原生实现</span>：使用 sentence-transformers + faiss-cpu 原生接口进行向量化，通过直接调用 Ollama HTTP API（/api/generate）生成回答，<strong>完全不依赖 LangChain</strong>。
+            优点：轻量透明、依赖少、易于理解；缺点：需自行管理加载/分块逻辑。
+          </div>
+        </div>
       </div>
 
       <div v-if="isHelpVisible" class="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6">
         <p class="text-sm text-blue-700">
-          RAG检索：确保你的配置可以从数据库召回正确的文本块，请先对知识库的数据执行处理
+          <template v-if="ragMode === 'langchain'">
+            【LangChain RAG】使用 LangChain 封装层进行向量化和检索。先点击"执行向量化处理"，再输入问题执行检索。
+          </template>
+          <template v-else>
+            【原生 RAG】直接使用 faiss-cpu + sentence-transformers + Ollama HTTP API。先点击"执行向量化处理（原生）"，再输入问题执行检索。
+          </template>
         </p>
       </div>
 
@@ -269,7 +319,10 @@
       <!-- 测试按钮和结果 -->
       <div class="flex justify-start mb-4">
         <button @click="runSearchTest" :disabled="isTesting" :class="[
-          'bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium flex items-center',
+          'text-white px-6 py-2 rounded-md font-medium flex items-center',
+          ragMode === 'langchain'
+            ? 'bg-blue-600 hover:bg-blue-700'
+            : 'bg-green-600 hover:bg-green-700',
           isTesting ? 'opacity-50 cursor-not-allowed' : ''
         ]">
           <svg v-if="isTesting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg"
@@ -279,8 +332,7 @@
               d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
             </path>
           </svg>
-
-          {{ isTesting ? '处理中...' : '执行向量化处理' }}
+          {{ isTesting ? '处理中...' : (ragMode === 'langchain' ? '🔗 执行向量化处理（LangChain）' : '⚡ 执行向量化处理（原生）') }}
         </button>
       </div>
 
@@ -320,7 +372,11 @@
       <!-- 测试文本和文件选择 -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div class="lg:col-span-2">
-          <label class="block text-sm font-medium text-gray-700 mb-2">向量化处理后，进行RAG检索</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2">
+            向量化处理后，进行 RAG 检索
+            <span v-if="ragMode === 'langchain'" class="ml-2 text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">LangChain</span>
+            <span v-else class="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">原生</span>
+          </label>
           <textarea v-model="testQuery" rows="4"
             class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
             placeholder="输入问题以执行检索..."></textarea>
@@ -330,7 +386,10 @@
       <!-- 查询按钮 -->
       <div class="flex justify-start mb-4">
         <button @click="performRagQuery" :disabled="isQuerying || testQuery.trim() === ''" :class="[
-          'bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium flex items-center',
+          'text-white px-6 py-2 rounded-md font-medium flex items-center',
+          ragMode === 'langchain'
+            ? 'bg-blue-600 hover:bg-blue-700'
+            : 'bg-green-600 hover:bg-green-700',
           (isQuerying || testQuery.trim() === '') ? 'opacity-50 cursor-not-allowed' : ''
         ]">
           <svg v-if="isQuerying" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg"
@@ -345,7 +404,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
-          {{ isQuerying ? '生成中...' : '执行检索' }}
+          {{ isQuerying ? '生成中...' : (ragMode === 'langchain' ? '🔗 执行检索（LangChain）' : '⚡ 执行检索（原生）') }}
         </button>
       </div>
 
@@ -639,6 +698,9 @@ const ingestResults = ref<string[]>([]);
 const isIngesting = ref(false);
 const ingestComplete = ref(false);
 
+// RAG 模式切换：'langchain' | 'native'
+const ragMode = ref<'langchain' | 'native'>('langchain');
+
 
 // 更新接口类型定义以匹配实际响应
 interface KnowledgeBaseConfig {
@@ -800,64 +862,43 @@ const saveRetrievalConfig = async () => {
   }
 };*/
 
-// 运行搜索测试 - 调用后端接口
+// 运行搜索测试 - 调用后端接口（根据 ragMode 选择端点）
 const runSearchTest = async () => {
-  // 移除对 testQuery 为空的检查
-  // if (testQuery.value.trim() === '') return;
-
   isTesting.value = true;
   isIngesting.value = true;
   ingestResults.value = [];
   ingestComplete.value = false;
   searchResults.value = [];
 
-  try {
-    // 构建知识库路径
-    const docsDir = `local-KLB-files/${KLB_id}`;
+  const endpoint = ragMode.value === 'langchain'
+    ? API_ENDPOINTS.KNOWLEDGE.INGEST
+    : API_ENDPOINTS.KNOWLEDGE.NATIVE_INGEST;
 
-    // 创建EventSource连接
-    const response = await fetch(API_ENDPOINTS.KNOWLEDGE.INGEST, {
+  try {
+    const docsDir = `local-KLB-files/${KLB_id}`;
+    const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        docs_dir: docsDir
-      })
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ docs_dir: docsDir })
     });
 
-    // 处理SSE响应
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
 
     if (reader) {
-      // 处理流式数据
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-
-        // 解码并处理数据行
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
+        for (const line of chunk.split('\n')) {
           if (line.startsWith('data: ')) {
             const data = line.substring(6);
             ingestResults.value.push(data);
-
-            // 检查是否为最后一条JSON消息
-            if (data.includes('"message": "Successfully ingested')) {
+            if (data.includes('"message":') && (data.includes('Successfully ingested') || data.includes('向量化完成'))) {
               try {
                 const jsonData = JSON.parse(data);
-                // 在此处理最终结果
                 console.log("Ingestion complete:", jsonData);
                 ingestComplete.value = true;
-
-                // 如果有查询文本，则执行搜索
-                //if (testQuery.value.trim() !== '') {
-                //  await performSearch();
-                //}
               } catch (e) {
                 console.error("Error parsing final JSON message", e);
               }
@@ -867,7 +908,7 @@ const runSearchTest = async () => {
       }
     }
   } catch (error) {
-    console.error('RAG检索请求失败:', error);
+    console.error('向量化请求失败:', error);
     ingestResults.value.push(`错误: ${error instanceof Error ? error.message : String(error)}`);
   } finally {
     isIngesting.value = false;
@@ -899,69 +940,82 @@ const performSearch = async () => {
   }
 };*/
 
-//RAG查询
+//RAG查询（根据 ragMode 选择端点）
 const performRagQuery = async () => {
-  // 如果已经在处理中或输入为空，则不执行
   if (isQuerying.value || testQuery.value.trim() === '') return;
 
-  // 设置状态为处理中
   isQuerying.value = true;
   queryResults.value = [];
   queryComplete.value = false;
   finalAnswer.value = '';
   sources.value = [];
 
-  try {
-    // 构建知识库路径
-    const docsDir = `local-KLB-files/${KLB_id}`;
+  const endpoint = ragMode.value === 'langchain'
+    ? API_ENDPOINTS.KNOWLEDGE.QUERY
+    : API_ENDPOINTS.KNOWLEDGE.NATIVE_QUERY;
 
-    // 创建fetch请求
-    const response = await fetch(API_ENDPOINTS.KNOWLEDGE.QUERY, {
+  try {
+    const docsDir = `local-KLB-files/${KLB_id}`;
+    const response = await fetch(endpoint, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify({
-        query: testQuery.value,
-        docs_dir: docsDir
-      })
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ query: testQuery.value, docs_dir: docsDir })
     });
 
-    // 处理SSE响应
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
+    let answerBuffer = '';
+    let inAnswer = false;
 
     if (reader) {
-      // 处理流式数据
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        // 解码并处理数据行
         const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n');
+        for (const line of chunk.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.substring(6).trim();
+          if (!data) continue;
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.substring(6).trim();
-            if (data) {
-              queryResults.value.push(data);
+          queryResults.value.push(data);
 
-              // 检查是否为JSON结果(完成标志)
-              if (data.startsWith('COMPLETE:')) {
-                try {
-                  const jsonStr = data.substring(9).trim();
-                  const jsonData = JSON.parse(jsonStr);
-                  console.log("Query complete:", jsonData);
-                  queryComplete.value = true;
-                  finalAnswer.value = jsonData.answer;
-                  sources.value = jsonData.sources || [];
-                } catch (e) {
-                  console.error("Error parsing final JSON result", e);
-                }
-              }
+          // 处理来源信息
+          if (data.startsWith('SOURCES:')) {
+            try {
+              const sourcesJson = data.substring(8).trim();
+              const parsedSources = JSON.parse(sourcesJson);
+              sources.value = parsedSources.map((s: any) => ({
+                source: s.file_name || s.source_path || '未知',
+                page: String(s.page ?? '')
+              }));
+            } catch (_) { /* ignore */ }
+            continue;
+          }
+
+          // 完成标志
+          if (data === 'COMPLETE' || data.startsWith('COMPLETE:')) {
+            queryComplete.value = true;
+            if (data.startsWith('COMPLETE:')) {
+              try {
+                const jsonData = JSON.parse(data.substring(9).trim());
+                finalAnswer.value = jsonData.answer || finalAnswer.value;
+                sources.value = jsonData.sources || sources.value;
+              } catch (_) { /* ignore */ }
             }
+            continue;
+          }
+
+          // 跳过状态信息行（中括号开头的都是日志）
+          if (data.startsWith('[原生RAG]') || data.startsWith('正在') || data.startsWith('开始') ||
+              data.startsWith('检索完成') || data.startsWith('向量') || data.startsWith('ERROR')) {
+            continue;
+          }
+
+          // 正文 token 累积
+          if (!data.startsWith('{') && data !== 'COMPLETE') {
+            answerBuffer += data;
+            finalAnswer.value = answerBuffer;
           }
         }
       }
@@ -970,7 +1024,6 @@ const performRagQuery = async () => {
     console.error('RAG查询请求失败:', error);
     queryResults.value.push(`错误: ${error instanceof Error ? error.message : String(error)}`);
   } finally {
-    // 确保总是重置状态，即使出错或被中断
     isQuerying.value = false;
   }
 };

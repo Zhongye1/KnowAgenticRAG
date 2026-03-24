@@ -424,6 +424,139 @@ async def agent_query(query_body: AgentQueryRequest):
 # POST /agent_query_sync  — ReAct Agent 同步问答（测试用）
 # ────────────────────────────────────────────────────────────
 
+# ────────────────────────────────────────────────────────────
+# 原生 RAG 路由（不依赖 LangChain，与上方 LangChain 路由并列）
+# ────────────────────────────────────────────────────────────
+
+class NativeIngestRequest(BaseModel):
+    docs_dir: str
+
+
+class NativeQueryRequest(BaseModel):
+    query: str
+    docs_dir: str
+    use_hybrid: bool = True
+
+
+@router.post("/native_ingest")
+async def native_ingest_documents(req: NativeIngestRequest):
+    """
+    原生文档向量化（SSE 流式）
+    不依赖 LangChain：使用 pypdf / docx2txt + sentence-transformers + faiss-cpu
+    """
+    def generate():
+        try:
+            from src.rag.native_rag import (
+                load_documents_from_dir,
+                split_documents,
+                NativeVectorStore,
+            )
+            import os, json
+
+            yield f"data: [原生RAG] 开始向量化，目录: {req.docs_dir}\n\n"
+
+            if not os.path.exists(req.docs_dir):
+                yield f"data: [ERROR] 目录不存在: {req.docs_dir}\n\n"
+                return
+
+            # 1. 加载文档
+            yield "data: [原生RAG] 正在加载文档...\n\n"
+            raw_docs = load_documents_from_dir(req.docs_dir)
+            if not raw_docs:
+                yield "data: [ERROR] 未找到可加载的文档\n\n"
+                return
+            yield f"data: [原生RAG] 加载完成，共 {len(raw_docs)} 页原始文档\n\n"
+
+            # 2. 分块
+            yield "data: [原生RAG] 正在分块...\n\n"
+            chunks = split_documents(raw_docs, chunk_size=1000, chunk_overlap=200)
+            yield f"data: [原生RAG] 分块完成，共 {len(chunks)} 个文本块\n\n"
+
+            # 3. 向量化
+            yield "data: [原生RAG] 正在计算向量（sentence-transformers）...\n\n"
+            vs = NativeVectorStore(model_name="sentence-transformers/all-MiniLM-L6-v2")
+            vs.build_index(chunks)
+
+            # 4. 保存
+            save_path = os.path.join(req.docs_dir, "native_vectorstore")
+            vs.save(save_path)
+            yield f"data: [原生RAG] 向量存储已保存至: {save_path}\n\n"
+
+            result = {
+                "message": f"[原生RAG] 向量化完成，共 {len(chunks)} 个文本块",
+                "documents_count": len(chunks),
+                "vectorstore_path": save_path,
+            }
+            yield f"data: {json.dumps(result, ensure_ascii=False)}\n\n"
+
+        except Exception as e:
+            import traceback
+            yield f"data: [ERROR] 原生向量化失败: {e}\n{traceback.format_exc()}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+@router.post("/native_query")
+async def native_query(req: NativeQueryRequest):
+    """
+    原生 RAG 查询（SSE 流式）
+    不依赖 LangChain：直接调用 Ollama /api/generate + faiss-cpu 检索
+    """
+    async def generate():
+        try:
+            from src.rag.native_rag import NativeVectorStore, NativeRAGPipeline
+            import os
+
+            yield f"data: [原生RAG] 收到查询: {req.query}\n\n"
+
+            # 加载向量存储
+            vs_path = os.path.join(req.docs_dir, "native_vectorstore")
+            if not NativeVectorStore.exists(vs_path):
+                yield f"data: [ERROR] 原生向量存储不存在，请先执行原生向量化: {vs_path}\n\n"
+                return
+
+            yield "data: [原生RAG] 正在加载向量存储...\n\n"
+            vs = NativeVectorStore.load(vs_path)
+            yield f"data: [原生RAG] 向量存储加载完成，{len(vs.documents)} 个文档块\n\n"
+
+            # 初始化 Pipeline
+            model_name = os.getenv("MODEL", "qwen:7b-chat")
+            pipeline = NativeRAGPipeline(
+                vectorstore=vs,
+                documents=vs.documents,
+                llm_model=model_name,
+                use_hybrid=req.use_hybrid,
+            )
+
+            # 流式生成
+            loop = asyncio.get_event_loop()
+            import concurrent.futures
+
+            def _run():
+                return list(pipeline.stream_query(req.query))
+
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                chunks = await loop.run_in_executor(pool, _run)
+
+            for chunk in chunks:
+                yield chunk
+                await asyncio.sleep(0)
+
+        except Exception as e:
+            import traceback
+            yield f"data: [ERROR] 原生 RAG 查询失败: {e}\n{traceback.format_exc()}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
 @router.post("/agent_query_sync")
 async def agent_query_sync(query_body: AgentQueryRequest):
     """
