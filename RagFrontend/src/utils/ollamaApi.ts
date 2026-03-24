@@ -3,14 +3,14 @@ import { MessagePlugin } from 'tdesign-vue-next';
 import API_ENDPOINTS from '@/utils/apiConfig';
 
 class OllamaApiService {
-    private serverUrl: string;
+    private serverUrl: string = '';
 
     constructor() {
         // 从localStorage获取服务器配置，如果没有则使用默认值
         this.loadSettings();
 
-        // 监听设置更新事件
-        window.addEventListener('ollamaSettingsUpdated', this.handleSettingsUpdated.bind(this));
+        // 监听设置更新事件（使用 EventListener 兼容类型）
+        window.addEventListener('ollamaSettingsUpdated', this.handleSettingsUpdated as EventListener);
     }
 
     // 加载设置
@@ -30,8 +30,9 @@ class OllamaApiService {
     }
 
     // 处理设置更新事件
-    private handleSettingsUpdated(event: CustomEvent) {
-        this.serverUrl = event.detail.serverUrl || this.serverUrl;
+    private handleSettingsUpdated = (event: Event) => {
+        const customEvent = event as CustomEvent;
+        this.serverUrl = customEvent.detail?.serverUrl || this.serverUrl;
     }
 
     // 更新服务器URL（用于手动设置）
@@ -55,7 +56,7 @@ class OllamaApiService {
             return data.models || [];
         } catch (error) {
             console.error('获取模型列表失败:', error);
-            throw new Error(`获取模型列表失败: ${error.message}`);
+            throw new Error(`获取模型列表失败: ${(error as Error).message}`);
         }
     }
 
@@ -117,7 +118,7 @@ class OllamaApiService {
             }
         } catch (error) {
             console.error('下载模型失败:', error);
-            throw new Error(`下载模型失败: ${error.message}`);
+            throw new Error(`下载模型失败: ${(error as Error).message}`);
         }
     }
 
