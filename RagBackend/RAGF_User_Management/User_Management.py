@@ -1,7 +1,7 @@
 
+
 from fastapi import APIRouter, HTTPException, Form
 
-import pymysql
 import jwt
 import logging
 from fastapi import FastAPI, Depends, HTTPException, status
@@ -18,21 +18,8 @@ from dotenv import load_dotenv
 # 加载环境变量
 load_dotenv()
 
-# 数据库配置 - 从环境变量中读取
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', '127.0.0.1'),
-    'port': int(os.getenv('DB_PORT', 3306)),
-    'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'database': os.getenv('DB_NAME', 'mysql'),
-    'charset': os.getenv('DB_CHARSET', 'utf8mb4')
-}
-
-def get_db_connection():
-    """
-    获取数据库连接
-    """
-    return pymysql.connect(**DB_CONFIG)
+# 统一从公共配置模块导入，不再重复定义 DB_CONFIG
+from RAGF_User_Management.db_config import get_db_connection
 
 
 @router.get("/api/GetUserData")
@@ -41,6 +28,8 @@ async def get_user_data(token: str = Depends(oauth2_scheme)):
     获取用户数据
     """
     print("token:", token)
+    conn = None
+    cursor = None
     try:
         # 验证JWT
         decoded_token = jwt.decode(token, os.getenv('JWT_SECRET', 'changeme_jwt_secret'), algorithms=["HS256"])
@@ -83,6 +72,8 @@ async def update_user_data(token: str = Depends(oauth2_scheme),name: str = Form(
     """
     更新用户数据
     """
+    conn = None
+    cursor = None
     try:
         # 验证JWT
         decoded_token = jwt.decode(token, os.getenv('JWT_SECRET', 'changeme_jwt_secret'), algorithms=["HS256"])
@@ -111,6 +102,8 @@ async def update_user_data(token: str = Depends(oauth2_scheme),name: str = Form(
 
 @router.delete("/api/DeleteUserData")
 async def delete_user_data(token: str = Depends(oauth2_scheme)):
+    conn = None
+    cursor = None
     try:
         # 验证JWT
         decoded_token = jwt.decode(token, os.getenv('JWT_SECRET', 'changeme_jwt_secret'), algorithms=["HS256"])

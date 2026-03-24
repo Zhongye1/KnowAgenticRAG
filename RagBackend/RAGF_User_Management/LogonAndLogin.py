@@ -2,7 +2,6 @@ from contextlib import closing
 
 from fastapi import APIRouter, HTTPException, Form, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-import pymysql
 import jwt
 
 from datetime import datetime, timedelta
@@ -10,6 +9,7 @@ import hashlib
 import logging
 from pydantic import BaseModel
 from typing import Optional
+import os
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -35,35 +35,14 @@ class TokenData(BaseModel):
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login/login")
 
-
-import os
-from dotenv import load_dotenv
-
-# 加载环境变量
-load_dotenv()
-
-# 数据库配置 - 从环境变量中读取
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', '127.0.0.1'),
-    'port': int(os.getenv('DB_PORT', 3306)),
-    'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'database': os.getenv('DB_NAME', 'mysql'),
-    'charset': os.getenv('DB_CHARSET', 'utf8mb4')
-}
-
-
-def get_db_connection():
-    """
-    获取数据库连接
-    """
-    print(DB_CONFIG)
-    return pymysql.connect(**DB_CONFIG)
+# 统一从公共配置模块导入，不再重复定义 DB_CONFIG
+from RAGF_User_Management.db_config import get_db_connection
 
 
 def create_user_table():
     """
-    创建用户表（如果不存在则创建）
+    创建用户表（如果不存在则创建）。
+    仅在首次被调用时执行，不再于模块加载时立即连接 MySQL。
     """
     conn = None
     try:
@@ -97,14 +76,10 @@ def create_user_table():
                 pass
 
 
-# 初始化时创建表
-create_user_table()
-
-
-
 def create_userData_table():
     """
-    创建用户数据表（如果不存在则创建）
+    创建用户数据表（如果不存在则创建）。
+    仅在首次被调用时执行，不再于模块加载时立即连接 MySQL。
     """
     conn = None
     try:
@@ -137,8 +112,18 @@ def create_userData_table():
                 pass
 
 
+def ensure_tables_exist():
+    """
+    懒加载初始化：首次有真实请求时调用，而非模块 import 时调用。
+    这样即使 MySQL 未启动，后端也能正常启动。
+    在 main.py 的 startup 事件中调用此函数。
+    """
+    create_user_table()
+    create_userData_table()
 
-create_userData_table()
+# ★ 原来的两行模块级立即调用已删除，移入 ensure_tables_exist()
+# create_user_table()     ← 已删除
+# create_userData_table() ← 已删除
 
 
 # 创建用户
@@ -450,6 +435,8 @@ async def read_users_me(token: str = Depends(oauth2_scheme)):
             detail=result["error"]
         )
     
+    conn = None
+    cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -473,6 +460,8 @@ async def read_users_me(token: str = Depends(oauth2_scheme)):
                 status_code=404,
                 detail="用户不存在"
             )
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"获取用户信息出错: {e}")
         raise HTTPException(

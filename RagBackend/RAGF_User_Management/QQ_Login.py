@@ -54,22 +54,15 @@ QQ_USERINFO_URL   = "https://graph.qq.com/user/get_user_info"
 FRONTEND_SUCCESS_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 # ─────────────────────────────
-# 数据库配置
+# 数据库配置 — 统一从公共模块导入
 # ─────────────────────────────
-DB_CONFIG = {
-    "host":     os.getenv("DB_HOST",    "127.0.0.1"),
-    "port":     int(os.getenv("DB_PORT", 3306)),
-    "user":     os.getenv("DB_USER",    "root"),
-    "password": os.getenv("DB_PASSWORD",""),
-    "database": os.getenv("DB_NAME",    "mysql"),
-    "charset":  os.getenv("DB_CHARSET", "utf8mb4"),
-}
+from RAGF_User_Management.db_config import get_db_connection as _db_connect
 
 JWT_SECRET = os.getenv("JWT_SECRET", "changeme_jwt_secret")
 
 
 def _get_db():
-    conn = pymysql.connect(**DB_CONFIG)
+    conn = _db_connect()
     cur  = conn.cursor()
     cur.execute("USE rag_user_db")
     return conn, cur

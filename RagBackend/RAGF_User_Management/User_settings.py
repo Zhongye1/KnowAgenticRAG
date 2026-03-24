@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException, Form, Depends, UploadFile, File, Request
-import pymysql
 import jwt
 import logging
 from fastapi import FastAPI, Depends, HTTPException, status
@@ -21,31 +20,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-import os
 from dotenv import load_dotenv
 
 # 加载环境变量
 load_dotenv()
 
-# 数据库配置 - 从环境变量中读取
-DB_CONFIG = {
-    'host': os.getenv('DB_HOST', '127.0.0.1'),
-    'port': int(os.getenv('DB_PORT', 3306)),
-    'user': os.getenv('DB_USER', 'root'),
-    'password': os.getenv('DB_PASSWORD', ''),
-    'database': os.getenv('DB_NAME', 'mysql'),
-    'charset': os.getenv('DB_CHARSET', 'utf8mb4')
-}
+# 统一从公共配置模块导入，不再重复定义 DB_CONFIG
+from RAGF_User_Management.db_config import get_db_connection
 
 # 头像存储路径
 AVATAR_DIR = "user_avatars"
 os.makedirs(AVATAR_DIR, exist_ok=True)
-
-def get_db_connection():
-    """
-    获取数据库连接
-    """
-    return pymysql.connect(**DB_CONFIG)
 
 def verify_jwt(token: str) -> dict:
     """
