@@ -89,12 +89,12 @@
 
                 <!-- 注册表单 -->
                 <div v-else-if="currentMode === 'register'">
-                    <!-- 用户名或邮箱 -->
+                    <!-- 邮箱 -->
                     <div class="mb-4">
-                        <label class="block text-white/80 text-sm font-light mb-2">用户名</label>
-                        <input v-model="registerForm.username" type="text" required autocomplete="username"
+                        <label class="block text-white/80 text-sm font-light mb-2">邮箱</label>
+                        <input v-model="registerForm.username" type="email" required autocomplete="email"
                             class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-transparent transition-all duration-300"
-                            placeholder="请输入用户名或邮箱" />
+                            placeholder="请输入邮箱地址" />
                     </div>
                     <!-- 密码 -->
                     <div class="mb-4">
