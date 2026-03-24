@@ -1,13 +1,28 @@
-dist/
-*.log
+# ── Python ──────────────────────────────────────────────────────
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
-*.pyi
 *.pyw
 *.pyz
-*.egg-info
+*.egg-info/
 *.egg
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Node / Frontend ──────────────────────────────────────────────
+node_modules/
+dist/
+.vite/
+*.local
+
+# ── Environment / Secrets ────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+
+# ── Build artifacts ──────────────────────────────────────────────
 *.manifest
 *.spec
 *.so
@@ -19,7 +34,21 @@ dist/
 *.ear
 *.iml
 *.class
-*.sh
-*.bat
+
+# ── OS / Editor ──────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ── Logs ─────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Script binaries (keep source, not compiled) ──────────────────
 *.exe
 *.cmd
+*.bat
+*.sh
