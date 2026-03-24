@@ -28,6 +28,7 @@ sys.path.append(project_root)
 
 from src.rag.rag_pipeline import RAGPipeline
 from src.vectorstore.vector_store import VectorStoreManager
+from src.agent.react_agent import ReActRAGAgent
 
 load_dotenv()
 
@@ -334,5 +335,122 @@ async def rag_health_check():
         "model": model,
         "vectorstore_path": vectorstore_path,
         "vectorstore_exists": os.path.exists(vectorstore_path) if vectorstore_path else False,
-        "features": ["hybrid_retrieval", "bm25+vector+rrf", "citation_tracking", "streaming"],
+        "features": ["hybrid_retrieval", "bm25+vector+rrf", "citation_tracking", "streaming", "react_agent"],
     }
+
+
+# ────────────────────────────────────────────────────────────
+# POST /agent_query  — ReAct Agent 流式问答
+# ────────────────────────────────────────────────────────────
+
+class AgentQueryRequest(BaseModel):
+    query: str
+    docs_dir: str = None
+    use_hybrid: bool = True
+    max_iterations: int = 5
+
+
+@router.post("/agent_query")
+async def agent_query(query_body: AgentQueryRequest):
+    """
+    ReAct Agent 智能问答（SSE 流式）
+
+    与 /RAG_query 的区别：
+    - RAG_query: 强制每次检索文档后生成回答
+    - agent_query: LLM 自主推理是否需要检索（更智能，适合多轮对话）
+    """
+
+    async def generate():
+        try:
+            yield f"data: 🤖 启动 ReAct Agent 模式...\n\n"
+
+            # 确定文档目录
+            if query_body.docs_dir:
+                docs_dir = query_body.docs_dir
+            else:
+                vectorstore_path = os.getenv("VECTORSTORE_PATH", "")
+                docs_dir = str(Path(vectorstore_path).parent) if vectorstore_path else ""
+
+            if not docs_dir or not os.path.exists(docs_dir):
+                yield "data: ERROR: 文档目录未指定或不存在\n\n"
+                return
+
+            yield "data: 📂 正在加载向量存储...\n\n"
+            try:
+                vectorstore, documents, _ = _load_vectorstore_and_docs(docs_dir)
+            except FileNotFoundError as e:
+                yield f"data: ERROR: {str(e)}\n\n"
+                return
+
+            yield f"data: ✅ 向量存储加载完成，文档块: {len(documents)} 个\n\n"
+
+            # 初始化 Agent
+            model_name = os.getenv("MODEL")
+            agent = ReActRAGAgent(
+                vectorstore=vectorstore,
+                documents=documents if query_body.use_hybrid else None,
+                llm_model=model_name,
+                max_iterations=query_body.max_iterations,
+                verbose=False,
+            )
+
+            # 流式输出
+            loop = asyncio.get_event_loop()
+
+            def _run_agent():
+                return list(agent.stream_query(query_body.query))
+
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                chunks_future = loop.run_in_executor(pool, _run_agent)
+                chunks = await chunks_future
+
+            for chunk in chunks:
+                yield chunk
+                await asyncio.sleep(0)
+
+        except Exception as e:
+            import traceback
+            yield f"data: ERROR: {str(e)}\n{traceback.format_exc()}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
+
+
+# ────────────────────────────────────────────────────────────
+# POST /agent_query_sync  — ReAct Agent 同步问答（测试用）
+# ────────────────────────────────────────────────────────────
+
+@router.post("/agent_query_sync")
+async def agent_query_sync(query_body: AgentQueryRequest):
+    """
+    ReAct Agent 同步问答接口（非流式，用于测试和调试）
+
+    返回完整推理步骤 + 最终回答
+    """
+    try:
+        if not query_body.docs_dir or not os.path.exists(query_body.docs_dir):
+            raise HTTPException(status_code=400, detail="文档目录未指定或不存在")
+
+        vectorstore, documents, _ = _load_vectorstore_and_docs(query_body.docs_dir)
+
+        model_name = os.getenv("MODEL")
+        agent = ReActRAGAgent(
+            vectorstore=vectorstore,
+            documents=documents if query_body.use_hybrid else None,
+            llm_model=model_name,
+            max_iterations=query_body.max_iterations,
+            verbose=False,
+        )
+
+        result = agent.query(query_body.query)
+        return {"status": "success", **result}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        raise HTTPException(status_code=500, detail=f"Agent 查询失败: {str(e)}\n{traceback.format_exc()}")
