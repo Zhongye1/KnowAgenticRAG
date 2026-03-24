@@ -8,6 +8,13 @@ version: "3.8"
 #   ollama      : ~800MB 镜像（模型权重不计，按需 pull）
 #   mysql       : ~600MB
 # 总镜像大小（不含模型）：< 2GB，运行内存 < 2GB
+#
+# ── 端口冲突防护说明 ────────────────────────────────────────
+# 直接 docker compose up 可能因旧容器残留而端口堵塞，推荐使用：
+#   Linux / macOS : bash start.sh
+#   Windows       : 双击 start.bat
+# 以上脚本会在启动前自动检测并清理端口冲突。
+# 若坚持手动操作，请先执行 docker compose down 再 up。
 # ═══════════════════════════════════════════════════════════
 
 services:
@@ -20,6 +27,9 @@ services:
     image: rag-backend:latest
     container_name: asf-backend
     restart: unless-stopped
+    # 优雅退出超时：docker stop 时最多等 15s，超时强制 kill
+    # 避免旧进程挂死导致端口长时间无法释放
+    stop_grace_period: 15s
     ports:
       - "8000:8000"
     volumes:
@@ -59,6 +69,7 @@ services:
     image: rag-frontend:latest
     container_name: asf-frontend
     restart: unless-stopped
+    stop_grace_period: 10s
     ports:
       - "8089:80"
     networks:
@@ -76,6 +87,7 @@ services:
     image: mysql:8.0
     container_name: asf-mysql
     restart: unless-stopped
+    stop_grace_period: 30s
     ports:
       - "3306:3306"
     volumes:
@@ -101,6 +113,7 @@ services:
     image: ollama/ollama:latest
     container_name: asf-ollama
     restart: unless-stopped
+    stop_grace_period: 20s
     ports:
       - "11434:11434"
     volumes:
