@@ -141,52 +141,6 @@ class DocumentManager:
         
         return documents
     
-    def search_documents(self, folder_name):
-        """搜索指定文件夹下的文档"""
-        documents = []
-        folder_path = os.path.join(self.upload_dir, folder_name)
-        
-        if not os.path.exists(folder_path):
-            return documents
-            
-        for item in os.listdir(folder_path):
-            item_path = os.path.join(folder_path, item)
-            if os.path.isfile(item_path):
-                # 获取文件信息
-                file_stat = os.stat(item_path)
-                file_ext = os.path.splitext(item)[1].lower()
-                
-                # 支持的文件类型
-                supported_extensions = {
-                    '.pdf', '.doc', '.docx', '.xls', '.xlsx', 
-                    '.csv', '.txt', '.md'
-                }
-                
-                if file_ext in supported_extensions:
-                    documents.append({
-                        "id": hash(item_path),  # 使用文件路径作为ID
-                        "file_name": item,
-                        "file_path": item_path,
-                        "file_size": file_stat.st_size,
-                        "file_type": file_ext[1:],  # 去掉点号
-                        "upload_time": datetime.fromtimestamp(file_stat.st_ctime),
-                        "status": "enabled"
-                    })
-        
-        return documents
-    
-    def preview_document(self, file_path: str) -> dict:
-        """预览文档内容"""
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"文件不存在: {file_path}")
-        
-        file_stat = os.stat(file_path)
-        file_name = os.path.basename(file_path)
-        file_ext = os.path.splitext(file_name)[1].lower()
-        
-        content_preview = ""
-        
-        # 对于文本文件，读取前1000个字符作为预览
     def preview_document(self, file_path: str) -> dict:
         """预览文档内容"""
         if not os.path.exists(file_path):

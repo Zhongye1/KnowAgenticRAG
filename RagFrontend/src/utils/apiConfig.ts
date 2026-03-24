@@ -32,7 +32,14 @@ export const API_ENDPOINTS = {
   // 知识图谱相关
   KNOWLEDGE_GRAPH: {
     PROCESS_ALL_FILES: `${BASE_URL}/api/kg/process-all-files`,
-    PROCESS_KNOWLEDGE_BASE: `${BASE_URL}/api/kg/process-knowledge-base`
+    PROCESS_KNOWLEDGE_BASE: `${BASE_URL}/api/kg/process-knowledge-base`,
+    // 新增
+    GET_MERGED_GRAPH: (kbId: string) => `${BASE_URL}/api/kg/get-kb-merged-graph/${kbId}`,
+    SEARCH_NODES: (kbId: string, keyword: string) =>
+      `${BASE_URL}/api/kg/search-nodes/${kbId}?keyword=${encodeURIComponent(keyword)}`,
+    GRAPH_STATS: (kbId: string) => `${BASE_URL}/api/kg/graph-stats/${kbId}`,
+    GET_KB_FILE_GRAPH: (kbId: string, filename: string) =>
+      `${BASE_URL}/api/kg/get-kb-graph-data/${kbId}/${encodeURIComponent(filename)}`,
   },
 
   // Ollama 模型相关

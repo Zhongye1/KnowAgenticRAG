@@ -43,7 +43,7 @@ async def get_user_data(token: str = Depends(oauth2_scheme)):
     print("token:", token)
     try:
         # 验证JWT
-        decoded_token = jwt.decode(token, "secret", algorithms=["HS256"])
+        decoded_token = jwt.decode(token, os.getenv('JWT_SECRET', 'changeme_jwt_secret'), algorithms=["HS256"])
         email = decoded_token["sub"]
         # 获取用户数据
         conn = get_db_connection()
@@ -85,7 +85,7 @@ async def update_user_data(token: str = Depends(oauth2_scheme),name: str = Form(
     """
     try:
         # 验证JWT
-        decoded_token = jwt.decode(token, "secret", algorithms=["HS256"])
+        decoded_token = jwt.decode(token, os.getenv('JWT_SECRET', 'changeme_jwt_secret'), algorithms=["HS256"])
         email = decoded_token["sub"]
         # 更新用户数据
         conn = get_db_connection()
@@ -113,7 +113,7 @@ async def update_user_data(token: str = Depends(oauth2_scheme),name: str = Form(
 async def delete_user_data(token: str = Depends(oauth2_scheme)):
     try:
         # 验证JWT
-        decoded_token = jwt.decode(token, "secret", algorithms=["HS256"])
+        decoded_token = jwt.decode(token, os.getenv('JWT_SECRET', 'changeme_jwt_secret'), algorithms=["HS256"])
         email = decoded_token["sub"]
         conn = get_db_connection()
         cursor = conn.cursor()

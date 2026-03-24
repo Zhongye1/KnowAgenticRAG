@@ -7,12 +7,22 @@ services:
     ports:
       - "8000:8000"
     restart: unless-stopped
+    networks:
+      - apn-network
     environment:
-      - OLLAMA_BASE_URL=http://172.22.121.2:11434
+      - OLLAMA_BASE_URL=http://ollama:11434
+      # 数据库配置——通过环境变量注入，不再硬编码在代码中
+      - DB_HOST=${DB_HOST:-172.22.121.2}
+      - DB_PORT=${DB_PORT:-3306}
+      - DB_USER=${DB_USER:-root}
+      - DB_PASSWORD=${DB_PASSWORD:-changeme}
+      - DB_NAME=${DB_NAME:-mysql}
+      # JWT 密钥——生产环境请替换为强随机字符串
+      - JWT_SECRET=${JWT_SECRET:-changeme_jwt_secret}
 
   frontend:
     build:
-      context: ./frontend_ASF #npm run build后dist文件夹放这里
+      context: ./RagFrontend
       dockerfile: Dockerfile
     container_name: asf-frontend
     ports:
@@ -27,7 +37,10 @@ services:
       - OLLAMA_HOST=0.0.0.0:11434
     ports:
       - 11434:11434
+    networks:
+      - apn-network
 
 networks:
   apn-network:
     driver: bridge
+

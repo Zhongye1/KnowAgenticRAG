@@ -220,29 +220,22 @@ def user_login(email: str, password: str) -> bool:
 
 
 # 生成JWT令牌
-# ... existing code ...
-
-# 生成JWT令牌
 def authenticate_user(email: str) -> str:
     """
     生成JWT令牌
     """
-    secret_key = 'secret'
-    # 到时候改成环境变量拿
+    secret_key = os.getenv('JWT_SECRET', 'changeme_jwt_secret')
     payload = {
         "sub": email,
-        "exp": datetime.utcnow() + timedelta(hours=1)  # 令牌过期时间
+        "exp": datetime.utcnow() + timedelta(hours=24)  # 令牌过期时间延长至24h
     }
     try:
-        # 尝试使用新版本PyJWT的编码方法
         return jwt.encode(payload, secret_key, algorithm="HS256")
     except AttributeError:
-        # 如果上面的方法失败，尝试其他方式
         try:
             from jwt import encode as jwt_encode
             return jwt_encode(payload, secret_key, algorithm="HS256")
         except (ImportError, AttributeError):
-            # 最后的备选方案
             raise Exception("无法生成JWT令牌，请检查PyJWT库的安装")
 
 # 验证JWT令牌
@@ -250,19 +243,15 @@ def verify_jwt(token: str) -> dict:
     """
     验证JWT令牌
     """
-    secret_key = "secret"  # 应与生成时使用的密钥一致
+    secret_key = os.getenv('JWT_SECRET', 'changeme_jwt_secret')
     try:
-        # 尝试使用新版本PyJWT的解码方法
         return jwt.decode(token, secret_key, algorithms=["HS256"])
     except AttributeError:
-        # 如果上面的方法失败，尝试其他方式
         try:
             from jwt import decode as jwt_decode
             return jwt_decode(token, secret_key, algorithms=["HS256"])
         except (ImportError, AttributeError):
             return {"error": "无法解码JWT令牌"}
-
-# ... existing code ...
 
 
 

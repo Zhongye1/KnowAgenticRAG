@@ -32,12 +32,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 初始化Celery任务队列
-#celery = Celery(
-#    'tasks',
-#    broker='redis://localhost:6379/0',
-#    backend='redis://localhost:6379/0'
-#)
+# 异步任务队列（暂未启用，保留扩展入口）
+# 如需启用 Celery，安装 celery[redis] 并取消注释以下代码：
+# from celery import Celery
+# celery = Celery('tasks', broker='redis://localhost:6379/0', backend='redis://localhost:6379/0')
 
 # 请求模型
 class QueryRequest(BaseModel):
@@ -80,9 +78,9 @@ app.include_router(rag_service, prefix="/api/RAG", tags=["RAG 服务接口"])
 # 知识图谱接口
 app.include_router(kg_graph, prefix="/api/kg", tags=["知识图谱接口"])
 
-# 用户管理接口
+# 用户管理接口（旧版，路由前缀隔离，避免与 user_settings_router 冲突）
 app.include_router(login_router, tags=["用户登录和注册接口"])
-app.include_router(user_management_router, prefix="/api/user", tags=["用户管理接口"])
+app.include_router(user_management_router, prefix="/api/legacy/user", tags=["用户管理接口(旧版)"])
 
 #用户设置接口
 app.include_router(user_settings_router, tags=["用户设置接口"])

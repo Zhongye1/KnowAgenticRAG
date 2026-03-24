@@ -51,7 +51,7 @@ def verify_jwt(token: str) -> dict:
     """
     验证JWT令牌
     """
-    secret_key = "secret"  # 应与生成时使用的密钥一致
+    secret_key = os.getenv('JWT_SECRET', 'changeme_jwt_secret')
     try:
         return jwt.decode(token, secret_key, algorithms=["HS256"])
     except jwt.ExpiredSignatureError:
@@ -184,7 +184,7 @@ async def update_user_data(token: str = Depends(oauth2_scheme), user_data: UserD
     """
     try:
         # 验证JWT
-        decoded_token = jwt.decode(token, "secret", algorithms=["HS256"])
+        decoded_token = jwt.decode(token, os.getenv('JWT_SECRET', 'changeme_jwt_secret'), algorithms=["HS256"])
         email = decoded_token["sub"]
         
         # 处理头像数据
