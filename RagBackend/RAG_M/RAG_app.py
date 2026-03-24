@@ -34,6 +34,24 @@ load_dotenv()
 
 router = APIRouter()
 
+# ────────────────────────────────────────────────────────────
+# 全局 VectorStoreManager 缓存
+# 问题根因：每次请求都 new VectorStoreManager()，导致每次都重新加载
+# HuggingFaceEmbeddings 模型（~1-3 秒），频繁查询时累积极慢。
+# 修复：以 docs_dir 为 key 缓存 manager 实例，模型只加载一次。
+# ────────────────────────────────────────────────────────────
+_vsm_cache: dict = {}
+
+def _get_or_create_vsm(docs_dir: str) -> "VectorStoreManager":
+    """
+    获取或创建 VectorStoreManager 实例（全局缓存，避免重复加载 embedding 模型）。
+    同一 docs_dir 只初始化一次 HuggingFaceEmbeddings 模型。
+    """
+    global _vsm_cache
+    if docs_dir not in _vsm_cache:
+        _vsm_cache[docs_dir] = VectorStoreManager(docs_dir=docs_dir)
+    return _vsm_cache[docs_dir]
+
 
 class QueryRequest(BaseModel):
     query: str
@@ -50,8 +68,11 @@ class IngestRequest(BaseModel):
 # ────────────────────────────────────────────────────────────
 
 def _load_vectorstore_and_docs(docs_dir: str):
-    """加载向量存储，同时返回文档列表（供 BM25 使用）"""
-    vector_store_manager = VectorStoreManager(docs_dir=docs_dir)
+    """
+    加载向量存储，同时返回文档列表（供 BM25 使用）。
+    使用全局缓存的 VectorStoreManager，避免每次请求重新加载 embedding 模型。
+    """
+    vector_store_manager = _get_or_create_vsm(docs_dir)
     vectorstore_path = os.path.join(docs_dir, "vectorstore")
 
     if not os.path.exists(vectorstore_path):
@@ -220,6 +241,8 @@ async def ingest_documents(ingest_body: IngestRequest):
                 from src.ingestion.document_loader import DocumentLoader
                 from src.vectorstore.vector_store import VectorStoreManager
 
+                # 向量化完成后旧缓存已过期，清除对应缓存项让下次查询重新绑定
+                _vsm_cache.pop(ingest_body.docs_dir, None)
                 vector_store_manager = VectorStoreManager(docs_dir=ingest_body.docs_dir)
                 vectorstore_path = ingest_body.docs_dir + "/vectorstore"
 
