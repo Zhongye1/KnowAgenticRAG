@@ -174,16 +174,21 @@
             </div>
 
             <div class="mt-6 grid grid-cols-2 gap-3">
-                <button type="button" @click="MessagePlugin.warning('QQ登录功能暂未实现')"
-                    class="w-full inline-flex justify-center py-2 px-4 border border-white/20 rounded-md shadow-sm bg-white/10 text-sm font-medium text-white hover:bg-white/20 transition-all duration-300">
-                    <t-icon name="logo-qq" class="w-5 h-5" />
-                    <span class="ml-2">QQ</span>
+                <button type="button" @click="handleQQLogin" :disabled="isQQLoading"
+                    class="w-full inline-flex justify-center items-center py-2 px-4 border border-white/20 rounded-md shadow-sm bg-white/10 text-sm font-medium text-white hover:bg-white/20 transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed">
+                    <svg v-if="isQQLoading" class="animate-spin w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <t-icon v-else name="logo-qq" class="w-5 h-5" />
+                    <span class="ml-2">{{ isQQLoading ? '跳转中...' : 'QQ 登录' }}</span>
                 </button>
 
-                <button type="button" @click="MessagePlugin.warning('微信登录功能暂未实现')"
-                    class="w-full inline-flex justify-center py-2 px-4 border border-white/20 rounded-md shadow-sm bg-white/10 text-sm font-medium text-white hover:bg-white/20 transition-all duration-300">
-                    <t-icon name="logo-wechat-stroke" class="w-5 h-5" />
-                    <span class="ml-2">微信</span>
+                <button type="button"
+                    @click="MessagePlugin.warning('微信登录需要企业资质认证，个人开发者暂不支持。如需使用请申请微信开放平台企业账号。')"
+                    class="w-full inline-flex justify-center items-center py-2 px-4 border border-white/20 rounded-md shadow-sm bg-white/10 text-sm font-medium text-white/50 cursor-not-allowed transition-all duration-300">
+                    <t-icon name="logo-wechat-stroke" class="w-5 h-5 opacity-50" />
+                    <span class="ml-2">微信（企业）</span>
                 </button>
             </div>
         </div>
@@ -192,7 +197,7 @@
 
 <script setup lang="ts">
 import { MessagePlugin } from 'tdesign-vue-next';
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 
 // 定义 emits
 const emit = defineEmits<{
@@ -309,6 +314,58 @@ const handleSubmit = async () => {
 const showForgotPassword = () => {
     alert('忘记密码功能待开发，请联系管理员')
 }
+
+// ─── QQ 登录 ───────────────────────────────────────────────────
+const isQQLoading = ref(false)
+
+const handleQQLogin = async () => {
+    if (isQQLoading.value) return
+    isQQLoading.value = true
+    try {
+        // 从后端获取 QQ 授权 URL
+        const res = await fetch('/api/qq/authorize')
+        const data = await res.json()
+        if (data.authorize_url) {
+            // 跳转到 QQ 授权页
+            window.location.href = data.authorize_url
+        } else {
+            MessagePlugin.error('获取 QQ 授权链接失败，请稍后重试')
+        }
+    } catch (e) {
+        MessagePlugin.error('网络错误，请稍后重试')
+    } finally {
+        isQQLoading.value = false
+    }
+}
+
+// ─── 处理 OAuth 回调参数（QQ 回调后带 token 回来）────────────────
+onMounted(() => {
+    const params = new URLSearchParams(window.location.search)
+    const oauthToken = params.get('oauth_token')
+    const oauthType  = params.get('oauth_type')
+    const oauthError = params.get('oauth_error')
+    const nickname   = params.get('nickname') || ''
+
+    if (oauthError) {
+        MessagePlugin.error(`QQ 登录失败：${decodeURIComponent(oauthError)}`)
+        // 清除 URL 参数
+        window.history.replaceState({}, '', window.location.pathname)
+        return
+    }
+
+    if (oauthToken && oauthType === 'qq') {
+        // 存储 JWT，然后跳转
+        localStorage.setItem('jwt', oauthToken)
+        MessagePlugin.success(`QQ 登录成功${nickname ? '，欢迎 ' + decodeURIComponent(nickname) : ''}！`)
+        // 触发父组件的 form-submit 事件
+        emit('form-submit', {
+            type: 'login',
+            email: '',
+            password: '',
+            token: oauthToken,
+        })
+    }
+})
 
 // 监听模式变化，更新右侧图片
 watch(currentMode, (newMode) => {

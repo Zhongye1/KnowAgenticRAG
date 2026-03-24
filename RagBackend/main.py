@@ -65,6 +65,8 @@ from RAGF_User_Management.User_Management import router as user_management_route
 
 #用户设置页面
 from RAGF_User_Management.User_settings import router as user_settings_router
+# QQ 登录
+from RAGF_User_Management.QQ_Login import router as qq_login_router
 
 app.include_router(knowledge_CURD, tags=["知识库CURD接口"])  # 知识库CURD接口
 app.include_router(doc_manage, tags=["文件处理服务接口"])  # 文件管理接口
@@ -84,6 +86,8 @@ app.include_router(user_management_router, prefix="/api/legacy/user", tags=["用
 
 #用户设置接口
 app.include_router(user_settings_router, tags=["用户设置接口"])
+# QQ 登录接口
+app.include_router(qq_login_router, tags=["QQ OAuth2.0 登录"])
 
 #
 app.include_router(doc_list, prefix="/api/files",tags=["文件列表服务接口"])  # 文档列表接口
