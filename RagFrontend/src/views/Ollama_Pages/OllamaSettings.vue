@@ -9,7 +9,7 @@
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">服务器地址</label>
-            <t-input v-model="serverUrl" placeholder="http://172.22.121.2:11434" class="transition-all duration-300" />
+            <t-input v-model="serverUrl" placeholder="http://localhost:11434" class="transition-all duration-300" />
             <p class="text-xs text-gray-500 mt-1">本地模型则为: http://localhost:11434</p>
           </div>
           <div>
@@ -35,7 +35,7 @@ import { ref, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 
 // 设置状态
-const serverUrl = ref('http://172.22.121.2:11434')
+const serverUrl = ref('http://localhost:11434')
 const timeout = ref(30)
 
 // 组件挂载时加载设置

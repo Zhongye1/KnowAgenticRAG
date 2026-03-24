@@ -113,7 +113,7 @@
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">服务器地址</label>
-          <t-input v-model="settings.serverUrl" placeholder="http://172.22.121.2:11434" />
+          <t-input v-model="settings.serverUrl" placeholder="http://localhost:11434" />
           <p class="text-xs text-gray-500 mt-1">本地模型则为: http://localhost:11434</p>
         </div>
         <div>

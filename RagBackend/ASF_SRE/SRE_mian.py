@@ -1,13 +1,17 @@
 import pymysql
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 try:
-    # 连接配置
+    # 连接配置（从环境变量读取，避免硬编码）
     connection = pymysql.connect(
-        host='172.22.121.2',       # 本地连接
-        port=3306,
-        user='root',             # compose文件中定义的用户
-        password='Www028820',   # compose文件中定义的密码
-        database='mysql',         # compose文件中初始化的数据库
+        host=os.getenv('DB_HOST', '127.0.0.1'),
+        port=int(os.getenv('DB_PORT', 3306)),
+        user=os.getenv('DB_USER', 'root'),
+        password=os.getenv('DB_PASSWORD', ''),
+        database=os.getenv('DB_NAME', 'mysql'),
         charset='utf8mb4',
         cursorclass=pymysql.cursors.DictCursor
     )
