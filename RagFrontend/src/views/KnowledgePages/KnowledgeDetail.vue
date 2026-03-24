@@ -44,10 +44,19 @@
           </div>
         </div>
         <!-- 添加上传按钮 -->
-        <button @click="showUploadModal = true"
-          class="bg-blue-600 hover:bg-blue-700  text-white font-bold px-4 py-2 rounded-md ">
-          上传文件
-        </button>
+        <div class="flex gap-2">
+          <button @click="showUrlImportModal = true"
+            class="flex items-center gap-1.5 bg-green-600 hover:bg-green-700 text-white font-bold px-4 py-2 rounded-md">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+            </svg>
+            导入链接
+          </button>
+          <button @click="showUploadModal = true"
+            class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-4 py-2 rounded-md">
+            上传文件
+          </button>
+        </div>
       </div>
 
       <!-- 文档列表 -->
@@ -623,6 +632,58 @@
       </div>
     </div>
 
+    <!-- URL 导入弹窗 -->
+    <div v-if="showUrlImportModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg">
+        <div class="p-6">
+          <div class="flex justify-between items-center pb-4 border-b mb-4">
+            <div class="flex items-center gap-2">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+              </svg>
+              <h3 class="text-lg font-semibold text-gray-800">导入网页链接</h3>
+            </div>
+            <button @click="closeUrlImport" class="text-gray-400 hover:text-gray-600">✕</button>
+          </div>
+
+          <p class="text-sm text-gray-500 mb-3">每行输入一个链接，AI 将自动抓取正文内容并存入知识库。</p>
+          <textarea
+            v-model="urlImportList"
+            rows="5"
+            placeholder="https://example.com/article1&#10;https://example.com/article2"
+            class="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 resize-none"
+          ></textarea>
+
+          <!-- 导入结果 -->
+          <div v-if="urlImportResults.length > 0" class="mt-3 space-y-1 max-h-32 overflow-y-auto">
+            <div v-for="r in urlImportResults" :key="r.url"
+              :class="['flex items-start gap-2 text-xs p-2 rounded-lg',
+                r.status === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600']">
+              <span>{{ r.status === 'ok' ? '✓' : '✗' }}</span>
+              <div>
+                <div class="font-medium truncate" style="max-width:340px">{{ r.url }}</div>
+                <div>{{ r.message }}</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-3 mt-4">
+            <button @click="closeUrlImport"
+              class="px-4 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200">
+              关闭
+            </button>
+            <button @click="doUrlImport" :disabled="isImportingUrl || !urlImportList.trim()"
+              class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed">
+              <svg v-if="isImportingUrl" class="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9"/>
+              </svg>
+              {{ isImportingUrl ? '抓取中...' : '开始导入' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 📝 笔记模块 -->
     <div class="note-section">
       <div class="note-header" @click="noteExpanded = !noteExpanded">
@@ -733,6 +794,60 @@ const dragover = ref(false);
 const currentPage = ref(1);
 const itemsPerPage = ref(5);
 const showDeleteConfirmation = ref(false);
+
+// ── URL 内容导入 ────────────────────────────────────────
+const showUrlImportModal = ref(false);
+const urlImportList = ref<string>('');
+const isImportingUrl = ref(false);
+const urlImportResults = ref<{ url: string; status: 'ok' | 'error'; message: string }[]>([]);
+
+const doUrlImport = async () => {
+  const urls = urlImportList.value
+    .split('\n')
+    .map(u => u.trim())
+    .filter(u => u.startsWith('http'));
+
+  if (urls.length === 0) {
+    MessagePlugin.warning('请输入至少一个有效的 http/https 链接');
+    return;
+  }
+
+  isImportingUrl.value = true;
+  urlImportResults.value = [];
+
+  for (const url of urls) {
+    try {
+      // 调用后端抓取接口（如无则直接创建文本文档入库）
+      const res = await axios.post('/api/url-import/', {
+        url,
+        kb_id: id.value,
+      });
+      urlImportResults.value.push({ url, status: 'ok', message: res.data?.message || '导入成功' });
+    } catch (e: any) {
+      // 后端暂不支持时，改为提示待实现
+      urlImportResults.value.push({
+        url,
+        status: 'error',
+        message: e?.response?.data?.detail || '后端暂未实现URL抓取，请在后端添加 /api/url-import/ 接口',
+      });
+    }
+  }
+
+  isImportingUrl.value = false;
+
+  const okCount = urlImportResults.value.filter(r => r.status === 'ok').length;
+  if (okCount > 0) {
+    MessagePlugin.success(`${okCount} 个链接内容已导入知识库`);
+    await fetchDocuments();
+  }
+};
+
+const closeUrlImport = () => {
+  showUrlImportModal.value = false;
+  urlImportList.value = '';
+  urlImportResults.value = [];
+};
+// ───────────────────────────────────────────────────────
 
 // 在已有状态变量旁边添加
 const queryResults = ref<string[]>([]);
@@ -1305,6 +1420,22 @@ const formatJsonOutput = (text: string) => {
 };
 
 // 页面挂载时获取数据
+const fetchDocuments = async () => {
+  try {
+    const response = await axios.get<Document[]>(
+      API_ENDPOINTS.KNOWLEDGE.DOCUMENTS_LIST(KLB_id),
+      {
+        headers: {
+          'accept': 'application/json'
+        }
+      }
+    );
+    documents.value = response.data;
+  } catch (error) {
+    console.error('获取文档数据失败:', error);
+  }
+};
+
 onMounted(async () => {
   // 获取知识库配置（包含基本信息）
   await fetchKnowledgeBaseConfig();

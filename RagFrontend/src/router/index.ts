@@ -37,6 +37,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../views/Ollama_Pages/ollama_basic_pages.vue')
   },
   {
+    path: '/history',
+    name: 'History',
+    component: () => import('../views/History.vue')
+  },
+  {
     path: '/agent',
     name: 'Agent',
     component: () => import('../views/Agent.vue')

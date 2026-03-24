@@ -175,6 +175,118 @@
                 </div>
             </div>
 
+            <!-- 权限与分享设置 -->
+            <div class="mb-8">
+                <h3 class="text-lg font-medium mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                    权限与分享
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 知识库类型 -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">知识库类型</label>
+                        <div class="flex gap-3">
+                            <label v-for="t in kbTypeOptions" :key="t.value"
+                                :class="['flex-1 border rounded-lg p-3 cursor-pointer text-center transition-all',
+                                    accessSettings.kbType === t.value
+                                        ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                        : 'border-gray-200 hover:border-gray-400 text-gray-600']"
+                                @click="accessSettings.kbType = t.value as 'personal' | 'shared' | 'public'">
+                                <div class="text-lg mb-1">{{ t.icon }}</div>
+                                <div class="text-sm font-medium">{{ t.label }}</div>
+                                <div class="text-xs text-gray-500 mt-0.5">{{ t.desc }}</div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 成员权限（共享知识库时显示） -->
+                    <div v-if="accessSettings.kbType === 'shared'">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">成员权限设置</label>
+                        <div class="space-y-2">
+                            <div v-for="role in roleOptions" :key="role.value"
+                                class="flex items-center justify-between p-2 border border-gray-200 rounded-lg">
+                                <div class="flex items-center gap-2">
+                                    <span :class="['w-2 h-2 rounded-full', role.color]"></span>
+                                    <span class="text-sm font-medium">{{ role.label }}</span>
+                                    <span class="text-xs text-gray-400">{{ role.desc }}</span>
+                                </div>
+                                <span class="text-xs bg-gray-100 px-2 py-0.5 rounded text-gray-500">{{ role.limit }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 安全策略 -->
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">安全策略</label>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <label v-for="policy in securityPolicies" :key="policy.key"
+                                class="flex items-center gap-2 p-2 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
+                                <input type="checkbox" v-model="(accessSettings as any)[policy.key]"
+                                    class="h-4 w-4 text-blue-600 rounded border-gray-300" />
+                                <span class="text-sm text-gray-700">{{ policy.label }}</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- 分享链接 -->
+                    <div class="md:col-span-2 border border-gray-200 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-sm font-medium text-gray-700">分享链接</span>
+                            <div class="flex items-center gap-2">
+                                <t-switch v-model="accessSettings.shareEnabled" size="small" />
+                                <span class="text-xs text-gray-500">{{ accessSettings.shareEnabled ? '已开启' : '已关闭' }}</span>
+                            </div>
+                        </div>
+                        <div v-if="accessSettings.shareEnabled" class="space-y-3">
+                            <div class="flex gap-2">
+                                <t-input :value="generatedShareLink" readonly class="flex-1 text-xs" />
+                                <t-button size="small" theme="primary" @click="copyShareLink">复制链接</t-button>
+                                <t-button size="small" theme="default" @click="showQrCode = !showQrCode">二维码</t-button>
+                            </div>
+                            <div class="flex gap-3">
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">有效期</label>
+                                    <t-select v-model="accessSettings.shareExpiry" size="small">
+                                        <t-option value="7d">7天</t-option>
+                                        <t-option value="30d">30天</t-option>
+                                        <t-option value="permanent">永久</t-option>
+                                    </t-select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500 mb-1">访问密码（可选）</label>
+                                    <t-input v-model="accessSettings.sharePassword" size="small" placeholder="留空则无需密码" />
+                                </div>
+                            </div>
+                            <!-- 二维码展示 -->
+                            <div v-if="showQrCode" class="flex justify-center p-3 bg-gray-50 rounded-lg">
+                                <div class="text-center">
+                                    <div class="w-32 h-32 bg-white border-2 border-gray-200 rounded-lg flex items-center justify-center mx-auto mb-2">
+                                        <div class="text-xs text-gray-400 text-center p-2">
+                                            <svg viewBox="0 0 100 100" class="w-24 h-24" fill="currentColor">
+                                                <rect x="10" y="10" width="35" height="35" fill="none" stroke="currentColor" stroke-width="3"/>
+                                                <rect x="20" y="20" width="15" height="15"/>
+                                                <rect x="55" y="10" width="35" height="35" fill="none" stroke="currentColor" stroke-width="3"/>
+                                                <rect x="65" y="20" width="15" height="15"/>
+                                                <rect x="10" y="55" width="35" height="35" fill="none" stroke="currentColor" stroke-width="3"/>
+                                                <rect x="20" y="65" width="15" height="15"/>
+                                                <rect x="55" y="55" width="10" height="10"/>
+                                                <rect x="75" y="55" width="10" height="10"/>
+                                                <rect x="55" y="75" width="10" height="10"/>
+                                                <rect x="75" y="75" width="10" height="10"/>
+                                                <rect x="65" y="65" width="10" height="10"/>
+                                            </svg>
+                                        </div>
+                                    </div>
+                                    <p class="text-xs text-gray-500">扫码访问知识库</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- 知识图谱设置 -->
             <!---
             <div class="mb-8">
@@ -372,6 +484,58 @@ const localKbImageUrl = ref('');
 
 
 const imageInput = ref<HTMLInputElement | null>(null);
+
+// ── 权限与分享设置 ──────────────────────────────────
+const showQrCode = ref(false);
+
+const accessSettings = ref({
+    kbType: 'personal' as 'personal' | 'shared' | 'public',
+    shareEnabled: false,
+    shareExpiry: '7d',
+    sharePassword: '',
+    requireApproval: false,
+    forbidExport: false,
+    watermark: false,
+    readOnly: false,
+});
+
+const kbTypeOptions = [
+    { value: 'personal', icon: '🔒', label: '个人', desc: '私密专属' },
+    { value: 'shared',   icon: '👥', label: '共享', desc: '团队协作' },
+    { value: 'public',   icon: '🌐', label: '广场', desc: '公开发现' },
+];
+
+const roleOptions = [
+    { value: 'admin',  label: '管理员', desc: '完全控制', color: 'bg-red-500', limit: '最多5名' },
+    { value: 'editor', label: '编辑者', desc: '读写权限', color: 'bg-blue-500', limit: '无限制' },
+    { value: 'viewer', label: '查看者', desc: '只读权限', color: 'bg-green-500', limit: '无限制' },
+];
+
+const securityPolicies = [
+    { key: 'requireApproval', label: '加入审批' },
+    { key: 'forbidExport',    label: '禁止导出' },
+    { key: 'watermark',       label: '添加水印' },
+    { key: 'readOnly',        label: '全员只读' },
+];
+
+const generatedShareLink = computed(() => {
+    if (!accessSettings.value.shareEnabled) return '';
+    const base = window.location.origin;
+    const expiry = accessSettings.value.shareExpiry;
+    const pwd = accessSettings.value.sharePassword ? `&pw=1` : '';
+    return `${base}/share/kb/${props.kbId}?exp=${expiry}${pwd}`;
+});
+
+const copyShareLink = () => {
+    if (generatedShareLink.value) {
+        navigator.clipboard.writeText(generatedShareLink.value).then(() => {
+            import('tdesign-vue-next').then(({ MessagePlugin }) => {
+                MessagePlugin.success('链接已复制到剪贴板');
+            });
+        });
+    }
+};
+// ──────────────────────────────────────────────────────
 
 // 实体类型选项
 /** 

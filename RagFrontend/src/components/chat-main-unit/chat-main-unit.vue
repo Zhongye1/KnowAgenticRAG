@@ -20,6 +20,28 @@
               <t-chat-content v-if="item.reasoning.length > 0" :content="item.reasoning" />
             </t-chat-reasoning>
             <t-chat-content v-if="item.content.length > 0" :content="item.content" class="custom-chat-dialog" />
+            <!-- 引用溯源 -->
+            <div v-if="item.sources && item.sources.length > 0" class="source-citations">
+              <div class="source-citations__header" @click="toggleSources(item)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="source-icon">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span>{{ item.sources.length }} 个引用来源</span>
+                <svg :class="['chevron', { 'rotated': item._sourcesExpanded }]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+              <div v-if="item._sourcesExpanded" class="source-citations__list">
+                <div v-for="(src, si) in item.sources" :key="si" class="source-item">
+                  <div class="source-item__header">
+                    <span class="source-num">{{ si + 1 }}</span>
+                    <span class="source-filename">{{ src.filename }}</span>
+                    <span v-if="src.score != null" class="source-score">{{ Math.round(src.score * 100) }}%</span>
+                  </div>
+                  <div class="source-item__content">{{ src.content }}</div>
+                </div>
+              </div>
+            </div>
           </template>
         </t-chat-item>
       </template>
@@ -650,6 +672,12 @@ onBeforeUnmount(() => {
     fetchCancel.value.controller.close();
   }
 });
+
+// 引用溯源展开/折叠
+const toggleSources = (item) => {
+  item._sourcesExpanded = !item._sourcesExpanded;
+};
+
 </script>
 
 <style lang="less">
@@ -887,4 +915,86 @@ onBeforeUnmount(() => {
   color: var(--td-error-color) !important;
   background-color: var(--td-error-color-1) !important;
 }
+
+/* 引用溯源样式 */
+.source-citations {
+  margin-top: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 12px;
+}
+.source-citations__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f8fafc;
+  cursor: pointer;
+  color: #4b5563;
+  user-select: none;
+  transition: background 0.15s;
+  &:hover { background: #f1f5f9; }
+}
+.source-icon { width: 14px; height: 14px; }
+.chevron {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  transition: transform 0.2s;
+  &.rotated { transform: rotate(180deg); }
+}
+.source-citations__list {
+  border-top: 1px solid #e5e7eb;
+  background: #fafafa;
+}
+.source-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  &:last-child { border-bottom: none; }
+}
+.source-item__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.source-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #4f7ef8;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.source-filename {
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.source-score {
+  background: #dcfce7;
+  color: #16a34a;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.source-item__content {
+  color: #6b7280;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 </style>
+
