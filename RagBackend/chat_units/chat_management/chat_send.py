@@ -82,10 +82,14 @@ async def send_message(req: SendMessageRequest):
 
         if response.status_code != 200:
             logger.error(f"Ollama 返回错误: {response.status_code} {response.text}")
-            raise HTTPException(
-                status_code=500,
-                detail=f"连接Ollama服务失败，请检查API服务是否配置正确: Ollama API responded with status: {response.status_code}"
-            )
+            err_text = response.text or ""
+            if "more system memory" in err_text or "memory" in err_text.lower():
+                detail = f"模型 [{model}] 所需内存不足，请关闭其他程序或换用更小的模型（如 qwen2:0.5b）"
+            elif "model" in err_text.lower() and "not found" in err_text.lower():
+                detail = f"模型 [{model}] 未安装，请先执行: ollama pull {model}"
+            else:
+                detail = f"Ollama 服务错误（状态码 {response.status_code}）: {err_text[:200]}"
+            raise HTTPException(status_code=500, detail=detail)
 
         data = response.json()
         reply = data.get("message", {}).get("content", "")
