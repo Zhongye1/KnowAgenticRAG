@@ -112,6 +112,10 @@ from multi_model.model_router import router as model_router
 from audit.audit_log import router as audit_router, ensure_audit_table, AuditMiddleware
 from open_api.api_key_manager import router as apikey_router, ensure_apikey_table
 from data_sources.datasource_manager import router as datasource_router, ensure_datasource_table
+# 增量向量化
+from document_processing.incremental_vectorizer import router as incremental_vectorize_router
+# Agent 联网搜索
+from agent_tools.web_search_tool import api_router as web_search_router
 
 app.include_router(knowledge_CURD, tags=["知识库CURD接口"])  # 知识库CURD接口
 app.include_router(doc_manage, tags=["文件处理服务接口"])  # 文件管理接口
@@ -144,6 +148,8 @@ app.include_router(model_router, tags=["多模型适配接口"])
 app.include_router(audit_router, tags=["审计日志接口"])
 app.include_router(apikey_router, tags=["开放API-Key管理"])
 app.include_router(datasource_router, tags=["多数据源接入"])
+app.include_router(incremental_vectorize_router, tags=["增量向量化"])
+app.include_router(web_search_router, tags=["Agent联网搜索"])
 
 # 添加静态文件服务
 # 将图片存储目录映射到/static URL路径

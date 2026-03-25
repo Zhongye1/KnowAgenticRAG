@@ -1,138 +1,168 @@
-version: "3.8"
+version: "3.9"
 
-# ═══════════════════════════════════════════════════════════
-# KnowledgeRAG-GZHU  —  轻量封装方案
-# 镜像大小目标：
-#   asf-backend : ~500MB（python:3.11-slim + PyTorch CPU only）
-#   asf-frontend: ~45MB （nginx:alpine）
-#   ollama      : ~800MB 镜像（模型权重不计，按需 pull）
-#   mysql       : ~600MB
-# 总镜像大小（不含模型）：< 2GB，运行内存 < 2GB
-#
-# ── 端口冲突防护说明 ────────────────────────────────────────
-# 直接 docker compose up 可能因旧容器残留而端口堵塞，推荐使用：
-#   Linux / macOS : bash start.sh
-#   Windows       : 双击 start.bat
-# 以上脚本会在启动前自动检测并清理端口冲突。
-# 若坚持手动操作，请先执行 docker compose down 再 up。
-# ═══════════════════════════════════════════════════════════
+# ================================================================
+# KnowledgeRAG-GZHU — 完整容器化编排
+# 启动方式：docker compose up -d
+# 生产部署：docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# ================================================================
 
 services:
 
-  # ── 后端服务
-  asf-backend:
-    build:
-      context: ./RagBackend
-      dockerfile: Dockerfile
-    image: rag-backend:latest
-    container_name: asf-backend
-    restart: unless-stopped
-    # 优雅退出超时：docker stop 时最多等 15s，超时强制 kill
-    # 避免旧进程挂死导致端口长时间无法释放
-    stop_grace_period: 15s
-    ports:
-      - "8000:8000"
-    volumes:
-      # 数据持久化（知识库文件、向量存储、对话记录）
-      - ./data/local-KLB-files:/app/local-KLB-files
-      - ./data/metadata:/app/metadata
-      - ./data/user_avatars:/app/user_avatars
-      - ./data/covers:/app/knowledge_base/uploaded_pics/covers
-    networks:
-      - apn-network
-    depends_on:
-      mysql:
-        condition: service_healthy
-    environment:
-      # 数据库（从 .env 文件读取，不在此处硬编码）
-      - DB_HOST=mysql
-      - DB_PORT=3306
-      - DB_USER=${DB_USER:-mmk}
-      - DB_PASSWORD=${DB_PASSWORD:-changeme}
-      - DB_NAME=${DB_NAME:-ASF}
-      # JWT（生产环境务必替换为强随机字符串）
-      - JWT_SECRET=${JWT_SECRET:-changeme_jwt_secret}
-      # Ollama 服务地址（容器内互通）
-      - OLLAMA_BASE_URL=http://ollama:11434
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
-  # ── 前端服务
-  asf-frontend:
-    build:
-      context: ./RagFrontend
-      dockerfile: Dockerfile
-    image: rag-frontend:latest
-    container_name: asf-frontend
-    restart: unless-stopped
-    stop_grace_period: 10s
-    ports:
-      - "8089:80"
-    networks:
-      - apn-network
-    depends_on:
-      - asf-backend
-    healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
-      interval: 20s
-      timeout: 5s
-      retries: 3
-
-  # ── MySQL 数据库
+  # ── MySQL 数据库 ──────────────────────────────────────────────
   mysql:
     image: mysql:8.0
-    container_name: asf-mysql
+    container_name: ragf-mysql
     restart: unless-stopped
-    stop_grace_period: 30s
-    ports:
-      - "3306:3306"
-    volumes:
-      - ./data/mysql:/var/lib/mysql
-      - ./mysql/init:/docker-entrypoint-initdb.d:ro
-    networks:
-      - apn-network
     environment:
-      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-changeme}
-      - MYSQL_DATABASE=ASF
-      - MYSQL_USER=${DB_USER:-mmk}
-      - MYSQL_PASSWORD=${DB_PASSWORD:-changeme}
-      - TZ=Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-Www028820}
+      MYSQL_DATABASE: ${DB_NAME:-rag_user_db}
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
+    ports:
+      - "3307:3306"          # 宿主机用 3307 避免与本地 MySQL 冲突
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./RagBackend/docs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-changeme}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-Www028820}"]
       interval: 10s
       timeout: 5s
       retries: 5
       start_period: 30s
+    networks:
+      - ragf-net
 
-  # ── Ollama 模型服务
+  # ── Ollama 本地 LLM 服务 ──────────────────────────────────────
   ollama:
     image: ollama/ollama:latest
-    container_name: asf-ollama
+    container_name: ragf-ollama
     restart: unless-stopped
-    stop_grace_period: 20s
     ports:
       - "11434:11434"
     volumes:
-      # 模型文件持久化（避免每次重建都重新下载）
-      - ./data/ollama:/root/.ollama
-    networks:
-      - apn-network
-    environment:
-      - OLLAMA_ORIGINS=*
-      - OLLAMA_HOST=0.0.0.0:11434
-    # GPU 支持（有 NVIDIA GPU 时取消注释）
+      - ollama_data:/root/.ollama
+    # GPU 加速（有 NVIDIA GPU 时取消注释）
     # deploy:
     #   resources:
     #     reservations:
     #       devices:
     #         - driver: nvidia
-    #           count: 1
+    #           count: all
     #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - ragf-net
 
+  # ── 模型预拉取（一次性初始化任务）─────────────────────────────
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: ragf-ollama-init
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+        echo '[ollama-init] 开始拉取模型...' &&
+        OLLAMA_HOST=http://ollama:11434 ollama pull ${MODEL:-qwen2:0.5b} &&
+        echo '[ollama-init] 模型拉取完成: ${MODEL:-qwen2:0.5b}'
+      "
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    networks:
+      - ragf-net
+
+  # ── FastAPI 后端 ──────────────────────────────────────────────
+  backend:
+    build:
+      context: ./RagBackend
+      dockerfile: Dockerfile
+    container_name: ragf-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      # 数据库（连接容器内 MySQL，主机名用 service 名）
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-Www028820}
+      DB_NAME: ${DB_NAME:-rag_user_db}
+      DB_CHARSET: utf8mb4
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-changeme_jwt_secret_please_replace_in_production}
+      # Ollama
+      OLLAMA_BASE_URL: http://ollama:11434
+      MODEL: ${MODEL:-qwen2:0.5b}
+      # 多模型云端 API（可选，不填则云端模型不可用）
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      HUNYUAN_SECRET_ID: ${HUNYUAN_SECRET_ID:-}
+      HUNYUAN_SECRET_KEY: ${HUNYUAN_SECRET_KEY:-}
+      # 前端地址（QQ 回调跳转）
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8089}
+      # Python
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      # 持久化本地文件、向量库、用户头像
+      - ragf_files:/app/local-KLB-files
+      - ragf_metadata:/app/metadata
+      - ragf_avatars:/app/user_avatars
+      - ragf_vectorstore:/app/knowledge_base
+      # 审计日志 SQLite（持久化到宿主机方便查看）
+      - ragf_sqlite:/app/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ragf-net
+
+  # ── Vue3 前端（生产构建 + Nginx 托管）────────────────────────
+  frontend:
+    build:
+      context: ./RagFrontend
+      dockerfile: Dockerfile
+    container_name: ragf-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8089:80"
+    networks:
+      - ragf-net
+
+# ── 持久化卷 ──────────────────────────────────────────────────
+volumes:
+  mysql_data:
+    driver: local
+  ollama_data:
+    driver: local
+  ragf_files:
+    driver: local
+  ragf_metadata:
+    driver: local
+  ragf_avatars:
+    driver: local
+  ragf_vectorstore:
+    driver: local
+  ragf_sqlite:
+    driver: local
+
+# ── 网络 ──────────────────────────────────────────────────────
 networks:
-  apn-network:
+  ragf-net:
     driver: bridge

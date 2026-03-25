@@ -143,22 +143,59 @@
             </svg>
             全部知识库
           </span>
-          <span class="kb-section__count">{{ allCards.length }}</span>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span v-if="isDragMode" class="kb-drag-hint">拖拽排序中 · 松手完成</span>
+            <button class="kb-drag-toggle" :class="{ active: isDragMode }" @click="isDragMode = !isDragMode" title="拖拽排序">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" d="M4 8h16M4 12h16M4 16h16"/>
+              </svg>
+              {{ isDragMode ? '完成排序' : '排序' }}
+            </button>
+            <span class="kb-section__count">{{ sortableCards.length }}</span>
+          </div>
         </div>
 
         <div v-if="cardDataStore.loading" class="kb-loading">
           <div class="kb-spinner"></div>
           <span>加载知识库...</span>
         </div>
-        <div v-else-if="allCards.length > 0" class="kb-grid">
-          <KbCard
-            v-for="card in allCards" :key="card.id"
-            :card="card"
-            :starred="starredIds.has(card.id)"
-            @click="goToDetail(card.id)"
-            @star="toggleStar(card.id)"
-            @delete="deleteCard(card)"
-          />
+        <div
+          v-else-if="sortableCards.length > 0"
+          class="kb-grid"
+          :class="{ 'kb-grid--drag': isDragMode }"
+        >
+          <div
+            v-for="(card, index) in sortableCards"
+            :key="card.id"
+            class="kb-drag-wrapper"
+            :class="{
+              'kb-drag-wrapper--draggable': isDragMode,
+              'kb-drag-wrapper--dragging': dragIndex === index,
+              'kb-drag-wrapper--over': dragOverIndex === index && dragIndex !== index,
+            }"
+            :draggable="isDragMode"
+            @dragstart="onDragStart($event, index)"
+            @dragover.prevent="onDragOver($event, index)"
+            @dragleave="onDragLeave"
+            @drop="onDrop($event, index)"
+            @dragend="onDragEnd"
+          >
+            <!-- 拖拽模式下的抓手图标 -->
+            <div v-if="isDragMode" class="kb-drag-handle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="9" cy="5" r="1" fill="currentColor"/><circle cx="15" cy="5" r="1" fill="currentColor"/>
+                <circle cx="9" cy="12" r="1" fill="currentColor"/><circle cx="15" cy="12" r="1" fill="currentColor"/>
+                <circle cx="9" cy="19" r="1" fill="currentColor"/><circle cx="15" cy="19" r="1" fill="currentColor"/>
+              </svg>
+            </div>
+            <KbCard
+              :card="card"
+              :starred="starredIds.has(card.id)"
+              @click="isDragMode ? undefined : goToDetail(card.id)"
+              @star="toggleStar(card.id)"
+              @delete="deleteCard(card)"
+            />
+          </div>
           <!-- 结束占位符 -->
           <div class="kb-card-end">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -179,7 +216,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { MessagePlugin } from 'tdesign-vue-next';
 import axios from 'axios';
@@ -306,6 +343,83 @@ onMounted(async () => {
   loadRecent();
   await cardDataStore.fetchCards();
 });
+
+// ======= 拖拽排序 =======
+const DRAG_ORDER_KEY = 'kb_card_order';
+const isDragMode = ref(false);
+const dragIndex = ref<number | null>(null);
+const dragOverIndex = ref<number | null>(null);
+
+// 可拖拽的知识库列表（持久化自定义顺序）
+const customOrder = ref<string[]>([]);
+
+const loadOrder = () => {
+  try {
+    const raw = localStorage.getItem(DRAG_ORDER_KEY);
+    customOrder.value = raw ? JSON.parse(raw) : [];
+  } catch { customOrder.value = []; }
+};
+
+const saveOrder = () => {
+  localStorage.setItem(DRAG_ORDER_KEY, JSON.stringify(customOrder.value.map(id => id)));
+};
+
+// 按自定义顺序排列的卡片列表
+const sortableCards = computed(() => {
+  const cards = [...allCards.value];
+  if (customOrder.value.length === 0) return cards;
+  const orderMap = new Map(customOrder.value.map((id, i) => [id, i]));
+  return cards.sort((a, b) => {
+    const ai = orderMap.has(a.id) ? orderMap.get(a.id)! : 9999;
+    const bi = orderMap.has(b.id) ? orderMap.get(b.id)! : 9999;
+    return ai - bi;
+  });
+});
+
+// 当 allCards 变化时同步更新 customOrder（新增的卡片追加到末尾）
+watch(allCards, (newCards) => {
+  const newIds = newCards.map(c => c.id);
+  const existing = new Set(customOrder.value);
+  const appended = newIds.filter(id => !existing.has(id));
+  if (appended.length > 0) {
+    customOrder.value = [
+      ...customOrder.value.filter(id => newIds.includes(id)),
+      ...appended,
+    ];
+    saveOrder();
+  }
+}, { immediate: true });
+
+const onDragStart = (_e: DragEvent, index: number) => {
+  dragIndex.value = index;
+};
+
+const onDragOver = (_e: DragEvent, index: number) => {
+  dragOverIndex.value = index;
+};
+
+const onDragLeave = () => {
+  dragOverIndex.value = null;
+};
+
+const onDrop = (_e: DragEvent, dropIndex: number) => {
+  if (dragIndex.value === null || dragIndex.value === dropIndex) return;
+  const cards = [...sortableCards.value];
+  const [moved] = cards.splice(dragIndex.value, 1);
+  cards.splice(dropIndex, 0, moved);
+  customOrder.value = cards.map(c => c.id);
+  saveOrder();
+  dragIndex.value = null;
+  dragOverIndex.value = null;
+};
+
+const onDragEnd = () => {
+  dragIndex.value = null;
+  dragOverIndex.value = null;
+};
+
+// 初始化时加载顺序
+loadOrder();
 </script>
 
 <style scoped>
@@ -634,4 +748,89 @@ onMounted(async () => {
   .kb-search-wrapper { width: 160px; }
   .kb-search-wrapper:focus-within { width: 190px; }
 }
+
+/* ===== 拖拽排序 ===== */
+.kb-drag-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: white;
+  color: #6b7280;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.kb-drag-toggle:hover { background: #f3f4f6; color: #374151; }
+.kb-drag-toggle.active {
+  background: #eef2ff;
+  border-color: #4f7ef8;
+  color: #4f7ef8;
+}
+.kb-drag-toggle svg { width: 14px; height: 14px; }
+
+.kb-drag-hint {
+  font-size: 11px;
+  color: #4f7ef8;
+  background: #eef2ff;
+  padding: 2px 8px;
+  border-radius: 4px;
+  animation: pulse-hint 1.5s ease-in-out infinite;
+}
+@keyframes pulse-hint {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.kb-grid--drag {
+  cursor: default;
+}
+
+.kb-drag-wrapper {
+  position: relative;
+}
+
+.kb-drag-wrapper--draggable {
+  cursor: grab;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.kb-drag-wrapper--draggable:hover { transform: translateY(-2px); }
+.kb-drag-wrapper--draggable:active { cursor: grabbing; }
+
+.kb-drag-wrapper--dragging {
+  opacity: 0.4;
+  transform: scale(0.97);
+}
+
+.kb-drag-wrapper--over::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 2px dashed #4f7ef8;
+  border-radius: 14px;
+  z-index: 1;
+  pointer-events: none;
+  background: rgba(79,126,248,0.04);
+}
+
+.kb-drag-handle {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.9);
+  border-radius: 6px;
+  color: #9ca3af;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  cursor: grab;
+}
+.kb-drag-handle svg { width: 14px; height: 14px; }
+
 </style>

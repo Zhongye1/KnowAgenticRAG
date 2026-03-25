@@ -1,7 +1,8 @@
 """
 rag_pipeline.py
-RAG 核心流水线 v2
+RAG 核心流水线 v3
 新增：
+  - 检索策略扩展（接收前端 RetrievalConfig 参数，支持 vector/BM25/hybrid/RRF/MMR）
   - 混合检索（HybridRetriever：BM25 + 向量 + RRF 融合）
   - 引用溯源（返回 sources 列表，含文件名、页码、得分）
   - 流式回答生成（generator 模式，配合 SSE 使用）
@@ -21,6 +22,19 @@ from langchain.prompts import PromptTemplate
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from models.model_config import get_model_config
 from src.rag.hybrid_retriever import HybridRetriever
+
+# 检索策略执行器（容忍导入失败）
+try:
+    import sys as _sys
+    _BACKEND_DIR = os.path.join(os.path.dirname(__file__), '..', '..', '..')
+    if _BACKEND_DIR not in _sys.path:
+        _sys.path.insert(0, _BACKEND_DIR)
+    from document_processing.retrieval_strategy import RetrievalStrategyExecutor, RetrievalConfig
+    _STRATEGY_AVAILABLE = True
+except ImportError:
+    _STRATEGY_AVAILABLE = False
+    RetrievalStrategyExecutor = None  # type: ignore
+    RetrievalConfig = None  # type: ignore
 
 
 # ── 系统 Prompt 模板
@@ -63,8 +77,9 @@ def _format_context(docs_with_sources: List[Dict[str, Any]]) -> str:
 
 class RAGPipeline:
     """
-    RAG 流水线 v2
+    RAG 流水线 v3
     支持：混合检索、引用溯源、流式/非流式两种输出模式
+    新增：检索策略参数透传（strategy/topK/scoreThreshold/vectorWeight/bm25Weight/rerank）
     """
 
     def __init__(
@@ -73,6 +88,7 @@ class RAGPipeline:
         vectorstore: Optional[FAISS] = None,
         documents: Optional[List[Document]] = None,
         use_hybrid: bool = True,
+        retrieval_config: Optional[dict] = None,  # 新增：来自前端的检索策略配置
     ):
         # 获取模型配置
         if llm_model is None:
@@ -83,25 +99,46 @@ class RAGPipeline:
         self.llm = OllamaLLM(model=llm_model)
         self.vectorstore = vectorstore
         self.use_hybrid = use_hybrid
+        self.documents = documents or []
 
-        # 构建混合检索器（需要 documents 列表用于 BM25）
+        # 解析检索策略配置
+        self._retrieval_config = None
+        if retrieval_config and _STRATEGY_AVAILABLE:
+            self._retrieval_config = RetrievalConfig.from_dict(retrieval_config)
+            print(f"[RAGPipeline] 检索策略: {self._retrieval_config.strategy}, topK={self._retrieval_config.topK}")
+
+        # 初始化策略执行器
+        self._strategy_executor = None
+        if _STRATEGY_AVAILABLE and vectorstore is not None:
+            self._strategy_executor = RetrievalStrategyExecutor(
+                vectorstore=vectorstore,
+                documents=self.documents,
+            )
+
+        # 构建混合检索器（当未使用策略执行器时的 fallback）
         self._hybrid_retriever: Optional[HybridRetriever] = None
-        if use_hybrid and vectorstore is not None and documents:
-            print(f"[RAGPipeline] 初始化混合检索器，文档块数量: {len(documents)}")
+        if use_hybrid and vectorstore is not None and self.documents and not _STRATEGY_AVAILABLE:
+            print(f"[RAGPipeline] 初始化混合检索器，文档块数量: {len(self.documents)}")
             self._hybrid_retriever = HybridRetriever(
-                documents=documents,
+                documents=self.documents,
                 vectorstore=vectorstore,
             )
-        elif use_hybrid and vectorstore is not None:
-            # 没有传 documents，降级为纯向量检索
+        elif use_hybrid and vectorstore is not None and not self.documents and not _STRATEGY_AVAILABLE:
             print("[RAGPipeline] 未传入 documents，混合检索降级为纯向量检索")
             self.use_hybrid = False
 
     # ── 检索
     def _retrieve(self, query: str) -> List[Dict[str, Any]]:
+        # 优先使用策略执行器（支持多种策略）
+        if self._strategy_executor is not None:
+            config = self._retrieval_config  # 可能为 None，executor 内有默认值
+            return self._strategy_executor.retrieve(query, config)
+
+        # fallback：混合检索器
         if self.use_hybrid and self._hybrid_retriever:
             return self._hybrid_retriever.retrieve_with_scores(query)
-        # 降级：纯向量检索
+
+        # 最终 fallback：纯向量检索
         raw = self.vectorstore.similarity_search_with_score(query, k=4)
         results = []
         for rank, (doc, score) in enumerate(raw, start=1):

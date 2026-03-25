@@ -45,19 +45,26 @@ from langchain_community.vectorstores import FAISS
 from models.model_config import get_model_config
 from src.rag.hybrid_retriever import HybridRetriever
 
+# 联网搜索工具（可选导入，避免启动失败）
+try:
+    from agent_tools.web_search_tool import build_web_search_tool
+    _WEB_SEARCH_AVAILABLE = True
+except ImportError:
+    _WEB_SEARCH_AVAILABLE = False
+
 
 # ─────────────────────────────────────────────
 # ReAct Agent Prompt 模板
 # ─────────────────────────────────────────────
 
-_REACT_PROMPT_TEMPLATE = """你是一个智能知识库助手，能够通过工具检索知识库中的相关信息来回答问题。
+_REACT_PROMPT_TEMPLATE = """你是一个智能知识库助手，能够通过工具检索知识库中的相关信息或搜索互联网来回答问题。
 
 你可以使用以下工具：
 {tools}
 
 使用以下格式推理：
 Question: 用户提出的问题
-Thought: 思考是否需要使用工具
+Thought: 思考是否需要使用工具，以及使用哪个工具
 Action: 要使用的工具名称，必须是 [{tool_names}] 之一
 Action Input: 传给工具的输入
 Observation: 工具返回的结果
@@ -66,10 +73,11 @@ Thought: 现在我知道了最终答案
 Final Answer: 给用户的最终回答（中文）
 
 规则：
-1. 优先使用工具检索知识库后再回答
-2. 如果工具返回了相关文档，请在回答中引用来源
-3. 如果问题是简单的日常对话（如"你好"、"谢谢"），可以直接回答，无需检索
-4. 回答要完整、清晰，默认使用中文
+1. 优先使用 search_knowledge_base 检索本地知识库后再回答
+2. 如果本地知识库没有相关内容，使用 web_search 搜索互联网获取最新信息
+3. 如果工具返回了相关文档，请在回答中引用来源
+4. 如果问题是简单的日常对话（如"你好"、"谢谢"），可以直接回答，无需检索
+5. 回答要完整、清晰，默认使用中文
 
 开始！
 
@@ -191,6 +199,7 @@ class ReActRAGAgent:
         top_k: int = 4,
         max_iterations: int = 5,
         verbose: bool = False,
+        enable_web_search: bool = True,   # 新增：是否启用联网搜索工具
     ):
         """
         Args:
@@ -200,6 +209,7 @@ class ReActRAGAgent:
             top_k: 每次检索返回的文档块数
             max_iterations: Agent 最大推理轮次（防止死循环）
             verbose: 是否打印推理过程
+            enable_web_search: 是否注册联网搜索工具（默认开启）
         """
         # 获取模型名
         if llm_model is None:
@@ -222,6 +232,13 @@ class ReActRAGAgent:
                 top_k=top_k,
             )
         ]
+
+        # 注册联网搜索工具（可选）
+        if enable_web_search and _WEB_SEARCH_AVAILABLE:
+            self.tools.append(build_web_search_tool(max_results=5))
+            print("[ReActAgent] 联网搜索工具已注册")
+        elif enable_web_search and not _WEB_SEARCH_AVAILABLE:
+            print("[ReActAgent] 联网搜索工具不可用（导入失败），跳过注册")
 
         # 构建 Agent
         self.agent = create_react_agent(
