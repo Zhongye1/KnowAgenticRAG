@@ -174,6 +174,83 @@ if _integrations_available:
     app.include_router(obsidian_router, tags=["办公联动-Obsidian同步"])
     app.include_router(feishu_router, tags=["办公联动-飞书机器人"])
 
+# ── 8大升级模块路由注册 ───────────────────────────────────────
+# 知识库管理升级
+try:
+    from knowledge.ocr_parser import router as ocr_router
+    from knowledge.doc_version_manager import router as doc_version_router
+    from knowledge.doc_tag_manager import router as doc_tag_router
+    from knowledge.rbac_manager import router as rbac_router
+    from knowledge.doc_comment_manager import router as doc_comment_router
+    app.include_router(ocr_router, tags=["知识库-OCR解析"])
+    app.include_router(doc_version_router, tags=["知识库-文档版本管理"])
+    app.include_router(doc_tag_router, tags=["知识库-标签与归档"])
+    app.include_router(rbac_router, tags=["知识库-角色权限管控"])
+    app.include_router(doc_comment_router, tags=["知识库-文档评论区"])
+    logger.info("知识库升级模块已加载")
+except Exception as _e:
+    logger.warning(f"知识库升级模块加载失败: {_e}")
+
+# RAG 增强
+try:
+    from rag_enhancement.rag_evaluator import router as rag_eval_router
+    from rag_enhancement.conversation_memory import router as conv_memory_router
+    from rag_enhancement.retrieval_visualizer import router as retrieval_viz_router
+    app.include_router(rag_eval_router, tags=["RAG-效果评估与调优"])
+    app.include_router(conv_memory_router, tags=["RAG-对话记忆持久化"])
+    app.include_router(retrieval_viz_router, tags=["RAG-检索可视化与纠错"])
+    logger.info("RAG增强模块已加载")
+except Exception as _e:
+    logger.warning(f"RAG增强模块加载失败: {_e}")
+
+# Agent 企业工具链
+try:
+    from agent_tools.agent_advanced import router as agent_advanced_router
+    app.include_router(agent_advanced_router, tags=["Agent-企业工具链与插件市场"])
+    logger.info("Agent企业工具链已加载")
+except Exception as _e:
+    logger.warning(f"Agent企业工具链加载失败: {_e}")
+
+# 多模型扩展
+try:
+    from multi_model.extended_model_router import router as ext_model_router
+    app.include_router(ext_model_router, tags=["多模型-百炼/星火/负载均衡/统计"])
+    logger.info("扩展多模型路由已加载")
+except Exception as _e:
+    logger.warning(f"扩展多模型路由加载失败: {_e}")
+
+# 企业合规
+try:
+    from enterprise.compliance_manager import router as compliance_router
+    app.include_router(compliance_router, tags=["企业合规-SSO/多租户/限流/脱敏"])
+    logger.info("企业合规模块已加载")
+except Exception as _e:
+    logger.warning(f"企业合规模块加载失败: {_e}")
+
+# 生态整合
+try:
+    from integrations.dingtalk_wecom import router as dingtalk_wecom_router
+    app.include_router(dingtalk_wecom_router, tags=["生态-钉钉/企微/WPS集成"])
+    logger.info("钉钉/企微集成已加载")
+except Exception as _e:
+    logger.warning(f"钉钉/企微集成加载失败: {_e}")
+
+# 全文检索
+try:
+    from search.fulltext_search import router as fulltext_router
+    app.include_router(fulltext_router, tags=["全文检索-FTS5跨库搜索"])
+    logger.info("全文检索模块已加载")
+except Exception as _e:
+    logger.warning(f"全文检索模块加载失败: {_e}")
+
+# 商业化
+try:
+    from billing.billing_manager import router as billing_router
+    app.include_router(billing_router, tags=["商业化-定价/订阅/工单系统"])
+    logger.info("商业化模块已加载")
+except Exception as _e:
+    logger.warning(f"商业化模块加载失败: {_e}")
+
 # 添加静态文件服务
 # 将图片存储目录映射到/static URL路径
 app.mount("/static", StaticFiles(directory="local-KLB-files"), name="static")
