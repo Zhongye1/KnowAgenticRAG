@@ -15,6 +15,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.knowledgerag.gzhu",
+      "buildNumber": "1",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "语音输入功能需要访问麦克风",
         "NSDocumentsFolderUsageDescription": "文档导入功能需要访问文件"
@@ -26,9 +27,12 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.knowledgerag.gzhu",
+      "versionCode": 1,
       "permissions": [
         "android.permission.RECORD_AUDIO",
-        "android.permission.READ_EXTERNAL_STORAGE"
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET"
       ]
     },
     "web": {
@@ -44,7 +48,10 @@
       ]
     ],
     "extra": {
-      "apiUrl": "http://localhost:8000"
+      "apiUrl": "http://10.0.2.2:8000",
+      "eas": {
+        "projectId": "请在 eas build:configure 后自动填入"
+      }
     }
   }
 }
