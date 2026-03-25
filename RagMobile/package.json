@@ -1,0 +1,37 @@
+{
+  "name": "ragmobile",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "^14.0.4",
+    "@react-navigation/bottom-tabs": "^7.2.0",
+    "@react-navigation/native": "^7.0.14",
+    "@react-navigation/native-stack": "^7.2.0",
+    "axios": "^1.7.9",
+    "expo": "~55.0.8",
+    "expo-av": "~15.1.4",
+    "expo-document-picker": "~13.0.3",
+    "expo-file-system": "~18.1.1",
+    "expo-secure-store": "~14.2.0",
+    "expo-status-bar": "~55.0.4",
+    "react": "19.2.0",
+    "react-native": "0.83.2",
+    "react-native-gesture-handler": "~2.24.0",
+    "react-native-markdown-display": "^7.0.2",
+    "react-native-reanimated": "~3.17.4",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1",
+    "zustand": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~5.9.2"
+  },
+  "private": true
+}
