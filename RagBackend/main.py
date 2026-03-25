@@ -116,6 +116,21 @@ from data_sources.datasource_manager import router as datasource_router, ensure_
 from document_processing.incremental_vectorizer import router as incremental_vectorize_router
 # Agent 联网搜索
 from agent_tools.web_search_tool import api_router as web_search_router
+# 多模态语音识别（Whisper）
+try:
+    from multimodal.whisper_asr import router as whisper_router
+    _whisper_available = True
+except ImportError as _e:
+    logger.warning(f"Whisper 模块导入失败（openai-whisper 未安装？）: {_e}")
+    _whisper_available = False
+# 办公生态联动（Obsidian + 飞书）
+try:
+    from integrations.obsidian_sync import router as obsidian_router
+    from integrations.feishu_bot import router as feishu_router
+    _integrations_available = True
+except ImportError as _e:
+    logger.warning(f"集成模块导入失败: {_e}")
+    _integrations_available = False
 
 app.include_router(knowledge_CURD, tags=["知识库CURD接口"])  # 知识库CURD接口
 app.include_router(doc_manage, tags=["文件处理服务接口"])  # 文件管理接口
@@ -150,6 +165,11 @@ app.include_router(apikey_router, tags=["开放API-Key管理"])
 app.include_router(datasource_router, tags=["多数据源接入"])
 app.include_router(incremental_vectorize_router, tags=["增量向量化"])
 app.include_router(web_search_router, tags=["Agent联网搜索"])
+if _whisper_available:
+    app.include_router(whisper_router, tags=["多模态-语音识别(Whisper)"])
+if _integrations_available:
+    app.include_router(obsidian_router, tags=["办公联动-Obsidian同步"])
+    app.include_router(feishu_router, tags=["办公联动-飞书机器人"])
 
 # 添加静态文件服务
 # 将图片存储目录映射到/static URL路径

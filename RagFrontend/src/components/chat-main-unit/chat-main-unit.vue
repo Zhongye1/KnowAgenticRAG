@@ -86,6 +86,14 @@
                   <span>深度思考</span>
                 </t-button>
               </t-tooltip>
+              <!-- 语音输入 -->
+              <t-tooltip content="语音输入（Whisper 本地识别）">
+                <VoiceInput
+                  :language="'zh'"
+                  @transcribed="(text) => { inputValue = text; }"
+                  @error="(msg) => console.warn('[Voice]', msg)"
+                />
+              </t-tooltip>
             </div>
           </template>
         </t-chat-sender>
@@ -113,6 +121,7 @@ import {
 } from "vue";
 //import { MockSSEResponse } from './sseRequest-reasoning';
 import { ArrowDownIcon, CheckCircleIcon, SystemSumIcon } from "tdesign-icons-vue-next";
+import VoiceInput from "@/components/VoiceInput.vue";
 import {
   Chat as TChat,
   ChatAction as TChatAction,

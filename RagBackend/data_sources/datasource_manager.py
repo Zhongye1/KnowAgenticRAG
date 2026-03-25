@@ -1,7 +1,7 @@
 """
 多数据源接入模块 - 支持 OSS / S3 / 数据库数据源配置与导入
 """
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, Literal
 import sqlite3
@@ -237,8 +237,8 @@ async def _test_db_connection(db_type: str, config: dict) -> dict:
 
 
 @router.post("/api/datasources/{ds_id}/sync")
-async def sync_datasource(ds_id: int):
-    """触发数据源同步（异步任务占位，返回任务 ID）"""
+async def sync_datasource(ds_id: int, background_tasks: BackgroundTasks):
+    """触发数据源同步（OSS/S3 下载文件到知识库目录，数据库提取文本）"""
     try:
         with _get_conn() as conn:
             row = conn.execute("SELECT * FROM datasources WHERE id = ?", (ds_id,)).fetchone()
@@ -249,16 +249,166 @@ async def sync_datasource(ds_id: int):
                 (ds_id,)
             )
             conn.commit()
-        # TODO: 接入 Celery 或 asyncio 后台任务
+
+        ds = dict(row)
+        ds_type = ds["type"]
+        config = json.loads(ds.get("config", "{}"))
+        kb_id = ds.get("kb_id")
+
+        # 异步后台执行同步
+        background_tasks.add_task(_do_datasource_sync, ds_id, ds_type, config, kb_id)
+
         return {
             "task_id": f"sync_{ds_id}_{int(time.time())}",
-            "status": "pending",
-            "message": "同步任务已提交，后台执行中（当前为占位实现，需接入任务队列）"
+            "status": "syncing",
+            "message": "同步任务已提交，后台执行中"
         }
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _do_datasource_sync(ds_id: int, ds_type: str, config: dict, kb_id: Optional[str]):
+    """实际执行数据源同步的后台任务"""
+    target_dir = Path(__file__).parent.parent / "local-KLB-files" / (kb_id or "_datasource_import") / ds_type
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        if ds_type == "oss":
+            result = await _sync_oss(config, target_dir)
+        elif ds_type == "s3":
+            result = await _sync_s3(config, target_dir)
+        elif ds_type in ("mysql", "postgresql", "sqlite"):
+            result = await _sync_database(ds_type, config, target_dir)
+        else:
+            result = {"status": "skipped", "message": f"暂不支持同步类型: {ds_type}"}
+
+        with _get_conn() as conn:
+            conn.execute(
+                "UPDATE datasources SET status = 'idle', last_sync = ?, last_error = NULL WHERE id = ?",
+                (time.time(), ds_id)
+            )
+            conn.commit()
+        logger.info(f"[DatasourceSync] id={ds_id} 同步完成: {result}")
+
+    except Exception as e:
+        logger.error(f"[DatasourceSync] id={ds_id} 同步失败: {e}", exc_info=True)
+        with _get_conn() as conn:
+            conn.execute(
+                "UPDATE datasources SET status = 'error', last_error = ? WHERE id = ?",
+                (str(e)[:500], ds_id)
+            )
+            conn.commit()
+
+
+async def _sync_oss(config: dict, target_dir: Path) -> dict:
+    """从阿里云 OSS 下载文件"""
+    try:
+        import oss2
+        auth = oss2.Auth(config["access_key_id"], config["access_key_secret"])
+        bucket = oss2.Bucket(auth, config["endpoint"], config["bucket"])
+        prefix = config.get("prefix", "")
+        downloaded = 0
+        for obj in oss2.ObjectIterator(bucket, prefix=prefix):
+            key = obj.key
+            if key.endswith("/"):
+                continue
+            dest = target_dir / key.lstrip("/")
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            bucket.get_object_to_file(key, str(dest))
+            downloaded += 1
+        return {"status": "ok", "downloaded": downloaded}
+    except ImportError:
+        return {"status": "warning", "message": "oss2 未安装: pip install oss2"}
+
+
+async def _sync_s3(config: dict, target_dir: Path) -> dict:
+    """从 S3/MinIO 下载文件"""
+    try:
+        import boto3
+        kwargs = {
+            "aws_access_key_id": config["aws_access_key_id"],
+            "aws_secret_access_key": config["aws_secret_access_key"],
+            "region_name": config.get("region_name", "us-east-1"),
+        }
+        if config.get("endpoint_url"):
+            kwargs["endpoint_url"] = config["endpoint_url"]
+        s3 = boto3.client("s3", **kwargs)
+        bucket = config["bucket"]
+        prefix = config.get("prefix", "")
+        paginator = s3.get_paginator("list_objects_v2")
+        downloaded = 0
+        for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                dest = target_dir / key.lstrip("/")
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                s3.download_file(bucket, key, str(dest))
+                downloaded += 1
+        return {"status": "ok", "downloaded": downloaded}
+    except ImportError:
+        return {"status": "warning", "message": "boto3 未安装: pip install boto3"}
+
+
+async def _sync_database(db_type: str, config: dict, target_dir: Path) -> dict:
+    """从数据库提取文本并写入 .txt 文件"""
+    rows_written = 0
+    query = config.get("query", "SELECT * FROM documents LIMIT 1000")
+    text_column = config.get("text_column", "content")
+    id_column = config.get("id_column", "id")
+
+    try:
+        if db_type == "sqlite":
+            import sqlite3
+            conn = sqlite3.connect(config["database"])
+            cursor = conn.execute(query)
+            rows = cursor.fetchall()
+            columns = [d[0] for d in cursor.description]
+            conn.close()
+        elif db_type == "mysql":
+            import pymysql
+            conn = pymysql.connect(
+                host=config.get("host", "localhost"), port=config.get("port", 3306),
+                database=config["database"], user=config.get("username", "root"),
+                password=config.get("password", ""), charset="utf8mb4",
+            )
+            cursor = conn.cursor()
+            cursor.execute(query)
+            columns = [d[0] for d in cursor.description]
+            rows = cursor.fetchall()
+            conn.close()
+        elif db_type == "postgresql":
+            import psycopg2
+            conn = psycopg2.connect(
+                host=config.get("host"), port=config.get("port", 5432),
+                dbname=config["database"], user=config.get("username"),
+                password=config.get("password"),
+            )
+            cursor = conn.cursor()
+            cursor.execute(query)
+            columns = [d[0] for d in cursor.description]
+            rows = cursor.fetchall()
+            conn.close()
+        else:
+            return {"status": "skipped"}
+
+        # 每行写一个 .txt 文件
+        text_idx = columns.index(text_column) if text_column in columns else 0
+        id_idx = columns.index(id_column) if id_column in columns else None
+
+        for i, row in enumerate(rows):
+            row_id = row[id_idx] if id_idx is not None else i
+            text = str(row[text_idx] or "").strip()
+            if text:
+                dest = target_dir / f"row_{row_id}.txt"
+                dest.write_text(text, encoding="utf-8")
+                rows_written += 1
+
+        return {"status": "ok", "rows_written": rows_written}
+
+    except ImportError as e:
+        return {"status": "warning", "message": f"驱动库未安装: {e}"}
 
 
 @router.get("/api/datasources/types")

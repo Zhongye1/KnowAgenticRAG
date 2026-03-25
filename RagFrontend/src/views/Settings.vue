@@ -251,11 +251,120 @@
         </div>
       </div>
     </div>
+
+    <!-- ── 办公联动 ────────────────────────────────────────────── -->
+    <div v-if="activeTab === 'integrations'" class="tab-content">
+      <div class="section-header">
+        <h2>办公联动</h2>
+        <p class="section-desc">将知识库与 Obsidian 笔记、飞书机器人无缝打通</p>
+      </div>
+
+      <!-- Obsidian 同步 -->
+      <div class="integration-card">
+        <div class="integration-card__header">
+          <img src="https://obsidian.md/favicon.ico" class="integration-logo" alt="Obsidian" onerror="this.style.display='none'" />
+          <div>
+            <div class="integration-card__title">Obsidian Vault 同步</div>
+            <div class="integration-card__desc">将本地 Vault 中的 .md 笔记增量同步到知识库，支持 [[wikilink]] 解析</div>
+          </div>
+          <span :class="['integration-status', obsidianStatus.configured ? 'status--ok' : 'status--off']">
+            {{ obsidianStatus.configured ? `已同步 ${obsidianStatus.synced_files} 个文件` : '未配置' }}
+          </span>
+        </div>
+
+        <div class="integration-form">
+          <div class="form-row">
+            <label>Vault 路径</label>
+            <input v-model="obsidianForm.vault_path" class="form-input" placeholder="C:\Users\你\Documents\ObsidianVault" />
+          </div>
+          <div class="form-row">
+            <label>目标知识库 ID（可选）</label>
+            <input v-model="obsidianForm.kb_id" class="form-input" placeholder="留空则导入到默认目录" />
+          </div>
+          <div class="form-row">
+            <label>排除模式（正则，逗号分隔）</label>
+            <input v-model="obsidianExclude" class="form-input" placeholder="templates/,\.trash/" />
+          </div>
+          <div class="form-actions">
+            <button class="btn-primary" @click="configObsidian" :disabled="obsidianLoading">配置 Vault</button>
+            <button class="btn-secondary" @click="syncObsidian" :disabled="obsidianLoading || !obsidianStatus.configured">
+              {{ obsidianLoading ? '同步中...' : '立即同步' }}
+            </button>
+          </div>
+        </div>
+
+        <div v-if="obsidianSyncResult" class="sync-result">
+          <span class="sync-badge">+{{ obsidianSyncResult.added }}</span> 新增 ·
+          <span class="sync-badge sync-badge--update">~{{ obsidianSyncResult.updated }}</span> 更新 ·
+          <span class="sync-badge sync-badge--skip">{{ obsidianSyncResult.skipped }}</span> 跳过
+        </div>
+      </div>
+
+      <!-- 飞书机器人 -->
+      <div class="integration-card" style="margin-top: 16px;">
+        <div class="integration-card__header">
+          <img src="https://sf3-cn.feishucdn.com/obj/feishu-static/favicon.ico" class="integration-logo" alt="飞书" onerror="this.style.display='none'" />
+          <div>
+            <div class="integration-card__title">飞书机器人</div>
+            <div class="integration-card__desc">在飞书群/私聊中 @ 机器人，自动触发知识库问答</div>
+          </div>
+          <span :class="['integration-status', feishuStatus.configured ? 'status--ok' : 'status--off']">
+            {{ feishuStatus.configured ? '已配置' : '未配置' }}
+          </span>
+        </div>
+
+        <div class="integration-form">
+          <div class="form-row">
+            <label>App ID</label>
+            <input v-model="feishuForm.app_id" class="form-input" placeholder="cli_xxxxxxxxxxxxxxxx" />
+          </div>
+          <div class="form-row">
+            <label>App Secret</label>
+            <input v-model="feishuForm.app_secret" type="password" class="form-input" placeholder="••••••••••••••••••••••••••" />
+          </div>
+          <div class="form-row">
+            <label>Verification Token（可选）</label>
+            <input v-model="feishuForm.verification_token" class="form-input" />
+          </div>
+          <div class="form-row">
+            <label>Encrypt Key（可选）</label>
+            <input v-model="feishuForm.encrypt_key" class="form-input" />
+          </div>
+          <div class="form-row">
+            <label>默认知识库 ID（可选）</label>
+            <input v-model="feishuForm.default_kb_id" class="form-input" placeholder="留空则直接 LLM 回答" />
+          </div>
+          <div class="form-actions">
+            <button class="btn-primary" @click="configFeishu" :disabled="feishuLoading">保存配置</button>
+          </div>
+        </div>
+
+        <!-- Webhook URL 展示 -->
+        <div class="webhook-box">
+          <span class="webhook-label">Webhook 事件订阅地址：</span>
+          <code class="webhook-url">{{ webhookUrl }}</code>
+          <button class="btn-copy" @click="copyWebhook">复制</button>
+        </div>
+
+        <!-- 配置步骤 -->
+        <details class="setup-guide">
+          <summary>📋 飞书配置步骤</summary>
+          <ol>
+            <li>访问 <a href="https://open.feishu.cn/app" target="_blank">飞书开放平台</a> → 创建企业自建应用</li>
+            <li>添加「机器人」能力，申请 <code>im:message</code>、<code>im:message:send_as_bot</code> 权限</li>
+            <li>事件订阅 → 请求地址填写上方 Webhook 地址（需公网可访问，可用 ngrok 内网穿透）</li>
+            <li>订阅事件：<code>im.message.receive_v1</code></li>
+            <li>在上方填写 App ID、App Secret → 保存配置</li>
+            <li>发布应用 → 邀请机器人加入群 → 群内 @ 机器人即可触发问答 ✅</li>
+          </ol>
+        </details>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue'
+import { ref, onMounted, reactive, computed } from 'vue'
 import axios from 'axios'
 import { MessagePlugin } from 'tdesign-vue-next'
 
@@ -264,6 +373,7 @@ const tabs = [
   { id: 'apikeys', label: 'API Key 管理', icon: '🔑' },
   { id: 'datasources', label: '多数据源', icon: '🗄️' },
   { id: 'audit', label: '审计日志', icon: '📋' },
+  { id: 'integrations', label: '办公联动', icon: '🔗' },
 ]
 
 // ── API Key ────────────────────────────────────────────────────
@@ -398,8 +508,91 @@ function formatDateTime(ts: number): string {
 }
 
 onMounted(async () => {
-  await Promise.all([fetchKeys(), fetchDatasources(), fetchAuditLogs()])
+  await Promise.all([fetchKeys(), fetchDatasources(), fetchAuditLogs(), fetchObsidianStatus(), fetchFeishuStatus()])
 })
+
+// ── 办公联动：Obsidian ────────────────────────────────────────
+const obsidianStatus = ref<any>({ configured: false, synced_files: 0 })
+const obsidianSyncResult = ref<any>(null)
+const obsidianLoading = ref(false)
+const obsidianExclude = ref('templates/,\\.trash/')
+const obsidianForm = reactive({ vault_path: '', kb_id: '' })
+
+async function fetchObsidianStatus() {
+  try {
+    const res = await axios.get('/api/integrations/obsidian/status')
+    obsidianStatus.value = res.data
+    if (res.data.vault_path) obsidianForm.vault_path = res.data.vault_path
+    if (res.data.kb_id) obsidianForm.kb_id = res.data.kb_id
+  } catch { /* 未配置时静默 */ }
+}
+
+async function configObsidian() {
+  if (!obsidianForm.vault_path.trim()) { MessagePlugin.warning('请填写 Vault 路径'); return }
+  obsidianLoading.value = true
+  try {
+    const excludeList = obsidianExclude.value.split(',').map(s => s.trim()).filter(Boolean)
+    await axios.post('/api/integrations/obsidian/configure', {
+      vault_path: obsidianForm.vault_path,
+      kb_id: obsidianForm.kb_id || null,
+      exclude_patterns: excludeList,
+    })
+    MessagePlugin.success('Vault 配置成功')
+    await fetchObsidianStatus()
+  } catch (e: any) {
+    MessagePlugin.error(e.response?.data?.detail || '配置失败')
+  } finally { obsidianLoading.value = false }
+}
+
+async function syncObsidian() {
+  obsidianLoading.value = true
+  obsidianSyncResult.value = null
+  try {
+    const res = await axios.post('/api/integrations/obsidian/sync')
+    obsidianSyncResult.value = res.data.stats
+    MessagePlugin.success(`同步完成：+${res.data.stats.added} 新增，~${res.data.stats.updated} 更新`)
+    await fetchObsidianStatus()
+  } catch (e: any) {
+    MessagePlugin.error(e.response?.data?.detail || '同步失败')
+  } finally { obsidianLoading.value = false }
+}
+
+// ── 办公联动：飞书 ────────────────────────────────────────────
+const feishuStatus = ref<any>({ configured: false })
+const feishuLoading = ref(false)
+const feishuForm = reactive({
+  app_id: '', app_secret: '', verification_token: '', encrypt_key: '', default_kb_id: ''
+})
+const webhookUrl = computed(() => `${window.location.protocol}//${window.location.hostname}:8000/api/integrations/feishu/webhook`)
+
+async function fetchFeishuStatus() {
+  try {
+    const res = await axios.get('/api/integrations/feishu/status')
+    feishuStatus.value = res.data
+    if (res.data.default_kb_id) feishuForm.default_kb_id = res.data.default_kb_id
+  } catch { /* 未配置时静默 */ }
+}
+
+async function configFeishu() {
+  if (!feishuForm.app_id || !feishuForm.app_secret) {
+    MessagePlugin.warning('请填写 App ID 和 App Secret')
+    return
+  }
+  feishuLoading.value = true
+  try {
+    const params = new URLSearchParams(feishuForm as any)
+    await axios.post(`/api/integrations/feishu/configure?${params.toString()}`)
+    MessagePlugin.success('飞书配置已保存')
+    await fetchFeishuStatus()
+  } catch (e: any) {
+    MessagePlugin.error(e.response?.data?.detail || '配置失败')
+  } finally { feishuLoading.value = false }
+}
+
+async function copyWebhook() {
+  await navigator.clipboard.writeText(webhookUrl.value)
+  MessagePlugin.success('Webhook 地址已复制')
+}
 </script>
 
 <style scoped>
@@ -584,4 +777,75 @@ onMounted(async () => {
 /* 空状态 */
 .empty-state { text-align: center; padding: 40px; color: #9ca3af; }
 .empty-icon { font-size: 36px; margin-bottom: 10px; }
+
+/* 办公联动 */
+.integration-card {
+  background: white; border-radius: 12px; padding: 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.integration-card__header {
+  display: flex; align-items: flex-start; gap: 14px; margin-bottom: 18px;
+}
+.integration-logo { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; }
+.integration-card__title { font-weight: 600; font-size: 15px; color: #111827; }
+.integration-card__desc { font-size: 13px; color: #6b7280; margin-top: 3px; }
+.integration-status {
+  margin-left: auto; padding: 3px 10px; border-radius: 20px; font-size: 12px; white-space: nowrap; flex-shrink: 0;
+}
+.status--ok { background: #dcfce7; color: #15803d; }
+.status--off { background: #f3f4f6; color: #9ca3af; }
+
+.integration-form { border-top: 1px solid #f3f4f6; padding-top: 16px; }
+.form-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.form-row label { width: 180px; flex-shrink: 0; font-size: 13px; color: #374151; font-weight: 500; }
+.form-actions { display: flex; gap: 10px; margin-top: 14px; }
+.btn-primary {
+  padding: 8px 18px; border: none; border-radius: 7px;
+  background: #4f7ef8; color: white; cursor: pointer; font-size: 13px; font-weight: 500;
+  transition: background 0.15s;
+}
+.btn-primary:hover { background: #3b6ff5; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary {
+  padding: 8px 18px; border: 1px solid #d1d5db; border-radius: 7px;
+  background: white; color: #374151; cursor: pointer; font-size: 13px;
+}
+.btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.sync-result {
+  margin-top: 12px; font-size: 13px; color: #6b7280; padding-top: 12px; border-top: 1px solid #f3f4f6;
+}
+.sync-badge {
+  display: inline-block; padding: 1px 7px; border-radius: 4px;
+  font-weight: 600; background: #dcfce7; color: #15803d;
+}
+.sync-badge--update { background: #dbeafe; color: #1d4ed8; }
+.sync-badge--skip { background: #f3f4f6; color: #9ca3af; }
+
+.webhook-box {
+  margin-top: 16px; padding: 12px 14px; background: #f8fafc; border-radius: 8px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.webhook-label { font-size: 13px; color: #6b7280; white-space: nowrap; }
+.webhook-url {
+  flex: 1; font-size: 12px; font-family: monospace; color: #1e40af;
+  background: white; border: 1px solid #e2e8f0; border-radius: 5px;
+  padding: 4px 8px; word-break: break-all;
+}
+.btn-copy {
+  padding: 4px 12px; border: none; border-radius: 5px;
+  background: #3b82f6; color: white; cursor: pointer; font-size: 12px; white-space: nowrap;
+}
+
+.setup-guide {
+  margin-top: 16px; font-size: 13px; color: #374151; border-top: 1px solid #f3f4f6; padding-top: 14px;
+}
+.setup-guide summary { cursor: pointer; font-weight: 500; color: #4f7ef8; padding: 2px 0; }
+.setup-guide ol { padding-left: 18px; margin-top: 10px; line-height: 2; }
+.setup-guide code {
+  background: #f1f5f9; padding: 1px 5px; border-radius: 4px;
+  font-family: monospace; font-size: 12px; color: #1e40af;
+}
+.setup-guide a { color: #4f7ef8; text-decoration: none; }
+.setup-guide a:hover { text-decoration: underline; }
 </style>

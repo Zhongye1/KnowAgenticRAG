@@ -107,6 +107,14 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       HUNYUAN_SECRET_ID: ${HUNYUAN_SECRET_ID:-}
       HUNYUAN_SECRET_KEY: ${HUNYUAN_SECRET_KEY:-}
+      # Whisper 语音识别（base/small/medium/large，默认 base）
+      WHISPER_MODEL: ${WHISPER_MODEL:-base}
+      # 飞书机器人集成（可选）
+      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
+      FEISHU_VERIFICATION_TOKEN: ${FEISHU_VERIFICATION_TOKEN:-}
+      FEISHU_ENCRYPT_KEY: ${FEISHU_ENCRYPT_KEY:-}
+      FEISHU_DEFAULT_KB_ID: ${FEISHU_DEFAULT_KB_ID:-}
       # 前端地址（QQ 回调跳转）
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8089}
       # Python
