@@ -273,6 +273,7 @@ OSS_BUCKET=your-bucket     # 阿里云OSS存储桶名</pre>
 import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
+import { MessagePlugin } from 'tdesign-vue-next'
 
 const route = useRoute()
 
@@ -411,17 +412,130 @@ function formatTs(ts: number) {
   return new Date(ts * 1000).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
-// ─── WorkBuddy 接入 ───────────────────────────────────────────
+// ─── WorkBuddy 接入（上下文感知版）──────────────────────────────
 const wbOnline = ref(false)
 const wbApiKey = ref(localStorage.getItem('wbApiKey') || '')
 const wbInput = ref('')
 const wbLoading = ref(false)
-const wbMessages = ref<{ role: string; content: string }[]>([])
+const wbMessages = ref<{ role: string; content: string; isSystem?: boolean }[]>([])
 const wbMsgsEl = ref<HTMLElement | null>(null)
+const wbContextReady = ref(false)
+const wbContextSummary = ref('')
+const wbContextExpanded = ref(false)
+
+// ── 项目文件树（前端已知结构）────────────────────────────────
+const frontendFileTree = [
+  'src/views/KnowledgePages/KnowledgeBase.vue',
+  'src/views/KnowledgePages/KnowledgeDetail.vue',
+  'src/views/KnowledgePages/knowledge-setting-card.vue',
+  'src/views/SharedKnowledge/SharedSquare.vue',
+  'src/views/SharedKnowledge/SharedDetail.vue',
+  'src/views/Chat.vue',
+  'src/views/Agent.vue',
+  'src/views/Settings.vue',
+  'src/views/History.vue',
+  'src/views/DevTools.vue',
+  'src/components/SideBar.vue',
+  'src/components/ShareModal.vue',
+  'src/components/ModelSelector.vue',
+  'src/components/RetrievalConfig.vue',
+  'src/components/VoiceInput.vue',
+  'src/components/chat-main-unit/chat-main-unit.vue',
+  'src/i18n/index.ts',
+  'src/router/index.ts',
+  'src/store/index.ts',
+  'src/utils/request.ts',
+]
+const backendFileTree = [
+  'main.py',
+  'RAGF_User_Management/user_router.py',
+  'RAG_M/src/rag/rag_pipeline.py',
+  'RAG_M/src/agent/react_agent.py',
+  'multi_model/model_router.py',
+  'audit/audit_log.py',
+  'open_api/api_key_manager.py',
+  'data_sources/datasource_manager.py',
+  'document_processing/incremental_vectorizer.py',
+  'document_processing/retrieval_strategy.py',
+  'multimodal/whisper_asr.py',
+  'integrations/obsidian_sync.py',
+  'integrations/feishu_bot.py',
+  'feedback/feedback_router.py',
+  'agent_tools/web_search_tool.py',
+]
+
+// ── 收集运行时上下文 ──────────────────────────────────────────
+async function collectProjectContext(): Promise<string> {
+  const lines: string[] = []
+
+  // 1. 项目基本信息
+  lines.push('=== 项目信息 ===')
+  lines.push('项目名：KnowledgeRAG-GZHU（RAG知识库系统）')
+  lines.push('技术栈：Vue3 + TypeScript + TDesign | FastAPI + Python + SQLite/MySQL + Ollama')
+  lines.push(`当前页面路径：${window.location.pathname}`)
+  lines.push(`当前时间：${new Date().toLocaleString('zh-CN')}`)
+
+  // 2. 后端运行状态
+  lines.push('\n=== 后端运行状态 ===')
+  lines.push(`后端(8000)：${backendOnline.value ? '✅ 在线' : '❌ 离线'}`)
+  lines.push(`WorkBuddy(3000)：${wbOnline.value ? '✅ 在线' : '❌ 离线'}`)
+  const ollamaUrl = JSON.parse(localStorage.getItem('ollamaSettings') || '{}').serverUrl || 'http://localhost:11434'
+  try {
+    await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(1000) })
+    lines.push(`Ollama(${ollamaUrl})：✅ 在线`)
+  } catch { lines.push(`Ollama(${ollamaUrl})：❌ 离线`) }
+
+  // 3. 近期API调用记录（从apiResponse取最后一次）
+  if (apiResponse.value) {
+    lines.push('\n=== 最近一次API调用 ===')
+    lines.push(`${apiMethod.value} ${apiUrl.value} → HTTP ${apiStatus.value}`)
+    const snippet = apiResponse.value.substring(0, 300)
+    lines.push(`响应片段：${snippet}${apiResponse.value.length > 300 ? '...' : ''}`)
+  }
+
+  // 4. localStorage 关键配置
+  lines.push('\n=== 关键配置(localStorage) ===')
+  const importantKeys = ['jwt', 'selected_model', 'locale', 'fontSize', 'theme', 'ollamaSettings', 'newLayoutEnabled', 'devtools_authed']
+  for (const k of importantKeys) {
+    const v = localStorage.getItem(k)
+    if (v !== null) {
+      const display = k === 'jwt' ? v.substring(0, 20) + '...' : v.substring(0, 80)
+      lines.push(`  ${k}: ${display}`)
+    }
+  }
+
+  // 5. 前端文件树
+  lines.push('\n=== 前端文件树(RagFrontend/src) ===')
+  lines.push(frontendFileTree.map(f => `  ${f}`).join('\n'))
+
+  // 6. 后端文件树
+  lines.push('\n=== 后端文件树(RagBackend) ===')
+  lines.push(backendFileTree.map(f => `  ${f}`).join('\n'))
+
+  // 7. 路由列表
+  lines.push('\n=== 前端路由 ===')
+  lines.push('  / → /knowledge | /knowledge/:id | /chat | /square | /shared/:id')
+  lines.push('  /agent | /history | /files | /settings | /user/* | /devtools')
+  lines.push('  /acmd_sre | /service | /testrange | /DOC | /404')
+
+  // 8. 最近操作（audit logs快照）
+  if (auditLogs.value.length > 0) {
+    lines.push('\n=== 最近审计记录(前5条) ===')
+    auditLogs.value.slice(0, 5).forEach(log => {
+      lines.push(`  [${log.method}] ${log.path} → ${log.status_code} (${log.user_email || '匿名'})`)
+    })
+  }
+
+  // 9. 已知的 Bug / 最近修复
+  lines.push('\n=== 最近修复记录 ===')
+  lines.push('  commit c9693f8: 9项修复 - Chat布局/RAG开关/字体/语言/语音/反馈邮件/探索功能/DevTools')
+  lines.push('  已知问题: Docker Hub 拉取镜像需翻墙，本地启动方式已验证可用')
+
+  return lines.join('\n')
+}
 
 async function checkWbStatus() {
   try {
-    // WorkBuddy 默认运行在 3000 端口（或前端代理）
     await axios.get('http://localhost:3000/api/health', { timeout: 2000 })
     wbOnline.value = true
   } catch { wbOnline.value = false }
@@ -429,7 +543,22 @@ async function checkWbStatus() {
 
 function saveWbKey() {
   localStorage.setItem('wbApiKey', wbApiKey.value)
-  alert('WorkBuddy API Key 已保存')
+  MessagePlugin.success('WorkBuddy API Key 已保存')
+}
+
+async function initWbContext() {
+  wbContextReady.value = false
+  const ctx = await collectProjectContext()
+  wbContextSummary.value = ctx
+  wbContextReady.value = true
+  // 系统提示消息
+  if (wbMessages.value.length === 0) {
+    wbMessages.value.push({
+      role: 'system',
+      isSystem: true,
+      content: `✅ 项目上下文已加载（${ctx.split('\n').length} 行）\n\n我已读取项目文件树、后端状态、配置信息和最近操作记录。你现在可以直接问我关于这个项目的任何开发问题，我会结合项目实际情况回答。`,
+    })
+  }
 }
 
 async function sendWbMessage() {
@@ -442,34 +571,63 @@ async function sendWbMessage() {
   await nextTick()
   wbMsgsEl.value?.scrollTo({ top: wbMsgsEl.value.scrollHeight, behavior: 'smooth' })
 
+  // 构建包含项目上下文的系统提示
+  const systemContext = wbContextSummary.value || await collectProjectContext()
+  const systemPrompt = `你是 RAG-F 项目的首席开发助手，拥有对项目所有代码和运行状态的完整感知。
+
+以下是当前项目的实时快照，请基于这些信息精准回答开发问题：
+
+${systemContext}
+
+---
+回答规范：
+1. 优先基于上面的项目快照信息回答，不要假设文件内容
+2. 如果需要修改代码，给出具体的文件路径和代码片段
+3. 回答要简洁准确，直接给出可执行的方案
+4. 如果发现上下文中有问题（如服务离线、配置缺失），主动指出`
+
   try {
-    // 尝试连接 WorkBuddy 本地服务
-    const res = await axios.post('http://localhost:3000/api/chat', {
-      message: userMsg,
-      context: `当前项目：KnowledgeRAG-GZHU，RAG知识库系统，Vue3+FastAPI技术栈。用户路径：${route.path}`,
-    }, {
-      headers: { 'X-API-Key': wbApiKey.value || '' },
-      timeout: 30000,
-    })
-    wbMessages.value.push({ role: 'assistant', content: res.data?.response || res.data?.message || '收到' })
+    // 优先尝试 WorkBuddy 本地服务
+    if (wbOnline.value) {
+      const res = await axios.post('http://localhost:3000/api/chat', {
+        message: userMsg,
+        systemPrompt,
+        project: 'KnowledgeRAG-GZHU',
+        context: systemContext,
+      }, {
+        headers: { 'X-API-Key': wbApiKey.value || '', 'Content-Type': 'application/json' },
+        timeout: 60000,
+      })
+      const reply = res.data?.response || res.data?.message || res.data?.content || '收到'
+      wbMessages.value.push({ role: 'assistant', content: reply })
+      return
+    }
+    throw new Error('WorkBuddy offline')
   } catch {
-    // WorkBuddy 不在线时，用 Ollama 本地模型代替
+    // 回退到 Ollama 本地模型（注入完整系统提示）
     try {
       const serverUrl = JSON.parse(localStorage.getItem('ollamaSettings') || '{}').serverUrl || 'http://localhost:11434'
       const model = localStorage.getItem('selected_model') || 'qwen2:0.5b'
-      const sysPrompt = `你是 RAG-F 项目的智能开发助手。项目基于 Vue3+FastAPI，代码位于 KnowledgeRAG-GZHU 目录。请用中文简洁地回答开发问题。`
+      const fullPrompt = `${systemPrompt}\n\n开发者问题：${userMsg}\n\n请基于上面的项目信息回答：`
       const res = await fetch(`${serverUrl}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model, prompt: `${sysPrompt}\n\n开发者问：${userMsg}`, stream: false }),
-        signal: AbortSignal.timeout(30000),
+        body: JSON.stringify({ model, prompt: fullPrompt, stream: false }),
+        signal: AbortSignal.timeout(60000),
       })
+      if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`)
       const data = await res.json()
       wbMessages.value.push({ role: 'assistant', content: data.response || '抱歉，无法获取回复' })
     } catch {
       wbMessages.value.push({
         role: 'assistant',
-        content: '⚠️ WorkBuddy 和 Ollama 均未连接。\n\n建议：\n1. 打开 WorkBuddy 客户端并启用本地服务\n2. 或启动 Ollama: `ollama serve`\n\n您的问题已记录，可稍后重试。'
+        content: `⚠️ **WorkBuddy 和 Ollama 均未连接**
+
+**项目上下文已收集完毕**，等待 AI 引擎：
+- 启动 WorkBuddy：打开客户端 → 设置 → 启用本地 API
+- 或启动 Ollama：\`ollama serve\`，然后 \`ollama pull qwen2:0.5b\`
+
+您的问题「${userMsg}」已记录，连接成功后请重新发送。`,
       })
     }
   } finally {
@@ -478,6 +636,16 @@ async function sendWbMessage() {
     wbMsgsEl.value?.scrollTo({ top: wbMsgsEl.value.scrollHeight, behavior: 'smooth' })
   }
 }
+
+// 预设开发问题快捷入口
+const wbQuickQuestions = [
+  '当前项目有哪些已知问题？',
+  '后端哪些 API 端点还没有前端UI对应？',
+  '如何启动完整的本地开发环境？',
+  '最近修改了哪些文件？有什么需要注意的？',
+  '前端路由结构是否合理？有优化建议吗？',
+  '审计日志为什么没有记录数据？',
+]
 
 // ─── 环境变量 ────────────────────────────────────────────────
 const envVars = reactive<Record<string, string>>({

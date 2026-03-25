@@ -94,6 +94,16 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../components/graph-unit/graph-main.vue'),
   },
   {
+    path: '/square',
+    name: 'SharedSquare',
+    component: () => import('../views/SharedKnowledge/SharedSquare.vue')
+  },
+  {
+    path: '/shared/:id',
+    name: 'SharedDetail',
+    component: () => import('../views/SharedKnowledge/SharedDetail.vue')
+  },
+  {
     path: '/devtools',
     name: 'DevTools',
     component: () => import('../views/DevTools.vue'),

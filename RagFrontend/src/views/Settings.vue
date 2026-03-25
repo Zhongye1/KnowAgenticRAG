@@ -252,6 +252,16 @@
       </div>
     </div>
 
+    <!-- ── 8大方向扩展 Tab ──────────────────────────────────────── -->
+    <OcrTab v-if="activeTab === 'ocr'" />
+    <VersionTab v-if="activeTab === 'version'" />
+    <RbacTab v-if="activeTab === 'rbac'" />
+    <RagEvalTab v-if="activeTab === 'rageval'" />
+    <EnterpriseToolsTab v-if="activeTab === 'tools'" />
+    <MultiModelTab v-if="activeTab === 'multimodel'" />
+    <ComplianceTab v-if="activeTab === 'compliance'" />
+    <CommercialTab v-if="activeTab === 'commercial'" />
+
     <!-- ── 办公联动 ────────────────────────────────────────────── -->
     <div v-if="activeTab === 'integrations'" class="tab-content">
       <div class="section-header">
@@ -367,6 +377,14 @@
 import { ref, onMounted, reactive, computed } from 'vue'
 import axios from 'axios'
 import { MessagePlugin } from 'tdesign-vue-next'
+import OcrTab from './SettingsTabs/OcrTab.vue'
+import VersionTab from './SettingsTabs/VersionTab.vue'
+import RbacTab from './SettingsTabs/RbacTab.vue'
+import RagEvalTab from './SettingsTabs/RagEvalTab.vue'
+import EnterpriseToolsTab from './SettingsTabs/EnterpriseToolsTab.vue'
+import MultiModelTab from './SettingsTabs/MultiModelTab.vue'
+import ComplianceTab from './SettingsTabs/ComplianceTab.vue'
+import CommercialTab from './SettingsTabs/CommercialTab.vue'
 
 const activeTab = ref('apikeys')
 const tabs = [
@@ -374,6 +392,14 @@ const tabs = [
   { id: 'datasources', label: '多数据源', icon: '🗄️' },
   { id: 'audit', label: '审计日志', icon: '📋' },
   { id: 'integrations', label: '办公联动', icon: '🔗' },
+  { id: 'ocr', label: 'OCR 解析', icon: '📄' },
+  { id: 'version', label: '版本管理', icon: '📚' },
+  { id: 'rbac', label: '角色权限', icon: '🛡️' },
+  { id: 'rageval', label: 'RAG 评估', icon: '🔬' },
+  { id: 'tools', label: '企业工具', icon: '🧰' },
+  { id: 'multimodel', label: '多模型', icon: '🤖' },
+  { id: 'compliance', label: '合规中心', icon: '✅' },
+  { id: 'commercial', label: '商业化', icon: '💎' },
 ]
 
 // ── API Key ────────────────────────────────────────────────────
@@ -601,7 +627,9 @@ async function copyWebhook() {
 .settings-tabs {
   display: flex; gap: 4px; margin-bottom: 24px;
   background: white; border-radius: 10px; padding: 4px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06); width: fit-content;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  width: 100%; max-width: 100%; overflow-x: auto;
+  flex-wrap: wrap;
 }
 .tab-btn {
   padding: 8px 18px; border-radius: 7px; border: none;
