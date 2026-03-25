@@ -58,6 +58,26 @@
 
       <!-- RAG 模式区域 -->
       <div class="rag-panel">
+        <!-- 模型选择器 -->
+        <div class="rag-toggle-row" style="border-bottom:none; padding-bottom:4px;">
+          <div class="rag-toggle-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path stroke-linecap="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v3"/>
+            </svg>
+            <span style="font-size:12px;">模型</span>
+          </div>
+          <ModelSelector v-model="selectedModel" />
+        </div>
+        <!-- 检索策略（RAG 模式下显示） -->
+        <div v-if="ragMode" class="rag-toggle-row" style="border-top:none; padding-top:2px;">
+          <div class="rag-toggle-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path stroke-linecap="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/>
+            </svg>
+            <span style="font-size:12px;">检索策略</span>
+          </div>
+          <RetrievalConfig v-model="retrievalConfig" />
+        </div>
         <!-- RAG 模式开关 -->
         <div class="rag-toggle-row">
           <div class="rag-toggle-label">
@@ -162,6 +182,9 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch, reactive, onMounted } from "vue";
 import chatMainUnit from "../components/chat-main-unit/chat-main-unit.vue";
+import ModelSelector from "../components/ModelSelector.vue";
+import RetrievalConfig from "../components/RetrievalConfig.vue";
+import type { RetrievalConfig as RetrievalConfigType } from "../components/RetrievalConfig.vue";
 import { useRouter, useRoute } from "vue-router";
 import { MessagePlugin } from "tdesign-vue-next";
 import axios from "axios";
@@ -213,6 +236,14 @@ const chatSessions = ref<ChatSession[]>([]);
 const ragMode = ref(false);
 const selectedKbId = ref<string>('');
 const kbList = ref<any[]>([]);
+
+// ====== 多模型 & 检索策略 ======
+const selectedModel = ref(localStorage.getItem('selected_model') || 'qwen2:0.5b');
+const retrievalConfig = ref<RetrievalConfigType>({
+  strategy: 'rrf', topK: 6, scoreThreshold: 0.3,
+  vectorWeight: 0.6, bm25Weight: 0.4, rerank: false, rerankTopN: 3,
+});
+watch(selectedModel, (v) => localStorage.setItem('selected_model', v));
 
 const kbSelectOptions = computed(() =>
   kbList.value.map((kb: any) => ({

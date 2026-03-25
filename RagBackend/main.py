@@ -40,6 +40,17 @@ async def _init_db_tables():
             f"MySQL 数据表初始化失败（MySQL 可能未启动）: {e}\n"
             "用户相关功能暂不可用，其他服务正常运行。"
         )
+    # 初始化本地 SQLite 辅助表
+    try:
+        from audit.audit_log import ensure_audit_table
+        from open_api.api_key_manager import ensure_apikey_table
+        from data_sources.datasource_manager import ensure_datasource_table
+        ensure_audit_table()
+        ensure_apikey_table()
+        ensure_datasource_table()
+        logger.info("本地辅助数据表初始化完成（审计日志/API Key/数据源）")
+    except Exception as e:
+        logger.warning(f"本地辅助表初始化失败: {e}")
 
 # 配置CORS
 app.add_middleware(
@@ -49,6 +60,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# 审计日志中间件（在 CORS 之后注册，确保所有 API 调用均被记录）
+try:
+    from audit.audit_log import AuditMiddleware
+    app.add_middleware(AuditMiddleware)
+    logger.info("审计日志中间件已挂载")
+except Exception as _e:
+    logger.warning(f"审计日志中间件挂载失败: {_e}")
 
 # 异步任务队列（暂未启用，保留扩展入口）
 # 如需启用 Celery，安装 celery[redis] 并取消注释以下代码：
@@ -88,6 +107,12 @@ from RAGF_User_Management.QQ_Login import router as qq_login_router
 # 密码重置
 from RAGF_User_Management.Reset_Password import router as reset_password_router
 
+# ── 新增模块导入 ──────────────────────────────────────────────
+from multi_model.model_router import router as model_router
+from audit.audit_log import router as audit_router, ensure_audit_table, AuditMiddleware
+from open_api.api_key_manager import router as apikey_router, ensure_apikey_table
+from data_sources.datasource_manager import router as datasource_router, ensure_datasource_table
+
 app.include_router(knowledge_CURD, tags=["知识库CURD接口"])  # 知识库CURD接口
 app.include_router(doc_manage, tags=["文件处理服务接口"])  # 文件管理接口
 app.include_router(upload_models, tags=["文档上传服务接口"]) #文件上传接口
@@ -113,6 +138,12 @@ app.include_router(reset_password_router, tags=["密码重置"])
 
 #
 app.include_router(doc_list, prefix="/api/files",tags=["文件列表服务接口"])  # 文档列表接口
+
+# ── 新增路由注册 ──────────────────────────────────────────────
+app.include_router(model_router, tags=["多模型适配接口"])
+app.include_router(audit_router, tags=["审计日志接口"])
+app.include_router(apikey_router, tags=["开放API-Key管理"])
+app.include_router(datasource_router, tags=["多数据源接入"])
 
 # 添加静态文件服务
 # 将图片存储目录映射到/static URL路径

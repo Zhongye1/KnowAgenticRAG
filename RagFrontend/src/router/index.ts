@@ -57,6 +57,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../views/DOC.vue')
   },
   {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('../views/Settings.vue')
+  },
+  {
     path: '/LogonOrRegister',
     name: '登录',
     component: () => import('../views/LogonOrRegister/LogonOrRegister.vue')

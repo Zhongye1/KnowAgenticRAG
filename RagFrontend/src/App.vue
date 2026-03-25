@@ -1,18 +1,19 @@
 <template>
   <t-config-provider :global-config="{ classPrefix: 't' }">
-    <!-- 登录页：不显示侧边栏 -->
-    <div v-if="!showSidebar" class="app-fullpage">
-      <router-view />
-    </div>
-
-    <!-- 主应用布局：左侧导航 + 右侧内容 -->
-    <div v-else class="app-layout">
-      <SideBar @openSearch="openSearch" />
-      <main class="app-main">
+    <ErrorBoundary>
+      <!-- 登录页：不显示侧边栏 -->
+      <div v-if="!showSidebar" class="app-fullpage">
         <router-view />
-      </main>
-    </div>
+      </div>
 
+      <!-- 主应用布局：左侧导航 + 右侧内容 -->
+      <div v-else class="app-layout">
+        <SideBar @openSearch="openSearch" />
+        <main class="app-main">
+          <router-view />
+        </main>
+      </div>
+    </ErrorBoundary>
     <!-- 全局快捷搜索 -->
     <GlobalSearch :visible="searchVisible" @close="searchVisible = false" />
   </t-config-provider>
@@ -23,6 +24,7 @@ import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useRoute } from 'vue-router';
 import SideBar from './components/SideBar.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
+import ErrorBoundary from './components/ErrorBoundary.vue';
 import "@/assets/scroll.css";
 
 const route = useRoute();
