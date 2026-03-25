@@ -123,6 +123,8 @@ try:
 except ImportError as _e:
     logger.warning(f"Whisper 模块导入失败（openai-whisper 未安装？）: {_e}")
     _whisper_available = False
+# 用户反馈
+from feedback.feedback_router import router as feedback_router
 # 办公生态联动（Obsidian + 飞书）
 try:
     from integrations.obsidian_sync import router as obsidian_router
@@ -165,6 +167,7 @@ app.include_router(apikey_router, tags=["开放API-Key管理"])
 app.include_router(datasource_router, tags=["多数据源接入"])
 app.include_router(incremental_vectorize_router, tags=["增量向量化"])
 app.include_router(web_search_router, tags=["Agent联网搜索"])
+app.include_router(feedback_router, tags=["用户反馈"])
 if _whisper_available:
     app.include_router(whisper_router, tags=["多模态-语音识别(Whisper)"])
 if _integrations_available:

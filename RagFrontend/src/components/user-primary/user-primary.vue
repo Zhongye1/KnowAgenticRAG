@@ -152,10 +152,11 @@ import { useDataUserStore } from '@/store/modules/useDataUser';
 import { Icon as TIcon } from 'tdesign-icons-vue-next';
 import {
   MessagePlugin,
-  DialogPlugin,    // 使用DialogPlugin代替Dialog
+  DialogPlugin,
 } from 'tdesign-vue-next';
 import API_ENDPOINTS from '@/utils/apiConfig';
 import router from '@/router';
+import { setLocale, locale as currentLocale } from '@/i18n';
 
 // 用户体验改进计划开关
 const uxImprovement = ref(true);
@@ -171,7 +172,7 @@ const userInfo = reactive({
   bio: '',
   url: '',
   devMode: 'default',
-  language: 'zh-CN'
+  language: currentLocale.value as string
 });
 
 const emails = ref<string[]>([]);
@@ -181,7 +182,8 @@ const devModeOptions = [
 ];
 
 const languageOptions = [
-  { label: '中文', value: 'zh-CN' },
+  { label: '中文', value: 'zh' },
+  { label: 'English', value: 'en' },
 ];
 
 // 添加计算属性处理头像URL
@@ -278,9 +280,10 @@ const onDevModeChange = (value: string) => {
   MessagePlugin.success(`开发模式已更新为: ${value === 'default' ? '默认' : '高级'}`);
 };
 
-// 语言设置变更事件
+// 语言设置变更事件 — 真正调用 setLocale 使切换立即生效
 const onLanguageChange = (value: string) => {
-  MessagePlugin.success(`语言已切换为: ${value === 'zh-CN' ? '中文' : 'English'}`);
+  setLocale(value as 'zh' | 'en')
+  MessagePlugin.success(`界面语言已切换为: ${value === 'zh' ? '中文' : 'English'}`)
 };
 
 // 登出账号事件

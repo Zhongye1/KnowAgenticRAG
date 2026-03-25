@@ -1,5 +1,5 @@
 // src/i18n/index.ts
-// 简易 i18n 实现 - 中英文切换
+// 简易 i18n 实现 - 中英文切换（响应式修复版）
 
 import { ref, computed } from 'vue'
 
@@ -13,10 +13,36 @@ export function setLocale(lang: Locale) {
   _locale.value = lang
   localStorage.setItem('locale', lang)
   document.documentElement.lang = lang
+  // 强制通知全局响应式更新
+  document.documentElement.setAttribute('data-locale', lang)
 }
 
 export function toggleLocale() {
   setLocale(_locale.value === 'zh' ? 'en' : 'zh')
+}
+
+
+// ── 核心 t() 函数（响应式版：依赖 _locale，自动更新）────────────
+export function t(key: string, params?: Record<string, string>): string {
+  const dict = messages[_locale.value] || messages['zh']
+  let text = dict[key] || messages['zh'][key] || key
+  if (params) {
+    Object.entries(params).forEach(([k, v]) => {
+      text = text.replace(`{${k}}`, v)
+    })
+  }
+  return text
+}
+
+// ── Vue composable ─────────────────────────────────────────────
+export function useI18n() {
+  const currentLocale = computed(() => _locale.value)
+  const isZh = computed(() => _locale.value === 'zh')
+  const isEn = computed(() => _locale.value === 'en')
+  // useT 返回响应式翻译函数（在 computed 内调用 t 即可追踪 _locale）
+  const useT = (key: string, params?: Record<string, string>) =>
+    computed(() => t(key, params))
+  return { t, useT, locale: currentLocale, setLocale, toggleLocale, isZh, isEn }
 }
 
 // ── 翻译字典 ──────────────────────────────────────────────────
@@ -221,22 +247,4 @@ const messages: Record<Locale, Record<string, string>> = {
   },
 }
 
-// ── 核心 t() 函数 ─────────────────────────────────────────────
-export function t(key: string, params?: Record<string, string>): string {
-  const dict = messages[_locale.value] || messages['zh']
-  let text = dict[key] || messages['zh'][key] || key
-  if (params) {
-    Object.entries(params).forEach(([k, v]) => {
-      text = text.replace(`{${k}}`, v)
-    })
-  }
-  return text
-}
 
-// ── Vue composable ─────────────────────────────────────────────
-export function useI18n() {
-  const currentLocale = computed(() => _locale.value)
-  const isZh = computed(() => _locale.value === 'zh')
-  const isEn = computed(() => _locale.value === 'en')
-  return { t, locale: currentLocale, setLocale, toggleLocale, isZh, isEn }
-}

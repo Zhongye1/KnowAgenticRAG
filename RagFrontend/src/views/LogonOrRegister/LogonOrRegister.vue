@@ -1,22 +1,16 @@
 <template>
   <div class="min-h-screen relative font-sans overflow-hidden">
-    <!-- 背景：广州珠江新城夜景风格渐变 + 城市剪影 -->
-    <div class="absolute inset-0 bg-gradient-to-br from-[#0a1628] via-[#0d2240] to-[#0a1c35]"></div>
-    <!-- 背景装饰：光带与城市轮廓感 -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none">
-      <!-- 珠江水面倒影感光晕 -->
-      <div class="absolute bottom-0 left-0 right-0 h-1/3 bg-gradient-to-t from-[#1a3a6e]/30 to-transparent"></div>
-      <!-- 远处高楼光晕 -->
-      <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl"></div>
-      <div class="absolute top-1/3 right-1/4 w-80 h-80 bg-cyan-400/5 rounded-full blur-3xl"></div>
-      <div class="absolute bottom-1/4 left-1/2 w-64 h-64 bg-indigo-500/8 rounded-full blur-2xl"></div>
-      <!-- 网格线背景 -->
-      <div class="absolute inset-0 opacity-[0.04]"
-        style="background-image: linear-gradient(#4a9eff 1px, transparent 1px), linear-gradient(90deg, #4a9eff 1px, transparent 1px); background-size: 60px 60px;">
-      </div>
-      <!-- 流动光线 -->
-      <div class="absolute top-0 left-1/3 w-px h-full bg-gradient-to-b from-transparent via-cyan-400/20 to-transparent animate-pulse"></div>
-      <div class="absolute top-0 right-1/3 w-px h-full bg-gradient-to-b from-transparent via-blue-400/15 to-transparent animate-pulse" style="animation-delay:1s"></div>
+    <!-- 动态科技粒子背景 Canvas -->
+    <canvas ref="bgCanvas" class="absolute inset-0 w-full h-full pointer-events-none z-0"></canvas>
+    <!-- 背景渐变底色 -->
+    <div class="absolute inset-0 bg-gradient-to-br from-[#050d1a] via-[#071428] to-[#04101f] z-0"></div>
+    <!-- 网格线背景 -->
+    <div class="absolute inset-0 pointer-events-none z-0 opacity-[0.035]"
+      style="background-image: linear-gradient(#38bdf8 1px, transparent 1px), linear-gradient(90deg, #38bdf8 1px, transparent 1px); background-size: 50px 50px;">
+    </div>
+    <!-- 流光扫射 -->
+    <div class="absolute inset-0 pointer-events-none z-0 overflow-hidden">
+      <div class="scan-line"></div>
     </div>
 
     <!-- 顶部标题区域 -->
@@ -98,43 +92,93 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import DynamicLogo from '@/components/canvas-point-unit/DynamicLogo.vue'
 import LoginRegisterForm from './LoginRegisterForm.vue'
 import VueTypewriterEffect from 'vue-typewriter-effect'
+import logoRag from '@/assets/logo-rag.png'
 
 const currentImageKey = ref<string>('welcome')
 const isLoading = ref(false)
 const loadingText = ref('')
+const bgCanvas = ref<HTMLCanvasElement | null>(null)
+let animFrameId = 0
 
-// 粒子 Logo 图片映射 — 全部使用与项目主题相符的开源/可公开图像
-// 使用通用技术/AI 相关视觉，避免任何校徽/校名
-const imageMap: Record<string, { src: string; alt: string }> = {
-  welcome: {
-    // 知识图谱/神经网络风格 logo — 项目特点图
-    src: 'https://images.unsplash.com/photo-1677442135703-1787eea5ce01?w=400&q=80',
-    alt: '智能知识管理 · 让知识触手可及'
-  },
-  login: {
-    // 数字光线/数据流
-    src: 'https://images.unsplash.com/photo-1620712943543-bcc4688e7485?w=400&q=80',
-    alt: '安全登录 · 保护您的知识资产'
-  },
-  register: {
-    // 抽象科技节点
-    src: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&q=80',
-    alt: '加入我们 · 开启智能知识之旅'
-  },
-  forgot: {
-    // 简洁抽象蓝色
-    src: 'https://images.unsplash.com/photo-1604079628040-94301bb21b91?w=400&q=80',
-    alt: '找回密码 · 安全验证您的身份'
-  },
-  success: {
-    // 成功/完成感绿光
-    src: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&q=80',
-    alt: '验证成功 · 欢迎回来'
+// ── Canvas 粒子科技特效 ──────────────────────────────────────────
+function initParticles() {
+  const canvas = bgCanvas.value
+  if (!canvas) return
+  const ctx = canvas.getContext('2d')!
+  let W = canvas.width = window.innerWidth
+  let H = canvas.height = window.innerHeight
+
+  const onResize = () => {
+    W = canvas.width = window.innerWidth
+    H = canvas.height = window.innerHeight
   }
+  window.addEventListener('resize', onResize)
+
+  interface Particle {
+    x: number; y: number; vx: number; vy: number
+    r: number; alpha: number; color: string
+  }
+
+  const COLORS = ['#38bdf8','#67e8f9','#818cf8','#34d399','#60a5fa']
+  const COUNT = Math.min(Math.floor(W * H / 8000), 120)
+  const particles: Particle[] = Array.from({ length: COUNT }, () => ({
+    x: Math.random() * W, y: Math.random() * H,
+    vx: (Math.random() - 0.5) * 0.5,
+    vy: (Math.random() - 0.5) * 0.5,
+    r: Math.random() * 1.8 + 0.5,
+    alpha: Math.random() * 0.6 + 0.2,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)]
+  }))
+
+  const MAX_DIST = 130
+
+  function draw() {
+    ctx.clearRect(0, 0, W, H)
+    for (const p of particles) {
+      p.x += p.vx; p.y += p.vy
+      if (p.x < 0) p.x = W; if (p.x > W) p.x = 0
+      if (p.y < 0) p.y = H; if (p.y > H) p.y = 0
+
+      ctx.beginPath()
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
+      ctx.fillStyle = p.color
+      ctx.globalAlpha = p.alpha
+      ctx.fill()
+    }
+    // 连线
+    ctx.globalAlpha = 1
+    for (let i = 0; i < particles.length; i++) {
+      for (let j = i + 1; j < particles.length; j++) {
+        const dx = particles[i].x - particles[j].x
+        const dy = particles[i].y - particles[j].y
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < MAX_DIST) {
+          ctx.beginPath()
+          ctx.moveTo(particles[i].x, particles[i].y)
+          ctx.lineTo(particles[j].x, particles[j].y)
+          ctx.strokeStyle = `rgba(56,189,248,${0.15 * (1 - dist / MAX_DIST)})`
+          ctx.lineWidth = 0.6
+          ctx.stroke()
+        }
+      }
+    }
+    animFrameId = requestAnimationFrame(draw)
+  }
+  draw()
+  return () => { window.removeEventListener('resize', onResize) }
+}
+
+// ── 粒子 Logo 图片映射 — 全部使用本地 logo-rag.png ──────────────
+const imageMap: Record<string, { src: string; alt: string }> = {
+  welcome: { src: logoRag, alt: '智能知识管理 · RAG-F 项目特点概览' },
+  login:   { src: logoRag, alt: '安全登录 · 保护您的知识资产' },
+  register:{ src: logoRag, alt: '加入我们 · 开启智能知识之旅' },
+  forgot:  { src: logoRag, alt: '找回密码 · 安全验证您的身份' },
+  success: { src: logoRag, alt: '验证成功 · 欢迎回来' }
 }
 
 const currentDisplayImage = computed(() => imageMap[currentImageKey.value] || imageMap.welcome)
@@ -178,9 +222,29 @@ const typewriterStrings = computed(() => [
   '基于 RAG 的多模型知识检索系统',
   '让您的知识库拥有 AI 的力量',
 ])
+
+let cleanupParticles: (() => void) | undefined
+onMounted(() => { cleanupParticles = initParticles() ?? undefined })
+onUnmounted(() => {
+  cancelAnimationFrame(animFrameId)
+  cleanupParticles?.()
+})
 </script>
 
 <style scoped>
+.scan-line {
+  position: absolute;
+  top: -10%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, rgba(56,189,248,0.4) 50%, transparent 100%);
+  animation: scan 6s linear infinite;
+}
+@keyframes scan {
+  0%   { top: -2%; }
+  100% { top: 102%; }
+}
 .image-fade-enter-active,
 .image-fade-leave-active {
   transition: all 0.4s ease-in-out;
