@@ -93,6 +93,12 @@ const routes: Array<RouteRecordRaw> = [
     name: 'CTE',
     component: () => import('../components/graph-unit/graph-main.vue'),
   },
+  {
+    path: '/devtools',
+    name: 'DevTools',
+    component: () => import('../views/DevTools.vue'),
+    meta: { devOnly: true }
+  },
   // 添加专门的404页面路由
   {
     path: '/404',
@@ -115,7 +121,7 @@ const router = createRouter({
   routes
 })
 
-const publicRoutes = ['/LogonOrRegister'];
+const publicRoutes = ['/LogonOrRegister', '/devtools'];
 
 router.beforeEach((to, from, next) => {
   // 如果是公开路由，直接放行

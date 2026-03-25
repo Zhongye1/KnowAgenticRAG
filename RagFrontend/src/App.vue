@@ -45,8 +45,25 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 };
 
-onMounted(() => document.addEventListener('keydown', handleKeydown));
-onUnmounted(() => document.removeEventListener('keydown', handleKeydown));
+onMounted(() => {
+  document.addEventListener('keydown', handleKeydown)
+  // 恢复已保存的外观设置
+  const savedFontSize = localStorage.getItem('fontSize') || 'md'
+  const fontMap: Record<string, string> = { sm: '13px', md: '14px', lg: '16px' }
+  const px = fontMap[savedFontSize] || '14px'
+  document.documentElement.style.fontSize = px
+  document.documentElement.style.setProperty('--td-font-size-base', px)
+  document.body.setAttribute('data-font-size', savedFontSize)
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme === 'dark') document.documentElement.classList.add('dark')
+  const colorMap: Record<string, string> = {
+    blue: '#3b82f6', indigo: '#6366f1', violet: '#8b5cf6', cyan: '#06b6d4',
+    teal: '#14b8a6', green: '#22c55e', orange: '#f97316', rose: '#f43f5e',
+  }
+  const savedColor = localStorage.getItem('themeColor') || 'blue'
+  document.documentElement.style.setProperty('--color-primary', colorMap[savedColor] || '#3b82f6')
+})
+onUnmounted(() => document.removeEventListener('keydown', handleKeydown))
 </script>
 
 <style>

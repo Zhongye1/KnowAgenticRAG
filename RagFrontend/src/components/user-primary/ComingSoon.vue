@@ -15,7 +15,7 @@
               <p class="text-sm text-gray-500 mt-0.5">切换界面深色 / 浅色主题</p>
             </div>
           </div>
-          <t-switch v-model="isDark" size="large" @change="applyDarkMode" />
+          <t-switch v-model="isDark" size="large" @change="(v: any) => applyDarkMode(Boolean(v))" />
         </div>
       </div>
 
@@ -149,7 +149,7 @@
                 <p class="text-sm text-gray-500 mt-0.5">通过语音与 AI 对话，支持语音输入和转录</p>
               </div>
             </div>
-            <t-switch v-model="voiceEnabled" size="large" @change="onVoiceToggle" />
+            <t-switch v-model="voiceEnabled" size="large" @change="(v: any) => onVoiceToggle(Boolean(v))" />
           </div>
 
           <!-- 语音录制区（仅在启用后显示） -->
@@ -194,20 +194,49 @@
         </div>
 
         <!-- 其他实验功能 -->
-        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-xl opacity-60">
-          <div>
-            <h4 class="font-medium text-gray-700">新界面布局</h4>
-            <p class="text-sm text-gray-400">尝试全新的界面布局设计（开发中）</p>
+        <div class="border border-gray-200 rounded-xl p-5">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">🖥️</span>
+              <div>
+                <h4 class="font-medium text-gray-900">新界面布局</h4>
+                <p class="text-sm text-gray-500 mt-0.5">沉浸式全屏对话布局，隐藏侧边栏，聚焦内容</p>
+              </div>
+            </div>
+            <t-switch v-model="newLayoutEnabled" size="large" @change="(v: any) => applyNewLayout(Boolean(v))" />
           </div>
-          <t-switch size="large" disabled />
+          <div v-if="newLayoutEnabled" class="mt-3 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
+            ✅ 已启用新布局：侧边栏自动收起，内容区更宽。切换到「AI对话」页即可体验。
+          </div>
         </div>
 
-        <div class="flex items-center justify-between p-4 border border-gray-200 rounded-xl opacity-60">
-          <div>
-            <h4 class="font-medium text-gray-700">AI 智能摘要</h4>
-            <p class="text-sm text-gray-400">自动为长文档生成摘要（开发中）</p>
+        <div class="border border-gray-200 rounded-xl p-5">
+          <div class="flex items-start justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <span class="text-2xl">🤖</span>
+              <div>
+                <h4 class="font-medium text-gray-900">AI 智能摘要</h4>
+                <p class="text-sm text-gray-500 mt-0.5">自动为长文档生成摘要，在知识库详情页展示</p>
+              </div>
+            </div>
+            <t-switch v-model="aiSummaryEnabled" size="large" @change="(v: any) => onAiSummaryToggle(Boolean(v))" />
           </div>
-          <t-switch size="large" disabled />
+
+          <!-- 摘要测试区 -->
+          <div v-if="aiSummaryEnabled" class="mt-3 pt-3 border-t border-gray-100">
+            <p class="text-xs text-gray-500 mb-2">快速测试：粘贴一段文字，生成摘要</p>
+            <t-textarea v-model="summaryInput" placeholder="粘贴需要摘要的文本..." :rows="3" :maxlength="3000" />
+            <div class="flex gap-2 mt-2">
+              <t-button size="small" theme="primary" :loading="summaryLoading" @click="generateSummary">
+                生成摘要
+              </t-button>
+              <t-button size="small" variant="outline" @click="summaryInput = ''; summaryResult = ''">清除</t-button>
+            </div>
+            <div v-if="summaryResult" class="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+              <p class="text-xs text-gray-400 mb-1 font-medium">AI 摘要结果：</p>
+              <p class="leading-relaxed">{{ summaryResult }}</p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -244,7 +273,7 @@
         <!-- 联系方式 -->
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">您的邮箱（选填，方便我们回复）</label>
-          <t-input v-model="feedback.email" placeholder="example@email.com" type="email" />
+          <t-input v-model="feedback.email" placeholder="example@email.com" type="text" />
         </div>
 
         <!-- 提交按钮 -->
@@ -368,7 +397,14 @@ function applyLayout(key: string) {
 function applyFontSize(val: string | number | boolean) {
   const size = val as string
   const map: Record<string, string> = { sm: '13px', md: '14px', lg: '16px' }
-  document.documentElement.style.fontSize = map[size] || '14px'
+  const px = map[size] || '14px'
+  // 同时设置 html font-size（影响 rem 单位）和 TDesign CSS 变量
+  document.documentElement.style.fontSize = px
+  document.documentElement.style.setProperty('--td-font-size-base', px)
+  document.documentElement.style.setProperty('--td-font-size-s', size === 'sm' ? '11px' : size === 'lg' ? '14px' : '12px')
+  document.documentElement.style.setProperty('--td-font-size-l', size === 'sm' ? '15px' : size === 'lg' ? '18px' : '16px')
+  // 直接给 body 加 class，方便 CSS 选择器覆盖
+  document.body.setAttribute('data-font-size', size)
   localStorage.setItem('fontSize', size)
 }
 function saveAppearance() {
@@ -471,36 +507,50 @@ function stopRecording() {
 
 async function handleRecordingStop() {
   const blob = new Blob(audioChunks, { type: 'audio/webm' })
-  const formData = new FormData()
-  formData.append('file', blob, 'recording.webm')
+  voiceStatus.value = '处理中...'
+
+  // 先尝试浏览器原生语音识别（最稳定）
+  const nativeResult = await tryBrowserSpeech()
+  if (nativeResult) {
+    transcriptText.value = nativeResult
+    voiceStatus.value = '识别完成'
+    return
+  }
+
+  // 浏览器不支持时，尝试后端 Whisper
   try {
+    const formData = new FormData()
+    formData.append('file', blob, 'recording.webm')
     const jwt = localStorage.getItem('jwt') || ''
     const res = await axios.post('/api/voice/transcribe', formData, {
-      headers: { Authorization: `Bearer ${jwt}` }
+      headers: { Authorization: `Bearer ${jwt}` },
+      timeout: 15000,
     })
     transcriptText.value = res.data?.text || ''
-    voiceStatus.value = '转录完成'
+    voiceStatus.value = '转录完成（Whisper）'
   } catch {
-    // 后端离线时降级到浏览器 Web Speech API
-    voiceStatus.value = '后端转录失败，尝试浏览器识别...'
-    useBrowserSpeech()
+    voiceStatus.value = '转录失败，请重试'
+    MessagePlugin.warning('语音识别失败，请确保麦克风权限或后端 Whisper 已安装')
   }
 }
 
-function useBrowserSpeech() {
-  const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-  if (!SpeechRecognition) {
-    voiceStatus.value = '当前浏览器不支持语音识别'
-    return
-  }
-  const recognition = new SpeechRecognition()
-  recognition.lang = 'zh-CN'
-  recognition.onresult = (e: any) => {
-    transcriptText.value = e.results[0][0].transcript
-    voiceStatus.value = '识别完成（浏览器）'
-  }
-  recognition.onerror = () => { voiceStatus.value = '语音识别失败' }
-  recognition.start()
+function tryBrowserSpeech(): Promise<string | null> {
+  return new Promise((resolve) => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) { resolve(null); return }
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'zh-CN'
+    recognition.continuous = false
+    recognition.interimResults = false
+    // 5秒超时
+    const timer = setTimeout(() => { recognition.stop(); resolve(null) }, 5000)
+    recognition.onresult = (e: any) => {
+      clearTimeout(timer)
+      resolve(e.results[0]?.[0]?.transcript || null)
+    }
+    recognition.onerror = () => { clearTimeout(timer); resolve(null) }
+    recognition.start()
+  })
 }
 
 function sendTranscript() {
@@ -516,6 +566,54 @@ onUnmounted(() => {
     mediaRecorder.stream.getTracks().forEach(t => t.stop())
   }
 })
+
+// ─────────────────── ③-ext 新布局 & AI摘要 ─────────────────────
+const newLayoutEnabled = ref(localStorage.getItem('newLayoutEnabled') === 'true')
+const aiSummaryEnabled = ref(localStorage.getItem('aiSummaryEnabled') === 'true')
+const summaryInput = ref('')
+const summaryResult = ref('')
+const summaryLoading = ref(false)
+
+function applyNewLayout(val: boolean) {
+  localStorage.setItem('newLayoutEnabled', String(val))
+  // 给 body 加属性，让侧边栏 CSS 响应
+  document.body.setAttribute('data-new-layout', val ? 'true' : 'false')
+  MessagePlugin.success(val ? '新布局已启用，侧边栏将自动收起' : '已恢复默认布局')
+}
+
+function onAiSummaryToggle(val: boolean) {
+  localStorage.setItem('aiSummaryEnabled', String(val))
+  MessagePlugin.success(val ? 'AI智能摘要已启用' : '已关闭AI智能摘要')
+}
+
+async function generateSummary() {
+  if (!summaryInput.value.trim()) { MessagePlugin.warning('请先输入需要摘要的文本'); return }
+  if (summaryInput.value.length < 50) { MessagePlugin.warning('文本太短，无需摘要'); return }
+  summaryLoading.value = true
+  summaryResult.value = ''
+  try {
+    // 调用 Ollama 生成摘要
+    const serverUrl = JSON.parse(localStorage.getItem('ollamaSettings') || '{}').serverUrl || 'http://localhost:11434'
+    const model = localStorage.getItem('selected_model') || 'qwen2:0.5b'
+    const prompt = `请用3-5句话对以下内容进行简洁摘要，只输出摘要内容，不要有任何前缀：\n\n${summaryInput.value.substring(0, 2000)}`
+    const res = await fetch(`${serverUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model, prompt, stream: false }),
+      signal: AbortSignal.timeout(30000),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    summaryResult.value = data.response?.trim() || '摘要生成失败'
+  } catch (e: any) {
+    // 离线时用简单截断摘要
+    const sentences = summaryInput.value.replace(/\n+/g, ' ').split(/[。！？.!?]/).filter(s => s.trim().length > 5)
+    summaryResult.value = sentences.slice(0, 3).join('。') + '。' || summaryInput.value.substring(0, 100) + '...'
+    MessagePlugin.info('Ollama 离线，已生成基础摘要')
+  } finally {
+    summaryLoading.value = false
+  }
+}
 
 // ─────────────────── ④ 反馈与建议 ─────────────────────────────
 const feedbackLoading = ref(false)
@@ -540,31 +638,41 @@ async function submitFeedback() {
   if (!feedback.content.trim()) { MessagePlugin.warning('请填写详细描述'); return }
 
   feedbackLoading.value = true
+  let submitted = false
   try {
     const jwt = localStorage.getItem('jwt') || ''
-    await axios.post('/api/feedback/submit', {
-      type: feedback.type,
-      title: feedback.title,
-      content: feedback.content,
-      email: feedback.email,
+    const resp = await axios.post('/api/feedback/submit', {
+      type: feedback.type, title: feedback.title,
+      content: feedback.content, email: feedback.email,
       to: '13425121993@163.com'
-    }, {
-      headers: { Authorization: `Bearer ${jwt}` }
-    })
-    feedbackSent.value = true
-    MessagePlugin.success('反馈提交成功！')
-    resetFeedback()
+    }, { headers: { Authorization: `Bearer ${jwt}` }, timeout: 8000 })
+
+    if (resp.data?.message === 'email_sent') {
+      MessagePlugin.success('反馈已通过邮件发送给开发团队！')
+    } else {
+      // 后端 SMTP 未配置，走 mailto 兜底
+      openMailto()
+    }
+    submitted = true
   } catch {
-    // 后端离线时用 mailto 兜底
-    const subject = encodeURIComponent(`[RAG-F 反馈][${feedback.type}] ${feedback.title}`)
-    const body = encodeURIComponent(
-      `反馈类型：${feedback.type}\n标题：${feedback.title}\n\n详情：\n${feedback.content}\n\n联系邮箱：${feedback.email}`
-    )
-    window.location.href = `mailto:13425121993@163.com?subject=${subject}&body=${body}`
-    feedbackSent.value = true
-    MessagePlugin.success('已打开邮件客户端，请手动发送')
+    // 后端离线或网络失败，走 mailto 兜底
+    openMailto()
+    submitted = true
   } finally {
+    if (submitted) {
+      feedbackSent.value = true
+      resetFeedback()
+    }
     feedbackLoading.value = false
   }
+}
+
+function openMailto() {
+  const subject = encodeURIComponent(`[RAG-F 反馈][${feedback.type}] ${feedback.title}`)
+  const body = encodeURIComponent(
+    `反馈类型：${feedback.type}\n标题：${feedback.title}\n\n详情：\n${feedback.content}\n\n联系邮箱：${feedback.email}`
+  )
+  window.open(`mailto:13425121993@163.com?subject=${subject}&body=${body}`, '_blank')
+  MessagePlugin.success('已打开邮件客户端，请检查并手动发送')
 }
 </script>

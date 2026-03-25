@@ -1,7 +1,7 @@
 <template>
-  <div class="height-full flex">
+  <div class="chat-page-root">
     <!-- 侧边栏：对话历史记录 -->
-    <div class="w-64 border-r border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700 flex flex-col">
+    <div class="chat-sidebar">
       <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
         <h2 class="font-medium text-gray-900 dark:text-white">对话历史</h2>
 
@@ -15,7 +15,7 @@
       </div>
 
       <!-- 加载状态 -->
-      <div v-if="loading && chatSessions.length === 0" class="flex-1 flex items-center justify-center">
+      <div v-if="loading && chatSessions.length === 0" class="sidebar-loading">
         <div class="text-center">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
           <p class="text-sm text-gray-500 dark:text-gray-400">加载对话历史...</p>
@@ -23,7 +23,7 @@
       </div>
 
       <!-- 会话列表 -->
-      <div v-else class="flex-1 overflow-y-auto p-3 space-y-2">
+      <div v-else class="sidebar-sessions">
         <div v-for="(chat, idx) in chatSessions" :key="chat.id" @click="selectSession(idx)" :class="[
           'px-3 py-2 rounded-md cursor-pointer flex items-center transition-colors duration-200 group',
           currentSessionIndex === idx
@@ -136,7 +136,7 @@
     </div>
 
     <!-- 主聊天区域 -->
-    <div id="chat-container" class="flex height-full">
+    <div class="chat-main-area">
       <!-- 停止提示 -->
       <div v-if="showStopHint"
         class="absolute top-4 right-4 bg-yellow-100 border border-yellow-300 text-yellow-800 px-4 py-2 rounded-md shadow-md z-50 animate-fade-in">
@@ -811,12 +811,52 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-#chat-container {
+/* ── 页面根容器：撑满 app-main 给出的 100vh ── */
+.chat-page-root {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* ── 侧边栏 ── */
+.chat-sidebar {
+  width: 256px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  width: 100%;
+  height: 100%;
+  border-right: 1px solid #e5e7eb;
+  background: #f9fafb;
   overflow: hidden;
-  min-height: calc(100vh - var(--header-height, 0px));
+}
+
+.sidebar-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-sessions {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── 主聊天区域：撑满剩余空间 ── */
+.chat-main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  min-width: 0;
+  position: relative;
 }
 
 /* RAG 模式面板 */
@@ -948,22 +988,6 @@ onUnmounted(() => {
 
   :deep(.t-chat-input:focus) {
     background-color: #4b5563 !important;
-  }
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .w-64 {
-    width: 100%;
-    position: absolute;
-    z-index: 50;
-    height: 100vh;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-  }
-
-  .w-64.open {
-    transform: translateX(0);
   }
 }
 </style>

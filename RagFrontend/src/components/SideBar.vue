@@ -109,7 +109,7 @@
 
       <!-- 语言切换 -->
       <t-tooltip :content="isCollapsed ? (locale === 'zh' ? 'Switch to English' : '切换中文') : ''" placement="right" :show-arrow="false">
-        <button class="nav-item" @click="toggleLocale" :title="locale === 'zh' ? 'Switch to English' : '切换中文'">
+        <button class="nav-item" @click="handleToggleLocale" :title="locale === 'zh' ? 'Switch to English' : '切换中文'">
           <span class="nav-item__icon" style="font-size:15px;">🌐</span>
           <transition name="fade-text">
             <span v-if="!isCollapsed" class="nav-item__label" style="font-size:12px;">{{ locale === 'zh' ? 'EN' : '中文' }}</span>
@@ -153,6 +153,10 @@
               <t-icon name="user" />
               <span class="ml-2">个人中心</span>
             </t-dropdown-item>
+            <t-dropdown-item @click="navigateTo('/devtools')">
+              <t-icon name="code" />
+              <span class="ml-2">开发者模式</span>
+            </t-dropdown-item>
             <t-dropdown-item divided @click="logout" class="text-red-500">
               <t-icon name="logout" />
               <span class="ml-2">退出登录</span>
@@ -165,14 +169,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { MessagePlugin } from 'tdesign-vue-next';
 import { useDataUserStore } from '@/store';
 import API_ENDPOINTS from '@/utils/apiConfig';
-import { useI18n } from '@/i18n';
+import { useI18n, setLocale, locale as _locale } from '@/i18n';
 
-const { locale, toggleLocale } = useI18n();
+const { toggleLocale } = useI18n();
+
+// 使用原始 _locale ref 确保响应式
+const locale = _locale
+
+// 包装 toggleLocale，切换后强制刷新页面上依赖 locale 的文字
+const handleToggleLocale = () => {
+  toggleLocale()
+  // 触发一次全局响应式更新信号（DOM 属性变化已在 setLocale 中完成）
+  MessagePlugin.success(locale.value === 'en' ? 'Language: English' : '语言：中文')
+}
 
 const emit = defineEmits(['openSearch']);
 

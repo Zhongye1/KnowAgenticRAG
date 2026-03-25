@@ -1,7 +1,7 @@
 <template>
   <div class="chat-box">
     <t-chat ref="chatRef" :clear-history="chatList.length > 0 && !isStreamLoad" :data="chatList" :text-loading="loading"
-      :is-stream-load="isStreamLoad" style="height: 100%" class="p-5" @scroll="handleChatScroll" @clear="clearConfirm">
+      :is-stream-load="isStreamLoad" class="chat-inner p-5" @scroll="handleChatScroll" @clear="clearConfirm">
       <template #default="{ item, index }">
         <t-chat-item :key="index" :role="item?.role">
           <template #default>
@@ -705,7 +705,18 @@ const toggleSources = (item) => {
 
 .chat-box {
   position: relative;
+  /* 撑满父容器（chat-main-area）的全部高度 */
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  /* chat-inner 让 t-chat 内部自己处理滚动 */
+  .chat-inner {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
 
   .bottomBtn {
     position: absolute;
