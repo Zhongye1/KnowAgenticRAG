@@ -138,7 +138,7 @@ def _search_ddg_html(query: str, max_results: int = 5) -> str:
     snippets = [re.sub(r'<[^>]+>', '', s).strip() for s in snippets]
 
     if not titles:
-        return f"未找到关于"{query}"的相关结果。"
+        return f"未找到关于'{query}'的相关结果。"
 
     parts = [f"🔍 联网搜索结果：{query}\n"]
     for i in range(min(max_results, len(titles))):
