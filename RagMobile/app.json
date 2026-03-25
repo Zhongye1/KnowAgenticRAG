@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -32,7 +32,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
-        "android.permission.INTERNET"
+        "android.permission.INTERNET",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
       ]
     },
     "web": {
@@ -44,13 +45,15 @@
       "expo-file-system",
       [
         "expo-document-picker",
-        { "iCloudContainerEnvironment": "Production" }
+        {
+          "iCloudContainerEnvironment": "Production"
+        }
       ]
     ],
     "extra": {
       "apiUrl": "http://10.0.2.2:8000",
       "eas": {
-        "projectId": "请在 eas build:configure 后自动填入"
+        "projectId": "bd7173c5-0e97-433b-ac99-12d7ee9f8038"
       }
     }
   }
