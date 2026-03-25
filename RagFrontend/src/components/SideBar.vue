@@ -192,7 +192,7 @@ const isActive = (path: string) => {
 };
 
 const navigateTo = (path: string) => router.push(path);
-const openGitHub = () => window.open('https://github.com/March030303/KnowledgeRAG-GZHU');
+const openGitHub = () => window.open('https://github.com/March030303/KnowledgeRAG');
 
 const logout = async () => {
   await router.push('/LogonOrRegister');

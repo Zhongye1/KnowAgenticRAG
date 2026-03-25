@@ -1,5 +1,5 @@
 """
-test_all_fixes.py  — KnowledgeRAG-GZHU 自动测试套件
+test_all_fixes.py  — KnowledgeRAG 自动测试套件
 测试范围：
   1. doc_list.py — 方法重复定义已消除（语法检查）
   2. 密码硬编码 — 所有 secret 字符串已替换为 os.getenv
@@ -19,9 +19,9 @@ import unittest
 from pathlib import Path
 
 # 项目根目录
-# tests/ -> RagBackend/ -> KnowledgeRAG-GZHU/ -> WorkBuddy/
+# tests/ -> RagBackend/ -> KnowledgeRAG/ -> WorkBuddy/
 BACKEND_ROOT = Path(__file__).resolve().parent.parent   # RagBackend/
-PROJECT_ROOT = BACKEND_ROOT.parent                       # KnowledgeRAG-GZHU/
+PROJECT_ROOT = BACKEND_ROOT.parent                       # KnowledgeRAG/
 sys.path.insert(0, str(BACKEND_ROOT))
 sys.path.insert(0, str(BACKEND_ROOT / "RAG_M"))
 

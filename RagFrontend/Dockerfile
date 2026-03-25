@@ -1,4 +1,4 @@
-# KnowledgeRAG-GZHU 前端 Dockerfile
+# KnowledgeRAG 前端 Dockerfile
 # 两阶段构建：Node.js 构建 → Nginx 托管
 
 # ─────────────────── Stage 1: Builder ───────────────────

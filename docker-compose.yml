@@ -1,7 +1,7 @@
 version: "3.9"
 
 # ================================================================
-# KnowledgeRAG-GZHU — 完整容器化编排
+# KnowledgeRAG — 完整容器化编排
 # 启动方式：docker compose up -d
 # 生产部署：docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 # ================================================================
