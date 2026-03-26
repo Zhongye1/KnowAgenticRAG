@@ -271,6 +271,89 @@
       </div>
     </div>
 
+    <!-- ── 模型配置（用户自定义 Ollama 模型与超时） ──────────── -->
+    <div v-if="activeTab === 'model-config'" class="tab-content">
+      <div class="section-header">
+        <h2>模型配置</h2>
+        <p class="section-desc">自定义 Ollama 服务地址、模型名称和超时设置，解决"Ollama 请求超时"问题</p>
+      </div>
+
+      <!-- 已安装模型提示 -->
+      <div class="mc-installed-bar" v-if="mcLocalModels.length">
+        <span class="mc-installed-title">🟢 本地已安装模型：</span>
+        <span
+          v-for="m in mcLocalModels" :key="m"
+          class="mc-model-chip"
+          @click="mcForm.llm_model = m; mcForm.kg_model = m"
+          title="点击快速填入"
+        >{{ m }}</span>
+      </div>
+      <div class="mc-installed-bar mc-installed-bar--empty" v-else-if="mcLocalFetched">
+        <span>⚠️ 未检测到本地已安装模型，请先在 Ollama 中执行 <code>ollama pull 模型名</code></span>
+      </div>
+
+      <!-- 表单 -->
+      <div class="mc-form">
+        <div class="mc-form-row">
+          <label class="mc-label">Ollama 服务地址</label>
+          <input v-model="mcForm.ollama_base_url" class="mc-input" placeholder="http://localhost:11434" />
+          <button class="mc-btn-secondary" @click="mcFetchLocalModels" :disabled="mcLoadingLocal">
+            {{ mcLoadingLocal ? '检测中...' : '🔍 检测本地模型' }}
+          </button>
+        </div>
+        <div class="mc-form-row">
+          <label class="mc-label">LLM 模型名<span class="mc-required">*</span></label>
+          <input v-model="mcForm.llm_model" class="mc-input" placeholder="如：qwen2:0.5b / llama3:8b" />
+          <span class="mc-hint">RAG 问答使用的主模型</span>
+        </div>
+        <div class="mc-form-row">
+          <label class="mc-label">知识图谱模型</label>
+          <input v-model="mcForm.kg_model" class="mc-input" placeholder="留空则复用 LLM 模型" />
+        </div>
+        <div class="mc-form-row">
+          <label class="mc-label">Embedding 模型</label>
+          <input v-model="mcForm.embedding_model" class="mc-input" placeholder="sentence-transformers/all-MiniLM-L6-v2" />
+        </div>
+        <div class="mc-form-row">
+          <label class="mc-label">请求超时（秒）</label>
+          <input v-model.number="mcForm.timeout" type="number" class="mc-input mc-input--short" min="30" max="600" />
+          <span class="mc-hint">建议 120～300s，大模型可适当增大</span>
+        </div>
+
+        <!-- 操作按钮 -->
+        <div class="mc-actions">
+          <button class="mc-btn-test" @click="mcTestConfig" :disabled="mcTesting">
+            {{ mcTesting ? '测试中...' : '🧪 测试连接' }}
+          </button>
+          <button class="mc-btn-save" @click="mcSaveConfig" :disabled="mcSaving">
+            {{ mcSaving ? '保存中...' : '💾 保存配置' }}
+          </button>
+          <button class="mc-btn-reset" @click="mcLoadConfig">↺ 重置</button>
+        </div>
+
+        <!-- 测试结果 -->
+        <div v-if="mcTestResult" :class="['mc-test-result', mcTestResult.ok ? 'mc-test-result--ok' : 'mc-test-result--err']">
+          <span class="mc-test-icon">{{ mcTestResult.ok ? '✅' : '❌' }}</span>
+          <span>{{ mcTestResult.message }}</span>
+          <div v-if="mcTestResult.installed_models && !mcTestResult.ok" class="mc-installed-hint">
+            已安装模型：{{ mcTestResult.installed_models.join(' / ') || '（无）' }}
+          </div>
+        </div>
+      </div>
+
+      <!-- 说明卡片 -->
+      <div class="mc-tips-card">
+        <h4>💡 常见超时原因与解决办法</h4>
+        <ul>
+          <li>模型参数过大（如 7b+），建议改用 <code>qwen2:0.5b</code>（~400MB，约 600MB 内存）</li>
+          <li>Ollama 服务未启动 → 运行 <code>ollama serve</code></li>
+          <li>模型未下载 → 运行 <code>ollama pull 模型名</code></li>
+          <li>超时设置过短 → 将超时改为 300 秒</li>
+          <li>使用 Docker 时 Ollama 地址应为 <code>http://host.docker.internal:11434</code></li>
+        </ul>
+      </div>
+    </div>
+
     <!-- ── 8大方向扩展 Tab ──────────────────────────────────────── -->
     <OcrTab v-if="activeTab === 'ocr'" />
     <VersionTab v-if="activeTab === 'version'" />
@@ -601,6 +684,7 @@ const tabGroups: Array<{label:string; tabs:Array<{id:string;label:string;icon:st
   {
     label: 'AI 与模型',
     tabs: [
+      { id: 'model-config', label: '模型配置', icon: '⚡', desc: '设置 Ollama 模型与超时' },
       { id: 'multimodel', label: '多模型', icon: '🤖', desc: '配置多个AI模型' },
       { id: 'rageval', label: 'RAG 评估', icon: '🔬', desc: '效果评估与调优' },
       { id: 'tools', label: '企业工具', icon: '🧰', desc: '11种企业级工具' },
@@ -765,8 +849,99 @@ function formatDateTime(ts: number): string {
 
 onMounted(async () => {
   loadPlatformConfigs()
+  mcLoadConfig()
   await Promise.all([fetchKeys(), fetchDatasources(), fetchAuditLogs(), fetchObsidianStatus(), fetchFeishuStatus(), fetchUsageStats()])
 })
+
+// ── 模型配置 ─────────────────────────────────────────────────
+const mcForm = reactive({
+  llm_model: 'qwen2:0.5b',
+  ollama_base_url: 'http://localhost:11434',
+  timeout: 120,
+  embedding_model: 'sentence-transformers/all-MiniLM-L6-v2',
+  kg_model: '',
+})
+const mcSaving = ref(false)
+const mcTesting = ref(false)
+const mcLoadingLocal = ref(false)
+const mcLocalModels = ref<string[]>([])
+const mcLocalFetched = ref(false)
+const mcTestResult = ref<{ ok: boolean; message: string; installed_models?: string[] } | null>(null)
+
+async function mcLoadConfig() {
+  try {
+    const res = await axios.get('/api/user-model-config')
+    const cfg = res.data?.config || {}
+    Object.assign(mcForm, {
+      llm_model: cfg.llm_model || 'qwen2:0.5b',
+      ollama_base_url: cfg.ollama_base_url || 'http://localhost:11434',
+      timeout: cfg.timeout ?? 120,
+      embedding_model: cfg.embedding_model || 'sentence-transformers/all-MiniLM-L6-v2',
+      kg_model: cfg.kg_model || '',
+    })
+    // 顺带拉本地模型
+    await mcFetchLocalModels()
+  } catch {
+    // 后端未启动时静默失败
+  }
+}
+
+async function mcFetchLocalModels() {
+  mcLoadingLocal.value = true
+  mcLocalFetched.value = false
+  try {
+    const res = await axios.get(`/api/user-model-config/local-models?base_url=${encodeURIComponent(mcForm.ollama_base_url)}`)
+    mcLocalModels.value = res.data?.models || []
+    mcLocalFetched.value = true
+  } catch {
+    mcLocalModels.value = []
+    mcLocalFetched.value = true
+  } finally {
+    mcLoadingLocal.value = false
+  }
+}
+
+async function mcSaveConfig() {
+  if (!mcForm.llm_model.trim()) { MessagePlugin.warning('请填写模型名称'); return }
+  mcSaving.value = true
+  try {
+    await axios.post('/api/user-model-config', {
+      llm_model: mcForm.llm_model.trim(),
+      ollama_base_url: mcForm.ollama_base_url.trim(),
+      timeout: mcForm.timeout,
+      embedding_model: mcForm.embedding_model.trim(),
+      kg_model: mcForm.kg_model.trim() || null,
+    })
+    MessagePlugin.success('模型配置已保存，下次 RAG 查询生效')
+  } catch {
+    MessagePlugin.error('保存失败，请确认后端已启动')
+  } finally {
+    mcSaving.value = false
+  }
+}
+
+async function mcTestConfig() {
+  mcTesting.value = true
+  mcTestResult.value = null
+  try {
+    const res = await axios.post('/api/user-model-config/test', {
+      ollama_base_url: mcForm.ollama_base_url.trim(),
+      llm_model: mcForm.llm_model.trim(),
+      timeout: 10,
+    })
+    const d = res.data
+    mcTestResult.value = {
+      ok: d.ollama_reachable && d.model_installed,
+      message: d.message,
+      installed_models: d.installed_models,
+    }
+    if (d.installed_models) mcLocalModels.value = d.installed_models
+  } catch (e: any) {
+    mcTestResult.value = { ok: false, message: `请求失败: ${e?.message || e}` }
+  } finally {
+    mcTesting.value = false
+  }
+}
 
 // ── 办公联动：Obsidian ────────────────────────────────────────
 const obsidianStatus = ref<any>({ configured: false, synced_files: 0 })
@@ -1687,4 +1862,147 @@ async function submitTicket() {
 .ticket-status--closed { background: #dcfce7; color: #15803d; }
 
 .mb-4 { margin-bottom: 16px; }
+
+/* ── 模型配置面板 ────────────────────────────────────────── */
+.mc-installed-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  margin-bottom: 18px;
+  font-size: 13px;
+}
+.mc-installed-bar--empty {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+.mc-installed-title { font-weight: 600; color: #166534; white-space: nowrap; }
+.mc-model-chip {
+  display: inline-block;
+  padding: 2px 10px;
+  background: #dcfce7;
+  color: #166534;
+  border-radius: 12px;
+  font-size: 12px;
+  font-family: monospace;
+  cursor: pointer;
+  border: 1px solid #86efac;
+  transition: background .2s;
+}
+.mc-model-chip:hover { background: #bbf7d0; }
+
+.mc-form { display: flex; flex-direction: column; gap: 14px; margin-bottom: 20px; }
+.mc-form-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mc-label {
+  min-width: 140px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--td-text-color-primary, #1a1a1a);
+}
+.mc-required { color: #ef4444; margin-left: 2px; }
+.mc-input {
+  flex: 1;
+  min-width: 200px;
+  max-width: 380px;
+  padding: 7px 12px;
+  border: 1px solid var(--td-component-border, #dcdcdc);
+  border-radius: 6px;
+  font-size: 13px;
+  background: var(--td-bg-color-container, #fff);
+  color: var(--td-text-color-primary, #1a1a1a);
+  transition: border-color .2s;
+}
+.mc-input:focus { outline: none; border-color: #3b82f6; }
+.mc-input--short { max-width: 100px; }
+.mc-hint { font-size: 12px; color: #6b7280; }
+
+.mc-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.mc-btn-save {
+  padding: 8px 22px;
+  background: #2563eb;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.mc-btn-save:hover:not(:disabled) { background: #1d4ed8; }
+.mc-btn-save:disabled { opacity: .6; cursor: not-allowed; }
+.mc-btn-test {
+  padding: 8px 18px;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.mc-btn-test:hover:not(:disabled) { background: #dcfce7; }
+.mc-btn-test:disabled { opacity: .6; cursor: not-allowed; }
+.mc-btn-secondary {
+  padding: 7px 14px;
+  background: #f9fafb;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mc-btn-secondary:hover:not(:disabled) { background: #f3f4f6; }
+.mc-btn-reset {
+  padding: 8px 14px;
+  background: transparent;
+  color: #6b7280;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mc-btn-reset:hover { background: #f9fafb; }
+
+.mc-test-result {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  margin-top: 4px;
+}
+.mc-test-result--ok { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+.mc-test-result--err { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.mc-test-icon { font-size: 16px; }
+.mc-installed-hint { font-size: 12px; color: #374151; margin-top: 4px; }
+
+.mc-tips-card {
+  padding: 16px 20px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #78350f;
+}
+.mc-tips-card h4 { margin: 0 0 10px; font-size: 14px; }
+.mc-tips-card ul { margin: 0; padding-left: 18px; }
+.mc-tips-card li { margin-bottom: 6px; line-height: 1.5; }
+.mc-tips-card code {
+  background: #fef3c7;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 12px;
+}
 </style>

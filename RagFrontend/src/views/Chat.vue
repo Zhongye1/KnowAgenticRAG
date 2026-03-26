@@ -58,6 +58,12 @@
 
       <!-- RAG 模式区域 -->
       <div class="rag-panel">
+        <!-- 当前模型徽章 + 去设置的快捷入口 -->
+        <div class="current-model-bar" @click="router.push('/settings')" title="点击前往设置页修改模型">
+          <span class="current-model-dot"></span>
+          <span class="current-model-name">{{ currentOllamaModel }}</span>
+          <span class="current-model-goto">⚙ 配置</span>
+        </div>
         <!-- 模型选择器 -->
         <div class="rag-toggle-row" style="border-bottom:none; padding-bottom:4px;">
           <div class="rag-toggle-label">
@@ -244,6 +250,20 @@ const retrievalConfig = ref<RetrievalConfigType>({
   vectorWeight: 0.6, bm25Weight: 0.4, rerank: false, rerankTopN: 3,
 });
 watch(selectedModel, (v) => localStorage.setItem('selected_model', v));
+
+// ====== 当前生效的 Ollama 模型（从后端拉，优先展示用户配置的） ======
+const currentOllamaModel = ref(localStorage.getItem('selected_model') || 'qwen2:0.5b')
+async function syncCurrentOllamaModel() {
+  try {
+    const res = await import('axios').then(m => m.default.get('/api/user-model-config'))
+    const model = res.data?.config?.llm_model
+    if (model) {
+      currentOllamaModel.value = model
+      selectedModel.value = model
+      localStorage.setItem('selected_model', model)
+    }
+  } catch { /* 后端未运行时静默 */ }
+}
 
 const kbSelectOptions = computed(() =>
   kbList.value.map((kb: any) => ({
@@ -778,6 +798,9 @@ onMountedHook(async () => {
   // 注册键盘事件
   document.addEventListener("keydown", handleKeyDown);
 
+  // 同步后端保存的模型配置（更新 selectedModel）
+  await syncCurrentOllamaModel();
+
   // 加载知识库列表（RAG模式使用）
   await loadKbList();
 
@@ -860,6 +883,42 @@ onUnmounted(() => {
 }
 
 /* RAG 模式面板 */
+.current-model-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background .2s;
+}
+.current-model-bar:hover { background: #dcfce7; }
+.current-model-dot {
+  width: 7px;
+  height: 7px;
+  background: #22c55e;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.current-model-name {
+  flex: 1;
+  font-family: monospace;
+  font-size: 11px;
+  color: #166534;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.current-model-goto {
+  font-size: 11px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
 .rag-panel {
   padding: 10px 12px;
   border-top: 1px solid #e5e7eb;

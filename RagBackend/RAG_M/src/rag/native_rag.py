@@ -439,6 +439,7 @@ class NativeRAGPipeline:
         bm25_top_k: int = 5,
         vector_top_k: int = 5,
         final_top_k: int = 4,
+        ollama_timeout: int = 120,   # 新增：Ollama 请求超时（秒），由用户配置
     ):
         self.vectorstore = vectorstore
         self.llm_model = llm_model
@@ -447,6 +448,7 @@ class NativeRAGPipeline:
         self.final_top_k = final_top_k
         self.bm25_top_k = bm25_top_k
         self.vector_top_k = vector_top_k
+        self.ollama_timeout = ollama_timeout
 
         # 构建 BM25
         self._bm25: Optional[NativeBM25] = None
@@ -523,6 +525,7 @@ class NativeRAGPipeline:
                 prompt=prompt,
                 host=self.ollama_host,
                 stream=True,
+                timeout=self.ollama_timeout,
             ):
                 if token.startswith("[ERROR]"):
                     yield f"data: {token}\n\n"
@@ -552,6 +555,7 @@ class NativeRAGPipeline:
             prompt=prompt,
             host=self.ollama_host,
             stream=False,
+            timeout=self.ollama_timeout,
         ))
         answer = "".join(answer_parts)
 

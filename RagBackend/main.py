@@ -251,6 +251,14 @@ try:
 except Exception as _e:
     logger.warning(f"商业化模块加载失败: {_e}")
 
+# 用户自定义模型配置
+try:
+    from models.user_model_config import router as user_model_config_router
+    app.include_router(user_model_config_router, tags=["用户模型配置"])
+    logger.info("用户模型配置模块已加载")
+except Exception as _e:
+    logger.warning(f"用户模型配置模块加载失败: {_e}")
+
 # 添加静态文件服务
 # 将图片存储目录映射到/static URL路径
 app.mount("/static", StaticFiles(directory="local-KLB-files"), name="static")

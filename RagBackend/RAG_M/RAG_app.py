@@ -528,13 +528,31 @@ async def native_query(req: NativeQueryRequest):
     """
     原生 RAG 查询（SSE 流式）
     不依赖 LangChain：直接调用 Ollama /api/generate + faiss-cpu 检索
+    模型配置优先级：用户保存的配置 > 环境变量 > 默认值
     """
     async def generate():
         try:
             from src.rag.native_rag import NativeVectorStore, NativeRAGPipeline
             import os
+            import sys
+            # 尝试读取用户自定义模型配置
+            try:
+                _rag_root = str(Path(__file__).parent.parent)
+                if _rag_root not in sys.path:
+                    sys.path.insert(0, _rag_root)
+                from models.user_model_config import get_effective_config
+                _cfg = get_effective_config()
+                model_name = _cfg.llm_model
+                ollama_host = _cfg.ollama_base_url
+                ollama_timeout = _cfg.timeout
+            except Exception as _cfg_err:
+                print(f"[RAG_app] 读取用户模型配置失败，使用环境变量: {_cfg_err}")
+                model_name = os.getenv("MODEL", "qwen2:0.5b")
+                ollama_host = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+                ollama_timeout = int(os.getenv("OLLAMA_TIMEOUT", "120"))
 
             yield f"data: [原生RAG] 收到查询: {req.query}\n\n"
+            yield f"data: [原生RAG] 使用模型: {model_name}（{ollama_host}，超时: {ollama_timeout}s）\n\n"
 
             # 加载向量存储
             vs_path = os.path.join(req.docs_dir, "native_vectorstore")
@@ -546,13 +564,14 @@ async def native_query(req: NativeQueryRequest):
             vs = NativeVectorStore.load(vs_path)
             yield f"data: [原生RAG] 向量存储加载完成，{len(vs.documents)} 个文档块\n\n"
 
-            # 初始化 Pipeline
-            model_name = os.getenv("MODEL", "qwen2:0.5b")
+            # 初始化 Pipeline（注入用户配置的 host 和 timeout）
             pipeline = NativeRAGPipeline(
                 vectorstore=vs,
                 documents=vs.documents,
                 llm_model=model_name,
+                ollama_host=ollama_host,
                 use_hybrid=req.use_hybrid,
+                ollama_timeout=ollama_timeout,
             )
 
             # 流式生成
