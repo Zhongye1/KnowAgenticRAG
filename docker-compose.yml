@@ -38,7 +38,7 @@ services:
     container_name: ragf-ollama
     restart: unless-stopped
     ports:
-      - "11434:11434"
+      - "11435:11434"    # 11435 on host -> 11434 in container (avoids conflict with local Ollama)
     volumes:
       - ollama_data:/root/.ollama
     # GPU 加速（有 NVIDIA GPU 时取消注释）
@@ -50,7 +50,7 @@ services:
     #           count: all
     #           capabilities: [gpu]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      test: ["CMD", "ollama", "list"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -130,7 +130,7 @@ services:
       # 审计日志 SQLite（持久化到宿主机方便查看）
       - ragf_sqlite:/app/data
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
       interval: 30s
       timeout: 10s
       retries: 3

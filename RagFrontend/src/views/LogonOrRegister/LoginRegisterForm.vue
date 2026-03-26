@@ -524,15 +524,25 @@ const handleSubmit = async () => {
         // ── 登录 / 注册 ───────────────────────────────────────────
         let response;
         if (currentMode.value === 'login') {
-            const formData = new FormData();
-            formData.append('username', loginForm.value.username);
-            formData.append('password', loginForm.value.password);
-            response = await fetch('/api/login', { method: 'POST', body: formData });
+            // 使用 JSON 格式登录（/api/login/json），更稳定可靠
+            response = await fetch('/api/login/json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: loginForm.value.username.trim(),
+                    password: loginForm.value.password
+                })
+            });
         } else {
-            const formData = new FormData();
-            formData.append('email', registerForm.value.username);
-            formData.append('password', registerForm.value.password);
-            response = await fetch('/api/register/form', { method: 'POST', body: formData });
+            // 注册使用 JSON 格式（/api/register）
+            response = await fetch('/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: registerForm.value.username.trim(),
+                    password: registerForm.value.password
+                })
+            });
         }
 
         const result = await response.json();
@@ -541,12 +551,13 @@ const handleSubmit = async () => {
             const token = result.access_token || result.token;
             emit('form-submit', {
                 type: currentMode.value,
-                email: currentMode.value === 'login' ? loginForm.value.username : registerForm.value.username,
+                email: currentMode.value === 'login' ? loginForm.value.username.trim() : registerForm.value.username.trim(),
                 password: currentMode.value === 'login' ? loginForm.value.password : registerForm.value.password,
                 token
             });
         } else {
-            alert(`${currentMode.value === 'login' ? '登录' : '注册'}失败: ${result.detail || '未知错误'}`);
+            const msg = result.detail || '未知错误';
+            alert(`${currentMode.value === 'login' ? '登录' : '注册'}失败: ${msg}`);
         }
 
         if (currentMode.value === 'login') {

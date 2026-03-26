@@ -11,7 +11,7 @@ COPY package*.json ./
 
 # 使用 npm 淘宝镜像加速
 RUN npm config set registry https://registry.npmmirror.com && \
-    npm ci --prefer-offline
+    npm install
 
 # 复制源码并构建
 COPY . .
