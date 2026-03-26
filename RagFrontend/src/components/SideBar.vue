@@ -499,22 +499,35 @@ const toolNavItems: NavItem[] = [
   font-size: 13.5px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s;
+  /* 精细过渡：只用 transform/background/color，不用 all */
+  transition:
+    background   0.14s ease,
+    color        0.14s ease,
+    transform    0.14s ease,
+    box-shadow   0.14s ease;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
   position: relative;
+  will-change: transform;
 }
 
-.nav-item:hover {
-  background: #f5f5f5;
-  color: #111827;
+.nav-item:hover:not(.nav-item--active) {
+  background: rgba(79, 126, 248, 0.07);
+  color: #4f7ef8;
+  transform: translateX(3px);
+}
+
+.nav-item:active {
+  transform: translateX(1px) scale(0.97) !important;
+  transition-duration: 0.06s !important;
 }
 
 .nav-item--active {
   background: #eff6ff;
   color: #4f7ef8;
   font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(79, 126, 248, 0.15);
 }
 
 .nav-item--active::before {
@@ -522,11 +535,18 @@ const toolNavItems: NavItem[] = [
   position: absolute;
   left: 0;
   top: 50%;
-  transform: translateY(-50%);
+  transform: translateY(-50%) scaleY(1);
   width: 3px;
-  height: 20px;
+  height: 60%;
   background: #4f7ef8;
   border-radius: 0 3px 3px 0;
+  /* 进入时弹出 */
+  animation: navIndicatorIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes navIndicatorIn {
+  from { transform: translateY(-50%) scaleY(0); }
+  to   { transform: translateY(-50%) scaleY(1); }
 }
 
 .nav-item__icon {
@@ -536,6 +556,16 @@ const toolNavItems: NavItem[] = [
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* hover 时图标轻微弹跳 */
+.nav-item:hover .nav-item__icon {
+  transform: scale(1.15);
+}
+
+.nav-item--active .nav-item__icon {
+  transform: scale(1.08);
 }
 
 .nav-item__icon svg {
@@ -557,12 +587,76 @@ const toolNavItems: NavItem[] = [
   padding: 1px 5px;
   border-radius: 10px;
   flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.nav-item:hover .nav-item__badge {
+  transform: scale(1.1);
 }
 
 /* 折叠状态导航项居中 */
 .sidebar--collapsed .nav-item {
   justify-content: center;
   padding: 9px;
+}
+
+.sidebar--collapsed .nav-item:hover {
+  transform: scale(1.08);
+}
+
+/* ===== 快速新建按钮升级 ===== */
+.quick-new-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1.5px dashed #dbeafe;
+  background: #f0f7ff;
+  color: #4f7ef8;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    transform 0.16s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.18s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  position: relative;
+  will-change: transform;
+}
+
+.quick-new-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(79, 126, 248, 0.20);
+}
+
+.quick-new-btn:active {
+  transform: translateY(0) scale(0.97) !important;
+  box-shadow: none !important;
+  transition-duration: 0.07s !important;
+}
+
+/* 快速新建图标旋转 */
+.quick-new-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.quick-new-btn:hover .quick-new-icon {
+  transform: rotate(90deg) scale(1.15);
+}
+
+.sidebar--collapsed .quick-new-btn {
+  justify-content: center;
+  padding: 8px;
 }
 
 /* ===== 底部区域 ===== */
@@ -587,14 +681,23 @@ const toolNavItems: NavItem[] = [
   color: #9ca3af;
   font-size: 12.5px;
   cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    color 0.15s ease;
 }
 
 .shortcut-hint:hover {
   background: #f3f4f6;
   color: #6b7280;
   border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.shortcut-hint:active {
+  transform: translateY(0) scale(0.98) !important;
+  transition-duration: 0.07s !important;
 }
 
 .shortcut-icon {
@@ -621,13 +724,21 @@ kbd {
   padding: 8px 10px;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition:
+    background 0.14s ease,
+    transform  0.14s ease;
   overflow: hidden;
   margin-top: 2px;
 }
 
 .user-info:hover {
-  background: #f5f5f5;
+  background: rgba(79, 126, 248, 0.06);
+  transform: translateX(2px);
+}
+
+.user-info:active {
+  transform: translateX(0) scale(0.98) !important;
+  transition-duration: 0.07s !important;
 }
 
 .user-info--collapsed {
@@ -635,8 +746,17 @@ kbd {
   padding: 8px;
 }
 
+.user-info--collapsed:hover {
+  transform: scale(1.06);
+}
+
 .user-avatar {
   flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.user-info:hover .user-avatar {
+  transform: scale(1.08);
 }
 
 .user-meta {
@@ -668,6 +788,49 @@ kbd {
   height: 14px;
   color: #9ca3af;
   flex-shrink: 0;
+  transition: transform 0.2s ease;
+}
+
+.user-info:hover .user-chevron {
+  transform: rotate(90deg);
+}
+
+/* ===== 折叠按钮 ===== */
+.sidebar__collapse-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9ca3af;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.sidebar__collapse-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+  transform: scale(1.10);
+}
+
+.sidebar__collapse-btn:active {
+  transform: scale(0.92) !important;
+  transition-duration: 0.07s !important;
+}
+
+.collapse-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rotate-180 {
+  transform: rotate(180deg);
 }
 
 /* ===== 文字淡入淡出动画 ===== */

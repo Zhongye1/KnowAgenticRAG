@@ -22,20 +22,31 @@
           <!-- 置顶按钮 -->
           <button
             :class="['action-btn', 'pin-btn', { 'pin-btn--active': pinned }]"
-            @click.stop="$emit('pin')"
+            @click.stop="handlePin"
+            @mousedown="ripple"
             :title="pinned ? '取消置顶' : '置顶'"
           >
-            <svg viewBox="0 0 24 24" fill="none" :stroke="pinned ? '#4f7ef8' : 'currentColor'" stroke-width="2">
+            <svg
+              :class="{ 'like-pop': pinAnimating }"
+              viewBox="0 0 24 24" fill="none"
+              :stroke="pinned ? '#4f7ef8' : 'currentColor'" stroke-width="2"
+            >
               <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
             </svg>
           </button>
           <!-- 星标按钮 -->
           <button
             :class="['action-btn', 'star-btn', { 'star-btn--active': starred }]"
-            @click.stop="$emit('star')"
+            @click.stop="handleStar"
+            @mousedown="ripple"
             :title="starred ? '取消星标' : '加入星标'"
           >
-            <svg viewBox="0 0 24 24" :fill="starred ? '#f59e0b' : 'none'" :stroke="starred ? '#f59e0b' : 'currentColor'" stroke-width="2">
+            <svg
+              :class="{ 'like-pop': starAnimating }"
+              viewBox="0 0 24 24"
+              :fill="starred ? '#f59e0b' : 'none'"
+              :stroke="starred ? '#f59e0b' : 'currentColor'" stroke-width="2"
+            >
               <path stroke-linecap="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
             </svg>
           </button>
@@ -68,8 +79,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { DropdownProps } from 'tdesign-vue-next';
+import { useRipple } from '@/composables/useScrollReveal';
+
+const { ripple } = useRipple();
 
 interface Card {
   id: string;
@@ -88,6 +102,22 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits(['click', 'star', 'pin', 'delete']);
+
+// 微交互状态
+const starAnimating = ref(false);
+const pinAnimating  = ref(false);
+
+const handleStar = () => {
+  starAnimating.value = true;
+  setTimeout(() => { starAnimating.value = false }, 500);
+  emit('star');
+};
+
+const handlePin = () => {
+  pinAnimating.value = true;
+  setTimeout(() => { pinAnimating.value = false }, 400);
+  emit('pin');
+};
 
 // 颜色方案基于title hash
 const COLOR_SETS = [
@@ -143,27 +173,49 @@ const handleDropdown = (data: any) => {
 .kb-card {
   background: white;
   border-radius: 12px;
-  border: 1px solid #f0f0f0;
+  border: 1px solid rgba(0,0,0,0.07);
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  /* 使用 CSS 变量定义的精细过渡 */
+  transition:
+    transform    0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow   0.22s ease,
+    border-color 0.22s ease;
+  will-change: transform, box-shadow;
 }
 
+/* hover：浮起 + 阴影扩散 + 边框高亮 */
 .kb-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.1);
-  border-color: #e0e0e0;
+  transform: translateY(-4px) scale(1.005);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.13), 0 4px 8px rgba(0,0,0,0.06);
+  border-color: rgba(79, 126, 248, 0.25);
+}
+
+/* active：按下感 */
+.kb-card:active {
+  transform: translateY(-1px) scale(0.99) !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+  transition-duration: 0.08s !important;
 }
 
 .kb-card--starred {
   border-color: #fde68a;
 }
 
+.kb-card--starred:hover {
+  border-color: #fbbf24;
+  box-shadow: 0 12px 32px rgba(245, 158, 11, 0.15), 0 4px 8px rgba(0,0,0,0.06);
+}
+
 /* 置顶状态 */
 .kb-card--pinned {
   border-color: #a5b4fc;
   box-shadow: 0 0 0 2px rgba(79, 126, 248, 0.15);
+}
+
+.kb-card--pinned:hover {
+  box-shadow: 0 12px 32px rgba(79, 126, 248, 0.18), 0 0 0 2px rgba(79, 126, 248, 0.25);
 }
 
 .kb-card__pin-badge {
@@ -178,17 +230,22 @@ const handleDropdown = (data: any) => {
   z-index: 2;
   font-weight: 600;
   letter-spacing: 0.3px;
+  /* 动效由全局 .pin-badge-anim 提供，自动应用于新出现时 */
 }
 
 .pin-btn--active {
   color: #4f7ef8;
 }
 
-
 /* 顶部颜色条 */
 .kb-card__color-bar {
   height: 4px;
   width: 100%;
+  transition: height 0.2s ease;
+}
+
+.kb-card:hover .kb-card__color-bar {
+  height: 5px;
 }
 
 .kb-card__body {
@@ -210,6 +267,11 @@ const handleDropdown = (data: any) => {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.kb-card:hover .kb-card__icon {
+  transform: scale(1.08) rotate(-3deg);
 }
 
 .kb-card__icon svg {
@@ -222,17 +284,20 @@ const handleDropdown = (data: any) => {
   display: flex;
   gap: 2px;
   opacity: 0;
-  transition: opacity 0.18s;
+  transform: translateY(-3px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
 .kb-card:hover .kb-card__actions {
   opacity: 1;
+  transform: translateY(0);
 }
 
 /* 星标始终亮着 */
 .kb-card--starred .kb-card__actions,
 .kb-card--starred .star-btn {
   opacity: 1;
+  transform: translateY(0);
 }
 
 .action-btn {
@@ -246,21 +311,35 @@ const handleDropdown = (data: any) => {
   align-items: center;
   justify-content: center;
   color: #9ca3af;
-  transition: all 0.15s;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  overflow: hidden; /* 为 ripple */
+  position: relative;
 }
 
 .action-btn:hover {
-  background: #f3f4f6;
-  color: #374151;
+  background: rgba(79, 126, 248, 0.10);
+  color: #4f7ef8;
+  transform: scale(1.12);
+}
+
+.action-btn:active {
+  transform: scale(0.90) !important;
+  transition-duration: 0.06s !important;
 }
 
 .action-btn svg {
   width: 15px;
   height: 15px;
+  transition: transform 0.15s ease;
 }
 
 .star-btn--active {
   color: #f59e0b;
+}
+
+.star-btn--active:hover {
+  background: rgba(245, 158, 11, 0.12) !important;
+  color: #d97706 !important;
 }
 
 .kb-card__title {
@@ -272,6 +351,11 @@ const handleDropdown = (data: any) => {
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
+  transition: color 0.2s ease;
+}
+
+.kb-card:hover .kb-card__title {
+  color: #4f7ef8;
 }
 
 .kb-card__desc {
@@ -308,25 +392,17 @@ const handleDropdown = (data: any) => {
   background: #f3f4f6;
   color: #6b7280;
   border-radius: 10px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.kb-card:hover .kb-card__tag {
+  background: rgba(79, 126, 248, 0.08);
+  color: #4f7ef8;
 }
 
 /* 紧凑模式 */
-.kb-card--compact .kb-card__body {
-  padding: 10px 12px;
-}
-
-.kb-card--compact .kb-card__icon {
-  width: 30px;
-  height: 30px;
-  border-radius: 7px;
-}
-
-.kb-card--compact .kb-card__icon svg {
-  width: 16px;
-  height: 16px;
-}
-
-.kb-card--compact .kb-card__title {
-  font-size: 13.5px;
-}
+.kb-card--compact .kb-card__body  { padding: 10px 12px; }
+.kb-card--compact .kb-card__icon  { width: 30px; height: 30px; border-radius: 7px; }
+.kb-card--compact .kb-card__icon svg { width: 16px; height: 16px; }
+.kb-card--compact .kb-card__title { font-size: 13.5px; }
 </style>

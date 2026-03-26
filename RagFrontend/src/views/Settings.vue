@@ -581,7 +581,7 @@ import CommercialTab from './SettingsTabs/CommercialTab.vue'
 const activeTab = ref('apikeys')
 
 // Win11 风格分组导航
-const tabGroups = [
+const tabGroups: Array<{label:string; tabs:Array<{id:string;label:string;icon:string;desc:string;badge?:string}>}> = [
   {
     label: '账号与安全',
     tabs: [
