@@ -2,7 +2,7 @@
 
 > **项目仓库**：https://github.com/March030303/KnowledgeRAG-GZHU  
 > **主分支**：`暖霜的分支`  
-> **最新版本**：commit `1fa7401`（2026-03-25）
+> **最新版本**：commit `b8cfb35`（2026-03-26）
 
 ---
 
@@ -27,14 +27,20 @@
    - 5.4 [反馈与建议](#54-反馈与建议)
    - 5.5 [历史记录](#55-历史记录)
    - 5.6 [全局搜索](#56-全局搜索)
+   - 5.7 [置顶功能](#57-置顶功能)
+   - 5.8 [全局交互动效](#58-全局交互动效)
+   - 5.9 [系统设置（Win11 风格）](#59-系统设置win11-风格)
 6. [集成与联动](#6-集成与联动)
    - 6.1 [Obsidian 笔记同步](#61-obsidian-笔记同步)
    - 6.2 [飞书机器人](#62-飞书机器人)
-   - 6.3 [多数据源接入](#63-多数据源接入)
+   - 6.3 [钉钉 / 企微 / Notion / GitHub](#63-钉钉--企微--notion--github)
+   - 6.4 [多数据源接入](#64-多数据源接入)
 7. [系统管理](#7-系统管理)
    - 7.1 [开放 API](#71-开放-api)
    - 7.2 [审计日志](#72-审计日志)
    - 7.3 [增量向量化](#73-增量向量化)
+   - 7.4 [RBAC 权限管理](#74-rbac-权限管理)
+   - 7.5 [OCR 文档解析](#75-ocr-文档解析)
 8. [移动端 App](#8-移动端-app)
 9. [部署方案](#9-部署方案)
 10. [目录结构](#10-目录结构)
@@ -179,6 +185,7 @@ PUT  /api/user/profile     -- 更新资料
 
 #### 知识库列表页
 - ⭐ **星标置顶**：重要知识库一键收藏，星标分区展示
+- 📌 **置顶固定**：重要知识库/文件/模型可置顶，localStorage 持久化，页面顶部固定展示
 - 🕐 **最近访问**：自动记录访问历史，快速找回
 - 🔍 **搜索过滤**：实时搜索知识库名称
 - ↕️ **拖拽排序**：原生 HTML5 拖拽，localStorage 持久化排序
@@ -501,7 +508,71 @@ POST /api/feedback/submit
 
 ---
 
-## 6. 集成与联动
+### 5.7 置顶功能
+
+全平台统一的置顶机制，**localStorage 持久化**，重启后保持状态。
+
+| 模块 | 置顶对象 | 入口 |
+|------|---------|------|
+| 知识库列表 | 知识库卡片 | 卡片菜单 / 卡片右上角按钮 |
+| 文件管理 | 单个文件 | 表格操作列 📌 按钮 |
+| 模型管理 | Ollama 模型 | 操作列 📌 按钮 |
+| 历史记录 | 对话/任务条目 | 条目操作按钮 |
+
+置顶后在对应页面**顶部固定区域**展示，用 📌 徽章标识。
+
+---
+
+### 5.8 全局交互动效
+
+文件：`src/styles/animations.css`（全局引入）
+
+| 动效类型 | 说明 | CSS 类 |
+|---------|------|--------|
+| **页面过渡** | 路由切换淡入淡出 + 轻微位移 | `.page-enter-active` |
+| **按钮光晕** | hover 时发光扩散效果 | `.btn-glow` |
+| **按钮缩放** | active 时轻微压缩反馈 | `.btn-press` |
+| **卡片悬浮** | hover 上移 + 阴影加深 | `.card-hover` |
+| **骨架屏** | 灰色条流光扫过动画 | `.skeleton` |
+| **列表浮入** | 列表项逐一延迟出现 | `.delay-1` ~ `.delay-5` |
+| **毛玻璃** | backdrop-filter 磨砂效果 | `.glass` |
+| **脉冲** | 圆形无限脉冲扩散 | `.pulse-ring` |
+
+所有动效支持 `prefers-reduced-motion` 媒体查询，用户开启"减少动态效果"时自动关闭。
+
+---
+
+### 5.9 系统设置（Win11 风格）
+
+路径：`/settings`
+
+全面改版为仿 Windows 11 设置页面风格：
+
+**布局：** 左侧分组导航栏 + 右侧内容区
+
+**6 大分组 / 12 个 Tab：**
+
+| 分组 | Tab |
+|------|-----|
+| 🔧 通用 | 通用设置、外观主题 |
+| 🤖 模型 | 多模型管理、检索策略 |
+| 📚 知识库 | 知识库配置、OCR 解析 |
+| 🔗 集成 | 办公联动（6平台）、多数据源 |
+| 🔐 安全 | RBAC 权限、API Key、合规中心 |
+| 📊 管理 | 审计日志、使用统计 |
+
+**办公联动 6 平台网格：**
+
+| 平台 | 功能 |
+|------|------|
+| 📓 Obsidian | Vault 路径配置，增量同步到知识库 |
+| 🪶 飞书 | Webhook URL，消息推送模板 |
+| 🔔 钉钉 | Webhook + 加签密钥，群机器人推送 |
+| 💼 企业微信 | Webhook URL，推送触发条件 |
+| 📒 Notion | Integration Token + Database ID |
+| 🐙 GitHub | Personal Access Token，仓库文档同步 |
+
+点击平台卡片展开配置面板，支持连接测试，`slide-down` 过渡动效。
 
 ### 6.1 Obsidian 笔记同步
 
@@ -540,7 +611,36 @@ POST /api/integrations/feishu/test    -- 测试连接
 
 ---
 
-### 6.3 多数据源接入
+### 6.3 钉钉 / 企微 / Notion / GitHub
+
+**钉钉机器人：**
+```python
+# RagBackend/integrations/dingtalk_bot.py
+POST /api/integrations/dingtalk/send   -- 发送消息
+POST /api/integrations/dingtalk/test   -- 测试连接
+```
+配置：Webhook URL + 加签密钥（`DINGTALK_WEBHOOK_URL`、`DINGTALK_SECRET`）
+
+**企业微信机器人：**
+```python
+# RagBackend/integrations/wecom_bot.py
+POST /api/integrations/wecom/send
+```
+配置：`WECOM_WEBHOOK_URL`
+
+**Notion 同步：**
+- Integration Token + Database ID
+- 将 Notion 数据库内容同步为知识库文档
+- 配置：`NOTION_TOKEN`、`NOTION_DATABASE_ID`
+
+**GitHub 文档同步：**
+- Personal Access Token 授权
+- 同步指定仓库的 Markdown 文档到知识库
+- 配置：`GITHUB_TOKEN`
+
+---
+
+### 6.4 多数据源接入
 
 除本地上传外，支持从多种外部数据源同步文档：
 
@@ -630,7 +730,45 @@ GET  /api/vectorize/status  -- 向量化任务状态
 
 ---
 
-## 8. 移动端 App
+### 7.4 RBAC 权限管理
+
+基于角色的访问控制，支持细粒度权限配置。
+
+```python
+# RagBackend/rbac/rbac_manager.py
+GET  /api/rbac/roles        -- 角色列表
+POST /api/rbac/roles        -- 创建角色
+POST /api/rbac/assign       -- 为用户分配角色
+GET  /api/rbac/permissions  -- 权限列表
+```
+
+| 内置角色 | 权限范围 |
+|---------|---------|
+| Admin | 全部操作 |
+| Editor | 上传/编辑/问答 |
+| Viewer | 只读/问答 |
+
+设置页「安全」→「RBAC 权限」Tab 可视化管理用户角色。
+
+---
+
+### 7.5 OCR 文档解析
+
+支持从图片和扫描版 PDF 中提取文字，扩展文档处理能力。
+
+```python
+# RagBackend/ocr/ocr_processor.py
+POST /api/ocr/extract    -- 图片/PDF OCR 提取
+GET  /api/ocr/status     -- OCR 服务状态
+```
+
+| 支持格式 | 说明 |
+|---------|------|
+| PNG / JPEG / WebP | 图片直接 OCR |
+| 扫描版 PDF | 逐页提取文字 |
+| 手写体 | 支持中英文手写识别 |
+
+设置页「知识库」→「OCR 解析」Tab 可配置 OCR 引擎和语言包。
 
 **位置：** `KnowledgeRAG-GZHU/RagMobile/`  
 **技术栈：** React Native + Expo SDK 53 + TypeScript + zustand
@@ -717,26 +855,39 @@ KnowledgeRAG-GZHU/
 │   ├── src/
 │   │   ├── views/
 │   │   │   ├── KnowledgePages/    # 知识库相关页面
-│   │   │   │   ├── KnowledgeBase.vue       # 知识库列表
-│   │   │   │   ├── KnowledgeDetail.vue     # 知识库详情
-│   │   │   │   └── knowledge-setting-card.vue
-│   │   │   ├── Chat.vue           # 智能问答
-│   │   │   ├── Agent.vue          # Agent任务模式
-│   │   │   ├── History.vue        # 历史记录
-│   │   │   ├── Settings.vue       # 系统设置
-│   │   │   ├── LogonOrRegister/   # 登录注册
-│   │   │   └── TabHeader/         # 用户中心
+│   │   │   │   ├── KnowledgeBase.vue       # 知识库列表（置顶+拖拽）
+│   │   │   │   ├── KnowledgeDetail.vue     # 知识库详情（笔记+URL导入）
+│   │   │   │   ├── knowledge-setting-card.vue  # 三级权限设置
+│   │   │   │   ├── SharedSquare.vue        # 知识广场（B站模式）
+│   │   │   │   └── SharedDetail.vue        # 公开知识库详情
+│   │   │   ├── Chat.vue           # RAG智能问答（引用溯源+语音）
+│   │   │   ├── Agent.vue          # Agent任务模式（ReAct可视化）
+│   │   │   ├── History.vue        # 历史记录聚合（置顶+搜索）
+│   │   │   ├── Settings.vue       # 系统设置（Win11风格，12 Tab）
+│   │   │   ├── LogonOrRegister/   # 登录注册（粒子动效背景）
+│   │   │   └── TabHeader/         # 用户中心（外观/绑定/语音/反馈）
 │   │   ├── components/
 │   │   │   ├── SideBar.vue        # 左侧折叠导航
 │   │   │   ├── GlobalSearch.vue   # Ctrl+K全局搜索
 │   │   │   ├── ModelSelector.vue  # 多模型切换
 │   │   │   ├── RetrievalConfig.vue # 检索策略配置
-│   │   │   ├── VoiceInput.vue     # 语音输入
+│   │   │   ├── VoiceInput.vue     # 语音输入（波形动画）
 │   │   │   ├── ErrorBoundary.vue  # 错误边界
-│   │   │   └── chat-main-unit/    # 对话核心组件
-│   │   ├── i18n/index.ts          # 国际化
-│   │   ├── utils/request.ts       # Axios封装
-│   │   └── router/index.ts        # 路由配置
+│   │   │   ├── SmartAssistant.vue # 右侧智能助手（可折叠）
+│   │   │   ├── ShareModal.vue     # 分享链接+二维码
+│   │   │   ├── SettingsTabs/      # 12个设置子Tab组件
+│   │   │   │   ├── OcrTab.vue
+│   │   │   │   ├── RbacTab.vue
+│   │   │   │   ├── RagEvalTab.vue
+│   │   │   │   ├── MultiModelTab.vue
+│   │   │   │   ├── ComplianceTab.vue
+│   │   │   │   └── ...
+│   │   │   └── chat-main-unit/    # 对话核心（引用溯源气泡）
+│   │   ├── styles/
+│   │   │   └── animations.css     # 全局交互动效
+│   │   ├── i18n/index.ts          # 中英双语
+│   │   ├── utils/request.ts       # Axios封装（分块上传+重试）
+│   │   └── router/index.ts        # 路由配置（含/history）
 │   ├── Dockerfile
 │   └── nginx.conf
 │
@@ -748,16 +899,20 @@ KnowledgeRAG-GZHU/
 │   │   └── agent/react_agent.py  # ReAct Agent
 │   ├── document_processing/
 │   │   ├── incremental_vectorizer.py  # 增量向量化
-│   │   └── retrieval_strategy.py      # 检索策略
-│   ├── multi_model/model_router.py    # 多模型路由
+│   │   └── retrieval_strategy.py      # 五策略检索
+│   ├── multi_model/model_router.py    # 多模型SSE路由
 │   ├── multimodal/whisper_asr.py      # 语音识别
-│   ├── agent_tools/web_search_tool.py # 联网搜索
+│   ├── agent_tools/web_search_tool.py # DuckDuckGo联网搜索
 │   ├── integrations/
 │   │   ├── obsidian_sync.py       # Obsidian同步
-│   │   └── feishu_bot.py          # 飞书机器人
+│   │   ├── feishu_bot.py          # 飞书机器人
+│   │   ├── dingtalk_bot.py        # 钉钉机器人
+│   │   └── wecom_bot.py           # 企业微信机器人
 │   ├── data_sources/datasource_manager.py  # 多数据源
-│   ├── open_api/api_key_manager.py    # 开放API
-│   ├── audit/audit_log.py             # 审计日志
+│   ├── open_api/api_key_manager.py    # 开放API Key
+│   ├── audit/audit_log.py             # ASGI审计中间件
+│   ├── rbac/rbac_manager.py           # RBAC权限管理
+│   ├── ocr/ocr_processor.py           # OCR文档解析
 │   ├── feedback/feedback_router.py    # 反馈邮件
 │   └── .env                          # 环境变量
 │
@@ -770,7 +925,8 @@ KnowledgeRAG-GZHU/
 │   │   └── store/
 │   └── eas.json
 │
-└── docker-compose.yml              # 容器编排
+├── dev.ps1                         # 一键开发启动脚本
+└── docker-compose.yml              # 容器编排（前端+后端+MySQL+Ollama）
 ```
 
 ---
@@ -808,6 +964,20 @@ WHISPER_MODEL=base
 FEISHU_WEBHOOK_URL=https://open.feishu.cn/open-apis/bot/v2/hook/xxx
 FEISHU_SECRET=xxx
 
+# 钉钉集成（可选）
+DINGTALK_WEBHOOK_URL=https://oapi.dingtalk.com/robot/send?access_token=xxx
+DINGTALK_SECRET=xxx
+
+# 企业微信集成（可选）
+WECOM_WEBHOOK_URL=https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=xxx
+
+# Notion 集成（可选）
+NOTION_TOKEN=secret_xxx
+NOTION_DATABASE_ID=xxx
+
+# GitHub 集成（可选）
+GITHUB_TOKEN=ghp_xxx
+
 # 邮件反馈（可选）
 SMTP_HOST=smtp.163.com
 SMTP_PORT=465
@@ -838,14 +1008,14 @@ Set-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Internet Setti
 A: 切换到小模型：`ollama pull qwen2:0.5b`，并在 `.env` 中设置 `MODEL=qwen2:0.5b`。
 
 **Q: 前端端口 5173 无法访问？**  
-A: 使用后台进程启动 Vite：
-```powershell
-Start-Process -FilePath "cmd.exe" -ArgumentList "/c npx vite --port 5173 --host" -WorkingDirectory "RagFrontend" -WindowStyle Hidden
-```
+A: 使用一键脚本启动：`powershell -ExecutionPolicy Bypass -File .\dev.ps1`
+
+**Q: dev.ps1 脚本报错 / 乱码？**  
+A: 脚本必须用纯 ASCII 编码保存，不能含有中文注释。
 
 **Q: 如何打包移动端 APK？**  
 A: 参考 [第8节](#8-移动端-app)，需要 EAS 账号（免费注册 expo.dev），首次打包约 10-15 分钟。
 
 ---
 
-*文档最后更新：2026-03-25 | commit `1fa7401`*
+*文档最后更新：2026-03-26 | commit `b8cfb35`*
