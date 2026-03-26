@@ -259,6 +259,56 @@ try:
 except Exception as _e:
     logger.warning(f"用户模型配置模块加载失败: {_e}")
 
+# 轻量模型评测面板（LangChain Evaluation 风格，ECharts 数据）
+try:
+    from evaluation.eval_panel import router as eval_router
+    app.include_router(eval_router, tags=["模型评测面板"])
+    logger.info("模型评测面板已加载")
+except Exception as _e:
+    logger.warning(f"模型评测面板加载失败: {_e}")
+
+# 语义分块 API（RecursiveCharacter + INT8量化）
+try:
+    from document_processing.semantic_splitter import split_router
+    if split_router:
+        app.include_router(split_router, tags=["语义分块-预览与向量化"])
+        logger.info("语义分块模块已加载")
+except Exception as _e:
+    logger.warning(f"语义分块模块加载失败: {_e}")
+
+# cross-encoder 重排序
+try:
+    from rag_enhancement.reranker import router as reranker_router
+    app.include_router(reranker_router, tags=["RAG-cross-encoder重排"])
+    logger.info("cross-encoder重排模块已加载")
+except Exception as _e:
+    logger.warning(f"cross-encoder重排模块加载失败: {_e}")
+
+# 文档创作模块
+try:
+    from creation.doc_creation import router as creation_router
+    app.include_router(creation_router, tags=["文档创作-摘要/翻译/大纲/优化"])
+    logger.info("文档创作模块已加载")
+except Exception as _e:
+    logger.warning(f"文档创作模块加载失败: {_e}")
+
+# 系统监控（Prometheus 指标暴露）
+try:
+    from monitoring.metrics import router as metrics_router, instrument_app
+    instrument_app(app)
+    app.include_router(metrics_router, tags=["系统监控-Prometheus指标"])
+    logger.info("系统监控模块已加载")
+except Exception as _e:
+    logger.warning(f"系统监控模块加载失败: {_e}")
+
+# 知识库备份
+try:
+    from enterprise.kb_backup import router as backup_router
+    app.include_router(backup_router, tags=["知识库备份-Markdown/ZIP"])
+    logger.info("知识库备份模块已加载")
+except Exception as _e:
+    logger.warning(f"知识库备份模块加载失败: {_e}")
+
 # 添加静态文件服务
 # 将图片存储目录映射到/static URL路径
 app.mount("/static", StaticFiles(directory="local-KLB-files"), name="static")

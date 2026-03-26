@@ -109,6 +109,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../views/DevTools.vue'),
     meta: { devOnly: true }
   },
+  {
+    path: '/creation',
+    name: 'Creation',
+    component: () => import('../views/Creation.vue')
+  },
   // 添加专门的404页面路由
   {
     path: '/404',

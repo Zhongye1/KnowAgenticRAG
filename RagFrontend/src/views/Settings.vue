@@ -603,6 +603,53 @@
       </div>
     </div>
 
+    <!-- 系统监控面板 -->
+    <div v-if="activeTab === 'monitor'" class="tab-content">
+      <div class="section-header">
+        <h2>系统监控</h2>
+        <p class="section-desc">实时监控 API 响应时间、模型调用次数、知识库上传量，支持 Prometheus + Grafana 接入</p>
+      </div>
+
+      <!-- 概览卡片 -->
+      <div class="monitor-overview" v-if="monitorData">
+        <div class="mon-card" v-for="c in monitorCards" :key="c.key">
+          <div class="mon-icon">{{ c.icon }}</div>
+          <div class="mon-value">{{ c.value }}</div>
+          <div class="mon-label">{{ c.label }}</div>
+        </div>
+      </div>
+      <div class="monitor-empty" v-else-if="!monitorLoading">
+        暂无数据，后端监控中间件启动后自动上报
+      </div>
+
+      <!-- ECharts：请求量 + 响应时间 + 模型调用 -->
+      <div v-if="monitorData" class="monitor-charts">
+        <div class="mon-chart-box">
+          <div class="mon-chart-title">📊 Top 接口请求量</div>
+          <div ref="monReqRef" style="width:100%;height:260px;"></div>
+        </div>
+        <div class="mon-chart-box">
+          <div class="mon-chart-title">⚡ 响应时间（avg / p99）</div>
+          <div ref="monLatRef" style="width:100%;height:260px;"></div>
+        </div>
+        <div class="mon-chart-box">
+          <div class="mon-chart-title">🤖 模型调用分布</div>
+          <div ref="monModelRef" style="width:100%;height:260px;"></div>
+        </div>
+      </div>
+
+      <!-- 操作栏 -->
+      <div class="monitor-actions">
+        <button class="mc-btn-secondary" @click="fetchMonitor" :disabled="monitorLoading">
+          {{ monitorLoading ? '加载中...' : '🔄 刷新数据' }}
+        </button>
+        <a href="/metrics" target="_blank" class="mc-btn-secondary" style="text-decoration:none">
+          📄 Prometheus /metrics
+        </a>
+        <span class="mon-tips">Grafana 抓取地址：<code>http://localhost:8000/metrics</code></span>
+      </div>
+    </div>
+
     <!-- 工单管理 -->
     <div v-if="activeTab === 'tickets'" class="tab-content">
       <div class="section-header">
@@ -649,7 +696,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, computed } from 'vue'
+import { ref, onMounted, reactive, computed, nextTick } from 'vue'
 import axios from 'axios'
 import { MessagePlugin } from 'tdesign-vue-next'
 import OcrTab from './SettingsTabs/OcrTab.vue'
@@ -707,6 +754,7 @@ const tabGroups: Array<{label:string; tabs:Array<{id:string;label:string;icon:st
     label: '系统',
     tabs: [
       { id: 'stats', label: '使用统计', icon: '📊', desc: '查看使用数据' },
+      { id: 'monitor', label: '系统监控', icon: '📡', desc: 'API响应/模型调用' },
       { id: 'tickets', label: '工单管理', icon: '🎫', desc: '问题反馈与跟踪' },
     ]
   },
@@ -850,7 +898,7 @@ function formatDateTime(ts: number): string {
 onMounted(async () => {
   loadPlatformConfigs()
   mcLoadConfig()
-  await Promise.all([fetchKeys(), fetchDatasources(), fetchAuditLogs(), fetchObsidianStatus(), fetchFeishuStatus(), fetchUsageStats()])
+  await Promise.all([fetchKeys(), fetchDatasources(), fetchAuditLogs(), fetchObsidianStatus(), fetchFeishuStatus(), fetchUsageStats(), fetchMonitor()])
 })
 
 // ── 模型配置 ─────────────────────────────────────────────────
@@ -1137,6 +1185,65 @@ async function fetchUsageStats() {
   try {
     const res = await axios.get('/api/stats/usage')
     usageStats.value = res.data
+  } catch {}
+}
+
+// ── 系统监控 ──────────────────────────────────────────────────
+const monitorData = ref<any>(null)
+const monitorLoading = ref(false)
+const monReqRef = ref<HTMLElement>()
+const monLatRef = ref<HTMLElement>()
+const monModelRef = ref<HTMLElement>()
+const monitorCards = computed(() => {
+  if (!monitorData.value) return []
+  const ov = monitorData.value.overview
+  return [
+    { key: 'uptime',  icon: '⏱',  label: '运行时长(h)',  value: ov.uptime_h },
+    { key: 'reqs',    icon: '📨',  label: '总请求数',    value: ov.total_reqs },
+    { key: 'errors',  icon: '❌',  label: '错误请求',    value: ov.total_errors },
+    { key: 'uploads', icon: '📤',  label: '上传文件数',  value: ov.kb_uploads },
+    { key: 'models',  icon: '🤖',  label: '使用模型数',  value: ov.models_used },
+  ]
+})
+async function fetchMonitor() {
+  monitorLoading.value = true
+  try {
+    const res = await axios.get('/api/metrics/echarts')
+    monitorData.value = res.data
+    await nextTick()
+    renderMonitorCharts()
+  } catch {}
+  finally { monitorLoading.value = false }
+}
+function renderMonitorCharts() {
+  if (!monitorData.value) return
+  try {
+    // @ts-ignore
+    const echarts = (window as any).echarts
+    if (!echarts) {
+      // 懒加载 echarts
+      const s = document.createElement('script')
+      s.src = 'https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js'
+      s.onload = () => renderMonitorCharts()
+      document.head.appendChild(s)
+      return
+    }
+    const d = monitorData.value
+    // 请求量横向柱
+    if (monReqRef.value) {
+      const c = echarts.init(monReqRef.value)
+      c.setOption({ tooltip: {}, xAxis: { type: 'value' }, yAxis: { type: 'category', data: d.request_bar.endpoints.map((s: string) => s.slice(-30)) }, series: [{ type: 'bar', data: d.request_bar.counts, itemStyle: { color: '#6366f1' } }] })
+    }
+    // 响应时间
+    if (monLatRef.value) {
+      const c = echarts.init(monLatRef.value)
+      c.setOption({ tooltip: {}, xAxis: { type: 'category', data: d.latency_bar.endpoints.map((s: string) => s.slice(-20)) }, yAxis: { type: 'value', axisLabel: { formatter: '{value}ms' } }, series: [{ name: 'avg', type: 'bar', data: d.latency_bar.avg_ms, itemStyle: { color: '#22c55e' } }, { name: 'p99', type: 'bar', data: d.latency_bar.p99_ms, itemStyle: { color: '#f59e0b' } }] })
+    }
+    // 模型饼图
+    if (monModelRef.value) {
+      const c = echarts.init(monModelRef.value)
+      c.setOption({ tooltip: { trigger: 'item' }, series: [{ type: 'pie', radius: '60%', data: d.model_pie.length ? d.model_pie : [{ name: '暂无调用', value: 1 }] }] })
+    }
   } catch {}
 }
 
@@ -1862,6 +1969,45 @@ async function submitTicket() {
 .ticket-status--closed { background: #dcfce7; color: #15803d; }
 
 .mb-4 { margin-bottom: 16px; }
+
+/* ── 系统监控面板 ──────────────────────────────────────────── */
+.monitor-overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.mon-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 14px 8px;
+  background: var(--td-bg-color-container, #fff);
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  gap: 4px;
+}
+.mon-icon { font-size: 20px; }
+.mon-value { font-size: 20px; font-weight: 700; color: #6366f1; }
+.mon-label { font-size: 11px; color: #6b7280; }
+.monitor-empty { color: #9ca3af; font-size: 13px; padding: 20px; text-align: center; }
+.monitor-charts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 16px;
+}
+@media (max-width: 900px) { .monitor-charts { grid-template-columns: 1fr; } }
+.mon-chart-box {
+  background: var(--td-bg-color-container, #fff);
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 14px;
+}
+.mon-chart-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.monitor-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.mon-tips { font-size: 12px; color: #6b7280; }
+.mon-tips code { background: #f3f4f6; padding: 2px 6px; border-radius: 3px; font-family: monospace; }
 
 /* ── 模型配置面板 ────────────────────────────────────────── */
 .mc-installed-bar {

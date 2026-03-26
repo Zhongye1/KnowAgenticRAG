@@ -383,21 +383,34 @@ def _ollama_generate(
 # 6. 原生 RAG Pipeline
 # ────────────────────────────────────────────────
 
-_NATIVE_PROMPT_TEMPLATE = """你是知识管理助手，专门回答基于文档的问题。
+_NATIVE_PROMPT_TEMPLATE = """<|im_start|>system
+你是一个专业的中文知识库问答助手。你的任务是基于提供的文档片段，给出准确、简洁的中文回答。
 
-规则：
-1. 优先基于"参考文档"中的内容回答
-2. 如果文档信息不足，在回答末尾注明"（以上部分内容基于通用知识补充）"
-3. 回答时自然引用来源，例如："根据《文件名》中的内容，..."
-4. 用户未指定语言时默认使用中文
-5. 回答要完整、清晰，如涉及代码/公式/表格则给出对应示例
-6. 与上下文完全无关的问题，说明无关并给出通用参考信息
-
-参考文档（已按相关度排序）：
+核心规则（必须严格遵守）：
+1. 【优先文档】只根据"参考文档"中的内容回答，不要编造文档中没有的信息
+2. 【引用来源】回答中主动引用来源，格式：根据【来源X】，...
+3. 【信息不足】如果文档完全没有相关信息，直接说"知识库中未找到相关内容"
+4. 【补充通用知识】文档内容不完整时，在文档答案后追加一段通用知识，并标注"（通用知识补充）"
+5. 【中文优先】始终用简体中文回答，除非问题本身用英文提问
+6. 【简洁清晰】回答要结构化，重要内容用序号或要点列出，避免废话
+7. 【代码/公式】涉及代码时用代码块格式展示
+<|im_end|>
+<|im_start|>user
+参考文档（按相关度从高到低排序）：
 {context}
 
-用户问题：{question}
+问题：{question}
+<|im_end|>
+<|im_start|>assistant
+"""
 
+# qwen2:0.5b 专用简化模板（token限制更严格时使用）
+_NATIVE_PROMPT_TEMPLATE_LITE = """系统：你是中文知识库助手，只根据文档回答，引用来源格式为"根据【来源X】"，不确定时说"未找到相关内容"。
+
+文档：
+{context}
+
+问题：{question}
 回答："""
 
 
@@ -449,6 +462,15 @@ class NativeRAGPipeline:
         self.bm25_top_k = bm25_top_k
         self.vector_top_k = vector_top_k
         self.ollama_timeout = ollama_timeout
+
+        # 根据模型大小自动选 Prompt 模板
+        # 0.5b/1b 等小模型使用精简模板，避免 context 撑爆 token 窗口
+        _small_models = ("0.5b", "1b", "1.5b", "tiny", "mini")
+        self._prompt_template = (
+            _NATIVE_PROMPT_TEMPLATE_LITE
+            if any(s in llm_model.lower() for s in _small_models)
+            else _NATIVE_PROMPT_TEMPLATE
+        )
 
         # 构建 BM25
         self._bm25: Optional[NativeBM25] = None
@@ -515,7 +537,7 @@ class NativeRAGPipeline:
         yield f"data: SOURCES: {json.dumps(sources, ensure_ascii=False)}\n\n"
 
         context = _format_native_context(docs_with_sources)
-        prompt = _NATIVE_PROMPT_TEMPLATE.format(context=context, question=query)
+        prompt = self._prompt_template.format(context=context, question=query)
 
         yield "data: [原生RAG] 正在生成回答（直接调用 Ollama API）...\n\n"
 
@@ -548,7 +570,7 @@ class NativeRAGPipeline:
             }
 
         context = _format_native_context(docs_with_sources)
-        prompt = _NATIVE_PROMPT_TEMPLATE.format(context=context, question=query)
+        prompt = self._prompt_template.format(context=context, question=query)
 
         answer_parts = list(_ollama_generate(
             model=self.llm_model,
