@@ -14,7 +14,7 @@ router = APIRouter()
 logger = logging.getLogger(__name__)
 
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-DEFAULT_MODEL = os.getenv("MODEL", "qwen:7b-chat")
+DEFAULT_MODEL = os.getenv("MODEL", "qwen2:0.5b")
 
 
 class ChatMessage(BaseModel):

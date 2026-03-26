@@ -62,9 +62,10 @@
             <div
               v-for="item in group.items"
               :key="item.id"
-              class="history-card"
+              :class="['history-card', { 'history-card--pinned': pinnedIds.has(item.id) }]"
               @click="openItem(item)"
             >
+              <div class="history-card__pin-badge" v-if="pinnedIds.has(item.id)" title="已置顶">📌</div>
               <div class="history-card__icon" :data-type="item.type">
                 {{ typeIcon(item.type) }}
               </div>
@@ -83,6 +84,15 @@
                 </div>
               </div>
               <div class="history-card__actions">
+                <button
+                  :class="['card-action-btn', { 'card-action-btn--pinned': pinnedIds.has(item.id) }]"
+                  @click.stop="togglePin(item.id)"
+                  :title="pinnedIds.has(item.id) ? '取消置顶' : '置顶'"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                  </svg>
+                </button>
                 <button class="card-action-btn" @click.stop="copyItem(item)" title="复制内容">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/>
@@ -153,6 +163,18 @@ const activeTab = ref<HistoryType | 'all'>('all');
 const selectedItem = ref<HistoryItem | null>(null);
 const allItems = ref<HistoryItem[]>([]);
 
+// 置顶 IDs（持久化到 localStorage）
+const PINNED_KEY = 'history_pinned_ids';
+const pinnedIds = ref<Set<string>>(new Set(JSON.parse(localStorage.getItem(PINNED_KEY) || '[]')));
+
+function togglePin(id: string) {
+  const s = new Set(pinnedIds.value);
+  if (s.has(id)) { s.delete(id); MessagePlugin.success('已取消置顶'); }
+  else { s.add(id); MessagePlugin.success('已置顶'); }
+  pinnedIds.value = s;
+  localStorage.setItem(PINNED_KEY, JSON.stringify([...s]));
+}
+
 const tabs = [
   { value: 'all',    icon: '📋', label: '全部' },
   { value: 'chat',   icon: '💬', label: '对话' },
@@ -184,7 +206,13 @@ const filteredItems = computed(() => {
     );
   }
 
-  return items.sort((a, b) => b.timestamp - a.timestamp);
+  return items.sort((a, b) => {
+    // 置顶的优先显示
+    const aPinned = pinnedIds.value.has(a.id) ? 1 : 0;
+    const bPinned = pinnedIds.value.has(b.id) ? 1 : 0;
+    if (bPinned !== aPinned) return bPinned - aPinned;
+    return b.timestamp - a.timestamp;
+  });
 });
 
 // ── Grouping by date ────────────────────────────────────
@@ -464,6 +492,7 @@ onMounted(loadAll);
   padding: 14px 16px;
   cursor: pointer;
   transition: all 0.15s;
+  position: relative;
 }
 .history-card:hover {
   border-color: #4f7ef8;
@@ -552,6 +581,25 @@ onMounted(loadAll);
 }
 .card-action-btn:hover { background: #f3f4f6; }
 .card-action-btn.danger:hover { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
+.card-action-btn--pinned { color: #4f7ef8; border-color: #c7d7ff; background: #eff4ff; opacity: 1 !important; }
+.card-action-btn--pinned:hover { background: #dbeafe; }
+
+/* 置顶卡片样式 */
+.history-card--pinned {
+  border-color: #a5b4fc;
+  background: linear-gradient(to right, #fafbff, white);
+  box-shadow: 0 1px 6px rgba(79,126,248,0.08);
+}
+.history-card__pin-badge {
+  position: absolute;
+  top: -8px; right: 8px;
+  font-size: 12px;
+  background: #4f7ef8;
+  color: white;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-style: normal;
+}
 
 /* Drawer */
 .drawer-content { padding: 16px; }

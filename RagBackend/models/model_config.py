@@ -6,11 +6,11 @@ import json
 class ModelConfig:
     """统一模型配置管理类"""
     
-    # 默认模型配置
-    DEFAULT_LLM_MODEL = "qwen:7b-chat"
+    # 默认模型配置（使用 qwen2:0.5b，轻量模型，约400MB，低配机器也能跑）
+    DEFAULT_LLM_MODEL = "qwen2:0.5b"
     DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
     DEFAULT_RERANK_MODEL = "bge-large"
-    DEFAULT_KG_MODEL = "qwen3:0.6b"
+    DEFAULT_KG_MODEL = "qwen2:0.5b"
     
     def __init__(self, config_path: Optional[str] = None):
         """

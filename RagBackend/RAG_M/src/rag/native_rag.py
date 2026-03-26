@@ -433,7 +433,7 @@ class NativeRAGPipeline:
         self,
         vectorstore: NativeVectorStore,
         documents: Optional[List[NativeDocument]] = None,
-        llm_model: str = "qwen:7b-chat",
+        llm_model: str = "qwen2:0.5b",
         ollama_host: str = "http://localhost:11434",
         use_hybrid: bool = True,
         bm25_top_k: int = 5,

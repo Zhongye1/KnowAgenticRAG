@@ -1,8 +1,10 @@
 <template>
   <div
-    :class="['kb-card', { 'kb-card--compact': compact, 'kb-card--starred': starred }]"
+    :class="['kb-card', { 'kb-card--compact': compact, 'kb-card--starred': starred, 'kb-card--pinned': pinned }]"
     @click="$emit('click')"
   >
+    <!-- 置顶徽章 -->
+    <div v-if="pinned" class="kb-card__pin-badge">📌 置顶</div>
     <!-- 封面颜色条（基于title hash） -->
     <div class="kb-card__color-bar" :style="{ background: cardColor }"></div>
 
@@ -17,6 +19,16 @@
         </div>
         <!-- 操作按钮（悬浮显示） -->
         <div class="kb-card__actions" @click.stop>
+          <!-- 置顶按钮 -->
+          <button
+            :class="['action-btn', 'pin-btn', { 'pin-btn--active': pinned }]"
+            @click.stop="$emit('pin')"
+            :title="pinned ? '取消置顶' : '置顶'"
+          >
+            <svg viewBox="0 0 24 24" fill="none" :stroke="pinned ? '#4f7ef8' : 'currentColor'" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+            </svg>
+          </button>
           <!-- 星标按钮 -->
           <button
             :class="['action-btn', 'star-btn', { 'star-btn--active': starred }]"
@@ -71,10 +83,11 @@ interface Card {
 const props = defineProps<{
   card: Card;
   starred?: boolean;
+  pinned?: boolean;
   compact?: boolean;
 }>();
 
-const emit = defineEmits(['click', 'star', 'delete']);
+const emit = defineEmits(['click', 'star', 'pin', 'delete']);
 
 // 颜色方案基于title hash
 const COLOR_SETS = [
@@ -115,11 +128,13 @@ const formattedTime = computed(() => {
 
 const dropdownOptions: DropdownProps['options'] = [
   { content: '打开', value: 'open' },
+  { content: '置顶/取消置顶', value: 'pin' },
   { content: '删除', value: 'delete' },
 ];
 
 const handleDropdown = (data: any) => {
   if (data.value === 'open') emit('click');
+  if (data.value === 'pin') emit('pin');
   if (data.value === 'delete') emit('delete');
 };
 </script>
@@ -144,6 +159,31 @@ const handleDropdown = (data: any) => {
 .kb-card--starred {
   border-color: #fde68a;
 }
+
+/* 置顶状态 */
+.kb-card--pinned {
+  border-color: #a5b4fc;
+  box-shadow: 0 0 0 2px rgba(79, 126, 248, 0.15);
+}
+
+.kb-card__pin-badge {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  font-size: 10px;
+  background: linear-gradient(135deg, #4f7ef8, #818cf8);
+  color: white;
+  padding: 2px 7px;
+  border-radius: 8px;
+  z-index: 2;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.pin-btn--active {
+  color: #4f7ef8;
+}
+
 
 /* 顶部颜色条 */
 .kb-card__color-bar {

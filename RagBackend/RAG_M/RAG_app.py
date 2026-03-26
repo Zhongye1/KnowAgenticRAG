@@ -547,7 +547,7 @@ async def native_query(req: NativeQueryRequest):
             yield f"data: [原生RAG] 向量存储加载完成，{len(vs.documents)} 个文档块\n\n"
 
             # 初始化 Pipeline
-            model_name = os.getenv("MODEL", "qwen:7b-chat")
+            model_name = os.getenv("MODEL", "qwen2:0.5b")
             pipeline = NativeRAGPipeline(
                 vectorstore=vs,
                 documents=vs.documents,

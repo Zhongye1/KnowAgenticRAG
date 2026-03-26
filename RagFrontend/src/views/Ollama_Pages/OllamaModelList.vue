@@ -14,6 +14,19 @@
                 :indeterminate="isIndeterminate" @change="handleSelectAll">
                 全选
             </t-checkbox>
+            <span v-if="pinnedModels.length > 0" class="text-sm text-blue-500 font-medium ml-2">📌 {{ pinnedModels.length }} 个已置顶</span>
+        </div>
+
+        <!-- 置顶模型区 -->
+        <div v-if="pinnedModels.length > 0" class="pinned-models-section mb-4">
+            <div class="pinned-models-header">📌 置顶模型</div>
+            <div class="pinned-models-list">
+                <div v-for="model in pinnedModels" :key="model.name" class="pinned-model-item">
+                    <span class="pinned-model-name">{{ model.name }}</span>
+                    <span class="pinned-model-size text-gray-400 text-xs ml-2">{{ formatSize(model.size) }}</span>
+                    <button class="unpin-model-btn" @click="togglePinModel(model)" title="取消置顶">✕</button>
+                </div>
+            </div>
         </div>
         
 
@@ -39,6 +52,10 @@
                 </template>
                 <template #operation="{ row }">
                     <t-space>
+                        <t-button :class="['z-10', pinnedModelNames.has(row.name) ? 'text-blue-600' : 'text-gray-500']" variant="text" size="small"
+                            @click="togglePinModel(row)" :title="pinnedModelNames.has(row.name) ? '取消置顶' : '置顶'">
+                            {{ pinnedModelNames.has(row.name) ? '📌' : '置顶' }}
+                        </t-button>
                         <t-button class="z-10 bg-red-600 text-white :hover:bg-red-700" variant="text" size="small"
                             @click="deleteModel(row.name)">删除</t-button>
                     </t-space>
@@ -59,6 +76,25 @@ const ollamaApi = inject('ollamaApi')
 const loading = ref(false)
 const models = ref([])
 const selectedModels = ref([])
+
+// 置顶功能
+const MODEL_PIN_KEY = 'model_pinned_names'
+const pinnedModelNames = ref(new Set(JSON.parse(localStorage.getItem(MODEL_PIN_KEY) || '[]')))
+
+const togglePinModel = (model) => {
+  const s = new Set(pinnedModelNames.value)
+  if (s.has(model.name)) {
+    s.delete(model.name)
+    MessagePlugin.info(`「${model.name}」已取消置顶`)
+  } else {
+    s.add(model.name)
+    MessagePlugin.success(`「${model.name}」已置顶`)
+  }
+  pinnedModelNames.value = s
+  localStorage.setItem(MODEL_PIN_KEY, JSON.stringify([...s]))
+}
+
+const pinnedModels = computed(() => models.value.filter(m => pinnedModelNames.value.has(m.name)))
 
 // 计算属性
 const isAllSelected = ref(false)
@@ -240,6 +276,53 @@ onUnmounted(() => {
 
 </script>
 <style scoped>
+/* 置顶区域 */
+.pinned-models-section {
+    background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+    border: 1px solid #c7d2fe;
+    border-radius: 10px;
+    padding: 12px 16px;
+}
+.pinned-models-header {
+    font-size: 13px;
+    font-weight: 600;
+    color: #4f7ef8;
+    margin-bottom: 8px;
+}
+.pinned-models-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+.pinned-model-item {
+    display: flex;
+    align-items: center;
+    background: white;
+    border-radius: 7px;
+    padding: 7px 12px;
+    border: 1px solid #e0e7ff;
+}
+.pinned-model-name {
+    font-size: 13px;
+    color: #374151;
+    flex: 1;
+    font-family: monospace;
+}
+.unpin-model-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #9ca3af;
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.15s;
+}
+.unpin-model-btn:hover {
+    background: #fee2e2;
+    color: #ef4444;
+}
+
 /* 容器淡入动画 */
 .fade-in-container {
     animation: fadeInUp 0.6s ease-out;

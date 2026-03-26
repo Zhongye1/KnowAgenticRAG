@@ -3,19 +3,29 @@
     <ErrorBoundary>
       <!-- 登录页：不显示侧边栏 -->
       <div v-if="!showSidebar" class="app-fullpage">
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <transition name="page" mode="out-in">
+            <component :is="Component" />
+          </transition>
+        </router-view>
       </div>
 
       <!-- 主应用布局：左侧导航 + 右侧内容 -->
       <div v-else class="app-layout">
         <SideBar @openSearch="openSearch" />
         <main class="app-main">
-          <router-view />
+          <router-view v-slot="{ Component }">
+            <transition name="page" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
         </main>
       </div>
     </ErrorBoundary>
     <!-- 全局快捷搜索 -->
     <GlobalSearch :visible="searchVisible" @close="searchVisible = false" />
+    <!-- 右侧智能助理（登录后显示） -->
+    <SmartAssistant v-if="showSidebar" />
   </t-config-provider>
 </template>
 
@@ -25,7 +35,9 @@ import { useRoute } from 'vue-router';
 import SideBar from './components/SideBar.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
 import ErrorBoundary from './components/ErrorBoundary.vue';
+import SmartAssistant from './components/SmartAssistant.vue';
 import "@/assets/scroll.css";
+import "@/styles/animations.css";
 
 const route = useRoute();
 
@@ -105,5 +117,21 @@ html, body {
   height: 100vh;
   overflow: hidden;
   min-width: 0;
+}
+
+/* 页面过渡动效 */
+.page-enter-active {
+  transition: opacity 0.22s ease, transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.page-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-6px);
 }
 </style>

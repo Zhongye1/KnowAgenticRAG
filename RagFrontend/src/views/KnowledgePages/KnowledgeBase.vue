@@ -80,8 +80,10 @@
           v-for="card in filteredCards" :key="card.id"
           :card="card"
           :starred="starredIds.has(card.id)"
+          :pinned="pinnedIds.has(card.id)"
           @click="goToDetail(card.id)"
           @star="toggleStar(card.id)"
+          @pin="togglePin(card.id)"
           @delete="deleteCard(card)"
         />
       </div>
@@ -110,8 +112,10 @@
             v-for="card in starredCards" :key="card.id"
             :card="card"
             :starred="true"
+            :pinned="pinnedIds.has(card.id)"
             @click="goToDetail(card.id)"
             @star="toggleStar(card.id)"
+            @pin="togglePin(card.id)"
             @delete="deleteCard(card)"
           />
         </div>
@@ -133,9 +137,11 @@
             v-for="card in recentCards" :key="card.id"
             :card="card"
             :starred="starredIds.has(card.id)"
+            :pinned="pinnedIds.has(card.id)"
             compact
             @click="goToDetail(card.id)"
             @star="toggleStar(card.id)"
+            @pin="togglePin(card.id)"
             @delete="deleteCard(card)"
           />
         </div>
@@ -198,8 +204,10 @@
             <KbCard
               :card="card"
               :starred="starredIds.has(card.id)"
+              :pinned="pinnedIds.has(card.id)"
               @click="isDragMode ? undefined : goToDetail(card.id)"
               @star="toggleStar(card.id)"
+              @pin="togglePin(card.id)"
               @delete="deleteCard(card)"
             />
           </div>
@@ -252,9 +260,11 @@ const goToDetail = (id: string) => {
 // ======= 星标功能（localStorage持久化） =======
 const STAR_KEY = 'kb_starred_ids';
 const RECENT_KEY = 'kb_recent_ids';
+const PIN_KEY = 'kb_pinned_ids';
 
 const starredIds = ref<Set<string>>(new Set());
 const recentIds = ref<string[]>([]);
+const pinnedIds = ref<Set<string>>(new Set());
 
 const loadStarred = () => {
   try {
@@ -270,6 +280,13 @@ const loadRecent = () => {
   } catch { recentIds.value = []; }
 };
 
+const loadPinned = () => {
+  try {
+    const raw = localStorage.getItem(PIN_KEY);
+    pinnedIds.value = new Set(raw ? JSON.parse(raw) : []);
+  } catch { pinnedIds.value = new Set(); }
+};
+
 const toggleStar = (id: string) => {
   if (starredIds.value.has(id)) {
     starredIds.value.delete(id);
@@ -279,6 +296,19 @@ const toggleStar = (id: string) => {
     MessagePlugin.success('已加入星标');
   }
   localStorage.setItem(STAR_KEY, JSON.stringify([...starredIds.value]));
+};
+
+const togglePin = (id: string) => {
+  const s = new Set(pinnedIds.value);
+  if (s.has(id)) {
+    s.delete(id);
+    MessagePlugin.info('已取消置顶');
+  } else {
+    s.add(id);
+    MessagePlugin.success('已置顶');
+  }
+  pinnedIds.value = s;
+  localStorage.setItem(PIN_KEY, JSON.stringify([...s]));
 };
 
 const recordRecent = (id: string) => {
@@ -348,6 +378,7 @@ const deleteCard = async (card: any) => {
 onMounted(async () => {
   loadStarred();
   loadRecent();
+  loadPinned();
   await cardDataStore.fetchCards();
 });
 
@@ -371,12 +402,21 @@ const saveOrder = () => {
   localStorage.setItem(DRAG_ORDER_KEY, JSON.stringify(customOrder.value.map(id => id)));
 };
 
-// 按自定义顺序排列的卡片列表
+// 按自定义顺序排列的卡片列表（置顶优先）
 const sortableCards = computed(() => {
   const cards = [...allCards.value];
-  if (customOrder.value.length === 0) return cards;
+  if (customOrder.value.length === 0) {
+    return cards.sort((a, b) => {
+      const ap = pinnedIds.value.has(a.id) ? 1 : 0;
+      const bp = pinnedIds.value.has(b.id) ? 1 : 0;
+      return bp - ap;
+    });
+  }
   const orderMap = new Map(customOrder.value.map((id, i) => [id, i]));
   return cards.sort((a, b) => {
+    const ap = pinnedIds.value.has(a.id) ? 1 : 0;
+    const bp = pinnedIds.value.has(b.id) ? 1 : 0;
+    if (bp !== ap) return bp - ap;
     const ai = orderMap.has(a.id) ? orderMap.get(a.id)! : 9999;
     const bi = orderMap.has(b.id) ? orderMap.get(b.id)! : 9999;
     return ai - bi;

@@ -1,13 +1,32 @@
 <template>
-  <div class="settings-page">
-    <div class="settings-tabs">
-      <button v-for="tab in tabs" :key="tab.id"
-        :class="['tab-btn', { active: activeTab === tab.id }]"
-        @click="activeTab = tab.id">
-        <span class="tab-icon">{{ tab.icon }}</span>
-        {{ tab.label }}
-      </button>
-    </div>
+  <div class="settings-win11">
+    <!-- Win11 左侧导航栏 -->
+    <aside class="settings-nav">
+      <div class="settings-nav__header">
+        <div class="settings-nav__icon">⚙️</div>
+        <div class="settings-nav__title">系统设置</div>
+      </div>
+      <div v-for="group in tabGroups" :key="group.label" class="nav-group">
+        <div class="nav-group__label">{{ group.label }}</div>
+        <button
+          v-for="tab in group.tabs" :key="tab.id"
+          :class="['nav-item', { 'nav-item--active': activeTab === tab.id }]"
+          @click="activeTab = tab.id"
+        >
+          <span class="nav-item__icon">{{ tab.icon }}</span>
+          <span class="nav-item__label">{{ tab.label }}</span>
+          <span v-if="tab.badge" class="nav-item__badge">{{ tab.badge }}</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- 右侧内容区 -->
+    <main class="settings-main">
+      <!-- 页面标题 -->
+      <div class="settings-page-header">
+        <h1 class="settings-page-title">{{ currentTab?.label }}</h1>
+        <p class="settings-page-desc">{{ currentTab?.desc }}</p>
+      </div>
 
     <!-- API Key 管理 -->
     <div v-if="activeTab === 'apikeys'" class="tab-content">
@@ -260,116 +279,289 @@
     <EnterpriseToolsTab v-if="activeTab === 'tools'" />
     <MultiModelTab v-if="activeTab === 'multimodel'" />
     <ComplianceTab v-if="activeTab === 'compliance'" />
-    <CommercialTab v-if="activeTab === 'commercial'" />
 
-    <!-- ── 办公联动 ────────────────────────────────────────────── -->
+    <!-- ── 办公联动（扩展版，含钉钉/企微/Notion/GitHub） ──────── -->
     <div v-if="activeTab === 'integrations'" class="tab-content">
       <div class="section-header">
         <h2>办公联动</h2>
-        <p class="section-desc">将知识库与 Obsidian 笔记、飞书机器人无缝打通</p>
+        <p class="section-desc">将知识库与主流办公平台无缝打通，让 AI 助力你的工作流</p>
       </div>
 
-      <!-- Obsidian 同步 -->
-      <div class="integration-card">
-        <div class="integration-card__header">
-          <img src="https://obsidian.md/favicon.ico" class="integration-logo" alt="Obsidian" onerror="this.style.display='none'" />
-          <div>
-            <div class="integration-card__title">Obsidian Vault 同步</div>
-            <div class="integration-card__desc">将本地 Vault 中的 .md 笔记增量同步到知识库，支持 [[wikilink]] 解析</div>
+      <!-- 集成平台网格 -->
+      <div class="integration-grid">
+        <div v-for="p in integrationPlatforms" :key="p.id"
+          :class="['integration-platform-card', { 'platform-card--active': activePlatform === p.id }]"
+          @click="activePlatform = activePlatform === p.id ? '' : p.id">
+          <div class="platform-logo">{{ p.emoji }}</div>
+          <div class="platform-name">{{ p.name }}</div>
+          <div class="platform-status">
+            <span :class="['status-dot', p.connected ? 'dot--green' : 'dot--gray']"></span>
+            {{ p.connected ? '已连接' : '未连接' }}
           </div>
-          <span :class="['integration-status', obsidianStatus.configured ? 'status--ok' : 'status--off']">
-            {{ obsidianStatus.configured ? `已同步 ${obsidianStatus.synced_files} 个文件` : '未配置' }}
-          </span>
         </div>
+      </div>
 
-        <div class="integration-form">
-          <div class="form-row">
-            <label>Vault 路径</label>
-            <input v-model="obsidianForm.vault_path" class="form-input" placeholder="C:\Users\你\Documents\ObsidianVault" />
-          </div>
-          <div class="form-row">
-            <label>目标知识库 ID（可选）</label>
-            <input v-model="obsidianForm.kb_id" class="form-input" placeholder="留空则导入到默认目录" />
-          </div>
-          <div class="form-row">
-            <label>排除模式（正则，逗号分隔）</label>
-            <input v-model="obsidianExclude" class="form-input" placeholder="templates/,\.trash/" />
-          </div>
-          <div class="form-actions">
-            <button class="btn-primary" @click="configObsidian" :disabled="obsidianLoading">配置 Vault</button>
-            <button class="btn-secondary" @click="syncObsidian" :disabled="obsidianLoading || !obsidianStatus.configured">
-              {{ obsidianLoading ? '同步中...' : '立即同步' }}
+      <!-- 配置面板 -->
+      <transition name="slide-down">
+        <div v-if="activePlatform" class="platform-config-panel">
+          <!-- Obsidian -->
+          <template v-if="activePlatform === 'obsidian'">
+            <h3 class="panel-title">🟣 Obsidian Vault 同步</h3>
+            <p class="panel-desc">将本地 Vault 中的 .md 笔记增量同步到知识库，支持 [[wikilink]] 解析</p>
+            <div class="form-row"><label>Vault 路径</label>
+              <input v-model="obsidianForm.vault_path" class="form-input" placeholder="C:\Users\你\Documents\ObsidianVault" />
+            </div>
+            <div class="form-row"><label>目标知识库 ID（可选）</label>
+              <input v-model="obsidianForm.kb_id" class="form-input" placeholder="留空则导入到默认目录" />
+            </div>
+            <div class="form-row"><label>排除模式（正则，逗号分隔）</label>
+              <input v-model="obsidianExclude" class="form-input" placeholder="templates/,\.trash/" />
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" @click="configObsidian" :disabled="obsidianLoading">配置 Vault</button>
+              <button class="btn-secondary" @click="syncObsidian" :disabled="obsidianLoading || !obsidianStatus.configured">
+                {{ obsidianLoading ? '同步中...' : '立即同步' }}
+              </button>
+            </div>
+            <div v-if="obsidianSyncResult" class="sync-result">
+              <span class="sync-badge">+{{ obsidianSyncResult.added }}</span> 新增 ·
+              <span class="sync-badge sync-badge--update">~{{ obsidianSyncResult.updated }}</span> 更新 ·
+              <span class="sync-badge sync-badge--skip">{{ obsidianSyncResult.skipped }}</span> 跳过
+            </div>
+          </template>
+
+          <!-- 飞书 -->
+          <template v-else-if="activePlatform === 'feishu'">
+            <h3 class="panel-title">🟦 飞书机器人</h3>
+            <p class="panel-desc">在飞书群/私聊中 @ 机器人，自动触发知识库问答</p>
+            <div class="form-row"><label>App ID</label>
+              <input v-model="feishuForm.app_id" class="form-input" placeholder="cli_xxxxxxxxxxxxxxxx" />
+            </div>
+            <div class="form-row"><label>App Secret</label>
+              <input v-model="feishuForm.app_secret" type="password" class="form-input" />
+            </div>
+            <div class="form-row"><label>Verification Token（可选）</label>
+              <input v-model="feishuForm.verification_token" class="form-input" />
+            </div>
+            <div class="form-row"><label>默认知识库 ID（可选）</label>
+              <input v-model="feishuForm.default_kb_id" class="form-input" placeholder="留空则直接 LLM 回答" />
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" @click="configFeishu" :disabled="feishuLoading">保存配置</button>
+            </div>
+            <div class="webhook-box">
+              <span class="webhook-label">Webhook 事件订阅地址：</span>
+              <code class="webhook-url">{{ webhookUrl }}</code>
+              <button class="btn-copy" @click="copyWebhook">复制</button>
+            </div>
+          </template>
+
+          <!-- 钉钉 -->
+          <template v-else-if="activePlatform === 'dingtalk'">
+            <h3 class="panel-title">🔵 钉钉群机器人</h3>
+            <p class="panel-desc">通过钉钉自定义机器人 Webhook 发送消息通知或接收知识库问答</p>
+            <div class="form-row"><label>Webhook 地址</label>
+              <input v-model="dingtalkConfig.webhook" class="form-input" placeholder="https://oapi.dingtalk.com/robot/send?access_token=..." />
+            </div>
+            <div class="form-row"><label>加签密钥（可选）</label>
+              <input v-model="dingtalkConfig.secret" type="password" class="form-input" placeholder="SEC..." />
+            </div>
+            <div class="form-row"><label>关键词（消息过滤）</label>
+              <input v-model="dingtalkConfig.keywords" class="form-input" placeholder="知识库,问答,AI" />
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" @click="savePlatformConfig('dingtalk', dingtalkConfig)">保存配置</button>
+              <button class="btn-secondary" @click="testPlatform('dingtalk')">发送测试消息</button>
+            </div>
+            <details class="guide-box"><summary>📋 钉钉配置步骤</summary>
+              <ol>
+                <li>钉钉群 → 群设置 → 机器人 → 添加机器人 → 自定义</li>
+                <li>安全设置选择「加签」，复制密钥填写上方</li>
+                <li>复制 Webhook 地址填写上方 → 保存 → 测试 ✅</li>
+              </ol>
+            </details>
+          </template>
+
+          <!-- 企业微信 -->
+          <template v-else-if="activePlatform === 'wecom'">
+            <h3 class="panel-title">💚 企业微信群机器人</h3>
+            <p class="panel-desc">通过企业微信群机器人推送知识库更新通知</p>
+            <div class="form-row"><label>Webhook 地址</label>
+              <input v-model="wecomConfig.webhook" class="form-input" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." />
+            </div>
+            <div class="form-row"><label>消息类型</label>
+              <select v-model="wecomConfig.msgtype" class="form-select">
+                <option value="text">文本</option>
+                <option value="markdown">Markdown</option>
+              </select>
+            </div>
+            <div class="form-row"><label>@成员手机号（逗号分隔，@all=全员）</label>
+              <input v-model="wecomConfig.mentioned_mobile_list" class="form-input" placeholder="13800000000,@all" />
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" @click="savePlatformConfig('wecom', wecomConfig)">保存配置</button>
+              <button class="btn-secondary" @click="testPlatform('wecom')">发送测试</button>
+            </div>
+          </template>
+
+          <!-- Notion -->
+          <template v-else-if="activePlatform === 'notion'">
+            <h3 class="panel-title">⬛ Notion 数据库同步</h3>
+            <p class="panel-desc">将 Notion 数据库内容同步到知识库，支持富文本和属性字段</p>
+            <div class="form-row"><label>Integration Token</label>
+              <input v-model="notionConfig.token" type="password" class="form-input" placeholder="secret_xxxxxxxx..." />
+            </div>
+            <div class="form-row"><label>数据库 ID（从 URL 获取）</label>
+              <input v-model="notionConfig.database_id" class="form-input" placeholder="32位数据库 ID" />
+            </div>
+            <div class="form-row"><label>内容字段名（默认 Name）</label>
+              <input v-model="notionConfig.content_field" class="form-input" placeholder="Name" />
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" @click="savePlatformConfig('notion', notionConfig)">保存配置</button>
+              <button class="btn-secondary" @click="testPlatform('notion')">立即同步</button>
+            </div>
+          </template>
+
+          <!-- GitHub -->
+          <template v-else-if="activePlatform === 'github'">
+            <h3 class="panel-title">⬤ GitHub 仓库同步</h3>
+            <p class="panel-desc">将仓库中的文档文件（md/txt/rst）自动同步到知识库</p>
+            <div class="form-row"><label>Personal Access Token</label>
+              <input v-model="githubConfig.token" type="password" class="form-input" placeholder="ghp_xxxxxxxxxxxx" />
+            </div>
+            <div class="form-row"><label>仓库（owner/repo）</label>
+              <input v-model="githubConfig.repo" class="form-input" placeholder="username/my-docs" />
+            </div>
+            <div class="form-row"><label>分支</label>
+              <input v-model="githubConfig.branch" class="form-input" placeholder="main" />
+            </div>
+            <div class="form-row"><label>文档路径前缀（可选）</label>
+              <input v-model="githubConfig.path_prefix" class="form-input" placeholder="docs/" />
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" @click="savePlatformConfig('github', githubConfig)">保存配置</button>
+              <button class="btn-secondary" @click="testPlatform('github')">立即同步</button>
+            </div>
+          </template>
+        </div>
+      </transition>
+    </div>
+
+    <!-- 外观设置 -->
+    <div v-if="activeTab === 'appearance'" class="tab-content">
+      <div class="section-header">
+        <h2>外观设置</h2>
+        <p class="section-desc">自定义界面主题、颜色和字体，打造专属体验</p>
+      </div>
+      <div class="appearance-grid">
+        <div class="appearance-card">
+          <div class="appearance-card__title">🌗 主题模式</div>
+          <div class="theme-options">
+            <button v-for="t in themeOptions" :key="t.id"
+              :class="['theme-btn', { 'theme-btn--active': appearance.theme === t.id }]"
+              @click="setTheme(t.id)">
+              <span class="theme-preview" :style="{ background: t.preview }"></span>
+              {{ t.label }}
             </button>
           </div>
         </div>
-
-        <div v-if="obsidianSyncResult" class="sync-result">
-          <span class="sync-badge">+{{ obsidianSyncResult.added }}</span> 新增 ·
-          <span class="sync-badge sync-badge--update">~{{ obsidianSyncResult.updated }}</span> 更新 ·
-          <span class="sync-badge sync-badge--skip">{{ obsidianSyncResult.skipped }}</span> 跳过
-        </div>
-      </div>
-
-      <!-- 飞书机器人 -->
-      <div class="integration-card" style="margin-top: 16px;">
-        <div class="integration-card__header">
-          <img src="https://sf3-cn.feishucdn.com/obj/feishu-static/favicon.ico" class="integration-logo" alt="飞书" onerror="this.style.display='none'" />
-          <div>
-            <div class="integration-card__title">飞书机器人</div>
-            <div class="integration-card__desc">在飞书群/私聊中 @ 机器人，自动触发知识库问答</div>
-          </div>
-          <span :class="['integration-status', feishuStatus.configured ? 'status--ok' : 'status--off']">
-            {{ feishuStatus.configured ? '已配置' : '未配置' }}
-          </span>
-        </div>
-
-        <div class="integration-form">
-          <div class="form-row">
-            <label>App ID</label>
-            <input v-model="feishuForm.app_id" class="form-input" placeholder="cli_xxxxxxxxxxxxxxxx" />
-          </div>
-          <div class="form-row">
-            <label>App Secret</label>
-            <input v-model="feishuForm.app_secret" type="password" class="form-input" placeholder="••••••••••••••••••••••••••" />
-          </div>
-          <div class="form-row">
-            <label>Verification Token（可选）</label>
-            <input v-model="feishuForm.verification_token" class="form-input" />
-          </div>
-          <div class="form-row">
-            <label>Encrypt Key（可选）</label>
-            <input v-model="feishuForm.encrypt_key" class="form-input" />
-          </div>
-          <div class="form-row">
-            <label>默认知识库 ID（可选）</label>
-            <input v-model="feishuForm.default_kb_id" class="form-input" placeholder="留空则直接 LLM 回答" />
-          </div>
-          <div class="form-actions">
-            <button class="btn-primary" @click="configFeishu" :disabled="feishuLoading">保存配置</button>
+        <div class="appearance-card">
+          <div class="appearance-card__title">🎨 主题色</div>
+          <div class="color-options">
+            <button v-for="c in colorOptions" :key="c.id"
+              :class="['color-btn', { 'color-btn--active': appearance.color === c.id }]"
+              :style="{ background: c.value }"
+              @click="setColor(c.id, c.value)"
+              :title="c.label">
+            </button>
           </div>
         </div>
-
-        <!-- Webhook URL 展示 -->
-        <div class="webhook-box">
-          <span class="webhook-label">Webhook 事件订阅地址：</span>
-          <code class="webhook-url">{{ webhookUrl }}</code>
-          <button class="btn-copy" @click="copyWebhook">复制</button>
+        <div class="appearance-card">
+          <div class="appearance-card__title">🔡 字体大小</div>
+          <div class="font-size-options">
+            <button v-for="f in fontSizeOptions" :key="f.id"
+              :class="['font-btn', { 'font-btn--active': appearance.fontSize === f.id }]"
+              @click="setFontSize(f.id, f.value)">
+              {{ f.label }}
+            </button>
+          </div>
         </div>
-
-        <!-- 配置步骤 -->
-        <details class="setup-guide">
-          <summary>📋 飞书配置步骤</summary>
-          <ol>
-            <li>访问 <a href="https://open.feishu.cn/app" target="_blank">飞书开放平台</a> → 创建企业自建应用</li>
-            <li>添加「机器人」能力，申请 <code>im:message</code>、<code>im:message:send_as_bot</code> 权限</li>
-            <li>事件订阅 → 请求地址填写上方 Webhook 地址（需公网可访问，可用 ngrok 内网穿透）</li>
-            <li>订阅事件：<code>im.message.receive_v1</code></li>
-            <li>在上方填写 App ID、App Secret → 保存配置</li>
-            <li>发布应用 → 邀请机器人加入群 → 群内 @ 机器人即可触发问答 ✅</li>
-          </ol>
-        </details>
+        <div class="appearance-card">
+          <div class="appearance-card__title">📐 布局紧凑度</div>
+          <div class="layout-options">
+            <button v-for="l in layoutOptions" :key="l.id"
+              :class="['layout-btn', { 'layout-btn--active': appearance.layout === l.id }]"
+              @click="appearance.layout = l.id; saveAppearance()">
+              <span>{{ l.icon }}</span>{{ l.label }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
+
+    <!-- 使用统计 -->
+    <div v-if="activeTab === 'stats'" class="tab-content">
+      <div class="section-header">
+        <h2>使用统计</h2>
+        <p class="section-desc">查看系统使用情况、Token消耗和知识库规模</p>
+      </div>
+      <div class="stats-grid">
+        <div class="stats-big-card" v-for="s in statsCards" :key="s.label">
+          <div class="stats-big-card__icon">{{ s.icon }}</div>
+          <div class="stats-big-card__value">{{ s.value }}</div>
+          <div class="stats-big-card__label">{{ s.label }}</div>
+        </div>
+      </div>
+      <div class="stats-chart-placeholder">
+        <div class="chart-placeholder-icon">📊</div>
+        <p>近 7 日使用趋势图</p>
+        <p class="text-xs text-gray-400">（接入 ECharts 后可视化展示）</p>
+      </div>
+    </div>
+
+    <!-- 工单管理 -->
+    <div v-if="activeTab === 'tickets'" class="tab-content">
+      <div class="section-header">
+        <h2>工单管理</h2>
+        <p class="section-desc">提交问题反馈和功能请求，跟踪处理进度</p>
+      </div>
+      <button class="btn-primary mb-4" @click="showNewTicket = !showNewTicket">+ 提交工单</button>
+      <div v-if="showNewTicket" class="ticket-form">
+        <div class="form-row"><label>问题类型</label>
+          <select v-model="newTicket.type" class="form-select">
+            <option value="bug">Bug 报告</option>
+            <option value="feature">功能请求</option>
+            <option value="other">其他</option>
+          </select>
+        </div>
+        <div class="form-row"><label>标题</label>
+          <input v-model="newTicket.title" class="form-input" placeholder="简短描述问题..." />
+        </div>
+        <div class="form-row"><label>详细描述</label>
+          <textarea v-model="newTicket.content" class="form-textarea" rows="4" placeholder="请详细描述问题..."></textarea>
+        </div>
+        <div class="form-actions">
+          <button class="btn-cancel" @click="showNewTicket = false">取消</button>
+          <button class="btn-primary" @click="submitTicket">提交工单</button>
+        </div>
+      </div>
+      <div class="ticket-list">
+        <div v-if="tickets.length === 0" class="empty-state">
+          <div class="empty-icon">🎫</div>
+          <p>暂无工单，运行良好 ✨</p>
+        </div>
+        <div v-for="ticket in tickets" :key="ticket.id" class="ticket-card">
+          <div>
+            <span :class="['ticket-type', `ticket-type--${ticket.type}`]">{{ ticket.type }}</span>
+            <div class="ticket-title font-medium mt-1">{{ ticket.title }}</div>
+            <div class="text-gray-400 text-xs mt-1">{{ formatDate(ticket.created_at) }}</div>
+          </div>
+          <span :class="['ticket-status', `ticket-status--${ticket.status}`]">{{ ticket.status }}</span>
+        </div>
+      </div>
+    </div>
+    </main>
   </div>
 </template>
 
@@ -387,20 +579,58 @@ import ComplianceTab from './SettingsTabs/ComplianceTab.vue'
 import CommercialTab from './SettingsTabs/CommercialTab.vue'
 
 const activeTab = ref('apikeys')
-const tabs = [
-  { id: 'apikeys', label: 'API Key 管理', icon: '🔑' },
-  { id: 'datasources', label: '多数据源', icon: '🗄️' },
-  { id: 'audit', label: '审计日志', icon: '📋' },
-  { id: 'integrations', label: '办公联动', icon: '🔗' },
-  { id: 'ocr', label: 'OCR 解析', icon: '📄' },
-  { id: 'version', label: '版本管理', icon: '📚' },
-  { id: 'rbac', label: '角色权限', icon: '🛡️' },
-  { id: 'rageval', label: 'RAG 评估', icon: '🔬' },
-  { id: 'tools', label: '企业工具', icon: '🧰' },
-  { id: 'multimodel', label: '多模型', icon: '🤖' },
-  { id: 'compliance', label: '合规中心', icon: '✅' },
-  { id: 'commercial', label: '商业化', icon: '💎' },
+
+// Win11 风格分组导航
+const tabGroups = [
+  {
+    label: '账号与安全',
+    tabs: [
+      { id: 'apikeys', label: 'API Key', icon: '🔑', desc: '管理开放接口密钥' },
+      { id: 'rbac', label: '角色权限', icon: '🛡️', desc: '用户角色与权限管理' },
+      { id: 'compliance', label: '合规中心', icon: '✅', desc: 'SSO/脱敏/限流配置' },
+    ]
+  },
+  {
+    label: '数据与存储',
+    tabs: [
+      { id: 'datasources', label: '多数据源', icon: '🗄️', desc: '连接外部数据源' },
+      { id: 'version', label: '版本管理', icon: '📚', desc: '文档版本历史' },
+      { id: 'ocr', label: 'OCR 解析', icon: '📄', desc: 'OCR文档识别配置' },
+    ]
+  },
+  {
+    label: 'AI 与模型',
+    tabs: [
+      { id: 'multimodel', label: '多模型', icon: '🤖', desc: '配置多个AI模型' },
+      { id: 'rageval', label: 'RAG 评估', icon: '🔬', desc: '效果评估与调优' },
+      { id: 'tools', label: '企业工具', icon: '🧰', desc: '11种企业级工具' },
+    ]
+  },
+  {
+    label: '集成与联动',
+    tabs: [
+      { id: 'integrations', label: '办公联动', icon: '🔗', desc: '飞书/钉钉/企微等' },
+      { id: 'audit', label: '审计日志', icon: '📋', desc: '用户操作审计' },
+    ]
+  },
+  {
+    label: '个性化',
+    tabs: [
+      { id: 'appearance', label: '外观设置', icon: '🎨', desc: '主题/颜色/字体' },
+    ]
+  },
+  {
+    label: '系统',
+    tabs: [
+      { id: 'stats', label: '使用统计', icon: '📊', desc: '查看使用数据' },
+      { id: 'tickets', label: '工单管理', icon: '🎫', desc: '问题反馈与跟踪' },
+    ]
+  },
 ]
+
+// 所有 tabs 平铺（供 currentTab computed 使用）
+const allTabs = tabGroups.flatMap(g => g.tabs.map(t => ({ ...t, desc: t.desc || '' })))
+const currentTab = computed(() => allTabs.find(t => t.id === activeTab.value))
 
 // ── API Key ────────────────────────────────────────────────────
 const apiKeys = ref<any[]>([])
@@ -534,7 +764,8 @@ function formatDateTime(ts: number): string {
 }
 
 onMounted(async () => {
-  await Promise.all([fetchKeys(), fetchDatasources(), fetchAuditLogs(), fetchObsidianStatus(), fetchFeishuStatus()])
+  loadPlatformConfigs()
+  await Promise.all([fetchKeys(), fetchDatasources(), fetchAuditLogs(), fetchObsidianStatus(), fetchFeishuStatus(), fetchUsageStats()])
 })
 
 // ── 办公联动：Obsidian ────────────────────────────────────────
@@ -619,6 +850,147 @@ async function copyWebhook() {
   await navigator.clipboard.writeText(webhookUrl.value)
   MessagePlugin.success('Webhook 地址已复制')
 }
+
+// ── 办公联动：新增平台 ────────────────────────────────────────
+const activePlatform = ref('')
+
+const dingtalkConfig = reactive({ webhook: '', secret: '', keywords: '知识库' })
+const wecomConfig = reactive({ webhook: '', msgtype: 'markdown', mentioned_mobile_list: '' })
+const notionConfig = reactive({ token: '', database_id: '', content_field: 'Name' })
+const githubConfig = reactive({ token: '', repo: '', branch: 'main', path_prefix: 'docs/' })
+
+// 从localStorage加载平台配置
+function loadPlatformConfigs() {
+  const saved = localStorage.getItem('integration_configs')
+  if (saved) {
+    try {
+      const c = JSON.parse(saved)
+      if (c.dingtalk) Object.assign(dingtalkConfig, c.dingtalk)
+      if (c.wecom) Object.assign(wecomConfig, c.wecom)
+      if (c.notion) Object.assign(notionConfig, c.notion)
+      if (c.github) Object.assign(githubConfig, c.github)
+    } catch {}
+  }
+}
+
+async function savePlatformConfig(platform: string, config: any) {
+  const saved = JSON.parse(localStorage.getItem('integration_configs') || '{}')
+  saved[platform] = { ...config }
+  localStorage.setItem('integration_configs', JSON.stringify(saved))
+  MessagePlugin.success(`${platform} 配置已保存`)
+  // 同时尝试发到后端
+  try {
+    await axios.post(`/api/integrations/${platform}/configure`, config)
+  } catch {}
+}
+
+async function testPlatform(platform: string) {
+  try {
+    await axios.post(`/api/integrations/${platform}/test`)
+    MessagePlugin.success('测试消息发送成功 ✅')
+  } catch {
+    MessagePlugin.warning('后端接口未就绪，配置已本地保存')
+  }
+}
+
+// 集成平台列表（computed，动态显示连接状态）
+const integrationPlatforms = computed(() => [
+  { id: 'obsidian', name: 'Obsidian', emoji: '🟣', connected: obsidianStatus.value.configured },
+  { id: 'feishu', name: '飞书', emoji: '🟦', connected: feishuStatus.value.configured },
+  { id: 'dingtalk', name: '钉钉', emoji: '🔵', connected: !!dingtalkConfig.webhook },
+  { id: 'wecom', name: '企业微信', emoji: '💚', connected: !!wecomConfig.webhook },
+  { id: 'notion', name: 'Notion', emoji: '⬛', connected: !!notionConfig.token },
+  { id: 'github', name: 'GitHub', emoji: '⬤', connected: !!githubConfig.token },
+])
+
+// ── 外观设置 ──────────────────────────────────────────────────
+const appearance = reactive(JSON.parse(localStorage.getItem('app_appearance') || '{"theme":"light","color":"blue","fontSize":"medium","layout":"normal"}'))
+
+const themeOptions = [
+  { id: 'light', label: '浅色', preview: '#ffffff' },
+  { id: 'dark', label: '深色', preview: '#1e1e2e' },
+  { id: 'auto', label: '跟随系统', preview: 'linear-gradient(to right, #fff 50%, #1e1e2e 50%)' },
+]
+const colorOptions = [
+  { id: 'blue', label: '蓝色', value: '#4f7ef8' },
+  { id: 'purple', label: '紫色', value: '#8b5cf6' },
+  { id: 'green', label: '绿色', value: '#10b981' },
+  { id: 'orange', label: '橙色', value: '#f97316' },
+  { id: 'pink', label: '粉色', value: '#ec4899' },
+  { id: 'gray', label: '灰色', value: '#6b7280' },
+]
+const fontSizeOptions = [
+  { id: 'small', label: '小', value: '13px' },
+  { id: 'medium', label: '中', value: '14px' },
+  { id: 'large', label: '大', value: '16px' },
+]
+const layoutOptions = [
+  { id: 'compact', label: '紧凑', icon: '▤' },
+  { id: 'normal', label: '默认', icon: '▥' },
+  { id: 'spacious', label: '宽松', icon: '▦' },
+]
+
+function setTheme(id: string) {
+  appearance.theme = id
+  saveAppearance()
+  document.documentElement.setAttribute('data-theme', id)
+}
+function setColor(id: string, value: string) {
+  appearance.color = id
+  saveAppearance()
+  document.documentElement.style.setProperty('--primary', value)
+}
+function setFontSize(id: string, value: string) {
+  appearance.fontSize = id
+  saveAppearance()
+  document.documentElement.style.fontSize = value
+}
+function saveAppearance() {
+  localStorage.setItem('app_appearance', JSON.stringify(appearance))
+  MessagePlugin.success('外观设置已保存')
+}
+
+// ── 使用统计 ──────────────────────────────────────────────────
+const usageStats = ref({ total_queries: 0, total_tokens: 0, kb_count: 0, doc_count: 0 })
+const statsCards = computed(() => [
+  { icon: '💬', value: usageStats.value.total_queries, label: '累计问答次数' },
+  { icon: '🪙', value: usageStats.value.total_tokens, label: '累计Token消耗' },
+  { icon: '📚', value: usageStats.value.kb_count, label: '知识库数量' },
+  { icon: '📄', value: usageStats.value.doc_count, label: '文档总数' },
+])
+async function fetchUsageStats() {
+  try {
+    const res = await axios.get('/api/stats/usage')
+    usageStats.value = res.data
+  } catch {}
+}
+
+// ── 工单管理 ──────────────────────────────────────────────────
+const tickets = ref<any[]>(JSON.parse(localStorage.getItem('local_tickets') || '[]'))
+const showNewTicket = ref(false)
+const newTicket = reactive({ type: 'bug', title: '', content: '' })
+
+async function submitTicket() {
+  if (!newTicket.title.trim()) { MessagePlugin.warning('请填写工单标题'); return }
+  const ticket = {
+    id: Date.now(),
+    type: newTicket.type,
+    title: newTicket.title,
+    content: newTicket.content,
+    status: 'open',
+    created_at: new Date().toISOString(),
+  }
+  tickets.value.unshift(ticket)
+  localStorage.setItem('local_tickets', JSON.stringify(tickets.value))
+  // 尝试提交后端
+  try {
+    await axios.post('/api/tickets/submit', ticket)
+  } catch {}
+  MessagePlugin.success('工单已提交')
+  showNewTicket.value = false
+  Object.assign(newTicket, { type: 'bug', title: '', content: '' })
+}
+
 </script>
 
 <style scoped>
@@ -876,4 +1248,443 @@ async function copyWebhook() {
 }
 .setup-guide a { color: #4f7ef8; text-decoration: none; }
 .setup-guide a:hover { text-decoration: underline; }
+
+/* ====== Win11 布局 ====== */
+.settings-win11 {
+  display: flex;
+  height: 100vh;
+  background: #f3f3f3;
+  overflow: hidden;
+}
+
+/* 左侧导航 */
+.settings-nav {
+  width: 240px;
+  flex-shrink: 0;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(0,0,0,0.06);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 16px 8px;
+}
+
+.settings-nav__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 18px;
+}
+
+.settings-nav__icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.settings-nav__title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1a2e;
+}
+
+.nav-group {
+  margin-bottom: 4px;
+}
+
+.nav-group__label {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #9ca3af;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  padding: 8px 12px 4px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  border-radius: 8px;
+  font-size: 13.5px;
+  color: #374151;
+  text-align: left;
+  transition: all 0.15s;
+  position: relative;
+}
+
+.nav-item:hover {
+  background: rgba(0,0,0,0.05);
+}
+
+.nav-item--active {
+  background: rgba(79,126,248,0.12);
+  color: #4f7ef8;
+  font-weight: 600;
+}
+
+.nav-item--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+  background: #4f7ef8;
+}
+
+.nav-item__icon {
+  font-size: 15px;
+  width: 20px;
+  text-align: center;
+}
+
+.nav-item__label {
+  flex: 1;
+}
+
+.nav-item__badge {
+  font-size: 10px;
+  background: #ef4444;
+  color: white;
+  padding: 1px 5px;
+  border-radius: 8px;
+}
+
+/* 右侧内容区 */
+.settings-main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px 36px;
+  background: #f3f3f3;
+}
+
+.settings-page-header {
+  margin-bottom: 24px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  padding-bottom: 16px;
+}
+
+.settings-page-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 4px;
+}
+
+.settings-page-desc {
+  font-size: 13px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+/* 兼容旧的 .settings-page */
+.settings-page {
+  height: 100%;
+  overflow: auto;
+  background: transparent;
+}
+
+/* ====== 办公联动网格 ====== */
+.integration-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.integration-platform-card {
+  background: white;
+  border-radius: 12px;
+  border: 2px solid transparent;
+  padding: 16px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+
+.integration-platform-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.1);
+}
+
+.platform-card--active {
+  border-color: #4f7ef8;
+  background: #eff6ff;
+}
+
+.platform-logo {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.platform-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+}
+
+.platform-status {
+  font-size: 11px;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.dot--green { background: #10b981; }
+.dot--gray { background: #d1d5db; }
+
+/* 平台配置面板 */
+.platform-config-panel {
+  background: white;
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+  margin-top: 4px;
+  border: 1px solid #e5e7eb;
+}
+
+.panel-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 6px;
+}
+
+.panel-desc {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 18px;
+}
+
+.guide-box {
+  margin-top: 16px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.guide-box summary {
+  cursor: pointer;
+  font-weight: 500;
+  color: #4f7ef8;
+  padding: 4px 0;
+}
+
+.guide-box ol {
+  padding-left: 18px;
+  margin-top: 8px;
+  line-height: 1.9;
+}
+
+/* 过渡动效 */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.slide-down-enter-from,
+.slide-down-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+  max-height: 0;
+}
+
+.slide-down-enter-to,
+.slide-down-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 1000px;
+}
+
+/* ====== 外观设置 ====== */
+.appearance-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.appearance-card {
+  background: white;
+  border-radius: 12px;
+  padding: 18px 20px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.appearance-card__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 14px;
+}
+
+.theme-options,
+.font-size-options,
+.layout-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.theme-btn, .font-btn, .layout-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  cursor: pointer;
+  background: white;
+  font-size: 13px;
+  color: #374151;
+  transition: all 0.15s;
+}
+
+.theme-btn--active, .font-btn--active, .layout-btn--active {
+  border-color: #4f7ef8;
+  background: #eff6ff;
+  color: #4f7ef8;
+}
+
+.theme-preview {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid rgba(0,0,0,0.1);
+}
+
+.color-options {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.color-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.color-btn--active {
+  border-color: rgba(0,0,0,0.3);
+  transform: scale(1.15);
+}
+
+/* ====== 使用统计 ====== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stats-big-card {
+  background: white;
+  border-radius: 14px;
+  padding: 20px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  position: relative;
+  overflow: hidden;
+}
+
+.stats-big-card__icon {
+  font-size: 28px;
+  margin-bottom: 8px;
+}
+
+.stats-big-card__value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #4f7ef8;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.stats-big-card__label {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.stats-chart-placeholder {
+  background: white;
+  border-radius: 14px;
+  padding: 40px;
+  text-align: center;
+  color: #6b7280;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.chart-placeholder-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+/* ====== 工单管理 ====== */
+.ticket-form {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+
+.ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ticket-card {
+  background: white;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border: 1px solid #f0f0f0;
+}
+
+.ticket-type {
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.ticket-type--bug { background: #fee2e2; color: #dc2626; }
+.ticket-type--feature { background: #dbeafe; color: #1d4ed8; }
+.ticket-type--other { background: #f3f4f6; color: #6b7280; }
+
+.ticket-status {
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.ticket-status--open { background: #fef9c3; color: #854d0e; }
+.ticket-status--in_progress { background: #dbeafe; color: #1d4ed8; }
+.ticket-status--closed { background: #dcfce7; color: #15803d; }
+
+.mb-4 { margin-bottom: 16px; }
 </style>
