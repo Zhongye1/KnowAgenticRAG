@@ -16,8 +16,9 @@ project_root = Path(__file__).resolve().parent
 sys.path.append(str(project_root))
 
 
-# 配置日志
-logging.basicConfig(level=logging.INFO)
+# 配置结构化日志（每条日志携带 trace_id，全链路可追溯）
+from trace_logging import setup_trace_logging, TraceMiddleware
+setup_trace_logging()
 logger = logging.getLogger(__name__)
 
 # 初始化FastAPI应用
@@ -52,11 +53,19 @@ async def _init_db_tables():
     except Exception as e:
         logger.warning(f"本地辅助表初始化失败: {e}")
 
-    # 启动异步向量化任务队列 Worker
+    # 注册向量化任务处理函数（必须在 Worker 启动前完成注册）
+    try:
+        from document_processing.vectorize_task import register_all
+        register_all()
+        logger.info("向量化任务处理函数注册完成")
+    except Exception as e:
+        logger.warning(f"向量化任务注册失败: {e}")
+
+    # 启动异步向量化任务队列 Worker（优先 Redis Stream，降级内存队列）
     try:
         from document_processing.task_queue import ensure_worker_started
         await ensure_worker_started()
-        logger.info("向量化任务队列 Worker 已启动（最大并发: 2）")
+        logger.info("向量化任务队列 Worker 已启动（Redis Stream / 内存降级，最大并发: 2）")
     except Exception as e:
         logger.warning(f"任务队列 Worker 启动失败: {e}")
 
@@ -68,6 +77,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# TraceID 中间件（在 CORS 之后注册，每请求注入唯一 trace_id）
+app.add_middleware(TraceMiddleware)
 
 # 审计日志中间件（在 CORS 之后注册，确保所有 API 调用均被记录）
 try:
