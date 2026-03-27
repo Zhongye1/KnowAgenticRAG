@@ -131,6 +131,22 @@
         </button>
       </t-tooltip>
 
+      <!-- App下载 -->
+      <t-tooltip :content="isCollapsed ? '下载移动端 App' : ''" placement="right" :show-arrow="false">
+        <button class="nav-item nav-item--download" @click="openAppDownload" title="下载移动端 App">
+          <span class="nav-item__icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+              <line x1="12" y1="18" x2="12" y2="18.01"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 11l4 4 4-4M12 7v8"/>
+            </svg>
+          </span>
+          <transition name="fade-text">
+            <span v-if="!isCollapsed" class="nav-item__label">下载 App</span>
+          </transition>
+        </button>
+      </t-tooltip>
+
       <!-- 用户信息 -->
       <t-dropdown :min-column-width="160" trigger="click" placement="right-bottom">
         <div :class="['user-info', { 'user-info--collapsed': isCollapsed }]">
@@ -207,6 +223,7 @@ const isActive = (path: string) => {
 
 const navigateTo = (path: string) => router.push(path);
 const openGitHub = () => window.open('https://github.com/March030303/KnowledgeRAG-GZHU/tree/master', '_blank');
+const openAppDownload = () => window.open('https://github.com/March030303/KnowledgeRAG-GZHU/releases', '_blank');
 
 const logout = async () => {
   await router.push('/LogonOrRegister');
@@ -592,6 +609,14 @@ const toolNavItems: NavItem[] = [
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.nav-item--download .nav-item__icon {
+  color: #22c55e;
+}
+.nav-item--download:hover {
+  background: #f0fdf4 !important;
+  color: #15803d !important;
 }
 
 .nav-item__badge {

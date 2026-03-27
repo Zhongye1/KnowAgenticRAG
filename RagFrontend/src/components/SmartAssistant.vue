@@ -111,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted } from 'vue'
+import { ref, nextTick, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -367,6 +367,32 @@ function toggleOpen() {
   isOpen.value = !isOpen.value
   if (isOpen.value) isMinimized.value = false
 }
+
+// 打开面板时，若对话为空则自动触发 AI 问候（激活状态）
+watch(isOpen, async (opened) => {
+  if (!opened || messages.value.length > 0) return
+  // 短暂延迟，等面板过渡动画结束后再显示消息
+  await new Promise(r => setTimeout(r, 350))
+  isTyping.value = true
+  await scrollToBottom()
+  const aiReply = await callAI('你好，请用一句话介绍一下你自己和你能帮我做什么')
+  isTyping.value = false
+  if (aiReply) {
+    messages.value.push({ role: 'assistant', content: aiReply.replace(/\n/g, '<br>') })
+    aiEnabled.value = true
+  } else {
+    // AI 离线/未配置时给一个本地欢迎语
+    messages.value.push({
+      role: 'assistant',
+      content: '👋 你好！我是 <b>RAG-F 智能助理</b>，专为这个 AI 知识库系统设计。<br><br>我可以帮你：<br>• 解答系统功能使用问题<br>• 指导上传文档、创建知识库<br>• 配置 AI 模型（本地 Ollama / 云端 API）<br>• 排查常见报错问题<br><br>直接输入你的问题或点击下方快捷卡片开始 🚀',
+      actions: [
+        { label: '去知识库', route: '/knowledge' },
+        { label: '配置模型', route: '/settings' },
+      ]
+    })
+  }
+  await scrollToBottom()
+})
 
 async function scrollToBottom() {
   await nextTick()

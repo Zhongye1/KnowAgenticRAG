@@ -375,7 +375,7 @@
         <div v-for="p in integrationPlatforms" :key="p.id"
           :class="['integration-platform-card', { 'platform-card--active': activePlatform === p.id }]"
           @click="activePlatform = activePlatform === p.id ? '' : p.id">
-          <div class="platform-logo">{{ p.emoji }}</div>
+          <div class="platform-logo" v-html="p.svg"></div>
           <div class="platform-name">{{ p.name }}</div>
           <div class="platform-status">
             <span :class="['status-dot', p.connected ? 'dot--green' : 'dot--gray']"></span>
@@ -389,7 +389,7 @@
         <div v-if="activePlatform" class="platform-config-panel">
           <!-- Obsidian -->
           <template v-if="activePlatform === 'obsidian'">
-            <h3 class="panel-title">🟣 Obsidian Vault 同步</h3>
+            <h3 class="panel-title"><span class="panel-title-icon" v-html="PLATFORM_SVGS.obsidian"></span> Obsidian Vault 同步</h3>
             <p class="panel-desc">将本地 Vault 中的 .md 笔记增量同步到知识库，支持 [[wikilink]] 解析</p>
             <div class="form-row"><label>Vault 路径</label>
               <input v-model="obsidianForm.vault_path" class="form-input" placeholder="C:\Users\你\Documents\ObsidianVault" />
@@ -415,7 +415,7 @@
 
           <!-- 飞书 -->
           <template v-else-if="activePlatform === 'feishu'">
-            <h3 class="panel-title">🟦 飞书机器人</h3>
+            <h3 class="panel-title"><span class="panel-title-icon" v-html="PLATFORM_SVGS.feishu"></span> 飞书机器人</h3>
             <p class="panel-desc">在飞书群/私聊中 @ 机器人，自动触发知识库问答</p>
             <div class="form-row"><label>App ID</label>
               <input v-model="feishuForm.app_id" class="form-input" placeholder="cli_xxxxxxxxxxxxxxxx" />
@@ -441,7 +441,7 @@
 
           <!-- 钉钉 -->
           <template v-else-if="activePlatform === 'dingtalk'">
-            <h3 class="panel-title">🔵 钉钉群机器人</h3>
+            <h3 class="panel-title"><span class="panel-title-icon" v-html="PLATFORM_SVGS.dingtalk"></span> 钉钉群机器人</h3>
             <p class="panel-desc">通过钉钉自定义机器人 Webhook 发送消息通知或接收知识库问答</p>
             <div class="form-row"><label>Webhook 地址</label>
               <input v-model="dingtalkConfig.webhook" class="form-input" placeholder="https://oapi.dingtalk.com/robot/send?access_token=..." />
@@ -467,7 +467,7 @@
 
           <!-- 企业微信 -->
           <template v-else-if="activePlatform === 'wecom'">
-            <h3 class="panel-title">💚 企业微信群机器人</h3>
+            <h3 class="panel-title"><span class="panel-title-icon" v-html="PLATFORM_SVGS.wecom"></span> 企业微信群机器人</h3>
             <p class="panel-desc">通过企业微信群机器人推送知识库更新通知</p>
             <div class="form-row"><label>Webhook 地址</label>
               <input v-model="wecomConfig.webhook" class="form-input" placeholder="https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=..." />
@@ -489,7 +489,7 @@
 
           <!-- Notion -->
           <template v-else-if="activePlatform === 'notion'">
-            <h3 class="panel-title">⬛ Notion 数据库同步</h3>
+            <h3 class="panel-title"><span class="panel-title-icon" v-html="PLATFORM_SVGS.notion"></span> Notion 数据库同步</h3>
             <p class="panel-desc">将 Notion 数据库内容同步到知识库，支持富文本和属性字段</p>
             <div class="form-row"><label>Integration Token</label>
               <input v-model="notionConfig.token" type="password" class="form-input" placeholder="secret_xxxxxxxx..." />
@@ -508,7 +508,7 @@
 
           <!-- GitHub -->
           <template v-else-if="activePlatform === 'github'">
-            <h3 class="panel-title">⬤ GitHub 仓库同步</h3>
+            <h3 class="panel-title"><span class="panel-title-icon" v-html="PLATFORM_SVGS.github"></span> GitHub 仓库同步</h3>
             <p class="panel-desc">将仓库中的文档文件（md/txt/rst）自动同步到知识库</p>
             <div class="form-row"><label>Personal Access Token</label>
               <input v-model="githubConfig.token" type="password" class="form-input" placeholder="ghp_xxxxxxxxxxxx" />
@@ -674,6 +674,41 @@
         <p class="section-desc">提交问题反馈和功能请求，跟踪处理进度</p>
       </div>
       <button class="btn-primary mb-4" @click="showNewTicket = !showNewTicket">+ 提交工单</button>
+
+      <!-- App 下载区块 -->
+      <div class="app-download-card">
+        <div class="app-download-card__header">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="app-dl-icon">
+            <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+            <line x1="12" y1="18" x2="12" y2="18.01" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <div class="app-download-card__title">📱 RAG-F 移动端 App</div>
+            <div class="app-download-card__subtitle">React Native · iOS / Android 双端支持</div>
+          </div>
+        </div>
+        <div class="app-download-btns">
+          <a class="app-dl-btn app-dl-btn--android"
+            href="https://github.com/March030303/KnowledgeRAG-GZHU/releases" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;">
+              <path d="M17.523 15.341a1 1 0 01-.997 1H7.474a1 1 0 01-.997-1V8.66a1 1 0 01.997-1h9.052a1 1 0 01.997 1zM4.5 7.5A1.5 1.5 0 003 9v6a1.5 1.5 0 003 0V9A1.5 1.5 0 004.5 7.5zm15 0A1.5 1.5 0 0018 9v6a1.5 1.5 0 003 0V9a1.5 1.5 0 00-1.5-1.5zM8.5 3.5a.5.5 0 01.5-.5h6a.5.5 0 01.5.5v1a.5.5 0 01-.5.5H9a.5.5 0 01-.5-.5v-1zm0 16a.5.5 0 01.5-.5h2v1h-2a.5.5 0 01-.5-.5zm4.5-.5h2v1h-2v-1z"/>
+            </svg>
+            Android APK 下载
+          </a>
+          <a class="app-dl-btn app-dl-btn--ios"
+            href="https://github.com/March030303/KnowledgeRAG-GZHU/releases" target="_blank" rel="noopener">
+            <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;">
+              <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
+            </svg>
+            iOS TestFlight
+          </a>
+          <a class="app-dl-btn app-dl-btn--github"
+            href="https://github.com/March030303/KnowledgeRAG-GZHU/tree/master/RagMobile" target="_blank" rel="noopener">
+            源码 / 自行构建
+          </a>
+        </div>
+        <p class="app-download-card__hint">最新版本请访问 GitHub Releases 页面，或扫描二维码下载</p>
+      </div>
       <div v-if="showNewTicket" class="ticket-form">
         <div class="form-row"><label>问题类型</label>
           <select v-model="newTicket.type" class="form-select">
@@ -690,7 +725,7 @@
         </div>
         <div class="form-actions">
           <button class="btn-cancel" @click="showNewTicket = false">取消</button>
-          <button class="btn-primary" @click="submitTicket">提交工单</button>
+          <button class="btn-primary" @click="submitTicket">提交并发送邮件 ✉️</button>
         </div>
       </div>
       <div class="ticket-list">
@@ -1159,13 +1194,45 @@ async function testPlatform(platform: string) {
 }
 
 // 集成平台列表（computed，动态显示连接状态）
+const PLATFORM_SVGS: Record<string, string> = {
+  obsidian: `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" style="width:36px;height:36px">
+    <defs><linearGradient id="og1" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#6c31e3"/><stop offset="100%" style="stop-color:#9d5ef7"/></linearGradient></defs>
+    <path fill="url(#og1)" d="M63.6 2.8C51.4-1.5 37.7 2.3 30.2 12.8L8.5 43.3c-6.3 9-5.6 21.1 1.7 29.3l27.6 31.5c5.7 6.5 15.4 7 21.7 1.1l34.4-32.5c5.6-5.3 6.6-13.9 2.3-20.4L63.6 2.8z"/>
+    <path fill="rgba(255,255,255,0.15)" d="M55 15 L75 55 L55 85 L35 55 Z"/>
+    <circle fill="rgba(255,255,255,0.3)" cx="55" cy="50" r="12"/>
+  </svg>`,
+  feishu: `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:36px;height:36px">
+    <rect width="200" height="200" rx="40" fill="#1664FF"/>
+    <path fill="white" d="M60 140 L100 60 L140 140 L120 140 L100 100 L80 140 Z"/>
+    <path fill="rgba(255,255,255,0.6)" d="M75 110 L125 110 L115 130 L85 130 Z"/>
+  </svg>`,
+  dingtalk: `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:36px;height:36px">
+    <rect width="200" height="200" rx="40" fill="#1677FF"/>
+    <path fill="white" d="M100 40 C68 40 42 66 42 98 C42 118 52 136 68 147 L60 165 L95 150 C97 150 99 151 100 151 C132 151 158 125 158 98 C158 66 132 40 100 40 Z"/>
+    <path fill="#1677FF" d="M85 90 C85 90 110 78 125 72 C118 85 108 100 108 100 C108 100 130 95 140 93 C130 108 100 130 100 130 C100 130 88 105 85 90 Z"/>
+  </svg>`,
+  wecom: `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:36px;height:36px">
+    <rect width="200" height="200" rx="40" fill="#07C160"/>
+    <path fill="white" d="M80 75 C64 75 51 87 51 102 C51 112 57 120 66 125 L62 138 L78 130 C79 130 80 130 80 130 C96 130 109 118 109 102 C109 87 96 75 80 75 Z"/>
+    <path fill="white" d="M122 60 C107 60 95 71 95 84 C95 94 101 102 110 107 L106 118 L120 111 C121 111 122 111 122 111 C137 111 149 100 149 84 C149 71 137 60 122 60 Z"/>
+  </svg>`,
+  notion: `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:36px;height:36px">
+    <rect width="200" height="200" rx="20" fill="white" stroke="#e5e7eb" stroke-width="4"/>
+    <path fill="#1a1a1a" d="M45 45 L45 155 L70 155 L70 90 L130 155 L155 155 L155 45 L130 45 L130 110 L70 45 Z"/>
+  </svg>`,
+  github: `<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="width:36px;height:36px">
+    <rect width="200" height="200" rx="40" fill="#24292e"/>
+    <path fill="white" d="M100 30 C62.2 30 32 60.2 32 98 C32 128.2 51.6 153.8 78.8 162.6 C82.2 163.2 83.4 161.2 83.4 159.4 C83.4 157.8 83.4 153.8 83.2 148.4 C64.2 152.4 60.2 140.2 60.2 140.2 C57 132.4 52.4 130.4 52.4 130.4 C46.2 126.4 52.8 126.4 52.8 126.4 C59.6 126.8 63.2 133.4 63.2 133.4 C69.4 144.2 79.4 141 83.6 139.2 C84.2 135 86 132 88 130.4 C72.2 128.6 55.6 122.6 55.6 95.2 C55.6 87.8 58.2 81.8 63.4 77 C62.6 75.2 60.2 68.4 64.2 59 C64.2 59 70 57 83.2 65.8 C89.2 64.2 95.6 63.4 102 63.4 C108.4 63.4 114.8 64.2 120.8 65.8 C134 57 139.8 59 139.8 59 C143.8 68.4 141.4 75.2 140.6 77 C145.8 81.8 148.4 87.8 148.4 95.2 C148.4 122.6 131.8 128.6 116 130.4 C118.6 132.8 121 137.4 121 144.4 C121 154.4 120.8 162.4 120.8 164.8 C120.8 166.6 122 168.6 125.4 168 C152.4 159 168 133.6 168 98 C168 60.2 137.8 30 100 30 Z"/>
+  </svg>`,
+}
+
 const integrationPlatforms = computed(() => [
-  { id: 'obsidian', name: 'Obsidian', emoji: '🟣', connected: obsidianStatus.value.configured },
-  { id: 'feishu', name: '飞书', emoji: '🟦', connected: feishuStatus.value.configured },
-  { id: 'dingtalk', name: '钉钉', emoji: '🔵', connected: !!dingtalkConfig.webhook },
-  { id: 'wecom', name: '企业微信', emoji: '💚', connected: !!wecomConfig.webhook },
-  { id: 'notion', name: 'Notion', emoji: '⬛', connected: !!notionConfig.token },
-  { id: 'github', name: 'GitHub', emoji: '⬤', connected: !!githubConfig.token },
+  { id: 'obsidian', name: 'Obsidian', svg: PLATFORM_SVGS.obsidian, connected: obsidianStatus.value.configured },
+  { id: 'feishu', name: '飞书', svg: PLATFORM_SVGS.feishu, connected: feishuStatus.value.configured },
+  { id: 'dingtalk', name: '钉钉', svg: PLATFORM_SVGS.dingtalk, connected: !!dingtalkConfig.webhook },
+  { id: 'wecom', name: '企业微信', svg: PLATFORM_SVGS.wecom, connected: !!wecomConfig.webhook },
+  { id: 'notion', name: 'Notion', svg: PLATFORM_SVGS.notion, connected: !!notionConfig.token },
+  { id: 'github', name: 'GitHub', svg: PLATFORM_SVGS.github, connected: !!githubConfig.token },
 ])
 
 // ── 外观设置 ──────────────────────────────────────────────────
@@ -1318,11 +1385,32 @@ async function submitTicket() {
   }
   tickets.value.unshift(ticket)
   localStorage.setItem('local_tickets', JSON.stringify(tickets.value))
+
   // 尝试提交后端
+  let backendOk = false
   try {
     await axios.post('/api/tickets/submit', ticket)
+    backendOk = true
   } catch {}
-  MessagePlugin.success('工单已提交')
+
+  // 后端不可用时，通过 mailto: 发送至邮箱
+  if (!backendOk) {
+    const SUPPORT_EMAIL = 'support@rag-gzhu.com'
+    const typeLabel: Record<string, string> = { bug: 'Bug报告', feature: '功能请求', other: '其他' }
+    const subject = encodeURIComponent(`[RAG-F工单] [${typeLabel[ticket.type] || ticket.type}] ${ticket.title}`)
+    const body = encodeURIComponent(
+      `工单ID：${ticket.id}\n` +
+      `类型：${typeLabel[ticket.type] || ticket.type}\n` +
+      `标题：${ticket.title}\n` +
+      `提交时间：${new Date(ticket.created_at).toLocaleString('zh-CN')}\n\n` +
+      `详细描述：\n${ticket.content || '（无）'}`
+    )
+    window.open(`mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`)
+    MessagePlugin.success('工单已保存，正在打开邮件客户端发送 ✉️')
+  } else {
+    MessagePlugin.success('工单已提交 ✅')
+  }
+
   showNewTicket.value = false
   Object.assign(newTicket, { type: 'bug', title: '', content: '' })
 }
@@ -1757,8 +1845,30 @@ async function submitTicket() {
 }
 
 .platform-logo {
-  font-size: 28px;
+  width: 44px;
+  height: 44px;
   margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.platform-logo :deep(svg) {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+}
+
+.panel-title-icon {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+.panel-title-icon :deep(svg) {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  vertical-align: middle;
 }
 
 .platform-name {
@@ -2054,6 +2164,75 @@ async function submitTicket() {
 .ticket-status--open { background: #fef9c3; color: #854d0e; }
 .ticket-status--in_progress { background: #dbeafe; color: #1d4ed8; }
 .ticket-status--closed { background: #dcfce7; color: #15803d; }
+
+/* App 下载卡片 */
+.app-download-card {
+  background: linear-gradient(135deg, #f0f7ff 0%, #faf5ff 100%);
+  border: 1px solid #dbeafe;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.app-download-card__header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.app-dl-icon {
+  width: 40px;
+  height: 40px;
+  color: #4f7ef8;
+  flex-shrink: 0;
+}
+.app-download-card__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+.app-download-card__subtitle {
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 2px;
+}
+.app-download-btns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.app-dl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.18s;
+}
+.app-dl-btn--android {
+  background: #22c55e;
+  color: white;
+}
+.app-dl-btn--android:hover { background: #16a34a; transform: translateY(-1px); }
+.app-dl-btn--ios {
+  background: #1e293b;
+  color: white;
+}
+.app-dl-btn--ios:hover { background: #0f172a; transform: translateY(-1px); }
+.app-dl-btn--github {
+  background: white;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+}
+.app-dl-btn--github:hover { background: #f9fafb; border-color: #d1d5db; transform: translateY(-1px); }
+.app-download-card__hint {
+  font-size: 11.5px;
+  color: #94a3b8;
+  margin: 0;
+}
 
 .mb-4 { margin-bottom: 16px; }
 
