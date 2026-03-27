@@ -182,9 +182,24 @@ const selectOptions = ref([]);
 const selectValue = ref({});
 const isChecked = ref(false);
 
+// ── 云端模型前缀标记（用于区分 provider）────────────────
+// value 格式："cloud:deepseek:deepseek-chat"  本地格式："local:qwen2:0.5b"
+const CLOUD_PROVIDERS: Record<string, string> = {
+  deepseek: 'DeepSeek',
+  openai: 'OpenAI',
+  hunyuan: '混元',
+}
+
 // 处理模型选择事件
 const handleModelChange = (value) => {
-  MessagePlugin.success(`已选择模型：${value.label}`);
+  // 同步到 localStorage，让侧边栏 ModelSelector 也感知
+  if (value?.value) {
+    const rawId = value.value.startsWith('cloud:')
+      ? value.value.split(':').slice(2).join(':')
+      : value.value.replace(/^local:/, '')
+    localStorage.setItem('selected_model', rawId)
+  }
+  MessagePlugin.success(`已选择模型：${value.label}`)
 };
 // 深度思考开关
 const checkClick = () => {
@@ -314,10 +329,21 @@ const inputEnter = function (messageContent) {
     actionsState: { good: false, bad: false },
   };
 
+  // 根据当前选中模型动态命名 AI
+  const curModelVal: string = selectValue.value?.value || ''
+  let aiName = "TDesignAI"
+  if (curModelVal.startsWith('cloud:deepseek:')) {
+    aiName = '🤖 DeepSeek'
+  } else if (curModelVal.startsWith('cloud:openai:')) {
+    aiName = '🤖 GPT'
+  } else if (curModelVal.startsWith('cloud:hunyuan:')) {
+    aiName = '🤖 混元'
+  }
+
   // 添加AI占位消息
   const aiMessage = {
     avatar: "https://tdesign.gtimg.com/site/chat-avatar.png",
-    name: "TDesignAI",
+    name: aiName,
     datetime: new Date().toLocaleString(),
     content: "",
     reasoning: "",
@@ -397,7 +423,90 @@ const fetchSSE = async (fetchFn, options) => {
 // src/components/chat-main-unit/chat-main-unit.vue
 
 // 修改数据处理函数
-const emit = defineEmits(["chat-updated"]);
+const emit = defineEmits(["chat-updated", "send-message"]);
+
+// ── 云端模型 SSE 对话（走 /api/models/chat）──────────────────────
+const handleCloudChat = async (messageContent: string, modelId: string, historyList: any[]) => {
+  const lastItem = chatList.value[0];
+  isUserAborted.value = false;
+
+  // 将 chatList 历史转换为 messages 格式（最多保留最近20条）
+  const recentHistory = [...historyList].reverse().slice(-20)
+  const messages = recentHistory
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => ({ role: m.role, content: m.content || '' }))
+  // 最后一条就是本次用户输入
+  if (!messages.length || messages[messages.length - 1]?.content !== messageContent) {
+    messages.push({ role: 'user', content: messageContent })
+  }
+
+  const controller = new AbortController()
+  fetchCancel.value = { controller }
+
+  try {
+    const response = await fetch('/api/models/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: modelId,
+        messages,
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 4096,
+      }),
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      throw new Error(`云端 API 返回 ${response.status}: ${errText}`)
+    }
+
+    const reader = response.body!.getReader()
+    const decoder = new TextDecoder()
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const chunk = decoder.decode(value, { stream: true })
+      const lines = chunk.split('\n').filter(l => l.trim())
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        try {
+          const data = JSON.parse(line.slice(6))
+          if (data.error) {
+            lastItem.role = 'error'
+            lastItem.content = `❌ ${data.error}`
+            lastItem.reasoning = ''
+          } else if (data.content) {
+            lastItem.content += data.content
+          }
+          if (data.done) {
+            lastItem.duration = 0
+            isStreamLoad.value = false
+            loading.value = false
+            fetchCancel.value = null
+            emit('chat-updated')
+          }
+        } catch { /* skip bad JSON */ }
+      }
+    }
+  } catch (error: any) {
+    if (isUserAborted.value || error.name === 'AbortError') {
+      lastItem.content = lastItem.content || '响应已停止'
+    } else {
+      lastItem.role = 'error'
+      lastItem.content = `云端模型请求失败: ${error.message}`
+      lastItem.reasoning = ''
+    }
+  } finally {
+    isStreamLoad.value = false
+    loading.value = false
+    fetchCancel.value = null
+  }
+}
 
 // 修改数据处理函数
 const handleData = async (messageContent) => {
@@ -405,7 +514,18 @@ const handleData = async (messageContent) => {
 
   isUserAborted.value = false;
   const lastItem = chatList.value[0];
-  const selectedModel = selectValue.value.value;
+  const selectedModelValue: string = selectValue.value?.value || ''
+
+  // ── 云端模型路由（value 以 "cloud:" 开头）────────────────
+  if (selectedModelValue.startsWith('cloud:')) {
+    // cloud:deepseek:deepseek-chat → modelId = deepseek-chat
+    const modelId = selectedModelValue.split(':').slice(2).join(':')
+    await handleCloudChat(messageContent, modelId, chatList.value)
+    return
+  }
+
+  // ── 本地 Ollama 模型（原有逻辑）─────────────────────────
+  const localModel = selectedModelValue.replace(/^local:/, '') || 'llama2'
 
   // 获取 Ollama 配置
   let serverUrl = "http://localhost:11434";
@@ -427,8 +547,8 @@ const handleData = async (messageContent) => {
   try {
     const { response, controller } = await fetchOllamaStream(
       messageContent,
-      selectedModel,
-      serverUrl  // 添加 serverUrl 参数
+      localModel,   // 使用本地模型名（已去掉 local: 前缀）
+      serverUrl
     );
     fetchCancel.value = { controller };
 
@@ -635,43 +755,65 @@ onMounted(async () => {
   console.log(nextMsg.value);
   window.addEventListener("keydown", handleKeyDown);
 
-  // 获取模型列表
+  // ── 从后端拉取全量模型列表（含云端 DeepSeek 等）─────────────
+  const savedModel = localStorage.getItem('selected_model') || ''
+
   try {
-    const models = await ollamaApiService.getModels();
-    
-    models.forEach((model) => {
-      selectOptions.value.push({ label: model.name, value: model.model });
-    });
-    
-    // 获取当前服务器URL用于显示（可选）
-    const serverUrl = ollamaApiService.getServerUrl();
-    console.log("当前Ollama服务器:", serverUrl);
-    
-    // 设置默认选中模型（保持原有逻辑）
-    // 这里需要从localStorage获取设置，因为这是组件特定的逻辑
-    let ollamaSettings = {};
-    try {
-      const savedSettings = localStorage.getItem('ollamaSettings');
-      if (savedSettings) {
-        ollamaSettings = JSON.parse(savedSettings);
-      }
-    } catch (e) {
-      console.error('加载 Ollama 设置失败:', e);
-    }
-    
-    if (ollamaSettings.defaultModel) {
-      const defaultOption = selectOptions.value.find(option => option.value === ollamaSettings.defaultModel);
-      if (defaultOption) {
-        selectValue.value = defaultOption;
+    // 优先走 /api/models/list（含云端模型）
+    const res = await fetch('/api/models/list')
+    const data = await res.json()
+    const allModels: any[] = data.models || []
+
+    // 本地 Ollama 模型
+    const localOpts = allModels
+      .filter(m => m.provider === 'ollama')
+      .map(m => ({ label: m.name, value: `local:${m.id}` }))
+
+    // 云端模型（按 provider 分组标签）
+    const cloudOpts = allModels
+      .filter(m => m.provider !== 'ollama')
+      .map(m => ({
+        label: `${CLOUD_PROVIDERS[m.provider] || m.provider}: ${m.name.replace(/（云端[^）]*）/, '').replace(/\（.*?\）/, '').trim()}${m.available ? '' : ' 🔑未配置'}`,
+        value: `cloud:${m.provider}:${m.id}`,
+        disabled: !m.available,
+      }))
+
+    selectOptions.value = [...localOpts, ...cloudOpts]
+
+    // 恢复上次选择
+    if (savedModel) {
+      const localMatch = selectOptions.value.find(o =>
+        o.value === `local:${savedModel}` || o.value === savedModel
+      )
+      const cloudMatch = selectOptions.value.find(o =>
+        o.value === `cloud:deepseek:${savedModel}` ||
+        o.value === `cloud:openai:${savedModel}` ||
+        o.value.endsWith(`:${savedModel}`)
+      )
+      if (localMatch) {
+        selectValue.value = localMatch
+      } else if (cloudMatch) {
+        selectValue.value = cloudMatch
       } else {
-        selectValue.value = selectOptions.value[0];
+        selectValue.value = selectOptions.value[0] || {}
       }
     } else {
-      selectValue.value = selectOptions.value[0];
+      selectValue.value = selectOptions.value[0] || {}
     }
-  } catch (error) {
-    console.error("获取模型列表失败，请检查API服务是否配置正确:", error);
-    MessagePlugin.error("获取模型列表失败，请检查API服务是否配置正确");
+  } catch (e) {
+    // 后端不可达时降级：只从 Ollama 拉本地模型
+    console.warn('[chat-main-unit] /api/models/list 失败，降级到本地 Ollama:', e)
+    try {
+      const models = await ollamaApiService.getModels()
+      selectOptions.value = models.map(m => ({
+        label: m.name,
+        value: `local:${m.model}`,
+      }))
+    } catch (e2) {
+      console.error("获取模型列表失败:", e2)
+      MessagePlugin.error("获取模型列表失败，请检查 API 服务是否配置正确")
+    }
+    selectValue.value = selectOptions.value[0] || {}
   }
 });
 
