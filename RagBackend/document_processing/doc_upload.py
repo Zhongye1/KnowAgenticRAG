@@ -213,48 +213,63 @@ async def upload_complete(request: Request):
         await asyncio.to_thread(_merge_chunks)
 
         print(f"文件合并成功: 文件名={fileName}, 文件哈希={fileHash}, 总分块数={totalChunks}, 最终文件路径={final_file_path}")
-        # 读取合并后的文件内容
-        async with aiofiles.open(final_file_path, 'rb') as f:
-            content = await f.read()
 
-        # 验证文件
-        is_valid, message = validate_file(fileName, content)
-        if not is_valid:
+        # ── 修复2：流式计算文件哈希，不把整个文件读入内存 ────────────────
+        # 原实现: content = await f.read()  → 50MB文件×N并发 = 内存峰值过高
+        # 新实现: 流式 MD5，仅维持一个 64KB 缓冲区，内存占用恒定
+        def _compute_hash_and_size(path: str):
+            """流式读取文件，计算 MD5 哈希与文件大小，不把文件载入内存"""
+            md5 = hashlib.md5()
+            size = 0
+            with open(path, 'rb') as f:
+                for block in iter(lambda: f.read(65536), b''):
+                    md5.update(block)
+                    size += len(block)
+            return md5.hexdigest(), size
+
+        existing_file_hash, file_size = await asyncio.to_thread(
+            _compute_hash_and_size, final_file_path
+        )
+
+        # 验证文件类型（扩展名校验，不依赖文件内容，无需读入内存）
+        file_ext_check = get_file_type(fileName)
+        if file_ext_check not in ALLOWED_EXTENSIONS:
             os.remove(final_file_path)
-            raise HTTPException(status_code=400, detail=message)
+            raise HTTPException(status_code=400, detail=f"不支持的文件类型: {file_ext_check}")
+        if file_size > MAX_FILE_SIZE:
+            os.remove(final_file_path)
+            raise HTTPException(status_code=400, detail=f"文件大小超过限制 ({MAX_FILE_SIZE / 1024 / 1024:.1f}MB)")
+        # 检查是否已存在相同文件（哈希去重）
+        existing_docs = [doc for doc in doc_manager.get_all_documents()
+                         if doc.get('file_hash') == existing_file_hash]
 
-        # 检查是否已存在相同文件
-        existing_file_hash = get_file_hash(content)
-        existing_docs = [doc for doc in doc_manager.get_all_documents() 
-                    if doc.get('file_hash') == existing_file_hash]
-            
         if existing_docs:
-            # 如果文件已存在，删除旧文件
+            # 如果文件已存在，删除旧文件（协程安全调用）
             for doc in existing_docs:
-                doc_manager.delete_document(doc['id'], KLB_id)
+                await doc_manager.delete_document(doc['id'], KLB_id)
                 print(f"更新文件: {doc['name']}，{KLB_id}")
 
-        # 计算分块数
-        slicing_method = "按段落"  # 可以根据文件类型选择，逻辑还没写
-        chunks = calculate_chunks(content, slicing_method)
+        # 分块数用文件大小估算，避免大文件全文读入内存
+        slicing_method = "按段落"
+        estimated_chunks = max(1, file_size // 1024)  # 粗估：每1KB约1块
 
         # 创建文档记录
         document_data = {
-            "id": None,  # 这里先设为 None，后续由 add_document 方法生成
+            "id": None,  # 后续由 add_document 生成
             "name": fileName,
             "fileType": file_ext.replace('.', ''),
-            "chunks": chunks,
+            "chunks": estimated_chunks,
             "uploadDate": datetime.now().strftime("%Y-%m-%d"),
             "slicingMethod": slicing_method,
             "enabled": True,
-            "file_size": len(content),
+            "file_size": file_size,
             "file_hash": existing_file_hash,
             "file_path": final_file_path,
             "created_at": datetime.now().isoformat()
         }
 
-        # 保存到本地元数据
-        doc_id = doc_manager.add_document(document_data)
+        # 保存到本地元数据（协程安全，加锁写入）
+        doc_id = await doc_manager.add_document(document_data)
         document_data['id'] = doc_id
 
         # 删除分块临时目录
@@ -266,7 +281,7 @@ async def upload_complete(request: Request):
             "fileId": doc_id,
             "fileName": fileName,
             "filePath": final_file_path,
-            "chunks": chunks,
+            "chunks": estimated_chunks,
             "slicingMethod": slicing_method
         }
     except HTTPException as http_exc:
