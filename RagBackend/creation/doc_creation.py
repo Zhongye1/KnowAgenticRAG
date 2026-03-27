@@ -1,6 +1,6 @@
 """
 doc_creation.py
-文档创作模块 - 复用 RAG Pipeline + 特殊 Prompt
+文档创作模块 - 复用 multi_model/model_router 的多 Provider 流式能力
 
 功能：
   - 大纲生成：根据主题自动生成文章/报告大纲
@@ -8,7 +8,6 @@ doc_creation.py
   - 文本翻译：中英互译（或其他语言）
   - 格式优化：对已有文本做排版/措辞优化
   - 内容扩写：基于大纲或要点扩展为完整文档
-  全部通过 Ollama 完成，支持 SSE 流式输出
 
 API:
   POST /api/creation/outline   -- 生成大纲
@@ -16,6 +15,7 @@ API:
   POST /api/creation/translate -- 翻译
   POST /api/creation/polish    -- 格式优化
   POST /api/creation/expand    -- 内容扩写
+  GET  /api/creation/templates -- 获取支持的创作类型
 """
 
 from __future__ import annotations
@@ -23,6 +23,8 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
+from pathlib import Path
 from typing import AsyncGenerator, Optional
 
 from fastapi import APIRouter
@@ -31,6 +33,11 @@ from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/creation", tags=["文档创作"])
+
+# ─── 确保后端根目录在 sys.path ──────────────────────────────────
+_backend_root = str(Path(__file__).resolve().parent.parent)
+if _backend_root not in sys.path:
+    sys.path.insert(0, _backend_root)
 
 
 # ─── Prompt 模板 ──────────────────────────────────────────────
@@ -105,14 +112,110 @@ _PROMPTS = {
 }
 
 
-# ─── Ollama 调用工具 ──────────────────────────────────────────
-async def _stream_ollama(prompt: str, model: str, host: str, timeout: int) -> AsyncGenerator[str, None]:
-    """通过 httpx 流式调用 Ollama，yield SSE 数据"""
+# ─── Provider 路由 ────────────────────────────────────────────
+def _get_provider(model_id: str) -> str:
+    """根据 model_id 判断 provider"""
+    cloud_prefixes = {
+        "deepseek": "deepseek",
+        "gpt": "openai",
+        "o1": "openai",
+        "o3": "openai",
+        "hunyuan": "hunyuan",
+        "claude": "openai",
+    }
+    lower = model_id.lower()
+    for prefix, provider in cloud_prefixes.items():
+        if lower.startswith(prefix):
+            return provider
+    return "ollama"
+
+
+async def _stream_via_model_router(
+    model: str,
+    prompt: str,
+    temperature: float = 0.7,
+    max_tokens: int = 4096,
+) -> AsyncGenerator[str, None]:
+    """
+    统一调用入口：
+    - 云端模型（deepseek/openai/hunyuan）：直接复用 model_router 的 _stream_xxx
+    - Ollama 本地：通过 httpx 直连
+    每个 token 以  data: <token>\\n\\n  格式 yield，最后 yield data: [DONE]\\n\\n
+    """
+    provider = _get_provider(model)
+    messages = [
+        {"role": "system", "content": "你是专业的中文内容创作助手，请严格按照用户要求完成任务。"},
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        if provider == "ollama":
+            async for chunk in _stream_ollama_local(model, prompt):
+                yield chunk
+        else:
+            # 复用 multi_model.model_router 的流式函数
+            from multi_model.model_router import (
+                _stream_deepseek,
+                _stream_openai,
+                _stream_hunyuan,
+            )
+            if provider == "deepseek":
+                stream_fn = _stream_deepseek
+            elif provider == "openai":
+                stream_fn = _stream_openai
+            elif provider == "hunyuan":
+                stream_fn = _stream_hunyuan
+            else:
+                yield f"data: [ERROR] 不支持的 provider: {provider}\n\n"
+                return
+
+            async for chunk in stream_fn(model, messages, temperature, max_tokens):
+                # model_router 返回 data: {"content":"...", "done":false} 格式
+                # 需要转换为前端 Creation.vue 期望的 data: <token> 格式
+                if chunk.startswith("data: "):
+                    raw = chunk[6:].strip()
+                    if not raw:
+                        continue
+                    try:
+                        d = json.loads(raw)
+                        token = d.get("content", "")
+                        if token:
+                            yield f"data: {token}\n\n"
+                        if d.get("done"):
+                            yield "data: [DONE]\n\n"
+                    except Exception:
+                        # 非 JSON 行直接透传
+                        if raw and raw != "[DONE]":
+                            yield f"data: {raw}\n\n"
+        yield "data: [DONE]\n\n"
+
+    except Exception as e:
+        logger.error(f"文档创作流式生成失败 model={model}: {e}")
+        yield f"data: [ERROR] {e}\n\n"
+
+
+async def _stream_ollama_local(model: str, prompt: str) -> AsyncGenerator[str, None]:
+    """直连 Ollama /api/generate 流式输出"""
     import httpx
+    # 读取 Ollama 配置
+    host = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+    timeout = 120
+    try:
+        from models.user_model_config import get_effective_config
+        cfg = get_effective_config()
+        host = cfg.ollama_base_url or host
+        model = cfg.llm_model or model
+        timeout = cfg.timeout or timeout
+    except Exception:
+        pass
+
     payload = {"model": model, "prompt": prompt, "stream": True}
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream("POST", f"{host}/api/generate", json=payload) as resp:
+                if resp.status_code != 200:
+                    yield f"data: [ERROR] Ollama 返回 {resp.status_code}\n\n"
+                    return
                 async for line in resp.aiter_lines():
                     if not line.strip():
                         continue
@@ -122,93 +225,109 @@ async def _stream_ollama(prompt: str, model: str, host: str, timeout: int) -> As
                         if token:
                             yield f"data: {token}\n\n"
                         if data.get("done"):
-                            yield "data: [DONE]\n\n"
                             return
                     except json.JSONDecodeError:
                         continue
     except Exception as e:
-        yield f"data: [ERROR] {e}\n\n"
+        yield f"data: [ERROR] Ollama 连接失败: {e}\n\n"
 
 
-def _get_ollama_config():
-    """读取用户保存的 Ollama 配置"""
+def _get_default_model() -> str:
+    """获取默认模型（用户配置 > 环境变量 > 固定默认值）"""
     try:
-        import sys
-        backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        if backend_root not in sys.path:
-            sys.path.insert(0, backend_root)
         from models.user_model_config import get_effective_config
         cfg = get_effective_config()
-        return cfg.llm_model, cfg.ollama_base_url, cfg.timeout
+        return cfg.llm_model or "deepseek-chat"
     except Exception:
-        return (
-            os.getenv("MODEL", "qwen2:0.5b"),
-            os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-            int(os.getenv("OLLAMA_TIMEOUT", "120")),
-        )
+        return os.getenv("MODEL", "deepseek-chat")
 
 
 # ─── 请求模型 ─────────────────────────────────────────────────
 class OutlineRequest(BaseModel):
     topic: str
     requirements: str = "适合学术/技术报告风格，约2000字"
+    model: Optional[str] = None   # 可选，不传则使用默认模型
 
 class SummaryRequest(BaseModel):
     text: str
     length: int = 300
+    model: Optional[str] = None
 
 class TranslateRequest(BaseModel):
     text: str
     target_lang: str = "英文"
+    model: Optional[str] = None
 
 class PolishRequest(BaseModel):
     text: str
     style: str = "正式学术风格"
+    model: Optional[str] = None
 
 class ExpandRequest(BaseModel):
     outline: str
     target_length: int = 1500
+    model: Optional[str] = None
 
 
 # ─── 路由 ─────────────────────────────────────────────────────
 @router.post("/outline")
 async def gen_outline(req: OutlineRequest):
     """流式生成文章大纲（SSE）"""
-    model, host, timeout = _get_ollama_config()
+    model = req.model or _get_default_model()
     prompt = _PROMPTS["outline"].format(topic=req.topic, requirements=req.requirements)
-    return StreamingResponse(_stream_ollama(prompt, model, host, timeout), media_type="text/event-stream")
+    return StreamingResponse(
+        _stream_via_model_router(model, prompt),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 @router.post("/summary")
 async def gen_summary(req: SummaryRequest):
     """流式生成摘要（SSE）"""
-    model, host, timeout = _get_ollama_config()
-    prompt = _PROMPTS["summary"].format(text=req.text[:3000], length=req.length)
-    return StreamingResponse(_stream_ollama(prompt, model, host, timeout), media_type="text/event-stream")
+    model = req.model or _get_default_model()
+    prompt = _PROMPTS["summary"].format(text=req.text[:4000], length=req.length)
+    return StreamingResponse(
+        _stream_via_model_router(model, prompt),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 @router.post("/translate")
 async def translate(req: TranslateRequest):
     """流式翻译（SSE）"""
-    model, host, timeout = _get_ollama_config()
-    prompt = _PROMPTS["translate"].format(text=req.text[:3000], target_lang=req.target_lang)
-    return StreamingResponse(_stream_ollama(prompt, model, host, timeout), media_type="text/event-stream")
+    model = req.model or _get_default_model()
+    prompt = _PROMPTS["translate"].format(text=req.text[:4000], target_lang=req.target_lang)
+    return StreamingResponse(
+        _stream_via_model_router(model, prompt),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 @router.post("/polish")
 async def polish(req: PolishRequest):
     """流式格式优化（SSE）"""
-    model, host, timeout = _get_ollama_config()
-    prompt = _PROMPTS["polish"].format(text=req.text[:3000], style=req.style)
-    return StreamingResponse(_stream_ollama(prompt, model, host, timeout), media_type="text/event-stream")
+    model = req.model or _get_default_model()
+    prompt = _PROMPTS["polish"].format(text=req.text[:4000], style=req.style)
+    return StreamingResponse(
+        _stream_via_model_router(model, prompt),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 @router.post("/expand")
 async def expand(req: ExpandRequest):
     """流式内容扩写（SSE）"""
-    model, host, timeout = _get_ollama_config()
-    prompt = _PROMPTS["expand"].format(outline=req.outline[:2000], target_length=req.target_length)
-    return StreamingResponse(_stream_ollama(prompt, model, host, timeout), media_type="text/event-stream")
+    model = req.model or _get_default_model()
+    prompt = _PROMPTS["expand"].format(outline=req.outline[:3000], target_length=req.target_length)
+    return StreamingResponse(
+        _stream_via_model_router(model, prompt),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 @router.get("/templates")

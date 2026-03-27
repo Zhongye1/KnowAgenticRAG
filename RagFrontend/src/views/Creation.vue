@@ -97,6 +97,24 @@
         <button class="cf-btn-gen" @click="generate" :disabled="generating">
           {{ generating ? '⏳ 生成中...' : '✨ 立即生成' }}
         </button>
+        <!-- 模型选择 -->
+        <div class="cf-model-selector">
+          <label class="cf-model-label">🤖 模型</label>
+          <select v-model="selectedModel" class="cf-model-select" @change="onModelChange" :disabled="generating">
+            <optgroup label="☁️ 云端模型">
+              <option
+                v-for="m in availableModels.filter(m => m.provider !== 'ollama')"
+                :key="m.id" :value="m.id" :disabled="!m.available"
+              >{{ m.name }}{{ !m.available ? ' (需配置Key)' : '' }}</option>
+            </optgroup>
+            <optgroup label="🖥️ 本地模型">
+              <option
+                v-for="m in availableModels.filter(m => m.provider === 'ollama')"
+                :key="m.id" :value="m.id" :disabled="!m.available"
+              >{{ m.name }}{{ !m.available ? ' (未启动)' : '' }}</option>
+            </optgroup>
+          </select>
+        </div>
         <button v-if="output" class="cf-btn-copy" @click="copyOutput">📋 复制结果</button>
         <button v-if="output" class="cf-btn-clear" @click="output = ''">🗑 清空</button>
       </div>
@@ -112,7 +130,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import axios from 'axios'
 
 const types = [
   { id: 'outline',   name: '大纲生成', desc: '主题→层次化大纲', icon: '📋' },
@@ -125,6 +144,44 @@ const types = [
 const activeType = ref('outline')
 const generating = ref(false)
 const output = ref('')
+
+// ── 模型选择 ─────────────────────────────────────────────────
+interface ModelOption { id: string; name: string; provider: string; available: boolean }
+const availableModels = ref<ModelOption[]>([])
+const selectedModel = ref('')
+
+async function loadModels() {
+  try {
+    const res = await axios.get<{ models: ModelOption[] }>('/api/models/list')
+    if (res.data?.models) {
+      availableModels.value = res.data.models
+      // 优先选已配置的云端模型
+      const saved = localStorage.getItem('creation_selected_model')
+      const cloud = res.data.models.find(m => m.provider !== 'ollama' && m.available)
+      const local = res.data.models.find(m => m.provider === 'ollama' && m.available)
+      if (saved && res.data.models.find(m => m.id === saved)) {
+        selectedModel.value = saved
+      } else if (cloud) {
+        selectedModel.value = cloud.id
+      } else if (local) {
+        selectedModel.value = local.id
+      } else {
+        selectedModel.value = res.data.models[0]?.id || 'deepseek-chat'
+      }
+    }
+  } catch {
+    // 离线降级
+    availableModels.value = [
+      { id: 'deepseek-chat', name: 'DeepSeek Chat（云端）', provider: 'deepseek', available: true },
+      { id: 'qwen2:0.5b',    name: 'Qwen2 0.5B（本地）',   provider: 'ollama',   available: false },
+    ]
+    selectedModel.value = 'deepseek-chat'
+  }
+}
+
+function onModelChange() {
+  localStorage.setItem('creation_selected_model', selectedModel.value)
+}
 
 const form = reactive({
   topic: '',
@@ -141,12 +198,14 @@ async function generate() {
   generating.value = true
   output.value = ''
 
+  const model = selectedModel.value
+
   const endpointMap: Record<string, { url: string; body: any }> = {
-    outline:   { url: '/api/creation/outline',   body: { topic: form.topic, requirements: form.requirements } },
-    summary:   { url: '/api/creation/summary',   body: { text: form.text, length: form.summaryLength } },
-    translate: { url: '/api/creation/translate', body: { text: form.text, target_lang: form.targetLang } },
-    polish:    { url: '/api/creation/polish',    body: { text: form.text, style: form.style } },
-    expand:    { url: '/api/creation/expand',    body: { outline: form.outline, target_length: form.expandLength } },
+    outline:   { url: '/api/creation/outline',   body: { topic: form.topic, requirements: form.requirements, model } },
+    summary:   { url: '/api/creation/summary',   body: { text: form.text, length: form.summaryLength, model } },
+    translate: { url: '/api/creation/translate', body: { text: form.text, target_lang: form.targetLang, model } },
+    polish:    { url: '/api/creation/polish',    body: { text: form.text, style: form.style, model } },
+    expand:    { url: '/api/creation/expand',    body: { outline: form.outline, target_length: form.expandLength, model } },
   }
 
   const { url, body } = endpointMap[activeType.value]
@@ -157,18 +216,41 @@ async function generate() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
+
+    if (!resp.ok) {
+      output.value = `[错误] 服务器返回 ${resp.status}，请检查后端是否正常运行`
+      return
+    }
+
     const reader = resp.body!.getReader()
     const decoder = new TextDecoder()
-    while (true) {
+    let buf = ''
+    let finished = false
+
+    while (!finished) {
       const { done, value } = await reader.read()
       if (done) break
-      const text = decoder.decode(value)
-      const lines = text.split('\n')
+
+      buf += decoder.decode(value, { stream: true })
+      // 按行处理，避免 chunk 不完整导致 JSON 截断
+      const lines = buf.split('\n')
+      buf = lines.pop() ?? ''   // 最后一行可能不完整，留待下次
+
       for (const line of lines) {
-        if (line.startsWith('data: ')) {
-          const token = line.slice(6)
-          if (token === '[DONE]') break
-          if (!token.startsWith('[ERROR]')) output.value += token
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data: ')) continue
+        const token = trimmed.slice(6)
+        if (token === '[DONE]') {
+          finished = true
+          break
+        }
+        if (token.startsWith('[ERROR]')) {
+          output.value += `\n\n⚠️ ${token.slice(8)}`
+          finished = true
+          break
+        }
+        if (token) {
+          output.value += token
         }
       }
     }
@@ -193,6 +275,10 @@ function renderMd(text: string): string {
     .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
     .replace(/\n/g, '<br>')
 }
+
+onMounted(() => {
+  loadModels()
+})
 </script>
 
 <style scoped>
@@ -317,4 +403,31 @@ function renderMd(text: string): string {
   padding: 0 14px 10px;
 }
 @keyframes blink { 50% { opacity: 0; } }
+
+/* 模型选择器 */
+.cf-model-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cf-model-label {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.cf-model-select {
+  font-size: 12px;
+  padding: 5px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: var(--td-bg-color-container, #fff);
+  color: var(--td-text-color-primary, #111);
+  cursor: pointer;
+  max-width: 200px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.cf-model-select:hover:not(:disabled),
+.cf-model-select:focus:not(:disabled) { border-color: #6366f1; }
+.cf-model-select:disabled { opacity: 0.6; cursor: not-allowed; }
 </style>
