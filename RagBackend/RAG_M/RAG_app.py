@@ -232,94 +232,111 @@ async def process_query_sync(query_body: QueryRequest):
 
 @router.post("/ingest")
 async def ingest_documents(ingest_body: IngestRequest):
-    """文档导入接口（SSE 流式进度输出）"""
+    """文档导入接口（SSE 流式进度输出）
+    
+    修复：原 generate() 为同步生成器，直接阻塞 event loop 执行向量化。
+    现改为：同步耗时逻辑全部放入 asyncio.to_thread，通过 asyncio.Queue 推送进度到 SSE 流。
+    """
+    msg_queue: asyncio.Queue = asyncio.Queue()
 
-    def generate():
-        with capture_stdout():
-            print(f"Starting document ingestion from directory: {ingest_body.docs_dir}")
-            try:
-                from src.ingestion.document_loader import DocumentLoader
-                from src.vectorstore.vector_store import VectorStoreManager
+    def _ingest_sync():
+        """在线程池中运行的同步向量化逻辑，进度通过 msg_queue 回传"""
+        import traceback
+        try:
+            from src.ingestion.document_loader import DocumentLoader
+            from src.vectorstore.vector_store import VectorStoreManager
 
-                # 向量化完成后旧缓存已过期，清除对应缓存项让下次查询重新绑定
-                _vsm_cache.pop(ingest_body.docs_dir, None)
-                vector_store_manager = VectorStoreManager(docs_dir=ingest_body.docs_dir)
-                vectorstore_path = ingest_body.docs_dir + "/vectorstore"
+            _vsm_cache.pop(ingest_body.docs_dir, None)
+            vector_store_manager = VectorStoreManager(docs_dir=ingest_body.docs_dir)
+            vectorstore_path = ingest_body.docs_dir + "/vectorstore"
 
-                yield f"data: Using vector store path: {vectorstore_path}\n\n"
+            msg_queue.put_nowait(f"data: Using vector store path: {vectorstore_path}\n\n")
 
-                if not os.path.exists(ingest_body.docs_dir):
-                    yield f"data: Directory does not exist: {ingest_body.docs_dir}\n\n"
-                    raise ValueError(f"Directory does not exist: {ingest_body.docs_dir}")
+            if not os.path.exists(ingest_body.docs_dir):
+                msg_queue.put_nowait(f"data: Directory does not exist: {ingest_body.docs_dir}\n\n")
+                msg_queue.put_nowait(None)
+                return
 
-                yield "data: Initializing DocumentLoader\n\n"
-                loader = DocumentLoader(docs_dir=ingest_body.docs_dir)
-                documents = []
-                processed_count = skipped_count = error_count = 0
+            msg_queue.put_nowait("data: Initializing DocumentLoader\n\n")
+            loader = DocumentLoader(docs_dir=ingest_body.docs_dir)
+            documents = []
+            processed_count = skipped_count = error_count = 0
 
-                yield "data: Walking through directory to process files\n\n"
+            msg_queue.put_nowait("data: Walking through directory to process files\n\n")
 
-                for root, dirs, files in os.walk(ingest_body.docs_dir):
-                    dirs[:] = [d for d in dirs if d not in loader.IGNORED_DIRECTORIES]
-                    if 'vectorstore' in os.path.basename(root):
-                        yield f"data: Skipping vectorstore directory: {root}\n\n"
-                        continue
+            for root, dirs, files in os.walk(ingest_body.docs_dir):
+                dirs[:] = [d for d in dirs if d not in loader.IGNORED_DIRECTORIES]
+                if 'vectorstore' in os.path.basename(root):
+                    msg_queue.put_nowait(f"data: Skipping vectorstore directory: {root}\n\n")
+                    continue
 
-                    yield f"data: Found {len(files)} files in {root}\n\n"
+                msg_queue.put_nowait(f"data: Found {len(files)} files in {root}\n\n")
 
-                    for file in files:
-                        file_path = os.path.join(root, file)
-                        try:
-                            should_skip, skip_reason = loader.should_skip_file(file_path)
-                            if should_skip:
-                                yield f"data: Skipping file: {file} ({skip_reason})\n\n"
-                                skipped_count += 1
-                                continue
+                for file in files:
+                    file_path = os.path.join(root, file)
+                    try:
+                        should_skip, skip_reason = loader.should_skip_file(file_path)
+                        if should_skip:
+                            msg_queue.put_nowait(f"data: Skipping file: {file} ({skip_reason})\n\n")
+                            skipped_count += 1
+                            continue
 
-                            yield f"data: Processing file: {file_path}\n\n"
-                            docs = loader.load_document(file_path)
-                            yield f"data: Successfully loaded {len(docs)} document chunks from {file_path}\n\n"
-                            documents.extend(docs)
-                            processed_count += 1
+                        msg_queue.put_nowait(f"data: Processing file: {file_path}\n\n")
+                        docs = loader.load_document(file_path)
+                        msg_queue.put_nowait(f"data: Successfully loaded {len(docs)} document chunks from {file_path}\n\n")
+                        documents.extend(docs)
+                        processed_count += 1
 
-                        except ValueError as ve:
-                            if "Skipped file" in str(ve):
-                                yield f"data: Skipping file: {file} ({str(ve)})\n\n"
-                                skipped_count += 1
-                            else:
-                                yield f"data: Unsupported file type {file_path}: {str(ve)}\n\n"
-                                error_count += 1
-                        except Exception as e:
-                            yield f"data: Error processing {file_path}: {str(e)}\n\n"
+                    except ValueError as ve:
+                        if "Skipped file" in str(ve):
+                            msg_queue.put_nowait(f"data: Skipping file: {file} ({str(ve)})\n\n")
+                            skipped_count += 1
+                        else:
+                            msg_queue.put_nowait(f"data: Unsupported file type {file_path}: {str(ve)}\n\n")
                             error_count += 1
+                    except Exception as e:
+                        msg_queue.put_nowait(f"data: Error processing {file_path}: {str(e)}\n\n")
+                        error_count += 1
 
-                yield f"data: Processing summary: {processed_count} processed, {skipped_count} skipped, {error_count} errors\n\n"
+            msg_queue.put_nowait(
+                f"data: Processing summary: {processed_count} processed, {skipped_count} skipped, {error_count} errors\n\n"
+            )
 
-                if not documents:
-                    yield "data: No documents were processed successfully\n\n"
-                    raise ValueError("No documents were processed successfully")
+            if not documents:
+                msg_queue.put_nowait("data: No documents were processed successfully\n\n")
+                msg_queue.put_nowait(None)
+                return
 
-                yield f"data: Creating vector store with {len(documents)} document chunks\n\n"
-                vector_store_manager.create_vectorstore(documents, vectorstore_path)
-                yield f"data: Vector store successfully created and saved to {vectorstore_path}\n\n"
+            msg_queue.put_nowait(f"data: Creating vector store with {len(documents)} document chunks\n\n")
+            vector_store_manager.create_vectorstore(documents, vectorstore_path)
+            msg_queue.put_nowait(f"data: Vector store successfully created and saved to {vectorstore_path}\n\n")
 
-                result = {
-                    "message": f"Successfully ingested {len(documents)} document chunks",
-                    "documents_count": len(documents),
-                    "vectorstore_path": vectorstore_path,
-                    "stats": {
-                        "processed": processed_count,
-                        "skipped": skipped_count,
-                        "errors": error_count,
-                    },
-                }
-                yield f"data: {json.dumps(result)}\n\n"
+            result = {
+                "message": f"Successfully ingested {len(documents)} document chunks",
+                "documents_count": len(documents),
+                "vectorstore_path": vectorstore_path,
+                "stats": {
+                    "processed": processed_count,
+                    "skipped": skipped_count,
+                    "errors": error_count,
+                },
+            }
+            msg_queue.put_nowait(f"data: {json.dumps(result)}\n\n")
 
-            except Exception as e:
-                import traceback
-                error_msg = f"Document ingestion failed: {str(e)}\n{traceback.format_exc()}"
-                yield f"data: ERROR: {error_msg}\n\n"
-                raise HTTPException(status_code=500, detail=error_msg)
+        except Exception as e:
+            error_msg = f"Document ingestion failed: {str(e)}\n{traceback.format_exc()}"
+            msg_queue.put_nowait(f"data: ERROR: {error_msg}\n\n")
+        finally:
+            msg_queue.put_nowait(None)  # 哨兵，通知流结束
+
+    async def generate():
+        # 启动同步向量化到线程池（不阻塞 event loop）
+        asyncio.create_task(asyncio.to_thread(_ingest_sync))
+        while True:
+            msg = await msg_queue.get()
+            if msg is None:
+                break
+            yield msg
 
     return StreamingResponse(
         generate(),
@@ -466,55 +483,71 @@ async def native_ingest_documents(req: NativeIngestRequest):
     """
     原生文档向量化（SSE 流式）
     不依赖 LangChain：使用 pypdf / docx2txt + sentence-transformers + faiss-cpu
+
+    修复：原 generate() 为同步生成器，Embedding 计算阻塞 event loop。
+    现改为：耗时操作全部放入 asyncio.to_thread，通过 asyncio.Queue 推 SSE。
     """
-    def generate():
+    msg_queue: asyncio.Queue = asyncio.Queue()
+
+    def _native_ingest_sync():
+        import traceback
         try:
             from src.rag.native_rag import (
                 load_documents_from_dir,
                 split_documents,
                 NativeVectorStore,
             )
-            import os, json
 
-            yield f"data: [原生RAG] 开始向量化，目录: {req.docs_dir}\n\n"
+            msg_queue.put_nowait(f"data: [原生RAG] 开始向量化，目录: {req.docs_dir}\n\n")
 
             if not os.path.exists(req.docs_dir):
-                yield f"data: [ERROR] 目录不存在: {req.docs_dir}\n\n"
+                msg_queue.put_nowait(f"data: [ERROR] 目录不存在: {req.docs_dir}\n\n")
                 return
 
             # 1. 加载文档
-            yield "data: [原生RAG] 正在加载文档...\n\n"
+            msg_queue.put_nowait("data: [原生RAG] 正在加载文档...\n\n")
             raw_docs = load_documents_from_dir(req.docs_dir)
             if not raw_docs:
-                yield "data: [ERROR] 未找到可加载的文档\n\n"
+                msg_queue.put_nowait("data: [ERROR] 未找到可加载的文档\n\n")
                 return
-            yield f"data: [原生RAG] 加载完成，共 {len(raw_docs)} 页原始文档\n\n"
+            msg_queue.put_nowait(f"data: [原生RAG] 加载完成，共 {len(raw_docs)} 页原始文档\n\n")
 
             # 2. 分块
-            yield "data: [原生RAG] 正在分块...\n\n"
+            msg_queue.put_nowait("data: [原生RAG] 正在分块...\n\n")
             chunks = split_documents(raw_docs, chunk_size=1000, chunk_overlap=200)
-            yield f"data: [原生RAG] 分块完成，共 {len(chunks)} 个文本块\n\n"
+            msg_queue.put_nowait(f"data: [原生RAG] 分块完成，共 {len(chunks)} 个文本块\n\n")
 
-            # 3. 向量化
-            yield "data: [原生RAG] 正在计算向量（sentence-transformers）...\n\n"
+            # 3. 向量化（最耗时，在线程池中执行，不阻塞 event loop）
+            msg_queue.put_nowait("data: [原生RAG] 正在计算向量（sentence-transformers）...\n\n")
             vs = NativeVectorStore(model_name="sentence-transformers/all-MiniLM-L6-v2")
             vs.build_index(chunks)
 
             # 4. 保存
             save_path = os.path.join(req.docs_dir, "native_vectorstore")
             vs.save(save_path)
-            yield f"data: [原生RAG] 向量存储已保存至: {save_path}\n\n"
+            msg_queue.put_nowait(f"data: [原生RAG] 向量存储已保存至: {save_path}\n\n")
 
             result = {
                 "message": f"[原生RAG] 向量化完成，共 {len(chunks)} 个文本块",
                 "documents_count": len(chunks),
                 "vectorstore_path": save_path,
             }
-            yield f"data: {json.dumps(result, ensure_ascii=False)}\n\n"
+            msg_queue.put_nowait(f"data: {json.dumps(result, ensure_ascii=False)}\n\n")
 
         except Exception as e:
-            import traceback
-            yield f"data: [ERROR] 原生向量化失败: {e}\n{traceback.format_exc()}\n\n"
+            msg_queue.put_nowait(
+                f"data: [ERROR] 原生向量化失败: {e}\n{traceback.format_exc()}\n\n"
+            )
+        finally:
+            msg_queue.put_nowait(None)  # 哨兵，通知流结束
+
+    async def generate():
+        asyncio.create_task(asyncio.to_thread(_native_ingest_sync))
+        while True:
+            msg = await msg_queue.get()
+            if msg is None:
+                break
+            yield msg
 
     return StreamingResponse(
         generate(),

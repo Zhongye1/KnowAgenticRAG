@@ -61,6 +61,9 @@ METADATA_DIR = "metadata"
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".doc", ".md", ".rtf"}
 
+# 并发 IO 限流：最多同时处理 8 个分块写入，防止大批量上传时文件句柄耗尽
+_chunk_semaphore = asyncio.Semaphore(8)
+
 # 确保目录存在
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(METADATA_DIR, exist_ok=True)
@@ -130,31 +133,32 @@ async def upload_chunk(
     KLB_id: str = Form(...)
 ):
     """
-    上传文件分块
+    上传文件分块（使用 Semaphore 限流，最多 8 个并发写入）
     """
-    try:
-        # 为每个文件创建单独的分块目录
-        file_chunk_dir = os.path.join(CHUNK_UPLOAD_DIR, KLB_id, fileHash)
-        os.makedirs(file_chunk_dir, exist_ok=True)
+    async with _chunk_semaphore:
+        try:
+            # 为每个文件创建单独的分块目录
+            file_chunk_dir = os.path.join(CHUNK_UPLOAD_DIR, KLB_id, fileHash)
+            os.makedirs(file_chunk_dir, exist_ok=True)
 
-        # 分块文件路径
-        chunk_file_path = os.path.join(file_chunk_dir, f"chunk_{chunkIndex}.part")
-        
-        # 保存分块
-        async with aiofiles.open(chunk_file_path, 'wb') as f:
-            content = await chunk.read()
-            await f.write(content)
+            # 分块文件路径
+            chunk_file_path = os.path.join(file_chunk_dir, f"chunk_{chunkIndex}.part")
 
-        print(f"分块上传成功: 文件名={fileName}, 文件哈希={fileHash}, 分块索引={chunkIndex}, 总分块数={totalChunks}")
-        return {
-            "message": "分块上传成功",
-            "fileHash": fileHash,
-            "chunkIndex": chunkIndex,
-            "totalChunks": totalChunks
-        }
-    except Exception as e:
-        print(f"分块上传失败: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"分块上传失败: {str(e)}")
+            # 保存分块
+            async with aiofiles.open(chunk_file_path, 'wb') as f:
+                content = await chunk.read()
+                await f.write(content)
+
+            print(f"分块上传成功: 文件名={fileName}, 文件哈希={fileHash}, 分块索引={chunkIndex}, 总分块数={totalChunks}")
+            return {
+                "message": "分块上传成功",
+                "fileHash": fileHash,
+                "chunkIndex": chunkIndex,
+                "totalChunks": totalChunks
+            }
+        except Exception as e:
+            print(f"分块上传失败: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"分块上传失败: {str(e)}")
 
 #上传完成后合并文件块
 @router.post("/api/upload-complete/")
