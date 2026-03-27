@@ -9,8 +9,9 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?logo=typescript)](https://www.typescriptlang.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ed?logo=docker)](https://docs.docker.com/compose/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
+[![Version](https://img.shields.io/badge/commit-59ffcfe-brightgreen)](https://github.com/March030303/KnowledgeRAG-GZHU/commits/main)
 
-[功能全览](README-FEATURES.md) · [快速启动](#-快速启动) · [API 文档](http://localhost:8000/docs) · [移动端 App](#-移动端-app)
+[功能全览](README-FEATURES.md) · [快速启动](#-快速启动) · [API 文档](http://localhost:8000/docs) · [移动端 App](#-移动端-app) · [系统架构](#-系统架构)
 
 </div>
 
@@ -24,8 +25,10 @@
 - 🧠 **防幻觉问答** — 答案严格基于你的文档，来源可追溯
 - 📚 **统一知识管理** — 多格式文档、URL 批量导入、权限分级
 - 🤖 **Agent 任务模式** — ReAct 框架，自然语言驱动多步骤任务
+- ✍️ **文档创作** — 5 种模式 SSE 流式生成（报告/摘要/大纲/博客/论文）
 - 🔗 **办公联动** — Obsidian / 飞书 / 钉钉 / 企微 / Notion / GitHub
 - 📱 **双端支持** — Web + React Native 移动端 App
+- 🗺️ **系统架构图** — 可视化 4-Tab 架构展示（技术栈/数据流/部署/模块）
 - 🚀 **本地部署** — 数据不离本地，一键 Docker 启动
 
 ---
@@ -43,7 +46,9 @@
 │               服务层（FastAPI）               │
 │  用户认证 · 知识库管理 · RAG Pipeline v3      │
 │  ReAct Agent · 多模型路由 · Whisper ASR       │
-│  增量向量化 · 联网搜索 · 开放 API · 审计日志  │
+│  增量向量化 · Cross-Encoder重排 · 联网搜索    │
+│  文档创作SSE · RAG评测 · Prometheus监控       │
+│  开放 API · 审计日志                          │
 │  Obsidian同步 · 飞书/钉钉/企微机器人          │
 └──────────────────┬──────────────────────────┘
                    │
@@ -58,13 +63,16 @@
 |------|---------|
 | 前端框架 | Vue 3 + TypeScript + Vite 5 |
 | UI 组件库 | TDesign Vue Next |
+| 状态管理 | Pinia（跨路由持久化） |
 | 后端框架 | FastAPI + uvicorn |
 | LLM 框架 | LangChain |
 | 本地模型 | Ollama（推荐 `qwen2:0.5b`，低配友好） |
 | 关系数据库 | MySQL 9.6（Docker 托管） |
+| 重排模型 | Cross-Encoder（sentence-transformers） |
 | 移动端 | React Native + Expo SDK 53 + zustand |
 | 容器化 | Docker + Docker Compose |
 | 语音识别 | OpenAI Whisper（本地） |
+| 监控 | Prometheus 中间件 + ECharts |
 
 ---
 
@@ -76,11 +84,13 @@
 - 📌 **置顶功能**：知识库 / 文件 / 模型 / 历史记录一键置顶
 - ⭐ 星标收藏 + 拖拽排序（localStorage 持久化）
 - 三级权限体系：个人 → 共享（分享链接）→ 广场（公开发现）
+- 📦 **知识库备份**：一键导出 ZIP 打包下载
 
 ### 💬 RAG 智能问答
 - SSE 流式输出，实时打字机效果
 - 🔍 **引用溯源气泡**：AI 回答标注来源，点击展开原文
 - 5 种检索策略：Vector / BM25 / Hybrid / RRF / MMR
+- 🎯 **Cross-Encoder 重排**：召回后二次精排，显著提升相关性
 - RAG 模式开关 + 知识库选择器
 
 ### 🤖 Agent 任务模式
@@ -88,6 +98,22 @@
 - 步骤可视化（Thought → Action → Observation）
 - 工具链：知识库检索 / DuckDuckGo 联网搜索 / 代码执行
 - 任务历史持久化，按日期分组
+- 离线降级模板，Ollama 不可用时仍可演示
+
+### ✍️ 文档创作（新）
+- **5 种创作模式**：研究报告 / 文章摘要 / 内容大纲 / 博客文章 / 学术论文
+- SSE 流式生成，实时打字机效果输出
+- 基于知识库内容生成，有据可查
+
+### 📊 RAG 评测（新）
+- ECharts 雷达图 / 柱状图 / 直方图多维可视化
+- **跨路由状态持久化**（Pinia Store），切换页面不丢评测进度
+- 全局评测进度浮层（底部 toast），随时感知评测状态
+
+### 🙈 系统架构图（新）
+- `/architecture` 独立页面，4 Tab 可视化展示
+- 涵盖：技术栈架构 / 数据流程图 / 部署拓扑 / 模块依赖
+- SideBar 导航入口，随时查阅
 
 ### 🎙️ 语音交互
 - 麦克风录音 → Whisper ASR 转录 → 直接发问
@@ -97,12 +123,15 @@
 - 左侧分组导航 + 右侧内容区，仿 Win11 设置页
 - 12 个功能 Tab：通用 / 外观 / 模型 / 知识库 / 办公联动 / 安全 / 审计 / ...
 - 办公联动 6 平台网格（Obsidian / 飞书 / 钉钉 / 企微 / Notion / GitHub）
+- 🛠️ **用户自定义模型配置**：Ollama 地址 / 模型名 / 超时参数，离线也可保存
+- 📈 **系统监控 Tab**：Prometheus 指标 + ECharts 实时可视化
 
 ### ✨ 全局交互动效
 - 页面切换过渡（`<Transition name="page">`）
 - 按钮 hover 光晕 / active 缩放
 - 卡片悬浮阴影 / 骨架屏 shimmer
 - 支持 `prefers-reduced-motion` 无障碍
+- 深色模式（`darkMode: 'class'`）完整覆盖
 
 ### 🌐 多模型适配
 | 类型 | 模型 |
@@ -224,9 +253,11 @@ KnowledgeRAG-GZHU/
 │   │   ├── views/               # 页面组件
 │   │   │   ├── KnowledgePages/  # 知识库列表/详情/设置
 │   │   │   ├── Chat.vue         # RAG 智能问答
-│   │   │   ├── Agent.vue        # Agent 任务模式
+│   │   │   ├── Agent.vue        # Agent 任务模式（Ollama 状态徽章）
 │   │   │   ├── History.vue      # 历史记录聚合
-│   │   │   └── Settings.vue     # 系统设置（Win11 风格）
+│   │   │   ├── Settings.vue     # 系统设置（Win11 风格）
+│   │   │   ├── Creation.vue     # 文档创作（5 种模式 SSE）
+│   │   │   └── Architecture.vue # 系统架构图（4 Tab 可视化）
 │   │   ├── components/
 │   │   │   ├── SideBar.vue      # 左侧折叠导航
 │   │   │   ├── GlobalSearch.vue # Ctrl+K 全局搜索
@@ -234,8 +265,15 @@ KnowledgeRAG-GZHU/
 │   │   │   ├── ModelSelector.vue
 │   │   │   ├── RetrievalConfig.vue
 │   │   │   └── SettingsTabs/    # 12 个设置子 Tab 组件
+│   │   │       ├── RagEvalTab.vue     # RAG 评测（ECharts 可视化）
+│   │   │       ├── MultiModelTab.vue  # 多云模型配置
+│   │   │       └── SystemMonitorTab.vue # Prometheus 系统监控
+│   │   ├── store/modules/
+│   │   │   └── useEvalStore.ts  # RAG 评测跨路由持久化（Pinia）
+│   │   ├── composables/
+│   │   │   └── useTheme.ts      # 主题/字体/深色模式统一管理
 │   │   ├── styles/
-│   │   │   └── animations.css   # 全局交互动效
+│   │   │   └── animations.css   # 全局交互动效（含深色模式覆盖）
 │   │   └── i18n/index.ts        # 中英双语
 │   ├── Dockerfile
 │   └── nginx.conf
@@ -246,11 +284,18 @@ KnowledgeRAG-GZHU/
 │   ├── RAG_M/src/
 │   │   ├── rag/rag_pipeline.py  # RAG Pipeline v3
 │   │   └── agent/react_agent.py # ReAct Agent
-│   ├── document_processing/     # 增量向量化 + 检索策略
+│   ├── document_processing/
+│   │   ├── incremental_vectorizer.py  # 增量向量化
+│   │   ├── retrieval_strategy.py      # 五策略检索
+│   │   └── reranker.py                # Cross-Encoder 重排
+│   ├── models/
+│   │   └── user_model_config.py # 用户自定义模型配置 API
+│   ├── doc_creation/
+│   │   └── doc_creation.py      # 文档创作 5 模式 SSE
 │   ├── multi_model/             # 多模型 SSE 路由
 │   ├── multimodal/              # Whisper 语音识别
 │   ├── agent_tools/             # DuckDuckGo 联网搜索
-│   ├── integrations/            # Obsidian / 飞书 / 钉钉 / 企微
+│   ├── integrations/            # Obsidian / 飞书 / 钉钉 / 企微 / Notion / GitHub
 │   ├── data_sources/            # OSS/S3/MySQL/PG/SQLite 数据源
 │   ├── open_api/                # API Key 管理
 │   ├── audit/                   # ASGI 审计日志中间件
@@ -258,8 +303,12 @@ KnowledgeRAG-GZHU/
 │   └── .env                     # 环境变量
 │
 ├── RagMobile/                    # React Native 移动端
+│   └── src/
+│       ├── api/api.ts           # API 层（AsyncStorage 缓存层）
+│       └── store/useKbStore.ts  # 知识库 Store（5 分钟列表缓存）
 ├── dev.ps1                       # 一键开发启动脚本
-└── docker-compose.yml            # 容器编排
+├── docker-compose.yml            # 容器编排（完整栈）
+└── docker-compose.lite.yml       # 轻量版（无 MySQL/Ollama，适合云端 API）
 ```
 
 ---
@@ -379,15 +428,22 @@ A: 脚本必须用纯 ASCII 编码保存（不含中文注释）。
 
 - [x] 用户认证与权限管理
 - [x] 多模型支持与参数配置
+- [x] 用户自定义模型配置（Ollama 地址/模型名/超时）
 - [x] 多格式文档处理（PDF/Word/Excel/图片）
 - [x] 知识库 CRUD + 多维检索
-- [x] Docker 一键部署
+- [x] Cross-Encoder 重排（二次精排）
+- [x] Docker 一键部署（完整栈 + 轻量版）
 - [x] Agent 任务模式（ReAct）
 - [x] 移动端 App（React Native）
 - [x] 语音输入（Whisper ASR）
 - [x] 置顶 / 拖拽排序 / 全局动效
 - [x] Win11 风格系统设置
 - [x] 办公联动（Obsidian/飞书/钉钉/企微/Notion/GitHub）
+- [x] 文档创作（5 种模式 SSE 流式生成）
+- [x] RAG 评测面板（ECharts 可视化 + Pinia 持久化）
+- [x] 系统架构图页面（4 Tab 可视化）
+- [x] Prometheus 监控 + ECharts 系统监控 Tab
+- [x] 知识库 ZIP 备份导出
 - [ ] 文档协作（多人实时编辑）
 - [ ] 知识图谱可视化增强
 - [ ] 企业 SSO 登录（LDAP/SAML）
@@ -396,7 +452,7 @@ A: 脚本必须用纯 ASCII 编码保存（不含中文注释）。
 
 <div align="center">
 
-*最后更新：2026-03-26 | commit `b8cfb35`*
+*最后更新：2026-03-27 | commit `59ffcfe`*
 
 **仓库：[https://github.com/March030303/KnowledgeRAG-GZHU](https://github.com/March030303/KnowledgeRAG-GZHU)**
 

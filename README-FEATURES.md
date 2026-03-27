@@ -2,7 +2,7 @@
 
 > **项目仓库**：https://github.com/March030303/KnowledgeRAG-GZHU  
 > **主分支**：`暖霜的分支`  
-> **最新版本**：commit `b8cfb35`（2026-03-26）
+> **最新版本**：commit `59ffcfe`（2026-03-27）
 
 ---
 
@@ -20,6 +20,8 @@
    - 4.6 [检索策略配置](#46-检索策略配置)
    - 4.7 [语音交互](#47-语音交互)
    - 4.8 [联网搜索](#48-联网搜索)
+   - 4.9 [文档创作](#49-文档创作新)
+   - 4.10 [RAG 评测](#410-rag-评测新)
 5. [扩展功能模块](#5-扩展功能模块)
    - 5.1 [个人主页与设置](#51-个人主页与设置)
    - 5.2 [外观与主题](#52-外观与主题)
@@ -30,6 +32,7 @@
    - 5.7 [置顶功能](#57-置顶功能)
    - 5.8 [全局交互动效](#58-全局交互动效)
    - 5.9 [系统设置（Win11 风格）](#59-系统设置win11-风格)
+   - 5.10 [系统架构图](#510-系统架构图新)
 6. [集成与联动](#6-集成与联动)
    - 6.1 [Obsidian 笔记同步](#61-obsidian-笔记同步)
    - 6.2 [飞书机器人](#62-飞书机器人)
@@ -41,6 +44,7 @@
    - 7.3 [增量向量化](#73-增量向量化)
    - 7.4 [RBAC 权限管理](#74-rbac-权限管理)
    - 7.5 [OCR 文档解析](#75-ocr-文档解析)
+   - 7.6 [系统监控](#76-系统监控新)
 8. [移动端 App](#8-移动端-app)
 9. [部署方案](#9-部署方案)
 10. [目录结构](#10-目录结构)
@@ -74,12 +78,15 @@
 │  FastAPI 后端 (Python 3.10+)                         │
 │  ├── 用户认证 (JWT + MySQL)                          │
 │  ├── 知识库管理 (文档解析 + 向量化)                  │
-│  ├── RAG Pipeline (LangChain)                        │
+│  ├── RAG Pipeline (LangChain + Cross-Encoder 重排)   │
 │  ├── Agent (ReAct + 工具链)                          │
 │  ├── 多模型路由 (Ollama/OpenAI/DeepSeek/混元)        │
 │  ├── 语音 ASR (Whisper)                              │
+│  ├── 文档创作 (5 种模式 SSE)                         │
+│  ├── RAG 评测 (多指标可视化)                          │
+│  ├── Prometheus 监控中间件                            │
 │  ├── 联网搜索 (DuckDuckGo)                           │
-│  └── 集成服务 (Obsidian/飞书/OSS/S3)                │
+│  └── 集成服务 (Obsidian/飞书/钉钉/企微/Notion/GitHub)│
 └────────────────────┬─────────────────────────────────┘
                      │
 ┌────────────────────▼─────────────────────────────────┐
@@ -93,14 +100,16 @@
 |------|---------|
 | 前端框架 | Vue 3 + TypeScript + Vite 5 |
 | UI 组件库 | TDesign Vue Next |
-| 状态管理 | Vue Composition API (ref/reactive) |
+| 状态管理 | Pinia（跨路由持久化） |
 | 后端框架 | FastAPI + uvicorn |
 | LLM 框架 | LangChain |
 | 本地模型 | Ollama（qwen2:0.5b / qwen:7b-chat） |
+| 重排模型 | Cross-Encoder（sentence-transformers） |
 | 关系数据库 | MySQL 9.6 |
 | 移动端 | React Native + Expo SDK 53 |
 | 容器化 | Docker + Docker Compose |
 | 语音识别 | OpenAI Whisper（本地） |
+| 监控 | Prometheus 中间件 + ECharts |
 
 ---
 
@@ -237,6 +246,7 @@ GET    /api/knowledge/{id}/docs     -- 文档列表
   → 问题向量化（embedding）
   → 检索策略执行（见4.6）
   → 召回相关段落（Top-K）
+  → Cross-Encoder 重排（二次精排，提升相关性）
   → Prompt 构建（问题 + 上下文）
   → LLM 生成回答（流式）
   → 引用来源标注
@@ -312,6 +322,20 @@ POST /api/agent/web-search  -- 联网搜索工具
 - 顶部 ModelSelector 组件一键切换
 - 云厂商 API Key 在设置页配置，加密存储
 - 对话中可随时切换，不影响历史上下文
+
+#### 用户自定义模型配置（新）
+- 设置页「⚡ 模型配置」Tab
+- 可自定义：Ollama 地址、模型名称、请求超时时长
+- **离线也可保存**：优先存 localStorage，后端不可用时仍提示成功
+- Chat 侧边栏绿色徽章显示当前使用模型，点击跳转设置页
+
+```python
+# RagBackend/models/user_model_config.py
+GET  /api/model-config/user       -- 获取用户模型配置
+POST /api/model-config/user       -- 保存用户模型配置
+GET  /api/model-config/local      -- 查询本地已安装 Ollama 模型
+POST /api/model-config/test       -- 测试模型连接
+```
 
 #### 技术实现
 ```python
@@ -402,7 +426,72 @@ POST /api/agent/web-search   -- 联网搜索
 
 ---
 
-## 5. 扩展功能模块
+### 4.9 文档创作（新）
+
+**功能描述：** 基于知识库内容，以 SSE 流式方式生成结构化文档，覆盖 5 种常见写作场景。
+
+#### 创作模式
+
+| 模式 | 说明 | 输出特点 |
+|------|------|---------|
+| **研究报告** | 基于知识库内容生成系统性报告 | 摘要 + 正文 + 结论 |
+| **文章摘要** | 对文档进行精炼压缩 | 关键信息提炼 |
+| **内容大纲** | 生成多级标题大纲 | 层次分明的结构 |
+| **博客文章** | 轻松易读的博客风格 | 标题 + 段落 + 小节 |
+| **学术论文** | 严谨的学术写作风格 | 摘要/引言/方法/结论 |
+
+#### 交互流程
+```
+选择创作模式 → 输入主题/要求 → 选择参考知识库
+  → SSE 流式输出（实时打字机效果）
+  → 支持复制/导出生成内容
+```
+
+```python
+# RagBackend/doc_creation/doc_creation.py
+POST /api/creation/generate   -- 文档创作（SSE 流式）
+参数：{"mode": "report", "topic": "...", "kb_ids": [...]}
+```
+
+**前端入口：** SideBar「文档创作」→ `/creation`，`Creation.vue` 页面。
+
+---
+
+### 4.10 RAG 评测（新）
+
+**功能描述：** 对 RAG 系统进行多维度定量评测，以可视化图表展示评测结果，并支持跨路由状态持久化。
+
+#### 评测指标
+
+| 指标 | 说明 |
+|------|------|
+| **准确率** | 回答与标准答案的语义相似度 |
+| **召回率** | 检索到的相关段落覆盖率 |
+| **F1 分数** | 准确率与召回率的调和平均 |
+| **忠实度** | 回答与文档原文的一致性 |
+| **延迟** | 端到端响应时间分布 |
+
+#### 可视化图表
+
+- 📡 **雷达图**：5 维指标全貌对比
+- 📊 **柱状图**：多组测试集横向对比
+- 📈 **直方图**：响应延迟分布分析
+
+#### 状态持久化
+- Pinia Store（`useEvalStore.ts`）管理评测状态
+- **跨路由不丢进度**：离开评测页面再回来，进度、结果完整保留
+- **全局进度浮层**：`App.vue` 底部 toast，任意页面均可感知评测进度
+
+```typescript
+// RagFrontend/src/store/modules/useEvalStore.ts
+// Pinia store，持久化评测状态
+const evalStore = useEvalStore()
+evalStore.startEval(config)   // 启动评测
+evalStore.updateProgress(n)   // 更新进度
+evalStore.setResults(data)    // 保存结果
+```
+
+---
 
 ### 5.1 个人主页与设置
 
@@ -574,7 +663,26 @@ POST /api/feedback/submit
 
 点击平台卡片展开配置面板，支持连接测试，`slide-down` 过渡动效。
 
-### 6.1 Obsidian 笔记同步
+---
+
+### 5.10 系统架构图（新）
+
+路径：`/architecture`
+
+独立可视化页面，帮助开发者和用户直观理解系统设计。
+
+**4 个 Tab：**
+
+| Tab | 内容 |
+|-----|------|
+| 🏗️ **技术栈** | 各层技术选型及版本，交互式卡片展示 |
+| 🔄 **数据流** | RAG 问答完整数据流程图 |
+| 🚀 **部署拓扑** | Docker 服务拓扑图（前端/后端/MySQL/Ollama） |
+| 🧩 **模块依赖** | 后端模块间依赖关系图 |
+
+**入口：** SideBar 工具栏「系统架构」图标 → 路由 `/architecture`。
+
+---
 
 将 Obsidian Vault 中的笔记自动同步到知识库。
 
@@ -770,6 +878,32 @@ GET  /api/ocr/status     -- OCR 服务状态
 
 设置页「知识库」→「OCR 解析」Tab 可配置 OCR 引擎和语言包。
 
+---
+
+### 7.6 系统监控（新）
+
+**功能描述：** 集成 Prometheus 指标采集中间件，配合前端 ECharts 提供实时系统性能可视化。
+
+```python
+# RagBackend/monitoring/prometheus_middleware.py
+# ASGI 中间件，自动采集请求指标
+GET /api/metrics              -- Prometheus 格式指标（供 Grafana 抓取）
+GET /api/metrics/summary      -- ECharts 用 JSON 摘要数据
+```
+
+**采集指标：**
+
+| 指标 | 说明 |
+|------|------|
+| 请求总量 | 按路径/方法统计 QPS |
+| 响应延迟 | P50/P95/P99 分位数 |
+| 错误率 | 4xx/5xx 比例 |
+| 活跃连接数 | 当前 SSE 长连接数 |
+
+**前端展示：** Settings「📈 系统监控」Tab，ECharts 折线图/仪表盘，30 秒自动刷新。
+
+---
+
 **位置：** `KnowledgeRAG-GZHU/RagMobile/`  
 **技术栈：** React Native + Expo SDK 53 + TypeScript + zustand
 
@@ -820,7 +954,7 @@ services:
   frontend:    # Vue3 + Nginx，端口 8089
   backend:     # FastAPI，端口 8000
   db:          # MySQL 9.6，端口 3306
-  ollama:      # Ollama，端口 11434（含模型预拉取）
+  ollama:      # Ollama，端口 11435（宿主机）→ 11434（容器）
 ```
 
 ```bash
@@ -828,6 +962,20 @@ docker compose up -d          # 启动
 docker compose logs -f        # 查看日志
 docker compose down           # 停止
 docker compose pull && docker compose up -d  # 更新
+```
+
+### Docker Compose 轻量版（云端 API）
+
+```yaml
+# docker-compose.lite.yml — 无 MySQL / Ollama
+# 适合使用 DeepSeek / OpenAI 等云端 API 的场景
+services:
+  frontend:    # Vue3 + Nginx，端口 8089
+  backend:     # FastAPI，端口 8000（SQLite 替代 MySQL）
+```
+
+```bash
+docker compose -f docker-compose.lite.yml up -d
 ```
 
 ### 前端独立构建
@@ -861,33 +1009,39 @@ KnowledgeRAG-GZHU/
 │   │   │   │   ├── SharedSquare.vue        # 知识广场（B站模式）
 │   │   │   │   └── SharedDetail.vue        # 公开知识库详情
 │   │   │   ├── Chat.vue           # RAG智能问答（引用溯源+语音）
-│   │   │   ├── Agent.vue          # Agent任务模式（ReAct可视化）
+│   │   │   ├── Agent.vue          # Agent任务模式（ReAct可视化+Ollama状态徽章）
 │   │   │   ├── History.vue        # 历史记录聚合（置顶+搜索）
 │   │   │   ├── Settings.vue       # 系统设置（Win11风格，12 Tab）
-│   │   │   ├── LogonOrRegister/   # 登录注册（粒子动效背景）
-│   │   │   └── TabHeader/         # 用户中心（外观/绑定/语音/反馈）
+│   │   │   ├── Creation.vue       # 文档创作（5种模式SSE流式生成）
+│   │   │   ├── Architecture.vue   # 系统架构图（4 Tab 可视化）
+│   │   │   └── LogonOrRegister/   # 登录注册（粒子动效背景）
 │   │   ├── components/
-│   │   │   ├── SideBar.vue        # 左侧折叠导航
+│   │   │   ├── SideBar.vue        # 左侧折叠导航（含架构图/文档创作入口）
 │   │   │   ├── GlobalSearch.vue   # Ctrl+K全局搜索
 │   │   │   ├── ModelSelector.vue  # 多模型切换
 │   │   │   ├── RetrievalConfig.vue # 检索策略配置
 │   │   │   ├── VoiceInput.vue     # 语音输入（波形动画）
-│   │   │   ├── ErrorBoundary.vue  # 错误边界
 │   │   │   ├── SmartAssistant.vue # 右侧智能助手（可折叠）
 │   │   │   ├── ShareModal.vue     # 分享链接+二维码
-│   │   │   ├── SettingsTabs/      # 12个设置子Tab组件
-│   │   │   │   ├── OcrTab.vue
-│   │   │   │   ├── RbacTab.vue
-│   │   │   │   ├── RagEvalTab.vue
-│   │   │   │   ├── MultiModelTab.vue
-│   │   │   │   ├── ComplianceTab.vue
-│   │   │   │   └── ...
-│   │   │   └── chat-main-unit/    # 对话核心（引用溯源气泡）
+│   │   │   └── SettingsTabs/      # 12个设置子Tab组件
+│   │   │       ├── RagEvalTab.vue       # RAG评测（ECharts雷达/柱/直方图）
+│   │   │       ├── MultiModelTab.vue    # 多云模型UI
+│   │   │       ├── SystemMonitorTab.vue # Prometheus监控
+│   │   │       ├── OcrTab.vue
+│   │   │       ├── RbacTab.vue
+│   │   │       ├── ComplianceTab.vue
+│   │   │       └── ...
+│   │   ├── store/
+│   │   │   ├── index.ts           # Pinia store 统一导出
+│   │   │   └── modules/
+│   │   │       └── useEvalStore.ts  # RAG评测状态跨路由持久化
+│   │   ├── composables/
+│   │   │   └── useTheme.ts        # 主题/字体/深色模式统一管理
 │   │   ├── styles/
-│   │   │   └── animations.css     # 全局交互动效
+│   │   │   └── animations.css     # 全局交互动效（含深色模式§21/字体§22）
 │   │   ├── i18n/index.ts          # 中英双语
 │   │   ├── utils/request.ts       # Axios封装（分块上传+重试）
-│   │   └── router/index.ts        # 路由配置（含/history）
+│   │   └── router/index.ts        # 路由配置（含/creation /architecture）
 │   ├── Dockerfile
 │   └── nginx.conf
 │
@@ -899,15 +1053,22 @@ KnowledgeRAG-GZHU/
 │   │   └── agent/react_agent.py  # ReAct Agent
 │   ├── document_processing/
 │   │   ├── incremental_vectorizer.py  # 增量向量化
-│   │   └── retrieval_strategy.py      # 五策略检索
+│   │   ├── retrieval_strategy.py      # 五策略检索
+│   │   └── reranker.py                # Cross-Encoder 重排
+│   ├── models/
+│   │   └── user_model_config.py   # 用户自定义模型配置（GET/POST/测试）
+│   ├── doc_creation/
+│   │   └── doc_creation.py        # 文档创作5种模式SSE
+│   ├── monitoring/
+│   │   └── prometheus_middleware.py # Prometheus ASGI 中间件
 │   ├── multi_model/model_router.py    # 多模型SSE路由
 │   ├── multimodal/whisper_asr.py      # 语音识别
 │   ├── agent_tools/web_search_tool.py # DuckDuckGo联网搜索
 │   ├── integrations/
 │   │   ├── obsidian_sync.py       # Obsidian同步
 │   │   ├── feishu_bot.py          # 飞书机器人
-│   │   ├── dingtalk_bot.py        # 钉钉机器人
-│   │   └── wecom_bot.py           # 企业微信机器人
+│   │   ├── dingtalk_wecom.py      # 钉钉/企微（含/configure /test端点）
+│   │   └── ...
 │   ├── data_sources/datasource_manager.py  # 多数据源
 │   ├── open_api/api_key_manager.py    # 开放API Key
 │   ├── audit/audit_log.py             # ASGI审计中间件
@@ -919,14 +1080,17 @@ KnowledgeRAG-GZHU/
 ├── RagMobile/                      # React Native 移动端
 │   ├── App.tsx
 │   ├── src/
+│   │   ├── api/api.ts             # API层（AsyncStorage缓存层）
 │   │   ├── navigation/
 │   │   ├── screens/
 │   │   ├── components/
 │   │   └── store/
+│   │       └── useKbStore.ts      # 知识库Store（5分钟列表缓存）
 │   └── eas.json
 │
 ├── dev.ps1                         # 一键开发启动脚本
-└── docker-compose.yml              # 容器编排（前端+后端+MySQL+Ollama）
+├── docker-compose.yml              # 容器编排（前端+后端+MySQL+Ollama）
+└── docker-compose.lite.yml         # 轻量版（无MySQL/Ollama，适合云端API）
 ```
 
 ---
