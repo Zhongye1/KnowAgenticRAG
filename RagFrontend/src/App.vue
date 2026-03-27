@@ -47,6 +47,7 @@ import ErrorBoundary from './components/ErrorBoundary.vue';
 import SmartAssistant from './components/SmartAssistant.vue';
 import BackToTop from './components/BackToTop.vue';
 import { initInteractions } from './composables/useInteractions';
+import { applyAllAppearance } from './composables/useTheme';
 import "@/assets/scroll.css";
 import "@/styles/animations.css";
 
@@ -87,23 +88,8 @@ const handleKeydown = (e: KeyboardEvent) => {
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown);
 
-  // ── 恢复外观设置 ──
-  const savedFontSize = localStorage.getItem('fontSize') || 'md';
-  const fontMap: Record<string, string> = { sm: '13px', md: '14px', lg: '16px' };
-  const px = fontMap[savedFontSize] || '14px';
-  document.documentElement.style.fontSize = px;
-  document.documentElement.style.setProperty('--td-font-size-base', px);
-  document.body.setAttribute('data-font-size', savedFontSize);
-
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'dark') document.documentElement.classList.add('dark');
-
-  const colorMap: Record<string, string> = {
-    blue:   '#3b82f6', indigo:  '#6366f1', violet: '#8b5cf6', cyan:  '#06b6d4',
-    teal:   '#14b8a6', green:   '#22c55e', orange: '#f97316', rose:  '#f43f5e',
-  };
-  const savedColor = localStorage.getItem('themeColor') || 'blue';
-  document.documentElement.style.setProperty('--color-primary', colorMap[savedColor] || '#3b82f6');
+  // ── 恢复外观设置（统一由 useTheme 管理，单一数据源）──
+  applyAllAppearance();
 
   // ── 初始化全局交互动效 ──
   initInteractions(router);
@@ -133,7 +119,7 @@ html, body {
 .app-fullpage {
   height: 100vh;
   width: 100vw;
-  background-color: #f9fafb;
+  background-color: var(--app-bg, #f9fafb);
 }
 
 /* 主布局：左侧导航 + 右侧内容 */
@@ -141,7 +127,7 @@ html, body {
   display: flex;
   height: 100vh;
   width: 100vw;
-  background-color: #f9fafb;
+  background-color: var(--app-bg, #f9fafb);
   overflow: hidden;
 }
 

@@ -996,3 +996,182 @@ html { scroll-behavior: smooth; }
 
 .dark ::-webkit-scrollbar-thumb       { background: rgba(255,255,255,0.15); }
 .dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
+
+
+/* ================================================================
+   §20  深色模式：全局语义色变量
+   ================================================================
+   规范：
+   - 亮色默认值定义在 :root 中
+   - .dark 时覆盖为深色对应值
+   - 所有页面/组件用 var(--bg-page) 等代替硬编码 #f9fafb/#fff
+   ================================================================ */
+
+:root {
+  /* ── 背景层级 ── */
+  --bg-page:       #f9fafb;   /* 最外层页面背景 */
+  --bg-card:       #ffffff;   /* 卡片/面板背景 */
+  --bg-input:      #ffffff;   /* 输入框背景 */
+  --bg-sidebar:    #ffffff;   /* 侧边栏背景 */
+  --bg-hover:      #f3f4f6;   /* hover 背景 */
+  --bg-active:     #eff6ff;   /* 选中/激活背景 */
+  --bg-code:       #f8fafc;   /* 代码块背景 */
+
+  /* ── 文字层级 ── */
+  --text-primary:   #111827;  /* 主要文字 */
+  --text-secondary: #374151;  /* 次要文字 */
+  --text-tertiary:  #6b7280;  /* 辅助文字 */
+  --text-disabled:  #9ca3af;  /* 禁用文字 */
+  --text-inverse:   #ffffff;  /* 反色（用于深色背景上） */
+
+  /* ── 边框 ── */
+  --border-color:  #e5e7eb;   /* 通用边框 */
+  --border-light:  #f0f0f0;   /* 轻边框 */
+  --border-strong: #d1d5db;   /* 强边框 */
+
+  /* ── 应用背景（App.vue 直接用） ── */
+  --app-bg: #f9fafb;
+}
+
+/* ── 深色模式覆盖 ── */
+.dark {
+  /* 背景 */
+  --bg-page:       #0f0f17;
+  --bg-card:       #1a1b2e;
+  --bg-input:      #16172b;
+  --bg-sidebar:    #13141f;
+  --bg-hover:      #252638;
+  --bg-active:     #1e2a4a;
+  --bg-code:       #12131e;
+
+  /* 文字 */
+  --text-primary:   #e8eaf0;
+  --text-secondary: #b0b3c6;
+  --text-tertiary:  #7880a0;
+  --text-disabled:  #4a4f6a;
+  --text-inverse:   #111827;
+
+  /* 边框 */
+  --border-color:  #2a2d45;
+  --border-light:  #1f2138;
+  --border-strong: #363a58;
+
+  /* 应用背景 */
+  --app-bg: #0f0f17;
+}
+
+/* ── 深色：全局基础样式覆盖 ── */
+.dark body,
+.dark #app {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+}
+
+/* Settings / 普通面板 */
+.dark .tab-content,
+.dark .settings-content {
+  background: var(--bg-page);
+}
+
+/* 通用卡片 */
+.dark .appearance-card,
+.dark .info-card,
+.dark .section-card,
+.dark .kb-card,
+.dark .chat-card,
+.dark .panel-card {
+  background: var(--bg-card) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary);
+}
+
+/* 输入框 */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.dark textarea,
+.dark select {
+  background: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+/* TDesign 组件暗色适配 */
+.dark .t-input__inner,
+.dark .t-textarea__inner,
+.dark .t-select__wrap .t-input {
+  background: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+/* 侧边栏 */
+.dark .sidebar,
+.dark .app-sidebar,
+.dark .side-bar {
+  background: var(--bg-sidebar) !important;
+  border-right-color: var(--border-color) !important;
+}
+
+/* 导航 hover */
+.dark .nav-item:hover,
+.dark .sidebar-item:hover {
+  background: var(--bg-hover) !important;
+}
+
+/* 标题和描述文字 */
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+  color: var(--text-primary);
+}
+.dark p, .dark span, .dark label {
+  color: var(--text-secondary);
+}
+
+/* 代码块 */
+.dark pre, .dark code {
+  background: var(--bg-code) !important;
+  color: #a9c4f5 !important;
+}
+
+/* 表格 */
+.dark table thead {
+  background: var(--bg-hover) !important;
+}
+.dark table tr:hover {
+  background: var(--bg-hover) !important;
+}
+.dark table td, .dark table th {
+  border-color: var(--border-color) !important;
+  color: var(--text-primary);
+}
+
+/* 模态框 / 弹窗 */
+.dark .modal-card,
+.dark .t-dialog__body {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+
+/* 按钮色彩适配 */
+.dark .btn-secondary,
+.dark .mc-btn-secondary {
+  background: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-color) !important;
+}
+
+/* Tabs 背景 */
+.dark .devtools-tabs,
+.dark .settings-nav {
+  background: var(--bg-sidebar) !important;
+}
+
+/* 分割线 */
+.dark hr,
+.dark .divider {
+  border-color: var(--border-color);
+}
+
+/* 消息提示 */
+.dark .t-message {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}

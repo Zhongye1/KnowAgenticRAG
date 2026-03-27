@@ -699,6 +699,10 @@
 import { ref, onMounted, reactive, computed, nextTick } from 'vue'
 import axios from 'axios'
 import { MessagePlugin } from 'tdesign-vue-next'
+import {
+  applyTheme, applyColor, applyFontSize, applyLayout,
+  saveAppearance as persistAppearance, loadAppearance, COLOR_MAP
+} from '@/composables/useTheme'
 import OcrTab from './SettingsTabs/OcrTab.vue'
 import VersionTab from './SettingsTabs/VersionTab.vue'
 import RbacTab from './SettingsTabs/RbacTab.vue'
@@ -1127,7 +1131,7 @@ const integrationPlatforms = computed(() => [
 ])
 
 // ── 外观设置 ──────────────────────────────────────────────────
-const appearance = reactive(JSON.parse(localStorage.getItem('app_appearance') || '{"theme":"light","color":"blue","fontSize":"medium","layout":"normal"}'))
+const appearance = reactive(loadAppearance())
 
 const themeOptions = [
   { id: 'light', label: '浅色', preview: '#ffffff' },
@@ -1135,42 +1139,48 @@ const themeOptions = [
   { id: 'auto', label: '跟随系统', preview: 'linear-gradient(to right, #fff 50%, #1e1e2e 50%)' },
 ]
 const colorOptions = [
-  { id: 'blue', label: '蓝色', value: '#4f7ef8' },
-  { id: 'purple', label: '紫色', value: '#8b5cf6' },
-  { id: 'green', label: '绿色', value: '#10b981' },
-  { id: 'orange', label: '橙色', value: '#f97316' },
-  { id: 'pink', label: '粉色', value: '#ec4899' },
-  { id: 'gray', label: '灰色', value: '#6b7280' },
+  { id: 'blue',   label: '蓝色（默认）', value: COLOR_MAP.blue },
+  { id: 'indigo', label: '靛蓝',        value: COLOR_MAP.indigo },
+  { id: 'violet', label: '紫色',        value: COLOR_MAP.violet },
+  { id: 'cyan',   label: '青色',        value: COLOR_MAP.cyan },
+  { id: 'teal',   label: '绿松石',      value: COLOR_MAP.teal },
+  { id: 'green',  label: '绿色',        value: COLOR_MAP.green },
+  { id: 'orange', label: '橙色',        value: COLOR_MAP.orange },
+  { id: 'rose',   label: '玫瑰红',      value: COLOR_MAP.rose },
 ]
 const fontSizeOptions = [
-  { id: 'small', label: '小', value: '13px' },
+  { id: 'small',  label: '小', value: '13px' },
   { id: 'medium', label: '中', value: '14px' },
-  { id: 'large', label: '大', value: '16px' },
+  { id: 'large',  label: '大', value: '16px' },
 ]
 const layoutOptions = [
-  { id: 'compact', label: '紧凑', icon: '▤' },
-  { id: 'normal', label: '默认', icon: '▥' },
+  { id: 'compact',  label: '紧凑', icon: '▤' },
+  { id: 'normal',   label: '默认', icon: '▥' },
   { id: 'spacious', label: '宽松', icon: '▦' },
 ]
 
 function setTheme(id: string) {
-  appearance.theme = id
-  saveAppearance()
-  document.documentElement.setAttribute('data-theme', id)
+  appearance.theme = id as any
+  _saveAppearance()
+  applyTheme(id as any)
 }
 function setColor(id: string, value: string) {
   appearance.color = id
-  saveAppearance()
-  document.documentElement.style.setProperty('--primary', value)
+  _saveAppearance()
+  applyColor(id)
 }
 function setFontSize(id: string, value: string) {
   appearance.fontSize = id
-  saveAppearance()
-  document.documentElement.style.fontSize = value
+  _saveAppearance()
+  applyFontSize(id)
+}
+function _saveAppearance() {
+  persistAppearance({ ...appearance } as any)
+  MessagePlugin.success('外观设置已保存')
 }
 function saveAppearance() {
-  localStorage.setItem('app_appearance', JSON.stringify(appearance))
-  MessagePlugin.success('外观设置已保存')
+  _saveAppearance()
+  applyLayout(appearance.layout)
 }
 
 // ── 使用统计 ──────────────────────────────────────────────────
