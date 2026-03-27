@@ -178,7 +178,7 @@
           <div v-if="myKbsLoading" class="mini-loading">加载知识库列表...</div>
           <select v-else v-model="publishForm.kbId" class="form-input">
             <option value="">-- 请选择 --</option>
-            <option v-for="kb in userKbList" :key="kb.id" :value="kb.id">{{ kb.name }}</option>
+            <option v-for="kb in userKbList" :key="kb.id" :value="kb.id">{{ kb.title || kb.name || kb.id }}</option>
           </select>
           <label class="form-label">简介</label>
           <textarea v-model="publishForm.description" class="form-input" rows="3" placeholder="介绍一下这个知识库的内容..."></textarea>
@@ -465,9 +465,9 @@ const publishForm = ref({
 async function loadUserKbs() {
   myKbsLoading.value = true
   try {
-    // 先获取用户在平台上的知识库（使用现有 API）
-    const res = await axios.get('/api/list-knowledge-bases/')
-    userKbList.value = res.data || []
+    // 按当前用户过滤知识库（owner_id 匹配 或 旧数据 owner_id 为空）
+    const res = await axios.get(`/api/list-knowledge-bases/?user_id=${encodeURIComponent(userId)}`)
+    userKbList.value = Array.isArray(res.data) ? res.data : (res.data?.data || [])
   } catch {
     userKbList.value = []
   } finally {
@@ -483,7 +483,7 @@ async function doPublishKb() {
     const tags = publishForm.value.tagsRaw.split(',').map(t => t.trim()).filter(Boolean)
     await axios.post('/api/square/kbs', {
       kb_id: kb.id,
-      kb_name: kb.name,
+      kb_name: kb.title || kb.name || kb.id,
       description: publishForm.value.description,
       tags,
       category: publishForm.value.category,

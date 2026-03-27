@@ -343,6 +343,10 @@ const createKnowledgeBase = async () => {
   try {
     const formData = new FormData();
     formData.append('kbName', kbName.value);
+    // 写入 owner_id，绑定到当前登录用户
+    const userInfo = (() => { try { return JSON.parse(localStorage.getItem('user_info') || '{}') } catch { return {} } })()
+    const ownerId = userInfo.id || userInfo.email || ''
+    if (ownerId) formData.append('owner_id', ownerId)
     await axios.post('/api/create-knowledgebase/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

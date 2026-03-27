@@ -64,8 +64,8 @@ def knowledge_base_data() -> List[dict]:
 
 @router.post("/api/create-knowledgebase/")
 
-async def create_knowledgebase(kbName: str = Form(...)):
-    """创建知识库"""
+async def create_knowledgebase(kbName: str = Form(...), owner_id: Optional[str] = Form(None)):
+    """创建知识库（owner_id 可选，传入则绑定到该用户）"""
     # 定义知识库目录
     base_dir = "local-KLB-files"
     kb_dir = os.path.join(base_dir, kbName)
@@ -111,7 +111,9 @@ async def create_knowledgebase(kbName: str = Form(...)):
             ],
             "entity_normalization": True,
             "community_report": False,
-            "relation_extraction": True
+            "relation_extraction": True,
+            # 归属字段：记录创建者
+            "owner_id": owner_id or "",
         }
         
         # 将数据写入 JSON 文件
@@ -262,16 +264,20 @@ async def update_knowledgebase_config(KLB_id: str, request: Request):
 
 
 @router.get("/api/get-knowledge-item/")
-
-async def get_knowledge_items():
+async def get_knowledge_items(user_id: Optional[str] = None):
     """
     获取知识库项目列表
-    返回所有可用的知识库项目数据
+    - user_id 为空：返回所有知识库（全局列表，用于 Chat 等场景）
+    - user_id 非空：只返回该用户创建的知识库（用于广场发布选择等场景）
     """
     try:
-        # 生成测试数据
         data = knowledge_base_data()
-        
+
+        # 按 owner_id 过滤（兼容旧数据：owner_id 为空则属于"全局"，
+        # 如果请求指定了 user_id 则只返回 owner_id 匹配 或 owner_id 为空 的 KB）
+        if user_id:
+            data = [kb for kb in data if kb.get("owner_id", "") in (user_id, "")]
+
         return JSONResponse(
             status_code=200,
             content={
@@ -281,12 +287,31 @@ async def get_knowledge_items():
                 "total": len(data)
             }
         )
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"获取知识库数据失败: {str(e)}"
         )
+
+
+@router.get("/api/list-knowledge-bases/")
+async def list_knowledge_bases_alias(user_id: Optional[str] = None):
+    """
+    /api/get-knowledge-item/ 的别名接口，返回格式更简洁（直接 list）
+    - user_id 非空：只返回该用户的知识库（owner_id 匹配 或 owner_id 为空的旧数据）
+    """
+    try:
+        data = knowledge_base_data()
+
+        if user_id:
+            data = [kb for kb in data if kb.get("owner_id", "") in (user_id, "")]
+
+        # 返回简洁格式：直接是数组（方便前端 res.data 直接用）
+        return JSONResponse(status_code=200, content=data)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取知识库列表失败: {str(e)}")
 
 @router.get("/api/get-knowledge-item/{item_id}")
 async def get_knowledge_item_by_id(item_id: str):
@@ -320,50 +345,3 @@ async def get_knowledge_item_by_id(item_id: str):
             detail=f"获取知识库项目失败: {str(e)}"
         )
 
-# 如果需要分页功能
-@router.get("/api/get-knowledge-item/")
-async def get_knowledge_items_paginated(
-    page: int = 1,
-    page_size: int = 10,
-    search: Optional[str] = None
-):
-    """
-    分页获取知识库项目列表
-    """
-    try:
-        data = knowledge_base_data()
-        
-        # 搜索过滤
-        if search:
-            data = [
-                item for item in data 
-                if search.lower() in item['title'].lower() 
-                or search.lower() in item['description'].lower()
-            ]
-        
-        # 分页
-        total = len(data)
-        start_index = (page - 1) * page_size
-        end_index = start_index + page_size
-        paginated_data = data[start_index:end_index]
-        
-        return JSONResponse(
-            status_code=200,
-            content={
-                "code": 200,
-                "message": "获取知识库数据成功",
-                "data": paginated_data,
-                "pagination": {
-                    "page": page,
-                    "page_size": page_size,
-                    "total": total,
-                    "total_pages": (total + page_size - 1) // page_size
-                }
-            }
-        )
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"获取知识库数据失败: {str(e)}"
-        )

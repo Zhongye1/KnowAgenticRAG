@@ -120,6 +120,10 @@ async function doQuickCreate() {
   try {
     const formData = new FormData();
     formData.append('kbName', name);
+    // 绑定 owner_id
+    const userInfo = (() => { try { return JSON.parse(localStorage.getItem('user_info') || '{}') } catch { return {} } })()
+    const ownerId = userInfo.id || userInfo.email || ''
+    if (ownerId) formData.append('owner_id', ownerId)
     await axios.post('/api/create-knowledgebase/', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
