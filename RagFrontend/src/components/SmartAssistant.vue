@@ -103,7 +103,7 @@
               </svg>
             </button>
           </div>
-          <p class="sa-disclaimer">{{ aiEnabled ? '🤖 AI 模式已激活 · Ollama 驱动' : '💡 规则引导 · 问任何问题可激活 AI' }}</p>
+          <p class="sa-disclaimer">{{ aiEnabled ? `🤖 AI 已激活 · ${currentModelLabel}` : '💡 规则引导 · 问任何问题可激活 AI' }}</p>
         </div>
       </transition>
     </div>
@@ -220,44 +220,100 @@ function findAnswer(query: string): { answer: string; actions?: Action[] } | nul
   return null
 }
 
-// ── AI 接入（Ollama 本地模型）────────────────────────────────
+// ── AI 接入（统一后端路由，支持 Ollama 本地 + DeepSeek / OpenAI / 混元云端）──
 const aiEnabled = ref(false)
+const currentModelLabel = ref('AI')  // 用于底部状态栏显示
 const AI_SYSTEM_PROMPT = `你是 RAG-F 系统的智能助理，专门帮助用户使用这个 AI 知识库系统。
 你的职责：
 1. 解答用户关于系统功能的问题（知识库管理、RAG 问答、文件上传等）
 2. 指导用户完成具体操作步骤
-3. 排查常见问题（Ollama 连接、文件上传失败等）
+3. 排查常见问题（模型连接、文件上传失败等）
 4. 提供 RAG 最佳实践建议
 回答要简洁清晰，给出可操作的步骤。遇到非系统相关问题，友善引导回到系统使用话题。`
 
-async function callAI(userMsg: string): Promise<string | null> {
-  try {
-    // 尝试从 localStorage 读取模型配置
-    let ollamaUrl = 'http://localhost:11434'
-    let model = 'qwen2:0.5b'
+/** 读取当前选中的模型 ID（兼容 cloud:provider:model 格式） */
+function _getSelectedModel(): { modelId: string; isCloud: boolean; label: string } {
+  // 优先读 selected_model（ModelSelector 写入），次选 user_model_config
+  let modelId = localStorage.getItem('selected_model') || ''
+  if (!modelId) {
     try {
-      const cfgRaw = localStorage.getItem('user_model_config') || localStorage.getItem('ollamaSettings')
-      if (cfgRaw) {
-        const cfg = JSON.parse(cfgRaw)
-        ollamaUrl = cfg.serverUrl || cfg.ollama_base_url || ollamaUrl
-        model = cfg.llm_model || localStorage.getItem('selected_model') || model
-      }
+      const cfg = JSON.parse(localStorage.getItem('user_model_config') || '{}')
+      modelId = cfg.llm_model || ''
     } catch {}
+  }
+  if (!modelId) modelId = 'qwen2:0.5b'
 
-    const res = await fetch(`${ollamaUrl}/api/generate`, {
+  // cloud:provider:modelId 格式 → 提取真实 modelId
+  if (modelId.startsWith('cloud:')) {
+    const parts = modelId.split(':')      // ['cloud', 'deepseek', 'deepseek-chat']
+    const realModel = parts.slice(2).join(':')
+    const provider = parts[1] || ''
+    const labelMap: Record<string, string> = {
+      deepseek: 'DeepSeek',
+      openai: 'OpenAI',
+      hunyuan: '混元',
+      bailian: '百炼',
+      xinghuo: '星火',
+    }
+    return { modelId: realModel, isCloud: true, label: `${labelMap[provider] || provider} · ${realModel}` }
+  }
+  return { modelId, isCloud: false, label: `Ollama · ${modelId}` }
+}
+
+/**
+ * 统一 AI 调用：走后端 /api/models/chat（SSE 流），收集完整回复后返回。
+ * 同时支持本地 Ollama 和所有云端 Provider。
+ */
+async function callAI(userMsg: string): Promise<string | null> {
+  const { modelId, label } = _getSelectedModel()
+  currentModelLabel.value = label
+
+  const messages = [
+    { role: 'system', content: AI_SYSTEM_PROMPT },
+    { role: 'user', content: userMsg },
+  ]
+
+  try {
+    const res = await fetch('/api/models/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model,
-        prompt: `${AI_SYSTEM_PROMPT}\n\n用户问题：${userMsg}\n\n请回答：`,
-        stream: false,
-      }),
-      signal: AbortSignal.timeout(30000),
+      body: JSON.stringify({ model: modelId, messages, stream: true, max_tokens: 1024 }),
+      signal: AbortSignal.timeout(60000),
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    const data = await res.json()
-    return data.response || null
-  } catch {
+
+    // 读取 SSE 流，累积完整回复
+    const reader = res.body?.getReader()
+    if (!reader) return null
+    const decoder = new TextDecoder()
+    let fullText = ''
+    let errorMsg = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      const raw = decoder.decode(value, { stream: true })
+      for (const line of raw.split('\n')) {
+        if (!line.startsWith('data: ')) continue
+        const payload = line.slice(6).trim()
+        if (!payload) continue
+        try {
+          const d = JSON.parse(payload)
+          if (d.error) { errorMsg = d.error; break }
+          if (d.content) fullText += d.content
+        } catch {}
+      }
+      if (errorMsg) break
+    }
+
+    if (errorMsg) {
+      // 返回友好的错误提示（如：API Key 未配置）
+      return `⚠️ ${errorMsg}`
+    }
+    return fullText || null
+  } catch (e: any) {
+    // 网络失败等情况返回 null，外层会显示通用提示
+    console.warn('[SmartAssistant] callAI 失败:', e?.message)
     return null
   }
 }
@@ -290,7 +346,7 @@ async function sendMessage() {
       // AI 也无法回答：给通用提示
       messages.value.push({
         role: 'assistant',
-        content: '我暂时无法回答这个问题 🤔<br>你可以尝试：<br>• "如何创建知识库"<br>• "如何开始AI对话"<br>• "如何配置 Ollama 模型"<br>• "怎么上传文档"<br><br>或者确认 Ollama 服务已启动（运行 <code>ollama serve</code>）',
+        content: '我暂时无法回答这个问题 🤔<br>你可以尝试：<br>• "如何创建知识库"<br>• "如何开始AI对话"<br>• "如何配置模型"<br>• "怎么上传文档"<br><br>或者在 <b>系统设置 → 模型配置</b> 中检查模型是否已配置（本地 Ollama 或云端 API Key）',
       })
     }
   }

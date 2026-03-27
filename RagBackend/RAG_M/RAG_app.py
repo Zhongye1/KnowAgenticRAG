@@ -16,6 +16,7 @@ import json
 import asyncio
 from pathlib import Path
 from dotenv import load_dotenv
+from typing import Optional
 
 from fastapi.responses import StreamingResponse
 import io
@@ -33,6 +34,51 @@ from src.agent.react_agent import ReActRAGAgent
 load_dotenv()
 
 router = APIRouter()
+
+def _resolve_rag_model(raw_model: Optional[str]) -> tuple:
+    """
+    解析 RAG 查询中的模型字段，返回 (model_id, provider, is_cloud)。
+
+    支持格式：
+      - None / ""          → 读用户配置 / 环境变量，走 Ollama
+      - "qwen2:0.5b"       → ('qwen2:0.5b', 'ollama', False)
+      - "deepseek-chat"    → ('deepseek-chat', 'deepseek', True)
+      - "cloud:deepseek:deepseek-chat" → ('deepseek-chat', 'deepseek', True)
+    """
+    if not raw_model:
+        # 读用户保存的配置
+        try:
+            _rag_backend = str(Path(__file__).parent.parent)
+            if _rag_backend not in sys.path:
+                sys.path.insert(0, _rag_backend)
+            from models.user_model_config import get_effective_config
+            cfg = get_effective_config()
+            raw_model = cfg.llm_model or os.getenv("MODEL", "qwen2:0.5b")
+        except Exception:
+            raw_model = os.getenv("MODEL", "qwen2:0.5b")
+
+    # cloud:provider:model_id 格式
+    if raw_model.startswith("cloud:"):
+        parts = raw_model.split(":", 2)
+        provider = parts[1] if len(parts) > 1 else "ollama"
+        model_id = parts[2] if len(parts) > 2 else "deepseek-chat"
+        return model_id, provider, True
+
+    # 在 model_router._MODEL_CATALOG 中查找 provider
+    try:
+        _backend_root = str(Path(__file__).parent.parent)
+        if _backend_root not in sys.path:
+            sys.path.insert(0, _backend_root)
+        from multi_model.model_router import _MODEL_CATALOG
+        for m in _MODEL_CATALOG:
+            if m["id"] == raw_model:
+                provider = m.get("provider", "ollama")
+                return raw_model, provider, (provider != "ollama")
+    except Exception:
+        pass
+
+    return raw_model, "ollama", False
+
 
 # ────────────────────────────────────────────────────────────
 # 全局 VectorStoreManager 缓存
@@ -57,6 +103,7 @@ class QueryRequest(BaseModel):
     query: str
     docs_dir: str = None
     use_hybrid: bool = True  # 新增：是否使用混合检索，默认开启
+    model: Optional[str] = None  # 可选，支持 cloud:provider:model 格式
 
 
 class IngestRequest(BaseModel):
@@ -125,7 +172,7 @@ async def process_query(query_body: QueryRequest):
     """
     RAG 智能查询（SSE 流式）
     - 混合检索（BM25 + 向量 + RRF）
-    - 流式生成回答
+    - 流式生成回答（支持本地 Ollama + 云端 DeepSeek/OpenAI/混元）
     - 附带引用溯源（SOURCES: 行）
     """
 
@@ -138,7 +185,6 @@ async def process_query(query_body: QueryRequest):
                 docs_dir = query_body.docs_dir
             else:
                 vectorstore_path = os.getenv("VECTORSTORE_PATH", "")
-                # 尝试从环境变量路径推导 docs_dir
                 docs_dir = str(Path(vectorstore_path).parent) if vectorstore_path else ""
 
             if not docs_dir or not os.path.exists(docs_dir):
@@ -157,22 +203,111 @@ async def process_query(query_body: QueryRequest):
             use_hybrid = query_body.use_hybrid and bool(documents)
             yield f"data: 检索模式: {'混合检索(BM25+向量)' if use_hybrid else '纯向量检索'}\n\n"
 
-            # 初始化 RAG Pipeline
-            model_name = os.getenv("MODEL")
+            # 解析模型
+            model_id, provider, is_cloud = _resolve_rag_model(query_body.model)
+            yield f"data: 使用模型: {model_id}（{'云端·' + provider if is_cloud else 'Ollama 本地'}）\n\n"
+
+            # ── 云端模型：先检索，再调用云端生成 ────────────────────────
+            if is_cloud:
+                from src.rag.hybrid_retriever import HybridRetriever
+                if use_hybrid and documents:
+                    retriever = HybridRetriever(
+                        documents=documents,
+                        vectorstore=vectorstore,
+                        bm25_top_k=3,
+                        vector_top_k=3,
+                        final_top_k=3,
+                    )
+                    results = retriever.retrieve_with_scores(query_body.query)
+                else:
+                    raw = vectorstore.similarity_search_with_score(query_body.query, k=3)
+                    results = [
+                        {
+                            "document": d,
+                            "source_info": {
+                                "rank": i + 1,
+                                "file_name": d.metadata.get("source", ""),
+                                "rrf_score": s,
+                                "page": d.metadata.get("page"),
+                            },
+                        }
+                        for i, (d, s) in enumerate(raw)
+                    ]
+
+                if results:
+                    sources = [
+                        {
+                            "rank": item["source_info"]["rank"],
+                            "file_name": item["source_info"].get("file_name", ""),
+                            "page": item["source_info"].get("page"),
+                        }
+                        for item in results
+                    ]
+                    yield f"data: SOURCES: {json.dumps(sources, ensure_ascii=False)}\n\n"
+                    context_parts = []
+                    for item in results:
+                        src = item["source_info"]
+                        fname = src.get("file_name", "未知来源")
+                        page = src.get("page")
+                        header = f"【来源：{fname}{(' 第' + str(page) + '页') if page is not None else ''}】"
+                        context_parts.append(f"{header}\n{item['document'].page_content.strip()}")
+                    context = "\n\n---\n\n".join(context_parts)
+                else:
+                    yield "data: 未找到相关文档，将直接使用模型知识回答\n\n"
+                    context = ""
+
+                prompt_content = (
+                    f"请基于以下参考文档回答用户问题。若文档内容不足，可补充通用知识并注明。\n\n"
+                    f"参考文档：\n{context}\n\n用户问题：{query_body.query}"
+                    if context else query_body.query
+                )
+                messages = [
+                    {"role": "system", "content": "你是知识管理助手，专门回答基于文档的问题。回答要完整清晰，引用来源。"},
+                    {"role": "user", "content": prompt_content},
+                ]
+
+                yield "data: 正在调用云端模型生成回答...\n\n"
+                try:
+                    from multi_model.model_router import (
+                        _stream_deepseek, _stream_openai, _stream_hunyuan, _stream_ollama
+                    )
+                    stream_map = {
+                        "deepseek": _stream_deepseek,
+                        "openai":   _stream_openai,
+                        "hunyuan":  _stream_hunyuan,
+                    }
+                    stream_fn = stream_map.get(provider, _stream_ollama)
+                    async for chunk in stream_fn(model_id, messages, 0.7, 2048):
+                        if chunk.startswith("data: "):
+                            raw = chunk[6:].strip()
+                            try:
+                                d = json.loads(raw)
+                                if d.get("error"):
+                                    yield f"data: [云端模型错误] {d['error']}\n\n"
+                                    break
+                                if d.get("content"):
+                                    yield f"data: {d['content']}\n\n"
+                            except Exception:
+                                pass
+                except Exception as e:
+                    yield f"data: ERROR: 云端模型调用失败: {e}\n\n"
+
+                yield "data: COMPLETE\n\n"
+                return
+
+            # ── 本地 Ollama：走原有 RAGPipeline ──────────────────────────
             rag = RAGPipeline(
-                llm_model=model_name,
+                llm_model=model_id,
                 vectorstore=vectorstore,
                 documents=documents if use_hybrid else None,
                 use_hybrid=use_hybrid,
             )
 
-            # 流式输出
             loop = asyncio.get_event_loop()
 
             def _stream_sync():
                 return list(rag.stream_query(query_body.query))
 
-            # 在线程池中运行同步生成器，避免阻塞事件循环
             import concurrent.futures
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 chunks_future = loop.run_in_executor(pool, _stream_sync)
@@ -180,7 +315,7 @@ async def process_query(query_body: QueryRequest):
 
             for chunk in chunks:
                 yield chunk
-                await asyncio.sleep(0)  # 让事件循环喘气
+                await asyncio.sleep(0)
 
         except Exception as e:
             import traceback
@@ -207,8 +342,10 @@ async def process_query_sync(query_body: QueryRequest):
         vectorstore, documents, _ = _load_vectorstore_and_docs(query_body.docs_dir)
         use_hybrid = query_body.use_hybrid and bool(documents)
 
+        model_id, provider, is_cloud = _resolve_rag_model(query_body.model)
+
         rag = RAGPipeline(
-            llm_model=os.getenv("MODEL"),
+            llm_model=model_id,
             vectorstore=vectorstore,
             documents=documents if use_hybrid else None,
             use_hybrid=use_hybrid,
@@ -217,6 +354,8 @@ async def process_query_sync(query_body: QueryRequest):
         result = rag.process_query(query_body.query)
         return {
             "status": "success",
+            "model": model_id,
+            "provider": provider,
             **result,
         }
     except HTTPException:
@@ -424,12 +563,12 @@ async def agent_query(query_body: AgentQueryRequest):
 
             yield f"data: ✅ 向量存储加载完成，文档块: {len(documents)} 个\n\n"
 
-            # 初始化 Agent
-            model_name = os.getenv("MODEL")
+            # 初始化 Agent（agent_query 暂用本地 Ollama，云端模型走 /api/agent/task 端点）
+            model_id, _, _ = _resolve_rag_model(getattr(query_body, 'model', None))
             agent = ReActRAGAgent(
                 vectorstore=vectorstore,
                 documents=documents if query_body.use_hybrid else None,
-                llm_model=model_name,
+                llm_model=model_id,
                 max_iterations=query_body.max_iterations,
                 verbose=False,
             )
@@ -476,6 +615,7 @@ class NativeQueryRequest(BaseModel):
     query: str
     docs_dir: str
     use_hybrid: bool = True
+    model: Optional[str] = None     # 可选，支持 cloud:provider:model 格式
 
 
 @router.post("/native_ingest")
@@ -560,32 +700,41 @@ async def native_ingest_documents(req: NativeIngestRequest):
 async def native_query(req: NativeQueryRequest):
     """
     原生 RAG 查询（SSE 流式）
-    不依赖 LangChain：直接调用 Ollama /api/generate + faiss-cpu 检索
-    模型配置优先级：用户保存的配置 > 环境变量 > 默认值
+    不依赖 LangChain：直接调用 Ollama HTTP API + faiss-cpu 检索
+    支持云端模型：检索仍使用原生 FAISS，生成通过 model_router 调用云端
+    模型配置优先级：请求字段 > 用户保存的配置 > 环境变量 > 默认值
     """
     async def generate():
         try:
             from src.rag.native_rag import NativeVectorStore, NativeRAGPipeline
             import os
             import sys
-            # 尝试读取用户自定义模型配置
-            try:
-                _rag_root = str(Path(__file__).parent.parent)
-                if _rag_root not in sys.path:
-                    sys.path.insert(0, _rag_root)
-                from models.user_model_config import get_effective_config
-                _cfg = get_effective_config()
-                model_name = _cfg.llm_model
-                ollama_host = _cfg.ollama_base_url
-                ollama_timeout = _cfg.timeout
-            except Exception as _cfg_err:
-                print(f"[RAG_app] 读取用户模型配置失败，使用环境变量: {_cfg_err}")
-                model_name = os.getenv("MODEL", "qwen2:0.5b")
-                ollama_host = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-                ollama_timeout = int(os.getenv("OLLAMA_TIMEOUT", "120"))
 
-            yield f"data: [原生RAG] 收到查询: {req.query}\n\n"
-            yield f"data: [原生RAG] 使用模型: {model_name}（{ollama_host}，超时: {ollama_timeout}s）\n\n"
+            # 解析模型
+            model_id, provider, is_cloud = _resolve_rag_model(req.model)
+
+            if is_cloud:
+                yield f"data: [原生RAG] 收到查询: {req.query}\n\n"
+                yield f"data: [原生RAG] 使用云端模型: {model_id}（provider: {provider}）\n\n"
+            else:
+                # 本地模型：读 ollama host / timeout 配置
+                try:
+                    _rag_root = str(Path(__file__).parent.parent)
+                    if _rag_root not in sys.path:
+                        sys.path.insert(0, _rag_root)
+                    from models.user_model_config import get_effective_config
+                    _cfg = get_effective_config()
+                    if not req.model:
+                        model_id = _cfg.llm_model or model_id
+                    ollama_host = _cfg.ollama_base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+                    ollama_timeout = _cfg.timeout or int(os.getenv("OLLAMA_TIMEOUT", "120"))
+                except Exception as _cfg_err:
+                    print(f"[RAG_app] 读取用户模型配置失败，使用环境变量: {_cfg_err}")
+                    ollama_host = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
+                    ollama_timeout = int(os.getenv("OLLAMA_TIMEOUT", "120"))
+
+                yield f"data: [原生RAG] 收到查询: {req.query}\n\n"
+                yield f"data: [原生RAG] 使用模型: {model_id}（{ollama_host}，超时: {ollama_timeout}s）\n\n"
 
             # 加载向量存储
             vs_path = os.path.join(req.docs_dir, "native_vectorstore")
@@ -597,17 +746,90 @@ async def native_query(req: NativeQueryRequest):
             vs = NativeVectorStore.load(vs_path)
             yield f"data: [原生RAG] 向量存储加载完成，{len(vs.documents)} 个文档块\n\n"
 
-            # 初始化 Pipeline（注入用户配置的 host 和 timeout）
+            # ── 云端模型：先检索，再调用云端生成 ────────────────────────
+            if is_cloud:
+                from src.rag.native_rag import NativeBM25, _rrf_fusion, _format_native_context
+                results_raw = vs.similarity_search(req.query, top_k=3)
+                if req.use_hybrid and vs.documents:
+                    bm25 = NativeBM25(vs.documents)
+                    bm25_results = bm25.retrieve(req.query, top_k=3)
+                    fused = _rrf_fusion([bm25_results, results_raw])[:3]
+                else:
+                    fused = results_raw[:3]
+
+                docs_with_sources = [
+                    {
+                        "document": doc,
+                        "source_info": {
+                            "rank": i + 1,
+                            "file_name": doc.metadata.get("source", ""),
+                            "page": doc.metadata.get("page"),
+                            "rrf_score": score,
+                        },
+                        "content_preview": doc.page_content[:200],
+                    }
+                    for i, (doc, score) in enumerate(fused)
+                ]
+
+                if docs_with_sources:
+                    sources = [
+                        {"rank": d["source_info"]["rank"], "file_name": d["source_info"]["file_name"], "page": d["source_info"]["page"]}
+                        for d in docs_with_sources
+                    ]
+                    yield f"data: SOURCES: {json.dumps(sources, ensure_ascii=False)}\n\n"
+                    context = _format_native_context(docs_with_sources)
+                else:
+                    yield "data: [原生RAG] 未找到相关文档，直接使用模型知识\n\n"
+                    context = ""
+
+                prompt_content = (
+                    f"请基于以下参考文档回答用户问题。若文档内容不足，可补充通用知识并注明。\n\n"
+                    f"参考文档：\n{context}\n\n用户问题：{req.query}"
+                    if context else req.query
+                )
+                messages = [
+                    {"role": "system", "content": "你是知识管理助手，专门回答基于文档的问题。回答要完整清晰，引用来源。"},
+                    {"role": "user", "content": prompt_content},
+                ]
+                yield "data: [原生RAG] 正在调用云端模型生成回答...\n\n"
+                try:
+                    from multi_model.model_router import (
+                        _stream_deepseek, _stream_openai, _stream_hunyuan
+                    )
+                    stream_map = {
+                        "deepseek": _stream_deepseek,
+                        "openai":   _stream_openai,
+                        "hunyuan":  _stream_hunyuan,
+                    }
+                    stream_fn = stream_map[provider]
+                    async for chunk in stream_fn(model_id, messages, 0.7, 2048):
+                        if chunk.startswith("data: "):
+                            raw = chunk[6:].strip()
+                            try:
+                                d = json.loads(raw)
+                                if d.get("error"):
+                                    yield f"data: [ERROR] {d['error']}\n\n"
+                                    break
+                                if d.get("content"):
+                                    yield f"data: {d['content']}\n\n"
+                            except Exception:
+                                pass
+                except Exception as e:
+                    yield f"data: [ERROR] 云端模型调用失败: {e}\n\n"
+
+                yield "data: COMPLETE\n\n"
+                return
+
+            # ── 本地 Ollama：走原有 NativeRAGPipeline ────────────────────
             pipeline = NativeRAGPipeline(
                 vectorstore=vs,
                 documents=vs.documents,
-                llm_model=model_name,
+                llm_model=model_id,
                 ollama_host=ollama_host,
                 use_hybrid=req.use_hybrid,
                 ollama_timeout=ollama_timeout,
             )
 
-            # 流式生成
             loop = asyncio.get_event_loop()
             import concurrent.futures
 
@@ -645,11 +867,11 @@ async def agent_query_sync(query_body: AgentQueryRequest):
 
         vectorstore, documents, _ = _load_vectorstore_and_docs(query_body.docs_dir)
 
-        model_name = os.getenv("MODEL")
+        model_id, _, _ = _resolve_rag_model(getattr(query_body, 'model', None))
         agent = ReActRAGAgent(
             vectorstore=vectorstore,
             documents=documents if query_body.use_hybrid else None,
-            llm_model=model_name,
+            llm_model=model_id,
             max_iterations=query_body.max_iterations,
             verbose=False,
         )

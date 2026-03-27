@@ -626,6 +626,14 @@ const inputEnter = async (inputValue: string) => {
   loading.value = true;
 
   try {
+    // 读取当前选中的模型（支持 cloud:provider:model 格式）
+    const selectedModel = localStorage.getItem('selected_model') || (() => {
+      try {
+        const cfg = JSON.parse(localStorage.getItem('user_model_config') || '{}')
+        return cfg.llm_model || ''
+      } catch { return '' }
+    })()
+
     // 发送消息到后端API
     const response = await apiRequest(API_ENDPOINTS.SEND_MESSAGE, {
       method: "POST",
@@ -633,10 +641,12 @@ const inputEnter = async (inputValue: string) => {
         message: inputValue.trim(),
         sessionId: currentId,
         history: chatSessions.value[sessionIndex].history,
+        // 模型选择（云端/本地统一字段）
+        model: selectedModel || undefined,
         // RAG 模式参数
         rag_mode: ragMode.value,
         kb_id: ragMode.value ? selectedKbId.value : undefined,
-        // 添加Ollama设置到请求中
+        // Ollama 本地设置（云端模型时后端忽略）
         ollamaSettings: {
           serverUrl: settings.serverUrl,
           timeout: settings.timeout

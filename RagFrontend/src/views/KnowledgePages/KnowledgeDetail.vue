@@ -1157,10 +1157,14 @@ const performRagQuery = async () => {
 
   try {
     const docsDir = `local-KLB-files/${KLB_id}`;
+    // 读取当前选中模型（支持云端 cloud:provider:model 格式）
+    const selectedModel = localStorage.getItem('selected_model') || (() => {
+      try { return JSON.parse(localStorage.getItem('user_model_config') || '{}').llm_model || '' } catch { return '' }
+    })()
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ query: testQuery.value, docs_dir: docsDir })
+      body: JSON.stringify({ query: testQuery.value, docs_dir: docsDir, model: selectedModel || undefined })
     });
 
     const reader = response.body?.getReader();

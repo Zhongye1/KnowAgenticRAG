@@ -662,3 +662,36 @@ async def agent_task(req: AgentTaskRequest):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
     )
+
+
+# ── 通用辅助：一次性调用任意模型（非流式，返回完整文本）──────────────────
+
+async def call_model_once(
+    model: str,
+    messages: list,
+    temperature: float = 0.7,
+    max_tokens: int = 2048,
+) -> str:
+    """
+    调用任意模型（Ollama 本地 / 云端），收集 SSE 流，返回完整文本字符串。
+    适合 RAG / Agent 场景中需要一次性获取完整生成结果的调用。
+
+    参数：
+        model       - 模型 ID（如 "qwen2:0.5b", "deepseek-chat"）
+        messages    - [{role, content}] 列表
+        temperature - 生成温度
+        max_tokens  - 最大生成 token 数
+
+    返回：
+        完整回复文本；出错时返回 "[模型错误] <错误信息>"
+    """
+    provider = _get_provider_for_model(model)
+
+    stream_map = {
+        "ollama":   _stream_ollama,
+        "deepseek": _stream_deepseek,
+        "openai":   _stream_openai,
+        "hunyuan":  _stream_hunyuan,
+    }
+    stream_fn = stream_map.get(provider, _stream_ollama)
+    return await _collect_stream(stream_fn(model, messages, temperature, max_tokens))

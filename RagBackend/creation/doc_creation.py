@@ -113,8 +113,22 @@ _PROMPTS = {
 
 
 # ─── Provider 路由 ────────────────────────────────────────────
-def _get_provider(model_id: str) -> str:
-    """根据 model_id 判断 provider"""
+def _get_provider(model_id: str) -> tuple[str, str]:
+    """
+    根据 model_id 判断 provider，返回 (real_model_id, provider)。
+
+    支持格式：
+      - "qwen2:0.5b"                  → ('qwen2:0.5b', 'ollama')
+      - "deepseek-chat"                → ('deepseek-chat', 'deepseek')
+      - "cloud:deepseek:deepseek-chat" → ('deepseek-chat', 'deepseek')
+    """
+    # cloud:provider:model_id 格式（前端 ModelSelector 写入）
+    if model_id.startswith("cloud:"):
+        parts = model_id.split(":", 2)
+        provider = parts[1] if len(parts) > 1 else "ollama"
+        real_model = parts[2] if len(parts) > 2 else "deepseek-chat"
+        return real_model, provider
+
     cloud_prefixes = {
         "deepseek": "deepseek",
         "gpt": "openai",
@@ -126,8 +140,8 @@ def _get_provider(model_id: str) -> str:
     lower = model_id.lower()
     for prefix, provider in cloud_prefixes.items():
         if lower.startswith(prefix):
-            return provider
-    return "ollama"
+            return model_id, provider
+    return model_id, "ollama"
 
 
 async def _stream_via_model_router(
@@ -142,7 +156,7 @@ async def _stream_via_model_router(
     - Ollama 本地：通过 httpx 直连
     每个 token 以  data: <token>\\n\\n  格式 yield，最后 yield data: [DONE]\\n\\n
     """
-    provider = _get_provider(model)
+    real_model, provider = _get_provider(model)
     messages = [
         {"role": "system", "content": "你是专业的中文内容创作助手，请严格按照用户要求完成任务。"},
         {"role": "user", "content": prompt},
@@ -150,7 +164,7 @@ async def _stream_via_model_router(
 
     try:
         if provider == "ollama":
-            async for chunk in _stream_ollama_local(model, prompt):
+            async for chunk in _stream_ollama_local(real_model, prompt):
                 yield chunk
         else:
             # 复用 multi_model.model_router 的流式函数
@@ -169,7 +183,7 @@ async def _stream_via_model_router(
                 yield f"data: [ERROR] 不支持的 provider: {provider}\n\n"
                 return
 
-            async for chunk in stream_fn(model, messages, temperature, max_tokens):
+            async for chunk in stream_fn(real_model, messages, temperature, max_tokens):
                 # model_router 返回 data: {"content":"...", "done":false} 格式
                 # 需要转换为前端 Creation.vue 期望的 data: <token> 格式
                 if chunk.startswith("data: "):
