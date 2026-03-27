@@ -130,7 +130,7 @@ class DocumentManager:
                 
                 if file_ext in supported_extensions:
                     documents.append({
-                        "id": hash(item_path),  # 使用文件路径作为ID
+                        "id": abs(hash(item_path.replace("\\", "/"))) % (2**31),  # 稳定ID（跨平台）
                         "file_name": item,
                         "file_path": item_path,
                         "file_size": file_stat.st_size,
@@ -173,19 +173,34 @@ class DocumentManager:
                 content_preview = '\n'.join(paragraphs[:20])  # 预览前20段
             except Exception as e:
                 content_preview = f"无法预览此Word文档内容：{str(e)}"
-        # 对于PDF文档，使用PyPDF2提取文本
+        # 对于PDF文档，优先 pdfplumber，降级 PyPDF2
         elif file_ext == '.pdf':
             try:
-                import PyPDF2
-                with open(file_path, 'rb') as f:
-                    pdf_reader = PyPDF2.PdfReader(f)
+                import pdfplumber
+                with pdfplumber.open(file_path) as pdf:
                     text_parts = []
-                    for i in range(min(5, len(pdf_reader.pages))):  # 预览前5页
-                        page = pdf_reader.pages[i]
-                        text_parts.append(page.extract_text())
-                    content_preview = '\n'.join(text_parts)[:1000]  # 最多1000字符
-            except Exception as e:
-                content_preview = f"无法预览此PDF文档内容：{str(e)}"
+                    for page in pdf.pages[:5]:  # 前5页
+                        t = page.extract_text() or ''
+                        if t.strip():
+                            text_parts.append(t)
+                    content_preview = '\n'.join(text_parts)[:1000]
+                if not content_preview.strip():
+                    raise ValueError("pdfplumber 提取内容为空，尝试 PyPDF2")
+            except Exception:
+                try:
+                    import PyPDF2
+                    with open(file_path, 'rb') as f:
+                        pdf_reader = PyPDF2.PdfReader(f)
+                        text_parts = []
+                        for i in range(min(5, len(pdf_reader.pages))):
+                            page = pdf_reader.pages[i]
+                            t = page.extract_text() or ''
+                            text_parts.append(t)
+                        content_preview = '\n'.join(text_parts)[:1000]
+                    if not content_preview.strip():
+                        content_preview = "（PDF 内容为纯图像或已加密，无法提取文字）"
+                except Exception as e2:
+                    content_preview = f"无法预览此PDF文档内容：{str(e2)}"
         # 对于其他支持的文件类型，暂时只显示基本信息
         else:
             content_preview = f" {file_ext} 文件，暂时无法直接预览内容。"
@@ -270,20 +285,31 @@ async def preview_document(file_path: str):
     """
     try:
         print(f"开始预览文档: {file_path}")
-        # 检查文件路径是否在允许的目录内（安全检查）
-        abs_file_path = os.path.abspath(file_path)
-        abs_upload_dir = os.path.abspath(UPLOAD_DIR)
+        # ── Windows 兼容路径安全校验（用 Path.resolve 规范化大小写和分隔符）──
+        try:
+            abs_file_path = Path(file_path).resolve()
+            abs_upload_dir = Path(UPLOAD_DIR).resolve()
+        except Exception:
+            raise HTTPException(status_code=400, detail="无效的文件路径")
+        
         print(f"文件绝对路径: {abs_file_path}")
         print(f"上传目录绝对路径: {abs_upload_dir}")
         
-        if not abs_file_path.startswith(abs_upload_dir):
+        # 在 Windows 上 Path.resolve() 会统一大小写，is_relative_to 是 Python 3.9+
+        # 兼容旧版本：用字符串比较（resolve 已规范化斜杠）
+        try:
+            abs_file_path.relative_to(abs_upload_dir)  # 若不在子目录会抛 ValueError
+        except ValueError:
             print(f"访问被拒绝: 文件路径 {file_path} 不在允许的目录内")
             raise HTTPException(status_code=403, detail="无权访问此文件路径")
         
         print(f"调用doc_manager.preview_document方法")
-        preview_info = doc_manager.preview_document(file_path)
+        # 传归一化后的路径字符串，避免后续 open() 在 Windows 上出错
+        preview_info = doc_manager.preview_document(str(abs_file_path))
         print(f"文档预览成功: {file_path}")
         return preview_info
+    except HTTPException:
+        raise
     except FileNotFoundError as e:
         print(f"文件未找到错误: {str(e)}")
         raise HTTPException(status_code=404, detail=str(e))
@@ -305,19 +331,25 @@ async def delete_document(file_path: str):
     """
     try:
         print(f"开始删除文档: {file_path}")
-        # 检查文件路径是否在允许的目录内（安全检查）
-        abs_file_path = os.path.abspath(file_path)
-        abs_upload_dir = os.path.abspath(UPLOAD_DIR)
+        # ── Windows 兼容路径安全校验 ──
+        try:
+            abs_file_path = Path(file_path).resolve()
+            abs_upload_dir = Path(UPLOAD_DIR).resolve()
+        except Exception:
+            raise HTTPException(status_code=400, detail="无效的文件路径")
+        
         print(f"文件绝对路径: {abs_file_path}")
         print(f"上传目录绝对路径: {abs_upload_dir}")
         
-        if not abs_file_path.startswith(abs_upload_dir):
+        try:
+            abs_file_path.relative_to(abs_upload_dir)
+        except ValueError:
             print(f"删除被拒绝: 文件路径 {file_path} 不在允许的目录内")
             raise HTTPException(status_code=403, detail="无权访问此文件路径")
         
         # 删除文档
         print(f"调用doc_manager.delete_document方法")
-        result = doc_manager.delete_document(file_path)
+        result = doc_manager.delete_document(str(abs_file_path))
         print(f"文档删除成功: {file_path}")
         
         if result:
@@ -326,6 +358,8 @@ async def delete_document(file_path: str):
                 "file_name": os.path.basename(file_path),
                 "status": "success"
             }
+    except HTTPException:
+        raise
     except FileNotFoundError as e:
         print(f"文件未找到错误: {str(e)}")
         raise HTTPException(status_code=404, detail=str(e))
