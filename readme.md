@@ -1117,9 +1117,19 @@ A: 参考 [第8节](#8-移动端-app)，需要 EAS 账号（免费注册 expo.de
 
 ---
 
+### 15.6 向量化全局跨请求并发 Semaphore
+
+**解释：** 在 FastAPI 进程级别维护一个全局 `asyncio.Semaphore`，限制同时运行的向量化请求总数（例如最多 2 个 `/ingest` 同时跑），超出的请求在 semaphore 处等待而不是直接执行。
+
+**原本应用方向：** 防止多用户同时点击"向量化"时，多个 `/ingest` 并发占用 Embedding 模型导致内存溢出。
+
+**跳过原因：** `/ingest` 和 `/native_ingest` 已改为 `asyncio.to_thread`，向量化在线程池中执行，本身不占用 event loop。项目是单用户/小团队场景，并发触发多个向量化的概率极低，且向量化耗时较长（几秒到几分钟），加全局 semaphore 反而可能导致前端长时间等待响应（semaphore 阻塞 `generate()` 入口）。当前方案已足够稳定，不引入额外的等待逻辑。
+
+---
+
 <div align="center">
 
-*最后更新：2026-03-27 | commit `59ffcfe`*
+*最后更新：2026-03-27 | commit `9cdf106`*
 
 **仓库：[https://github.com/March030303/KnowledgeRAG-GZHU](https://github.com/March030303/KnowledgeRAG-GZHU)**
 
