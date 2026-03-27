@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import uuid
@@ -329,6 +329,14 @@ try:
 except Exception as _e:
     logger.warning(f"知识库备份模块加载失败: {_e}")
 
+# ── 知识广场路由 ──────────────────────────────────────────────
+try:
+    from square import square_router
+    app.include_router(square_router, tags=["知识广场-分享/圈子/搜索"])
+    logger.info("知识广场模块已加载")
+except Exception as _e:
+    logger.warning(f"知识广场模块加载失败: {_e}")
+
 # 添加静态文件服务
 # 将图片存储目录映射到/static URL路径
 app.mount("/static", StaticFiles(directory="local-KLB-files"), name="static")
@@ -404,6 +412,108 @@ async def hello_world():
 async def health_check():
     """健康检查接口"""
     return {"status": "healthy", "service": "RAG Backend Service", "version": "1.0"}
+
+
+@app.get("/download", response_class=HTMLResponse)
+async def app_download_page():
+    """App 下载页面 - 提供 Android APK 和 iOS TestFlight 下载"""
+    html = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>KnowledgeRAG App 下载</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:linear-gradient(135deg,#1e3a8a 0%,#3b82f6 50%,#8b5cf6 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+  .card{background:#fff;border-radius:24px;padding:48px 40px;max-width:460px;width:100%;text-align:center;box-shadow:0 40px 100px rgba(0,0,0,.25)}
+  .logo{width:80px;height:80px;border-radius:20px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:36px}
+  h1{font-size:26px;font-weight:800;color:#1f2937;margin-bottom:8px}
+  .subtitle{font-size:15px;color:#6b7280;margin-bottom:36px;line-height:1.6}
+  .btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:16px 24px;border-radius:14px;font-size:16px;font-weight:600;cursor:pointer;text-decoration:none;margin-bottom:12px;border:none;transition:all .2s}
+  .btn-android{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff}
+  .btn-android:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(22,163,74,.4)}
+  .btn-ios{background:linear-gradient(135deg,#1f2937,#374151);color:#fff}
+  .btn-ios:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(31,41,55,.4)}
+  .btn-source{background:#f3f4f6;color:#374151;border:1px solid #e5e7eb}
+  .btn-source:hover{background:#e5e7eb}
+  .btn svg{width:22px;height:22px;flex-shrink:0}
+  .divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:#9ca3af;font-size:13px}
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:#e5e7eb}
+  .features{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:32px}
+  .feature{background:#f8fafc;border-radius:10px;padding:12px;text-align:left}
+  .feature-icon{font-size:20px;margin-bottom:4px}
+  .feature-title{font-size:13px;font-weight:600;color:#374151}
+  .feature-desc{font-size:11px;color:#9ca3af;margin-top:2px}
+  .version-badge{display:inline-block;background:#eff6ff;color:#3b82f6;border-radius:20px;padding:4px 12px;font-size:12px;font-weight:600;margin-bottom:24px}
+  footer{margin-top:28px;font-size:12px;color:#9ca3af}
+  footer a{color:#3b82f6;text-decoration:none}
+  @media(max-width:480px){.card{padding:32px 24px}.features{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">🧠</div>
+  <h1>KnowledgeRAG</h1>
+  <p class="subtitle">智能知识管理 · AI 驱动检索<br/>随时随地，掌握你的知识库</p>
+  <div class="version-badge">v1.0.0 最新版</div>
+
+  <div class="features">
+    <div class="feature">
+      <div class="feature-icon">📚</div>
+      <div class="feature-title">知识库管理</div>
+      <div class="feature-desc">创建、上传、管理文档</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🤖</div>
+      <div class="feature-title">AI 智能问答</div>
+      <div class="feature-desc">RAG 精准语义检索</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">🌐</div>
+      <div class="feature-title">知识广场</div>
+      <div class="feature-desc">分享、发现优质知识库</div>
+    </div>
+    <div class="feature">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">Agent 任务</div>
+      <div class="feature-desc">自动化多步骤任务</div>
+    </div>
+  </div>
+
+  <a class="btn btn-android"
+     href="https://github.com/March030303/KnowledgeRAG-GZHU/releases/latest/download/KnowledgeRAG.apk"
+     onclick="this.textContent='⏳ 准备下载...'">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.523 15.34L6.477 15.34 5 13.21 12 2l7 11.21-1.477 2.13zm-9.038 1.32H15.515L14.5 18.5h-5L8.485 16.66zm.515 3.34L9 22h6l1-2H9z"/></svg>
+    Android APK 下载
+  </a>
+
+  <a class="btn btn-ios"
+     href="https://testflight.apple.com/join/placeholder"
+     target="_blank">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+    iOS TestFlight 下载
+  </a>
+
+  <div class="divider">或者</div>
+
+  <a class="btn btn-source"
+     href="https://github.com/March030303/KnowledgeRAG-GZHU"
+     target="_blank">
+    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+    查看源码 / 自行编译
+  </a>
+
+  <footer>
+    <p>KnowledgeRAG-GZHU · 开源免费 ·
+      <a href="https://github.com/March030303/KnowledgeRAG-GZHU/releases" target="_blank">更新日志</a>
+    </p>
+    <p style="margin-top:6px">需要帮助？<a href="mailto:support@rag-gzhu.com">联系我们</a></p>
+  </footer>
+</div>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
 
 # 错误处理
 @app.exception_handler(Exception)

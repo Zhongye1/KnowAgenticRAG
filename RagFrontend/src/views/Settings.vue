@@ -689,14 +689,14 @@
         </div>
         <div class="app-download-btns">
           <a class="app-dl-btn app-dl-btn--android"
-            href="https://github.com/March030303/KnowledgeRAG-GZHU/releases" target="_blank" rel="noopener">
+            href="/download" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;">
               <path d="M17.523 15.341a1 1 0 01-.997 1H7.474a1 1 0 01-.997-1V8.66a1 1 0 01.997-1h9.052a1 1 0 01.997 1zM4.5 7.5A1.5 1.5 0 003 9v6a1.5 1.5 0 003 0V9A1.5 1.5 0 004.5 7.5zm15 0A1.5 1.5 0 0018 9v6a1.5 1.5 0 003 0V9a1.5 1.5 0 00-1.5-1.5zM8.5 3.5a.5.5 0 01.5-.5h6a.5.5 0 01.5.5v1a.5.5 0 01-.5.5H9a.5.5 0 01-.5-.5v-1zm0 16a.5.5 0 01.5-.5h2v1h-2a.5.5 0 01-.5-.5zm4.5-.5h2v1h-2v-1z"/>
             </svg>
             Android APK 下载
           </a>
           <a class="app-dl-btn app-dl-btn--ios"
-            href="https://github.com/March030303/KnowledgeRAG-GZHU/releases" target="_blank" rel="noopener">
+            href="/download" target="_blank" rel="noopener">
             <svg viewBox="0 0 24 24" fill="currentColor" style="width:16px;height:16px;">
               <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
             </svg>
@@ -707,7 +707,7 @@
             源码 / 自行构建
           </a>
         </div>
-        <p class="app-download-card__hint">最新版本请访问 GitHub Releases 页面，或扫描二维码下载</p>
+        <p class="app-download-card__hint">点击上方按钮可打开下载页面，支持 Android APK 直装与 iOS TestFlight</p>
       </div>
       <div v-if="showNewTicket" class="ticket-form">
         <div class="form-row"><label>问题类型</label>

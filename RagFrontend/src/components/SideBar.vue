@@ -27,7 +27,7 @@
 
     <!-- 快速新建按钮 -->
     <div class="sidebar__quick-action">
-      <button class="quick-new-btn" @click="navigateTo('/knowledge')" :title="isCollapsed ? '知识库' : ''">
+      <button class="quick-new-btn" @click="$emit('quickCreate')" :title="isCollapsed ? '新建知识库' : ''">
         <svg class="quick-new-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
         </svg>
@@ -223,7 +223,7 @@ const isActive = (path: string) => {
 
 const navigateTo = (path: string) => router.push(path);
 const openGitHub = () => window.open('https://github.com/March030303/KnowledgeRAG-GZHU/tree/master', '_blank');
-const openAppDownload = () => window.open('https://github.com/March030303/KnowledgeRAG-GZHU/releases', '_blank');
+const openAppDownload = () => window.open('/download', '_blank');
 
 const logout = async () => {
   await router.push('/LogonOrRegister');

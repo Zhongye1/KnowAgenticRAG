@@ -15,7 +15,7 @@
 
       <!-- 主应用布局：左侧导航 + 右侧内容 -->
       <div v-else class="app-layout">
-        <SideBar @openSearch="openSearch" />
+        <SideBar @openSearch="openSearch" @quickCreate="handleQuickCreate" />
         <main class="app-main" ref="mainRef">
           <router-view v-slot="{ Component }">
             <transition name="page" mode="out-in"
@@ -41,12 +41,39 @@
       <span class="eval-toast-text">{{ evalStore.progress || `正在评测 ${evalStore.models}...` }}</span>
       <span class="eval-toast-link">查看详情 →</span>
     </div>
+    <!-- 全局快速新建知识库弹窗 -->
+    <teleport to="body">
+      <div v-if="quickCreateVisible" class="qc-overlay" @click.self="quickCreateVisible = false">
+        <div class="qc-card">
+          <div class="qc-header">
+            <span class="qc-icon">📚</span>
+            <h3>新建知识库</h3>
+            <button class="qc-close" @click="quickCreateVisible = false">✕</button>
+          </div>
+          <input
+            v-model="quickCreateName"
+            class="qc-input"
+            placeholder="输入知识库名称..."
+            @keydown.enter="doQuickCreate"
+            @keydown.esc="quickCreateVisible = false"
+            ref="quickCreateInputRef"
+          />
+          <div class="qc-footer">
+            <button class="qc-btn-cancel" @click="quickCreateVisible = false">取消</button>
+            <button class="qc-btn-confirm" @click="doQuickCreate" :disabled="!quickCreateName.trim()">
+              创建知识库
+            </button>
+          </div>
+        </div>
+      </div>
+    </teleport>
   </t-config-provider>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import axios from 'axios';
 import SideBar from './components/SideBar.vue';
 import GlobalSearch from './components/GlobalSearch.vue';
 import ErrorBoundary from './components/ErrorBoundary.vue';
@@ -56,6 +83,7 @@ import { initInteractions } from './composables/useInteractions';
 import { applyAllAppearance } from './composables/useTheme';
 import { setLocale } from './i18n/index';
 import { useEvalStore } from './store';
+import { MessagePlugin } from 'tdesign-vue-next';
 import "@/assets/scroll.css";
 import "@/styles/animations.css";
 
@@ -73,6 +101,44 @@ const showSidebar = computed(() => !hideSidebarRoutes.includes(route.path));
 // 全局搜索开关
 const searchVisible = ref(false);
 const openSearch = () => { searchVisible.value = true; };
+
+// ── 全局快速新建知识库 ─────────────────────────────────────
+const quickCreateVisible = ref(false);
+const quickCreateName = ref('');
+const quickCreateInputRef = ref<HTMLInputElement | null>(null);
+
+async function handleQuickCreate() {
+  quickCreateName.value = '';
+  quickCreateVisible.value = true;
+  await nextTick();
+  quickCreateInputRef.value?.focus();
+}
+
+async function doQuickCreate() {
+  const name = quickCreateName.value.trim();
+  if (!name) return;
+  try {
+    const formData = new FormData();
+    formData.append('kbName', name);
+    await axios.post('/api/create-knowledgebase/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    MessagePlugin.success(`知识库「${name}」创建成功 🎉`);
+    quickCreateVisible.value = false;
+    // 若当前在知识库页面，刷新列表
+    if (route.path === '/knowledge') {
+      router.go(0);
+    } else {
+      router.push('/knowledge');
+    }
+  } catch (e: any) {
+    if (e.response?.status === 400) {
+      MessagePlugin.error('知识库名称已存在');
+    } else {
+      MessagePlugin.error('创建失败，请稍后重试');
+    }
+  }
+}
 
 // 页面切换顶部进度条
 const pageLoading = ref(false);
@@ -139,6 +205,53 @@ html, body {
   width: 100vw;
   background-color: var(--app-bg, #f9fafb);
 }
+
+/* ── 全局快速新建知识库弹窗 ── */
+.qc-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+  animation: qc-fade-in .15s ease;
+}
+@keyframes qc-fade-in { from { opacity: 0; } to { opacity: 1; } }
+.qc-card {
+  background: #fff; border-radius: 16px; padding: 28px;
+  width: 420px; box-shadow: 0 24px 64px rgba(0,0,0,.22);
+  animation: qc-slide-up .2s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes qc-slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.qc-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
+}
+.qc-icon { font-size: 22px; }
+.qc-header h3 { flex: 1; font-size: 17px; font-weight: 700; margin: 0; color: #111827; }
+.qc-close {
+  background: none; border: none; cursor: pointer; font-size: 18px; color: #9ca3af;
+  width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+}
+.qc-close:hover { background: #f3f4f6; color: #374151; }
+.qc-input {
+  width: 100%; padding: 11px 14px; border: 1.5px solid #e5e7eb;
+  border-radius: 10px; font-size: 15px; outline: none; box-sizing: border-box;
+  transition: border-color .15s;
+}
+.qc-input:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.12); }
+.qc-footer {
+  display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px;
+}
+.qc-btn-cancel {
+  padding: 9px 20px; border-radius: 8px; border: 1px solid #e5e7eb;
+  background: #fff; color: #374151; cursor: pointer; font-size: 14px;
+}
+.qc-btn-cancel:hover { background: #f9fafb; }
+.qc-btn-confirm {
+  padding: 9px 22px; border-radius: 8px; border: none;
+  background: linear-gradient(135deg,#3b82f6,#6366f1);
+  color: #fff; cursor: pointer; font-size: 14px; font-weight: 600;
+  transition: opacity .15s;
+}
+.qc-btn-confirm:hover:not(:disabled) { opacity: .88; }
+.qc-btn-confirm:disabled { opacity: .45; cursor: not-allowed; }
 
 /* 主布局：左侧导航 + 右侧内容 */
 .app-layout {

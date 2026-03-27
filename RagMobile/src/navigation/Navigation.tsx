@@ -15,6 +15,7 @@ import KnowledgeDetailScreen from '../screens/KnowledgeDetailScreen';
 import ChatScreen from '../screens/ChatScreen';
 import AgentScreen from '../screens/AgentScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import SquareScreen from '../screens/SquareScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -25,10 +26,11 @@ function MainTabs() {
       screenOptions={({ route }) => ({
         tabBarIcon: ({ focused, color, size }) => {
           const icons: Record<string, { focused: string; outline: string }> = {
-            KbTab: { focused: 'library', outline: 'library-outline' },
-            ChatTab: { focused: 'chatbubbles', outline: 'chatbubbles-outline' },
-            AgentTab: { focused: 'flash', outline: 'flash-outline' },
-            SettingsTab: { focused: 'settings', outline: 'settings-outline' },
+            KbTab:     { focused: 'library',      outline: 'library-outline' },
+            SquareTab: { focused: 'earth',         outline: 'earth-outline' },
+            ChatTab:   { focused: 'chatbubbles',   outline: 'chatbubbles-outline' },
+            AgentTab:  { focused: 'flash',         outline: 'flash-outline' },
+            SettingsTab: { focused: 'settings',    outline: 'settings-outline' },
           };
           const icon = icons[route.name];
           return (
@@ -52,10 +54,11 @@ function MainTabs() {
         headerTitleStyle: { fontWeight: '700', fontSize: 17 },
       })}
     >
-      <Tab.Screen name="KbTab" component={KnowledgeBaseScreen} options={{ title: '知识库' }} />
-      <Tab.Screen name="ChatTab" component={ChatScreen} options={{ title: '对话' }} />
-      <Tab.Screen name="AgentTab" component={AgentScreen} options={{ title: 'Agent' }} />
-      <Tab.Screen name="SettingsTab" component={SettingsScreen} options={{ title: '设置' }} />
+      <Tab.Screen name="KbTab"      component={KnowledgeBaseScreen} options={{ title: '知识库' }} />
+      <Tab.Screen name="SquareTab"  component={SquareScreen}        options={{ title: '广场', headerShown: false }} />
+      <Tab.Screen name="ChatTab"    component={ChatScreen}          options={{ title: '对话' }} />
+      <Tab.Screen name="AgentTab"   component={AgentScreen}         options={{ title: 'Agent' }} />
+      <Tab.Screen name="SettingsTab" component={SettingsScreen}     options={{ title: '设置' }} />
     </Tab.Navigator>
   );
 }
