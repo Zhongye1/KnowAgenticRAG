@@ -106,7 +106,7 @@
 | 本地模型 | Ollama（qwen2:0.5b / qwen:7b-chat） |
 | 重排模型 | Cross-Encoder（sentence-transformers） |
 | 关系数据库 | MySQL 9.6 |
-| 移动端 | React Native + Expo SDK 53 |
+| 移动端 | React Native + Expo SDK 53 + zustand |
 | 容器化 | Docker + Docker Compose |
 | 语音识别 | OpenAI Whisper（本地） |
 | 监控 | Prometheus 中间件 + ECharts |
@@ -132,7 +132,7 @@ docker compose up -d
 # 访问地址
 # 前端：http://localhost:8089
 # 后端 API 文档：http://localhost:8000/docs
-# Ollama：http://localhost:11434
+# Ollama：http://localhost:11435
 ```
 
 ### 方式二：本地开发模式
@@ -684,6 +684,10 @@ POST /api/feedback/submit
 
 ---
 
+## 6. 集成与联动
+
+### 6.1 Obsidian 笔记同步
+
 将 Obsidian Vault 中的笔记自动同步到知识库。
 
 ```python
@@ -903,6 +907,10 @@ GET /api/metrics/summary      -- ECharts 用 JSON 摘要数据
 **前端展示：** Settings「📈 系统监控」Tab，ECharts 折线图/仪表盘，30 秒自动刷新。
 
 ---
+
+---
+
+## 8. 移动端 App
 
 **位置：** `KnowledgeRAG-GZHU/RagMobile/`  
 **技术栈：** React Native + Expo SDK 53 + TypeScript + zustand
@@ -1182,4 +1190,4 @@ A: 参考 [第8节](#8-移动端-app)，需要 EAS 账号（免费注册 expo.de
 
 ---
 
-*文档最后更新：2026-03-26 | commit `b8cfb35`*
+*文档最后更新：2026-03-27 | commit `59ffcfe`*
