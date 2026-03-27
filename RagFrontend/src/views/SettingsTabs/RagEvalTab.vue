@@ -22,7 +22,7 @@
     <!-- 进度提示 -->
     <div v-if="running" class="eval-progress">
       <div class="eval-spinner"></div>
-      <span>正在评测 {{ evalModels }} ... 每个模型约 20-60 秒，请稍候</span>
+      <span>{{ evalStore.progress || `正在评测 ${evalStore.models || evalModels} ... 每个模型约 20-60 秒，请稍候` }}</span>
     </div>
 
     <!-- 最近一次概览卡片 -->
@@ -103,16 +103,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import axios from 'axios'
+import { useEvalStore } from '@/store'
 
-// ── 状态 ─────────────────────────────────────────────────────
+const evalStore = useEvalStore()
+
+// ── 本地 UI 状态（非持久化） ─────────────────────────────────
 const evalModels = ref('qwen2:0.5b')
-const running = ref(false)
 const loadingChart = ref(false)
-const latestRun = ref<any>(null)
-const chartData = ref<any>(null)
-const historyList = ref<any[]>([])
 const questionsByCategory = ref<Record<string, any[]>>({})
 const showAllQs = ref(false)
 
@@ -120,6 +119,12 @@ const showAllQs = ref(false)
 const radarRef = ref<HTMLElement>()
 const catBarRef = ref<HTMLElement>()
 const latencyRef = ref<HTMLElement>()
+
+// ── 从 store 获取持久化状态 ──────────────────────────────────
+const running = computed(() => evalStore.running)
+const latestRun = computed(() => evalStore.latestRun)
+const historyList = computed(() => evalStore.historyList)
+const chartData = computed(() => evalStore.chartData)
 
 // ── 计算属性 ─────────────────────────────────────────────────
 const allQuestions = computed(() => Object.values(questionsByCategory.value).flat())
@@ -151,40 +156,21 @@ const catLabel = (cat: string) => ({
 
 // ── API ───────────────────────────────────────────────────────
 async function runEval() {
-  if (running.value) return
-  running.value = true
-  try {
-    const models = evalModels.value.split(',').map(s => s.trim()).filter(Boolean)
-    await axios.post('/api/eval/run', { model_names: models })
-    // 等待约 5 秒后轮询直到完成
-    await new Promise(r => setTimeout(r, 5000))
-    let tries = 0
-    while (tries++ < 24) {
-      await fetchLatest()
-      if (historyList.value[0]?.status === 'done') break
-      await new Promise(r => setTimeout(r, 3000))
-    }
-  } catch (e: any) {
-    console.error('[Eval]', e?.message)
-  } finally {
-    running.value = false
-  }
+  const models = evalModels.value.split(',').map(s => s.trim()).filter(Boolean)
+  await evalStore.startEval(models)
+  // 评测完成后重新渲染图表
+  await nextTick()
+  renderCharts()
 }
 
 async function fetchLatest() {
   loadingChart.value = true
   try {
-    const [latestRes, historyRes] = await Promise.all([
-      axios.get('/api/eval/latest'),
-      axios.get('/api/eval/results?limit=10'),
-    ])
-    chartData.value = latestRes.data
-    latestRun.value = latestRes.data?.latest_run || null
-    historyList.value = historyRes.data?.results || []
+    await evalStore.fetchLatest()
     await nextTick()
     renderCharts()
-  } catch { /* 后端未启动时静默 */ }
-  finally { loadingChart.value = false }
+  } finally {
+    loadingChart.value = false }
 }
 
 async function fetchQuestions() {
@@ -267,6 +253,19 @@ function ensureECharts(): Promise<void> {
 onMounted(async () => {
   await ensureECharts()
   await Promise.all([fetchLatest(), fetchQuestions()])
+  // 如果 store 中已有数据（从其他页面带回来的），立即渲染图表
+  if (chartData.value) {
+    await nextTick()
+    renderCharts()
+  }
+})
+
+// 监听 store 中图表数据变化（如在其他页面评测完成），自动渲染
+watch(chartData, async (val) => {
+  if (val) {
+    await nextTick()
+    renderCharts()
+  }
 })
 </script>
 

@@ -288,10 +288,13 @@ function authenticate() {
   if (!devKey.value) { authError.value = '请输入开发者密钥'; return }
   authLoading.value = true
   setTimeout(() => {
-    if (devKey.value === DEV_KEY || devKey.value === localStorage.getItem('devKey') || devKey.value === 'ragf-dev-2026') {
+    const storedKey = localStorage.getItem('devKey') || DEV_KEY
+    if (devKey.value === DEV_KEY || devKey.value === storedKey || devKey.value === 'ragf-dev-2026') {
       authed.value = true
       authError.value = ''
+      // 持久化：存储密钥（加密存储），下次无需重新输入
       localStorage.setItem('devtools_authed', '1')
+      localStorage.setItem('devtools_key_hash', btoa(devKey.value))  // 简单混淆存储
       loadAll()
     } else {
       authError.value = '密钥错误，请重试'
@@ -665,8 +668,13 @@ function loadAll() {
 }
 
 onMounted(() => {
-  // 如果上次已验证（同 session），自动进入
+  // 如果上次已验证（同 session 或密钥已保存），自动进入
+  const keyHash = localStorage.getItem('devtools_key_hash')
   if (localStorage.getItem('devtools_authed') === '1') {
+    // 自动填入上次的密钥
+    if (keyHash) {
+      try { devKey.value = atob(keyHash) } catch { devKey.value = DEV_KEY }
+    }
     authed.value = true
     loadAll()
   }

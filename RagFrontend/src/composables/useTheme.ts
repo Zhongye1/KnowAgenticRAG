@@ -148,7 +148,11 @@ export function applyFontSize(fontSize: string) {
   const px = FONT_SIZE_MAP[fontSize] || '14px'
   document.documentElement.style.fontSize = px
   document.documentElement.style.setProperty('--td-font-size-base', px)
+  document.documentElement.style.setProperty('--app-font-size', px)
+  document.body.style.fontSize = px
   document.body.setAttribute('data-font-size', fontSize)
+  // 强制通知 TDesign 组件更新字体大小
+  document.documentElement.setAttribute('data-font-size', fontSize)
 }
 
 // ── 应用布局密度 ──────────────────────────────────────────────────

@@ -103,7 +103,7 @@
               </svg>
             </button>
           </div>
-          <p class="sa-disclaimer">仅回答功能引导，不发起真实 AI 请求</p>
+          <p class="sa-disclaimer">{{ aiEnabled ? '🤖 AI 模式已激活 · Ollama 驱动' : '💡 规则引导 · 问任何问题可激活 AI' }}</p>
         </div>
       </transition>
     </div>
@@ -163,7 +163,7 @@ const knowledgeBase: Array<{
   },
   {
     keywords: ['模型', '配置', '切换', 'ollama', '设置模型'],
-    answer: '模型配置路径：<br>① 点击左侧 <b>系统设置</b>（齿轮图标）<br>② 选择 <b>多模型管理</b> Tab<br>③ 支持切换 Ollama 本地模型 / 阿里云百炼 / DeepSeek 等<br>④ 当前默认模型：<b>qwen2:0.5b</b>（轻量，低配可用）',
+    answer: '模型配置路径：<br>① 点击左侧 <b>系统设置</b>（齿轮图标）<br>② 选择 <b>⚡ 模型配置</b> Tab<br>③ 支持切换 Ollama 本地模型 / 阿里云百炼 / DeepSeek 等<br>④ 当前默认模型：<b>qwen2:0.5b</b>（轻量，低配可用）',
     actions: [{ label: '去设置', route: '/settings' }]
   },
   {
@@ -220,6 +220,48 @@ function findAnswer(query: string): { answer: string; actions?: Action[] } | nul
   return null
 }
 
+// ── AI 接入（Ollama 本地模型）────────────────────────────────
+const aiEnabled = ref(false)
+const AI_SYSTEM_PROMPT = `你是 RAG-F 系统的智能助理，专门帮助用户使用这个 AI 知识库系统。
+你的职责：
+1. 解答用户关于系统功能的问题（知识库管理、RAG 问答、文件上传等）
+2. 指导用户完成具体操作步骤
+3. 排查常见问题（Ollama 连接、文件上传失败等）
+4. 提供 RAG 最佳实践建议
+回答要简洁清晰，给出可操作的步骤。遇到非系统相关问题，友善引导回到系统使用话题。`
+
+async function callAI(userMsg: string): Promise<string | null> {
+  try {
+    // 尝试从 localStorage 读取模型配置
+    let ollamaUrl = 'http://localhost:11434'
+    let model = 'qwen2:0.5b'
+    try {
+      const cfgRaw = localStorage.getItem('user_model_config') || localStorage.getItem('ollamaSettings')
+      if (cfgRaw) {
+        const cfg = JSON.parse(cfgRaw)
+        ollamaUrl = cfg.serverUrl || cfg.ollama_base_url || ollamaUrl
+        model = cfg.llm_model || localStorage.getItem('selected_model') || model
+      }
+    } catch {}
+
+    const res = await fetch(`${ollamaUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model,
+        prompt: `${AI_SYSTEM_PROMPT}\n\n用户问题：${userMsg}\n\n请回答：`,
+        stream: false,
+      }),
+      signal: AbortSignal.timeout(30000),
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    return data.response || null
+  } catch {
+    return null
+  }
+}
+
 async function sendMessage() {
   const text = inputText.value.trim()
   if (!text) return
@@ -229,19 +271,28 @@ async function sendMessage() {
   isTyping.value = true
   await scrollToBottom()
 
-  // 模拟思考延迟
-  await new Promise(r => setTimeout(r, 600 + Math.random() * 400))
+  // 先检查规则引导（功能路径）
+  const ruleResult = findAnswer(text)
 
-  const result = findAnswer(text)
-  isTyping.value = false
-
-  if (result) {
-    messages.value.push({ role: 'assistant', content: result.answer, actions: result.actions })
+  if (ruleResult) {
+    // 规则命中：直接给出快速引导（不调用 AI）
+    await new Promise(r => setTimeout(r, 300))
+    isTyping.value = false
+    messages.value.push({ role: 'assistant', content: ruleResult.answer, actions: ruleResult.actions })
   } else {
-    messages.value.push({
-      role: 'assistant',
-      content: '抱歉，我暂时不了解这个功能的具体路径 🤔<br>你可以尝试问我：<br>• "如何创建知识库"<br>• "如何开始AI对话"<br>• "如何配置模型"<br>• "怎么上传文档"',
-    })
+    // 规则未命中：调用真实 AI
+    const aiReply = await callAI(text)
+    isTyping.value = false
+    if (aiReply) {
+      messages.value.push({ role: 'assistant', content: aiReply.replace(/\n/g, '<br>') })
+      if (!aiEnabled.value) aiEnabled.value = true
+    } else {
+      // AI 也无法回答：给通用提示
+      messages.value.push({
+        role: 'assistant',
+        content: '我暂时无法回答这个问题 🤔<br>你可以尝试：<br>• "如何创建知识库"<br>• "如何开始AI对话"<br>• "如何配置 Ollama 模型"<br>• "怎么上传文档"<br><br>或者确认 Ollama 服务已启动（运行 <code>ollama serve</code>）',
+      })
+    }
   }
   await scrollToBottom()
 }

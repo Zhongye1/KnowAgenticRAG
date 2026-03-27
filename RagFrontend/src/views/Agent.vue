@@ -22,6 +22,18 @@
           </svg>
           历史任务
         </button>
+        <!-- Ollama/云端 AI 状态指示 -->
+        <div class="agent-ai-status">
+          <span v-if="ollamaStatus === 'checking'" class="ai-badge ai-badge--checking">
+            ⏳ 检测中...
+          </span>
+          <span v-else-if="ollamaStatus === 'online'" class="ai-badge ai-badge--online">
+            🟢 Ollama 在线 · {{ ollamaModel }}
+          </span>
+          <span v-else class="ai-badge ai-badge--offline" title="点击重新检测" @click="checkOllamaStatus" style="cursor:pointer;">
+            🔴 Ollama 离线 · 点击检测
+          </span>
+        </div>
       </div>
     </div>
 
@@ -191,7 +203,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import { MessagePlugin } from 'tdesign-vue-next';
@@ -225,6 +237,39 @@ const finalOutput = ref('');
 const currentTask = ref<TaskRecord | null>(null);
 const taskHistory = ref<TaskRecord[]>([]);
 const knowledgeBases = ref<{id: string; title: string}[]>([]);
+
+// ── Ollama & 云端 AI 状态 ──────────────────────────────
+const ollamaStatus = ref<'checking' | 'online' | 'offline'>('checking')
+const ollamaModel = ref('qwen2:0.5b')
+const cloudAIEnabled = ref(false)  // 云端 AI 模式
+let ollamaCheckInterval: ReturnType<typeof setInterval> | null = null
+
+async function checkOllamaStatus() {
+  try {
+    let ollamaUrl = 'http://localhost:11434'
+    try {
+      const cfgRaw = localStorage.getItem('user_model_config') || localStorage.getItem('ollamaSettings')
+      if (cfgRaw) {
+        const cfg = JSON.parse(cfgRaw)
+        ollamaUrl = cfg.serverUrl || cfg.ollama_base_url || ollamaUrl
+        ollamaModel.value = cfg.llm_model || localStorage.getItem('selected_model') || ollamaModel.value
+      }
+    } catch {}
+    const res = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) })
+    if (res.ok) {
+      const data = await res.json()
+      const models = data.models?.map((m: any) => m.name) || []
+      ollamaStatus.value = 'online'
+      if (models.length > 0 && !models.includes(ollamaModel.value)) {
+        ollamaModel.value = models[0]
+      }
+    } else {
+      ollamaStatus.value = 'offline'
+    }
+  } catch {
+    ollamaStatus.value = 'offline'
+  }
+}
 
 const taskOptions = ref({
   useKnowledgeBase: false,
@@ -495,6 +540,13 @@ const loadHistory = () => {
 onMounted(() => {
   loadKnowledgeBases();
   loadHistory();
+  // 后台持续检测 Ollama 进程状态（每 10 秒检查一次）
+  checkOllamaStatus()
+  ollamaCheckInterval = setInterval(checkOllamaStatus, 10000)
+});
+
+onUnmounted(() => {
+  if (ollamaCheckInterval) clearInterval(ollamaCheckInterval)
 });
 </script>
 
@@ -572,6 +624,18 @@ onMounted(() => {
   transition: all 0.15s;
 }
 .history-btn:hover { background: #f3f4f6; }
+
+/* AI 状态指示器 */
+.agent-ai-status { display: flex; align-items: center; }
+.ai-badge {
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+.ai-badge--checking { background: #fef3c7; color: #92400e; }
+.ai-badge--online { background: #dcfce7; color: #166534; }
+.ai-badge--offline { background: #fee2e2; color: #991b1b; }
 
 /* Content Layout */
 .agent-content {

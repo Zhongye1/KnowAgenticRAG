@@ -114,6 +114,11 @@ const routes: Array<RouteRecordRaw> = [
     name: 'Creation',
     component: () => import('../views/Creation.vue')
   },
+  {
+    path: '/architecture',
+    name: 'Architecture',
+    component: () => import('../views/Architecture.vue')
+  },
   // 添加专门的404页面路由
   {
     path: '/404',

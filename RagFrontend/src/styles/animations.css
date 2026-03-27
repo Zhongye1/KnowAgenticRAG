@@ -1175,3 +1175,124 @@ html { scroll-behavior: smooth; }
   background: var(--bg-card) !important;
   color: var(--text-primary) !important;
 }
+
+/* ================================================================
+   §21  暗色模式 - Tailwind 硬编码白色/灰色类覆盖
+   ================================================================
+   修复主界面（Chat/KnowledgeBase/Settings 等）部分区域白色未切换问题
+   ================================================================ */
+.dark .bg-white {
+  background-color: var(--bg-card) !important;
+}
+.dark .bg-gray-50 {
+  background-color: var(--bg-page) !important;
+}
+.dark .bg-gray-100 {
+  background-color: var(--bg-hover) !important;
+}
+.dark .bg-gray-200 {
+  background-color: var(--bg-hover) !important;
+}
+.dark .text-gray-900,
+.dark .text-gray-800 {
+  color: var(--text-primary) !important;
+}
+.dark .text-gray-700,
+.dark .text-gray-600 {
+  color: var(--text-secondary) !important;
+}
+.dark .text-gray-500,
+.dark .text-gray-400 {
+  color: var(--text-tertiary) !important;
+}
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  border-color: var(--border-color) !important;
+}
+.dark .divide-gray-200 > * + * {
+  border-color: var(--border-color) !important;
+}
+
+/* ── 暗色: 主界面大背景容器 ── */
+.dark .app-main,
+.dark main,
+.dark .page-container,
+.dark .view-container {
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+}
+
+/* ── 暗色: 知识库/对话/历史页面特定元素 ── */
+.dark .chat-container,
+.dark .knowledge-container,
+.dark .history-container {
+  background: var(--bg-page);
+}
+
+/* ── 暗色: 上传弹窗 & 知识库卡片 ── */
+.dark .rounded-lg.shadow-xl.bg-white,
+.dark .rounded-lg.bg-white {
+  background-color: var(--bg-card) !important;
+}
+.dark .border-dashed.border-gray-300 {
+  border-color: var(--border-strong) !important;
+}
+
+/* ── 暗色: 表单输入框统一 ── */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="search"],
+.dark input[type="number"] {
+  background: var(--bg-input) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-strong) !important;
+}
+
+/* ── 暗色: TDesign 弹窗/对话框 ── */
+.dark .t-dialog,
+.dark .t-popup__content,
+.dark .t-select-option,
+.dark .t-select__list {
+  background: var(--bg-card) !important;
+  color: var(--text-primary) !important;
+}
+.dark .t-select-option:hover {
+  background: var(--bg-hover) !important;
+}
+
+/* ================================================================
+   §22  全局字体大小应用
+   ================================================================
+   applyFontSize() 设置 html.style.fontSize，这里确保子元素继承
+   ================================================================ */
+html, body, #app {
+  font-size: inherit;
+}
+
+/* 使用 CSS 变量的字体大小（由 useTheme.applyFontSize 写入） */
+body {
+  font-size: var(--app-font-size, 14px);
+}
+
+/* TDesign 字体大小跟随全局设置 */
+.t-button,
+.t-input__inner,
+.t-select__wrap,
+.t-textarea__inner,
+.t-tag,
+.t-menu__item,
+.t-tabs__item,
+.t-list-item {
+  font-size: inherit;
+}
+
+/* 确保小字号(13px)和大字号(16px)在全局生效 */
+html[style*="font-size: 13px"] body,
+html[style*="font-size:13px"] body {
+  font-size: 13px;
+}
+html[style*="font-size: 16px"] body,
+html[style*="font-size:16px"] body {
+  font-size: 16px;
+}

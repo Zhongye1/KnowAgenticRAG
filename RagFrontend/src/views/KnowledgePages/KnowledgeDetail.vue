@@ -494,9 +494,9 @@
 
     <!-- 上传文件模态框 -->
     <div v-if="showUploadModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl">
-        <div class="p-6">
-          <div class="flex justify-between items-center pb-4 border-b">
+      <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl" style="max-height: 90vh; display: flex; flex-direction: column;">
+        <div class="p-6" style="overflow-y: auto; flex: 1;">
+          <div class="flex justify-between items-center pb-4 border-b sticky top-0 bg-white z-10">
             <h3 class="text-xl font-semibold text-gray-800">上传文件</h3>
             <button @click="showUploadModal = false" class="text-gray-500 hover:text-gray-700">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
@@ -525,9 +525,12 @@
             </div>
 
             <div v-if="uploadedFiles.length > 0" class="mt-6">
-              <h4 class="text-lg font-medium text-gray-700 mb-4">待上传的文件</h4>
-              <ul class="divide-y divide-gray-200">
-                <li v-for="(file, index) in uploadedFiles" :key="index" class="py-4 flex items-center">
+              <h4 class="text-lg font-medium text-gray-700 mb-2 flex items-center gap-2">
+                待上传的文件
+                <span class="text-sm font-normal text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">{{ uploadedFiles.length }} 个</span>
+              </h4>
+              <ul class="divide-y divide-gray-200 overflow-y-auto" style="max-height: 240px;">
+                <li v-for="(file, index) in uploadedFiles" :key="index" class="py-3 flex items-center">
                   <div class="flex-shrink-0 mr-4">
                     <svg v-if="file.name.endsWith('.pdf')" class="h-10 w-10 text-red-500" fill="none"
                       viewBox="0 0 24 24" stroke="currentColor">

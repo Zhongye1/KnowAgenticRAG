@@ -195,3 +195,50 @@ async def generic_webhook_push(req: WebhookPush):
             return {"status": resp.status_code, "body": resp.text[:500]}
     except Exception as e:
         raise HTTPException(500, str(e))
+
+
+# ════════════════════════════════════════════════════════════
+# 通用配置端点（持久化到内存，前端 savePlatformConfig 使用）
+# ════════════════════════════════════════════════════════════
+_platform_configs: dict = {}
+
+
+@router.post("/dingtalk/configure")
+async def configure_dingtalk(data: dict):
+    """保存钉钉配置"""
+    _platform_configs["dingtalk"] = data
+    return {"status": "ok", "platform": "dingtalk"}
+
+
+@router.post("/wecom/configure")
+async def configure_wecom(data: dict):
+    """保存企业微信配置"""
+    _platform_configs["wecom"] = data
+    return {"status": "ok", "platform": "wecom"}
+
+
+@router.post("/notion/configure")
+async def configure_notion(data: dict):
+    """保存 Notion 配置（占位）"""
+    _platform_configs["notion"] = data
+    return {"status": "ok", "platform": "notion"}
+
+
+@router.post("/github/configure")
+async def configure_github(data: dict):
+    """保存 GitHub 配置（占位）"""
+    _platform_configs["github"] = data
+    return {"status": "ok", "platform": "github"}
+
+
+@router.post("/notion/test")
+async def test_notion(data: dict):
+    """Notion 测试连接（占位）"""
+    return {"status": "ok", "message": "Notion 配置已保存，集成功能待实现"}
+
+
+@router.post("/github/test")
+async def test_github(data: dict):
+    """GitHub 测试连接（占位）"""
+    return {"status": "ok", "message": "GitHub 配置已保存，集成功能待实现"}
+

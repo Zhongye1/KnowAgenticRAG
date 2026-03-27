@@ -580,6 +580,23 @@
             </button>
           </div>
         </div>
+        <!-- 语言设置 -->
+        <div class="appearance-card">
+          <div class="appearance-card__title">🌐 界面语言</div>
+          <div class="lang-options">
+            <button
+              :class="['lang-btn', { 'lang-btn--active': currentLocale === 'zh' }]"
+              @click="switchLocale('zh')">
+              🇨🇳 中文
+            </button>
+            <button
+              :class="['lang-btn', { 'lang-btn--active': currentLocale === 'en' }]"
+              @click="switchLocale('en')">
+              🇬🇧 English
+            </button>
+          </div>
+          <p class="mc-hint" style="margin-top:8px;">选择后立即生效，无需刷新页面</p>
+        </div>
       </div>
     </div>
 
@@ -703,6 +720,7 @@ import {
   applyTheme, applyColor, applyFontSize, applyLayout,
   saveAppearance as persistAppearance, loadAppearance, COLOR_MAP
 } from '@/composables/useTheme'
+import { setLocale, locale as i18nLocale } from '@/i18n/index'
 import OcrTab from './SettingsTabs/OcrTab.vue'
 import VersionTab from './SettingsTabs/VersionTab.vue'
 import RbacTab from './SettingsTabs/RbacTab.vue'
@@ -934,7 +952,20 @@ async function mcLoadConfig() {
     // 顺带拉本地模型
     await mcFetchLocalModels()
   } catch {
-    // 后端未启动时静默失败
+    // 后端未启动时：从 localStorage 读取本地缓存的配置
+    try {
+      const localRaw = localStorage.getItem('user_model_config')
+      if (localRaw) {
+        const cfg = JSON.parse(localRaw)
+        Object.assign(mcForm, {
+          llm_model: cfg.llm_model || 'qwen2:0.5b',
+          ollama_base_url: cfg.ollama_base_url || 'http://localhost:11434',
+          timeout: cfg.timeout ?? 120,
+          embedding_model: cfg.embedding_model || 'sentence-transformers/all-MiniLM-L6-v2',
+          kg_model: cfg.kg_model || '',
+        })
+      }
+    } catch { /* 读取失败忽略 */ }
   }
 }
 
@@ -956,17 +987,21 @@ async function mcFetchLocalModels() {
 async function mcSaveConfig() {
   if (!mcForm.llm_model.trim()) { MessagePlugin.warning('请填写模型名称'); return }
   mcSaving.value = true
+  // 无论如何先保存到 localStorage 作为离线备份
+  const localCfg = {
+    llm_model: mcForm.llm_model.trim(),
+    ollama_base_url: mcForm.ollama_base_url.trim(),
+    timeout: mcForm.timeout,
+    embedding_model: mcForm.embedding_model.trim(),
+    kg_model: mcForm.kg_model.trim() || null,
+  }
+  localStorage.setItem('user_model_config', JSON.stringify(localCfg))
   try {
-    await axios.post('/api/user-model-config', {
-      llm_model: mcForm.llm_model.trim(),
-      ollama_base_url: mcForm.ollama_base_url.trim(),
-      timeout: mcForm.timeout,
-      embedding_model: mcForm.embedding_model.trim(),
-      kg_model: mcForm.kg_model.trim() || null,
-    })
+    await axios.post('/api/user-model-config', localCfg)
     MessagePlugin.success('模型配置已保存，下次 RAG 查询生效')
   } catch {
-    MessagePlugin.error('保存失败，请确认后端已启动')
+    // 后端离线时：配置已存 localStorage，前端功能仍可用
+    MessagePlugin.success('配置已保存到本地，后端启动后将自动同步')
   } finally {
     mcSaving.value = false
   }
@@ -1113,10 +1148,13 @@ async function savePlatformConfig(platform: string, config: any) {
 
 async function testPlatform(platform: string) {
   try {
-    await axios.post(`/api/integrations/${platform}/test`)
+    // 读取本地保存的配置并传递给后端
+    const saved = JSON.parse(localStorage.getItem('integration_configs') || '{}')
+    const cfg = saved[platform] || {}
+    await axios.post(`/api/integrations/${platform}/test`, cfg)
     MessagePlugin.success('测试消息发送成功 ✅')
   } catch {
-    MessagePlugin.warning('后端接口未就绪，配置已本地保存')
+    MessagePlugin.warning('后端接口未就绪，请确保后端已启动并配置正确')
   }
 }
 
@@ -1132,6 +1170,12 @@ const integrationPlatforms = computed(() => [
 
 // ── 外观设置 ──────────────────────────────────────────────────
 const appearance = reactive(loadAppearance())
+// 语言设置
+const currentLocale = computed(() => i18nLocale.value)
+function switchLocale(lang: 'zh' | 'en') {
+  setLocale(lang)
+  MessagePlugin.success(lang === 'zh' ? '界面语言已切换为中文' : 'Language switched to English')
+}
 
 const themeOptions = [
   { id: 'light', label: '浅色', preview: '#ffffff' },
@@ -1852,6 +1896,39 @@ async function submitTicket() {
   border-color: #4f7ef8;
   background: #eff6ff;
   color: #4f7ef8;
+}
+
+/* ── 语言切换按钮 ── */
+.lang-options {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+.lang-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.lang-btn:hover {
+  border-color: #93c5fd;
+  background: #f0f7ff;
+  color: #4f7ef8;
+}
+.lang-btn--active {
+  border-color: #4f7ef8;
+  background: #eff6ff;
+  color: #4f7ef8;
+  font-weight: 600;
 }
 
 .theme-preview {

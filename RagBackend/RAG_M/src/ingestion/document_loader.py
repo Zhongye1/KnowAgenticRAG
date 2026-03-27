@@ -148,7 +148,34 @@ class DocumentLoader:
         
         # 🔧 改进：更明确的错误处理
         if file_extension == '.pdf':
-            loader = PyPDFLoader(file_path)
+            try:
+                loader = PyPDFLoader(file_path)
+                documents = loader.load()
+                # 如果解析内容为空，可能是扫描件，提示用户
+                if not documents or all(not doc.page_content.strip() for doc in documents):
+                    raise ValueError(f"PDF 解析内容为空，该文件可能是扫描件或加密文件：{os.path.basename(file_path)}")
+            except Exception as pdf_err:
+                # 尝试使用 pdfplumber 作为备选
+                try:
+                    import pdfplumber
+                    text_pages = []
+                    with pdfplumber.open(file_path) as pdf:
+                        for i, page in enumerate(pdf.pages):
+                            text = page.extract_text() or ''
+                            if text.strip():
+                                from langchain.schema import Document
+                                text_pages.append(Document(
+                                    page_content=text,
+                                    metadata={"source": file_path, "page": i}
+                                ))
+                    if text_pages:
+                        documents = text_pages
+                        print(f"[PDF fallback] 使用 pdfplumber 成功解析 {os.path.basename(file_path)}")
+                    else:
+                        raise ValueError(f"PDF 内容为空（可能是扫描件）：{os.path.basename(file_path)}")
+                except ImportError:
+                    # pdfplumber 未安装，给出明确错误
+                    raise ValueError(f"PDF 解析失败（{pdf_err}）。建议安装 pdfplumber: pip install pdfplumber，或将 PDF 转为 TXT 后上传。")
         elif file_extension in ['.txt', '.md']:
             try:
                 # 1. 规范化路径，解决反斜杠问题
