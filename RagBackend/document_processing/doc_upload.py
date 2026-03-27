@@ -196,15 +196,17 @@ async def upload_complete(request: Request):
         # 确保目录存在
         os.makedirs(os.path.dirname(final_file_path), exist_ok=True)
 
-        # 合并分块
-        with open(final_file_path, 'wb') as outfile:
-            for i in range(totalChunks):
-                chunk_file_path = os.path.join(file_chunk_dir, f"chunk_{i}.part")
-                if not os.path.exists(chunk_file_path):
-                    print(f"分块文件 {chunk_file_path} 不存在")
-                    raise HTTPException(status_code=400, detail=f"分块文件 {chunk_file_path} 不存在")
-                with open(chunk_file_path, 'rb') as infile:
-                    shutil.copyfileobj(infile, outfile)
+        # 合并分块（用 asyncio.to_thread 避免阻塞 event loop）
+        def _merge_chunks():
+            with open(final_file_path, 'wb') as outfile:
+                for i in range(totalChunks):
+                    chunk_file_path = os.path.join(file_chunk_dir, f"chunk_{i}.part")
+                    if not os.path.exists(chunk_file_path):
+                        raise FileNotFoundError(f"分块文件 {chunk_file_path} 不存在")
+                    with open(chunk_file_path, 'rb') as infile:
+                        shutil.copyfileobj(infile, outfile)
+
+        await asyncio.to_thread(_merge_chunks)
 
         print(f"文件合并成功: 文件名={fileName}, 文件哈希={fileHash}, 总分块数={totalChunks}, 最终文件路径={final_file_path}")
         # 读取合并后的文件内容

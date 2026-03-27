@@ -52,6 +52,14 @@ async def _init_db_tables():
     except Exception as e:
         logger.warning(f"本地辅助表初始化失败: {e}")
 
+    # 启动异步向量化任务队列 Worker
+    try:
+        from document_processing.task_queue import ensure_worker_started
+        await ensure_worker_started()
+        logger.info("向量化任务队列 Worker 已启动（最大并发: 2）")
+    except Exception as e:
+        logger.warning(f"任务队列 Worker 启动失败: {e}")
+
 # 配置CORS
 app.add_middleware(
     CORSMiddleware,

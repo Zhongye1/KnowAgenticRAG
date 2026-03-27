@@ -3,6 +3,29 @@ import { Ref } from 'vue';
 import axios from 'axios';
 import { MessagePlugin } from 'tdesign-vue-next';
 
+/**
+ * 并发限流执行器：最多同时运行 maxConcurrency 个 Promise
+ * 避免大批量上传触发浏览器同源并发限制（Chrome 最多 6 个）
+ */
+async function runWithConcurrencyLimit<T>(
+  tasks: (() => Promise<T>)[],
+  maxConcurrency = 3
+): Promise<T[]> {
+  const results: T[] = [];
+  let index = 0;
+
+  async function worker() {
+    while (index < tasks.length) {
+      const taskIndex = index++;
+      results[taskIndex] = await tasks[taskIndex]();
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(maxConcurrency, tasks.length) }, () => worker());
+  await Promise.all(workers);
+  return results;
+}
+
 // 生成文件 hash，这里使用SHA256
 const generateFileHash = async (file: File): Promise<string> => {
     // 检查文件参数是否有效
@@ -136,16 +159,17 @@ export const uploadFiles = async (
 
         console.log('文件上传完成');
         MessagePlugin.success('文件上传完成：' + (fileInfoList.length > 0 ? fileInfoList[0].fileName : '所有文件'));
-        // 遍历文件信息列表，逐个调用上传完成接口
-        for (const fileInfo of fileInfoList) {
-            await axios.post('/api/upload-complete', {
+
+        // 遍历文件信息列表，逐个调用上传完成接口（最大3并发，防止浏览器并发限制）
+        const completeTasks = fileInfoList.map(fileInfo => async () => {
+            return axios.post('/api/upload-complete', {
                 fileName: fileInfo.fileName,
                 fileHash: fileInfo.fileHash,
-                // 传递总块数
                 totalChunks: fileInfo.totalChunks || 1,
-                KLB_id: KLB_id // 添加知识库ID参数
-            });
-        }
+                KLB_id: KLB_id
+            }, { timeout: 60000 }); // 60s 超时
+        });
+        await runWithConcurrencyLimit(completeTasks, 3);
 
         isUploading.value = false;
         // 上传完成后可添加刷新文档列表等操作

@@ -402,32 +402,62 @@ class RemoveDocRequest(BaseModel):
     doc_key: str
 
 
-@router.post("/api/vectorize/ingest", summary="增量向量化单个文档")
+@router.post("/api/vectorize/ingest", summary="增量向量化单个文档（异步，立即返回 task_id）")
 async def api_ingest_file(req: IngestRequest):
     """
     增量向量化：仅处理内容有变化的文档（哈希比对）。
-    相同文件重复上传时自动跳过，文档内容变更时自动更新向量。
+    接口立即返回 task_id，实际向量化在后台队列中执行。
+    通过 /api/vectorize/status/{task_id} 轮询进度。
     """
-    try:
+    from document_processing.task_queue import create_task
+
+    # 文件存在性检查（快速校验，不阻塞）
+    if not os.path.exists(req.file_path):
+        raise HTTPException(status_code=404, detail=f"文件不存在: {req.file_path}")
+
+    def _do_ingest():
         iv = IncrementalVectorizer(req.kb_id)
-        result = iv.ingest_file(req.file_path, doc_key=req.doc_key, force=req.force)
-        return result
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    except Exception as e:
-        logger.error(f"[api_ingest_file] 异常: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"向量化失败: {str(e)}")
+        return iv.ingest_file(req.file_path, doc_key=req.doc_key, force=req.force)
+
+    task_id = create_task(_do_ingest)
+    logger.info(f"[api_ingest_file] 任务已入队: {task_id}, file={req.file_path}")
+    return {
+        "task_id": task_id,
+        "status": "pending",
+        "message": "向量化任务已提交，请通过 /api/vectorize/status/{task_id} 查询进度",
+    }
 
 
-@router.post("/api/vectorize/batch", summary="批量增量向量化")
+@router.post("/api/vectorize/batch", summary="批量增量向量化（异步，立即返回 task_id 列表）")
 async def api_batch_ingest(req: BatchIngestRequest):
-    """批量处理多个文件，自动跳过未变化的文档"""
-    try:
-        iv = IncrementalVectorizer(req.kb_id)
-        result = iv.batch_ingest(req.file_paths, force=req.force)
-        return result
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"批量向量化失败: {str(e)}")
+    """
+    批量处理多个文件，每个文件独立入队，返回 task_id 列表。
+    前端可逐个轮询状态，单文件失败不影响其他文件。
+    """
+    from document_processing.task_queue import create_task
+
+    task_ids = []
+    for fp in req.file_paths:
+        if not os.path.exists(fp):
+            task_ids.append({"file_path": fp, "task_id": None, "error": "文件不存在"})
+            continue
+
+        # 为每个文件创建独立闭包，避免循环变量捕获问题
+        def _make_ingest(file_path: str):
+            def _do():
+                iv = IncrementalVectorizer(req.kb_id)
+                return iv.ingest_file(file_path, force=req.force)
+            return _do
+
+        tid = create_task(_make_ingest(fp))
+        task_ids.append({"file_path": fp, "task_id": tid, "status": "pending"})
+
+    return {
+        "total": len(req.file_paths),
+        "queued": sum(1 for t in task_ids if t.get("task_id")),
+        "tasks": task_ids,
+        "message": "批量任务已提交，通过 /api/vectorize/status/{task_id} 查询各文件进度",
+    }
 
 
 @router.delete("/api/vectorize/remove", summary="从向量库移除文档")
@@ -457,3 +487,24 @@ async def api_hash_index(kb_id: str):
         "records": iv.hash_index.all_records(),
         "stats": iv.hash_index.stats(),
     }
+
+
+@router.get("/api/vectorize/status/{task_id}", summary="查询向量化任务状态")
+async def api_task_status(task_id: str):
+    """
+    轮询任务进度。
+    status 取值：pending（排队）/ running（进行中）/ done（完成）/ failed（失败）
+    """
+    from document_processing.task_queue import get_task_status, get_queue_length
+    info = get_task_status(task_id)
+    if info is None:
+        raise HTTPException(status_code=404, detail=f"任务不存在: {task_id}")
+    return {**info, "queue_length": get_queue_length()}
+
+
+@router.get("/api/vectorize/queue", summary="查看队列状态")
+async def api_queue_status():
+    """返回当前待处理任务数"""
+    from document_processing.task_queue import get_queue_length
+    return {"queue_length": get_queue_length()}
+
