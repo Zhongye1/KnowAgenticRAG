@@ -130,7 +130,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { MessagePlugin } from 'tdesign-vue-next'
 import axios from 'axios'
 
@@ -140,7 +140,7 @@ const providers = ref([
     enabled: true, is_default: true, testing: false, test_result: null as any,
     available_models: ['qwen2:0.5b', 'qwen:7b-chat', 'llama3:8b', 'mistral:7b'],
     config: { base_url: 'http://localhost:11434', model: 'qwen2:0.5b', temperature: 0.7 },
-    usage: { today_calls: 142, today_tokens: 38400, avg_latency: 1240 },
+    usage: { today_calls: 0, today_tokens: 0, avg_latency: 0 },
     key_placeholder: '', url_placeholder: '',
   },
   {
@@ -188,6 +188,44 @@ const defaultModel = computed(() => {
   return p ? { provider: p.name, model_name: p.config.model, online: true } : null
 })
 
+// ── 页面加载时从后端恢复已保存配置 ──────────────────────────────
+onMounted(async () => {
+  try {
+    // 获取各 provider 状态（Key 是否已配置）
+    const statusRes = await axios.get('/api/models/providers/status')
+    const status = statusRes.data
+
+    // 获取完整模型列表，用于判断哪些模型 available
+    const listRes = await axios.get('/api/models/list')
+    const modelList: any[] = listRes.data.models || []
+
+    providers.value.forEach(p => {
+      // 根据后端 providers/status 恢复启用状态
+      if (p.id === 'deepseek' && status.deepseek?.configured) {
+        p.enabled = true
+      } else if (p.id === 'openai' && status.openai?.configured) {
+        p.enabled = true
+      } else if (p.id === 'hunyuan' && status.hunyuan?.configured) {
+        p.enabled = true
+      }
+
+      // 从 localStorage 恢复完整 config（含 api_key，API Key 不在 providers/status 中明文返回）
+      const saved = localStorage.getItem(`model_config_${p.id}`)
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          Object.assign(p.config, parsed)
+          // 如果有 api_key 并且 provider 支持，自动启用
+          if ((p.config as any).api_key) p.enabled = true
+        } catch { /* ignore */ }
+      }
+    })
+  } catch (e) {
+    // 后端未启动时静默忽略
+    console.warn('[MultiModelTab] 加载配置失败（后端未启动？）', e)
+  }
+})
+
 function toggleProvider(provider: any) {
   MessagePlugin.success(`${provider.name} 已${provider.enabled ? '启用' : '禁用'}`)
 }
@@ -196,24 +234,33 @@ async function testProvider(provider: any) {
   provider.testing = true
   provider.test_result = null
   try {
-    const res = await axios.post('/api/models/test', { provider_id: provider.id, config: provider.config })
-    provider.test_result = { ok: true, message: '连接成功', latency: res.data.latency }
-  } catch {
-    const t = Math.floor(Math.random() * 600 + 400)
-    await new Promise(r => setTimeout(r, 800))
-    provider.test_result = provider.enabled
-      ? { ok: true, message: '连接成功（演示）', latency: t }
-      : { ok: false, message: '连接超时，请检查 API Key 和网络' }
-  } finally { provider.testing = false }
+    const res = await axios.post('/api/models/test', {
+      provider_id: provider.id,
+      config: provider.config,
+    })
+    const d = res.data
+    provider.test_result = { ok: d.ok, message: d.message, latency: d.latency }
+  } catch (e: any) {
+    provider.test_result = { ok: false, message: '请求失败，请确认后端已启动' }
+  } finally {
+    provider.testing = false
+  }
 }
 
 async function saveProvider(provider: any) {
   try {
-    await axios.post('/api/models/configure', { provider_id: provider.id, config: provider.config })
-    MessagePlugin.success(`${provider.name} 配置已保存`)
-  } catch {
+    // 1. 保存到后端（持久化，所有接口立即生效）
+    await axios.post('/api/models/configure', {
+      provider_id: provider.id,
+      config: provider.config,
+    })
+    // 2. 同步到 localStorage（页面刷新后 onMounted 恢复用）
     localStorage.setItem(`model_config_${provider.id}`, JSON.stringify(provider.config))
-    MessagePlugin.warning('配置已本地暂存，后端连通后自动同步')
+    MessagePlugin.success(`${provider.name} 配置已保存，立即生效`)
+  } catch (e: any) {
+    // 后端不可达时降级到本地暂存
+    localStorage.setItem(`model_config_${provider.id}`, JSON.stringify(provider.config))
+    MessagePlugin.warning('后端暂不可达，配置已本地暂存（后端启动后需重新保存以生效）')
   }
 }
 

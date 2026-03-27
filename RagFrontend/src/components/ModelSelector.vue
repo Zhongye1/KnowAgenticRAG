@@ -169,13 +169,7 @@ async function fetchModels() {
   try {
     const res = await axios.get('/api/models/list')
     models.value = res.data.models || []
-    // 从 localStorage 读取已配置的 key，更新 available 状态
-    models.value.forEach(m => {
-      if (m.requires_key) {
-        const stored = localStorage.getItem(m.requires_key)
-        if (stored) m.available = true
-      }
-    })
+    // available 由后端动态计算（基于 models_config.json + 环境变量），前端直接信任后端结果
   } catch (e) {
     // 后端未连接时使用默认本地模型
     models.value = [
@@ -203,17 +197,39 @@ function openKeyConfig(provider: string) {
   keyConfigValues.value = vals
 }
 
-function saveApiKey() {
+async function saveApiKey() {
+  const provider = keyConfigProvider.value
+  if (!provider) return
   const fields = keyConfigFields.value
+
+  // 构造 config 对象（key 字段名映射到配置结构）
+  const config: Record<string, string> = {}
   fields.forEach(f => {
     const val = keyConfigValues.value[f.key]?.trim()
-    if (val) localStorage.setItem(f.key, val)
+    if (val) {
+      localStorage.setItem(f.key, val) // 备份到 localStorage
+      // 统一字段名：DEEPSEEK_API_KEY → api_key，OPENAI_BASE_URL → base_url
+      if (f.key.endsWith('_API_KEY') || f.key.endsWith('_SECRET_ID')) {
+        config['api_key'] = val
+      } else if (f.key.endsWith('_SECRET_KEY')) {
+        config['secret_key'] = val
+      } else if (f.key.endsWith('_BASE_URL')) {
+        config['base_url'] = val
+      }
+    }
   })
+
+  try {
+    // 保存到后端 → models_config.json，立即生效
+    await axios.post('/api/models/configure', { provider_id: provider, config })
+    MessagePlugin.success('API Key 已保存，模型立即可用')
+  } catch {
+    MessagePlugin.warning('后端暂不可达，Key 已本地暂存（重启后端后需重新保存）')
+  }
+
   // 刷新模型可用状态
-  fetchModels()
+  await fetchModels()
   keyConfigProvider.value = null
-  MessagePlugin.success('API Key 已保存到本地，重新加载模型...')
-  // 通知后端（可选）
 }
 
 onMounted(fetchModels)
