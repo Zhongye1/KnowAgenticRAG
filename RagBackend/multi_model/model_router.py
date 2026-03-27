@@ -484,3 +484,181 @@ async def providers_status():
             "key_hint": "在设置→多模型中配置",
         },
     }
+
+
+# ── Agent 任务模式端点（云端+本地模型统一入口）──────────────────────
+
+class AgentTaskRequest(BaseModel):
+    query: str
+    model: str = "deepseek-chat"        # 任意 model id（Ollama 本地或云端）
+    kb_id: Optional[str] = None         # 可选：关联知识库 ID（RAG 上下文增强）
+    temperature: float = 0.7
+    max_tokens: int = 4096
+
+
+def _get_provider_for_model(model_id: str) -> str:
+    """根据 model_id 判断对应 provider"""
+    m = next((m for m in _MODEL_CATALOG if m["id"] == model_id), None)
+    return m["provider"] if m else "ollama"
+
+
+async def _collect_stream(gen: AsyncGenerator[str, None]) -> str:
+    """将 SSE 流收集为完整文本"""
+    parts = []
+    async for chunk in gen:
+        if chunk.startswith("data: "):
+            payload = chunk[6:].strip()
+            try:
+                d = json.loads(payload)
+                if d.get("content"):
+                    parts.append(d["content"])
+                if d.get("error"):
+                    return f"[模型错误] {d['error']}"
+            except Exception:
+                pass
+    return "".join(parts)
+
+
+@router.post("/api/agent/task")
+async def agent_task(req: AgentTaskRequest):
+    """
+    任务模式统一入口（SSE 流式）
+    - 支持 Ollama 本地模型 + DeepSeek / OpenAI / 混元云端模型
+    - 可选 RAG 知识库上下文增强（kb_id 不为空时自动检索相关文档）
+    - 输出格式与 /api/models/chat 一致（data: {content, done}）
+      额外输出 data: STEP_START/STEP_DONE/TASK_DONE 事件用于前端步骤可视化
+
+    SSE 事件类型：
+      data: {"event":"step","name":"...","index":N}   — 步骤开始
+      data: {"event":"content","content":"..."}       — 流式内容片段
+      data: {"event":"done","answer":"...(full)"}     — 完成，带完整答案
+      data: {"event":"error","message":"..."}         — 错误
+    """
+    provider = _get_provider_for_model(req.model)
+
+    async def generate():
+        # ── Step 1: 理解任务 ──
+        yield f"data: {json.dumps({'event':'step','index':0,'name':'理解任务目标','detail':req.query[:80]}, ensure_ascii=False)}\n\n"
+        await asyncio.sleep(0.05)
+
+        # ── Step 2: 可选 RAG 检索 ──
+        rag_context = ""
+        if req.kb_id:
+            yield f"data: {json.dumps({'event':'step','index':1,'name':'检索知识库','detail':f'知识库 {req.kb_id}'}, ensure_ascii=False)}\n\n"
+            try:
+                import sys
+                from pathlib import Path as _P
+                _backend_root = str(_P(__file__).resolve().parent.parent)
+                if _backend_root not in sys.path:
+                    sys.path.insert(0, _backend_root)
+
+                from RAG_M.RAG_app import _load_vectorstore_and_docs
+                docs_dir = f"local-KLB-files/{req.kb_id}"
+                vectorstore, documents, _ = _load_vectorstore_and_docs(docs_dir)
+
+                from RAG_M.src.rag.hybrid_retriever import HybridRetriever
+                if documents:
+                    retriever = HybridRetriever(
+                        documents=documents,
+                        vectorstore=vectorstore,
+                        bm25_top_k=3,
+                        vector_top_k=3,
+                        final_top_k=3,
+                    )
+                    results = retriever.retrieve_with_scores(req.query)
+                else:
+                    raw = vectorstore.similarity_search_with_score(req.query, k=3)
+                    results = [{"document": d, "source_info": {"rank": i+1, "file_name": d.metadata.get("source",""), "rrf_score": s}} for i,(d,s) in enumerate(raw)]
+
+                if results:
+                    rag_parts = []
+                    for item in results:
+                        src = item["source_info"]
+                        rag_parts.append(f"【来源：{src.get('file_name','?')}】\n{item['document'].page_content.strip()}")
+                    rag_context = "\n\n---\n\n".join(rag_parts)
+                    yield f"data: {json.dumps({'event':'step_result','index':1,'detail':f'检索到 {len(results)} 个相关片段'}, ensure_ascii=False)}\n\n"
+            except Exception as e:
+                yield f"data: {json.dumps({'event':'step_result','index':1,'detail':f'知识库检索失败: {e}，将直接使用模型知识'}, ensure_ascii=False)}\n\n"
+        else:
+            yield f"data: {json.dumps({'event':'step','index':1,'name':'规划执行流程','detail':'基于模型知识直接推理'}, ensure_ascii=False)}\n\n"
+            await asyncio.sleep(0.05)
+
+        # ── Step 3: 构建 Prompt ──
+        yield f"data: {json.dumps({'event':'step','index':2,'name':'生成结构化草稿','detail':f'使用 {req.model}'}, ensure_ascii=False)}\n\n"
+
+        system_prompt = (
+            "你是一个高效的任务执行 AI 助手。请严格按照用户要求完成任务，"
+            "输出结构清晰、内容完整的 Markdown 格式报告。"
+        )
+        user_content = req.query
+        if rag_context:
+            user_content = (
+                f"以下是知识库中检索到的相关内容，请结合这些内容完成任务：\n\n"
+                f"{rag_context}\n\n---\n\n任务：{req.query}"
+            )
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content},
+        ]
+
+        # ── Step 4: 调用 LLM，流式输出 ──
+        full_answer = []
+        yield f"data: {json.dumps({'event':'step','index':3,'name':'润色与优化','detail':'流式生成中...'}, ensure_ascii=False)}\n\n"
+
+        try:
+            if provider == "ollama":
+                async for chunk in _stream_ollama(req.model, messages, req.temperature, req.max_tokens):
+                    yield chunk
+                    if chunk.startswith("data: "):
+                        try:
+                            d = json.loads(chunk[6:])
+                            if d.get("content"):
+                                full_answer.append(d["content"])
+                        except Exception:
+                            pass
+            elif provider == "deepseek":
+                async for chunk in _stream_deepseek(req.model, messages, req.temperature, req.max_tokens):
+                    yield chunk
+                    if chunk.startswith("data: "):
+                        try:
+                            d = json.loads(chunk[6:])
+                            if d.get("content"):
+                                full_answer.append(d["content"])
+                        except Exception:
+                            pass
+            elif provider == "openai":
+                async for chunk in _stream_openai(req.model, messages, req.temperature, req.max_tokens):
+                    yield chunk
+                    if chunk.startswith("data: "):
+                        try:
+                            d = json.loads(chunk[6:])
+                            if d.get("content"):
+                                full_answer.append(d["content"])
+                        except Exception:
+                            pass
+            elif provider == "hunyuan":
+                async for chunk in _stream_hunyuan(req.model, messages, req.temperature, req.max_tokens):
+                    yield chunk
+                    if chunk.startswith("data: "):
+                        try:
+                            d = json.loads(chunk[6:])
+                            if d.get("content"):
+                                full_answer.append(d["content"])
+                        except Exception:
+                            pass
+            else:
+                yield f"data: {json.dumps({'error': f'不支持的 provider: {provider}'})}\n\n"
+                return
+        except Exception as e:
+            yield f"data: {json.dumps({'event':'error','message': str(e)}, ensure_ascii=False)}\n\n"
+            return
+
+        # ── DONE 事件 ──
+        yield f"data: {json.dumps({'event':'done','model':req.model,'provider':provider,'has_rag': bool(req.kb_id)}, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )

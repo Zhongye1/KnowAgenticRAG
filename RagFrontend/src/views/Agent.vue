@@ -22,16 +22,27 @@
           </svg>
           历史任务
         </button>
-        <!-- Ollama/云端 AI 状态指示 -->
-        <div class="agent-ai-status">
-          <span v-if="ollamaStatus === 'checking'" class="ai-badge ai-badge--checking">
-            ⏳ 检测中...
-          </span>
-          <span v-else-if="ollamaStatus === 'online'" class="ai-badge ai-badge--online">
-            🟢 Ollama 在线 · {{ ollamaModel }}
-          </span>
-          <span v-else class="ai-badge ai-badge--offline" title="点击重新检测" @click="checkOllamaStatus" style="cursor:pointer;">
-            🔴 Ollama 离线 · 点击检测
+        <!-- 模型选择器（支持本地+云端） -->
+        <div class="agent-model-selector">
+          <span class="model-selector-label">🤖 执行模型</span>
+          <select v-model="selectedModel" class="model-select-dropdown" @change="onModelChange">
+            <optgroup label="🖥️ 本地模型">
+              <option v-for="m in availableModels.filter(m => m.provider === 'ollama')"
+                :key="m.id" :value="m.id" :disabled="!m.available">
+                {{ m.name }}{{ !m.available ? ' (不可用)' : '' }}
+              </option>
+            </optgroup>
+            <optgroup label="☁️ 云端模型">
+              <option v-for="m in availableModels.filter(m => m.provider !== 'ollama')"
+                :key="m.id" :value="m.id" :disabled="!m.available">
+                {{ m.name }}{{ !m.available ? ' (需配置Key)' : '' }}
+              </option>
+            </optgroup>
+          </select>
+          <span :class="['model-status-dot', selectedModelInfo?.provider === 'ollama' ? (ollamaStatus === 'online' ? 'dot--online' : 'dot--offline') : (selectedModelInfo?.available ? 'dot--online' : 'dot--offline')]">
+            {{ selectedModelInfo?.provider === 'ollama'
+              ? (ollamaStatus === 'online' ? '🟢 在线' : '🔴 离线')
+              : (selectedModelInfo?.available ? '☁️ 就绪' : '⚠️ 未配置') }}
           </span>
         </div>
       </div>
@@ -144,6 +155,7 @@
                 <div class="task-exec-meta">
                   {{ isRunning ? '执行中...' : currentTask?.statusText }}
                   <span v-if="currentTask?.duration"> · 耗时 {{ currentTask.duration }}s</span>
+                  <span v-if="currentTask?.model" class="task-model-tag">{{ currentTask.model }}</span>
                 </div>
               </div>
             </div>
@@ -226,6 +238,14 @@ interface TaskRecord {
   time: string;
   duration?: number;
   output?: string;
+  model?: string;
+}
+
+interface ModelInfo {
+  id: string;
+  name: string;
+  provider: string;
+  available: boolean;
 }
 
 // ── State ──────────────────────────────────────────────
@@ -238,37 +258,61 @@ const currentTask = ref<TaskRecord | null>(null);
 const taskHistory = ref<TaskRecord[]>([]);
 const knowledgeBases = ref<{id: string; title: string}[]>([]);
 
-// ── Ollama & 云端 AI 状态 ──────────────────────────────
-const ollamaStatus = ref<'checking' | 'online' | 'offline'>('checking')
-const ollamaModel = ref('qwen2:0.5b')
-const cloudAIEnabled = ref(false)  // 云端 AI 模式
-let ollamaCheckInterval: ReturnType<typeof setInterval> | null = null
+// ── 模型选择 ───────────────────────────────────────────
+const availableModels = ref<ModelInfo[]>([]);
+const selectedModel = ref('deepseek-chat'); // 默认用云端 DS
+const selectedModelInfo = computed(() => availableModels.value.find(m => m.id === selectedModel.value));
+
+// ── Ollama 状态检测（本地模型时仍需要） ────────────────
+const ollamaStatus = ref<'checking' | 'online' | 'offline'>('checking');
+let ollamaCheckInterval: ReturnType<typeof setInterval> | null = null;
 
 async function checkOllamaStatus() {
   try {
-    let ollamaUrl = 'http://localhost:11434'
+    let ollamaUrl = 'http://localhost:11434';
     try {
-      const cfgRaw = localStorage.getItem('user_model_config') || localStorage.getItem('ollamaSettings')
+      const cfgRaw = localStorage.getItem('user_model_config') || localStorage.getItem('ollamaSettings');
       if (cfgRaw) {
-        const cfg = JSON.parse(cfgRaw)
-        ollamaUrl = cfg.serverUrl || cfg.ollama_base_url || ollamaUrl
-        ollamaModel.value = cfg.llm_model || localStorage.getItem('selected_model') || ollamaModel.value
+        const cfg = JSON.parse(cfgRaw);
+        ollamaUrl = cfg.serverUrl || cfg.ollama_base_url || ollamaUrl;
       }
     } catch {}
-    const res = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) })
-    if (res.ok) {
-      const data = await res.json()
-      const models = data.models?.map((m: any) => m.name) || []
-      ollamaStatus.value = 'online'
-      if (models.length > 0 && !models.includes(ollamaModel.value)) {
-        ollamaModel.value = models[0]
+    const res = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) });
+    ollamaStatus.value = res.ok ? 'online' : 'offline';
+  } catch {
+    ollamaStatus.value = 'offline';
+  }
+}
+
+// 加载模型列表（从后端 /api/models/list）
+async function loadModels() {
+  try {
+    const res = await axios.get<{ models: ModelInfo[] }>('/api/models/list');
+    if (res.data?.models) {
+      availableModels.value = res.data.models;
+      // 优先选第一个 available 的云端模型
+      const cloud = res.data.models.find(m => m.provider !== 'ollama' && m.available);
+      const local = res.data.models.find(m => m.provider === 'ollama' && m.available);
+      const saved = localStorage.getItem('agent_selected_model');
+      if (saved && res.data.models.find(m => m.id === saved && m.available)) {
+        selectedModel.value = saved;
+      } else if (cloud) {
+        selectedModel.value = cloud.id;
+      } else if (local) {
+        selectedModel.value = local.id;
       }
-    } else {
-      ollamaStatus.value = 'offline'
     }
   } catch {
-    ollamaStatus.value = 'offline'
+    // 离线时使用默认模型列表
+    availableModels.value = [
+      { id: 'qwen2:0.5b', name: 'Qwen2 0.5B（本地）', provider: 'ollama', available: true },
+      { id: 'deepseek-chat', name: 'DeepSeek Chat（云端）', provider: 'deepseek', available: false },
+    ];
   }
+}
+
+function onModelChange() {
+  localStorage.setItem('agent_selected_model', selectedModel.value);
 }
 
 const taskOptions = ref({
@@ -279,6 +323,7 @@ const taskOptions = ref({
 
 let stopSignal = false;
 let taskStartTime = 0;
+let taskAbortController: AbortController | null = null;
 
 // ── 示例任务 ───────────────────────────────────────────
 const exampleTasks = [
@@ -340,7 +385,7 @@ const loadKnowledgeBases = async () => {
   } catch { /* ignore */ }
 };
 
-// ── 任务执行（模拟 ReAct Agent 流程） ─────────────────
+// ── 任务执行（云端/本地模型均走 /api/agent/task SSE） ──
 const startTask = async () => {
   if (!taskInput.value.trim() || isRunning.value) return;
 
@@ -349,138 +394,179 @@ const startTask = async () => {
   steps.value = [];
   finalOutput.value = '';
   taskStartTime = Date.now();
+  taskAbortController = new AbortController();
+
+  const query = taskInput.value;
+  const model = selectedModel.value;
+  const modelInfo = selectedModelInfo.value;
 
   const taskRecord: TaskRecord = {
     id: Date.now().toString(),
-    input: taskInput.value,
+    input: query,
     status: 'running',
     statusText: '执行中',
     time: new Date().toLocaleTimeString(),
+    model,
   };
   currentTask.value = taskRecord;
 
-  const query = taskInput.value;
-
-  // 构建任务步骤计划
-  const plannedSteps: TaskStep[] = [
-    { name: '理解任务目标', type: 'think', status: 'pending', detail: `分析任务：${query.slice(0, 60)}${query.length > 60 ? '...' : ''}` },
-    { name: '规划执行流程', type: 'think', status: 'pending', detail: '拆解子任务，确定执行顺序' },
-    { name: '信息检索', type: 'search', status: 'pending', detail: taskOptions.value.useKnowledgeBase ? '在知识库中检索相关内容' : '分析已有背景知识' },
-    { name: '内容精读与提取', type: 'read', status: 'pending', detail: '提炼关键信息和核心观点' },
-    { name: '生成结构化草稿', type: 'write', status: 'pending', detail: '按照任务要求组织内容结构' },
-    { name: '润色与优化', type: 'write', status: 'pending', detail: '完善表达，确保逻辑连贯' },
+  // 初始化步骤（服务端会动态更新）
+  steps.value = [
+    { name: '理解任务目标', type: 'think', status: 'pending', detail: `${query.slice(0, 60)}${query.length > 60 ? '...' : ''}` },
+    { name: taskOptions.value.useKnowledgeBase ? '检索知识库' : '规划执行流程', type: taskOptions.value.useKnowledgeBase ? 'search' : 'think', status: 'pending', detail: taskOptions.value.useKnowledgeBase ? `知识库 ${taskOptions.value.selectedKbId}` : '基于模型知识推理' },
+    { name: '生成结构化草稿', type: 'write', status: 'pending', detail: `使用 ${modelInfo?.name || model}` },
+    { name: '润色与优化', type: 'write', status: 'pending', detail: '流式生成输出' },
   ];
 
-  steps.value = plannedSteps;
-
-  // 逐步执行
   try {
-    for (let i = 0; i < steps.value.length; i++) {
-      if (stopSignal) break;
+    // 判断 provider：云端 / 本地均走统一的 /api/agent/task 端点
+    const isCloud = modelInfo?.provider !== 'ollama';
 
-      steps.value[i].status = 'running';
-      await sleep(800 + Math.random() * 600);
-
-      if (stopSignal) break;
-
-      steps.value[i].status = 'completed';
-
-      // 最后一步前调用后端 ReAct Agent
-      if (i === steps.value.length - 2) {
-        try {
-          const docsDir = taskOptions.value.useKnowledgeBase && taskOptions.value.selectedKbId
-            ? `local-KLB-files/${taskOptions.value.selectedKbId}`
-            : 'local-KLB-files';
-
-          const resp = await axios.post('/api/RAG/agent_query_sync', {
-            query,
-            docs_dir: docsDir,
-          }, { timeout: 60000 });
-
-          if (resp.data?.answer) {
-            steps.value[i + 1].result = resp.data.answer.slice(0, 200) + (resp.data.answer.length > 200 ? '...' : '');
-          }
-        } catch { /* 后端可能未就绪，跳过 */ }
-      }
+    if (isCloud || true) {
+      // 使用新的统一 /api/agent/task 端点（云端+本地都支持）
+      await runViaAgentTaskAPI(query, model, taskRecord);
     }
 
+  } catch (e: any) {
     if (!stopSignal) {
-      // 生成最终输出
-      await generateFinalOutput(query);
-
-      taskRecord.status = 'completed';
-      taskRecord.statusText = '已完成';
-      taskRecord.duration = Math.round((Date.now() - taskStartTime) / 1000);
-      taskRecord.output = finalOutput.value;
-      taskHistory.value.unshift({ ...taskRecord });
-      saveHistory();
+      taskRecord.status = 'error';
+      taskRecord.statusText = '执行失败';
+      MessagePlugin.error(`任务执行失败：${e.message || '未知错误'}`);
     }
-  } catch (e) {
-    taskRecord.status = 'error';
-    taskRecord.statusText = '执行失败';
-    MessagePlugin.error('任务执行失败，请重试');
   } finally {
     isRunning.value = false;
-    currentTask.value = taskRecord;
+    currentTask.value = { ...taskRecord };
+    taskAbortController = null;
   }
 };
 
-// ── 生成最终输出（尝试后端+客户端降级） ────────────────
-const generateFinalOutput = async (query: string) => {
-  // 尝试从步骤结果中提取
-  const stepResult = steps.value.find(s => s.result)?.result;
+// ── 通过 /api/agent/task SSE 运行任务（云端+本地统一） ─
+async function runViaAgentTaskAPI(query: string, model: string, taskRecord: TaskRecord) {
+  const payload = {
+    query,
+    model,
+    kb_id: taskOptions.value.useKnowledgeBase && taskOptions.value.selectedKbId
+      ? taskOptions.value.selectedKbId
+      : null,
+    temperature: 0.7,
+    max_tokens: 4096,
+  };
 
-  if (stepResult && stepResult.length > 100) {
-    finalOutput.value = `## 任务结果\n\n**任务**：${query}\n\n${stepResult}`;
-    return;
+  const resp = await fetch('/api/agent/task', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: taskAbortController?.signal,
+  });
+
+  if (!resp.ok) {
+    throw new Error(`后端返回 ${resp.status}`);
   }
 
-  // 客户端降级：生成结构化模板
-  const sections = buildOutputTemplate(query);
-  finalOutput.value = sections;
-};
+  const reader = resp.body!.getReader();
+  const decoder = new TextDecoder();
+  let contentBuffer = '';
 
-const buildOutputTemplate = (query: string): string => {
-  return `## 📋 任务完成报告
+  // 步骤序号映射（backend index → front steps[]）
+  const stepMap: Record<number, number> = { 0: 0, 1: 1, 2: 2, 3: 3 };
 
-**任务指令**：${query}
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done || stopSignal) break;
 
----
+    const text = decoder.decode(value, { stream: true });
+    const lines = text.split('\n');
 
-### 执行摘要
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (!raw) continue;
 
-基于任务目标，AI Agent 完成了以下工作流程：
-- 🧠 分析并理解了任务需求
-- 🔍 检索了相关背景信息  
-- 📖 提炼了核心要点
-- ✍️ 生成了结构化内容
+      try {
+        const evt = JSON.parse(raw);
 
-### 主要发现
+        if (evt.event === 'step') {
+          // 步骤开始
+          const idx = stepMap[evt.index] ?? evt.index;
+          if (idx < steps.value.length) {
+            // 把之前步骤标完成
+            for (let i = 0; i < idx; i++) {
+              if (steps.value[i].status !== 'completed') steps.value[i].status = 'completed';
+            }
+            steps.value[idx].status = 'running';
+            if (evt.name) steps.value[idx].name = evt.name;
+            if (evt.detail) steps.value[idx].detail = evt.detail;
+          }
 
-> 当前为离线演示模式。要获取基于知识库的真实分析，请确保后端 Ollama 服务已启动，并在任务选项中选择知识库。
+        } else if (evt.event === 'step_result') {
+          const idx = stepMap[evt.index] ?? evt.index;
+          if (idx < steps.value.length && evt.detail) {
+            steps.value[idx].result = evt.detail;
+          }
 
-### 建议后续步骤
+        } else if (evt.content !== undefined) {
+          // 内容片段（来自 _stream_xxx 的 {content, done} 格式）
+          if (evt.content && !evt.done) {
+            contentBuffer += evt.content;
+            finalOutput.value = contentBuffer;
+            // 标记第3步（生成草稿）为running
+            if (steps.value[2]?.status !== 'completed') steps.value[2].status = 'running';
+          }
+          if (evt.done) {
+            // 流结束
+          }
 
-1. 开启知识库并上传相关文档
-2. 确保 Ollama 模型已下载（推荐 qwen2:0.5b）
-3. 重新执行此任务以获取真实内容
+        } else if (evt.event === 'done') {
+          // 全部完成
+          steps.value.forEach(s => { if (s.status !== 'completed') s.status = 'completed'; });
+          taskRecord.status = 'completed';
+          taskRecord.statusText = '已完成';
+          taskRecord.duration = Math.round((Date.now() - taskStartTime) / 1000);
+          taskRecord.output = finalOutput.value;
+          taskHistory.value.unshift({ ...taskRecord });
+          saveHistory();
 
----
+        } else if (evt.event === 'error') {
+          steps.value.forEach(s => { if (s.status === 'running') s.status = 'error'; });
+          MessagePlugin.error(`模型错误：${evt.message}`);
+          taskRecord.status = 'error';
+          taskRecord.statusText = '执行失败';
 
-*任务完成时间：${new Date().toLocaleString()}*`;
-};
+        } else if (evt.error) {
+          MessagePlugin.error(`模型错误：${evt.error}`);
+          taskRecord.status = 'error';
+          taskRecord.statusText = '执行失败';
+        }
+
+      } catch {
+        // 非 JSON 行（如日志），忽略
+      }
+    }
+  }
+
+  // 若流结束但没收到 done 事件（如连接中断），设为完成
+  if (taskRecord.status === 'running' && finalOutput.value) {
+    steps.value.forEach(s => { if (s.status === 'running' || s.status === 'pending') s.status = 'completed'; });
+    taskRecord.status = 'completed';
+    taskRecord.statusText = '已完成';
+    taskRecord.duration = Math.round((Date.now() - taskStartTime) / 1000);
+    taskRecord.output = finalOutput.value;
+    taskHistory.value.unshift({ ...taskRecord });
+    saveHistory();
+  }
+}
 
 // ── 辅助方法 ───────────────────────────────────────────
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 const stopTask = () => {
   stopSignal = true;
+  taskAbortController?.abort();
   isRunning.value = false;
   if (currentTask.value) {
     currentTask.value.status = 'error';
     currentTask.value.statusText = '已停止';
   }
-  // 将进行中的步骤标为停止
   steps.value.forEach(s => {
     if (s.status === 'running') s.status = 'pending';
   });
@@ -526,7 +612,7 @@ const clearHistory = () => {
 };
 
 const saveHistory = () => {
-  const saved = taskHistory.value.slice(0, 20); // 最多保留20条
+  const saved = taskHistory.value.slice(0, 20);
   localStorage.setItem('agent_task_history', JSON.stringify(saved));
 };
 
@@ -540,13 +626,13 @@ const loadHistory = () => {
 onMounted(() => {
   loadKnowledgeBases();
   loadHistory();
-  // 后台持续检测 Ollama 进程状态（每 10 秒检查一次）
-  checkOllamaStatus()
-  ollamaCheckInterval = setInterval(checkOllamaStatus, 10000)
+  loadModels();
+  checkOllamaStatus();
+  ollamaCheckInterval = setInterval(checkOllamaStatus, 10000);
 });
 
 onUnmounted(() => {
-  if (ollamaCheckInterval) clearInterval(ollamaCheckInterval)
+  if (ollamaCheckInterval) clearInterval(ollamaCheckInterval);
 });
 </script>
 
@@ -636,6 +722,41 @@ onUnmounted(() => {
 .ai-badge--checking { background: #fef3c7; color: #92400e; }
 .ai-badge--online { background: #dcfce7; color: #166534; }
 .ai-badge--offline { background: #fee2e2; color: #991b1b; }
+
+/* 模型选择器 */
+.agent-model-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.model-selector-label {
+  font-size: 12px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+.model-select-dropdown {
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  color: #1f2937;
+  cursor: pointer;
+  max-width: 200px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.model-select-dropdown:hover,
+.model-select-dropdown:focus { border-color: #4f7ef8; }
+.model-status-dot {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+  font-weight: 500;
+}
+.dot--online { background: #dcfce7; color: #166534; }
+.dot--offline { background: #fee2e2; color: #991b1b; }
 
 /* Content Layout */
 .agent-content {
@@ -892,6 +1013,16 @@ onUnmounted(() => {
   font-size: 12px;
   color: #9ca3af;
   margin-top: 3px;
+}
+.task-model-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 11px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #3b82f6;
+  font-weight: 500;
 }
 .task-exec-actions {
   display: flex;
