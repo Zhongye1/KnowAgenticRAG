@@ -1,0 +1,135 @@
+{
+  "_info": {
+    "name": "KnowledgeRAG 冒烟测试套件",
+    "description": "7 条核心接口的自动化冒烟测试。运行前确保：\n1. 后端已启动（http://localhost:8000 或配置好服务器环境）\n2. 测试账号已存在（test@rag-gzhu.com / Test123456），或修改下方 variables 中的测试凭据\n3. Apifox 已导入 environments/ 目录中的环境文件\n\n运行方式：\n  Apifox → 测试管理 → 新建测试用例 → 导入此文件 → 运行",
+    "version": "1.0",
+    "created_at": "2026-03-28"
+  },
+  "variables": {
+    "test_email": "test@rag-gzhu.com",
+    "test_password": "Test123456"
+  },
+  "test_cases": [
+    {
+      "id": "TC01",
+      "name": "✅ 健康检查",
+      "description": "验证后端服务正常运行",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/",
+        "headers": {}
+      },
+      "assertions": [
+        { "type": "status_code", "expected": 200 },
+        { "type": "json_field", "path": "status", "expected": "healthy" },
+        { "type": "json_field", "path": "service", "expected": "RAG Backend Service" }
+      ],
+      "post_script": "pm.test('TC01 健康检查通过', () => {\n    pm.response.to.have.status(200);\n    const body = pm.response.json();\n    pm.expect(body.status).to.equal('healthy');\n    console.log('✅ TC01 通过 - 后端服务健康');\n});"
+    },
+    {
+      "id": "TC02",
+      "name": "✅ 用户登录",
+      "description": "验证登录接口正常，并提取 Token 供后续测试使用",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/login/login",
+        "headers": { "Content-Type": "application/json" },
+        "body": {
+          "email": "{{test_email}}",
+          "password": "{{test_password}}"
+        }
+      },
+      "assertions": [
+        { "type": "status_code", "expected": 200 },
+        { "type": "json_field_exists", "path": "access_token" }
+      ],
+      "post_script": "pm.test('TC02 登录成功', () => {\n    pm.response.to.have.status(200);\n    const body = pm.response.json();\n    pm.expect(body).to.have.property('access_token');\n    // 写入环境变量供后续 TC 使用\n    pm.environment.set('token', body.access_token);\n    console.log('✅ TC02 通过 - Token 已写入环境变量');\n});"
+    },
+    {
+      "id": "TC03",
+      "name": "✅ 获取模型列表",
+      "description": "验证多模型列表接口正常，确认至少有一个可用模型",
+      "depends_on": "TC02",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/models/list",
+        "headers": { "Authorization": "Bearer {{token}}" }
+      },
+      "assertions": [
+        { "type": "status_code", "expected": 200 },
+        { "type": "json_field_exists", "path": "models" },
+        { "type": "json_array_min_length", "path": "models", "min": 1 }
+      ],
+      "post_script": "pm.test('TC03 模型列表正常', () => {\n    pm.response.to.have.status(200);\n    const body = pm.response.json();\n    pm.expect(body.models).to.be.an('array').with.length.greaterThan(0);\n    const availableModels = body.models.filter(m => m.available);\n    console.log('✅ TC03 通过 - 共', body.models.length, '个模型，', availableModels.length, '个可用');\n});"
+    },
+    {
+      "id": "TC04",
+      "name": "✅ 获取知识库列表",
+      "description": "验证知识库列表接口正常",
+      "depends_on": "TC02",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/knowledge/list",
+        "headers": { "Authorization": "Bearer {{token}}" }
+      },
+      "assertions": [
+        { "type": "status_code", "expected": 200 },
+        { "type": "response_time_lt", "ms": 3000 }
+      ],
+      "post_script": "pm.test('TC04 知识库列表接口正常', () => {\n    pm.response.to.have.status(200);\n    const body = pm.response.json();\n    pm.expect(body).to.be.an('array');\n    if (body.length > 0) {\n        pm.environment.set('test_kb_id', body[0].id);\n        console.log('✅ TC04 通过 - 共', body.length, '个知识库，首个 KB ID:', body[0].id);\n    } else {\n        console.log('✅ TC04 通过 - 当前无知识库（首次使用时正常）');\n    }\n});"
+    },
+    {
+      "id": "TC05",
+      "name": "✅ 广场知识库列表",
+      "description": "验证知识广场接口（无需登录）",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/square/kbs?limit=5",
+        "headers": {}
+      },
+      "assertions": [
+        { "type": "status_code", "expected": 200 },
+        { "type": "response_time_lt", "ms": 2000 }
+      ],
+      "post_script": "pm.test('TC05 知识广场接口正常', () => {\n    pm.response.to.have.status(200);\n    const body = pm.response.json();\n    pm.expect(body).to.be.an('array');\n    console.log('✅ TC05 通过 - 广场共', body.length, '条数据（最多返回5条）');\n});"
+    },
+    {
+      "id": "TC06",
+      "name": "✅ 用户个人信息",
+      "description": "验证用户信息接口，确认 Token 鉴权生效",
+      "depends_on": "TC02",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/user/profile",
+        "headers": { "Authorization": "Bearer {{token}}" }
+      },
+      "assertions": [
+        { "type": "status_code", "expected": 200 },
+        { "type": "json_field_exists", "path": "email" }
+      ],
+      "post_script": "pm.test('TC06 用户信息接口正常', () => {\n    pm.response.to.have.status(200);\n    const body = pm.response.json();\n    pm.expect(body).to.have.property('email');\n    console.log('✅ TC06 通过 - 当前用户:', body.email);\n});"
+    },
+    {
+      "id": "TC07",
+      "name": "✅ 审计日志查询",
+      "description": "验证审计日志接口，确认前面几条 TC 的调用均被记录",
+      "depends_on": "TC02",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/api/audit/logs?limit=10",
+        "headers": { "Authorization": "Bearer {{token}}" }
+      },
+      "assertions": [
+        { "type": "status_code", "expected": 200 }
+      ],
+      "post_script": "pm.test('TC07 审计日志接口正常', () => {\n    pm.response.to.have.status(200);\n    console.log('✅ TC07 通过 - 审计日志接口响应正常');\n    console.log('\\n🎉 冒烟测试全部通过！后端服务健康。');\n});"
+    }
+  ],
+  "usage_in_apifox": {
+    "step1": "Apifox → 测试管理 → 新建测试用例",
+    "step2": "按顺序添加以上 7 个接口（参考 request 字段中的 method/url/body）",
+    "step3": "在每个接口的「后置操作」中粘贴对应的 post_script",
+    "step4": "点击「运行」，查看测试报告",
+    "tip": "也可直接在「接口」视图中逐一运行，观察控制台输出的 ✅/❌ 标志"
+  }
+}

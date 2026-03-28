@@ -1,0 +1,42 @@
+{
+  "apifox_env_version": "2.0",
+  "name": "本地开发环境",
+  "description": "本地运行时使用，后端 localhost:8000 + 前端 localhost:5173",
+  "variables": [
+    {
+      "name": "base_url",
+      "value": "http://localhost:8000",
+      "description": "后端 API 根地址（uvicorn main:app --port 8000）"
+    },
+    {
+      "name": "frontend_url",
+      "value": "http://localhost:5173",
+      "description": "前端 Vite 开发服务地址"
+    },
+    {
+      "name": "ollama_url",
+      "value": "http://localhost:11434",
+      "description": "本地 Ollama 服务地址"
+    },
+    {
+      "name": "token",
+      "value": "",
+      "description": "JWT Token（登录后由前置脚本自动填入，无需手动填写）"
+    },
+    {
+      "name": "test_email",
+      "value": "test@rag-gzhu.com",
+      "description": "测试账号邮箱（用于自动化测试登录）"
+    },
+    {
+      "name": "test_password",
+      "value": "Test123456",
+      "description": "测试账号密码"
+    },
+    {
+      "name": "test_kb_id",
+      "value": "",
+      "description": "测试知识库 ID（首次运行后自动填入）"
+    }
+  ]
+}

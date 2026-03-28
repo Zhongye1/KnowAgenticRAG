@@ -1,0 +1,47 @@
+{
+  "apifox_env_version": "2.0",
+  "name": "云服务器环境",
+  "description": "部署验证使用，后端 8.163.51.93:8000 + 前端 8.163.51.93:8089",
+  "variables": [
+    {
+      "name": "base_url",
+      "value": "http://8.163.51.93:8000",
+      "description": "云服务器后端 API 根地址（Ubuntu 24.04 公网服务器）"
+    },
+    {
+      "name": "frontend_url",
+      "value": "http://8.163.51.93:8089",
+      "description": "云服务器前端 Nginx 地址（Docker 容器）"
+    },
+    {
+      "name": "ollama_url",
+      "value": "http://8.163.51.93:11434",
+      "description": "云服务器 Ollama 地址（Docker 容器端口 11435 映射）"
+    },
+    {
+      "name": "token",
+      "value": "",
+      "description": "JWT Token（登录后由前置脚本自动填入）"
+    },
+    {
+      "name": "test_email",
+      "value": "test@rag-gzhu.com",
+      "description": "测试账号邮箱"
+    },
+    {
+      "name": "test_password",
+      "value": "Test123456",
+      "description": "测试账号密码"
+    },
+    {
+      "name": "test_kb_id",
+      "value": "",
+      "description": "测试知识库 ID"
+    }
+  ],
+  "notes": [
+    "防火墙已开放端口：8000（后端）/ 5173（前端dev）/ 11434（Ollama）/ 80 / 443 / 22",
+    "Docker Compose 服务名：frontend:8089, backend:8000, ollama:11435",
+    "如连接超时，先检查安全组和 ufw 规则是否允许当前 IP"
+  ]
+}
