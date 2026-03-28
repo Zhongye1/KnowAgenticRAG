@@ -21,7 +21,8 @@
       },
       "node": "20.19.0",
       "env": {
-        "EAS_SKIP_EXPO_DOCTOR": "1",
+        "EXPO_DOCTOR_SKIP_DEPENDENCY_CHECK": "1",
+        "EXPO_DOCTOR_ENABLE_DIRECTORY_CHECK": "0",
         "EXPO_NO_TELEMETRY": "1"
       }
     },
