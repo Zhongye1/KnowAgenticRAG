@@ -31,7 +31,7 @@ import numpy as np
 
 logger = logging.getLogger(__name__)
 
-# ─── 中文停用词表（精简版，覆盖最高频无意义词）─────────────────
+# - -
 ZH_STOPWORDS = {
     "的", "了", "在", "是", "我", "有", "和", "就", "不", "人",
     "都", "一", "一个", "上", "也", "很", "到", "说", "要", "去",
@@ -45,7 +45,7 @@ ZH_STOPWORDS = {
 }
 
 
-# ─── 数据类 ──────────────────────────────────────────────
+# - -
 @dataclass
 class TextChunk:
     text: str
@@ -63,23 +63,22 @@ class TextChunk:
         return len(self.text.split())
 
 
-# ─── 语义分块器 ──────────────────────────────────────────
+# - Semantic chunking -
 class SemanticChunker:
     """
     中文语义感知分块器
 
     分块策略（优先级从高到低）：
-    1. 大标题/章节边界（##, ===, ---）
+    1. 大标题/章节边界（##, ===, -
     2. 段落边界（双换行）
     3. 中文句子边界（。！？；）
     4. 逗号/顿号（，、）
     5. 字符硬切（最后兜底）
     """
 
-    # 默认参数
-    DEFAULT_CHUNK_SIZE    = 500   # 目标块大小（字符数）
-    DEFAULT_CHUNK_OVERLAP = 50    # 重叠字符数
-    DEFAULT_MIN_CHUNK     = 50    # 最小块大小（过小丢弃）
+    DEFAULT_CHUNK_SIZE    = 500
+    DEFAULT_CHUNK_OVERLAP = 50
+    DEFAULT_MIN_CHUNK     = 50
 
     def __init__(
         self,
@@ -93,17 +92,16 @@ class SemanticChunker:
         self.min_chunk_size   = min_chunk_size
         self.filter_stopwords = filter_stopwords
 
-        # 分割符列表（优先级从高到低）
         self._separators = [
-            r"\n#{1,6}\s",      # Markdown 标题
-            r"\n[=\-]{3,}\n",   # 水平线
-            r"\n\n+",           # 段落
-            r"(?<=[。！？\!?])\s*\n",  # 中文句末+换行
-            r"(?<=[。！？\!?])",       # 中文句末
-            r"(?<=[；;])",              # 分号
-            r"(?<=[，,、])",            # 逗号/顿号
-            r"\s+",                     # 空白
-            r"",                        # 逐字符（最后兜底）
+            r"\n#{1,6}\s", # Markdown
+            r"\n[=\-]{3,}\n",
+            r"\n\n+",
+            r"(?<=[。！？\!?])\s*\n",  # +
+            r"(?<=[。！？\!?])",
+            r"(?<=[；;])",
+            r"(?<=[，,、])",            # /
+            r"\s+",
+            r"",
         ]
 
     def split(self, text: str) -> List[TextChunk]:
@@ -113,16 +111,13 @@ class SemanticChunker:
         if not text or not text.strip():
             return []
 
-        # 预处理
         text = self._preprocess(text)
 
-        # 递归分割
         raw_chunks = self._recursive_split(text, self._separators)
 
-        # 合并过小的块
         merged = self._merge_small_chunks(raw_chunks)
 
-        # 构建 TextChunk 对象
+        # TextChunk
         chunks = []
         pos = 0
         for i, chunk_text in enumerate(merged):
@@ -152,13 +147,11 @@ class SemanticChunker:
         filtered = [w for w in words if w not in ZH_STOPWORDS and len(w.strip()) > 0]
         return " ".join(filtered) if filtered else text
 
-    # ── 内部方法 ──────────────────────────────────────────
+    # - -
     def _preprocess(self, text: str) -> str:
-        # 统一换行符
         text = text.replace("\r\n", "\n").replace("\r", "\n")
-        # 压缩超多空行（保留最多2个换行）
+        # 2
         text = re.sub(r"\n{3,}", "\n\n", text)
-        # 清理行尾空格
         text = "\n".join(line.rstrip() for line in text.split("\n"))
         return text
 
@@ -169,7 +162,6 @@ class SemanticChunker:
 
         for sep in separators:
             if sep == "":
-                # 硬切
                 return [text[i:i+self.chunk_size] for i in range(0, len(text), self.chunk_size - self.chunk_overlap)]
 
             parts = re.split(sep, text)
@@ -188,7 +180,6 @@ class SemanticChunker:
             if result:
                 return result
 
-        # 所有分隔符都没分开，硬切
         return [text[i:i+self.chunk_size] for i in range(0, len(text), self.chunk_size - self.chunk_overlap)]
 
     def _merge_small_chunks(self, chunks: List[str]) -> List[str]:
@@ -218,7 +209,7 @@ def jieba_tokenize_safe(text: str) -> List[str]:
         return text.split()
 
 
-# ─── INT8 量化向量存储 ────────────────────────────────────
+# - INT8 Vector store -
 class INT8VectorStore:
     """
     INT8 量化向量存储
@@ -278,9 +269,7 @@ class INT8VectorStore:
         q = np.array(query_embedding, dtype=np.float32)
         q_norm = q / (np.linalg.norm(q) + 1e-9)
 
-        # 反量化计算余弦相似度
         float_vecs = self._dequantize(self._vecs, self._scales)
-        # 归一化
         norms = np.linalg.norm(float_vecs, axis=1, keepdims=True) + 1e-9
         normalized = float_vecs / norms
         scores = normalized @ q_norm  # (N,)
@@ -338,7 +327,7 @@ class INT8VectorStore:
             logger.error(f"[INT8Store] Load failed: {e}")
             return False
 
-    # ── 量化核心 ──────────────────────────────────────────
+    # - -
     @staticmethod
     def _quantize(arr: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -346,7 +335,7 @@ class INT8VectorStore:
         scale = max(|v|) / 127
         """
         scales = np.max(np.abs(arr), axis=1) / 127.0  # (N,)
-        scales = np.where(scales == 0, 1.0, scales)    # 避免除零
+        scales = np.where(scales == 0, 1.0, scales)
         int8_arr = np.round(arr / scales[:, np.newaxis]).astype(np.int8)
         return int8_arr, scales
 
@@ -356,7 +345,7 @@ class INT8VectorStore:
         return int8_arr.astype(np.float32) * scales[:, np.newaxis]
 
 
-# ─── FastAPI 路由 ─────────────────────────────────────────
+# - FastAPI -
 try:
     from fastapi import APIRouter
     from pydantic import BaseModel
@@ -392,4 +381,4 @@ try:
         }
 
 except ImportError:
-    split_router = None  # 非 FastAPI 环境下静默
+    split_router = None  # FastAPI

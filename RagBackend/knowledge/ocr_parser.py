@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/ocr")
 
-# ── 图片 OCR ──────────────────────────────────────────────
+# - OCR -
 def extract_text_from_image(file_bytes: bytes, filename: str) -> str:
     """使用 PaddleOCR（优先）或 pytesseract 提取图片文字"""
     try:
@@ -55,12 +55,11 @@ def extract_text_from_pdf_scan(file_bytes: bytes) -> str:
         all_text = []
         for page_num in range(len(doc)):
             page = doc[page_num]
-            # 先尝试直接提取文字
             text = page.get_text()
             if text.strip():
                 all_text.append(text)
             else:
-                # 扫描页转图片后OCR
+                # OCR
                 pix = page.get_pixmap(dpi=200)
                 img_bytes = pix.tobytes("png")
                 ocr_text = extract_text_from_image(img_bytes, f"page_{page_num+1}.png")
@@ -70,7 +69,7 @@ def extract_text_from_pdf_scan(file_bytes: bytes) -> str:
         return f"[PDF OCR失败] {str(e)}"
 
 
-# ── 音频转文字（Whisper）────────────────────────────────────
+# - Audio to textWhisper-
 def extract_text_from_audio(file_bytes: bytes, filename: str) -> str:
     """使用 Whisper 将音频转文字"""
     try:
@@ -89,7 +88,7 @@ def extract_text_from_audio(file_bytes: bytes, filename: str) -> str:
         return f"[音频转写失败] {str(e)}"
 
 
-# ── 视频提取音轨后转文字 ─────────────────────────────────────
+# - -
 def extract_text_from_video(file_bytes: bytes, filename: str) -> str:
     """提取视频音轨 → Whisper 转文字"""
     try:
@@ -100,14 +99,14 @@ def extract_text_from_video(file_bytes: bytes, filename: str) -> str:
             tmp.write(file_bytes)
             video_path = tmp.name
         audio_path = video_path + ".wav"
-        # 用 moviepy 提取音轨
+        # moviepy
         try:
             from moviepy.editor import VideoFileClip
             clip = VideoFileClip(video_path)
             clip.audio.write_audiofile(audio_path, logger=None)
             clip.close()
         except ImportError:
-            # 降级: ffmpeg 命令行
+            # : ffmpeg
             os.system(f'ffmpeg -i "{video_path}" -vn -acodec pcm_s16le -ar 16000 "{audio_path}" -y -loglevel quiet')
 
         with open(audio_path, 'rb') as f:
@@ -121,7 +120,7 @@ def extract_text_from_video(file_bytes: bytes, filename: str) -> str:
         return f"[视频转写失败] {str(e)}"
 
 
-# ── 统一入口 ─────────────────────────────────────────────────
+# - -
 def extract_content(file_bytes: bytes, filename: str, content_type: str = "") -> str:
     """根据文件类型自动选择解析策略"""
     ext = Path(filename).suffix.lower()
@@ -138,14 +137,13 @@ def extract_content(file_bytes: bytes, filename: str, content_type: str = "") ->
     elif ext == '.pdf':
         return extract_text_from_pdf_scan(file_bytes)
     else:
-        # 通用文本提取
         try:
             return file_bytes.decode('utf-8', errors='ignore')
         except:
             return "[无法提取内容]"
 
 
-# ── FastAPI 路由 ─────────────────────────────────────────────
+# - FastAPI -
 @router.post("/extract")
 async def ocr_extract(file: UploadFile = File(...)):
     """上传文件，返回提取的文本内容"""

@@ -14,7 +14,7 @@ sys.path.insert(0, str(BACKEND_ROOT))
 sys.path.insert(0, str(BACKEND_ROOT / "RAG_M" / "src"))
 
 # ────────────────────────────────────────────
-# Mock langchain Document（避免 langchain 依赖）
+# Mock langchain Document langchain
 # ────────────────────────────────────────────
 class FakeDocument:
     """模拟 langchain Document 对象"""
@@ -24,16 +24,16 @@ class FakeDocument:
 
 
 # ────────────────────────────────────────────
-# 1. BM25 核心算法测试
+# 1. BM25
 # ────────────────────────────────────────────
 class TestBM25Core(unittest.TestCase):
 
     def setUp(self):
-        # 直接从文件 eval BM25 类，不依赖 langchain 导入
+        # eval BM25 langchain
         import ast
         src_path = BACKEND_ROOT / "RAG_M" / "src" / "rag" / "hybrid_retriever.py"
         source = src_path.read_text(encoding="utf-8")
-        # 替换 langchain 导入为 mock
+        # langchain mock
         source = source.replace(
             "from langchain.docstore.document import Document", ""
         ).replace(
@@ -108,7 +108,7 @@ class TestBM25Core(unittest.TestCase):
 
 
 # ────────────────────────────────────────────
-# 2. RRF 融合排序测试
+# 2. RRF
 # ────────────────────────────────────────────
 class TestRRFFusion(unittest.TestCase):
 
@@ -151,7 +151,7 @@ class TestRRFFusion(unittest.TestCase):
 
 
 # ────────────────────────────────────────────
-# 3. HybridRetriever 集成测试（Mock FAISS）
+# 3. HybridRetriever Mock FAISS
 # ────────────────────────────────────────────
 class TestHybridRetrieverIntegration(unittest.TestCase):
 
@@ -174,7 +174,7 @@ class TestHybridRetrieverIntegration(unittest.TestCase):
             FakeDocument("BM25 是经典信息检索算法", {"source": "bm25.txt", "page": 1}),
         ]
 
-        # 构建 Mock FAISS vectorstore
+        # Mock FAISS vectorstore
         self.mock_vs = MagicMock()
         self.mock_vs.similarity_search_with_score.return_value = [
             (self.docs[1], 0.92),
@@ -233,7 +233,7 @@ class TestHybridRetrieverIntegration(unittest.TestCase):
 
 
 # ────────────────────────────────────────────
-# 4. vector_store.py 结构测试
+# 4. vector_store.py
 # ────────────────────────────────────────────
 class TestVectorStoreStructure(unittest.TestCase):
 
@@ -255,7 +255,7 @@ class TestVectorStoreStructure(unittest.TestCase):
         import ast
         tree = ast.parse(self.vs_path.read_text(encoding="utf-8"))
         names = {n.name for n in ast.walk(tree) if isinstance(n, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))}
-        # 实际方法：initialize_vectorstore, create_vectorstore, load_vectorstore
+        # initialize_vectorstore, create_vectorstore, load_vectorstore
         has_create = any("vectorstore" in n.lower() or "vector" in n.lower() for n in names)
         self.assertTrue(has_create, f"应有向量存储相关方法/类，实际：{names}")
 
@@ -275,7 +275,7 @@ class TestVectorStoreStructure(unittest.TestCase):
 
 
 # ────────────────────────────────────────────
-# 5. RAG Pipeline v2 结构测试
+# 5. RAG Pipeline v2
 # ────────────────────────────────────────────
 class TestRAGPipelineStructure(unittest.TestCase):
 
@@ -324,7 +324,7 @@ class TestRAGPipelineStructure(unittest.TestCase):
 
 
 # ────────────────────────────────────────────
-# 6. 知识图谱合并逻辑测试
+# 6. Knowledge graph
 # ────────────────────────────────────────────
 class TestKnowledgeGraphMerge(unittest.TestCase):
 
@@ -381,7 +381,6 @@ class TestKnowledgeGraphMerge(unittest.TestCase):
 
 
 # ────────────────────────────────────────────
-# 主程序
 # ────────────────────────────────────────────
 if __name__ == "__main__":
     loader = unittest.TestLoader()

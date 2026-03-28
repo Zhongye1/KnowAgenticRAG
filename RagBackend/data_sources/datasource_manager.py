@@ -14,7 +14,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# ── 数据库 ─────────────────────────────────────────────────────
+# - -
 DS_DB_PATH = Path(__file__).parent.parent / "metadata" / "datasources.db"
 
 def _get_conn():
@@ -46,17 +46,17 @@ def ensure_datasource_table():
         logger.warning(f"数据源表初始化失败: {e}")
 
 
-# ── Pydantic 模型 ──────────────────────────────────────────────
+# - Pydantic -
 class OSSConfig(BaseModel):
     endpoint: str
     bucket: str
     access_key_id: str
     access_key_secret: str
     region: Optional[str] = None
-    prefix: Optional[str] = None      # 只同步指定前缀下的文件
+    prefix: Optional[str] = None
 
 class S3Config(BaseModel):
-    endpoint_url: Optional[str] = None    # 自定义端点（MinIO 等）
+    endpoint_url: Optional[str] = None    # MinIO
     bucket: str
     aws_access_key_id: str
     aws_secret_access_key: str
@@ -70,8 +70,8 @@ class DatabaseConfig(BaseModel):
     database: str
     username: Optional[str] = None
     password: Optional[str] = None
-    query: str              # 用于提取文本数据的 SQL 查询
-    text_column: str        # 文本内容列名
+    query: str              # SQL
+    text_column: str
     id_column: str = "id"
 
 class CreateDatasourceRequest(BaseModel):
@@ -81,7 +81,7 @@ class CreateDatasourceRequest(BaseModel):
     kb_id: Optional[str] = None
 
 
-# ── API 端点 ───────────────────────────────────────────────────
+# - API -
 @router.get("/api/datasources/list")
 async def list_datasources():
     """获取所有数据源配置"""
@@ -91,7 +91,6 @@ async def list_datasources():
         result = []
         for row in rows:
             d = dict(row)
-            # 脱敏：隐藏密钥
             try:
                 cfg = json.loads(d.get("config", "{}"))
                 for sensitive_key in ["access_key_secret", "aws_secret_access_key", "password"]:
@@ -148,7 +147,6 @@ async def test_datasource(ds_id: int):
         ds_type = ds["type"]
         config = json.loads(ds.get("config", "{}"))
         
-        # 根据类型测试连通性
         if ds_type == "oss":
             return await _test_oss_connection(config)
         elif ds_type == "s3":
@@ -174,7 +172,7 @@ async def _test_oss_connection(config: dict) -> dict:
         import oss2
         auth = oss2.Auth(config["access_key_id"], config["access_key_secret"])
         bucket = oss2.Bucket(auth, config["endpoint"], config["bucket"])
-        # 列出前3个对象即可验证连通性
+        # 3
         objects = list(oss2.ObjectIterator(bucket, max_keys=3))
         return {"status": "ok", "message": f"OSS 连通成功，共可访问对象若干", "sample_count": len(objects)}
     except ImportError:
@@ -255,7 +253,6 @@ async def sync_datasource(ds_id: int, background_tasks: BackgroundTasks):
         config = json.loads(ds.get("config", "{}"))
         kb_id = ds.get("kb_id")
 
-        # 异步后台执行同步
         background_tasks.add_task(_do_datasource_sync, ds_id, ds_type, config, kb_id)
 
         return {
@@ -393,7 +390,7 @@ async def _sync_database(db_type: str, config: dict, target_dir: Path) -> dict:
         else:
             return {"status": "skipped"}
 
-        # 每行写一个 .txt 文件
+        # .txt
         text_idx = columns.index(text_column) if text_column in columns else 0
         id_idx = columns.index(id_column) if id_column in columns else None
 

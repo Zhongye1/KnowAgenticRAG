@@ -14,7 +14,6 @@ from docx import Document
 
 router = APIRouter()
 
-# 修改导入语句，使用正确的绝对导入
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from models.model_config import get_model_config
@@ -262,7 +261,7 @@ async def get_graph_data(filename: str):
 
 
 ######################################################################
-#新增，处理知识库文件夹生成图谱
+#Generate graph
 
 
 class ProcessFolderRequest(BaseModel):
@@ -274,7 +273,6 @@ async def process_knowledge_base(request: ProcessFolderRequest):
     """
     处理指定知识库ID下的所有文档文件并生成知识图谱数据
     """
-    # 构建知识库文件夹路径 - 使用与系统其他部分一致的路径
     kb_folder_path = os.path.join("local-KLB-files", request.folder_path)
     
     if not os.path.exists(kb_folder_path):
@@ -283,7 +281,6 @@ async def process_knowledge_base(request: ProcessFolderRequest):
     if not os.path.isdir(kb_folder_path):
         raise HTTPException(status_code=400, detail=f"{kb_folder_path} is not a directory")
     
-    # 获取文件夹中所有支持的文件类型
     supported_extensions = ['.pdf', '.doc', '.docx', '.txt', '.md']
     files = [f for f in os.listdir(kb_folder_path) 
              if os.path.isfile(os.path.join(kb_folder_path, f)) 
@@ -301,16 +298,13 @@ async def process_knowledge_base(request: ProcessFolderRequest):
             file_path = os.path.join(kb_folder_path, file)
             print(f"Processing file: {file}")
             
-            # 提取文本
             content = extract_text(file_path)
             if not content:
                 print(f"Skipping file {file}, unable to extract content")
                 continue
             
-            # 分块处理
             chunks = split_text_into_chunks(content, CHUNK_SIZE)
             
-            # 提取图谱数据
             graph_data = {"nodes": [], "edges": []}
             for i, chunk in enumerate(chunks):
                 print(f"Processing chunk {i+1}/{len(chunks)}")
@@ -321,13 +315,12 @@ async def process_knowledge_base(request: ProcessFolderRequest):
                 else:
                     print(f"Failed to extract valid graph data for chunk {i+1}")
             
-            # 添加到结果列表
             results.append(ProcessFilesResponse(
                 message=f"Successfully processed {file}",
                 graph_data=graph_data
             ))
             
-            # 保存生成的知识图谱数据
+            # Knowledge graph
             output_file = os.path.join(kb_folder_path, f"{os.path.splitext(file)[0]}_graph.json")
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(graph_data, f, indent=4, ensure_ascii=False)
@@ -372,7 +365,7 @@ async def get_kb_graph_data(kb_id: str, filename: str):
 
 
 # ──────────────────────────────────────────────────────────
-# 新增：合并知识库全图、节点搜索、图谱统计
+# Graph statistics
 # ──────────────────────────────────────────────────────────
 
 def _merge_graph_data(graph_list: List[dict]) -> dict:
@@ -447,7 +440,6 @@ async def search_nodes(kb_id: str, keyword: str = ""):
     if not keyword.strip():
         raise HTTPException(status_code=400, detail="请提供搜索关键词")
 
-    # 加载并合并全图
     graph_files = [
         f for f in os.listdir(kb_folder_path)
         if f.endswith("_graph.json") and os.path.isfile(os.path.join(kb_folder_path, f))
@@ -463,7 +455,6 @@ async def search_nodes(kb_id: str, keyword: str = ""):
     merged = _merge_graph_data(graph_list)
     kw_lower = keyword.lower()
 
-    # 找到匹配节点
     matched_ids = {
         n["id"] for n in merged["nodes"]
         if kw_lower in n.get("label", "").lower() or kw_lower in n.get("id", "").lower()
@@ -472,7 +463,6 @@ async def search_nodes(kb_id: str, keyword: str = ""):
     if not matched_ids:
         return {"nodes": [], "edges": [], "message": f"未找到包含 '{keyword}' 的节点"}
 
-    # 扩展一跳邻居
     neighbor_ids = set(matched_ids)
     subgraph_edges = []
     for edge in merged["edges"]:
@@ -519,13 +509,12 @@ async def get_graph_stats(kb_id: str):
     nodes = merged["nodes"]
     edges = merged["edges"]
 
-    # 节点类型分布
     type_dist: dict = {}
     for n in nodes:
         t = n.get("type", "默认")
         type_dist[t] = type_dist.get(t, 0) + 1
 
-    # 孤立节点（度数为 0）
+    # 0
     connected_ids = set()
     for e in edges:
         connected_ids.add(e.get("source", ""))

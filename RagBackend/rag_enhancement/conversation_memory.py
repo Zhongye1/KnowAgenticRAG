@@ -15,9 +15,9 @@ from pydantic import BaseModel
 router = APIRouter(prefix="/api/memory")
 DB_PATH = os.path.join(os.path.dirname(__file__), "conversation_memory.db")
 
-# 小模型上下文窗口（token 估算：1字≈1.5token）
+# token 11.5token
 DEFAULT_MAX_TOKENS = 2048
-DEFAULT_WINDOW_TOKENS = 1500  # 保留给上下文的 token 预算
+DEFAULT_WINDOW_TOKENS = 1500  # token
 
 
 def get_db():
@@ -81,7 +81,7 @@ def summarize_messages(messages: List[Dict], model: str = None) -> str:
                           timeout=30)
         return resp.json().get("response", "")
     except:
-        # 降级：取最后几条消息的前100字拼接
+        # 100
         snippets = [f"{m['role']}: {m['content'][:100]}" for m in messages[-5:]]
         return "历史摘要：" + " | ".join(snippets)
 
@@ -154,7 +154,7 @@ def get_context_window(conv_id: str, max_tokens: int = DEFAULT_WINDOW_TOKENS):
     if not messages:
         return {"messages": [], "summary": None}
 
-    # 从最新消息往前累计 token，超出的部分压缩
+    # token
     window_msgs = []
     used_tokens = 0
     cutoff_idx = len(messages)

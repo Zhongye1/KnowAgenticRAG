@@ -63,7 +63,7 @@ class IndexDoc(BaseModel):
 
 class SearchRequest(BaseModel):
     query: str
-    kb_ids: Optional[List[str]] = None   # None = 全库搜索
+    kb_ids: Optional[List[str]] = None   # None =
     user_id: Optional[str] = None
     limit: int = 20
     offset: int = 0
@@ -74,7 +74,6 @@ class SearchRequest(BaseModel):
 def index_document(req: IndexDoc):
     """将文档写入全文索引"""
     conn = get_db()
-    # 先删除旧记录（防重复）
     conn.execute("DELETE FROM doc_fts WHERE doc_id=?", (req.doc_id,))
     conn.execute("""
         INSERT INTO doc_fts (doc_id, kb_id, filename, content, tags)
@@ -93,7 +92,7 @@ def fulltext_search(req: SearchRequest):
     if not query:
         return {"results": [], "total": 0}
 
-    # 构建 FTS 查询
+    # FTS
     fts_query = " OR ".join(f'"{word}"' for word in query.split() if word)
 
     if req.kb_ids:
@@ -120,14 +119,12 @@ def fulltext_search(req: SearchRequest):
 
     results = [dict(r) for r in rows]
 
-    # 保存搜索历史
     if req.user_id:
         conn.execute("""
             INSERT INTO search_history (user_id, query, result_count)
             VALUES (?,?,?)
         """, (req.user_id, query, len(results)))
 
-    # 更新搜索建议频率
     conn.execute("""
         INSERT INTO search_suggestions (query, frequency) VALUES (?,1)
         ON CONFLICT(query) DO UPDATE SET frequency=frequency+1, updated_at=datetime('now','localtime')

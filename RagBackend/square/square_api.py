@@ -21,10 +21,10 @@ import logging
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/square", tags=["知识广场"])
 
-# ── 数据库路径 ────────────────────────────────────────────────
+# - -
 DB_PATH = Path(__file__).parent / "square.db"
 
-# ── 初始化数据表 ──────────────────────────────────────────────
+# - Initialize -
 def ensure_tables():
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
@@ -118,7 +118,7 @@ class StarRequest(BaseModel):
     user_id: str
 
 
-# ── 辅助函数 ──────────────────────────────────────────────────
+# - -
 def _row_to_kb(row: tuple) -> dict:
     keys = ['id','kb_id','kb_name','description','tags','category','cover_color',
             'author_id','author_name','circle_id','view_count','star_count','fork_count',
@@ -136,7 +136,7 @@ def _row_to_circle(row: tuple) -> dict:
 
 
 # ═══════════════════════════════════════════════════════════════
-# 知识库分享 API
+# API
 # ═══════════════════════════════════════════════════════════════
 
 @router.get("/kbs")
@@ -183,11 +183,9 @@ def list_shared_kbs(
     }
     order_sql = order_map.get(sort, 'created_at DESC')
 
-    # 总数
     count_sql = f"SELECT COUNT(*) FROM sq_shared_kb WHERE {where_sql}"
     total = c.execute(count_sql, params).fetchone()[0]
 
-    # 分页数据
     offset = (page - 1) * page_size
     data_sql = f"""
         SELECT id,kb_id,kb_name,description,tags,category,cover_color,
@@ -215,7 +213,6 @@ def share_kb(body: ShareKbRequest):
     now = time.time()
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-    # 同一用户同一知识库不重复分享
     exists = c.execute(
         "SELECT id FROM sq_shared_kb WHERE kb_id=? AND author_id=?",
         (body.kb_id, body.author_id)
@@ -235,7 +232,7 @@ def share_kb(body: ShareKbRequest):
           body.author_id, body.author_name, body.circle_id, now, now))
     share_id = c.lastrowid
 
-    # 若指定圈子，更新圈子 kb_count
+    # kb_count
     if body.circle_id > 0:
         c.execute("UPDATE sq_circles SET kb_count = kb_count+1 WHERE id=?", (body.circle_id,))
 
@@ -317,7 +314,7 @@ def check_star(share_id: int, user_id: str = Query(...)):
 
 
 # ═══════════════════════════════════════════════════════════════
-# 圈子 API
+# API
 # ═══════════════════════════════════════════════════════════════
 
 @router.get("/circles")
@@ -370,7 +367,6 @@ def create_circle(body: CreateCircleRequest):
           json.dumps(body.tags, ensure_ascii=False),
           body.join_type, body.creator_id, body.creator_name, now))
     circle_id = c.lastrowid
-    # 创建者自动加入
     c.execute("INSERT OR IGNORE INTO sq_circle_members VALUES(?,?,?)", (circle_id, body.creator_id, now))
     conn.commit()
     conn.close()
@@ -449,7 +445,7 @@ def my_circles(user_id: str = Query(...)):
     return [_row_to_circle(r) for r in rows]
 
 
-# ── 用户知识库列表（广场分享时使用）──────────────────────────
+# - -
 @router.get("/my-kbs")
 def my_kbs_for_share(user_id: str = Query(...)):
     """获取用户可分享的知识库列表（从广场已分享表查）"""

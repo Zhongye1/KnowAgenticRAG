@@ -11,24 +11,24 @@ from pydantic import BaseModel
 import os
 import sys
 
-# 添加项目根目录到Python路径
+# Add project root to Python path
 project_root = Path(__file__).resolve().parent
 sys.path.append(str(project_root))
 
 
-# 配置结构化日志（每条日志携带 trace_id，全链路可追溯）
+# Configure structured loggingEach log carries trace_id for full traceability
 from trace_logging import setup_trace_logging, TraceMiddleware
 setup_trace_logging()
 logger = logging.getLogger(__name__)
 
-# 初始化FastAPI应用
+# Initialize FastAPI app
 app = FastAPI(title="RAG Backend Service", version="1.0")
 
 
-# ── MySQL 延迟初始化 ──────────────────────────────────────────
-# 原来在 LogonAndLogin.py 模块级直接调用 create_user_table()，
-# 若 MySQL 未启动则整个后端启动失败。
-# 修复：移到 startup 事件，连接失败只记录警告，不阻断启动。
+# - MySQL lazy initialization -
+# Previously called create_user_table() at module level in LogonAndLogin.py,
+# which caused startup failure when MySQL was not running.
+# Fix: moved to startup event; connection failure logs a warning only.
 @app.on_event("startup")
 async def _init_db_tables():
     """应用启动后尝试初始化 MySQL 表，连接失败只警告不崩溃"""
@@ -41,7 +41,7 @@ async def _init_db_tables():
             f"MySQL 数据表初始化失败（MySQL 可能未启动）: {e}\n"
             "用户相关功能暂不可用，其他服务正常运行。"
         )
-    # 初始化本地 SQLite 辅助表
+    # Initialize local SQLite auxiliary tables
     try:
         from audit.audit_log import ensure_audit_table
         from open_api.api_key_manager import ensure_apikey_table
@@ -53,7 +53,7 @@ async def _init_db_tables():
     except Exception as e:
         logger.warning(f"本地辅助表初始化失败: {e}")
 
-    # 注册向量化任务处理函数（必须在 Worker 启动前完成注册）
+    # Register vectorization task handler (must be registered before worker starts)
     try:
         from document_processing.vectorize_task import register_all
         register_all()
@@ -61,7 +61,7 @@ async def _init_db_tables():
     except Exception as e:
         logger.warning(f"向量化任务注册失败: {e}")
 
-    # 启动异步向量化任务队列 Worker（优先 Redis Stream，降级内存队列）
+    # Start async task queue worker (Redis Stream preferred, in-memory fallback)
     try:
         from document_processing.task_queue import ensure_worker_started
         await ensure_worker_started()
@@ -69,19 +69,19 @@ async def _init_db_tables():
     except Exception as e:
         logger.warning(f"任务队列 Worker 启动失败: {e}")
 
-# 配置CORS
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 在生产环境中应限制具体域名
+    allow_origins=["*"],  # Should restrict to specific domains in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# TraceID 中间件（在 CORS 之后注册，每请求注入唯一 trace_id）
+# TraceID middleware (registered after CORS, injects unique trace_id per request)
 app.add_middleware(TraceMiddleware)
 
-# 审计日志中间件（在 CORS 之后注册，确保所有 API 调用均被记录）
+# Audit log middleware (registered after CORS, records all API calls)
 try:
     from audit.audit_log import AuditMiddleware
     app.add_middleware(AuditMiddleware)
@@ -89,63 +89,63 @@ try:
 except Exception as _e:
     logger.warning(f"审计日志中间件挂载失败: {_e}")
 
-# 异步任务队列（暂未启用，保留扩展入口）
-# 如需启用 Celery，安装 celery[redis] 并取消注释以下代码：
+# Async task queue (reserved, not yet enabled)
+# To enable Celery, install celery[redis] and uncomment the following:
 # from celery import Celery
 # celery = Celery('tasks', broker='redis://localhost:6379/0', backend='redis://localhost:6379/0')
 
-# 请求模型
+# Request model
 class QueryRequest(BaseModel):
     question: str
 
 
 
-# 导入文档处理模块
-from document_processing.doc_manage import router as doc_manage  # 导入文件处理服务接口
-from document_processing.doc_upload import router as upload_models # 导入文件上传服务接口
-from document_processing.doc_list import router as doc_list # 导入文件列表服务接口
+# Import document processing module
+from document_processing.doc_manage import router as doc_manage  # Import file processing service interface
+from document_processing.doc_upload import router as upload_models # Import file upload service interface
+from document_processing.doc_list import router as doc_list # Import file list service interface
 
-from knowledge_base.knowledgeBASE4CURD import router as knowledge_CURD # 导入知识库CURD接口
-from knowledge_base.knowledgebase_cover import router as pic_cover_manage # 导入封面图床管理接口
-#ollama模型列表接口
+from knowledge_base.knowledgeBASE4CURD import router as knowledge_CURD # Import knowledge base CRUD interface
+from knowledge_base.knowledgebase_cover import router as pic_cover_manage # Import cover image management interface
+#Ollama model list interface
 from ollama_management.ollama_sRCP import router as get_ollama_models
-#RAG服务
+#RAG service
 from RAG_M.RAG_app import router as rag_service
-#对话管理
+#Chat management
 from chat_units.chat_management.chat_main import router as chat_manager_router
 
-# 导入知识库图数据模块
+# Import knowledge graph module
 from knowledge_graph.generate_kg import router as kg_graph
 #
 from RAGF_User_Management.LogonAndLogin import router as login_router
 from RAGF_User_Management.User_Management import router as user_management_router
 
-#用户设置页面
+#User settings page
 from RAGF_User_Management.User_settings import router as user_settings_router
-# QQ 登录
+# QQ login
 from RAGF_User_Management.QQ_Login import router as qq_login_router
-# 密码重置
+# Password reset
 from RAGF_User_Management.Reset_Password import router as reset_password_router
 
-# ── 新增模块导入 ──────────────────────────────────────────────
+# - New module imports -
 from multi_model.model_router import router as model_router
 from audit.audit_log import router as audit_router, ensure_audit_table, AuditMiddleware
 from open_api.api_key_manager import router as apikey_router, ensure_apikey_table
 from data_sources.datasource_manager import router as datasource_router, ensure_datasource_table
-# 增量向量化
+# Incremental vectorization
 from document_processing.incremental_vectorizer import router as incremental_vectorize_router
-# Agent 联网搜索
+# Agent web search
 from agent_tools.web_search_tool import api_router as web_search_router
-# 多模态语音识别（Whisper）
+# Multimodal speech recognition (Whisper)
 try:
     from multimodal.whisper_asr import router as whisper_router
     _whisper_available = True
 except ImportError as _e:
     logger.warning(f"Whisper 模块导入失败（openai-whisper 未安装？）: {_e}")
     _whisper_available = False
-# 用户反馈
+# User feedback
 from feedback.feedback_router import router as feedback_router
-# 办公生态联动（Obsidian + 飞书）
+# Office ecosystem integration (Obsidian + Feishu)
 try:
     from integrations.obsidian_sync import router as obsidian_router
     from integrations.feishu_bot import router as feishu_router
@@ -154,33 +154,33 @@ except ImportError as _e:
     logger.warning(f"集成模块导入失败: {_e}")
     _integrations_available = False
 
-app.include_router(knowledge_CURD, tags=["知识库CURD接口"])  # 知识库CURD接口
-app.include_router(doc_manage, tags=["文件处理服务接口"])  # 文件管理接口
-app.include_router(upload_models, tags=["文档上传服务接口"]) #文件上传接口
-app.include_router(pic_cover_manage, tags=["封面图床管理"])#封面图床管理
-app.include_router(get_ollama_models, tags=["OLLAMA模型列表获取接口"])  # Ollama模型列表接口
-#聊天服务
+app.include_router(knowledge_CURD, tags=["知识库CURD接口"])  # Knowledge base CRUD interface
+app.include_router(doc_manage, tags=["文件处理服务接口"])  # File management interface
+app.include_router(upload_models, tags=["文档上传服务接口"]) #File upload interface
+app.include_router(pic_cover_manage, tags=["封面图床管理"])#Cover image management
+app.include_router(get_ollama_models, tags=["OLLAMA模型列表获取接口"])  # Ollama model list interface
+#Chat service
 app.include_router(chat_manager_router, prefix="/api/chat", tags=["对话管理服务接口"])
-# RAG服务接口
+# RAG service
 app.include_router(rag_service, prefix="/api/RAG", tags=["RAG 服务接口"])
-# 知识图谱接口
+# Knowledge graph interface
 app.include_router(kg_graph, prefix="/api/kg", tags=["知识图谱接口"])
 
-# 用户管理接口（旧版，路由前缀隔离，避免与 user_settings_router 冲突）
+# User management interface (legacy, prefixed to avoid conflict with user_settings_router)
 app.include_router(login_router, tags=["用户登录和注册接口"])
 app.include_router(user_management_router, prefix="/api/legacy/user", tags=["用户管理接口(旧版)"])
 
-#用户设置接口
+#User settings interface
 app.include_router(user_settings_router, tags=["用户设置接口"])
-# QQ 登录接口
+# QQ login
 app.include_router(qq_login_router, tags=["QQ OAuth2.0 登录"])
-# 密码重置接口
+# Password reset interface
 app.include_router(reset_password_router, tags=["密码重置"])
 
 #
-app.include_router(doc_list, prefix="/api/files",tags=["文件列表服务接口"])  # 文档列表接口
+app.include_router(doc_list, prefix="/api/files",tags=["文件列表服务接口"])  # Document list interface
 
-# ── 新增路由注册 ──────────────────────────────────────────────
+# - New router registrations -
 app.include_router(model_router, tags=["多模型适配接口"])
 app.include_router(audit_router, tags=["审计日志接口"])
 app.include_router(apikey_router, tags=["开放API-Key管理"])
@@ -194,8 +194,8 @@ if _integrations_available:
     app.include_router(obsidian_router, tags=["办公联动-Obsidian同步"])
     app.include_router(feishu_router, tags=["办公联动-飞书机器人"])
 
-# ── 8大升级模块路由注册 ───────────────────────────────────────
-# 知识库管理升级
+# - 8 upgraded module router registrations -
+# Knowledge base management upgrade
 try:
     from knowledge.ocr_parser import router as ocr_router
     from knowledge.doc_version_manager import router as doc_version_router
@@ -211,7 +211,7 @@ try:
 except Exception as _e:
     logger.warning(f"知识库升级模块加载失败: {_e}")
 
-# RAG 增强
+# RAG enhancement
 try:
     from rag_enhancement.rag_evaluator import router as rag_eval_router
     from rag_enhancement.conversation_memory import router as conv_memory_router
@@ -223,7 +223,7 @@ try:
 except Exception as _e:
     logger.warning(f"RAG增强模块加载失败: {_e}")
 
-# Agent 企业工具链
+# Agent enterprise toolchain
 try:
     from agent_tools.agent_advanced import router as agent_advanced_router
     app.include_router(agent_advanced_router, tags=["Agent-企业工具链与插件市场"])
@@ -231,7 +231,7 @@ try:
 except Exception as _e:
     logger.warning(f"Agent企业工具链加载失败: {_e}")
 
-# 多模型扩展
+# Multi-model extension
 try:
     from multi_model.extended_model_router import router as ext_model_router
     app.include_router(ext_model_router, tags=["多模型-百炼/星火/负载均衡/统计"])
@@ -239,7 +239,7 @@ try:
 except Exception as _e:
     logger.warning(f"扩展多模型路由加载失败: {_e}")
 
-# 企业合规
+# Enterprise compliance
 try:
     from enterprise.compliance_manager import router as compliance_router
     app.include_router(compliance_router, tags=["企业合规-SSO/多租户/限流/脱敏"])
@@ -247,7 +247,7 @@ try:
 except Exception as _e:
     logger.warning(f"企业合规模块加载失败: {_e}")
 
-# 生态整合
+# Ecosystem integration
 try:
     from integrations.dingtalk_wecom import router as dingtalk_wecom_router
     app.include_router(dingtalk_wecom_router, tags=["生态-钉钉/企微/WPS集成"])
@@ -255,7 +255,7 @@ try:
 except Exception as _e:
     logger.warning(f"钉钉/企微集成加载失败: {_e}")
 
-# 全文检索
+# Full-text search
 try:
     from search.fulltext_search import router as fulltext_router
     app.include_router(fulltext_router, tags=["全文检索-FTS5跨库搜索"])
@@ -263,7 +263,7 @@ try:
 except Exception as _e:
     logger.warning(f"全文检索模块加载失败: {_e}")
 
-# 商业化
+# Commercialization
 try:
     from billing.billing_manager import router as billing_router
     app.include_router(billing_router, tags=["商业化-定价/订阅/工单系统"])
@@ -271,7 +271,7 @@ try:
 except Exception as _e:
     logger.warning(f"商业化模块加载失败: {_e}")
 
-# 用户自定义模型配置
+# User custom model config
 try:
     from models.user_model_config import router as user_model_config_router
     app.include_router(user_model_config_router, tags=["用户模型配置"])
@@ -279,7 +279,7 @@ try:
 except Exception as _e:
     logger.warning(f"用户模型配置模块加载失败: {_e}")
 
-# 轻量模型评测面板（LangChain Evaluation 风格，ECharts 数据）
+# Evaluation panelLangChain Evaluation ECharts
 try:
     from evaluation.eval_panel import router as eval_router
     app.include_router(eval_router, tags=["模型评测面板"])
@@ -287,7 +287,7 @@ try:
 except Exception as _e:
     logger.warning(f"模型评测面板加载失败: {_e}")
 
-# 语义分块 API（RecursiveCharacter + INT8量化）
+# Semantic chunking APIRecursiveCharacter + INT8
 try:
     from document_processing.semantic_splitter import split_router
     if split_router:
@@ -296,7 +296,7 @@ try:
 except Exception as _e:
     logger.warning(f"语义分块模块加载失败: {_e}")
 
-# cross-encoder 重排序
+# cross-encoder Reranking
 try:
     from rag_enhancement.reranker import router as reranker_router
     app.include_router(reranker_router, tags=["RAG-cross-encoder重排"])
@@ -304,7 +304,7 @@ try:
 except Exception as _e:
     logger.warning(f"cross-encoder重排模块加载失败: {_e}")
 
-# 文档创作模块
+# Document creation
 try:
     from creation.doc_creation import router as creation_router
     app.include_router(creation_router, tags=["文档创作-摘要/翻译/大纲/优化"])
@@ -312,7 +312,7 @@ try:
 except Exception as _e:
     logger.warning(f"文档创作模块加载失败: {_e}")
 
-# 系统监控（Prometheus 指标暴露）
+# Prometheus
 try:
     from monitoring.metrics import router as metrics_router, instrument_app
     instrument_app(app)
@@ -321,7 +321,7 @@ try:
 except Exception as _e:
     logger.warning(f"系统监控模块加载失败: {_e}")
 
-# 知识库备份
+# Knowledge base backup
 try:
     from enterprise.kb_backup import router as backup_router
     app.include_router(backup_router, tags=["知识库备份-Markdown/ZIP"])
@@ -329,7 +329,7 @@ try:
 except Exception as _e:
     logger.warning(f"知识库备份模块加载失败: {_e}")
 
-# ── 知识广场路由 ──────────────────────────────────────────────
+# - Square router -
 try:
     from square import square_router
     app.include_router(square_router, tags=["知识广场-分享/圈子/搜索"])
@@ -337,33 +337,28 @@ try:
 except Exception as _e:
     logger.warning(f"知识广场模块加载失败: {_e}")
 
-# 添加静态文件服务
-# 将图片存储目录映射到/static URL路径
+# /static URL
 app.mount("/static", StaticFiles(directory="local-KLB-files"), name="static")
 
-# 为封面图片专门配置一个路径
 cover_path = Path(__file__).parent / "knowledge_base" / "uploaded_pics" / "covers"
 cover_path.mkdir(parents=True, exist_ok=True)
 app.mount("/static/covers", StaticFiles(directory=str(cover_path)), name="covers")
 
-# 为用户头像配置路径
 avatar_path = Path(__file__).parent / "user_avatars"
 avatar_path.mkdir(parents=True, exist_ok=True)
 app.mount("/static/avatars", StaticFiles(directory=str(avatar_path)), name="avatars")
 
 
-# API路由
+# API
 #@app.post("/query")
 #async def handle_query(request: QueryRequest, file: UploadFile = File(None)):
-#    """处理查询请求，支持文本查询和文件上传查询"""
+# """File upload"""
 #    try:
 #        if file:
-            # 处理带文件的查询请求
 #            task_id = str(uuid.uuid4())
-#            logger.info(f"开始处理文件查询任务，任务ID: {task_id}")
-            # 读取文件内容
+# logger.info(f"ID: {task_id}")
 #            file_content = await file.read()
-            # 发送Celery任务
+            # Celery
 #            task = celery.send_task(
 #                'process_document',
 #                args=[file_content, request.question, file.filename],
@@ -371,20 +366,19 @@ app.mount("/static/avatars", StaticFiles(directory=str(avatar_path)), name="avat
 #            )
 #            return {"task_id": task.id, "status": "processing"}
 #        else:
-            # 处理纯文本查询
-#            logger.info(f"处理文本查询: {request.question}")
-            # 直接调用LLM获取答案
+# logger.info(f": {request.question}")
+            # LLM
 #            from llm_engine import LLMEngine
 #            llm_engine = LLMEngine()
 #            answer = llm_engine.direct_answer(request.question)
 #            return {"answer": answer}
 #    except Exception as e:
-#        logger.error(f"查询处理失败: {str(e)}")
-#        raise HTTPException(status_code=500, detail=f"查询处理失败: {str(e)}")
+# logger.error(f": {str(e)}")
+# raise HTTPException(status_code=500, detail=f": {str(e)}")
 
 #@app.get("/result/{task_id}")
 #def get_result(task_id: str):
-#    """获取异步任务结果"""
+# """"""
 #    try:
 #        result = celery.AsyncResult(task_id)
 #        if result.ready():
@@ -398,8 +392,8 @@ app.mount("/static/avatars", StaticFiles(directory=str(avatar_path)), name="avat
 #                "result": None
 #            }
 #    except Exception as e:
-#        logger.error(f"获取任务结果失败: {str(e)}")
-#        raise HTTPException(status_code=500, detail=f"获取任务结果失败: {str(e)}")
+# logger.error(f": {str(e)}")
+# raise HTTPException(status_code=500, detail=f": {str(e)}")
 
 @app.get("/helloworld/", response_model=dict)
 async def hello_world():
@@ -515,7 +509,7 @@ async def app_download_page():
 </html>"""
     return HTMLResponse(content=html)
 
-# 错误处理
+# Error handling
 @app.exception_handler(Exception)
 
 async def general_exception_handler(request, exc):
@@ -525,13 +519,11 @@ async def general_exception_handler(request, exc):
     )
 
 
-#启动应用
 if __name__ == "__main__":
     import uvicorn
     import sys
     import threading
     
-    # 检查是否以打包形式运行
     if getattr(sys, 'frozen', False):
         try:
             from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QMessageBox
@@ -539,21 +531,18 @@ if __name__ == "__main__":
             from PyQt5.QtCore import QTimer
             import os
             
-            # 在单独的线程中运行FastAPI服务
+            # FastAPI
             def run_server():
                 uvicorn.run(app, host="0.0.0.0", port=8000)
             
             server_thread = threading.Thread(target=run_server, daemon=True)
             server_thread.start()
             
-            # 启动系统托盘图标
             app_gui = QApplication(sys.argv)
             
-            # 创建系统托盘图标
             tray_icon = QSystemTrayIcon()
-            tray_icon.setIcon(QIcon("assets/icon.ico"))  # 使用项目图标
+            tray_icon.setIcon(QIcon("assets/icon.ico"))
             
-            # 创建右键菜单
             menu = QMenu()
             exit_action = menu.addAction("退出")
             exit_action.triggered.connect(lambda: os._exit(0))
@@ -576,7 +565,7 @@ if __name__ == "__main__":
             
             sys.exit(app_gui.exec_())
         except ImportError:
-            # 如果没有PyQt5，则在控制台显示信息并保持运行
+            # PyQt5
             print("ASF-RAG 后端服务正在运行...")
             print("访问地址: http://localhost:8000")
             print("按 Ctrl+C 退出服务")
@@ -585,7 +574,6 @@ if __name__ == "__main__":
             except KeyboardInterrupt:
                 print("服务已停止")
     else:
-        # 开发环境下直接运行
         uvicorn.run(app, host="0.0.0.0", port=8000)
 
 #pyinstaller --onefile --noconsole --add-data 

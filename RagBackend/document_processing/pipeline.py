@@ -9,13 +9,12 @@ import camelot
 from pdf2image import convert_from_bytes
 from typing import Dict, List, Any
 
-# 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class DocumentPipeline:
     def __init__(self):
-        # 初始化布局分析模型
+        # Initialize
         try:
             self.layout_model = lp.Detectron2LayoutModel(
                 'lp://PubLayNet/mask_rcnn_X_101_32x8d_FPN_3x/config',
@@ -31,7 +30,6 @@ class DocumentPipeline:
         file_ext = os.path.splitext(filename)[1].lower()
         logger.info(f"开始处理文档: {filename}, 格式: {file_ext}")
 
-        # 根据文件类型选择不同的处理方式
         if file_ext == '.pdf':
             return self._process_pdf(file_content)
         elif file_ext in ['.png', '.jpg', '.jpeg', '.tiff']:
@@ -43,25 +41,22 @@ class DocumentPipeline:
     def _process_pdf(self, pdf_content: bytes) -> Dict[str, Any]:
         """处理PDF文件，提取文本、布局和表格"""
         try:
-            # 使用pdfplumber提取文本
+            # pdfplumber
             with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as temp_pdf:
                 temp_pdf.write(pdf_content)
                 temp_pdf_path = temp_pdf.name
 
-            # 提取文本
             text = []
             with PDFPlumber.open(temp_pdf_path) as pdf:
                 for page in pdf.pages:
                     text.append(page.extract_text())
             full_text = '\n'.join(text)
 
-            # 提取表格
             tables = camelot.read_pdf(temp_pdf_path, flavor='lattice', pages='all')
             table_data = []
             for table in tables:
                 table_data.append(table.df.to_dict('records'))
 
-            # 布局分析
             layout_data = []
             if self.layout_model:
                 images = convert_from_bytes(pdf_content)
@@ -69,10 +64,8 @@ class DocumentPipeline:
                     layout = self.layout_model.detect(image)
                     layout_data.append([{"type": block.type, "coordinates": block.coordinates} for block in layout])
 
-            # 分块处理
             chunks = self._chunk_text(full_text, table_data, layout_data)
 
-            # 清理临时文件
             os.unlink(temp_pdf_path)
 
             return {
@@ -83,7 +76,7 @@ class DocumentPipeline:
             }
         except Exception as e:
             logger.error(f"PDF处理失败: {str(e)}", exc_info=True)
-            # 回退到OCR处理
+            # OCR
             return self._process_image(pdf_content)
 
     def _process_image(self, image_content: bytes) -> Dict[str, Any]:
@@ -93,13 +86,11 @@ class DocumentPipeline:
                 temp_img.write(image_content)
                 temp_img_path = temp_img.name
 
-            # 使用Tesseract OCR提取文本
+            # Tesseract OCR
             text = pytesseract.image_to_string(Image.open(temp_img_path))
 
-            # 简单分块
             chunks = self._chunk_text(text, [], [])
 
-            # 清理临时文件
             os.unlink(temp_img_path)
 
             return {
@@ -142,7 +133,6 @@ class DocumentPipeline:
         tables = tables or []
         layouts = layouts or []
 
-        # 简单分块策略：按段落分割
         chunks = []
         current_chunk = []
         chunk_size = 0
@@ -151,7 +141,7 @@ class DocumentPipeline:
             if not paragraph.strip():
                 continue
 
-            # 如果当前块大小超过500字符，则开始新块
+            # 500
             if chunk_size + len(paragraph) > 500:
                 chunks.append('\n'.join(current_chunk))
                 current_chunk = [paragraph]
@@ -160,11 +150,9 @@ class DocumentPipeline:
                 current_chunk.append(paragraph)
                 chunk_size += len(paragraph)
 
-        # 添加最后一个块
         if current_chunk:
             chunks.append('\n'.join(current_chunk))
 
-        # 添加表格数据作为单独的块
         for table in tables:
             table_str = f"表格数据: {str(table)}"
             chunks.append(table_str)

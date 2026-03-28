@@ -7,7 +7,6 @@ import logging
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
-# 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -15,10 +14,10 @@ router = APIRouter()
 import os
 from dotenv import load_dotenv
 
-# 加载环境变量
+# Environment variable
 load_dotenv()
 
-# 统一从公共配置模块导入，不再重复定义 DB_CONFIG
+# DB_CONFIG
 from RAGF_User_Management.db_config import get_db_connection
 
 
@@ -31,14 +30,13 @@ async def get_user_data(token: str = Depends(oauth2_scheme)):
     conn = None
     cursor = None
     try:
-        # 验证JWT
+        # JWT
         decoded_token = jwt.decode(token, os.getenv('JWT_SECRET', 'changeme_jwt_secret'), algorithms=["HS256"])
         email = decoded_token["sub"]
-        # 获取用户数据
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 查询用户ID
+        # ID
         cursor.execute("SELECT id FROM user WHERE email=%s", (email,))
         user_result = cursor.fetchone()
         if not user_result:
@@ -46,7 +44,6 @@ async def get_user_data(token: str = Depends(oauth2_scheme)):
         
         user_id = user_result[0]
         
-        # 查询用户资料
         cursor.execute("SELECT user_id, name, signature, avatar FROM user_profile WHERE user_id=%s", (user_id,))
         user_data = cursor.fetchone()
         if user_data:
@@ -75,10 +72,9 @@ async def update_user_data(token: str = Depends(oauth2_scheme),name: str = Form(
     conn = None
     cursor = None
     try:
-        # 验证JWT
+        # JWT
         decoded_token = jwt.decode(token, os.getenv('JWT_SECRET', 'changeme_jwt_secret'), algorithms=["HS256"])
         email = decoded_token["sub"]
-        # 更新用户数据
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("UPDATE user_profile SET name=%s, signature=%s, avatar=%s WHERE user_id=(SELECT id FROM user WHERE email=%s)", (name, signatur, avatar, email))
@@ -105,13 +101,12 @@ async def delete_user_data(token: str = Depends(oauth2_scheme)):
     conn = None
     cursor = None
     try:
-        # 验证JWT
+        # JWT
         decoded_token = jwt.decode(token, os.getenv('JWT_SECRET', 'changeme_jwt_secret'), algorithms=["HS256"])
         email = decoded_token["sub"]
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        # 删除用户（会自动级联删除用户资料）
         cursor.execute("DELETE FROM user WHERE email=%s", (email,))
         conn.commit()
         
@@ -134,7 +129,7 @@ async def delete_user_data(token: str = Depends(oauth2_scheme)):
             conn.close()
 
 
-# 拿到user.db所有的数据
+# user.db
 @router.get("/api/GetUserAllData")
 async def get_user_all_data():
     """

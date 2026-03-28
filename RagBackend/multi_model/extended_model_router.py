@@ -82,12 +82,12 @@ def init_db():
 init_db()
 
 
-# ── 负载均衡器 ───────────────────────────────────────────────
+# - -
 class LoadBalancer:
     def __init__(self):
         self._fail_counts: Dict[str, int] = {}
         self._last_fail: Dict[str, float] = {}
-        self.circuit_open_seconds = 60  # 熔断时长
+        self.circuit_open_seconds = 60
 
     def is_available(self, model_id: str) -> bool:
         """检查模型是否可用（熔断器）"""
@@ -97,7 +97,7 @@ class LoadBalancer:
             if time.time() - last_fail < self.circuit_open_seconds:
                 return False
             else:
-                self._fail_counts[model_id] = 0  # 重置
+                self._fail_counts[model_id] = 0
         return True
 
     def record_success(self, model_id: str):
@@ -133,7 +133,7 @@ class LoadBalancer:
 _lb = LoadBalancer()
 
 
-# ── 各厂商 SSE 流式生成器 ────────────────────────────────────
+# - SSE -
 async def stream_ollama(model_id: str, prompt: str) -> AsyncIterator[str]:
     import httpx
     base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -185,7 +185,7 @@ async def stream_xfyun_spark(model_id: str, messages: List[Dict]) -> AsyncIterat
     if not api_key:
         yield "[错误] XFYUN_API_KEY 未配置"
         return
-    # 生成鉴权URL
+    # URL
     host = "spark-api.xf-yun.com"
     path_map = {"spark-lite": "/v1.1/chat", "spark-pro": "/v3.1/chat", "spark-max": "/v3.5/chat"}
     path = path_map.get(model_id, "/v1.1/chat")
@@ -217,7 +217,7 @@ async def stream_xfyun_spark(model_id: str, messages: List[Dict]) -> AsyncIterat
         yield f"[星火错误] {str(e)}"
 
 
-# ── 统一 Chat API + 自动降级 ─────────────────────────────────
+# - Chat API + -
 class ChatRequest(BaseModel):
     model_id: Optional[str] = None
     messages: List[Dict]        # [{role, content}]
@@ -287,7 +287,7 @@ def list_models():
     result = []
     for r in rows:
         d = dict(r)
-        # 检查 API Key 是否已配置
+        # API Key
         env = d.get("api_key_env", "")
         d["key_configured"] = bool(os.getenv(env, "")) if env else True
         d["available"] = _lb.is_available(d["model_id"]) and (d["key_configured"] or d["provider"] == "ollama")

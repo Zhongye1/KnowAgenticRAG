@@ -22,7 +22,7 @@ from typing import List, Optional
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# 确保后端根目录在 sys.path（import model_router 时需要）
+# sys.pathimport model_router
 _backend_root = str(Path(__file__).resolve().parent.parent.parent)
 if _backend_root not in sys.path:
     sys.path.insert(0, _backend_root)
@@ -61,14 +61,14 @@ def _resolve_model(raw_model: str) -> tuple[str, str]:
     if not raw_model:
         return DEFAULT_MODEL, "ollama"
 
-    # cloud:provider:model_id 格式（前端 ModelSelector 写入）
+    # cloud:provider:model_id ModelSelector
     if raw_model.startswith("cloud:"):
         parts = raw_model.split(":", 2)
         provider = parts[1] if len(parts) > 1 else "ollama"
         model_id = parts[2] if len(parts) > 2 else DEFAULT_MODEL
         return model_id, provider
 
-    # 在 _MODEL_CATALOG 中查找 provider
+    # _MODEL_CATALOG provider
     try:
         from multi_model.model_router import _MODEL_CATALOG
         for m in _MODEL_CATALOG:
@@ -127,7 +127,6 @@ async def send_message(req: SendMessageRequest):
     raw_model = req.model or DEFAULT_MODEL
     model_id, provider = _resolve_model(raw_model)
 
-    # 构建消息列表（带历史上下文）
     messages = []
     if req.history:
         for msg in req.history:
@@ -136,17 +135,16 @@ async def send_message(req: SendMessageRequest):
             if role in ("user", "assistant") and content:
                 messages.append({"role": role, "content": content})
 
-    # 加上当前用户消息（避免重复）
     if not messages or messages[-1].get("content") != req.message:
         messages.append({"role": "user", "content": req.message})
 
-    # ── 云端模型路由 ──────────────────────────────────────────
+    # - Cloud model -
     if provider in ("deepseek", "openai", "hunyuan", "bailian", "xinghuo"):
         logger.info(f"[chat_send] 云端模型: provider={provider}, model={model_id}")
         reply = await _call_cloud_model(model_id, provider, messages)
         return {"reply": reply, "model": model_id, "provider": provider}
 
-    # ── Ollama 本地模型 ──────────────────────────────────────
+    # ── Ollama Local model ──────────────────────────────────────
     server_url = (
         req.ollamaSettings.serverUrl.rstrip("/")
         if req.ollamaSettings and req.ollamaSettings.serverUrl

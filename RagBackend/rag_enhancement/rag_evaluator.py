@@ -85,7 +85,6 @@ def submit_feedback(req: FeedbackSubmit):
           req.rating, req.thumbs, req.comment,
           req.strategy, req.top_k, req.kb_id))
 
-    # 更新策略统计
     if req.strategy:
         if req.rating:
             conn.execute("""

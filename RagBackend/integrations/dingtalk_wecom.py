@@ -16,7 +16,6 @@ router = APIRouter(prefix="/api/integrations")
 
 
 # ════════════════════════════════════════════════════════════
-# 钉钉机器人
 # ════════════════════════════════════════════════════════════
 class DingTalkMessage(BaseModel):
     webhook_url: str
@@ -85,7 +84,6 @@ async def dingtalk_test(data: dict):
 
 
 # ════════════════════════════════════════════════════════════
-# 企业微信机器人
 # ════════════════════════════════════════════════════════════
 class WeComMessage(BaseModel):
     webhook_url: str
@@ -136,14 +134,14 @@ async def wecom_send(req: WeComMessage):
 async def wecom_test(data: dict):
     req = WeComMessage(
         webhook_url=data.get("webhook_url", ""),
-        content="## RAG-F 企业微信集成测试\n> 连接成功！🎉",
+        content="## RAG-F \n> ",
         msg_type="markdown"
     )
     return await wecom_send(req)
 
 
 # ════════════════════════════════════════════════════════════
-# WPS/文档回调（接收 WPS 在线编辑保存事件）
+# WPS/ WPS
 # ════════════════════════════════════════════════════════════
 @router.post("/wps/callback")
 async def wps_callback(request: Request):
@@ -156,7 +154,6 @@ async def wps_callback(request: Request):
         filename = body.get("filename", "document.docx")
 
         if content and kb_id:
-            # 触发向量化（异步）
             import asyncio
             asyncio.create_task(_vectorize_wps_doc(doc_id, content, kb_id, filename))
             return {"status": "received", "doc_id": doc_id}
@@ -175,7 +172,7 @@ async def _vectorize_wps_doc(doc_id: str, content: str, kb_id: str, filename: st
 
 
 # ════════════════════════════════════════════════════════════
-# 通用 Webhook 推送（可配置到任意系统）
+# Webhook
 # ════════════════════════════════════════════════════════════
 class WebhookPush(BaseModel):
     url: str
@@ -198,7 +195,7 @@ async def generic_webhook_push(req: WebhookPush):
 
 
 # ════════════════════════════════════════════════════════════
-# 通用配置端点（持久化到内存，前端 savePlatformConfig 使用）
+# Config endpoint savePlatformConfig
 # ════════════════════════════════════════════════════════════
 _platform_configs: dict = {}
 

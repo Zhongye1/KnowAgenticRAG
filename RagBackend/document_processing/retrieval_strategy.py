@@ -34,7 +34,6 @@ from dataclasses import dataclass, field
 from langchain.docstore.document import Document
 from langchain_community.vectorstores import FAISS
 
-# 内部模块（容忍不同工作目录下的导入路径）
 try:
     from RAG_M.src.rag.hybrid_retriever import HybridRetriever, BM25, reciprocal_rank_fusion
 except ImportError:
@@ -44,16 +43,16 @@ logger = logging.getLogger(__name__)
 
 
 # ─────────────────────────────────────────────────────────────────
-# 检索策略配置数据类
+# Retrieval strategy
 # ─────────────────────────────────────────────────────────────────
 
 @dataclass
 class RetrievalConfig:
     strategy: str = "rrf"            # vector | bm25 | hybrid | rrf | mmr
     topK: int = 6
-    scoreThreshold: float = 0.0      # 0 = 不过滤
-    vectorWeight: float = 0.6        # hybrid 策略用
-    bm25Weight: float = 0.4          # hybrid 策略用
+    scoreThreshold: float = 0.0      # 0 =
+    vectorWeight: float = 0.6        # hybrid
+    bm25Weight: float = 0.4          # hybrid
     rerank: bool = False
     rerankTopN: int = 3
 
@@ -71,7 +70,6 @@ class RetrievalConfig:
 
 
 # ─────────────────────────────────────────────────────────────────
-# 标准化检索结果
 # ─────────────────────────────────────────────────────────────────
 
 def _build_result_item(rank: int, doc: Document, score: float) -> Dict[str, Any]:
@@ -100,8 +98,8 @@ def _extract_filename(meta: dict) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────
-# 轻量级 Cross-Encoder 模拟（关键词重叠打分 rerank）
-# 真实生产场景可替换为 sentence-transformers cross-encoder
+# Cross-Encoder rerank
+# sentence-transformers cross-encoder
 # ─────────────────────────────────────────────────────────────────
 
 def _lightweight_rerank(
@@ -121,10 +119,10 @@ def _lightweight_rerank(
         if not doc_tokens:
             return 0.0
         overlap = len(query_tokens & doc_tokens)
-        return overlap / math.sqrt(len(doc_tokens))  # BM25 风格归一化
+        return overlap / math.sqrt(len(doc_tokens))  # BM25
 
     reranked = sorted(docs_with_scores, key=overlap_score, reverse=True)
-    # 重新编号 rank
+    # rank
     for i, item in enumerate(reranked[:top_n], start=1):
         item["source_info"]["rank"] = i
         item["source_info"]["reranked"] = True
@@ -132,7 +130,6 @@ def _lightweight_rerank(
 
 
 # ─────────────────────────────────────────────────────────────────
-# 核心执行器
 # ─────────────────────────────────────────────────────────────────
 
 class RetrievalStrategyExecutor:
@@ -157,7 +154,7 @@ class RetrievalStrategyExecutor:
             self._bm25 = BM25(self.documents)
         return self._bm25
 
-    # ── 各策略实现 ──────────────────────────────────────────────
+    # - -
 
     def _vector_search(
         self, query: str, top_k: int, score_threshold: float
@@ -165,7 +162,7 @@ class RetrievalStrategyExecutor:
         raw = self.vectorstore.similarity_search_with_score(query, k=top_k * 2)
         results = []
         for rank, (doc, score) in enumerate(raw, start=1):
-            # FAISS L2 距离 → 转为相似度（越小越好，归一化到 0~1）
+            # FAISS L2 0~1
             similarity = 1.0 / (1.0 + float(score))
             if similarity < score_threshold:
                 continue
@@ -187,7 +184,7 @@ class RetrievalStrategyExecutor:
         bm25_raw = bm25.retrieve(query, top_k=config.topK * 2)
         vector_raw = self.vectorstore.similarity_search_with_score(query, k=config.topK * 2)
 
-        # 归一化 BM25 分数
+        # BM25
         b_scores: Dict[str, float] = {}
         b_docs: Dict[str, Document] = {}
         max_bm25 = max((s for _, s in bm25_raw), default=1.0) or 1.0
@@ -196,7 +193,7 @@ class RetrievalStrategyExecutor:
             b_scores[key] = score / max_bm25
             b_docs[key] = doc
 
-        # 归一化向量分数（L2 距离 → 相似度）
+        # L2
         v_scores: Dict[str, float] = {}
         v_docs: Dict[str, Document] = {}
         for doc, dist in vector_raw:
@@ -204,7 +201,6 @@ class RetrievalStrategyExecutor:
             v_scores[key] = 1.0 / (1.0 + float(dist))
             v_docs[key] = doc
 
-        # 融合
         all_keys = set(b_scores) | set(v_scores)
         fused = []
         for key in all_keys:
@@ -242,14 +238,14 @@ class RetrievalStrategyExecutor:
                 query,
                 k=config.topK,
                 fetch_k=config.topK * 3,
-                lambda_mult=0.5,   # 0=最多样, 1=最相关
+                lambda_mult=0.5,   # 0=, 1=
             )
             return [_build_result_item(i + 1, doc, 0.0) for i, doc in enumerate(docs)]
         except Exception as e:
             logger.warning(f"[MMR] 失败，降级为向量检索: {e}")
             return self._vector_search(query, config.topK, config.scoreThreshold)
 
-    # ── 统一入口 ────────────────────────────────────────────────
+    # - -
 
     def retrieve(
         self,
@@ -261,7 +257,7 @@ class RetrievalStrategyExecutor:
         每项包含 document / source_info / content_preview。
         """
         if config is None:
-            config = RetrievalConfig()  # 默认 RRF
+            config = RetrievalConfig()  # RRF
 
         logger.info(
             f"[RetrievalStrategy] 策略={config.strategy}, topK={config.topK}, "
@@ -284,7 +280,7 @@ class RetrievalStrategyExecutor:
             logger.warning(f"[RetrievalStrategy] 未知策略 '{strategy}'，使用 RRF")
             results = self._rrf_search(query, config)
 
-        # ── rerank（可选二次排序）
+        # - rerank
         if config.rerank and results:
             results = _lightweight_rerank(query, results, top_n=config.rerankTopN)
 

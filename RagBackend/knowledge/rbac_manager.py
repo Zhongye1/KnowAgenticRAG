@@ -72,7 +72,7 @@ PERMISSION_HIERARCHY = {
 }
 
 
-# ── 部门管理 ─────────────────────────────────────────────────
+# - -
 class DeptCreate(BaseModel):
     name: str
     parent_id: Optional[int] = None
@@ -96,7 +96,7 @@ def list_depts():
     return [dict(r) for r in rows]
 
 
-# ── 角色管理 ─────────────────────────────────────────────────
+# - -
 @router.get("/roles")
 def list_roles():
     conn = get_db()
@@ -136,7 +136,7 @@ def get_user_roles(user_id: str):
     return [dict(r) for r in rows]
 
 
-# ── 知识库权限 ───────────────────────────────────────────────
+# - -
 class KbPermGrant(BaseModel):
     kb_id: str
     subject_type: str   # user | role | dept
@@ -185,7 +185,6 @@ def list_kb_permissions(kb_id: str):
 def check_permission(user_id: str, kb_id: str, required_perm: str) -> bool:
     """检查用户对知识库是否有指定权限（供其他模块调用）"""
     conn = get_db()
-    # 直接用户权限
     row = conn.execute("""
         SELECT 1 FROM kb_permissions
         WHERE kb_id=? AND subject_type='user' AND subject_id=? AND permission=?
@@ -193,7 +192,6 @@ def check_permission(user_id: str, kb_id: str, required_perm: str) -> bool:
     if row:
         conn.close()
         return True
-    # 角色权限
     row = conn.execute("""
         SELECT 1 FROM kb_permissions kp
         JOIN user_roles ur ON kp.subject_type='role' AND kp.subject_id=CAST(ur.role_id AS TEXT)

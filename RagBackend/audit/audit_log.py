@@ -17,7 +17,7 @@ from functools import wraps
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# ── 审计日志数据库 ─────────────────────────────────────────────
+# - Audit log -
 AUDIT_DB_PATH = Path(__file__).parent.parent / "metadata" / "audit_log.db"
 
 def _get_conn():
@@ -91,7 +91,7 @@ def write_audit_log(
         logger.debug(f"写入审计日志失败（不影响业务）: {e}")
 
 
-# ── 从 JWT 提取用户信息的辅助函数 ──────────────────────────────
+# - JWT -
 def _extract_user_from_request(request: Request) -> dict:
     """从 Authorization header 的 JWT 中提取用户信息"""
     user = {"user_id": None, "user_email": None}
@@ -109,7 +109,7 @@ def _extract_user_from_request(request: Request) -> dict:
     return user
 
 
-# ── FastAPI 中间件：自动记录所有 API 调用 ──────────────────────
+# - FastAPI Middleware API -
 class AuditMiddleware:
     """ASGI 中间件，自动记录 API 调用审计日志"""
     def __init__(self, app, skip_paths: list = None):
@@ -122,7 +122,6 @@ class AuditMiddleware:
             return
 
         path = scope.get("path", "")
-        # 跳过静态资源和文档
         if any(path.startswith(p) for p in self.skip_paths):
             await self.app(scope, receive, send)
             return
@@ -130,16 +129,15 @@ class AuditMiddleware:
         start_time = time.time()
         method = scope.get("method", "")
         
-        # 获取客户端 IP
+        # IP
         client = scope.get("client")
         ip = client[0] if client else "unknown"
         
-        # 获取 headers
+        # headers
         headers = dict(scope.get("headers", []))
         user_agent = headers.get(b"user-agent", b"").decode("utf-8", errors="ignore")
         auth_header = headers.get(b"authorization", b"").decode("utf-8", errors="ignore")
         
-        # 提取用户信息
         user_info = {"user_id": None, "user_email": None}
         if auth_header.startswith("Bearer "):
             try:
@@ -164,7 +162,6 @@ class AuditMiddleware:
             await self.app(scope, receive, send_wrapper)
         finally:
             duration_ms = (time.time() - start_time) * 1000
-            # 推断操作类型
             action = _infer_action(method, path)
             resource_type, resource_id = _infer_resource(path)
             write_audit_log(
@@ -217,7 +214,7 @@ def _infer_resource(path: str) -> tuple:
         resource_type = "user"
     elif "RAG" in path:
         resource_type = "rag_query"
-    # 尝试提取最后一个类 UUID/数字 segment 作为 resource_id
+    # UUID/ segment resource_id
     for part in reversed(parts):
         if len(part) > 4 and (part.replace("-", "").isalnum()):
             resource_id = part
@@ -225,7 +222,7 @@ def _infer_resource(path: str) -> tuple:
     return resource_type, resource_id
 
 
-# ── 查询审计日志 API ───────────────────────────────────────────
+# - Audit log API -
 @router.get("/api/audit/logs")
 async def get_audit_logs(
     page: int = Query(1, ge=1),

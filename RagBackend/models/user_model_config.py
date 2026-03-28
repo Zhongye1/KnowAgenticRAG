@@ -17,17 +17,17 @@ from pathlib import Path
 
 router = APIRouter()
 
-# 配置文件保存路径（与 models_config.json 同目录）
+# Config file models_config.json
 _CONFIG_PATH = Path(__file__).parent.parent / "models_config.json"
 
-# ── 数据模型 ──────────────────────────────────────────────────
+# - -
 
 class UserModelConfig(BaseModel):
     llm_model: str = "qwen2:0.5b"
     ollama_base_url: str = "http://localhost:11434"
-    timeout: int = 120           # Ollama 请求超时（秒）
+    timeout: int = 120           # Ollama
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    kg_model: Optional[str] = None   # 知识图谱模型，为空则复用 llm_model
+    kg_model: Optional[str] = None   # Knowledge graph llm_model
 
 
 class TestConfigRequest(BaseModel):
@@ -36,7 +36,7 @@ class TestConfigRequest(BaseModel):
     timeout: int = 10
 
 
-# ── 工具函数 ──────────────────────────────────────────────────
+# - -
 
 def _read_config_file() -> dict:
     """读取 models_config.json，不存在则返回空字典"""
@@ -73,7 +73,7 @@ def get_effective_config() -> UserModelConfig:
     )
 
 
-# ── 路由 ──────────────────────────────────────────────────────
+# - -
 
 @router.get("/api/user-model-config")
 async def get_user_model_config():
@@ -134,7 +134,7 @@ async def test_model_config(req: TestConfigRequest):
         result["ollama_reachable"] = True
 
         installed = [m.get("name", "") for m in tags_resp.json().get("models", [])]
-        # 精确匹配或前缀匹配（qwen2:0.5b 匹配 qwen2:0.5b）
+        # qwen2:0.5b qwen2:0.5b
         result["model_installed"] = req.llm_model in installed or any(
             m.startswith(req.llm_model.split(":")[0]) for m in installed
         )

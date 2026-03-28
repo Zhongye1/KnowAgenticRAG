@@ -89,7 +89,7 @@ def visualize_retrieval(log_id: int):
         return {"error": "not found"}
     retrieved = json.loads(row["retrieved"] or "[]")
 
-    # 归一化分数到 0-100
+    # 0-100
     scores = [r.get("score", 0) for r in retrieved]
     max_s = max(scores) if scores else 1
     min_s = min(scores) if scores else 0

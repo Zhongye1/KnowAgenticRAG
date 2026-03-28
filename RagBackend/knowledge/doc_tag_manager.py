@@ -52,7 +52,7 @@ def init_db():
 
 init_db()
 
-# ── 标签 CRUD ────────────────────────────────────────────────
+# - CRUD -
 class TagCreate(BaseModel):
     kb_id: str
     name: str
@@ -92,7 +92,7 @@ def delete_tag(tag_id: int):
     return {"status": "deleted"}
 
 
-# ── 文档打标签 ───────────────────────────────────────────────
+# - -
 class DocTagAssign(BaseModel):
     doc_id: str
     tag_ids: List[int]
@@ -121,7 +121,7 @@ def get_doc_tags(doc_id: str):
     return [dict(r) for r in rows]
 
 
-# ── 批量编辑 ─────────────────────────────────────────────────
+# - -
 class BatchEdit(BaseModel):
     doc_ids: List[str]
     action: str          # "add_tag" | "remove_tag" | "set_category" | "set_expire" | "archive"
@@ -167,7 +167,7 @@ def batch_edit(req: BatchEdit):
     return {"status": "done", "affected": affected}
 
 
-# ── 智能分类（基于文件名+内容关键词）────────────────────────
+# - +-
 def auto_classify(filename: str, content_preview: str = "") -> str:
     """简单规则分类，生产环境可替换为LLM分类"""
     text = (filename + " " + content_preview).lower()
@@ -195,7 +195,7 @@ def classify_doc(data: dict):
     return {"category": category}
 
 
-# ── 过期自动归档（定时任务调用）──────────────────────────────
+# - -
 @router.post("/run-archive")
 def run_archive():
     """检查过期文档并自动归档（建议每日凌晨调用）"""

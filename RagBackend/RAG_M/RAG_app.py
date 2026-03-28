@@ -23,7 +23,6 @@ import io
 import contextlib
 import sys
 
-# 导入核心组件
 project_root = str(Path(__file__).parent)
 sys.path.append(project_root)
 
@@ -46,7 +45,6 @@ def _resolve_rag_model(raw_model: Optional[str]) -> tuple:
       - "cloud:deepseek:deepseek-chat" → ('deepseek-chat', 'deepseek', True)
     """
     if not raw_model:
-        # 读用户保存的配置
         try:
             _rag_backend = str(Path(__file__).parent.parent)
             if _rag_backend not in sys.path:
@@ -57,14 +55,14 @@ def _resolve_rag_model(raw_model: Optional[str]) -> tuple:
         except Exception:
             raw_model = os.getenv("MODEL", "qwen2:0.5b")
 
-    # cloud:provider:model_id 格式
+    # cloud:provider:model_id
     if raw_model.startswith("cloud:"):
         parts = raw_model.split(":", 2)
         provider = parts[1] if len(parts) > 1 else "ollama"
         model_id = parts[2] if len(parts) > 2 else "deepseek-chat"
         return model_id, provider, True
 
-    # 在 model_router._MODEL_CATALOG 中查找 provider
+    # model_router._MODEL_CATALOG provider
     try:
         _backend_root = str(Path(__file__).parent.parent)
         if _backend_root not in sys.path:
@@ -81,10 +79,10 @@ def _resolve_rag_model(raw_model: Optional[str]) -> tuple:
 
 
 # ────────────────────────────────────────────────────────────
-# 全局 VectorStoreManager 缓存
-# 问题根因：每次请求都 new VectorStoreManager()，导致每次都重新加载
-# HuggingFaceEmbeddings 模型（~1-3 秒），频繁查询时累积极慢。
-# 修复：以 docs_dir 为 key 缓存 manager 实例，模型只加载一次。
+# VectorStoreManager
+# new VectorStoreManager()
+# HuggingFaceEmbeddings ~1-3
+# docs_dir key manager
 # ────────────────────────────────────────────────────────────
 _vsm_cache: dict = {}
 
@@ -102,8 +100,8 @@ def _get_or_create_vsm(docs_dir: str) -> "VectorStoreManager":
 class QueryRequest(BaseModel):
     query: str
     docs_dir: str = None
-    use_hybrid: bool = True  # 新增：是否使用混合检索，默认开启
-    model: Optional[str] = None  # 可选，支持 cloud:provider:model 格式
+    use_hybrid: bool = True  # Hybrid retrieval
+    model: Optional[str] = None  # cloud:provider:model
 
 
 class IngestRequest(BaseModel):
@@ -111,7 +109,7 @@ class IngestRequest(BaseModel):
 
 
 # ────────────────────────────────────────────────────────────
-# 辅助：加载向量存储 + 文档列表（用于混合检索）
+# Vector store + Document listHybrid retrieval
 # ────────────────────────────────────────────────────────────
 
 def _load_vectorstore_and_docs(docs_dir: str):
@@ -127,7 +125,7 @@ def _load_vectorstore_and_docs(docs_dir: str):
 
     vectorstore = vector_store_manager.load_vectorstore(vectorstore_path, trust_source=True)
 
-    # 尝试从 FAISS 内部 docstore 提取文档列表，用于 BM25
+    # FAISS docstore Document list BM25
     documents = []
     try:
         if hasattr(vectorstore, 'docstore') and hasattr(vectorstore.docstore, '_dict'):
@@ -140,7 +138,7 @@ def _load_vectorstore_and_docs(docs_dir: str):
 
 
 # ────────────────────────────────────────────────────────────
-# stdout 捕获（用于 ingest 进度流）
+# stdout ingest
 # ────────────────────────────────────────────────────────────
 
 @contextlib.contextmanager
@@ -164,7 +162,7 @@ def capture_stdout():
 
 
 # ────────────────────────────────────────────────────────────
-# POST /RAG_query  — 流式混合检索问答
+# POST /RAG_query - Hybrid retrieval
 # ────────────────────────────────────────────────────────────
 
 @router.post("/RAG_query")
@@ -180,7 +178,6 @@ async def process_query(query_body: QueryRequest):
         try:
             yield f"data: 开始处理查询: {query_body.query}\n\n"
 
-            # 确定文档目录
             if query_body.docs_dir:
                 docs_dir = query_body.docs_dir
             else:
@@ -203,11 +200,10 @@ async def process_query(query_body: QueryRequest):
             use_hybrid = query_body.use_hybrid and bool(documents)
             yield f"data: 检索模式: {'混合检索(BM25+向量)' if use_hybrid else '纯向量检索'}\n\n"
 
-            # 解析模型
             model_id, provider, is_cloud = _resolve_rag_model(query_body.model)
             yield f"data: 使用模型: {model_id}（{'云端·' + provider if is_cloud else 'Ollama 本地'}）\n\n"
 
-            # ── 云端模型：先检索，再调用云端生成 ────────────────────────
+            # - Cloud model -
             if is_cloud:
                 from src.rag.hybrid_retriever import HybridRetriever
                 if use_hybrid and documents:
@@ -295,7 +291,7 @@ async def process_query(query_body: QueryRequest):
                 yield "data: COMPLETE\n\n"
                 return
 
-            # ── 本地 Ollama：走原有 RAGPipeline ──────────────────────────
+            # - Ollama RAGPipeline -
             rag = RAGPipeline(
                 llm_model=model_id,
                 vectorstore=vectorstore,
@@ -329,7 +325,7 @@ async def process_query(query_body: QueryRequest):
 
 
 # ────────────────────────────────────────────────────────────
-# POST /RAG_query_sync  — 同步查询（测试/调试用）
+# POST /RAG_query_sync - /
 # ────────────────────────────────────────────────────────────
 
 @router.post("/RAG_query_sync")
@@ -366,7 +362,7 @@ async def process_query_sync(query_body: QueryRequest):
 
 
 # ────────────────────────────────────────────────────────────
-# POST /ingest  — 文档向量化（SSE 流式）
+# POST /ingest - SSE
 # ────────────────────────────────────────────────────────────
 
 @router.post("/ingest")
@@ -466,10 +462,10 @@ async def ingest_documents(ingest_body: IngestRequest):
             error_msg = f"Document ingestion failed: {str(e)}\n{traceback.format_exc()}"
             msg_queue.put_nowait(f"data: ERROR: {error_msg}\n\n")
         finally:
-            msg_queue.put_nowait(None)  # 哨兵，通知流结束
+            msg_queue.put_nowait(None)
 
     async def generate():
-        # 启动同步向量化到线程池（不阻塞 event loop）
+        # event loop
         asyncio.create_task(asyncio.to_thread(_ingest_sync))
         while True:
             msg = await msg_queue.get()
@@ -485,7 +481,7 @@ async def ingest_documents(ingest_body: IngestRequest):
 
 
 # ────────────────────────────────────────────────────────────
-# POST /init  — 项目初始化
+# POST /init - Initialize
 # ────────────────────────────────────────────────────────────
 
 @router.post("/init")
@@ -500,7 +496,7 @@ async def init_project():
 
 
 # ────────────────────────────────────────────────────────────
-# GET /health  — 健康检查
+# GET /health  — Health check
 # ────────────────────────────────────────────────────────────
 
 @router.get("/health")
@@ -519,7 +515,7 @@ async def rag_health_check():
 
 
 # ────────────────────────────────────────────────────────────
-# POST /agent_query  — ReAct Agent 流式问答
+# POST /agent_query - ReAct Agent
 # ────────────────────────────────────────────────────────────
 
 class AgentQueryRequest(BaseModel):
@@ -543,7 +539,6 @@ async def agent_query(query_body: AgentQueryRequest):
         try:
             yield f"data: 🤖 启动 ReAct Agent 模式...\n\n"
 
-            # 确定文档目录
             if query_body.docs_dir:
                 docs_dir = query_body.docs_dir
             else:
@@ -563,7 +558,7 @@ async def agent_query(query_body: AgentQueryRequest):
 
             yield f"data: ✅ 向量存储加载完成，文档块: {len(documents)} 个\n\n"
 
-            # 初始化 Agent（agent_query 暂用本地 Ollama，云端模型走 /api/agent/task 端点）
+            # Initialize Agentagent_query OllamaCloud model /api/agent/task
             model_id, _, _ = _resolve_rag_model(getattr(query_body, 'model', None))
             agent = ReActRAGAgent(
                 vectorstore=vectorstore,
@@ -573,7 +568,7 @@ async def agent_query(query_body: AgentQueryRequest):
                 verbose=False,
             )
 
-            # 流式输出
+            # Streaming output
             loop = asyncio.get_event_loop()
 
             def _run_agent():
@@ -600,11 +595,11 @@ async def agent_query(query_body: AgentQueryRequest):
 
 
 # ────────────────────────────────────────────────────────────
-# POST /agent_query_sync  — ReAct Agent 同步问答（测试用）
+# POST /agent_query_sync - ReAct Agent
 # ────────────────────────────────────────────────────────────
 
 # ────────────────────────────────────────────────────────────
-# 原生 RAG 路由（不依赖 LangChain，与上方 LangChain 路由并列）
+# RAG LangChain LangChain
 # ────────────────────────────────────────────────────────────
 
 class NativeIngestRequest(BaseModel):
@@ -615,7 +610,7 @@ class NativeQueryRequest(BaseModel):
     query: str
     docs_dir: str
     use_hybrid: bool = True
-    model: Optional[str] = None     # 可选，支持 cloud:provider:model 格式
+    model: Optional[str] = None     # cloud:provider:model
 
 
 @router.post("/native_ingest")
@@ -644,7 +639,7 @@ async def native_ingest_documents(req: NativeIngestRequest):
                 msg_queue.put_nowait(f"data: [ERROR] 目录不存在: {req.docs_dir}\n\n")
                 return
 
-            # 1. 加载文档
+            # 1.
             msg_queue.put_nowait("data: [原生RAG] 正在加载文档...\n\n")
             raw_docs = load_documents_from_dir(req.docs_dir)
             if not raw_docs:
@@ -652,17 +647,17 @@ async def native_ingest_documents(req: NativeIngestRequest):
                 return
             msg_queue.put_nowait(f"data: [原生RAG] 加载完成，共 {len(raw_docs)} 页原始文档\n\n")
 
-            # 2. 分块
+            # 2.
             msg_queue.put_nowait("data: [原生RAG] 正在分块...\n\n")
             chunks = split_documents(raw_docs, chunk_size=1000, chunk_overlap=200)
             msg_queue.put_nowait(f"data: [原生RAG] 分块完成，共 {len(chunks)} 个文本块\n\n")
 
-            # 3. 向量化（最耗时，在线程池中执行，不阻塞 event loop）
+            # 3. event loop
             msg_queue.put_nowait("data: [原生RAG] 正在计算向量（sentence-transformers）...\n\n")
             vs = NativeVectorStore(model_name="sentence-transformers/all-MiniLM-L6-v2")
             vs.build_index(chunks)
 
-            # 4. 保存
+            # 4.
             save_path = os.path.join(req.docs_dir, "native_vectorstore")
             vs.save(save_path)
             msg_queue.put_nowait(f"data: [原生RAG] 向量存储已保存至: {save_path}\n\n")
@@ -679,7 +674,7 @@ async def native_ingest_documents(req: NativeIngestRequest):
                 f"data: [ERROR] 原生向量化失败: {e}\n{traceback.format_exc()}\n\n"
             )
         finally:
-            msg_queue.put_nowait(None)  # 哨兵，通知流结束
+            msg_queue.put_nowait(None)
 
     async def generate():
         asyncio.create_task(asyncio.to_thread(_native_ingest_sync))
@@ -710,14 +705,13 @@ async def native_query(req: NativeQueryRequest):
             import os
             import sys
 
-            # 解析模型
             model_id, provider, is_cloud = _resolve_rag_model(req.model)
 
             if is_cloud:
                 yield f"data: [原生RAG] 收到查询: {req.query}\n\n"
                 yield f"data: [原生RAG] 使用云端模型: {model_id}（provider: {provider}）\n\n"
             else:
-                # 本地模型：读 ollama host / timeout 配置
+                # Local model ollama host / timeout
                 try:
                     _rag_root = str(Path(__file__).parent.parent)
                     if _rag_root not in sys.path:
@@ -736,7 +730,7 @@ async def native_query(req: NativeQueryRequest):
                 yield f"data: [原生RAG] 收到查询: {req.query}\n\n"
                 yield f"data: [原生RAG] 使用模型: {model_id}（{ollama_host}，超时: {ollama_timeout}s）\n\n"
 
-            # 加载向量存储
+            # Vector store
             vs_path = os.path.join(req.docs_dir, "native_vectorstore")
             if not NativeVectorStore.exists(vs_path):
                 yield f"data: [ERROR] 原生向量存储不存在，请先执行原生向量化: {vs_path}\n\n"
@@ -746,7 +740,7 @@ async def native_query(req: NativeQueryRequest):
             vs = NativeVectorStore.load(vs_path)
             yield f"data: [原生RAG] 向量存储加载完成，{len(vs.documents)} 个文档块\n\n"
 
-            # ── 云端模型：先检索，再调用云端生成 ────────────────────────
+            # - Cloud model -
             if is_cloud:
                 from src.rag.native_rag import NativeBM25, _rrf_fusion, _format_native_context
                 results_raw = vs.similarity_search(req.query, top_k=3)
@@ -820,7 +814,7 @@ async def native_query(req: NativeQueryRequest):
                 yield "data: COMPLETE\n\n"
                 return
 
-            # ── 本地 Ollama：走原有 NativeRAGPipeline ────────────────────
+            # - Ollama NativeRAGPipeline -
             pipeline = NativeRAGPipeline(
                 vectorstore=vs,
                 documents=vs.documents,

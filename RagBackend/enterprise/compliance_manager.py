@@ -69,7 +69,7 @@ def init_db():
 init_db()
 
 
-# ── 多租户 ───────────────────────────────────────────────────
+# - -
 class TenantCreate(BaseModel):
     name: str
     plan: str = "free"
@@ -115,7 +115,7 @@ def check_quota(tenant_id: str):
     return dict(tenant)
 
 
-# ── SSO 单点登录 ─────────────────────────────────────────────
+# - SSO -
 class SSOConfig(BaseModel):
     tenant_id: str
     provider: str        # oidc | saml | ldap | github | google
@@ -133,7 +133,7 @@ def configure_sso(req: SSOConfig):
         "issuer_url": req.issuer_url,
         "redirect_uri": req.redirect_uri
     }
-    # 注意：client_secret 不入数据库，存环境变量
+    # client_secret Environment variable
     conn.execute("""
         UPDATE tenants SET sso_enabled=1, sso_provider=?, sso_config=? WHERE id=?
     """, (req.provider, json.dumps(config), req.tenant_id))
@@ -170,14 +170,14 @@ def sso_login_url(tenant_id: str):
     return {"login_url": url, "state": state}
 
 
-# ── 数据脱敏 ─────────────────────────────────────────────────
+# - -
 DESENSITIZE_PATTERNS = [
-    (r'\b1[3-9]\d{9}\b', lambda m: m.group()[:3] + '****' + m.group()[-4:]),          # 手机号
-    (r'\b\d{15}(\d{3})?\b', lambda m: m.group()[:4] + '**' * 5 + m.group()[-4:]),     # 身份证
+    (r'\b1[3-9]\d{9}\b', lambda m: m.group()[:3] + '****' + m.group()[-4:]),
+    (r'\b\d{15}(\d{3})?\b', lambda m: m.group()[:4] + '**' * 5 + m.group()[-4:]),
     (r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
-     lambda m: m.group()[:2] + '***' + m.group()[m.group().find('@'):]),               # 邮箱
-    (r'\b(?:\d{4}[- ]?){3}\d{4}\b', lambda m: '**** **** **** ' + m.group()[-4:]),    # 银行卡
-    (r'\b\d{3}-\d{4}-\d{4}\b', lambda m: '***-****-' + m.group()[-4:]),               # 电话
+     lambda m: m.group()[:2] + '***' + m.group()[m.group().find('@'):]),
+    (r'\b(?:\d{4}[- ]?){3}\d{4}\b', lambda m: '**** **** **** ' + m.group()[-4:]),
+    (r'\b\d{3}-\d{4}-\d{4}\b', lambda m: '***-****-' + m.group()[-4:]),
 ]
 
 
@@ -194,7 +194,7 @@ def desensitize_api(data: dict):
     return {"original_length": len(text), "result": desensitize(text)}
 
 
-# ── API 限流中间件 ────────────────────────────────────────────
+# - API Middleware -
 RATE_LIMIT_RULES = {
     "free":       {"per_minute": 20,  "per_hour": 200,   "per_day": 1000},
     "pro":        {"per_minute": 60,  "per_hour": 1000,  "per_day": 10000},
@@ -242,7 +242,7 @@ def check_rate_limit_api(user_id: str, plan: str = "free"):
     return {"allowed": allowed, "details": results}
 
 
-# ── 合规报表 ─────────────────────────────────────────────────
+# - -
 @router.get("/compliance/report")
 def compliance_report(tenant_id: str = "default", days: int = 30):
     """生成合规报表摘要"""

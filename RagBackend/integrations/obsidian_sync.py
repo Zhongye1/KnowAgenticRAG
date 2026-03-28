@@ -25,7 +25,7 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# ── 配置存储 ──────────────────────────────────────────────────────
+# - -
 _CONFIG_PATH = Path(__file__).parent.parent / "metadata" / "obsidian_config.json"
 _SYNC_STATE_PATH = Path(__file__).parent.parent / "metadata" / "obsidian_sync_state.json"
 
@@ -58,7 +58,7 @@ def _save_sync_state(state: dict):
     _SYNC_STATE_PATH.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-# ── Obsidian Markdown 处理 ─────────────────────────────────────────
+# - Obsidian Markdown -
 
 WIKILINK_RE = re.compile(r"\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]")
 FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
@@ -68,7 +68,7 @@ def _parse_md_file(file_path: Path) -> Dict[str, Any]:
     """解析 Obsidian Markdown 文件，提取元数据、正文、wikilinks"""
     text = file_path.read_text(encoding="utf-8", errors="ignore")
 
-    # 提取 frontmatter
+    # frontmatter
     frontmatter = {}
     body = text
     fm_match = FRONTMATTER_RE.match(text)
@@ -80,10 +80,10 @@ def _parse_md_file(file_path: Path) -> Dict[str, Any]:
         except Exception:
             pass
 
-    # 提取 wikilinks（[[链接]]）
+    # wikilinks[[]]
     wikilinks = list(set(WIKILINK_RE.findall(text)))
 
-    # 提取标签（#tag）
+    # #tag
     tags = re.findall(r"(?<!\S)#([a-zA-Z\u4e00-\u9fff][a-zA-Z0-9\u4e00-\u9fff_/-]*)", body)
 
     return {
@@ -100,7 +100,7 @@ def _file_hash(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()[:16]
 
 
-# ── 核心同步逻辑 ──────────────────────────────────────────────────
+# - -
 
 def _do_sync(vault_path: str, kb_id: Optional[str], exclude_patterns: List[str]) -> Dict[str, Any]:
     """
@@ -116,7 +116,6 @@ def _do_sync(vault_path: str, kb_id: Optional[str], exclude_patterns: List[str])
 
     stats = {"added": 0, "updated": 0, "skipped": 0, "errors": 0, "files": []}
 
-    # 目标目录：将笔记复制到后端可访问的目录
     if kb_id:
         target_dir = Path(__file__).parent.parent / "local-KLB-files" / kb_id / "obsidian"
     else:
@@ -124,7 +123,6 @@ def _do_sync(vault_path: str, kb_id: Optional[str], exclude_patterns: List[str])
     target_dir.mkdir(parents=True, exist_ok=True)
 
     for md_file in vault.rglob("*.md"):
-        # 检查排除模式
         rel = md_file.relative_to(vault).as_posix()
         excluded = any(
             re.search(pattern, rel)
@@ -142,15 +140,13 @@ def _do_sync(vault_path: str, kb_id: Optional[str], exclude_patterns: List[str])
                 stats["skipped"] += 1
                 continue
 
-            # 解析并复制
             parsed = _parse_md_file(md_file)
 
-            # 写入到目标目录（保留子目录结构）
             dest = target_dir / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_text(md_file.read_text(encoding="utf-8", errors="ignore"), encoding="utf-8")
 
-            # 写入元数据 sidecar
+            # sidecar
             sidecar = dest.with_suffix(".meta.json")
             sidecar.write_text(json.dumps({
                 "title": parsed["title"],
@@ -173,7 +169,6 @@ def _do_sync(vault_path: str, kb_id: Optional[str], exclude_patterns: List[str])
             logger.error(f"[ObsidianSync] 处理文件失败: {md_file}: {e}")
             stats["errors"] += 1
 
-    # 检测已删除的文件
     for rel in list(vault_state.keys()):
         if not (vault / rel).exists():
             try:
@@ -192,17 +187,17 @@ def _do_sync(vault_path: str, kb_id: Optional[str], exclude_patterns: List[str])
     return stats
 
 
-# ── Pydantic 模型 ────────────────────────────────────────────────
+# - Pydantic -
 
 class ObsidianConfigRequest(BaseModel):
-    vault_path: str                       # Obsidian vault 本地路径
-    kb_id: Optional[str] = None          # 目标知识库 ID
-    auto_sync: bool = False              # 是否在应用启动时自动同步
-    exclude_patterns: List[str] = []     # 排除的正则表达式列表
+    vault_path: str                       # Obsidian vault
+    kb_id: Optional[str] = None          # ID
+    auto_sync: bool = False
+    exclude_patterns: List[str] = []
     note: Optional[str] = None
 
 
-# ── API 端点 ─────────────────────────────────────────────────────
+# - API -
 
 @router.post("/api/integrations/obsidian/configure")
 async def configure_obsidian(req: ObsidianConfigRequest):
@@ -213,7 +208,7 @@ async def configure_obsidian(req: ObsidianConfigRequest):
     if not vault.is_dir():
         raise HTTPException(status_code=400, detail="路径必须是目录（Vault 文件夹）")
 
-    # 统计 .md 文件数量
+    # .md
     md_count = sum(1 for _ in vault.rglob("*.md"))
 
     config = _load_config()

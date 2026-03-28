@@ -12,7 +12,7 @@ import aiofiles
 from pathlib import Path
 import asyncio
 import shutil
-from fastapi import Request  # 导入 Request
+from fastapi import Request  # Request
 
 
 router = APIRouter()
@@ -55,26 +55,25 @@ CURD实现CREATE
 
 
 
-# 配置文件上传相关设置
+# File upload
 UPLOAD_DIR = "local-KLB-files"
 METADATA_DIR = "metadata"
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".doc", ".md", ".rtf"}
 
-# 并发 IO 限流：最多同时处理 8 个分块写入，防止大批量上传时文件句柄耗尽
+# IO 8
 _chunk_semaphore = asyncio.Semaphore(8)
 
-# 确保目录存在
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(METADATA_DIR, exist_ok=True)
 
 METADATA_FILE = os.path.join(METADATA_DIR, "documents.json")
 
-# 分块上传临时目录
+# Temporary directory
 CHUNK_UPLOAD_DIR = os.path.join(UPLOAD_DIR, "chunks")
 os.makedirs(CHUNK_UPLOAD_DIR, exist_ok=True)
 
-# Pydantic 模型
+# Pydantic
 class DocumentStatus(BaseModel):
     documentId: int
     enabled: bool
@@ -93,14 +92,13 @@ class DocumentResponse(BaseModel):
     file_size: int
     file_hash: str
 
-# 本地文档管理类
+# Document management
 
 from .doc_manage import LocalDocumentManager
 
-# 创建文档管理器实例
+# Document management
 doc_manager = LocalDocumentManager()
 
-# 辅助函数
 def get_file_hash(content: bytes) -> str:
     """生成文件的MD5哈希值"""
     return hashlib.md5(content).hexdigest()
@@ -122,7 +120,6 @@ def validate_file(filename: str, content: bytes) -> tuple[bool, str]:
     return True, "验证通过"
 
 
-# 分块上传和合并功能
 @router.post("/api/upload-chunk/")
 async def upload_chunk(
     chunk: UploadFile = File(...),
@@ -137,14 +134,11 @@ async def upload_chunk(
     """
     async with _chunk_semaphore:
         try:
-            # 为每个文件创建单独的分块目录
             file_chunk_dir = os.path.join(CHUNK_UPLOAD_DIR, KLB_id, fileHash)
             os.makedirs(file_chunk_dir, exist_ok=True)
 
-            # 分块文件路径
             chunk_file_path = os.path.join(file_chunk_dir, f"chunk_{chunkIndex}.part")
 
-            # 保存分块
             async with aiofiles.open(chunk_file_path, 'wb') as f:
                 content = await chunk.read()
                 await f.write(content)
@@ -160,14 +154,13 @@ async def upload_chunk(
             print(f"分块上传失败: {str(e)}")
             raise HTTPException(status_code=500, detail=f"分块上传失败: {str(e)}")
 
-#上传完成后合并文件块
 @router.post("/api/upload-complete/")
 async def upload_complete(request: Request):
     """
     合并文件分块
     """
     try:
-        # 从 JSON 请求体中获取参数
+        # JSON
         data = await request.json()
         fileHash = data.get('fileHash')
         fileName = data.get('fileName')
@@ -182,7 +175,6 @@ async def upload_complete(request: Request):
         print(f"接收到的请求参数: fileHash={fileHash}, fileName={fileName}, totalChunks={totalChunks}, KLB_id={KLB_id}")
         file_chunk_dir = os.path.join(CHUNK_UPLOAD_DIR, KLB_id, fileHash)
 
-        # 检查分块是否全部上传
         if not os.path.exists(file_chunk_dir):
             print(f"分块目录 {file_chunk_dir} 不存在")
             raise HTTPException(status_code=400, detail="分块目录不存在")
@@ -191,16 +183,14 @@ async def upload_complete(request: Request):
         if len(uploaded_chunks) != totalChunks:
             raise HTTPException(status_code=400, detail="分块未全部上传")
 
-        # 生成最终文件路径
         file_ext = get_file_type(fileName)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         saved_filename = f"{fileName}-{timestamp}_{fileHash[:8]}{file_ext}"
         final_file_path = os.path.join(UPLOAD_DIR, KLB_id, saved_filename)
 
-        # 确保目录存在
         os.makedirs(os.path.dirname(final_file_path), exist_ok=True)
 
-        # 合并分块（用 asyncio.to_thread 避免阻塞 event loop）
+        # asyncio.to_thread event loop
         def _merge_chunks():
             with open(final_file_path, 'wb') as outfile:
                 for i in range(totalChunks):
@@ -214,9 +204,9 @@ async def upload_complete(request: Request):
 
         print(f"文件合并成功: 文件名={fileName}, 文件哈希={fileHash}, 总分块数={totalChunks}, 最终文件路径={final_file_path}")
 
-        # ── 修复2：流式计算文件哈希，不把整个文件读入内存 ────────────────
-        # 原实现: content = await f.read()  → 50MB文件×N并发 = 内存峰值过高
-        # 新实现: 流式 MD5，仅维持一个 64KB 缓冲区，内存占用恒定
+        # - 2Calculate file hash -
+        # : content = await f.read() 50MBN =
+        # : MD5 64KB
         def _compute_hash_and_size(path: str):
             """流式读取文件，计算 MD5 哈希与文件大小，不把文件载入内存"""
             md5 = hashlib.md5()
@@ -231,7 +221,6 @@ async def upload_complete(request: Request):
             _compute_hash_and_size, final_file_path
         )
 
-        # 验证文件类型（扩展名校验，不依赖文件内容，无需读入内存）
         file_ext_check = get_file_type(fileName)
         if file_ext_check not in ALLOWED_EXTENSIONS:
             os.remove(final_file_path)
@@ -239,23 +228,19 @@ async def upload_complete(request: Request):
         if file_size > MAX_FILE_SIZE:
             os.remove(final_file_path)
             raise HTTPException(status_code=400, detail=f"文件大小超过限制 ({MAX_FILE_SIZE / 1024 / 1024:.1f}MB)")
-        # 检查是否已存在相同文件（哈希去重）
         existing_docs = [doc for doc in doc_manager.get_all_documents()
                          if doc.get('file_hash') == existing_file_hash]
 
         if existing_docs:
-            # 如果文件已存在，删除旧文件（协程安全调用）
             for doc in existing_docs:
                 await doc_manager.delete_document(doc['id'], KLB_id)
                 print(f"更新文件: {doc['name']}，{KLB_id}")
 
-        # 分块数用文件大小估算，避免大文件全文读入内存
         slicing_method = "按段落"
-        estimated_chunks = max(1, file_size // 1024)  # 粗估：每1KB约1块
+        estimated_chunks = max(1, file_size // 1024)  # 1KB1
 
-        # 创建文档记录
         document_data = {
-            "id": None,  # 后续由 add_document 生成
+            "id": None,  # add_document
             "name": fileName,
             "fileType": file_ext.replace('.', ''),
             "chunks": estimated_chunks,
@@ -268,11 +253,10 @@ async def upload_complete(request: Request):
             "created_at": datetime.now().isoformat()
         }
 
-        # 保存到本地元数据（协程安全，加锁写入）
         doc_id = await doc_manager.add_document(document_data)
         document_data['id'] = doc_id
 
-        # 删除分块临时目录
+        # Temporary directory
         shutil.rmtree(file_chunk_dir)
 
         return {
@@ -299,18 +283,15 @@ def calculate_chunks(content: bytes, slicing_method: str = "按段落") -> int:
     try:
         content_str = content.decode('utf-8', errors='ignore')
     except:
-        # 如果无法解码，返回固定值
         return 1
     
     if slicing_method == "按段落":
-        # 按段落分割（双换行符）
         chunks = len([p for p in content_str.split('\n\n') if p.strip()])
     elif slicing_method == "固定长度":
-        # 按固定长度分割（每1000字符一块）
+        # 1000
         chunk_size = 1000
         chunks = len(content_str) // chunk_size + (1 if len(content_str) % chunk_size else 0)
     else:
-        # 默认按句子分割
         chunks = len([s for s in content_str.split('.') if s.strip()])
     
-    return max(1, chunks)  # 至少有一个分块
+    return max(1, chunks)

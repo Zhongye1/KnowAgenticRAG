@@ -22,13 +22,11 @@ import unittest
 import pathlib
 from typing import List, Dict, Any
 
-# 路径配置
 BACKEND_ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_ROOT))
 sys.path.insert(0, str(BACKEND_ROOT / "RAG_M" / "src"))
 
 # ──────────────────────────────────────────
-# 工具函数：不依赖外部库的余弦相似度
 # ──────────────────────────────────────────
 
 def cosine_similarity(a: List[float], b: List[float]) -> float:
@@ -48,13 +46,13 @@ def mock_embed(text: str) -> List[float]:
     vec = [0.0] * DIM
     for i, ch in enumerate(text):
         vec[ord(ch) % DIM] += 1.0
-    # L2 归一化
+    # L2
     norm = math.sqrt(sum(x ** 2 for x in vec)) or 1.0
     return [x / norm for x in vec]
 
 
 # ──────────────────────────────────────────
-# 测试类 1：BM25 评分
+# 1BM25
 # ──────────────────────────────────────────
 
 class TestBM25Scoring(unittest.TestCase):
@@ -93,7 +91,7 @@ class TestBM25Scoring(unittest.TestCase):
         ]
         retriever = self.BM25Retriever(docs)
         results = retriever.search("知识图谱", top_k=3)
-        # 最相关的应该是 d2
+        # d2
         if results:
             self.assertIn("图谱", results[0]["content"])
 
@@ -105,14 +103,13 @@ class TestBM25Scoring(unittest.TestCase):
         retriever = self.BM25Retriever(docs)
         try:
             results = retriever.search("", top_k=3)
-            # 空查询可以返回空列表，不应抛出异常
             self.assertIsInstance(results, list)
         except Exception as e:
             self.fail(f"空查询不应抛出异常: {e}")
 
 
 # ──────────────────────────────────────────
-# 测试类 2：RRF 融合算法（纯逻辑，不依赖外部库）
+# 2RRF
 # ──────────────────────────────────────────
 
 class TestRRFFusion(unittest.TestCase):
@@ -149,7 +146,6 @@ class TestRRFFusion(unittest.TestCase):
         list_a = ["a", "b", "c"]
         list_b = ["c", "b", "a"]
         result = self._rrf_fuse(list_a, list_b)
-        # 计算每个的实际分数来验证顺序
         scores = {}
         for rank, doc_id in enumerate(list_a):
             scores[doc_id] = scores.get(doc_id, 0) + self._rrf_score(rank)
@@ -171,7 +167,7 @@ class TestRRFFusion(unittest.TestCase):
 
 
 # ──────────────────────────────────────────
-# 测试类 3：向量化模拟测试（不依赖 FAISS/torch）
+# 3 FAISS/torch
 # ──────────────────────────────────────────
 
 class TestVectorizationLogic(unittest.TestCase):
@@ -205,7 +201,7 @@ class TestVectorizationLogic(unittest.TestCase):
         v1 = mock_embed("机器学习算法")
         v2 = mock_embed("深度学习神经网络")
         sim = cosine_similarity(v1, v2)
-        # 不同文本，相似度不应该是 1.0（完全相同）
+        # 1.0
         self.assertLess(sim, 1.0, "不同文本的 embedding 应该不完全相同")
 
     def test_vector_dimension_fixed(self):
@@ -237,7 +233,7 @@ class TestVectorizationLogic(unittest.TestCase):
 
 
 # ──────────────────────────────────────────
-# 测试类 4：引用溯源字段完整性
+# 4
 # ──────────────────────────────────────────
 
 class TestCitationTracking(unittest.TestCase):
@@ -277,7 +273,7 @@ class TestCitationTracking(unittest.TestCase):
             self._make_result("doc.pdf", 2, 0.85, "内容B"),
             self._make_result("other.pdf", 1, 0.8, "内容C"),
         ]
-        # 按 file_name 去重统计唯一来源
+        # file_name
         unique_sources = set(r["source_info"]["file_name"] for r in results)
         self.assertEqual(len(unique_sources), 2, "应有 2 个唯一来源（doc.pdf 和 other.pdf）")
 
@@ -294,7 +290,7 @@ class TestCitationTracking(unittest.TestCase):
 
 
 # ──────────────────────────────────────────
-# 测试类 5：知识图谱合并去重
+# 5Knowledge graph
 # ──────────────────────────────────────────
 
 class TestGraphMergeLogic(unittest.TestCase):
@@ -356,9 +352,9 @@ class TestGraphMergeLogic(unittest.TestCase):
         g = {
             "nodes": [{"id": "A"}],
             "edges": [
-                {"source": "", "target": "A", "label": "r"},   # source 为空
-                {"source": "A", "target": "", "label": "r"},   # target 为空
-                {"source": "A", "target": "B", "label": "r"},  # 正常边
+                {"source": "", "target": "A", "label": "r"},   # source
+                {"source": "A", "target": "", "label": "r"},   # target
+                {"source": "A", "target": "B", "label": "r"},
             ]
         }
         merged = self._merge([g])
@@ -366,7 +362,7 @@ class TestGraphMergeLogic(unittest.TestCase):
 
 
 # ──────────────────────────────────────────
-# 测试类 6：RAG Pipeline 结果结构验证
+# 6RAG Pipeline
 # ──────────────────────────────────────────
 
 class TestRAGPipelineStructure(unittest.TestCase):
@@ -437,13 +433,11 @@ class TestRAGPipelineStructure(unittest.TestCase):
 
 
 # ──────────────────────────────────────────
-# 入口
 # ──────────────────────────────────────────
 
 if __name__ == "__main__":
     import sys
 
-    # 输出漂亮的分组报告
     loader = unittest.TestLoader()
     suite = unittest.TestSuite()
 

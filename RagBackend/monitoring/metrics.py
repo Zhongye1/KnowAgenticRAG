@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/metrics", tags=["系统监控"])
 
-# ─── 轻量内存统计（不依赖 prometheus_client）─────────────────
+# - prometheus_client-
 class _Stats:
     def __init__(self):
         self.request_count: Dict[str, int] = defaultdict(int)       # endpoint → count
@@ -69,7 +69,7 @@ class _Stats:
 STATS = _Stats()
 
 
-# ─── FastAPI 中间件注入 ───────────────────────────────────────
+# - FastAPI Middleware -
 def instrument_app(app):
     """给 FastAPI 应用注入请求监控中间件"""
     from fastapi import FastAPI
@@ -87,7 +87,6 @@ def instrument_app(app):
                     response.status_code,
                     latency_ms,
                 )
-                # 统计知识库上传
                 if "/upload" in request.url.path and request.method == "POST":
                     STATS.record_kb_upload()
                 return response
@@ -100,40 +99,40 @@ def instrument_app(app):
     logger.info("[Metrics] 请求监控中间件已注入")
 
 
-# ─── Prometheus 格式输出 ──────────────────────────────────────
+# - Prometheus -
 def _prometheus_text() -> str:
     lines = []
-    lines.append("# HELP ragf_uptime_seconds 后端已运行秒数")
+    lines.append("# HELP ragf_uptime_seconds ")
     lines.append("# TYPE ragf_uptime_seconds gauge")
     lines.append(f"ragf_uptime_seconds {STATS.uptime_seconds()}")
 
-    lines.append("# HELP ragf_request_total API请求总数")
+    lines.append("# HELP ragf_request_total API")
     lines.append("# TYPE ragf_request_total counter")
     for key, count in STATS.request_count.items():
         method, path = key.split(" ", 1)
         safe_path = path.replace("/", "_").replace("-", "_").lstrip("_")
         lines.append(f'ragf_request_total{{method="{method}",path="{path}"}} {count}')
 
-    lines.append("# HELP ragf_request_latency_avg_ms 平均响应时间(ms)")
+    lines.append("# HELP ragf_request_latency_avg_ms Response time(ms)")
     lines.append("# TYPE ragf_request_latency_avg_ms gauge")
     for key in STATS.request_count:
         method, path = key.split(" ", 1)
         avg = STATS.avg_latency(key)
         lines.append(f'ragf_request_latency_avg_ms{{method="{method}",path="{path}"}} {avg}')
 
-    lines.append("# HELP ragf_model_calls_total 模型调用次数")
+    lines.append("# HELP ragf_model_calls_total ")
     lines.append("# TYPE ragf_model_calls_total counter")
     for model, count in STATS.model_calls.items():
         lines.append(f'ragf_model_calls_total{{model="{model}"}} {count}')
 
-    lines.append("# HELP ragf_kb_uploads_total 知识库上传文件总数")
+    lines.append("# HELP ragf_kb_uploads_total ")
     lines.append("# TYPE ragf_kb_uploads_total counter")
     lines.append(f"ragf_kb_uploads_total {STATS.kb_uploads}")
 
     return "\n".join(lines) + "\n"
 
 
-# ─── 路由 ─────────────────────────────────────────────────────
+# - -
 @router.get("")
 async def get_stats():
     """JSON 格式的当前统计概览"""
@@ -166,24 +165,21 @@ async def get_echarts_data():
     top_eps = sorted(STATS.request_count.items(), key=lambda x: x[1], reverse=True)[:8]
 
     return {
-        # 请求量排行（横向柱状图）
         "request_bar": {
             "endpoints": [k for k, _ in top_eps],
             "counts":    [v for _, v in top_eps],
             "errors":    [STATS.error_count.get(k, 0) for k, _ in top_eps],
         },
-        # 响应时间（avg + p99）
+        # Response timeavg + p99
         "latency_bar": {
             "endpoints": [k for k, _ in top_eps],
             "avg_ms":    [STATS.avg_latency(k) for k, _ in top_eps],
             "p99_ms":    [STATS.p99_latency(k) for k, _ in top_eps],
         },
-        # 模型调用饼图
         "model_pie": [
             {"name": model, "value": count}
             for model, count in STATS.model_calls.items()
         ],
-        # 概览卡片
         "overview": {
             "uptime_h":     round(STATS.uptime_seconds() / 3600, 2),
             "total_reqs":   sum(STATS.request_count.values()),
@@ -194,7 +190,7 @@ async def get_echarts_data():
     }
 
 
-# Prometheus scrape 端点（放在 /metrics，不加 prefix）
+# Prometheus scrape /metrics prefix
 from fastapi import APIRouter as _AR
 prometheus_router = _AR()
 
@@ -202,9 +198,8 @@ prometheus_router = _AR()
 async def prometheus_metrics():
     """Prometheus scrape 端点，返回文本格式指标"""
     try:
-        # 优先使用 prometheus_client（如果已安装）
+        # prometheus_client
         from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
         return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
     except ImportError:
-        # 降级：输出自采集的轻量指标
         return Response(content=_prometheus_text(), media_type="text/plain; version=0.0.4")

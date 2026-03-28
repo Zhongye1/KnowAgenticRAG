@@ -17,13 +17,11 @@ router = APIRouter()
 from pydantic import BaseModel
 from typing import List, Dict, Any
 
-# 在文件顶部添加
 from pathlib import Path
 import os
 
-# 定义上传目录
 UPLOAD_DIR = "local-KLB-files"
-# 在定义UPLOAD_DIR后添加
+# UPLOAD_DIR
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
@@ -77,16 +75,14 @@ class DocumentManager:
     
     def get_all_documents_info(self):
         """获取所有文件夹及其文档信息"""
-        # 获取所有知识库文件夹
         kb_folders = []
         if os.path.exists(self.upload_dir):
             for item in os.listdir(self.upload_dir):
                 item_path = os.path.join(self.upload_dir, item)
-                # 忽略 chunks 和 covers 文件夹
+                # chunks covers
                 if os.path.isdir(item_path) and item not in ['chunks', 'covers']:
                     kb_folders.append(item)
         
-        # 为每个文件夹收集文档信息
         all_info = []
         for folder in kb_folders:
             folder_info = {
@@ -97,7 +93,6 @@ class DocumentManager:
                 "documents": []
             }
             
-            # 获取该文件夹下的文档
             documents = self.search_documents(folder)
             folder_info["document_count"] = len(documents)
             folder_info["total_size"] = sum(doc.get('file_size', 0) for doc in documents)
@@ -118,11 +113,9 @@ class DocumentManager:
         for item in os.listdir(folder_path):
             item_path = os.path.join(folder_path, item)
             if os.path.isfile(item_path):
-                # 获取文件信息
                 file_stat = os.stat(item_path)
                 file_ext = os.path.splitext(item)[1].lower()
                 
-                # 支持的文件类型
                 supported_extensions = {
                     '.pdf', '.doc', '.docx', '.xls', '.xlsx', 
                     '.csv', '.txt', '.md'
@@ -130,11 +123,11 @@ class DocumentManager:
                 
                 if file_ext in supported_extensions:
                     documents.append({
-                        "id": abs(hash(item_path.replace("\\", "/"))) % (2**31),  # 稳定ID（跨平台）
+                        "id": abs(hash(item_path.replace("\\", "/"))) % (2**31),  # ID
                         "file_name": item,
                         "file_path": item_path,
                         "file_size": file_stat.st_size,
-                        "file_type": file_ext[1:],  # 去掉点号
+                        "file_type": file_ext[1:],
                         "upload_time": datetime.fromtimestamp(file_stat.st_ctime),
                         "status": "enabled"
                     })
@@ -152,34 +145,34 @@ class DocumentManager:
         
         content_preview = ""
         
-        # 对于文本文件，读取前1000个字符作为预览
+        # 1000
         if file_ext in ['.txt', '.md', '.csv']:
             try:
                 with open(file_path, 'r', encoding='utf-8') as f:
                     content_preview = f.read(1000)
             except UnicodeDecodeError:
-                # 如果UTF-8解码失败，尝试其他编码
+                # UTF-8
                 try:
                     with open(file_path, 'r', encoding='gbk') as f:
                         content_preview = f.read(1000)
                 except UnicodeDecodeError:
                     content_preview = "无法预览此文件内容（编码格式不支持）"
-        # 对于Word文档，使用python-docx提取文本
+        # Wordpython-docx
         elif file_ext == '.docx':
             try:
                 from docx import Document
                 doc = Document(file_path)
                 paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
-                content_preview = '\n'.join(paragraphs[:20])  # 预览前20段
+                content_preview = '\n'.join(paragraphs[:20])  # 20
             except Exception as e:
                 content_preview = f"无法预览此Word文档内容：{str(e)}"
-        # 对于PDF文档，优先 pdfplumber，降级 PyPDF2
+        # PDF pdfplumber PyPDF2
         elif file_ext == '.pdf':
             try:
                 import pdfplumber
                 with pdfplumber.open(file_path) as pdf:
                     text_parts = []
-                    for page in pdf.pages[:5]:  # 前5页
+                    for page in pdf.pages[:5]:  # 5
                         t = page.extract_text() or ''
                         if t.strip():
                             text_parts.append(t)
@@ -201,7 +194,6 @@ class DocumentManager:
                         content_preview = "（PDF 内容为纯图像或已加密，无法提取文字）"
                 except Exception as e2:
                     content_preview = f"无法预览此PDF文档内容：{str(e2)}"
-        # 对于其他支持的文件类型，暂时只显示基本信息
         else:
             content_preview = f" {file_ext} 文件，暂时无法直接预览内容。"
         
@@ -220,15 +212,12 @@ class DocumentManager:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"文件不存在: {file_path}")
         
-        # 检查是否是文件（而不是目录）
         if not os.path.isfile(file_path):
             raise ValueError(f"路径不是文件: {file_path}")
         
-        # 删除文件
         os.remove(file_path)
         return True
 
-# 在文件顶部添加，常量定义之后
 doc_manager = DocumentManager(UPLOAD_DIR)
 
 
@@ -245,11 +234,9 @@ async def get_all_documents_info():
     - 全局统计信息
     """
     try:
-        # 获取所有文件夹及其文档信息
         print(f"从文件夹 {UPLOAD_DIR} 获取文档信息")
         folders_info = doc_manager.get_all_documents_info()
         
-        # 计算全局统计信息
         total_folders = len(folders_info)
         total_documents = sum(folder["document_count"] for folder in folders_info)
         total_size = sum(folder["total_size"] for folder in folders_info)
@@ -285,7 +272,7 @@ async def preview_document(file_path: str):
     """
     try:
         print(f"开始预览文档: {file_path}")
-        # ── Windows 兼容路径安全校验（用 Path.resolve 规范化大小写和分隔符）──
+        # - Windows Path.resolve -
         try:
             abs_file_path = Path(file_path).resolve()
             abs_upload_dir = Path(UPLOAD_DIR).resolve()
@@ -295,16 +282,16 @@ async def preview_document(file_path: str):
         print(f"文件绝对路径: {abs_file_path}")
         print(f"上传目录绝对路径: {abs_upload_dir}")
         
-        # 在 Windows 上 Path.resolve() 会统一大小写，is_relative_to 是 Python 3.9+
-        # 兼容旧版本：用字符串比较（resolve 已规范化斜杠）
+        # Windows Path.resolve() is_relative_to Python 3.9+
+        # resolve
         try:
-            abs_file_path.relative_to(abs_upload_dir)  # 若不在子目录会抛 ValueError
+            abs_file_path.relative_to(abs_upload_dir)  # ValueError
         except ValueError:
             print(f"访问被拒绝: 文件路径 {file_path} 不在允许的目录内")
             raise HTTPException(status_code=403, detail="无权访问此文件路径")
         
         print(f"调用doc_manager.preview_document方法")
-        # 传归一化后的路径字符串，避免后续 open() 在 Windows 上出错
+        # open() Windows
         preview_info = doc_manager.preview_document(str(abs_file_path))
         print(f"文档预览成功: {file_path}")
         return preview_info
@@ -331,7 +318,7 @@ async def delete_document(file_path: str):
     """
     try:
         print(f"开始删除文档: {file_path}")
-        # ── Windows 兼容路径安全校验 ──
+        # - Windows -
         try:
             abs_file_path = Path(file_path).resolve()
             abs_upload_dir = Path(UPLOAD_DIR).resolve()
@@ -347,7 +334,6 @@ async def delete_document(file_path: str):
             print(f"删除被拒绝: 文件路径 {file_path} 不在允许的目录内")
             raise HTTPException(status_code=403, detail="无权访问此文件路径")
         
-        # 删除文档
         print(f"调用doc_manager.delete_document方法")
         result = doc_manager.delete_document(str(abs_file_path))
         print(f"文档删除成功: {file_path}")

@@ -16,11 +16,11 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/feedback")
 
-# ── 环境变量配置（.env 里配置 SMTP 发件箱，不配也能用 mailto 兜底）──
+# - Environment variable.env SMTP mailto -
 SMTP_HOST  = os.getenv("SMTP_HOST", "smtp.163.com")
 SMTP_PORT  = int(os.getenv("SMTP_PORT", "465"))
-SMTP_USER  = os.getenv("SMTP_USER", "")   # 发件邮箱
-SMTP_PASS  = os.getenv("SMTP_PASS", "")   # 发件邮箱授权码/密码
+SMTP_USER  = os.getenv("SMTP_USER", "")
+SMTP_PASS  = os.getenv("SMTP_PASS", "")   # /
 FEEDBACK_TO = "13425121993@163.com"
 
 
@@ -65,7 +65,7 @@ RAG-F 用户反馈
 此邮件由 RAG-F 系统自动发送
     """.strip()
 
-    # 若未配置 SMTP，直接返回成功（前端 mailto 兜底）
+    # SMTP mailto
     if not SMTP_USER or not SMTP_PASS:
         logger.info("[Feedback] SMTP 未配置，反馈内容已记录：%s", subject)
         return {"status": "ok", "message": "feedback_received_no_smtp"}

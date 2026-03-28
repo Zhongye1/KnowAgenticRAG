@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/rerank", tags=["RAG-cross-encoder重排"])
 
-# ─── 模型缓存（避免重复加载） ──────────────────────────────────
+# - -
 _rerank_model = None
 _rerank_model_name: str = ""
 
@@ -45,7 +45,7 @@ def _get_reranker(model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"):
         return None
 
 
-# ─── 核心重排函数 ─────────────────────────────────────────────
+# - -
 def rerank_documents(
     query: str,
     candidates: List[Dict[str, Any]],
@@ -70,7 +70,7 @@ def rerank_documents(
     model = _get_reranker(model_name)
 
     if model is not None:
-        # cross-encoder 推理：对 (query, passage) 配对打分
+        # cross-encoder (query, passage)
         pairs = [(query, c.get("text", c.get("content", c.get("page_content", "")))) for c in candidates]
         try:
             scores = model.predict(pairs)
@@ -89,17 +89,17 @@ def rerank_documents(
         except Exception as e:
             logger.warning(f"[Reranker] cross-encoder推理失败，降级: {e}")
 
-    # 降级：按原始 score 排序
+    # score
     fallback = sorted(candidates, key=lambda x: float(x.get("score", 0)), reverse=True)
     for d in fallback:
         d["rerank_score"] = d.get("score", 0.0)
     return fallback[:top_k]
 
 
-# ─── FastAPI 接口 ──────────────────────────────────────────────
+# - FastAPI -
 class RerankRequest(BaseModel):
     query: str
-    candidates: List[Dict[str, Any]]   # 每项需有 "text" 或 "content" 字段
+    candidates: List[Dict[str, Any]]   # "text" "content"
     top_k: int = 5
     model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 

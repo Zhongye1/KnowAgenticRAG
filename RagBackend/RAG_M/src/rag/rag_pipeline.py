@@ -23,7 +23,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from models.model_config import get_model_config
 from src.rag.hybrid_retriever import HybridRetriever
 
-# 检索策略执行器（容忍导入失败）
+# Retrieval strategy
 try:
     import sys as _sys
     _BACKEND_DIR = os.path.join(os.path.dirname(__file__), '..', '..', '..')
@@ -37,7 +37,7 @@ except ImportError:
     RetrievalConfig = None  # type: ignore
 
 
-# ── 系统 Prompt 模板
+# - Prompt
 _PROMPT_TEMPLATE = """你是知识管理助手，专门回答基于文档的问题。
 
 规则：
@@ -88,9 +88,9 @@ class RAGPipeline:
         vectorstore: Optional[FAISS] = None,
         documents: Optional[List[Document]] = None,
         use_hybrid: bool = True,
-        retrieval_config: Optional[dict] = None,  # 新增：来自前端的检索策略配置
+        retrieval_config: Optional[dict] = None,  # Retrieval strategy
     ):
-        # 获取模型配置
+        # Model config
         if llm_model is None:
             model_config = get_model_config()
             llm_model = model_config.llm_model
@@ -101,13 +101,13 @@ class RAGPipeline:
         self.use_hybrid = use_hybrid
         self.documents = documents or []
 
-        # 解析检索策略配置
+        # Retrieval strategy
         self._retrieval_config = None
         if retrieval_config and _STRATEGY_AVAILABLE:
             self._retrieval_config = RetrievalConfig.from_dict(retrieval_config)
             print(f"[RAGPipeline] 检索策略: {self._retrieval_config.strategy}, topK={self._retrieval_config.topK}")
 
-        # 初始化策略执行器
+        # Initialize
         self._strategy_executor = None
         if _STRATEGY_AVAILABLE and vectorstore is not None:
             self._strategy_executor = RetrievalStrategyExecutor(
@@ -115,7 +115,7 @@ class RAGPipeline:
                 documents=self.documents,
             )
 
-        # 构建混合检索器（当未使用策略执行器时的 fallback）
+        # Hybrid retrieval fallback
         self._hybrid_retriever: Optional[HybridRetriever] = None
         if use_hybrid and vectorstore is not None and self.documents and not _STRATEGY_AVAILABLE:
             print(f"[RAGPipeline] 初始化混合检索器，文档块数量: {len(self.documents)}")
@@ -127,18 +127,16 @@ class RAGPipeline:
             print("[RAGPipeline] 未传入 documents，混合检索降级为纯向量检索")
             self.use_hybrid = False
 
-    # ── 检索
     def _retrieve(self, query: str) -> List[Dict[str, Any]]:
-        # 优先使用策略执行器（支持多种策略）
         if self._strategy_executor is not None:
-            config = self._retrieval_config  # 可能为 None，executor 内有默认值
+            config = self._retrieval_config  # Noneexecutor
             return self._strategy_executor.retrieve(query, config)
 
-        # fallback：混合检索器
+        # fallbackHybrid retrieval
         if self.use_hybrid and self._hybrid_retriever:
             return self._hybrid_retriever.retrieve_with_scores(query)
 
-        # 最终 fallback：纯向量检索
+        # fallbackVector retrieval
         raw = self.vectorstore.similarity_search_with_score(query, k=4)
         results = []
         for rank, (doc, score) in enumerate(raw, start=1):
@@ -157,7 +155,6 @@ class RAGPipeline:
             })
         return results
 
-    # ── 非流式查询（一次性返回）
     def process_query(self, query: str) -> Dict[str, Any]:
         """
         处理查询，返回：
@@ -197,7 +194,7 @@ class RAGPipeline:
             "retrieval_mode": "hybrid" if self.use_hybrid else "vector",
         }
 
-    # ── 流式查询（generator，配合 SSE 使用）
+    # - generator SSE
     def stream_query(self, query: str) -> Generator[str, None, None]:
         """
         流式查询生成器
@@ -219,7 +216,6 @@ class RAGPipeline:
 
         yield f"data: 检索完成，获取到 {len(docs_with_sources)} 个相关文档块\n\n"
 
-        # 发送来源信息
         sources = [
             {
                 "rank": item["source_info"]["rank"],
@@ -232,19 +228,18 @@ class RAGPipeline:
         ]
         yield f"data: SOURCES: {json.dumps(sources, ensure_ascii=False)}\n\n"
 
-        # 构建 prompt 并流式生成回答
+        # prompt
         context = _format_context(docs_with_sources)
         prompt_text = PROMPT.format(context=context, question=query)
 
         yield "data: 正在生成回答...\n\n"
 
-        # OllamaLLM 流式输出
+        # OllamaLLM Streaming output
         try:
             for chunk in self.llm.stream(prompt_text):
                 if chunk:
                     yield f"data: {chunk}\n\n"
         except Exception as e:
-            # 降级：非流式
             answer = self.llm.invoke(prompt_text)
             for paragraph in answer.split('\n'):
                 if paragraph.strip():

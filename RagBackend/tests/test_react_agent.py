@@ -31,7 +31,7 @@ class FakeDocument:
 
 
 # ─────────────────────────────────────────────────────
-# Test 1: react_agent.py 语法合法性
+# Test 1: react_agent.py
 # ─────────────────────────────────────────────────────
 class TestReactAgentSyntax(unittest.TestCase):
 
@@ -88,7 +88,7 @@ class TestReactAgentSyntax(unittest.TestCase):
 
 
 # ─────────────────────────────────────────────────────
-# Test 2: RAG_app.py 新接口注册
+# Test 2: RAG_app.py
 # ─────────────────────────────────────────────────────
 class TestRAGAppNewEndpoints(unittest.TestCase):
 
@@ -121,7 +121,7 @@ class TestRAGAppNewEndpoints(unittest.TestCase):
 
 
 # ─────────────────────────────────────────────────────
-# Test 3: 检索工具逻辑测试（Mock FAISS）
+# Test 3: Mock FAISS
 # ─────────────────────────────────────────────────────
 class TestRAGSearchTool(unittest.TestCase):
 
@@ -130,7 +130,7 @@ class TestRAGSearchTool(unittest.TestCase):
         agent_path = BACKEND_ROOT / "RAG_M" / "src" / "agent" / "react_agent.py"
         source = agent_path.read_text(encoding="utf-8")
 
-        # 替换外部依赖为 Mock
+        # Mock
         source = source.replace(
             "from langchain_ollama.llms import OllamaLLM", ""
         ).replace(
@@ -170,14 +170,14 @@ class TestRAGSearchTool(unittest.TestCase):
             "HybridRetriever": MagicMock,
             "get_model_config": MagicMock,
             "__name__": "react_agent",
-            "__file__": str(agent_path),  # 注入 __file__ 供路径计算使用
+            "__file__": str(agent_path),  # __file__
         }
 
         exec(compile(source, str(agent_path), "exec"), ns)
         self.build_tool = ns["build_rag_search_tool"]
         self._extract_filename = ns["_extract_filename"]
 
-        # 构建 Mock FAISS
+        # Mock FAISS
         self.mock_vs = MagicMock()
         self.docs = [
             FakeDocument("Python 机器学习入门", {"source": "ml.pdf", "page": 1}),
@@ -226,7 +226,7 @@ class TestRAGSearchTool(unittest.TestCase):
 
 
 # ─────────────────────────────────────────────────────
-# Test 4: __init__.py 文件存在性
+# Test 4: __init__.py
 # ─────────────────────────────────────────────────────
 class TestAgentPackageStructure(unittest.TestCase):
 
@@ -242,7 +242,6 @@ class TestAgentPackageStructure(unittest.TestCase):
 
 
 # ─────────────────────────────────────────────────────
-# 主程序
 # ─────────────────────────────────────────────────────
 if __name__ == "__main__":
     loader = unittest.TestLoader()

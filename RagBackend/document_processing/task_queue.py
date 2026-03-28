@@ -25,21 +25,21 @@ from typing import Any, Callable, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-# ── Redis 配置（从环境变量读取，容器内走 ragf-net 内网）────────────
+# - Redis Environment variable ragf-net -
 REDIS_URL  = os.environ.get("REDIS_URL", "redis://redis:6379/0")
-STREAM_KEY = "rag:upload:tasks"           # Redis Stream 名称
-GROUP_NAME = "rag-worker-group"           # 消费者组名称
-CONSUMER   = "worker-0"                   # 单 Worker 消费者名称
+STREAM_KEY = "rag:upload:tasks"           # Redis Stream
+GROUP_NAME = "rag-worker-group"           # Consumer group
+CONSUMER   = "worker-0"                   # Worker consume
 
-# ── 任务状态枚举 ──────────────────────────────────────────────────
+# ── Task status enum ──────────────────────────────────────────────────
 class TaskStatus:
-    PENDING  = "pending"   # 排队等待
-    RUNNING  = "running"   # 正在处理
-    DONE     = "done"      # 完成
-    FAILED   = "failed"    # 失败
+    PENDING  = "pending"
+    RUNNING  = "running"
+    DONE     = "done"
+    FAILED   = "failed"
 
 
-# ── Redis 客户端（延迟初始化，服务启动后才创建）─────────────────────
+# - Redis Initialize-
 _redis_client = None
 _redis_available = False
 
@@ -72,7 +72,7 @@ async def _ensure_stream_group(r):
             logger.warning("[TaskQueue] 创建消费者组异常: %s", e)
 
 
-# ── 内存降级队列（Redis 不可用时使用）─────────────────────────────
+# - Redis -
 _mem_queue: Optional[asyncio.Queue] = None
 _mem_task_store: Dict[str, Dict[str, Any]] = {}
 _MAX_CONCURRENCY = 2
@@ -86,8 +86,8 @@ def _get_mem_queue() -> asyncio.Queue:
     return _mem_queue
 
 
-# ── 任务函数注册表（task_type → callable）────────────────────────
-# Worker 从 Redis Stream 消费时，通过 task_type 查找对应的处理函数
+# - task_type callable-
+# Worker Redis Stream task_type
 _TASK_REGISTRY: Dict[str, Callable] = {}
 
 
@@ -97,7 +97,7 @@ def register_task(task_type: str, func: Callable):
     logger.debug("[TaskQueue] 注册任务类型: %s -> %s", task_type, func.__name__)
 
 
-# ── TraceID / 结构化日志工具 ──────────────────────────────────────
+# - TraceID / -
 def _log(level: str, task_id: str, msg: str, **kwargs):
     """统一结构化日志格式，每条日志携带 trace_id 方便全链路追溯"""
     extra = " ".join(f"{k}={v}" for k, v in kwargs.items())
@@ -106,7 +106,7 @@ def _log(level: str, task_id: str, msg: str, **kwargs):
     )
 
 
-# ── 任务状态持久化 ────────────────────────────────────────────────
+# - -
 
 async def _persist_status(task_id: str, **fields):
     """将任务状态写入 Redis Hash（key = rag:task:{task_id}），TTL 24h"""
@@ -115,10 +115,10 @@ async def _persist_status(task_id: str, **fields):
         try:
             hash_key = f"rag:task:{task_id}"
             await r.hset(hash_key, mapping={k: str(v) for k, v in fields.items()})
-            await r.expire(hash_key, 86400)  # 24 小时后自动过期
+            await r.expire(hash_key, 86400)  # 24
         except Exception as e:
             logger.warning("[TaskQueue] 状态持久化失败: %s", e)
-    # 同时更新内存 store（用于降级场景查询）
+    # store
     if task_id in _mem_task_store:
         _mem_task_store[task_id].update(fields)
 
@@ -136,7 +136,7 @@ async def _load_status(task_id: str) -> Optional[Dict[str, Any]]:
     return _mem_task_store.get(task_id)
 
 
-# ── 核心 Worker ───────────────────────────────────────────────────
+# - Worker -
 
 async def _redis_worker():
     """
@@ -155,11 +155,11 @@ async def _redis_worker():
 
     while True:
         try:
-            # 1. 先检查 PENDING（上次未 ACK 的任务，服务重启后自动重试）
+            # 1. PENDING ACK Retry
             pending = await r.xpending_range(STREAM_KEY, GROUP_NAME, "-", "+", count=5)
             pending_ids: List[str] = [p["message_id"] for p in pending]
 
-            # 2. 读取新消息（阻塞 1s）
+            # 2. 1s
             messages = await r.xreadgroup(
                 GROUP_NAME, CONSUMER,
                 {STREAM_KEY: ">"},
@@ -168,7 +168,7 @@ async def _redis_worker():
 
             all_entries = []
             if pending_ids:
-                # 将 pending 消息重新获取（XCLAIM，ownership 转给当前消费者）
+                # pending XCLAIMownership
                 for pid in pending_ids:
                     try:
                         claimed = await r.xclaim(STREAM_KEY, GROUP_NAME, CONSUMER, 30000, [pid])
@@ -212,7 +212,7 @@ async def _redis_worker():
                                                   finished_at=datetime.now().isoformat())
                             _log("error", tid, "任务失败", error=str(e))
                         finally:
-                            # ACK：无论成功失败都 ACK，失败已记录到状态，不进无限重试循环
+                            # ACK ACKRetry
                             try:
                                 await r.xack(STREAM_KEY, GROUP_NAME, mid)
                             except Exception:
@@ -253,7 +253,7 @@ async def _mem_worker():
         q.task_done()
 
 
-# ── 公开 API ──────────────────────────────────────────────────────
+# - API -
 
 async def ensure_worker_started():
     """
@@ -293,7 +293,7 @@ async def enqueue_task(
     import json as _json
     tid = task_id or str(uuid.uuid4())
 
-    # 初始化状态记录
+    # Initialize
     init_fields = {
         "task_id":    tid,
         "task_type":  task_type,
@@ -320,7 +320,6 @@ async def enqueue_task(
         except Exception as e:
             logger.warning("[TaskQueue] Redis 发布失败，降级到内存队列: %s", e)
 
-    # 降级：内存队列
     func = _TASK_REGISTRY.get(task_type)
     if func is None:
         raise ValueError(f"未注册的任务类型: {task_type}")
@@ -330,7 +329,7 @@ async def enqueue_task(
     return tid
 
 
-# ── 向后兼容：保留旧 create_task 接口（同步版，供老代码调用）────────
+# - create_task -
 def create_task(func: Callable, *args, task_id: Optional[str] = None, **kwargs) -> str:
     """
     向后兼容接口（同步版）。

@@ -21,10 +21,9 @@ DB_CONFIG = {
     "port":    int(os.getenv("DB_PORT", 3306)),
     "user":    os.getenv("DB_USER",    "root"),
     "password": os.getenv("DB_PASSWORD", ""),
-    # 默认值改为 rag_user_db，原来默认 mysql 会连接错数据库
+    # rag_user_db mysql
     "database": os.getenv("DB_NAME", "rag_user_db"),
     "charset": os.getenv("DB_CHARSET", "utf8mb4"),
-    # 连接超时，避免长时间挂起
     "connect_timeout": 10,
 }
 

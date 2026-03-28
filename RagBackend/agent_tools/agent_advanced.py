@@ -73,7 +73,7 @@ def init_db():
 init_db()
 
 
-# ── 任务执行引擎（支持暂停/续跑/重试/回滚）───────────────────
+# - //Retry/-
 class TaskStep:
     def __init__(self, step_id: int, tool_name: str, params: Dict, description: str = ""):
         self.step_id = step_id
@@ -155,7 +155,7 @@ class TaskExecutor:
                 step["retry_count"] = attempt + 1
                 step["error"] = str(e)
                 if attempt < self.max_retries - 1:
-                    time.sleep(1.5 ** attempt)  # 指数退避
+                    time.sleep(1.5 ** attempt)
                 else:
                     step["status"] = "failed"
                     step["completed_at"] = datetime.now().isoformat()
@@ -181,7 +181,6 @@ class TaskExecutor:
             if i < start_from:
                 continue
 
-            # 检查是否被暂停
             task = self._get_task()
             if task["status"] == "paused":
                 self._save_steps(steps, i, "paused", error_count)
@@ -193,7 +192,7 @@ class TaskExecutor:
             if step["status"] == "failed":
                 error_count += 1
                 self._save_steps(steps, i, "running", error_count)
-                # 连续失败3步则终止
+                # 3
                 if error_count >= 3:
                     self._save_steps(steps, i, "failed", error_count,
                                      datetime.now().isoformat())
@@ -299,7 +298,7 @@ def list_user_tasks(user_id: str):
     return [dict(r) for r in rows]
 
 
-# ── 插件市场 ────────────────────────────────────────────────
+# - -
 @router.get("/plugins")
 def list_plugins(category: Optional[str] = None):
     conn = get_db()

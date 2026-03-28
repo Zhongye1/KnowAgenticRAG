@@ -68,7 +68,6 @@ def save_version(req: VersionCreate):
     conn = get_db()
     content_hash = hashlib.sha256(req.content.encode()).hexdigest()
 
-    # 检查内容是否变化
     cur = conn.execute(
         "SELECT content_hash FROM doc_versions WHERE doc_id=? AND is_current=1",
         (req.doc_id,)
@@ -78,7 +77,6 @@ def save_version(req: VersionCreate):
         conn.close()
         return {"status": "unchanged", "message": "内容未变化，无需保存新版本"}
 
-    # 获取下一个版本号
     cur = conn.execute(
         "SELECT MAX(version) as max_v FROM doc_versions WHERE doc_id=?",
         (req.doc_id,)
@@ -86,10 +84,9 @@ def save_version(req: VersionCreate):
     row = cur.fetchone()
     next_version = (row["max_v"] or 0) + 1
 
-    # 取消旧的当前版本标记
     conn.execute("UPDATE doc_versions SET is_current=0 WHERE doc_id=?", (req.doc_id,))
 
-    # 插入新版本（只存前 5000 字快照节省空间）
+    # 5000
     conn.execute("""
         INSERT INTO doc_versions (doc_id, kb_id, version, filename, content_hash,
                                   content_snapshot, change_summary, created_by, is_current)

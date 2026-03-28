@@ -88,7 +88,6 @@ def list_comments(doc_id: str):
         SELECT * FROM comments WHERE doc_id=? ORDER BY created_at ASC
     """, (doc_id,)).fetchall()
     conn.close()
-    # 构建树形结构
     comments = [dict(r) for r in rows]
     tree = []
     by_id = {c["id"]: {**c, "replies": []} for c in comments}
@@ -106,14 +105,14 @@ async def ai_answer_in_comment(req: AICommentRequest):
     from fastapi.responses import StreamingResponse
     import httpx, json, os
 
-    # 构建 Prompt
+    # Prompt
     context = f'用户在文档中标注了这段话："{req.anchor_text}"\n\n' if req.anchor_text else ""
     prompt = f"{context}用户提问：{req.question}\n\n请基于文档内容简洁回答。"
 
     ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     model = os.getenv("MODEL", "qwen2:0.5b")
 
-    # 保存AI评论占位
+    # AI
     conn = get_db()
     conn.execute("""
         INSERT INTO comments (doc_id, kb_id, user_id, user_name, content, anchor_text, is_ai)
@@ -139,7 +138,6 @@ async def ai_answer_in_comment(req: AICommentRequest):
                                 break
                         except:
                             pass
-        # 更新评论内容
         db = get_db()
         db.execute("UPDATE comments SET content=?, updated_at=datetime('now','localtime') WHERE id=?",
                    (full_text, ai_comment_id))

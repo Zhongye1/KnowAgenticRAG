@@ -9,7 +9,6 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 
 # ────────────────────────────────────────────────────────────
-# 工具基类
 # ────────────────────────────────────────────────────────────
 class AgentTool:
     name: str = ""
@@ -20,7 +19,7 @@ class AgentTool:
         raise NotImplementedError
 
 
-# ── 数据分析工具 ─────────────────────────────────────────────
+# - -
 class DataAnalysisTool(AgentTool):
     name = "data_analysis"
     description = "分析 CSV/Excel 数据文件，生成统计摘要、相关性分析、趋势分析"
@@ -99,7 +98,7 @@ class ChartGeneratorTool(AgentTool):
             return f"[图表生成失败] {e}"
 
 
-# ── 邮件工具 ─────────────────────────────────────────────────
+# - -
 class EmailTool(AgentTool):
     name = "send_email"
     description = "发送邮件，支持 HTML 格式正文和附件"
@@ -133,7 +132,7 @@ class EmailTool(AgentTool):
             return f"[邮件发送失败] {e}"
 
 
-# ── 文件操作工具 ─────────────────────────────────────────────
+# - -
 class FileReadTool(AgentTool):
     name = "file_read"
     description = "读取本地文件内容（txt/md/json/csv）"
@@ -181,7 +180,7 @@ class PDFExportTool(AgentTool):
                 pdfkit.from_string(html, output_path)
                 return f"PDF已生成：{output_path}"
             except:
-                # 降级：保存为HTML
+                # HTML
                 html_path = output_path.replace('.pdf', '.html')
                 with open(html_path, 'w', encoding='utf-8') as f:
                     f.write(html)
@@ -190,7 +189,7 @@ class PDFExportTool(AgentTool):
             return f"[PDF生成失败] {e}"
 
 
-# ── 时间日历工具 ─────────────────────────────────────────────
+# - -
 class CalendarTool(AgentTool):
     name = "get_datetime"
     description = "获取当前日期时间，进行日期计算"
@@ -210,7 +209,7 @@ class CalendarTool(AgentTool):
         return now.isoformat()
 
 
-# ── 翻译工具 ─────────────────────────────────────────────────
+# - -
 class TranslateTool(AgentTool):
     name = "translate"
     description = "调用翻译API翻译文本（中英互译）"
@@ -238,7 +237,7 @@ class TranslateTool(AgentTool):
             return f"[翻译失败] {e}"
 
 
-# ── 摘要生成工具 ─────────────────────────────────────────────
+# - -
 class SummarizeTool(AgentTool):
     name = "summarize"
     description = "对长文本生成摘要"
@@ -270,7 +269,6 @@ class KeywordExtractTool(AgentTool):
             return json.dumps([{"word": w, "weight": round(s, 4)} for w, s in keywords],
                               ensure_ascii=False)
         except ImportError:
-            # 降级：简单词频统计
             import re
             from collections import Counter
             words = re.findall(r'[\u4e00-\u9fff]{2,}', text)
@@ -278,7 +276,7 @@ class KeywordExtractTool(AgentTool):
             return json.dumps([{"word": w, "count": c} for w, c in freq], ensure_ascii=False)
 
 
-# ── 工具注册表 ───────────────────────────────────────────────
+# - -
 TOOL_REGISTRY: Dict[str, AgentTool] = {}
 
 

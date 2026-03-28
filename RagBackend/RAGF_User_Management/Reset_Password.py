@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # ─────────────────────────────
-# 数据库配置
+# Database config
 # ─────────────────────────────
 DB_CONFIG = {
     "host":     os.getenv("DB_HOST",     "127.0.0.1"),
@@ -49,23 +49,22 @@ def _get_db():
 
 
 # ─────────────────────────────
-# 邮件 SMTP 配置（从 .env 读取）
+# SMTP .env
 # ─────────────────────────────
 SMTP_HOST     = os.getenv("SMTP_HOST",     "smtp.qq.com")
 SMTP_PORT     = int(os.getenv("SMTP_PORT", 465))
-SMTP_USER     = os.getenv("SMTP_USER",     "")   # 发件邮箱，如 xxx@qq.com
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")   # 授权码，不是邮箱登录密码
+SMTP_USER     = os.getenv("SMTP_USER",     "")   # xxx@qq.com
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM     = os.getenv("SMTP_FROM",     SMTP_USER)
 
 # ─────────────────────────────
-# 验证码内存存储
 # key → (code, expire_ts, retry_count)
 # ─────────────────────────────
 _CODE_STORE: Dict[str, Tuple[str, float, int]] = {}
 
-CODE_TTL     = 5 * 60   # 5 分钟有效
-MAX_RETRY    = 5         # 最多重试次数
-CODE_RESEND_INTERVAL = 60  # 同一目标 60 秒内不能重发
+CODE_TTL     = 5 * 60   # 5
+MAX_RETRY    = 5         # Retry count
+CODE_RESEND_INTERVAL = 60  # 60
 
 
 def _gen_code(length: int = 6) -> str:
@@ -90,7 +89,6 @@ def _verify_code(target: str, code: str) -> bool:
     if stored_code != code:
         _CODE_STORE[target] = (stored_code, expire_ts, retry_count + 1)
         return False
-    # 验证成功，删除验证码（一次性）
     del _CODE_STORE[target]
     return True
 
@@ -101,17 +99,16 @@ def _can_resend(target: str) -> bool:
     if not entry:
         return True
     _, expire_ts, _ = entry
-    # 如果距离上次发送不足 60 秒，禁止重发
+    # 60
     remaining = expire_ts - time.time()
     return remaining < (CODE_TTL - CODE_RESEND_INTERVAL)
 
 
 # ─────────────────────────────
-# 邮件发送
 # ─────────────────────────────
 def _send_email(to_addr: str, code: str) -> bool:
     if not SMTP_USER or not SMTP_PASSWORD:
-        # 未配置 SMTP，控制台打印（开发/测试环境）
+        # SMTP/
         logger.warning(f"[DEV] 邮件未配置 SMTP，验证码已打印到控制台: {to_addr} -> {code}")
         print(f"\n{'='*50}")
         print(f"[邮件验证码] 发送到: {to_addr}")
@@ -128,13 +125,13 @@ def _send_email(to_addr: str, code: str) -> bool:
         html_body = f"""
         <html><body style="font-family:Arial,sans-serif;background:#f5f5f5;padding:20px;">
           <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:12px;padding:32px;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
-            <h2 style="color:#0ea5e9;margin-bottom:8px;">RAG-F 智能知识库系统</h2>
-            <p style="color:#555;margin-bottom:24px;">您正在重置密码，以下是您的验证码：</p>
+            <h2 style="color:#0ea5e9;margin-bottom:8px;">RAG-F </h2>
+            <p style="color:#555;margin-bottom:24px;"></p>
             <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:20px;text-align:center;">
               <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#0284c7;">{code}</span>
             </div>
-            <p style="color:#888;margin-top:20px;font-size:13px;">验证码 <b>5 分钟</b>内有效，请勿泄露给他人。</p>
-            <p style="color:#aaa;font-size:12px;margin-top:8px;">如果您没有发起此操作，请忽略此邮件。</p>
+            <p style="color:#888;margin-top:20px;font-size:13px;"> <b>5 </b></p>
+            <p style="color:#aaa;font-size:12px;margin-top:8px;"></p>
           </div>
         </body></html>
         """
@@ -153,7 +150,6 @@ def _send_email(to_addr: str, code: str) -> bool:
 
 
 # ─────────────────────────────
-# 短信发送（预留接口）
 # ─────────────────────────────
 def _send_sms(phone: str, code: str) -> bool:
     """
@@ -170,7 +166,7 @@ def _send_sms(phone: str, code: str) -> bool:
     """
     sms_key = os.getenv("SMS_ACCESS_KEY_ID", "")
     if not sms_key:
-        # 未配置 SMS，控制台打印（开发/测试环境）
+        # SMS/
         logger.warning(f"[DEV] SMS 未配置，验证码已打印到控制台: {phone} -> {code}")
         print(f"\n{'='*50}")
         print(f"[短信验证码] 发送到: {phone}")
@@ -179,8 +175,7 @@ def _send_sms(phone: str, code: str) -> bool:
         return True
 
     try:
-        # ── 替换为真实 SMS SDK 调用 ──────────────────────────────────
-        # 示例（阿里云）：
+        # - SMS SDK -
         # from alibabacloud_dysmsapi20170525.client import Client
         # from alibabacloud_dysmsapi20170525 import models as sms_models
         # from alibabacloud_tea_openapi import models as open_api_models
@@ -205,7 +200,6 @@ def _send_sms(phone: str, code: str) -> bool:
 
 
 # ─────────────────────────────
-# 数据库操作
 # ─────────────────────────────
 def _email_exists(email: str) -> bool:
     try:
@@ -223,7 +217,7 @@ def _phone_exists(phone: str) -> bool:
     """检查手机号是否存在（需要 user 表有 phone 列）"""
     try:
         conn, cur = _get_db()
-        # 确保 phone 列存在
+        # phone
         cur.execute("DESCRIBE user")
         cols = [r[0] for r in cur.fetchall()]
         if "phone" not in cols:
@@ -267,7 +261,7 @@ def _reset_password_by_phone(phone: str, new_password: str) -> bool:
 
 
 # ─────────────────────────────
-# Pydantic 模型
+# Pydantic
 # ─────────────────────────────
 class SendEmailCodeRequest(BaseModel):
     email: str
@@ -278,15 +272,14 @@ class SendSmsCodeRequest(BaseModel):
 
 
 class ResetPasswordRequest(BaseModel):
-    method: str          # "email" 或 "phone"
-    target: str          # 邮箱地址或手机号
-    code: str            # 验证码
-    new_password: str    # 新密码（明文，后端加密）
+    method: str          # "email" "phone"
+    target: str
+    code: str
+    new_password: str
     confirm_password: str
 
 
 # ─────────────────────────────
-# 接口
 # ─────────────────────────────
 @router.post("/api/reset/send-email-code", response_model=dict, tags=["密码重置"])
 async def send_email_code(req: SendEmailCodeRequest):
@@ -307,7 +300,6 @@ async def send_email_code(req: SendEmailCodeRequest):
     _store_code(email, code)
 
     if not _send_email(email, code):
-        # 回滚：删除刚存的验证码
         _CODE_STORE.pop(email, None)
         raise HTTPException(status_code=500, detail="验证码发送失败，请稍后重试")
 
@@ -358,11 +350,9 @@ async def reset_password(req: ResetPasswordRequest):
     if req.method == "email":
         target = target.lower()
 
-    # 验证验证码
     if not _verify_code(target, req.code.strip()):
         raise HTTPException(status_code=400, detail="验证码错误或已过期")
 
-    # 重置密码
     if req.method == "email":
         success = _reset_password_by_email(target, req.new_password)
     else:

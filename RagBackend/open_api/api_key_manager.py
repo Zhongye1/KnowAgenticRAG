@@ -16,7 +16,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# ── API Key 数据库 ─────────────────────────────────────────────
+# - API Key -
 APIKEY_DB_PATH = Path(__file__).parent.parent / "metadata" / "api_keys.db"
 
 def _get_conn():
@@ -66,10 +66,8 @@ def verify_api_key(key: str) -> Optional[dict]:
             if not row:
                 return None
             row_dict = dict(row)
-            # 检查是否过期
             if row_dict.get("expires_at") and time.time() > row_dict["expires_at"]:
                 return None
-            # 更新最后使用时间和计数
             conn.execute(
                 "UPDATE api_keys SET last_used_at = ?, usage_count = usage_count + 1 WHERE key_hash = ?",
                 (time.time(), key_hash)
@@ -81,12 +79,12 @@ def verify_api_key(key: str) -> Optional[dict]:
         return None
 
 
-# ── Pydantic 模型 ──────────────────────────────────────────────
+# - Pydantic -
 class CreateApiKeyRequest(BaseModel):
     name: str
     description: Optional[str] = None
-    expires_days: Optional[int] = None     # None = 永不过期
-    rate_limit: int = 1000                 # 每日调用上限
+    expires_days: Optional[int] = None     # None =
+    rate_limit: int = 1000
     permissions: list[str] = ["read", "query"]
     user_id: Optional[str] = None
     user_email: Optional[str] = None
@@ -106,11 +104,11 @@ class ApiKeyResponse(BaseModel):
     permissions: list[str]
 
 
-# ── API 端点 ───────────────────────────────────────────────────
+# - API -
 @router.post("/api/apikeys/create")
 async def create_api_key(req: CreateApiKeyRequest):
     """创建新的 API Key"""
-    # 生成密钥：ragf_前缀 + 32字节随机
+    # ragf_ + 32
     raw_key = f"ragf_{secrets.token_urlsafe(32)}"
     key_prefix = raw_key[:12] + "..."
     key_hash = _hash_key(raw_key)
@@ -132,7 +130,7 @@ async def create_api_key(req: CreateApiKeyRequest):
 
         return {
             "id": key_id,
-            "api_key": raw_key,              # 只在创建时返回一次！
+            "api_key": raw_key,
             "key_prefix": key_prefix,
             "name": req.name,
             "expires_at": expires_at,

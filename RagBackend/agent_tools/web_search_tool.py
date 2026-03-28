@@ -26,7 +26,7 @@ from langchain.tools import Tool
 logger = logging.getLogger(__name__)
 
 # ─────────────────────────────────────────────────────────────────
-# DuckDuckGo Instant Answer（零 API Key）
+# DuckDuckGo Instant Answer API Key
 # ─────────────────────────────────────────────────────────────────
 
 _DDG_INSTANT_URL = "https://api.duckduckgo.com/"
@@ -41,7 +41,7 @@ _HEADERS = {
     "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
 }
 
-_TIMEOUT = 10  # 秒
+_TIMEOUT = 10
 
 
 def _http_get(url: str, params: dict) -> str:
@@ -73,7 +73,7 @@ def _search_ddg_instant(query: str, max_results: int = 5) -> str:
 
     parts = []
 
-    # 1. Abstract（百科摘要）
+    # 1. Abstract
     abstract = data.get("AbstractText", "").strip()
     abstract_url = data.get("AbstractURL", "")
     if abstract:
@@ -81,12 +81,12 @@ def _search_ddg_instant(query: str, max_results: int = 5) -> str:
         if abstract_url:
             parts.append(f"来源: {abstract_url}")
 
-    # 2. Answer（直接答案，如计算/单位换算）
+    # 2. Answer/
     answer = data.get("Answer", "").strip()
     if answer:
         parts.append(f"【直接答案】{answer}")
 
-    # 3. RelatedTopics（相关话题）
+    # 3. RelatedTopics
     topics = data.get("RelatedTopics", [])
     count = 0
     for topic in topics:
@@ -99,7 +99,7 @@ def _search_ddg_instant(query: str, max_results: int = 5) -> str:
                 parts.append(f"• {text}" + (f"\n  链接: {url}" if url else ""))
                 count += 1
         elif isinstance(topic, dict) and "Topics" in topic:
-            # 嵌套 topics
+            # topics
             for sub in topic["Topics"]:
                 if count >= max_results:
                     break
@@ -113,7 +113,7 @@ def _search_ddg_instant(query: str, max_results: int = 5) -> str:
     if parts:
         return "\n\n".join(parts)
 
-    # 没有 Instant Answer → fallback 到 HTML
+    # Instant Answer fallback HTML
     return _search_ddg_html(query, max_results)
 
 
@@ -122,14 +122,14 @@ def _search_ddg_html(query: str, max_results: int = 5) -> str:
     解析 DuckDuckGo HTML 搜索结果页（fallback）。
     返回：格式化的搜索结果文本
     """
-    params = {"q": query, "kl": "cn-zh"}  # 中文地区设置
+    params = {"q": query, "kl": "cn-zh"}
     try:
         html = _http_get(_DDG_HTML_URL, params)
     except Exception as e:
         return f"联网搜索失败: {str(e)}"
 
-    # 提取搜索结果标题 + 摘要（简单正则，不依赖 BeautifulSoup）
-    # DDG HTML 结构：<a class="result__a" ...>标题</a> + <a class="result__snippet">摘要</a>
+    # + BeautifulSoup
+    # DDG HTML <a class="result__a" ...></a> + <a class="result__snippet"></a>
     titles = re.findall(r'class="result__a"[^>]*>(.*?)</a>', html, re.DOTALL)
     snippets = re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', html, re.DOTALL)
     links = re.findall(r'class="result__url"[^>]*>\s*(https?://[^\s<]+)', html)
@@ -156,7 +156,7 @@ def _search_ddg_html(query: str, max_results: int = 5) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────
-# LangChain Tool 工厂函数
+# LangChain Tool
 # ─────────────────────────────────────────────────────────────────
 
 def build_web_search_tool(max_results: int = 5) -> Tool:
@@ -194,7 +194,7 @@ def build_web_search_tool(max_results: int = 5) -> Tool:
 
 
 # ─────────────────────────────────────────────────────────────────
-# FastAPI 路由（独立暴露，供前端直接调用）
+# FastAPI
 # ─────────────────────────────────────────────────────────────────
 
 from fastapi import APIRouter, Query

@@ -15,7 +15,7 @@ from langchain.docstore.document import Document
 from langchain_community.vectorstores import FAISS
 
 
-# ─────────────────────── BM25 轻量实现 ───────────────────────
+# - BM25 -
 
 class BM25:
     """
@@ -30,18 +30,16 @@ class BM25:
         self.corpus: List[List[str]] = [self._tokenize(d.page_content) for d in documents]
         self._build_index()
 
-    # ── 分词（中英文混合，按空格 + 标点切分）
+    # - +
     @staticmethod
     def _tokenize(text: str) -> List[str]:
         text = text.lower()
-        # 中文按字切，英文按空格切
         tokens = re.findall(r'[\u4e00-\u9fff]|[a-z0-9]+', text)
         return tokens
 
     def _build_index(self):
         N = len(self.corpus)
         self.avgdl = sum(len(d) for d in self.corpus) / max(N, 1)
-        # 文档频率
         df: Dict[str, int] = {}
         for doc_tokens in self.corpus:
             for token in set(doc_tokens):
@@ -77,7 +75,7 @@ class BM25:
         return [(self.documents[i], s) for i, s in ranked if s > 0]
 
 
-# ─────────────────────── RRF 融合 ───────────────────────
+# - RRF -
 
 def reciprocal_rank_fusion(
     ranked_lists: List[List[Tuple[Document, float]]],
@@ -89,13 +87,13 @@ def reciprocal_rank_fusion(
     k: RRF 常数（默认 60）
     返回：融合后的 (document, rrf_score) 列表（降序）
     """
-    # 用 page_content 作为文档身份标识
+    # page_content
     rrf_scores: Dict[str, float] = {}
     doc_map: Dict[str, Document] = {}
 
     for ranked in ranked_lists:
         for rank, (doc, _) in enumerate(ranked, start=1):
-            key = doc.page_content[:200]  # 前200字符做 key
+            key = doc.page_content[:200]  # 200 key
             rrf_scores[key] = rrf_scores.get(key, 0.0) + 1.0 / (k + rank)
             doc_map[key] = doc
 
@@ -103,7 +101,7 @@ def reciprocal_rank_fusion(
     return [(doc_map[key], score) for key, score in fused]
 
 
-# ─────────────────────── 混合检索器 ───────────────────────
+# - Hybrid retrieval -
 
 class HybridRetriever:
     """
@@ -130,19 +128,19 @@ class HybridRetriever:
 
     def retrieve(self, query: str) -> List[Document]:
         """执行混合检索，返回融合排序后的 top-k 文档"""
-        # ── 1. BM25 检索
+        # - 1. BM25
         bm25_results = self.bm25.retrieve(query, top_k=self.bm25_top_k)
 
-        # ── 2. 向量检索
+        # ── 2. Vector retrieval
         vector_raw = self.vectorstore.similarity_search_with_score(
             query, k=self.vector_top_k
         )
         vector_results = [(doc, score) for doc, score in vector_raw]
 
-        # ── 3. RRF 融合
+        # - 3. RRF
         fused = reciprocal_rank_fusion([bm25_results, vector_results])
 
-        # ── 4. 取 top-k
+        # - 4. top-k
         top_docs = [doc for doc, _ in fused[: self.final_top_k]]
 
         return top_docs

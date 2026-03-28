@@ -10,7 +10,7 @@ trace_logging.py — 结构化日志 TraceID 中间件
     from trace_logging import TraceMiddleware, get_trace_id
     app.add_middleware(TraceMiddleware)
 
-    # 在任意代码中获取当前 trace_id
+    # trace_id
     tid = get_trace_id()
     logger.info(f"trace_id={tid} 处理上传任务")
 """
@@ -26,7 +26,7 @@ from typing import Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
-# ── ContextVar：每个协程/请求独立存储 trace_id ─────────────────────
+# - ContextVar/ trace_id -
 _trace_id_var: ContextVar[str] = ContextVar("trace_id", default="-")
 
 
@@ -35,7 +35,7 @@ def get_trace_id() -> str:
     return _trace_id_var.get()
 
 
-# ── 日志过滤器：给每条日志自动注入 trace_id ────────────────────────
+# - trace_id -
 class TraceIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         record.trace_id = get_trace_id()
@@ -57,14 +57,13 @@ def setup_trace_logging(level: int = logging.INFO):
 
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
-    # 只添加一次，避免重复注册
     if not any(isinstance(h, logging.StreamHandler) and isinstance(h.filters[0], TraceIdFilter)
                for h in root_logger.handlers if h.filters):
         root_logger.handlers.clear()
         root_logger.addHandler(handler)
 
 
-# ── FastAPI 中间件 ─────────────────────────────────────────────────
+# ── FastAPI Middleware ─────────────────────────────────────────────────
 class TraceMiddleware(BaseHTTPMiddleware):
     """
     每个请求注入唯一 trace_id，并在响应头中返回，方便前端/日志关联。
@@ -74,7 +73,7 @@ class TraceMiddleware(BaseHTTPMiddleware):
     """
 
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
-        # 优先使用客户端传入的 trace_id（支持全链路透传），否则自动生成
+        # trace_id
         trace_id = request.headers.get("X-Trace-Id") or uuid.uuid4().hex[:8]
         token = _trace_id_var.set(trace_id)
 
@@ -82,9 +81,8 @@ class TraceMiddleware(BaseHTTPMiddleware):
         try:
             response = await call_next(request)
             elapsed_ms = (time.perf_counter() - start) * 1000
-            # 写入响应头
+            # Write to response header
             response.headers["X-Trace-Id"] = trace_id
-            # 结构化访问日志
             logging.getLogger("access").info(
                 "%s %s %d %.1fms",
                 request.method,

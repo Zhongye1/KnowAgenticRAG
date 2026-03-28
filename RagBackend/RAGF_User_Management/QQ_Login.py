@@ -32,29 +32,28 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 # ─────────────────────────────
-# QQ 互联配置（从环境变量读取，优先；否则用硬编码的 AppID/AppKey）
+# QQ Environment variable AppID/AppKey
 # ─────────────────────────────
 QQ_APP_ID  = os.getenv("QQ_APP_ID",  "1112499674")
 QQ_APP_KEY = os.getenv("QQ_APP_KEY", "RVpmB6ec9imXwvdR")
 
-# 回调地址：必须与 QQ 互联后台填写的回调域保持一致
-# 本地开发时为 http://localhost:8000/api/qq/callback
+# QQ
+# http://localhost:8000/api/qq/callback
 QQ_REDIRECT_URI = os.getenv(
     "QQ_REDIRECT_URI",
     "http://localhost:8000/api/qq/callback"
 )
 
-# QQ 互联各 API 地址
+# QQ API
 QQ_AUTHORIZE_URL  = "https://graph.qq.com/oauth2.0/authorize"
 QQ_TOKEN_URL      = "https://graph.qq.com/oauth2.0/token"
 QQ_OPENID_URL     = "https://graph.qq.com/oauth2.0/me"
 QQ_USERINFO_URL   = "https://graph.qq.com/user/get_user_info"
 
-# 登录成功后跳转的前端地址
 FRONTEND_SUCCESS_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
 # ─────────────────────────────
-# 数据库配置 — 统一从公共模块导入
+# Database config -
 # ─────────────────────────────
 from RAGF_User_Management.db_config import get_db_connection as _db_connect
 
@@ -95,19 +94,18 @@ def _ensure_qq_column():
             pass
 
 
-# 启动时执行一次
 _ensure_qq_column()
 
 
 # ─────────────────────────────
-# Step 1: 获取 QQ 授权 URL
+# Step 1: QQ URL
 # ─────────────────────────────
 @router.get("/api/qq/authorize")
 def qq_authorize():
     """
     前端调用此接口，获取 QQ 授权 URL，然后前端做跳转
     """
-    state = uuid.uuid4().hex  # 防 CSRF 随机状态码（简化版，生产建议存 session）
+    state = uuid.uuid4().hex  # CSRF Status code session
     params = {
         "response_type": "code",
         "client_id":     QQ_APP_ID,
@@ -120,25 +118,25 @@ def qq_authorize():
 
 
 # ─────────────────────────────
-# Step 2: QQ 回调处理
+# Step 2: QQ
 # ─────────────────────────────
 @router.get("/api/qq/callback")
 def qq_callback(code: str, state: str = ""):
     """
     QQ 回调接口：用 code 换 token → 获取 openid → 获取用户信息 → 生成 JWT → 重定向前端
     """
-    # ── 2a: 用 code 换 access_token ──────────────────────────────
+    # - 2a: code access_token -
     token_params = {
         "grant_type":   "authorization_code",
         "client_id":    QQ_APP_ID,
         "client_secret": QQ_APP_KEY,
         "code":         code,
         "redirect_uri": QQ_REDIRECT_URI,
-        "fmt":          "json",   # 要求返回 JSON 格式（部分旧接口默认返回 query string）
+        "fmt":          "json",   # JSON query string
     }
     try:
         resp = requests.get(QQ_TOKEN_URL, params=token_params, timeout=10)
-        # QQ 有时返回 query string 格式，有时返回 JSON
+        # QQ query string JSON
         try:
             token_data = resp.json()
         except Exception:
@@ -152,7 +150,7 @@ def qq_callback(code: str, state: str = ""):
         logger.error(f"请求 QQ token 出错: {e}")
         return _redirect_fail("QQ 网络请求失败")
 
-    # ── 2b: 获取 openid ──────────────────────────────────────────
+    # - 2b: openid -
     try:
         openid_resp = requests.get(
             QQ_OPENID_URL,
@@ -162,7 +160,7 @@ def qq_callback(code: str, state: str = ""):
         try:
             openid_data = openid_resp.json()
         except Exception:
-            # 旧格式：callback( {"client_id":"...","openid":"..."} )
+            # callback( {"client_id":"...","openid":"..."} )
             raw = openid_resp.text.strip()
             if raw.startswith("callback("):
                 raw = raw[9:].rstrip(");").strip()
@@ -176,7 +174,7 @@ def qq_callback(code: str, state: str = ""):
         logger.error(f"请求 QQ openid 出错: {e}")
         return _redirect_fail("QQ openid 请求失败")
 
-    # ── 2c: 获取用户昵称 / 头像 ───────────────────────────────────
+    # - 2c: / -
     nickname = f"QQ用户_{openid[-6:]}"
     avatar   = ""
     try:
@@ -196,15 +194,15 @@ def qq_callback(code: str, state: str = ""):
     except Exception as e:
         logger.warning(f"获取 QQ 用户信息失败（不影响登录）: {e}")
 
-    # ── 2d: 查询/创建本地用户 ─────────────────────────────────────
-    # QQ 用户以 qq_{openid}@qq.oauth 作为 email（占位，不可用于真实邮件）
+    # - 2d: / -
+    # QQ qq_{openid}@qq.oauth email
     fake_email  = f"qq_{openid}@qq.oauth"
     fake_passwd = hashlib.sha256(f"qq_oauth_{openid}".encode()).hexdigest()
 
     try:
         conn, cur = _get_db()
 
-        # 先按 qq_openid 查
+        # qq_openid
         cur.execute("SELECT id, email FROM user WHERE qq_openid = %s", (openid,))
         row = cur.fetchone()
 
@@ -212,17 +210,16 @@ def qq_callback(code: str, state: str = ""):
             user_id    = row[0]
             user_email = row[1]
         else:
-            # 再按 fake_email 查（兼容旧数据）
+            # fake_email
             cur.execute("SELECT id, email FROM user WHERE email = %s", (fake_email,))
             row = cur.fetchone()
             if row:
                 user_id    = row[0]
                 user_email = row[1]
-                # 回写 qq_openid
+                # qq_openid
                 cur.execute("UPDATE user SET qq_openid=%s WHERE id=%s", (openid, user_id))
                 conn.commit()
             else:
-                # 新用户：插入
                 cur.execute(
                     "INSERT INTO user (email, password, qq_openid) VALUES (%s, %s, %s)",
                     (fake_email, fake_passwd, openid),
@@ -231,7 +228,7 @@ def qq_callback(code: str, state: str = ""):
                 user_id    = cur.lastrowid
                 user_email = fake_email
 
-                # 初始化 profile
+                # Initialize profile
                 cur.execute(
                     """
                     INSERT IGNORE INTO user_profile (user_id, name, signature, social_media, avatar)
@@ -252,7 +249,7 @@ def qq_callback(code: str, state: str = ""):
         except Exception:
             pass
 
-    # ── 2e: 重定向前端，携带 token ────────────────────────────────
+    # - 2e: token -
     redirect_url = (
         f"{FRONTEND_SUCCESS_URL}/LogonOrRegister"
         f"?oauth_token={urllib.parse.quote(jwt_token)}"

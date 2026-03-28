@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/eval", tags=["evaluation"])
 
-# ─── 数据库 ──────────────────────────────────────────────
+# - -
 DB_PATH = Path(__file__).parent / "eval_results.db"
 
 
@@ -82,7 +82,7 @@ def _init_db():
                 active      INTEGER DEFAULT 1
             );
         """)
-        # 注入内置 20 条中文测试题（如果没有）
+        # 20
         cur = conn.execute("SELECT COUNT(*) FROM eval_questions")
         if cur.fetchone()[0] == 0:
             _seed_questions(conn)
@@ -91,25 +91,22 @@ def _init_db():
 def _seed_questions(conn):
     """内置 20 条中文测试题"""
     questions = [
-        # 知识库检索类
         ("什么是RAG技术？", "RAG（检索增强生成）是一种将外部知识库检索与大模型生成结合的技术", "retrieval", "RAG,检索,生成"),
         ("向量数据库的作用是什么？", "向量数据库用于存储和检索高维向量，支持语义相似度搜索", "retrieval", "向量,数据库,相似度"),
         ("什么是Embedding？", "Embedding是将文本转换为固定长度的稠密向量表示，用于捕捉语义信息", "retrieval", "Embedding,向量,语义"),
         ("知识库和普通数据库有什么区别？", "知识库支持语义搜索和自然语言查询，而普通数据库基于精确匹配", "retrieval", "知识库,语义,检索"),
         ("如何评估RAG系统的检索质量？", "可通过召回率、精确率、MRR、NDCG等指标评估检索质量", "retrieval", "评估,召回,精确"),
-        # 摘要生成类
         ("请简述大语言模型的主要应用场景", "包括文本生成、问答系统、代码生成、翻译、摘要等自然语言处理任务", "summary", "大模型,应用,场景"),
         ("什么是Prompt Engineering？", "Prompt工程是通过设计和优化输入提示词来引导大模型生成更好输出的技术", "summary", "Prompt,工程,优化"),
         ("解释一下Fine-tuning和RAG的区别", "Fine-tuning修改模型参数，RAG在推理时动态检索外部知识，无需修改参数", "summary", "Fine-tuning,RAG,区别"),
         ("什么是上下文窗口？", "上下文窗口是模型单次处理的最大token数量，限制了输入文本的长度", "summary", "上下文,窗口,token"),
         ("如何处理长文档的知识库构建？", "通过文本分块（chunking）将长文档切割为小段，再分别向量化存储", "summary", "长文档,分块,向量化"),
-        # 逻辑推理类
         ("如果知识库中没有相关信息，模型应该怎么处理？", "应该告知用户该问题超出知识库范围，避免产生幻觉", "reasoning", "幻觉,范围,告知"),
         ("为什么RAG比直接用大模型更准确？", "RAG基于实际文档检索，减少了模型的幻觉问题，答案可溯源验证", "reasoning", "准确,幻觉,溯源"),
         ("向量相似度搜索和关键词搜索各有什么优缺点？", "向量搜索理解语义但计算量大；关键词搜索快速精确但无法理解同义词", "reasoning", "相似度,关键词,优缺点"),
         ("如何提高知识库问答的响应速度？", "可通过向量缓存、减小模型规模、优化索引结构、限制topK等方式提速", "reasoning", "速度,缓存,优化"),
         ("为什么要对文档进行分块处理？", "过长的文档超出上下文窗口，分块后可精准定位相关片段，提升检索精度", "reasoning", "分块,上下文,精度"),
-        # 代码/技术类
+        # /
         ("LangChain是什么？", "LangChain是一个用于构建LLM应用的Python框架，提供链式调用、工具集成等功能", "technical", "LangChain,框架,Python"),
         ("什么是FAISS？", "FAISS是Facebook开发的高效向量相似度搜索库，支持十亿级别向量检索", "technical", "FAISS,向量,搜索"),
         ("FastAPI和Flask有什么区别？", "FastAPI基于异步IO，自动生成OpenAPI文档，性能更好；Flask更简单轻量", "technical", "FastAPI,Flask,异步"),
@@ -125,11 +122,11 @@ def _seed_questions(conn):
 _init_db()
 
 
-# ─── 数据模型 ─────────────────────────────────────────────
+# - -
 class EvalRunRequest(BaseModel):
     model_names: List[str] = ["qwen2:0.5b"]
-    question_ids: Optional[List[int]] = None  # None = 全部题目
-    kb_id: Optional[str] = None               # 测试时使用的知识库
+    question_ids: Optional[List[int]] = None  # None =
+    kb_id: Optional[str] = None
 
 
 class AddQuestionRequest(BaseModel):
@@ -139,7 +136,7 @@ class AddQuestionRequest(BaseModel):
     keywords: str = ""
 
 
-# ─── 评分工具函数 ──────────────────────────────────────────
+# - -
 def _keyword_score(answer: str, expected: str, keywords: str) -> float:
     """
     基于关键词覆盖率打分（0~1）
@@ -147,11 +144,11 @@ def _keyword_score(answer: str, expected: str, keywords: str) -> float:
     """
     answer_lower = answer.lower()
 
-    # 从 expected 提取核心词
+    # expected
     exp_words = [w for w in expected.replace("，", " ").replace("。", " ").split() if len(w) >= 2]
     exp_score = sum(1 for w in exp_words if w.lower() in answer_lower) / max(len(exp_words), 1)
 
-    # keywords 字段
+    # keywords
     kw_list = [k.strip() for k in keywords.split(",") if k.strip()]
     kw_score = sum(1 for k in kw_list if k.lower() in answer_lower) / max(len(kw_list), 1) if kw_list else exp_score
 
@@ -165,19 +162,19 @@ def _source_accuracy(answer: str) -> tuple[bool, bool]:
     """
     source_markers = ["来源", "根据", "参考", "文档", "片段", "Source", "Reference", "【", "「"]
     has_source = any(m in answer for m in source_markers)
-    # 粗粒度：有溯源标记就认为 source_ok
+    # source_ok
     source_ok = has_source
     return has_source, source_ok
 
 
-# ─── 核心评测逻辑 ─────────────────────────────────────────
+# - -
 async def _call_model(model_name: str, question: str, kb_id: Optional[str]) -> tuple[str, float]:
     """调用模型获取答案，返回 (answer, latency_ms)"""
     import httpx
     start = time.perf_counter()
     answer = ""
     try:
-        # 优先走本项目的 RAG 端点
+        # RAG
         payload = {
             "question": question,
             "kb_id": kb_id or "default",
@@ -190,7 +187,7 @@ async def _call_model(model_name: str, question: str, kb_id: Optional[str]) -> t
                 data = resp.json()
                 answer = data.get("answer") or data.get("content") or str(data)
             else:
-                # fallback: 直接问 Ollama
+                # fallback: Ollama
                 ollama_payload = {
                     "model": model_name,
                     "prompt": f"请用中文简洁回答：{question}",
@@ -222,7 +219,7 @@ async def _run_eval_task(run_id: str, model_name: str, questions: list, kb_id: O
             "q_id": q["id"],
             "question": q["question"],
             "category": q["category"],
-            "answer": answer[:1000],  # 截断存储
+            "answer": answer[:1000],
             "expected": q["expected"],
             "latency_ms": latency_ms,
             "score": score,
@@ -257,12 +254,11 @@ async def _run_eval_task(run_id: str, model_name: str, questions: list, kb_id: O
     logger.info(f"[Eval] {model_name} run={run_id} acc={accuracy} latency={avg_latency}ms overall={overall}")
 
 
-# ─── API 路由 ─────────────────────────────────────────────
+# - API -
 @router.post("/run")
 async def run_evaluation(req: EvalRunRequest, bg: BackgroundTasks):
     """触发评测，后台异步执行，立即返回 run_ids"""
     with _get_db() as conn:
-        # 拉取题目
         if req.question_ids:
             placeholders = ",".join("?" * len(req.question_ids))
             qs = conn.execute(
@@ -316,10 +312,10 @@ async def get_latest_echarts():
         if not runs:
             return {"message": "No completed eval runs yet"}
 
-        # 雷达图：每个模型3个维度
+        # 3
         radar_data = []
         for run in runs:
-            # 速度分：latency越低越高分（0~10000ms 映射到 0~1）
+            # latency0~10000ms 0~1
             speed_score = round(max(0, 1 - run["avg_latency"] / 8000), 3)
             radar_data.append({
                 "name": run["model_name"],
@@ -331,7 +327,6 @@ async def get_latest_echarts():
                 ]
             })
 
-        # 最新一次运行的分类准确率
         latest_run = runs[0]
         cat_rows = conn.execute(
             """SELECT category, AVG(score) as avg_score, COUNT(*) as cnt
@@ -344,7 +339,6 @@ async def get_latest_echarts():
             "counts":     [r["cnt"] for r in cat_rows],
         }
 
-        # 最新运行的延迟分布（直方图区间）
         latency_rows = conn.execute(
             "SELECT latency_ms FROM eval_details WHERE run_id=?", (latest_run["id"],)
         ).fetchall()

@@ -26,7 +26,7 @@ from typing import List, Dict, Any, Generator, Optional, Tuple
 
 
 # ────────────────────────────────────────────────
-# 0. 文档数据结构
+# 0.
 # ────────────────────────────────────────────────
 
 class NativeDocument:
@@ -40,7 +40,7 @@ class NativeDocument:
 
 
 # ────────────────────────────────────────────────
-# 1. 原生文档加载器
+# 1. Document loading
 # ────────────────────────────────────────────────
 
 SUPPORTED_EXTENSIONS = {'.pdf', '.txt', '.md', '.docx', '.csv'}
@@ -116,7 +116,6 @@ def load_documents_from_dir(docs_dir: str) -> List[NativeDocument]:
     IGNORE_DIRS = {'vectorstore', 'native_vectorstore', '__pycache__', '.git', 'node_modules'}
 
     for root, dirs, files in os.walk(docs_dir):
-        # 过滤忽略目录
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
         for fname in files:
             ext = pathlib.Path(fname).suffix.lower()
@@ -138,7 +137,7 @@ def load_documents_from_dir(docs_dir: str) -> List[NativeDocument]:
 
 
 # ────────────────────────────────────────────────
-# 2. 原生文本分块
+# 2.
 # ────────────────────────────────────────────────
 
 def split_documents(
@@ -169,7 +168,7 @@ def split_documents(
 
 
 # ────────────────────────────────────────────────
-# 3. 原生向量存储（FAISS）
+# 3. Vector storeFAISS
 # ────────────────────────────────────────────────
 
 class NativeVectorStore:
@@ -203,7 +202,7 @@ class NativeVectorStore:
         print(f"[NativeVectorStore] 对 {len(texts)} 个文本块计算向量...")
         vectors = self._encode(texts).astype('float32')
         dim = vectors.shape[1]
-        self._index = faiss.IndexFlatIP(dim)  # 内积（因为已 normalize，等价余弦）
+        self._index = faiss.IndexFlatIP(dim)  # normalize
         self._index.add(vectors)
         print(f"[NativeVectorStore] FAISS 索引构建完成，维度={dim}")
 
@@ -214,7 +213,6 @@ class NativeVectorStore:
         faiss.write_index(self._index, os.path.join(save_path, "native.index"))
         with open(os.path.join(save_path, "native_docs.pkl"), 'wb') as f:
             pickle.dump(self._documents, f)
-        # 保存模型名称
         with open(os.path.join(save_path, "native_config.json"), 'w') as f:
             json.dump({"model_name": self.model_name}, f)
         print(f"[NativeVectorStore] 已保存到 {save_path}")
@@ -261,7 +259,7 @@ class NativeVectorStore:
 
 
 # ────────────────────────────────────────────────
-# 4. 原生 BM25（复用逻辑，针对 NativeDocument）
+# 4. BM25 NativeDocument
 # ────────────────────────────────────────────────
 
 class NativeBM25:
@@ -328,7 +326,7 @@ def _rrf_fusion(
 
 
 # ────────────────────────────────────────────────
-# 5. 原生 LLM 调用（Ollama HTTP API）
+# 5. LLM Ollama HTTP API
 # ────────────────────────────────────────────────
 
 def _ollama_generate(
@@ -380,7 +378,7 @@ def _ollama_generate(
 
 
 # ────────────────────────────────────────────────
-# 6. 原生 RAG Pipeline
+# 6. RAG Pipeline
 # ────────────────────────────────────────────────
 
 _NATIVE_PROMPT_TEMPLATE = """<|im_start|>system
@@ -404,7 +402,7 @@ _NATIVE_PROMPT_TEMPLATE = """<|im_start|>system
 <|im_start|>assistant
 """
 
-# qwen2:0.5b 专用简化模板（token限制更严格时使用）
+# qwen2:0.5b token
 _NATIVE_PROMPT_TEMPLATE_LITE = """系统：你是中文知识库助手，只根据文档回答，引用来源格式为"根据【来源X】"，不确定时说"未找到相关内容"。
 
 文档：
@@ -452,7 +450,7 @@ class NativeRAGPipeline:
         bm25_top_k: int = 5,
         vector_top_k: int = 5,
         final_top_k: int = 4,
-        ollama_timeout: int = 120,   # 新增：Ollama 请求超时（秒），由用户配置
+        ollama_timeout: int = 120,   # Ollama
     ):
         self.vectorstore = vectorstore
         self.llm_model = llm_model
@@ -463,8 +461,8 @@ class NativeRAGPipeline:
         self.vector_top_k = vector_top_k
         self.ollama_timeout = ollama_timeout
 
-        # 根据模型大小自动选 Prompt 模板
-        # 0.5b/1b 等小模型使用精简模板，避免 context 撑爆 token 窗口
+        # Prompt
+        # 0.5b/1b context token
         _small_models = ("0.5b", "1b", "1.5b", "tiny", "mini")
         self._prompt_template = (
             _NATIVE_PROMPT_TEMPLATE_LITE
@@ -472,7 +470,7 @@ class NativeRAGPipeline:
             else _NATIVE_PROMPT_TEMPLATE
         )
 
-        # 构建 BM25
+        # BM25
         self._bm25: Optional[NativeBM25] = None
         docs_for_bm25 = documents or (vectorstore.documents if vectorstore else None)
         if use_hybrid and docs_for_bm25:

@@ -31,7 +31,7 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# ── 配置（从环境变量读取，也可通过 API 动态配置）────────────────────
+# - Environment variable API -
 _FEISHU_CONFIG: Dict[str, str] = {
     "app_id": os.environ.get("FEISHU_APP_ID", ""),
     "app_secret": os.environ.get("FEISHU_APP_SECRET", ""),
@@ -40,10 +40,10 @@ _FEISHU_CONFIG: Dict[str, str] = {
     "default_kb_id": os.environ.get("FEISHU_DEFAULT_KB_ID", ""),
 }
 
-# 飞书 API 基础地址
+# API
 FEISHU_API_BASE = "https://open.feishu.cn/open-apis"
 
-# ── 飞书 Access Token 管理 ───────────────────────────────────────
+# - Access Token -
 _token_cache: Dict[str, Any] = {"token": "", "expires_at": 0}
 
 
@@ -74,7 +74,7 @@ async def _get_access_token() -> str:
     return _token_cache["token"]
 
 
-# ── 消息回复 ─────────────────────────────────────────────────────
+# - -
 
 async def _reply_text(receive_id: str, receive_id_type: str, text: str):
     """向飞书会话/用户发送文本消息"""
@@ -102,13 +102,13 @@ async def _reply_text(receive_id: str, receive_id_type: str, text: str):
         logger.info(f"[Feishu] 消息已发送到 {receive_id_type}={receive_id}")
 
 
-# ── 问答处理（后台任务）──────────────────────────────────────────
+# - -
 
 async def _handle_question(question: str, receive_id: str, receive_id_type: str, kb_id: Optional[str]):
     """调用 RAG 获取回答并回复飞书"""
     try:
         if kb_id:
-            # 尝试调用 RAG pipeline
+            # RAG pipeline
             try:
                 from RAG_M.RAG_app import get_rag_answer_sync
                 answer = get_rag_answer_sync(question=question, kb_id=kb_id)
@@ -137,20 +137,20 @@ def _simple_llm_answer(question: str) -> str:
         return f"LLM 服务暂不可用: {e}"
 
 
-# ── Webhook 签名验证 ─────────────────────────────────────────────
+# - Webhook -
 
 def _verify_feishu_signature(timestamp: str, nonce: str, body: bytes, signature: str) -> bool:
     """验证飞书 Webhook 签名（使用 encrypt_key）"""
     encrypt_key = _FEISHU_CONFIG.get("encrypt_key", "")
     if not encrypt_key:
-        return True  # 未配置签名密钥，跳过验证
+        return True
 
     sign_str = timestamp + nonce + encrypt_key + body.decode("utf-8")
     expected = hashlib.sha256(sign_str.encode("utf-8")).hexdigest()
     return hmac.compare_digest(expected, signature)
 
 
-# ── API 端点 ─────────────────────────────────────────────────────
+# - API -
 
 @router.post("/api/integrations/feishu/webhook")
 async def feishu_webhook(request: Request, background_tasks: BackgroundTasks):
@@ -160,7 +160,6 @@ async def feishu_webhook(request: Request, background_tasks: BackgroundTasks):
     """
     body_bytes = await request.body()
 
-    # 签名验证
     timestamp = request.headers.get("X-Lark-Request-Timestamp", "")
     nonce = request.headers.get("X-Lark-Request-Nonce", "")
     signature = request.headers.get("X-Lark-Signature", "")
@@ -172,11 +171,11 @@ async def feishu_webhook(request: Request, background_tasks: BackgroundTasks):
     except Exception:
         raise HTTPException(status_code=400, detail="无法解析 JSON")
 
-    # 飞书订阅验证请求（challenge）
+    # challenge
     if "challenge" in payload:
         return JSONResponse({"challenge": payload["challenge"]})
 
-    # 旧版 verification token 校验
+    # verification token
     verification_token = _FEISHU_CONFIG.get("verification_token", "")
     if verification_token and payload.get("token") != verification_token:
         raise HTTPException(status_code=401, detail="Verification token 不匹配")
@@ -184,7 +183,6 @@ async def feishu_webhook(request: Request, background_tasks: BackgroundTasks):
     event_type = payload.get("header", {}).get("event_type") or payload.get("event", {}).get("type", "")
     logger.info(f"[Feishu] 收到事件: {event_type}")
 
-    # 处理消息事件
     if event_type in ("im.message.receive_v1", "message"):
         event = payload.get("event", {})
         msg = event.get("message", {})
@@ -195,20 +193,18 @@ async def feishu_webhook(request: Request, background_tasks: BackgroundTasks):
                 content = json.loads(msg.get("content", "{}"))
                 text = content.get("text", "").strip()
 
-                # 移除 @机器人 前缀（飞书格式：@_user_1 ）
+                # @ @_user_1
                 text = re.sub(r"@[^\s]+\s*", "", text).strip() if text else ""
                 import re
 
                 if text:
-                    # 确定回复目标
                     chat_id = event.get("message", {}).get("chat_id") or event.get("sender", {}).get("sender_id", {}).get("open_id", "")
                     id_type = "chat_id" if event.get("message", {}).get("chat_id") else "open_id"
                     kb_id = _FEISHU_CONFIG.get("default_kb_id") or None
 
-                    # 先回复"思考中"（改善用户体验）
+                    # ""
                     await _reply_text(chat_id, id_type, "🔍 正在检索知识库，请稍候...")
 
-                    # 后台处理问答
                     background_tasks.add_task(_handle_question, text, chat_id, id_type, kb_id)
 
             except Exception as e:
@@ -233,7 +229,7 @@ async def configure_feishu(
         "encrypt_key": encrypt_key,
         "default_kb_id": default_kb_id,
     })
-    # 重置 token 缓存
+    # token
     _token_cache["expires_at"] = 0
 
     return {"success": True, "message": "飞书配置已更新"}

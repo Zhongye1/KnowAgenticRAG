@@ -12,9 +12,9 @@ import asyncio
 
 router = APIRouter()
 
-# ── 全局元数据写锁（防并发竞态）────────────────────────────────────
-# asyncio.Lock 保证同一进程内所有协程对 documents.json 的读写串行化，
-# 彻底消除并发上传时元数据丢失/损坏的竞态条件。
+# - -
+# asyncio.Lock documents.json
+# /
 _metadata_lock = asyncio.Lock()
 
 
@@ -57,29 +57,28 @@ DocumentResponse：文档响应的数据模型，包含文档的所有属性
 
 
 
-# 添加模型配置导入
+# Model config
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from models.model_config import get_model_config
 
-# 获取默认的rerank模型
+# rerank
 model_config = get_model_config()
 DEFAULT_RERANK_MODEL = model_config.rerank_model
 
 
-# 配置文件上传相关设置
+# File upload
 UPLOAD_DIR = "local-KLB-files"
 METADATA_DIR = "metadata"
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".doc", ".md", ".rtf"}
 
-# 确保目录存在
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(METADATA_DIR, exist_ok=True)
 
 METADATA_FILE = os.path.join(METADATA_DIR, "documents.json")
 
-# Pydantic 模型
+# Pydantic
 class DocumentStatus(BaseModel):
     documentId: int
     enabled: bool
@@ -98,7 +97,7 @@ class DocumentResponse(BaseModel):
     file_size: int
     file_hash: str
 
-# 本地文档管理类
+# Document management
 class LocalDocumentManager:
     """
     文档元数据管理器。
@@ -112,10 +111,10 @@ class LocalDocumentManager:
 
     def __init__(self):
         self.metadata_file = METADATA_FILE
-        # 初始化时加载一次作为缓存；后续写操作会同步更新内存缓存
+        # Initialize
         self.documents = self._load_documents()
 
-    # ── 内部同步 IO（只在锁内调用）──────────────────────────────
+    # - IO-
 
     def _load_documents(self) -> dict:
         """从本地JSON文件加载文档元数据（同步，仅供锁内调用）"""
@@ -138,7 +137,7 @@ class LocalDocumentManager:
                 json.dump(self.documents, f, ensure_ascii=False, indent=2)
                 f.flush()
                 os.fsync(f.fileno())
-            os.replace(tmp_path, self.metadata_file)  # 原子替换
+            os.replace(tmp_path, self.metadata_file)
         except Exception as e:
             print(f"保存文档元数据失败: {e}")
             if os.path.exists(tmp_path):
@@ -147,11 +146,10 @@ class LocalDocumentManager:
                 except Exception:
                     pass
 
-    # ── 业务方法（均在锁内调用）──────────────────────────────────
+    # - -
 
     def _add_document_locked(self, doc_data: dict) -> int:
         """添加新文档（需在锁内调用）"""
-        # 从磁盘重新加载，确保拿到最新版本
         self.documents = self._load_documents()
         doc_id = max(map(int, self.documents.keys()), default=0) + 1
         doc_data['id'] = doc_id
@@ -174,7 +172,6 @@ class LocalDocumentManager:
         self.documents = self._load_documents()
         if str(doc_id) in self.documents:
             doc = self.documents[str(doc_id)]
-            # 删除物理文件
             if 'file_path' in doc and os.path.exists(doc['file_path']):
                 try:
                     os.remove(doc['file_path'])
@@ -186,7 +183,7 @@ class LocalDocumentManager:
             return True
         return False
 
-    # ── 公开 async 方法（加锁后调用内部同步方法）────────────────
+    # - async -
 
     async def add_document(self, doc_data: dict) -> int:
         """添加新文档（协程安全）"""
@@ -203,7 +200,7 @@ class LocalDocumentManager:
         async with _metadata_lock:
             return self._delete_document_locked(doc_id, KLB_id)
 
-    # ── 只读方法（读磁盘，无写竞争，无需加锁）────────────────────
+    # - -
 
     def get_document(self, doc_id: int) -> dict:
         """获取单个文档（读取磁盘最新版本）"""
@@ -237,7 +234,7 @@ class LocalDocumentManager:
 
         return results
 
-    # ── 统计方法（只读，无需加锁）────────────────────────────────
+    # - -
 
     def get_total_documents(self) -> int:
         """获取文档总数"""
@@ -264,7 +261,7 @@ class LocalDocumentManager:
         return file_types
 
 
-# 创建文档管理器实例
+# Document management
 doc_manager = LocalDocumentManager()
 
 @router.post("/api/update-document-status/")
@@ -322,7 +319,7 @@ async def delete_documents(KLB_id: str, delete_request: DeleteDocuments):
         raise HTTPException(status_code=500, detail=f"删除文档失败: {str(e)}")
     
 
-# 知识库搜索测试端点
+# Test endpoint
 @router.post("/api/search-test/")
 async def search_test(
     query: str,
@@ -336,7 +333,6 @@ async def search_test(
     执行知识库搜索测试
     """
     try:
-        # 获取要搜索的文档
         search_docs = []
         if selected_documents:
             for doc_id in selected_documents:
@@ -344,11 +340,9 @@ async def search_test(
                 if doc and doc.get('enabled', True):
                     search_docs.append(doc)
         else:
-            # 搜索所有启用的文档
             search_docs = [doc for doc in doc_manager.get_all_documents() 
                           if doc.get('enabled', True)]
         
-        # 简单的关键词匹配搜索（实际应用中应该使用向量搜索）
         mock_results = []
         for doc in search_docs:
             file_path = doc.get('file_path')
@@ -357,9 +351,7 @@ async def search_test(
                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read()
                     
-                    # 简单的关键词匹配
                     if query.lower() in content.lower():
-                        # 提取包含关键词的片段
                         lines = content.split('\n')
                         relevant_lines = [line for line in lines if query.lower() in line.lower()]
                         
@@ -369,7 +361,7 @@ async def search_test(
                                 "content": relevant_lines[0][:200] + "..." if len(relevant_lines[0]) > 200 else relevant_lines[0],
                                 "file": doc['name'],
                                 "chunk": 1,
-                                "score": 0.85  # 模拟相似度分数
+                                "score": 0.85
                             })
                 except:
                     continue
@@ -378,7 +370,7 @@ async def search_test(
             "results": mock_results,
             "query": query,
             "total_results": len(mock_results),
-            "search_time": 0.5,  # 搜索耗时（秒）
+            "search_time": 0.5,
             "searched_documents": len(search_docs),
             "parameters": {
                 "similarity_threshold": similarity_threshold,
@@ -391,7 +383,6 @@ async def search_test(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"搜索测试失败: {str(e)}")
 
-# 获取系统统计信息
 @router.get("/api/stats/")
 async def get_stats():
     """
@@ -426,13 +417,12 @@ async def get_documents(KLB_id):
     获取文档列表
     """
     try:
-        # 打印接收到的 KLB_id 参数
+        # KLB_id
         print(f"Received KLB_id: {KLB_id}")
         
-        # 获取文档列表
+        # Document list
         documents = doc_manager.search_documents(KLB_id)
         
-        # 打印搜索结果
         #print(f"Documents for KLB_id {KLB_id}: {documents}")
         
         return documents

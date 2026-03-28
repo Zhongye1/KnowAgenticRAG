@@ -34,18 +34,18 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/creation", tags=["文档创作"])
 
-# ─── 确保后端根目录在 sys.path ──────────────────────────────────
+# - sys.path -
 _backend_root = str(Path(__file__).resolve().parent.parent)
 if _backend_root not in sys.path:
     sys.path.insert(0, _backend_root)
 
 
-# ─── Prompt 模板 ──────────────────────────────────────────────
+# - Prompt -
 _PROMPTS = {
     "outline": """你是专业的中文写作助手。根据用户给出的主题和要求，生成一份详细的文章/报告大纲。
 
 要求：
-- 层级清晰（一级标题 # / 二级标题 ## / 三级标题 ###）
+- 层级清晰（一级标题 # / ## / ###
 - 每个节点简要说明该部分的核心内容（1-2句话）
 - 大纲应逻辑连贯，覆盖主题的核心维度
 
@@ -112,7 +112,7 @@ _PROMPTS = {
 }
 
 
-# ─── Provider 路由 ────────────────────────────────────────────
+# - Provider -
 def _get_provider(model_id: str) -> tuple[str, str]:
     """
     根据 model_id 判断 provider，返回 (real_model_id, provider)。
@@ -122,7 +122,7 @@ def _get_provider(model_id: str) -> tuple[str, str]:
       - "deepseek-chat"                → ('deepseek-chat', 'deepseek')
       - "cloud:deepseek:deepseek-chat" → ('deepseek-chat', 'deepseek')
     """
-    # cloud:provider:model_id 格式（前端 ModelSelector 写入）
+    # cloud:provider:model_id ModelSelector
     if model_id.startswith("cloud:"):
         parts = model_id.split(":", 2)
         provider = parts[1] if len(parts) > 1 else "ollama"
@@ -167,7 +167,7 @@ async def _stream_via_model_router(
             async for chunk in _stream_ollama_local(real_model, prompt):
                 yield chunk
         else:
-            # 复用 multi_model.model_router 的流式函数
+            # multi_model.model_router
             from multi_model.model_router import (
                 _stream_deepseek,
                 _stream_openai,
@@ -184,8 +184,8 @@ async def _stream_via_model_router(
                 return
 
             async for chunk in stream_fn(real_model, messages, temperature, max_tokens):
-                # model_router 返回 data: {"content":"...", "done":false} 格式
-                # 需要转换为前端 Creation.vue 期望的 data: <token> 格式
+                # model_router data: {"content":"...", "done":false}
+                # Creation.vue data: <token>
                 if chunk.startswith("data: "):
                     raw = chunk[6:].strip()
                     if not raw:
@@ -198,7 +198,7 @@ async def _stream_via_model_router(
                         if d.get("done"):
                             yield "data: [DONE]\n\n"
                     except Exception:
-                        # 非 JSON 行直接透传
+                        # JSON
                         if raw and raw != "[DONE]":
                             yield f"data: {raw}\n\n"
         yield "data: [DONE]\n\n"
@@ -211,7 +211,7 @@ async def _stream_via_model_router(
 async def _stream_ollama_local(model: str, prompt: str) -> AsyncGenerator[str, None]:
     """直连 Ollama /api/generate 流式输出"""
     import httpx
-    # 读取 Ollama 配置
+    # Ollama
     host = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     timeout = 120
     try:
@@ -256,11 +256,11 @@ def _get_default_model() -> str:
         return os.getenv("MODEL", "deepseek-chat")
 
 
-# ─── 请求模型 ─────────────────────────────────────────────────
+# - Request model -
 class OutlineRequest(BaseModel):
     topic: str
     requirements: str = "适合学术/技术报告风格，约2000字"
-    model: Optional[str] = None   # 可选，不传则使用默认模型
+    model: Optional[str] = None
 
 class SummaryRequest(BaseModel):
     text: str
@@ -283,7 +283,7 @@ class ExpandRequest(BaseModel):
     model: Optional[str] = None
 
 
-# ─── 路由 ─────────────────────────────────────────────────────
+# - -
 @router.post("/outline")
 async def gen_outline(req: OutlineRequest):
     """流式生成文章大纲（SSE）"""

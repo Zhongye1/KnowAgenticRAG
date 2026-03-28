@@ -17,7 +17,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# ── 配置文件路径（与 user_model_config.py 共享同一文件）────────────
+# - Config file user_model_config.py -
 _CONFIG_PATH = Path(__file__).parent.parent / "models_config.json"
 
 
@@ -45,19 +45,19 @@ def _get_base_url(provider: str, env_var: str, default: str) -> str:
     return keys.get(provider, {}).get("base_url", "") or os.getenv(env_var, default)
 
 
-# ── 请求/响应模型 ─────────────────────────────────────────────
+# - / -
 class ChatCompletionRequest(BaseModel):
-    model: str                          # 模型标识，如 "gpt-4o", "hunyuan", "deepseek-chat", "qwen2:0.5b"
+    model: str                          # "gpt-4o", "hunyuan", "deepseek-chat", "qwen2:0.5b"
     messages: list[dict]                # [{role, content}]
     stream: bool = True
     temperature: float = 0.7
     max_tokens: int = 2048
-    kb_id: Optional[str] = None         # 知识库 ID（RAG 模式）
+    kb_id: Optional[str] = None         # IDRAG
 
 class ModelListResponse(BaseModel):
     models: list[dict]
 
-# ── 可用模型配置（静态元数据，available 在返回时动态计算）───────────
+# - Model configavailable -
 _MODEL_CATALOG = [
     {
         "id": "qwen2:0.5b",
@@ -123,7 +123,7 @@ _MODEL_CATALOG = [
     },
 ]
 
-# 兼容旧代码直接引用 AVAILABLE_MODELS 的地方
+# AVAILABLE_MODELS
 AVAILABLE_MODELS = _MODEL_CATALOG
 
 
@@ -147,7 +147,7 @@ def _build_model_list() -> list:
         result.append(entry)
     return result
 
-# ── 辅助：按 provider 路由 ─────────────────────────────────────
+# - provider -
 async def _stream_ollama(model: str, messages: list, temperature: float, max_tokens: int) -> AsyncGenerator[str, None]:
     """调用本地 Ollama 流式接口"""
     import aiohttp
@@ -270,7 +270,7 @@ async def _stream_hunyuan(model: str, messages: list, temperature: float, max_to
     """调用腾讯混元 API（使用 OpenAI 兼容接口）"""
     secret_id = _get_key("hunyuan", "HUNYUAN_SECRET_ID") or os.getenv("HUNYUAN_SECRET_ID", "")
     secret_key = os.getenv("HUNYUAN_SECRET_KEY", "")
-    # 若文件中存了 hunyuan api_key，可直接作为 Bearer token
+    # hunyuan api_key Bearer token
     file_keys = _read_cloud_keys().get("hunyuan", {})
     if file_keys.get("api_key"):
         secret_id = file_keys["api_key"]
@@ -278,9 +278,9 @@ async def _stream_hunyuan(model: str, messages: list, temperature: float, max_to
     if not secret_id:
         yield f"data: {json.dumps({'error': '未配置混元 API Key，请在「设置 → 多模型」填写并保存'})}\n\n"
         return
-    # 混元支持 OpenAI 兼容接口，使用 API key 方式
+    # OpenAI API key
     import aiohttp
-    # 文件中直接保存了单一 api_key（前端输入），则直接用；否则用环境变量的 secretId:secretKey
+    # api_keyEnvironment variable secretId:secretKey
     api_key = secret_id if not secret_key else f"{secret_id}:{secret_key}"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
@@ -316,7 +316,7 @@ async def _stream_hunyuan(model: str, messages: list, temperature: float, max_to
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 
-# ── API 端点 ───────────────────────────────────────────────────
+# - API -
 @router.get("/api/models/list")
 async def list_models():
     """获取所有可用模型列表（available 字段实时反映当前 Key 配置状态）"""
@@ -329,10 +329,10 @@ async def model_chat(req: ChatCompletionRequest):
     统一多模型对话接口（SSE 流式）
     根据 model 字段自动路由到对应 provider
     """
-    # 确定 provider
+    # provider
     model_info = next((m for m in _MODEL_CATALOG if m["id"] == req.model), None)
     if not model_info:
-        # 未在列表中 → 尝试当 Ollama 本地模型处理
+        # Ollama Local model
         provider = "ollama"
     else:
         provider = model_info.get("provider", "ollama")
@@ -356,7 +356,7 @@ async def model_chat(req: ChatCompletionRequest):
     return StreamingResponse(generate(), media_type="text/event-stream")
 
 
-# ── 配置管理端点（前端 MultiModelTab saveProvider 调用）──────────────
+# - MultiModelTab saveProvider -
 
 class ProviderConfigRequest(BaseModel):
     provider_id: str   # ollama / deepseek / openai / hunyuan / bailian / xinghuo
@@ -370,13 +370,12 @@ async def configure_provider(req: ProviderConfigRequest):
     修复：前端 saveProvider 调用此接口，Key 持久化后后端实时生效（无需重启）。
     """
     try:
-        # 读取现有配置
         data: dict = {}
         if _CONFIG_PATH.exists():
             with open(_CONFIG_PATH, "r", encoding="utf-8") as f:
                 data = json.load(f)
 
-        # 写入 cloud_keys 子结构
+        # cloud_keys
         if "cloud_keys" not in data:
             data["cloud_keys"] = {}
         data["cloud_keys"][req.provider_id] = req.config
@@ -447,7 +446,7 @@ async def test_provider(req: ProviderTestRequest):
         elif provider in ("hunyuan", "bailian", "xinghuo"):
             if not api_key:
                 return {"ok": False, "message": "API Key 为空"}
-            # 仅校验 Key 非空，不发实际请求（避免扣费）
+            # Key
             latency = int((time.monotonic() - start) * 1000)
             return {"ok": True, "message": "API Key 已填写（格式校验通过）", "latency": latency}
 
@@ -486,12 +485,12 @@ async def providers_status():
     }
 
 
-# ── Agent 任务模式端点（云端+本地模型统一入口）──────────────────────
+# - Agent Task mode+Local model-
 
 class AgentTaskRequest(BaseModel):
     query: str
-    model: str = "deepseek-chat"        # 任意 model id（Ollama 本地或云端）
-    kb_id: Optional[str] = None         # 可选：关联知识库 ID（RAG 上下文增强）
+    model: str = "deepseek-chat"        # model idOllama
+    kb_id: Optional[str] = None         # IDRAG
     temperature: float = 0.7
     max_tokens: int = 4096
 
@@ -537,11 +536,11 @@ async def agent_task(req: AgentTaskRequest):
     provider = _get_provider_for_model(req.model)
 
     async def generate():
-        # ── Step 1: 理解任务 ──
+        # - Step 1: -
         yield f"data: {json.dumps({'event':'step','index':0,'name':'理解任务目标','detail':req.query[:80]}, ensure_ascii=False)}\n\n"
         await asyncio.sleep(0.05)
 
-        # ── Step 2: 可选 RAG 检索 ──
+        # - Step 2: RAG -
         rag_context = ""
         if req.kb_id:
             yield f"data: {json.dumps({'event':'step','index':1,'name':'检索知识库','detail':f'知识库 {req.kb_id}'}, ensure_ascii=False)}\n\n"
@@ -583,7 +582,7 @@ async def agent_task(req: AgentTaskRequest):
             yield f"data: {json.dumps({'event':'step','index':1,'name':'规划执行流程','detail':'基于模型知识直接推理'}, ensure_ascii=False)}\n\n"
             await asyncio.sleep(0.05)
 
-        # ── Step 3: 构建 Prompt ──
+        # - Step 3: Prompt -
         yield f"data: {json.dumps({'event':'step','index':2,'name':'生成结构化草稿','detail':f'使用 {req.model}'}, ensure_ascii=False)}\n\n"
 
         system_prompt = (
@@ -602,7 +601,7 @@ async def agent_task(req: AgentTaskRequest):
             {"role": "user", "content": user_content},
         ]
 
-        # ── Step 4: 调用 LLM，流式输出 ──
+        # - Step 4: LLMStreaming output -
         full_answer = []
         yield f"data: {json.dumps({'event':'step','index':3,'name':'润色与优化','detail':'流式生成中...'}, ensure_ascii=False)}\n\n"
 
@@ -654,7 +653,7 @@ async def agent_task(req: AgentTaskRequest):
             yield f"data: {json.dumps({'event':'error','message': str(e)}, ensure_ascii=False)}\n\n"
             return
 
-        # ── DONE 事件 ──
+        # - DONE -
         yield f"data: {json.dumps({'event':'done','model':req.model,'provider':provider,'has_rag': bool(req.kb_id)}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
@@ -664,7 +663,7 @@ async def agent_task(req: AgentTaskRequest):
     )
 
 
-# ── 通用辅助：一次性调用任意模型（非流式，返回完整文本）──────────────────
+# - -
 
 async def call_model_once(
     model: str,

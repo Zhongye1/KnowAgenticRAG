@@ -89,7 +89,7 @@ def init_db():
 init_db()
 
 
-# ── 定价方案 ─────────────────────────────────────────────────
+# - -
 @router.get("/plans")
 def list_plans():
     conn = get_db()
@@ -117,7 +117,7 @@ def get_plan(plan_id: str):
     return d
 
 
-# ── 订阅管理 ─────────────────────────────────────────────────
+# - -
 class SubscribeRequest(BaseModel):
     user_id: str
     tenant_id: str
@@ -134,13 +134,11 @@ def subscribe(req: SubscribeRequest):
         conn.close()
         raise HTTPException(404, "方案不存在")
 
-    # 取消旧订阅
     conn.execute("""
         UPDATE subscriptions SET status='cancelled'
         WHERE user_id=? AND tenant_id=? AND status='active'
     """, (req.user_id, req.tenant_id))
 
-    # 计算有效期
     now = datetime.now()
     days = 365 if req.billing_cycle == "yearly" else 30
     expires_at = (now + timedelta(days=days)).isoformat()
@@ -174,7 +172,7 @@ def get_subscription(user_id: str):
     return d
 
 
-# ── 工单系统 ─────────────────────────────────────────────────
+# - -
 class TicketCreate(BaseModel):
     user_id: str
     tenant_id: Optional[str] = "default"

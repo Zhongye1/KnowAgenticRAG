@@ -11,12 +11,10 @@ from pydantic import BaseModel
 from typing import Optional
 import os
 
-# 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# 定义数据模型
 class UserCreate(BaseModel):
     email: str
     password: str
@@ -35,7 +33,7 @@ class TokenData(BaseModel):
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login/login")
 
-# 统一从公共配置模块导入，不再重复定义 DB_CONFIG
+# DB_CONFIG
 from RAGF_User_Management.db_config import get_db_connection
 
 
@@ -49,11 +47,9 @@ def create_user_table():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 创建数据库（如果不存在）
         cursor.execute("CREATE DATABASE IF NOT EXISTS rag_user_db")
         cursor.execute("USE rag_user_db")
 
-        # 创建用户表
         cursor.execute('''CREATE TABLE IF NOT EXISTS user(
             id INT AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(255) NOT NULL UNIQUE,
@@ -86,10 +82,8 @@ def create_userData_table():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 确保使用正确的数据库
         cursor.execute("USE rag_user_db")
         
-        # 创建用户资料表，包含社交平台字段
         cursor.execute('''CREATE TABLE IF NOT EXISTS user_profile(
            user_id INT PRIMARY KEY,
            name VARCHAR(100),
@@ -121,41 +115,35 @@ def ensure_tables_exist():
     create_user_table()
     create_userData_table()
 
-# ★ 原来的两行模块级立即调用已删除，移入 ensure_tables_exist()
-# create_user_table()     ← 已删除
-# create_userData_table() ← 已删除
+# ensure_tables_exist()
+# create_user_table()
+# create_userData_table()
 
 
-# 创建用户
 def create_user(email: str, password: str) -> bool:
     """
     创建用户
     """
     conn = None
     try:
-        # 统一小写，避免大小写不一致导致注册/找回密码逻辑冲突
+        # /
         email = email.strip().lower()
-        # 对密码进行哈希处理（数据库里要加密）
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
         print(email, password)
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 确保使用正确的数据库
         cursor.execute("USE rag_user_db")
 
-        # 检查用户名是否已存在
         cursor.execute("SELECT * FROM user WHERE email = %s", (email,))
         if cursor.fetchone():
             logger.warn("邮箱已存在")
             return False
 
-        # 插入新用户
         cursor.execute("INSERT INTO user (email, password) VALUES (%s, %s)",
                        (email, hashed_password))
         conn.commit()
 
-        # 验证插入是否成功
         cursor.execute("SELECT * FROM user WHERE email = %s", (email,))
         if cursor.fetchone():
             logger.info("用户创建成功")
@@ -173,22 +161,19 @@ def create_user(email: str, password: str) -> bool:
                 pass
 
 
-# 用户登录验证
+# User login
 def user_login(email: str, password: str) -> bool:
     """
     用户登录验证
     """
     conn = None
     try:
-        # 统一小写，与注册时保持一致
         email = email.strip().lower()
-        # 对密码进行哈希处理
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
 
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 确保使用正确的数据库
         cursor.execute("USE rag_user_db")
 
         cursor.execute("SELECT * FROM user WHERE email = %s AND password = %s",
@@ -208,7 +193,7 @@ def user_login(email: str, password: str) -> bool:
                 pass
 
 
-# 生成JWT令牌
+# JWT token
 def authenticate_user(email: str) -> str:
     """
     生成JWT令牌
@@ -216,7 +201,7 @@ def authenticate_user(email: str) -> str:
     secret_key = os.getenv('JWT_SECRET', 'changeme_jwt_secret')
     payload = {
         "sub": email,
-        "exp": datetime.utcnow() + timedelta(hours=24)  # 令牌过期时间延长至24h
+        "exp": datetime.utcnow() + timedelta(hours=24)  # 24h
     }
     try:
         return jwt.encode(payload, secret_key, algorithm="HS256")
@@ -227,7 +212,7 @@ def authenticate_user(email: str) -> str:
         except (ImportError, AttributeError):
             raise Exception("无法生成JWT令牌，请检查PyJWT库的安装")
 
-# 验证JWT令牌
+# JWT token
 def verify_jwt(token: str) -> dict:
     """
     验证JWT令牌
@@ -245,20 +230,19 @@ def verify_jwt(token: str) -> dict:
 
 
 
-# 向user_profile.db注入初始化数据
+# user_profile.dbInitialize
 
 def init_profile(email: str) -> bool:
     """
     初始化用户数据表 (修复版)
     """
-    # 第一部分：获取用户ID
+    # ID
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("USE rag_user_db")
         
-        # 检查表结构
         cursor.execute("DESCRIBE user")
         columns = [column[0] for column in cursor.fetchall()]
         
@@ -266,7 +250,7 @@ def init_profile(email: str) -> bool:
             logger.error(f"用户表结构不正确，缺少id列。当前列: {columns}")
             return False
             
-        # 查询用户ID
+        # ID
         cursor.execute("SELECT id FROM user WHERE email = %s", (email,))
         result = cursor.fetchone()
 
@@ -276,30 +260,26 @@ def init_profile(email: str) -> bool:
 
         user_id = result[0]
         
-        # 关闭游标和连接
         cursor.close()
         conn.close()
-        conn = None  # 标记连接已关闭
+        conn = None
         
     except Exception as e:
         logger.error(f"获取用户ID失败: {e}")
         return False
     finally:
-        # 只有当连接存在且未关闭时才尝试关闭
         if conn:
             try:
                 conn.close()
             except:
-                pass  # 忽略关闭连接时的错误
+                pass
 
-    # 第二部分：创建用户配置
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("USE rag_user_db")
         
-        # 确保表存在（包含社交平台字段）
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS user_profile (
                 user_id INT NOT NULL UNIQUE,
@@ -312,7 +292,7 @@ def init_profile(email: str) -> bool:
             )
         """)
 
-        # 插入初始化数据（包含社交平台字段）
+        # Initialize
         cursor.execute("""
             INSERT IGNORE INTO user_profile (user_id, name, signature, social_media, avatar)
             VALUES (%s, %s, %s, %s, %s)
@@ -324,12 +304,11 @@ def init_profile(email: str) -> bool:
         logger.error(f"创建用户配置失败: {e}")
         return False
     finally:
-        # 只有当连接存在且未关闭时才尝试关闭
         if conn:
             try:
                 conn.close()
             except:
-                pass  # 忽略关闭连接时的错误
+                pass
 
 
 def safe_db_operation(email):
@@ -337,7 +316,7 @@ def safe_db_operation(email):
     init_profile(email)
     return token
 
-# 注册接口 - 支持JSON和表单数据
+# - JSON
 @router.post("/api/register", response_model=dict)
 async def register_user(user: UserCreate):
     """
@@ -376,13 +355,12 @@ async def register_user_form(email: str = Form(...), password: str = Form(...)):
             detail="用户注册失败（可能邮箱已存在）"
         )
 
-# 登录接口 - 支持多种方式
 @router.post("/api/login", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
     """
     用户登录接口 (OAuth2标准格式)
     """
-    email = form_data.username.strip().lower()  # OAuth2中username字段实际传的是email
+    email = form_data.username.strip().lower()  # OAuth2usernameemail
     if user_login(email, form_data.password):
         token = authenticate_user(email)
         return {"access_token": token, "token_type": "bearer"}
@@ -431,7 +409,6 @@ async def login_user_form(email: str = Form(...), password: str = Form(...)):
             detail="用户名或密码错误"
         )
 
-# 获取当前用户信息接口
 @router.get("/api/users/me", response_model=dict)
 async def read_users_me(token: str = Depends(oauth2_scheme)):
     """
@@ -451,7 +428,6 @@ async def read_users_me(token: str = Depends(oauth2_scheme)):
         cursor = conn.cursor()
         cursor.execute("USE rag_user_db")
         
-        # 查询用户信息
         cursor.execute("SELECT id, email, created_at FROM user WHERE email = %s", (result["sub"],))
         user = cursor.fetchone()
         
@@ -483,7 +459,6 @@ async def read_users_me(token: str = Depends(oauth2_scheme)):
         if conn:
             conn.close()
 
-# 验证令牌接口
 @router.post("/api/verify-token", response_model=dict)
 async def verify_token_endpoint(token: str = Form(...)):
     """
@@ -501,7 +476,6 @@ async def verify_token_endpoint(token: str = Form(...)):
         "data": result
     }
 
-# 退出登录接口
 @router.post("/api/logout", response_model=dict)
 async def logout_user():
     """

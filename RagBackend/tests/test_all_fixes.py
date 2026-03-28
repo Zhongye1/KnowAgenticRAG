@@ -18,7 +18,6 @@ import json
 import unittest
 from pathlib import Path
 
-# 项目根目录
 # tests/ -> RagBackend/ -> KnowledgeRAG/ -> WorkBuddy/
 BACKEND_ROOT = Path(__file__).resolve().parent.parent   # RagBackend/
 PROJECT_ROOT = BACKEND_ROOT.parent                       # KnowledgeRAG/
@@ -27,7 +26,7 @@ sys.path.insert(0, str(BACKEND_ROOT / "RAG_M"))
 
 
 # ═══════════════════════════════════════════════════════════
-# Test 1: doc_list.py 语法合法性 & 无重复方法
+# Test 1: doc_list.py &
 # ═══════════════════════════════════════════════════════════
 class TestDocListFix(unittest.TestCase):
 
@@ -62,7 +61,7 @@ class TestDocListFix(unittest.TestCase):
         with open(self.filepath, encoding="utf-8") as f:
             source = f.read()
         tree = ast.parse(source)
-        # 找 DocumentManager 类中的方法名
+        # DocumentManager
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name == "DocumentManager":
                 method_names = [
@@ -77,7 +76,7 @@ class TestDocListFix(unittest.TestCase):
 
 
 # ═══════════════════════════════════════════════════════════
-# Test 2: 硬编码密码/secret 已消除
+# Test 2: /secret
 # ═══════════════════════════════════════════════════════════
 class TestNoHardcodedSecrets(unittest.TestCase):
 
@@ -90,7 +89,7 @@ class TestNoHardcodedSecrets(unittest.TestCase):
     def _check_no_hardcoded(self, filepath: Path):
         with open(filepath, encoding="utf-8") as f:
             source = f.read()
-        # 不应出现 = "secret" 或 = 'secret'（单独赋值给 key 的形式）
+        # = "secret" = 'secret' key
         pattern = r'''secret_key\s*=\s*['"]secret['"]'''
         matches = re.findall(pattern, source)
         self.assertEqual(
@@ -114,7 +113,7 @@ class TestNoHardcodedSecrets(unittest.TestCase):
 
 
 # ═══════════════════════════════════════════════════════════
-# Test 3: docker-compose.yml 修复验证
+# Test 3: docker-compose.yml
 # ═══════════════════════════════════════════════════════════
 class TestDockerComposeFix(unittest.TestCase):
 
@@ -132,7 +131,7 @@ class TestDockerComposeFix(unittest.TestCase):
 
     def test_ollama_in_network(self):
         """Ollama 服务应该加入 apn-network"""
-        # 找到 ollama 服务块后检查是否有 networks
+        # ollama networks
         lines = self.content.split('\n')
         in_ollama = False
         ollama_has_network = False
@@ -143,7 +142,7 @@ class TestDockerComposeFix(unittest.TestCase):
                 ollama_has_network = True
                 break
             if in_ollama and line.strip().startswith("networks:") and "apn-network" not in line:
-                pass  # 还在块内继续检查
+                pass
         self.assertTrue(ollama_has_network, "Ollama 服务未加入 apn-network")
 
     def test_db_env_vars_present(self):
@@ -153,7 +152,7 @@ class TestDockerComposeFix(unittest.TestCase):
 
 
 # ═══════════════════════════════════════════════════════════
-# Test 4: BM25 检索基础功能
+# Test 4: BM25
 # ═══════════════════════════════════════════════════════════
 class TestBM25(unittest.TestCase):
 
@@ -173,7 +172,6 @@ class TestBM25(unittest.TestCase):
         """BM25 能检索到相关文档"""
         results = self.bm25.retrieve("神经网络深度学习", top_k=2)
         self.assertTrue(len(results) > 0, "BM25 没有返回任何结果")
-        # 第一个结果应该是关于深度学习的文档
         top_doc = results[0][0]
         self.assertIn("深度学习", top_doc.page_content)
 
@@ -193,7 +191,7 @@ class TestBM25(unittest.TestCase):
 
 
 # ═══════════════════════════════════════════════════════════
-# Test 5: RRF 融合排序
+# Test 5: RRF
 # ═══════════════════════════════════════════════════════════
 class TestRRFFusion(unittest.TestCase):
 
@@ -218,7 +216,7 @@ class TestRRFFusion(unittest.TestCase):
         fused = reciprocal_rank_fusion([list1, list2])
 
         self.assertGreater(len(fused), 0, "RRF 没有返回任何结果")
-        # doc_a 和 doc_b 在两个列表中都排名靠前，应排在 doc_c 前面
+        # doc_a doc_b doc_c
         top_two_contents = {fused[0][0].page_content, fused[1][0].page_content}
         self.assertIn(doc_a.page_content, top_two_contents)
         self.assertIn(doc_b.page_content, top_two_contents)
@@ -235,15 +233,14 @@ class TestRRFFusion(unittest.TestCase):
 
 
 # ═══════════════════════════════════════════════════════════
-# Test 6: 知识图谱合并逻辑
+# Test 6: Knowledge graph
 # ═══════════════════════════════════════════════════════════
 class TestGraphMerge(unittest.TestCase):
 
     def test_merge_deduplicates_nodes(self):
         """合并后重复节点 id 只保留一个"""
-        # 把函数直接从文件中提取测试（不导入完整 router）
+        # router
         sys.path.insert(0, str(BACKEND_ROOT))
-        # 模拟函数逻辑
         def _merge(graph_list):
             merged_nodes = {}
             merged_edges = {}
@@ -261,7 +258,7 @@ class TestGraphMerge(unittest.TestCase):
         g1 = {"nodes": [{"id": "A", "label": "实体A"}, {"id": "B", "label": "实体B"}],
               "edges": [{"source": "A", "target": "B", "label": "关系1"}]}
         g2 = {"nodes": [{"id": "B", "label": "实体B"}, {"id": "C", "label": "实体C"}],
-              "edges": [{"source": "A", "target": "B", "label": "关系1"},  # 重复边
+              "edges": [{"source": "A", "target": "B", "label": "关系1"},
                         {"source": "B", "target": "C", "label": "关系2"}]}
 
         merged = _merge([g1, g2])
@@ -289,7 +286,7 @@ class TestGraphMerge(unittest.TestCase):
 
 
 # ═══════════════════════════════════════════════════════════
-# Test 7: 引用溯源字段完整性
+# Test 7:
 # ═══════════════════════════════════════════════════════════
 class TestCitationTracking(unittest.TestCase):
 
@@ -298,7 +295,7 @@ class TestCitationTracking(unittest.TestCase):
         from src.rag.hybrid_retriever import HybridRetriever, _extract_filename
         from langchain.docstore.document import Document
 
-        # 测试 _extract_filename 工具函数
+        # _extract_filename
         meta1 = {"source": "/path/to/test.pdf"}
         self.assertEqual(_extract_filename(meta1), "test.pdf")
 
@@ -312,14 +309,14 @@ class TestCitationTracking(unittest.TestCase):
         """HybridRetriever.retrieve_with_scores 返回的每条结果必须有完整 source_info"""
         required_keys = {"rank", "rrf_score", "file_name", "page", "chunk_index", "source_path"}
 
-        # 构造虚拟数据（不需要真实向量存储）
+        # Vector store
         from src.rag.hybrid_retriever import reciprocal_rank_fusion
         from langchain.docstore.document import Document
 
         doc = Document(page_content="测试内容", metadata={"source": "/test/file.txt", "page": 1})
         fused = reciprocal_rank_fusion([[(doc, 0.9)]])
 
-        # 模拟 source_info 构建
+        # source_info
         for _, rrf_score in fused:
             source_info = {
                 "rank": 1,
@@ -334,9 +331,8 @@ class TestCitationTracking(unittest.TestCase):
 
 
 # ═══════════════════════════════════════════════════════════
-# 运行
 # ═══════════════════════════════════════════════════════════
 if __name__ == "__main__":
-    # 改变工作目录为 RagBackend，确保相对路径正确
+    # RagBackend
     os.chdir(str(BACKEND_ROOT))
     unittest.main(verbosity=2)

@@ -36,9 +36,9 @@ from pydantic import BaseModel
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/backup", tags=["知识库备份"])
 
-# ─── 配置 ─────────────────────────────────────────────────────
+# - -
 _BACKEND_ROOT = Path(__file__).parent.parent
-_KB_ROOT      = _BACKEND_ROOT / "local-KLB-files"     # 知识库文件根目录
+_KB_ROOT      = _BACKEND_ROOT / "local-KLB-files"
 _BACKUP_DIR   = _BACKEND_ROOT / "backups"
 _BACKUP_DB    = _BACKEND_ROOT / "backups" / "backup_index.db"
 
@@ -64,7 +64,7 @@ def _init_backup_db():
 _init_backup_db()
 
 
-# ─── 核心备份逻辑 ─────────────────────────────────────────────
+# - -
 def _create_backup(bak_id: str, kb_id: Optional[str]):
     """
     创建备份：
@@ -76,7 +76,6 @@ def _create_backup(bak_id: str, kb_id: Optional[str]):
         if kb_id:
             target_dirs = [_KB_ROOT / kb_id]
         else:
-            # 全量备份
             target_dirs = [d for d in _KB_ROOT.iterdir() if d.is_dir()] if _KB_ROOT.exists() else []
 
         buf = io.BytesIO()
@@ -96,7 +95,6 @@ def _create_backup(bak_id: str, kb_id: Optional[str]):
                             "size": fpath.stat().st_size,
                         })
                         file_count += 1
-            # 写入元数据
             zf.writestr("_backup_metadata.json", json.dumps(metadata, ensure_ascii=False, indent=2))
 
         buf.seek(0)
@@ -117,13 +115,13 @@ def _create_backup(bak_id: str, kb_id: Optional[str]):
             conn.execute("UPDATE backups SET status='error' WHERE id=?", (bak_id,))
 
 
-# ─── 请求模型 ─────────────────────────────────────────────────
+# - Request model -
 class BackupRequest(BaseModel):
-    kb_id: Optional[str] = None   # None = 全量备份
+    kb_id: Optional[str] = None   # None =
     kb_name: str = "全量"
 
 
-# ─── 路由 ─────────────────────────────────────────────────────
+# - -
 @router.post("/create")
 async def create_backup(req: BackupRequest, bg: BackgroundTasks):
     """创建知识库备份（异步执行，立即返回 backup_id）"""

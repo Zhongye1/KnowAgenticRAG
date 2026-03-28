@@ -22,7 +22,7 @@ import json
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# ── Whisper 模型加载（延迟加载，避免启动时内存峰值）────────────────
+# - Whisper -
 _whisper_model = None
 _whisper_model_size: str = os.environ.get("WHISPER_MODEL", "base")  # tiny/base/small/medium/large
 
@@ -46,7 +46,7 @@ def _get_whisper_model():
     return _whisper_model
 
 
-# ── API 端点 ──────────────────────────────────────────────────────
+# - API -
 
 @router.post("/api/voice/transcribe")
 async def transcribe_audio(
@@ -58,7 +58,6 @@ async def transcribe_audio(
     语音转文字接口
     上传音频文件，返回转录文本
     """
-    # 检查文件格式
     ext = Path(file.filename or "").suffix.lower()
     if ext not in SUPPORTED_AUDIO_EXTENSIONS:
         raise HTTPException(
@@ -66,7 +65,6 @@ async def transcribe_audio(
             detail=f"不支持的音频格式: {ext}。支持: {', '.join(SUPPORTED_AUDIO_EXTENSIONS)}"
         )
 
-    # 保存到临时文件
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
         content = await file.read()
         tmp.write(content)
@@ -76,12 +74,11 @@ async def transcribe_audio(
         model = _get_whisper_model()
         logger.info(f"[Whisper] 开始转录: {file.filename}, language={language}, task={task}")
 
-        # 执行转录
         result = model.transcribe(
             tmp_path,
             language=language if language != "auto" else None,
             task=task,
-            fp16=False,  # CPU 推理关闭 fp16
+            fp16=False,  # CPU fp16
             verbose=False,
         )
 
@@ -110,7 +107,6 @@ async def transcribe_audio(
         logger.error(f"[Whisper] 转录失败: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"转录失败: {str(e)}")
     finally:
-        # 清理临时文件
         try:
             os.unlink(tmp_path)
         except Exception:
@@ -132,7 +128,7 @@ async def voice_ask(
     if ext not in SUPPORTED_AUDIO_EXTENSIONS:
         raise HTTPException(status_code=400, detail=f"不支持的音频格式: {ext}")
 
-    # 1. 语音转文字
+    # 1.
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
         content = await file.read()
         tmp.write(content)
@@ -156,19 +152,18 @@ async def voice_ask(
 
     logger.info(f"[VoiceAsk] 识别问题: {question!r}, kb_id={kb_id}")
 
-    # 2. 调用 RAG 流式问答（SSE）
+    # 2. RAG SSE
     async def generate():
-        # 先发送转录文本事件
         yield f"data: {json.dumps({'type': 'transcription', 'text': question, 'language': recognized_language}, ensure_ascii=False)}\n\n"
 
         try:
             if kb_id:
-                # 有知识库：走 RAG 流水线
+                # RAG
                 from RAG_M.RAG_app import _stream_rag_answer
                 async for chunk in _stream_rag_answer(question=question, kb_id=kb_id, llm_model=model):
                     yield chunk
             else:
-                # 无知识库：直走 LLM
+                # LLM
                 from RAG_M.RAG_app import _stream_llm_direct
                 async for chunk in _stream_llm_direct(question=question, llm_model=model):
                     yield chunk
@@ -202,7 +197,6 @@ async def load_whisper_model(model_size: str = Form(...)):
     if model_size not in valid:
         raise HTTPException(status_code=400, detail=f"无效的模型大小，可选: {valid}")
 
-    # 释放旧模型
     if _whisper_model is not None:
         del _whisper_model
         _whisper_model = None
@@ -224,7 +218,7 @@ async def whisper_health():
     except ImportError:
         whisper_available = False
 
-    # 检查 ffmpeg
+    # ffmpeg
     import shutil
     ffmpeg_available = shutil.which("ffmpeg") is not None
 

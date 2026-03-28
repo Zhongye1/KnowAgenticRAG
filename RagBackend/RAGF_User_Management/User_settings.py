@@ -15,20 +15,18 @@ import aiofiles
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 from dotenv import load_dotenv
 
-# 加载环境变量
+# Environment variable
 load_dotenv()
 
-# 统一从公共配置模块导入，不再重复定义 DB_CONFIG
+# DB_CONFIG
 from RAGF_User_Management.db_config import get_db_connection
 
-# 头像存储路径
 AVATAR_DIR = "user_avatars"
 os.makedirs(AVATAR_DIR, exist_ok=True)
 
@@ -53,7 +51,7 @@ async def get_user_data(token: str = Depends(oauth2_scheme)):
     获取用户数据
     """
     try:
-        # 验证JWT
+        # JWT
         decoded_token = verify_jwt(token)
         if "error" in decoded_token:
             raise HTTPException(
@@ -63,23 +61,21 @@ async def get_user_data(token: str = Depends(oauth2_scheme)):
         
         email = decoded_token["sub"]
         
-        # 获取用户数据
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 使用正确的数据库
         cursor.execute("USE rag_user_db")
         
-        # 确保user_profile表包含social_media字段
+        # user_profilesocial_media
         try:
             cursor.execute("SELECT social_media FROM user_profile LIMIT 1")
         except pymysql.Error as e:
             if "Unknown column" in str(e):
-                # 添加social_media字段
+                # social_media
                 cursor.execute("ALTER TABLE user_profile ADD COLUMN social_media VARCHAR(500) DEFAULT ''")
                 conn.commit()
         
-        # 查询用户ID
+        # ID
         cursor.execute("DESCRIBE user")
         columns = [column[0] for column in cursor.fetchall()]
         
@@ -90,7 +86,7 @@ async def get_user_data(token: str = Depends(oauth2_scheme)):
                 detail="数据库表结构不正确，请联系管理员"
             )
         
-        # 查询用户ID
+        # ID
         cursor.execute("SELECT id, email FROM user WHERE email=%s", (email,))
         user_result = cursor.fetchone()
         if not user_result:
@@ -99,15 +95,12 @@ async def get_user_data(token: str = Depends(oauth2_scheme)):
         user_id = user_result[0]
         user_email = user_result[1]
         
-        # 查询用户资料（包含社交平台字段）
         cursor.execute("SELECT user_id, name, signature, social_media, avatar FROM user_profile WHERE user_id=%s", (user_id,))
         user_data = cursor.fetchone()
         
-        # 默认头像链接
         default_avatar = "https://pic3.zhimg.com/80/v2-71152904edf11db5c8885548393ace6a_720w.webp"
         
         if user_data:
-            # 如果头像为空，则使用默认头像
             avatar = user_data[4] if user_data[4] else default_avatar
             
             return {
@@ -116,13 +109,12 @@ async def get_user_data(token: str = Depends(oauth2_scheme)):
                     "user_id": user_data[0],
                     "name": user_data[1] or "",
                     "signature": user_data[2] or "",
-                    "social_media": user_data[3] or "",  # 社交平台信息
+                    "social_media": user_data[3] or "",
                     "avatar": avatar,
                     "email": user_email
                 }
             }
         else:
-            # 如果用户资料不存在，创建默认资料
             cursor.execute("""
                 INSERT INTO user_profile (user_id, name, signature, social_media, avatar)
                 VALUES (%s, %s, %s, %s, %s)
@@ -135,7 +127,7 @@ async def get_user_data(token: str = Depends(oauth2_scheme)):
                     "user_id": user_id,
                     "name": "新用户",
                     "signature": "这个人很懒，什么也没写",
-                    "social_media": "",  # 社交平台信息
+                    "social_media": "",
                     "avatar": default_avatar,
                     "email": user_email
                 }
@@ -168,16 +160,15 @@ async def update_user_data(token: str = Depends(oauth2_scheme), user_data: UserD
     更新用户数据
     """
     try:
-        # 验证JWT
+        # JWT
         decoded_token = jwt.decode(token, os.getenv('JWT_SECRET', 'changeme_jwt_secret'), algorithms=["HS256"])
         email = decoded_token["sub"]
         
-        # 处理头像数据
         avatar_url = ""
         if user_data.avatar.startswith("data:image"):
-            # 如果是base64格式的图片数据，保存为文件
+            # base64
             header, encoded = user_data.avatar.split(",", 1)
-            file_extension = ".png"  # 默认png格式
+            file_extension = ".png"  # png
             if "jpeg" in header:
                 file_extension = ".jpg"
             elif "gif" in header:
@@ -185,32 +176,27 @@ async def update_user_data(token: str = Depends(oauth2_scheme), user_data: UserD
             elif "webp" in header:
                 file_extension = ".webp"
                 
-            # 使用与知识库封面相同的目录和命名方式
             avatar_upload_dir = os.path.join("local-KLB-files", "avatars")
             os.makedirs(avatar_upload_dir, exist_ok=True)
             
-            # 生成唯一文件名
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             unique_filename = f"avatar_{timestamp}_{uuid.uuid4().hex[:8]}{file_extension}"
             avatar_path = os.path.join(avatar_upload_dir, unique_filename)
             
-            # 保存上传的图片
             import aiofiles
             async with aiofiles.open(avatar_path, 'wb') as f:
                 decoded_data = base64.b64decode(encoded)
                 await f.write(decoded_data)
             
-            # 构建可访问的URL路径
+            # URL
             avatar_url = f"/static/avatars/{unique_filename}"
         else:
-            # 如果已经是URL，则直接使用
+            # URL
             avatar_url = user_data.avatar
         
-        # 更新用户数据
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 使用正确的数据库
         cursor.execute("USE rag_user_db")
         
         cursor.execute("UPDATE user_profile SET name=%s, signature=%s, avatar=%s, social_media=%s WHERE user_id=(SELECT id FROM user WHERE email=%s)", (user_data.name, user_data.signature, avatar_url, user_data.social_media, email))
@@ -240,7 +226,7 @@ async def update_avatar(
     更新用户头像
     """
     try:
-        # 验证JWT
+        # JWT
         decoded_token = verify_jwt(token)
         if "error" in decoded_token:
             raise HTTPException(
@@ -250,31 +236,26 @@ async def update_avatar(
         
         email = decoded_token["sub"]
         
-        # 使用与知识库封面相同的目录和命名方式
         avatar_upload_dir = os.path.join("local-KLB-files", "avatars")
         os.makedirs(avatar_upload_dir, exist_ok=True)
         
-        # 生成唯一文件名
         file_extension = os.path.splitext(avatar_file.filename)[1]
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         unique_filename = f"avatar_{timestamp}_{uuid.uuid4().hex[:8]}{file_extension}"
         avatar_path = os.path.join(avatar_upload_dir, unique_filename)
         
-        # 保存上传的图片
         async with aiofiles.open(avatar_path, 'wb') as f:
             content = await avatar_file.read()
             await f.write(content)
         
-        # 构建可访问的URL路径
+        # URL
         avatar_url = f"/static/avatars/{unique_filename}"
         
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 使用正确的数据库
         cursor.execute("USE rag_user_db")
         
-        # 更新用户头像
         cursor.execute(
             "UPDATE user_profile SET avatar=%s WHERE user_id=(SELECT id FROM user WHERE email=%s)",
             (avatar_url, email)
@@ -307,7 +288,7 @@ async def delete_user_data(token: str = Depends(oauth2_scheme)):
     删除用户数据
     """
     try:
-        # 验证JWT
+        # JWT
         decoded_token = verify_jwt(token)
         if "error" in decoded_token:
             raise HTTPException(
@@ -320,10 +301,8 @@ async def delete_user_data(token: str = Depends(oauth2_scheme)):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # 使用正确的数据库
         cursor.execute("USE rag_user_db")
 
-        # 删除用户（会自动级联删除用户资料）
         cursor.execute("DELETE FROM user WHERE email=%s", (email,))
         conn.commit()
         
@@ -345,7 +324,7 @@ async def delete_user_data(token: str = Depends(oauth2_scheme)):
         if conn:
             conn.close()
 
-# 拿到user.db所有的数据
+# user.db
 @router.get("/api/user/GetUserAllData")
 async def get_user_all_data():
     """
@@ -354,7 +333,6 @@ async def get_user_all_data():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # 使用正确的数据库
     cursor.execute("USE rag_user_db")
     
     cursor.execute("SELECT id, email, created_at FROM user")

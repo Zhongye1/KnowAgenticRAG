@@ -33,15 +33,15 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-# ── 软删除延迟重建阈值 ──────────────────────────────────────────────
-# 工业级思路：不在每次 update/delete 时立即全量重建向量库（O(N) 随文档量增长），
-# 而是将被更新/删除的文档 key 标记为"已废弃"写入 metadata，
-# 查询时运行时过滤废弃 chunk，不影响召回质量。
-# 当累积的废弃条目超过阈值时，才触发一次全量紧凑重建（compaction），
-# 将 compaction 的实际发生频率从"每次更新"降低为"每N次更新"。
-_COMPACTION_THRESHOLD = 10  # 每累积 10 次软删除触发一次 compaction
+# - -
+# update/delete O(N)
+# / key "" metadata
+# chunk
+# compaction
+# compaction """N"
+_COMPACTION_THRESHOLD = 10  # 10 compaction
 
-# 确保能找到 RAG_M 模块
+# RAG_M
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_BACKEND_DIR))
 sys.path.insert(0, str(_BACKEND_DIR / "RAG_M"))
@@ -53,7 +53,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# ── 目录配置 ─────────────────────────────────────────────────────
+# - -
 VECTORSTORE_ROOT = str(_BACKEND_DIR / "knowledge_base" / "vectorstores")
 HASH_INDEX_ROOT = str(_BACKEND_DIR / "metadata" / "vector_hash_index")
 
@@ -62,7 +62,6 @@ os.makedirs(HASH_INDEX_ROOT, exist_ok=True)
 
 
 # ─────────────────────────────────────────────────────────────────
-# 哈希索引：持久化记录已向量化文档
 # ─────────────────────────────────────────────────────────────────
 
 class HashIndex:
@@ -104,7 +103,7 @@ class HashIndex:
         tmp = self.index_path + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(self._data, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, self.index_path)  # 原子替换
+        os.replace(tmp, self.index_path)
 
     def get(self, doc_key: str) -> Optional[dict]:
         return self._data.get(doc_key)
@@ -153,7 +152,6 @@ class HashIndex:
 
 
 # ─────────────────────────────────────────────────────────────────
-# 工具函数
 # ─────────────────────────────────────────────────────────────────
 
 def compute_file_hash(file_path: str) -> str:
@@ -171,7 +169,7 @@ def compute_bytes_hash(content: bytes) -> str:
 
 
 # ─────────────────────────────────────────────────────────────────
-# 增量向量化核心类
+# Incremental vectorization
 # ─────────────────────────────────────────────────────────────────
 
 class IncrementalVectorizer:
@@ -185,7 +183,7 @@ class IncrementalVectorizer:
         self.vectorstore_path = os.path.join(VECTORSTORE_ROOT, kb_id)
         os.makedirs(self.vectorstore_path, exist_ok=True)
         self.hash_index = HashIndex(kb_id)
-        self._vs_manager = None   # 懒加载
+        self._vs_manager = None
 
     def _get_vs_manager(self):
         if self._vs_manager is None:
@@ -217,11 +215,11 @@ class IncrementalVectorizer:
             try:
                 from src.ingestion.document_loader import DocumentLoader
             except ImportError:
-                # Fallback: 简单文本加载
+                # Fallback:
                 from langchain.docstore.document import Document
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     text = f.read()
-                # 按段落分块（~500字符）
+                # ~500
                 chunks = [p.strip() for p in text.split("\n\n") if len(p.strip()) > 50]
                 if not chunks:
                     chunks = [text[:2000]]
@@ -241,7 +239,7 @@ class IncrementalVectorizer:
             logger.error(f"[IncrementalVectorizer] 文档解析失败 {file_path}: {e}")
             raise
 
-    # ── 核心方法：增量 Ingest ──────────────────────────────────
+    # - Ingest -
 
     def ingest_file(
         self,
@@ -271,7 +269,6 @@ class IncrementalVectorizer:
 
         existing = self.hash_index.get(doc_key)
 
-        # ── 哈希比对：跳过未变化的文档
         if not force and existing and not existing.get("deleted") and existing.get("file_hash") == new_hash:
             logger.info(f"[IncrementalVectorizer] 跳过（哈希未变）: {doc_key}")
             return {
@@ -284,24 +281,23 @@ class IncrementalVectorizer:
 
         status = "updated" if (existing and not existing.get("deleted")) else "added"
 
-        # ── 解析文档
         logger.info(f"[IncrementalVectorizer] 解析文档: {file_path}")
         documents = self._load_documents(file_path)
         if not documents:
             raise ValueError(f"文档解析结果为空: {file_path}")
 
-        # 为每个 chunk 打上 doc_key 元数据
+        # chunk doc_key
         for i, doc in enumerate(documents):
             doc.metadata["doc_key"]     = doc_key
             doc.metadata["source"]      = file_path
             doc.metadata["chunk_index"] = i
 
-        # ── 软删除旧向量块（不立即重建，仅标记 deleted）
+        # - deleted
         if status == "updated" and existing:
             logger.info(f"[IncrementalVectorizer] 软删除旧记录: {doc_key}")
             self.hash_index.soft_delete(doc_key)
 
-        # ── 直接追加新 chunk（O(1)，不触发全量重建）
+        # - chunkO(1)
         vs_manager  = self._get_vs_manager()
         existing_vs = self._load_vectorstore()
 
@@ -313,7 +309,7 @@ class IncrementalVectorizer:
             logger.info(f"[IncrementalVectorizer] 创建新向量库: {self.kb_id}")
             vs_manager.create_vectorstore(documents, self.vectorstore_path)
 
-        # ── 写入新的哈希索引记录（active）
+        # - active
         self.hash_index.set(doc_key, {
             "file_hash":     new_hash,
             "file_path":     file_path,
@@ -323,7 +319,7 @@ class IncrementalVectorizer:
             "deleted":       False,
         })
 
-        # ── 检查是否需要触发 compaction（延迟全量重建）
+        # - compaction
         compacted = False
         if self.hash_index.pending_compaction():
             logger.info(f"[IncrementalVectorizer] 触发 compaction（软删除累积达阈值）: {self.kb_id}")
@@ -348,7 +344,6 @@ class IncrementalVectorizer:
         """
         existing_vs = self._load_vectorstore()
         if existing_vs is None:
-            # 向量库不存在，直接清理索引中的废弃记录即可
             for dk in self.hash_index.get_deleted_keys():
                 self.hash_index.delete(dk)
             return
@@ -356,7 +351,7 @@ class IncrementalVectorizer:
         deleted_keys = set(self.hash_index.get_deleted_keys())
         all_docs     = list(existing_vs.docstore._dict.values())
 
-        # 过滤掉所有废弃 doc_key 的 chunk
+        # doc_key chunk
         clean_docs = [
             d for d in all_docs
             if hasattr(d, "metadata") and d.metadata.get("doc_key") not in deleted_keys
@@ -366,13 +361,11 @@ class IncrementalVectorizer:
         if clean_docs:
             vs_manager.create_vectorstore(clean_docs, self.vectorstore_path)
         else:
-            # 清空向量库
             for fname in ["index.faiss", "index.pkl"]:
                 fpath = os.path.join(self.vectorstore_path, fname)
                 if os.path.exists(fpath):
                     os.remove(fpath)
 
-        # 硬删除废弃记录
         for dk in list(deleted_keys):
             self.hash_index.delete(dk)
 
@@ -392,11 +385,10 @@ class IncrementalVectorizer:
         if not existing:
             return {"status": "not_found", "doc_key": doc_key}
 
-        # 软删除：标记废弃，不立即重建
         self.hash_index.soft_delete(doc_key)
         logger.info(f"[IncrementalVectorizer] 软删除文档: {doc_key}")
 
-        # 检查是否需要 compaction
+        # compaction
         compacted = False
         if self.hash_index.pending_compaction():
             logger.info(f"[IncrementalVectorizer] 触发 compaction（remove 后达阈值）: {self.kb_id}")
@@ -440,7 +432,7 @@ class IncrementalVectorizer:
 
 
 # ─────────────────────────────────────────────────────────────────
-# FastAPI 路由（供 main.py include）
+# FastAPI main.py include
 # ─────────────────────────────────────────────────────────────────
 
 class IngestRequest(BaseModel):
@@ -470,7 +462,6 @@ async def api_ingest_file(req: IngestRequest):
     """
     from document_processing.task_queue import enqueue_task
 
-    # 文件存在性检查（快速校验，不阻塞）
     if not os.path.exists(req.file_path):
         raise HTTPException(status_code=404, detail=f"文件不存在: {req.file_path}")
 
