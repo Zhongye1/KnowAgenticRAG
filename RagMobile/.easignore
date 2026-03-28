@@ -1,0 +1,15 @@
+node_modules/
+.expo/
+dist/
+web-build/
+.kotlin/
+android/
+ios/
+*.orig.*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+*.pem
+.env*.local
+*.tsbuildinfo
