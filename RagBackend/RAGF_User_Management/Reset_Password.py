@@ -18,34 +18,14 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Optional, Dict, Tuple
 
-import pymysql
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, EmailStr
-from dotenv import load_dotenv
-
-load_dotenv()
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-# ─────────────────────────────
-# Database config
-# ─────────────────────────────
-DB_CONFIG = {
-    "host":     os.getenv("DB_HOST",     "127.0.0.1"),
-    "port":     int(os.getenv("DB_PORT", 3306)),
-    "user":     os.getenv("DB_USER",     "root"),
-    "password": os.getenv("DB_PASSWORD", ""),
-    "database": os.getenv("DB_NAME",     "mysql"),
-    "charset":  os.getenv("DB_CHARSET",  "utf8mb4"),
-}
-
-
-def _get_db():
-    conn = pymysql.connect(**DB_CONFIG)
-    cur  = conn.cursor()
-    cur.execute("USE rag_user_db")
-    return conn, cur
+# Use the shared db_cursor() — never define DB_CONFIG locally.
+from RAGF_User_Management.db_config import db_cursor
 
 
 # ─────────────────────────────
@@ -203,60 +183,47 @@ def _send_sms(phone: str, code: str) -> bool:
 # ─────────────────────────────
 def _email_exists(email: str) -> bool:
     try:
-        conn, cur = _get_db()
-        cur.execute("SELECT id FROM user WHERE email = %s", (email,))
-        result = cur.fetchone()
-        cur.close(); conn.close()
-        return result is not None
+        with db_cursor() as cur:
+            cur.execute("SELECT id FROM user WHERE email = %s", (email,))
+            return cur.fetchone() is not None
     except Exception as e:
-        logger.error(f"查询邮箱失败: {e}")
+        logger.error(f"_email_exists error: {e}")
         return False
 
 
 def _phone_exists(phone: str) -> bool:
-    """检查手机号是否存在（需要 user 表有 phone 列）"""
     try:
-        conn, cur = _get_db()
-        # phone
-        cur.execute("DESCRIBE user")
-        cols = [r[0] for r in cur.fetchall()]
-        if "phone" not in cols:
-            cur.close(); conn.close()
-            return False
-        cur.execute("SELECT id FROM user WHERE phone = %s", (phone,))
-        result = cur.fetchone()
-        cur.close(); conn.close()
-        return result is not None
+        with db_cursor() as cur:
+            cur.execute("DESCRIBE user")
+            cols = [r[0] for r in cur.fetchall()]
+            if "phone" not in cols:
+                return False
+            cur.execute("SELECT id FROM user WHERE phone = %s", (phone,))
+            return cur.fetchone() is not None
     except Exception as e:
-        logger.error(f"查询手机号失败: {e}")
+        logger.error(f"_phone_exists error: {e}")
         return False
 
 
 def _reset_password_by_email(email: str, new_password: str) -> bool:
     try:
         hashed = hashlib.sha256(new_password.encode()).hexdigest()
-        conn, cur = _get_db()
-        cur.execute("UPDATE user SET password = %s WHERE email = %s", (hashed, email))
-        conn.commit()
-        affected = cur.rowcount
-        cur.close(); conn.close()
-        return affected > 0
+        with db_cursor() as cur:
+            cur.execute("UPDATE user SET password = %s WHERE email = %s", (hashed, email))
+            return cur.rowcount > 0
     except Exception as e:
-        logger.error(f"重置密码失败: {e}")
+        logger.error(f"_reset_password_by_email error: {e}")
         return False
 
 
 def _reset_password_by_phone(phone: str, new_password: str) -> bool:
     try:
         hashed = hashlib.sha256(new_password.encode()).hexdigest()
-        conn, cur = _get_db()
-        cur.execute("UPDATE user SET password = %s WHERE phone = %s", (hashed, phone))
-        conn.commit()
-        affected = cur.rowcount
-        cur.close(); conn.close()
-        return affected > 0
+        with db_cursor() as cur:
+            cur.execute("UPDATE user SET password = %s WHERE phone = %s", (hashed, phone))
+            return cur.rowcount > 0
     except Exception as e:
-        logger.error(f"重置密码失败: {e}")
+        logger.error(f"_reset_password_by_phone error: {e}")
         return False
 
 
