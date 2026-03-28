@@ -86,10 +86,10 @@ def create_userData_table():
         
         cursor.execute('''CREATE TABLE IF NOT EXISTS user_profile(
            user_id INT PRIMARY KEY,
-           name VARCHAR(100),
-           signature TEXT,
-           social_media VARCHAR(500),
-           avatar VARCHAR(255),
+           name VARCHAR(100) DEFAULT 'New User',
+           signature VARCHAR(500) DEFAULT '',
+           social_media VARCHAR(500) DEFAULT '',
+           avatar VARCHAR(255) DEFAULT '',
            FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE
         )''')
         conn.commit()
@@ -234,74 +234,44 @@ def verify_jwt(token: str) -> dict:
 
 def init_profile(email: str) -> bool:
     """
-    初始化用户数据表 (修复版)
+    Initialize user profile row after registration.
+    Uses INSERT IGNORE so it is idempotent (safe to call multiple times).
+    NOTE: TEXT columns cannot have DEFAULT values in strict MySQL mode,
+          so defaults are supplied explicitly here instead of in DDL.
     """
-    # ID
     conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("USE rag_user_db")
-        
-        cursor.execute("DESCRIBE user")
-        columns = [column[0] for column in cursor.fetchall()]
-        
-        if 'id' not in columns:
-            logger.error(f"用户表结构不正确，缺少id列。当前列: {columns}")
-            return False
-            
-        # ID
+
+        # Fetch user id
         cursor.execute("SELECT id FROM user WHERE email = %s", (email,))
         result = cursor.fetchone()
-
         if not result:
-            logger.error(f"用户不存在: {email}")
+            logger.error(f"init_profile: user not found: {email}")
             return False
-
         user_id = result[0]
-        
-        cursor.close()
-        conn.close()
-        conn = None
-        
-    except Exception as e:
-        logger.error(f"获取用户ID失败: {e}")
-        return False
-    finally:
-        if conn:
-            try:
-                conn.close()
-            except:
-                pass
 
-    conn = None
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("USE rag_user_db")
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS user_profile (
-                user_id INT NOT NULL UNIQUE,
-                name VARCHAR(100) DEFAULT '新用户',
-                signature TEXT DEFAULT '这个人很懒，什么也没写',
-                social_media VARCHAR(500) DEFAULT '',  -- 社交平台信息
-                avatar VARCHAR(255) DEFAULT 'https://pic3.zhimg.com/80/v2-71152904edf11db5c8885548393ace6a_720w.webp',
-                FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE,
-                PRIMARY KEY (user_id)
-            )
-        """)
-
-        # Initialize
-        cursor.execute("""
+        # Insert profile (INSERT IGNORE skips if already exists)
+        cursor.execute(
+            """
             INSERT IGNORE INTO user_profile (user_id, name, signature, social_media, avatar)
             VALUES (%s, %s, %s, %s, %s)
-        """, (user_id, "初始化内容", "初始化签名", "", "https://pic3.zhimg.com/80/v2-71152904edf11db5c8885548393ace6a_720w.webp"))
-        
+            """,
+            (
+                user_id,
+                "New User",
+                "This user has not written anything yet.",
+                "",
+                "https://pic3.zhimg.com/80/v2-71152904edf11db5c8885548393ace6a_720w.webp",
+            ),
+        )
         conn.commit()
+        logger.info(f"init_profile: profile ready for user_id={user_id}")
         return True
     except Exception as e:
-        logger.error(f"创建用户配置失败: {e}")
+        logger.error(f"init_profile failed: {e}")
         return False
     finally:
         if conn:

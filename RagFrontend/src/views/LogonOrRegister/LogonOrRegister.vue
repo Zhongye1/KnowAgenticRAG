@@ -97,6 +97,7 @@ import DynamicLogo from '@/components/canvas-point-unit/DynamicLogo.vue'
 import LoginRegisterForm from './LoginRegisterForm.vue'
 import VueTypewriterEffect from 'vue-typewriter-effect'
 import logoRag from '@/assets/logo-rag.png'
+import { markJustAuthenticated } from '@/router'
 
 const currentImageKey = ref<string>('welcome')
 const isLoading = ref(false)
@@ -201,6 +202,9 @@ const handleFormSubmit = async (data: any) => {
   loadingText.value = data.type === 'login' ? '正在登录...' : '正在注册...'
   try {
     if (data.token) {
+      // Mark as just-authenticated so the router guard skips remote check
+      // for the very next navigation (avoids race condition).
+      markJustAuthenticated()
       localStorage.setItem('jwt', data.token)
       const redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '/knowledge'
       window.location.href = redirectUrl
