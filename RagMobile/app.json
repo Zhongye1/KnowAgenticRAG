@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "KnowledgeRAG",
-    "slug": "knowledgerag",
+    "slug": "knowledgerag-gzhu",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -23,8 +23,9 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "package": "com.knowledgerag.app",
       "versionCode": 1,
@@ -51,7 +52,7 @@
       ]
     ],
     "extra": {
-      "apiUrl": "http://10.0.2.2:8000",
+      "apiUrl": "http://8.163.51.93:8000",
       "eas": {
         "projectId": "bd7173c5-0e97-433b-ac99-12d7ee9f8038"
       }
