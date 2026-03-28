@@ -19,11 +19,18 @@
       "ios": {
         "simulator": true
       },
-      "node": "20.19.0"
+      "node": "20.19.0",
+      "env": {
+        "EAS_SKIP_EXPO_DOCTOR": "1",
+        "EXPO_NO_TELEMETRY": "1"
+      }
     },
     "production": {
       "android": {
         "buildType": "app-bundle"
+      },
+      "env": {
+        "EAS_SKIP_EXPO_DOCTOR": "1"
       }
     }
   },
