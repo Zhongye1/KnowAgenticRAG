@@ -48,10 +48,12 @@ def verify_jwt(token: str) -> dict:
 @router.get("/api/user/GetUserData")
 async def get_user_data(token: str = Depends(oauth2_scheme)):
     """
-    获取用户数据
+    Get user profile data.
     """
+    conn = None
+    cursor = None
     try:
-        # JWT
+        # Verify JWT
         decoded_token = verify_jwt(token)
         if "error" in decoded_token:
             raise HTTPException(
@@ -157,18 +159,18 @@ class UserDataUpdate(BaseModel):
 @router.post("/api/UpdateUserData")
 async def update_user_data(token: str = Depends(oauth2_scheme), user_data: UserDataUpdate = Body(...)):
     """
-    更新用户数据
+    Update user profile data.
     """
+    conn = None
+    cursor = None
     try:
-        # JWT
         decoded_token = jwt.decode(token, os.getenv('JWT_SECRET', 'changeme_jwt_secret'), algorithms=["HS256"])
         email = decoded_token["sub"]
         
         avatar_url = ""
         if user_data.avatar.startswith("data:image"):
-            # base64
             header, encoded = user_data.avatar.split(",", 1)
-            file_extension = ".png"  # png
+            file_extension = ".png"
             if "jpeg" in header:
                 file_extension = ".jpg"
             elif "gif" in header:
@@ -188,10 +190,8 @@ async def update_user_data(token: str = Depends(oauth2_scheme), user_data: UserD
                 decoded_data = base64.b64decode(encoded)
                 await f.write(decoded_data)
             
-            # URL
             avatar_url = f"/static/avatars/{unique_filename}"
         else:
-            # URL
             avatar_url = user_data.avatar
         
         conn = get_db_connection()
@@ -223,8 +223,10 @@ async def update_avatar(
     avatar_file: UploadFile = File(...)
 ):
     """
-    更新用户头像
+    Update user avatar via file upload.
     """
+    conn = None
+    cursor = None
     try:
         # JWT
         decoded_token = verify_jwt(token)
@@ -277,16 +279,18 @@ async def update_avatar(
             detail="头像更新失败"
         )
     finally:
-        if 'cursor' in locals():
+        if cursor:
             cursor.close()
-        if 'conn' in locals():
+        if conn:
             conn.close()
             
 @router.delete("/api/user/DeleteUserData")
 async def delete_user_data(token: str = Depends(oauth2_scheme)):
     """
-    删除用户数据
+    Delete user account and all associated data.
     """
+    conn = None
+    cursor = None
     try:
         # JWT
         decoded_token = verify_jwt(token)
@@ -328,23 +332,31 @@ async def delete_user_data(token: str = Depends(oauth2_scheme)):
 @router.get("/api/user/GetUserAllData")
 async def get_user_all_data():
     """
-    获取所有用户数据
+    Get all user records (admin/debug endpoint).
     """
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    cursor.execute("USE rag_user_db")
-    
-    cursor.execute("SELECT id, email, created_at FROM user")
-    user_data = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    
-    if not user_data:
-        raise HTTPException(
-            status_code=400,
-            detail="数据为空"
-        )
-    
-    logger.info("用户数据为：", user_data)
-    return {"status": "success", "data": user_data}
+    conn = None
+    cursor = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("USE rag_user_db")
+        
+        cursor.execute("SELECT id, email, created_at FROM user")
+        user_data = cursor.fetchall()
+        
+        if not user_data:
+            raise HTTPException(status_code=400, detail="No users found")
+        
+        logger.info(f"GetUserAllData: returned {len(user_data)} users")
+        return {"status": "success", "data": user_data}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"GetUserAllData failed: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn:
+            conn.close()
