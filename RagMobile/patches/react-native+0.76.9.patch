@@ -1,0 +1,16 @@
+diff --git a/node_modules/react-native/Libraries/Utilities/Platform.js b/node_modules/react-native/Libraries/Utilities/Platform.js
+new file mode 100644
+index 0000000..2e1f583
+--- /dev/null
++++ b/node_modules/react-native/Libraries/Utilities/Platform.js
+@@ -0,0 +1,10 @@
++// Shim to re-export platform-specific Platform module
++// Required because react-native/Libraries/Utilities/Platform.js does not exist
++// Only Platform.android.js and Platform.ios.js exist
++// This file must be in the Utilities folder to satisfy relative imports
++'use strict';
++if (process.env.EXPO_OS === 'ios') {
++  module.exports = require('./Platform.ios.js');
++} else {
++  module.exports = require('./Platform.android.js');
++}

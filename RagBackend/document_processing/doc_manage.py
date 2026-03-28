@@ -12,6 +12,11 @@ import asyncio
 
 router = APIRouter()
 
+# - -
+# asyncio.Lock documents.json
+# /
+_metadata_lock = asyncio.Lock()
+
 
 """
 CURD实现UPDATE,READ,DELETE
@@ -52,29 +57,28 @@ DocumentResponse：文档响应的数据模型，包含文档的所有属性
 
 
 
-# 添加模型配置导入
+# Model config
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from models.model_config import get_model_config
 
-# 获取默认的rerank模型
+# rerank
 model_config = get_model_config()
 DEFAULT_RERANK_MODEL = model_config.rerank_model
 
 
-# 配置文件上传相关设置
+# File upload
 UPLOAD_DIR = "local-KLB-files"
 METADATA_DIR = "metadata"
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".doc", ".md", ".rtf"}
 
-# 确保目录存在
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(METADATA_DIR, exist_ok=True)
 
 METADATA_FILE = os.path.join(METADATA_DIR, "documents.json")
 
-# Pydantic 模型
+# Pydantic
 class DocumentStatus(BaseModel):
     documentId: int
     enabled: bool
@@ -93,14 +97,27 @@ class DocumentResponse(BaseModel):
     file_size: int
     file_hash: str
 
-# 本地文档管理类
+# Document management
 class LocalDocumentManager:
+    """
+    文档元数据管理器。
+
+    并发安全设计：
+    - 所有读写操作通过模块级 `_metadata_lock`（asyncio.Lock）保护，
+      保证同进程内并发上传时不产生竞态条件。
+    - 同步方法（add_document / delete_document 等）供 async 方法在锁内调用；
+      外部 API 层应通过 async 包装方法访问（见下方 async 辅助方法）。
+    """
+
     def __init__(self):
         self.metadata_file = METADATA_FILE
+        # Initialize
         self.documents = self._load_documents()
-    
+
+    # - IO-
+
     def _load_documents(self) -> dict:
-        """从本地JSON文件加载文档元数据"""
+        """从本地JSON文件加载文档元数据（同步，仅供锁内调用）"""
         if os.path.exists(self.metadata_file):
             try:
                 with open(self.metadata_file, 'r', encoding='utf-8') as f:
@@ -109,132 +126,142 @@ class LocalDocumentManager:
                 print(f"加载文档元数据失败: {e}")
                 return {}
         return {}
-    
+
     def _save_documents(self):
-        """保存文档元数据到本地JSON文件"""
+        """
+        原子写：先写临时文件，再 rename 替换，避免写到一半时进程崩溃导致文件损坏。
+        """
+        tmp_path = self.metadata_file + ".tmp"
         try:
-            with open(self.metadata_file, 'w', encoding='utf-8') as f:
+            with open(tmp_path, 'w', encoding='utf-8') as f:
                 json.dump(self.documents, f, ensure_ascii=False, indent=2)
                 f.flush()
                 os.fsync(f.fileno())
+            os.replace(tmp_path, self.metadata_file)
         except Exception as e:
             print(f"保存文档元数据失败: {e}")
-    
-    def add_document(self, doc_data: dict) -> int:
-        """添加新文档"""
-        # 生成新的文档ID
+            if os.path.exists(tmp_path):
+                try:
+                    os.remove(tmp_path)
+                except Exception:
+                    pass
+
+    # - -
+
+    def _add_document_locked(self, doc_data: dict) -> int:
+        """添加新文档（需在锁内调用）"""
+        self.documents = self._load_documents()
         doc_id = max(map(int, self.documents.keys()), default=0) + 1
         doc_data['id'] = doc_id
         self.documents[str(doc_id)] = doc_data
         self._save_documents()
         return doc_id
-    
-    def get_document(self, doc_id: int) -> dict:
-        """获取单个文档"""
-        self.documents = self._load_documents()  # 重新加载元数据
-        return self.documents.get(str(doc_id))
-    
-    def get_all_documents(self) -> List[dict]:
-        """获取所有文档"""
-        self.documents = self._load_documents()  # 重新加载元数据
-        return list(self.documents.values())
-    
-    def update_document(self, doc_id: int, updates: dict):
-        """更新文档信息"""
-        self.documents = self._load_documents()  # 重新加载元数据
+
+    def _update_document_locked(self, doc_id: int, updates: dict) -> bool:
+        """更新文档信息（需在锁内调用）"""
+        self.documents = self._load_documents()
         if str(doc_id) in self.documents:
             self.documents[str(doc_id)].update(updates)
             self.documents[str(doc_id)]['updated_at'] = datetime.now().isoformat()
             self._save_documents()
             return True
         return False
-    
-    def delete_document(self, doc_id: int, KLB_id: str) -> bool:
-        """删除文档"""
+
+    def _delete_document_locked(self, doc_id: int, KLB_id: str) -> bool:
+        """删除文档（需在锁内调用）"""
+        self.documents = self._load_documents()
         if str(doc_id) in self.documents:
             doc = self.documents[str(doc_id)]
-            # 删除物理文件
             if 'file_path' in doc and os.path.exists(doc['file_path']):
                 try:
                     os.remove(doc['file_path'])
                     print(f"删除文件成功: {doc['file_path']}")
                 except Exception as e:
                     print(f"删除文件失败: {e}")
-            
-            # 删除元数据
             del self.documents[str(doc_id)]
             self._save_documents()
             return True
         return False
-    
-    def search_documents(self, KLB_id: str, search_term: str = None, status: str = None) -> List[dict]:
-        """搜索文档"""
-        # 获取指定目录下的所有文件
-        self.documents = self._load_documents()  # 重新加载元数据
 
+    # - async -
+
+    async def add_document(self, doc_data: dict) -> int:
+        """添加新文档（协程安全）"""
+        async with _metadata_lock:
+            return self._add_document_locked(doc_data)
+
+    async def update_document(self, doc_id: int, updates: dict) -> bool:
+        """更新文档信息（协程安全）"""
+        async with _metadata_lock:
+            return self._update_document_locked(doc_id, updates)
+
+    async def delete_document(self, doc_id: int, KLB_id: str) -> bool:
+        """删除文档（协程安全）"""
+        async with _metadata_lock:
+            return self._delete_document_locked(doc_id, KLB_id)
+
+    # - -
+
+    def get_document(self, doc_id: int) -> dict:
+        """获取单个文档（读取磁盘最新版本）"""
+        docs = self._load_documents()
+        return docs.get(str(doc_id))
+
+    def get_all_documents(self) -> List[dict]:
+        """获取所有文档（读取磁盘最新版本）"""
+        return list(self._load_documents().values())
+
+    def search_documents(self, KLB_id: str, search_term: str = None, status: str = None) -> List[dict]:
+        """按知识库ID搜索文档（读取磁盘最新版本）"""
         kb_dir = os.path.join(UPLOAD_DIR, KLB_id)
         if not os.path.exists(kb_dir):
             return []
 
-        # 读取目录下的所有文件
-        # 使用 os.scandir() 获取文件列表，提高性能
         files = []
         with os.scandir(kb_dir) as entries:
             for entry in entries:
                 if entry.is_file():
                     files.append(entry.name)
 
-        #print("目录下的所有文件:", files)
-        # 初始化搜索结果列表
-        results = []
-
-        # 动态加载文档元数据
         documents = self._load_documents()
-
-        # 遍历所有文件
+        results = []
         for file in files:
-            # 获取文件的完整路径
             file_path = os.path.join(kb_dir, file)
-
-            # 检查文件是否存在于文档元数据中
-            #print("文档元数据" , documents.values())
             for doc in documents.values():
-                #print("file" , file_path)
                 if doc.get('file_path') == file_path:
                     results.append(doc)
                     break
 
-        #print("搜索结果:", results)
         return results
-    
-    ## 添加文档统计信息
+
+    # - -
+
     def get_total_documents(self) -> int:
         """获取文档总数"""
-        return len(self.documents)
+        return len(self._load_documents())
 
     def get_enabled_documents(self) -> int:
         """获取启用文档的数量"""
-        return sum(1 for doc in self.documents.values() if doc.get('enabled', True))
+        return sum(1 for doc in self._load_documents().values() if doc.get('enabled', True))
 
     def get_disabled_documents(self) -> int:
         """获取禁用文档的数量"""
-        return sum(1 for doc in self.documents.values() if not doc.get('enabled', True))
+        return sum(1 for doc in self._load_documents().values() if not doc.get('enabled', True))
 
     def get_total_size(self) -> int:
         """获取所有文档的总大小"""
-        return sum(doc.get('file_size', 0) for doc in self.documents.values())
+        return sum(doc.get('file_size', 0) for doc in self._load_documents().values())
 
     def get_file_types(self) -> dict:
         """按文件类型统计文档数量"""
         file_types = {}
-        for doc in self.documents.values():
+        for doc in self._load_documents().values():
             file_type = doc.get('fileType', 'unknown')
             file_types[file_type] = file_types.get(file_type, 0) + 1
         return file_types
 
 
-
-# 创建文档管理器实例
+# Document management
 doc_manager = LocalDocumentManager()
 
 @router.post("/api/update-document-status/")
@@ -243,7 +270,7 @@ async def update_document_status(status: DocumentStatus):
     更新文档启用状态
     """
     try:
-        success = doc_manager.update_document(status.documentId, {"enabled": status.enabled})
+        success = await doc_manager.update_document(status.documentId, {"enabled": status.enabled})
         
         print(f"更新文档是否成功: {success}")
         print(f"文档ID: {status.documentId}")
@@ -275,7 +302,7 @@ async def delete_documents(KLB_id: str, delete_request: DeleteDocuments):
         not_found_files = []
         
         for doc_id in delete_request.documentIds:
-            if doc_manager.delete_document(doc_id, KLB_id):
+            if await doc_manager.delete_document(doc_id, KLB_id):
                 deleted_files.append(doc_id)
             else:
                 not_found_files.append(doc_id)
@@ -292,7 +319,7 @@ async def delete_documents(KLB_id: str, delete_request: DeleteDocuments):
         raise HTTPException(status_code=500, detail=f"删除文档失败: {str(e)}")
     
 
-# 知识库搜索测试端点
+# Test endpoint
 @router.post("/api/search-test/")
 async def search_test(
     query: str,
@@ -306,7 +333,6 @@ async def search_test(
     执行知识库搜索测试
     """
     try:
-        # 获取要搜索的文档
         search_docs = []
         if selected_documents:
             for doc_id in selected_documents:
@@ -314,11 +340,9 @@ async def search_test(
                 if doc and doc.get('enabled', True):
                     search_docs.append(doc)
         else:
-            # 搜索所有启用的文档
             search_docs = [doc for doc in doc_manager.get_all_documents() 
                           if doc.get('enabled', True)]
         
-        # 简单的关键词匹配搜索（实际应用中应该使用向量搜索）
         mock_results = []
         for doc in search_docs:
             file_path = doc.get('file_path')
@@ -327,9 +351,7 @@ async def search_test(
                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read()
                     
-                    # 简单的关键词匹配
                     if query.lower() in content.lower():
-                        # 提取包含关键词的片段
                         lines = content.split('\n')
                         relevant_lines = [line for line in lines if query.lower() in line.lower()]
                         
@@ -339,7 +361,7 @@ async def search_test(
                                 "content": relevant_lines[0][:200] + "..." if len(relevant_lines[0]) > 200 else relevant_lines[0],
                                 "file": doc['name'],
                                 "chunk": 1,
-                                "score": 0.85  # 模拟相似度分数
+                                "score": 0.85
                             })
                 except:
                     continue
@@ -348,7 +370,7 @@ async def search_test(
             "results": mock_results,
             "query": query,
             "total_results": len(mock_results),
-            "search_time": 0.5,  # 搜索耗时（秒）
+            "search_time": 0.5,
             "searched_documents": len(search_docs),
             "parameters": {
                 "similarity_threshold": similarity_threshold,
@@ -361,7 +383,6 @@ async def search_test(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"搜索测试失败: {str(e)}")
 
-# 获取系统统计信息
 @router.get("/api/stats/")
 async def get_stats():
     """
@@ -396,13 +417,12 @@ async def get_documents(KLB_id):
     获取文档列表
     """
     try:
-        # 打印接收到的 KLB_id 参数
+        # KLB_id
         print(f"Received KLB_id: {KLB_id}")
         
-        # 获取文档列表
+        # Document list
         documents = doc_manager.search_documents(KLB_id)
         
-        # 打印搜索结果
         #print(f"Documents for KLB_id {KLB_id}: {documents}")
         
         return documents

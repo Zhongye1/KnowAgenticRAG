@@ -1,0 +1,96 @@
+version: "3.9"
+
+# ============================================================
+# KnowledgeRAG-GZHU 轻量版 Docker Compose
+# 包含：前端 + 后端 + SQLite（无 MySQL、无 Ollama 容器）
+# 适合：对接公共 LLM API（DeepSeek / 阿里云百炼 / OpenAI）
+# 启动：docker compose -f docker-compose.lite.yml up -d
+# ============================================================
+
+services:
+  # ── 后端（FastAPI，使用公共 LLM API 而非本地 Ollama）──────
+  backend:
+    build:
+      context: ./RagBackend
+      dockerfile: Dockerfile
+    container_name: ragf-backend-lite
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # 数据库：SQLite（无需 MySQL）
+      - DB_TYPE=sqlite
+      - SQLITE_PATH=/app/data/ragf.db
+
+      # ── 选择一种公共 LLM API ──────────────────────────────
+      # 方案A：DeepSeek（推荐，性价比最高）
+      - LLM_PROVIDER=deepseek
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-your_key_here}
+      - DEEPSEEK_MODEL=${DEEPSEEK_MODEL:-deepseek-chat}
+
+      # 方案B：阿里云百炼（qwen-plus/qwen-turbo）
+      # - LLM_PROVIDER=dashscope
+      # - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY:-your_key_here}
+      # - DASHSCOPE_MODEL=${DASHSCOPE_MODEL:-qwen-plus}
+
+      # 方案C：本地 Ollama（宿主机已有 Ollama 服务）
+      # - LLM_PROVIDER=ollama
+      # - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      # - MODEL=${MODEL:-qwen2:0.5b}
+
+      # ── 通用配置 ─────────────────────────────────────────
+      - JWT_SECRET=${JWT_SECRET:-ragf_lite_secret_change_me}
+      - OLLAMA_TIMEOUT=120
+    volumes:
+      - ragf_data:/app/data
+      - ragf_kb:/app/local-KLB-files
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ── 前端（Nginx 反代，生产构建）─────────────────────────────
+  frontend:
+    build:
+      context: ./RagFrontend
+      dockerfile: Dockerfile
+    container_name: ragf-frontend-lite
+    restart: unless-stopped
+    ports:
+      - "8089:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+
+volumes:
+  ragf_data:
+    driver: local
+  ragf_kb:
+    driver: local
+
+
+# ============================================================
+# 快速上手指南
+# ============================================================
+# 1. 复制并填写 API Key：
+#    export DEEPSEEK_API_KEY=sk-xxxxx
+#    export JWT_SECRET=your_random_secret
+#
+# 2. 启动：
+#    docker compose -f docker-compose.lite.yml up -d
+#
+# 3. 访问：
+#    前端  → http://localhost:8089
+#    后端  → http://localhost:8000/docs
+#
+# 4. 切换 LLM：
+#    修改 environment 中的 LLM_PROVIDER 和对应的 API_KEY
+# ============================================================

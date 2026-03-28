@@ -3,12 +3,28 @@
     <t-card class="shadow-lg">
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-800">文件管理</h1>
-        <t-button theme="primary" @click="refreshData">
-          <template #icon>
-            <refresh-icon />
-          </template>
-          刷新
-        </t-button>
+        <div class="flex gap-3 items-center">
+          <span v-if="pinnedFiles.length > 0" class="text-sm text-blue-500 font-medium">📌 {{ pinnedFiles.length }} 个已置顶</span>
+          <t-button theme="primary" @click="refreshData">
+            <template #icon>
+              <refresh-icon />
+            </template>
+            刷新
+          </t-button>
+        </div>
+      </div>
+
+      <!-- 置顶文件区 -->
+      <div v-if="pinnedFiles.length > 0" class="pinned-section mb-4">
+        <div class="pinned-header">📌 置顶文件</div>
+        <div class="pinned-list">
+          <div v-for="file in pinnedFiles" :key="file.id" class="pinned-item">
+            <t-tag variant="light" :theme="getFileTypeTheme(file.file_type)" class="mr-2">{{ file.file_type.toUpperCase() }}</t-tag>
+            <span class="pinned-name">{{ file.file_name }}</span>
+            <span class="pinned-size text-gray-400 text-xs ml-2">{{ formatFileSize(file.file_size) }}</span>
+            <button class="unpin-btn" @click="togglePin(file)" title="取消置顶">✕</button>
+          </div>
+        </div>
       </div>
 
       <t-loading :loading="loading">
@@ -41,6 +57,9 @@
 
               <template #action="{ row }">
                 <t-space>
+                  <t-button variant="text" :theme="pinnedIds.has(row.id) ? 'primary' : 'default'" @click="togglePin(row)" :title="pinnedIds.has(row.id) ? '取消置顶' : '置顶'">
+                    {{ pinnedIds.has(row.id) ? '📌' : '置顶' }}
+                  </t-button>
                   <t-button variant="text" theme="primary" @click="previewDocument(row)">
                     预览
                   </t-button>
@@ -86,6 +105,9 @@
 
               <template #action="{ row }">
                 <t-space>
+                  <t-button variant="text" :theme="pinnedIds.has(row.id) ? 'primary' : 'default'" @click="togglePin(row)">
+                    {{ pinnedIds.has(row.id) ? '📌' : '置顶' }}
+                  </t-button>
                   <t-button variant="text" theme="primary" @click="previewDocument(row)">
                     预览
                   </t-button>
@@ -138,7 +160,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import {
   RefreshIcon
 } from 'tdesign-icons-vue-next';
@@ -193,6 +215,34 @@ const allDocuments = ref<Document[]>([]);
 const previewDialogVisible = ref(false);
 const previewDocumentData = ref<Document | null>(null);
 const previewDocumentDetail = ref<DocumentPreviewResponse | null>(null);
+
+// 置顶功能
+const FILE_PIN_KEY = 'file_pinned_ids';
+const pinnedIds = ref<Set<number>>(new Set());
+
+const loadPinned = () => {
+  try {
+    const raw = localStorage.getItem(FILE_PIN_KEY);
+    pinnedIds.value = new Set(raw ? JSON.parse(raw) : []);
+  } catch { pinnedIds.value = new Set(); }
+};
+
+const togglePin = (doc: Document) => {
+  const s = new Set(pinnedIds.value);
+  if (s.has(doc.id)) {
+    s.delete(doc.id);
+    MessagePlugin.info(`「${doc.file_name}」已取消置顶`);
+  } else {
+    s.add(doc.id);
+    MessagePlugin.success(`「${doc.file_name}」已置顶`);
+  }
+  pinnedIds.value = s;
+  localStorage.setItem(FILE_PIN_KEY, JSON.stringify([...s]));
+};
+
+const pinnedFiles = computed(() =>
+  allDocuments.value.filter(d => pinnedIds.value.has(d.id))
+);
 
 // 分页配置
 const pagination = ref({
@@ -274,10 +324,15 @@ const fetchData = async () => {
     const response = await axios.get<ApiResponse>(API_ENDPOINTS.FILES.ALL_DOCUMENTS);
     folders.value = response.data.folders;
 
-    // 合并所有文档到一个数组
+    // 合并所有文档到一个数组（置顶优先）
     allDocuments.value = response.data.folders
       .flatMap(folder => folder.documents)
-      .sort((a, b) => new Date(b.upload_time).getTime() - new Date(a.upload_time).getTime());
+      .sort((a, b) => {
+        const ap = pinnedIds.value.has(a.id) ? 1 : 0;
+        const bp = pinnedIds.value.has(b.id) ? 1 : 0;
+        if (bp !== ap) return bp - ap;
+        return new Date(b.upload_time).getTime() - new Date(a.upload_time).getTime();
+      });
 
     pagination.value.total = allDocuments.value.length;
     MessagePlugin.success('数据加载成功');
@@ -381,6 +436,7 @@ const performDelete = async (document: Document) => {
 
 // 组件挂载时获取数据
 onMounted(() => {
+  loadPinned();
   fetchData();
 });
 </script>
@@ -426,5 +482,66 @@ onMounted(() => {
 
 .txt-preview {
   font-family: 'Courier New', Courier, monospace;
+}
+
+/* 置顶区域 */
+.pinned-section {
+  background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+  border: 1px solid #c7d2fe;
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.pinned-header {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4f7ef8;
+  margin-bottom: 8px;
+}
+
+.pinned-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pinned-item {
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 7px;
+  padding: 6px 10px;
+  border: 1px solid #e0e7ff;
+  transition: box-shadow 0.15s;
+}
+
+.pinned-item:hover {
+  box-shadow: 0 2px 8px rgba(79, 126, 248, 0.12);
+}
+
+.pinned-name {
+  font-size: 13px;
+  color: #374151;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unpin-btn {
+  margin-left: 8px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 12px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.unpin-btn:hover {
+  background: #fee2e2;
+  color: #ef4444;
 }
 </style>

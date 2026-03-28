@@ -61,16 +61,16 @@
     "vite-plugin-vue-devtools": "^7.7.7",
     "vue-tsc": "^2.0.10"
   },
-  "description": "GZHU",
+  "description": "RAG-F 智能知识库系统",
   "main": "postcss.config.js",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ourcx/ASF-RAG--GZHU-.git"
+    "url": "git+https://github.com/March030303/KnowledgeRAG.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/ourcx/ASF-RAG--GZHU-/issues"
+    "url": "https://github.com/March030303/KnowledgeRAG/issues"
   },
-  "homepage": "https://github.com/ourcx/ASF-RAG--GZHU-#readme"
+  "homepage": "https://github.com/March030303/KnowledgeRAG#readme"
 }

@@ -14,7 +14,6 @@ from docx import Document
 
 router = APIRouter()
 
-# 修改导入语句，使用正确的绝对导入
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from models.model_config import get_model_config
@@ -262,7 +261,7 @@ async def get_graph_data(filename: str):
 
 
 ######################################################################
-#新增，处理知识库文件夹生成图谱
+#Generate graph
 
 
 class ProcessFolderRequest(BaseModel):
@@ -274,7 +273,6 @@ async def process_knowledge_base(request: ProcessFolderRequest):
     """
     处理指定知识库ID下的所有文档文件并生成知识图谱数据
     """
-    # 构建知识库文件夹路径 - 使用与系统其他部分一致的路径
     kb_folder_path = os.path.join("local-KLB-files", request.folder_path)
     
     if not os.path.exists(kb_folder_path):
@@ -283,7 +281,6 @@ async def process_knowledge_base(request: ProcessFolderRequest):
     if not os.path.isdir(kb_folder_path):
         raise HTTPException(status_code=400, detail=f"{kb_folder_path} is not a directory")
     
-    # 获取文件夹中所有支持的文件类型
     supported_extensions = ['.pdf', '.doc', '.docx', '.txt', '.md']
     files = [f for f in os.listdir(kb_folder_path) 
              if os.path.isfile(os.path.join(kb_folder_path, f)) 
@@ -301,16 +298,13 @@ async def process_knowledge_base(request: ProcessFolderRequest):
             file_path = os.path.join(kb_folder_path, file)
             print(f"Processing file: {file}")
             
-            # 提取文本
             content = extract_text(file_path)
             if not content:
                 print(f"Skipping file {file}, unable to extract content")
                 continue
             
-            # 分块处理
             chunks = split_text_into_chunks(content, CHUNK_SIZE)
             
-            # 提取图谱数据
             graph_data = {"nodes": [], "edges": []}
             for i, chunk in enumerate(chunks):
                 print(f"Processing chunk {i+1}/{len(chunks)}")
@@ -321,13 +315,12 @@ async def process_knowledge_base(request: ProcessFolderRequest):
                 else:
                     print(f"Failed to extract valid graph data for chunk {i+1}")
             
-            # 添加到结果列表
             results.append(ProcessFilesResponse(
                 message=f"Successfully processed {file}",
                 graph_data=graph_data
             ))
             
-            # 保存生成的知识图谱数据
+            # Knowledge graph
             output_file = os.path.join(kb_folder_path, f"{os.path.splitext(file)[0]}_graph.json")
             with open(output_file, 'w', encoding='utf-8') as f:
                 json.dump(graph_data, f, indent=4, ensure_ascii=False)
@@ -351,13 +344,11 @@ async def get_kb_graph_data(kb_id: str, filename: str):
     """
     获取特定知识库中特定文件的知识图谱数据
     """
-    # 构建知识库文件夹路径
     kb_folder_path = os.path.join("local-KLB-files", kb_id)
     
     if not os.path.exists(kb_folder_path):
         raise HTTPException(status_code=404, detail=f"Knowledge base directory {kb_id} not found")
     
-    # 移除文件名中的扩展名（如果存在）
     name_without_ext = os.path.splitext(filename)[0]
     graph_filename = f"{name_without_ext}_graph.json"
     file_path = os.path.join(kb_folder_path, graph_filename)
@@ -371,3 +362,170 @@ async def get_kb_graph_data(kb_id: str, filename: str):
         return graph_data
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading graph data: {str(e)}")
+
+
+# ──────────────────────────────────────────────────────────
+# Graph statistics
+# ──────────────────────────────────────────────────────────
+
+def _merge_graph_data(graph_list: List[dict]) -> dict:
+    """
+    合并多个图谱数据（去重节点 + 去重边）
+    节点去重基于 id，边去重基于 (source, target, label) 三元组
+    """
+    merged_nodes: dict = {}      # id -> node
+    merged_edges: dict = {}      # (source,target,label) -> edge
+
+    for graph in graph_list:
+        for node in graph.get("nodes", []):
+            nid = node.get("id", "")
+            if nid and nid not in merged_nodes:
+                merged_nodes[nid] = node
+        for edge in graph.get("edges", []):
+            key = (edge.get("source", ""), edge.get("target", ""), edge.get("label", ""))
+            if key[0] and key[1] and key not in merged_edges:
+                merged_edges[key] = edge
+
+    return {
+        "nodes": list(merged_nodes.values()),
+        "edges": list(merged_edges.values()),
+    }
+
+
+@router.get("/get-kb-merged-graph/{kb_id}")
+async def get_kb_merged_graph(kb_id: str):
+    """
+    获取指定知识库的**全合并图谱**
+    将该知识库下所有 *_graph.json 合并为一个图，自动去重节点和边
+    """
+    kb_folder_path = os.path.join("local-KLB-files", kb_id)
+
+    if not os.path.exists(kb_folder_path):
+        raise HTTPException(status_code=404, detail=f"知识库目录 {kb_id} 不存在")
+
+    graph_files = [
+        f for f in os.listdir(kb_folder_path)
+        if f.endswith("_graph.json") and os.path.isfile(os.path.join(kb_folder_path, f))
+    ]
+
+    if not graph_files:
+        return {"nodes": [], "edges": [], "message": "该知识库暂无图谱数据，请先生成图谱"}
+
+    graph_list = []
+    for gf in graph_files:
+        try:
+            with open(os.path.join(kb_folder_path, gf), 'r', encoding='utf-8') as f:
+                graph_list.append(json.load(f))
+        except Exception as e:
+            print(f"[KG] 读取图谱文件 {gf} 失败: {e}")
+
+    merged = _merge_graph_data(graph_list)
+    merged["source_files"] = graph_files
+    merged["node_count"] = len(merged["nodes"])
+    merged["edge_count"] = len(merged["edges"])
+    return merged
+
+
+@router.get("/search-nodes/{kb_id}")
+async def search_nodes(kb_id: str, keyword: str = ""):
+    """
+    在指定知识库的合并图谱中搜索节点（按 label 模糊匹配）
+    返回匹配节点及其一跳邻居构成的子图
+    """
+    kb_folder_path = os.path.join("local-KLB-files", kb_id)
+
+    if not os.path.exists(kb_folder_path):
+        raise HTTPException(status_code=404, detail=f"知识库目录 {kb_id} 不存在")
+
+    if not keyword.strip():
+        raise HTTPException(status_code=400, detail="请提供搜索关键词")
+
+    graph_files = [
+        f for f in os.listdir(kb_folder_path)
+        if f.endswith("_graph.json") and os.path.isfile(os.path.join(kb_folder_path, f))
+    ]
+    graph_list = []
+    for gf in graph_files:
+        try:
+            with open(os.path.join(kb_folder_path, gf), 'r', encoding='utf-8') as f:
+                graph_list.append(json.load(f))
+        except Exception:
+            pass
+
+    merged = _merge_graph_data(graph_list)
+    kw_lower = keyword.lower()
+
+    matched_ids = {
+        n["id"] for n in merged["nodes"]
+        if kw_lower in n.get("label", "").lower() or kw_lower in n.get("id", "").lower()
+    }
+
+    if not matched_ids:
+        return {"nodes": [], "edges": [], "message": f"未找到包含 '{keyword}' 的节点"}
+
+    neighbor_ids = set(matched_ids)
+    subgraph_edges = []
+    for edge in merged["edges"]:
+        src, tgt = edge.get("source", ""), edge.get("target", "")
+        if src in matched_ids or tgt in matched_ids:
+            neighbor_ids.add(src)
+            neighbor_ids.add(tgt)
+            subgraph_edges.append(edge)
+
+    subgraph_nodes = [n for n in merged["nodes"] if n["id"] in neighbor_ids]
+
+    return {
+        "nodes": subgraph_nodes,
+        "edges": subgraph_edges,
+        "matched_count": len(matched_ids),
+        "keyword": keyword,
+    }
+
+
+@router.get("/graph-stats/{kb_id}")
+async def get_graph_stats(kb_id: str):
+    """
+    获取知识库图谱统计信息：节点数、边数、节点类型分布、孤立节点数
+    """
+    kb_folder_path = os.path.join("local-KLB-files", kb_id)
+
+    if not os.path.exists(kb_folder_path):
+        raise HTTPException(status_code=404, detail=f"知识库目录 {kb_id} 不存在")
+
+    graph_files = [
+        f for f in os.listdir(kb_folder_path)
+        if f.endswith("_graph.json") and os.path.isfile(os.path.join(kb_folder_path, f))
+    ]
+
+    graph_list = []
+    for gf in graph_files:
+        try:
+            with open(os.path.join(kb_folder_path, gf), 'r', encoding='utf-8') as f:
+                graph_list.append(json.load(f))
+        except Exception:
+            pass
+
+    merged = _merge_graph_data(graph_list)
+    nodes = merged["nodes"]
+    edges = merged["edges"]
+
+    type_dist: dict = {}
+    for n in nodes:
+        t = n.get("type", "默认")
+        type_dist[t] = type_dist.get(t, 0) + 1
+
+    # 0
+    connected_ids = set()
+    for e in edges:
+        connected_ids.add(e.get("source", ""))
+        connected_ids.add(e.get("target", ""))
+    isolated_count = sum(1 for n in nodes if n["id"] not in connected_ids)
+
+    return {
+        "kb_id": kb_id,
+        "node_count": len(nodes),
+        "edge_count": len(edges),
+        "type_distribution": type_dist,
+        "isolated_node_count": isolated_count,
+        "source_files": graph_files,
+    }

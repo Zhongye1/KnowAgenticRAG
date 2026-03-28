@@ -12,7 +12,7 @@ import aiofiles
 from pathlib import Path
 import asyncio
 import shutil
-from fastapi import Request  # 导入 Request
+from fastapi import Request  # Request
 
 
 router = APIRouter()
@@ -55,23 +55,25 @@ CURD实现CREATE
 
 
 
-# 配置文件上传相关设置
+# File upload
 UPLOAD_DIR = "local-KLB-files"
 METADATA_DIR = "metadata"
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
 ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".doc", ".md", ".rtf"}
 
-# 确保目录存在
+# IO 8
+_chunk_semaphore = asyncio.Semaphore(8)
+
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(METADATA_DIR, exist_ok=True)
 
 METADATA_FILE = os.path.join(METADATA_DIR, "documents.json")
 
-# 分块上传临时目录
+# Temporary directory
 CHUNK_UPLOAD_DIR = os.path.join(UPLOAD_DIR, "chunks")
 os.makedirs(CHUNK_UPLOAD_DIR, exist_ok=True)
 
-# Pydantic 模型
+# Pydantic
 class DocumentStatus(BaseModel):
     documentId: int
     enabled: bool
@@ -90,14 +92,13 @@ class DocumentResponse(BaseModel):
     file_size: int
     file_hash: str
 
-# 本地文档管理类
+# Document management
 
 from .doc_manage import LocalDocumentManager
 
-# 创建文档管理器实例
+# Document management
 doc_manager = LocalDocumentManager()
 
-# 辅助函数
 def get_file_hash(content: bytes) -> str:
     """生成文件的MD5哈希值"""
     return hashlib.md5(content).hexdigest()
@@ -119,7 +120,6 @@ def validate_file(filename: str, content: bytes) -> tuple[bool, str]:
     return True, "验证通过"
 
 
-# 分块上传和合并功能
 @router.post("/api/upload-chunk/")
 async def upload_chunk(
     chunk: UploadFile = File(...),
@@ -130,40 +130,37 @@ async def upload_chunk(
     KLB_id: str = Form(...)
 ):
     """
-    上传文件分块
+    上传文件分块（使用 Semaphore 限流，最多 8 个并发写入）
     """
-    try:
-        # 为每个文件创建单独的分块目录
-        file_chunk_dir = os.path.join(CHUNK_UPLOAD_DIR, KLB_id, fileHash)
-        os.makedirs(file_chunk_dir, exist_ok=True)
+    async with _chunk_semaphore:
+        try:
+            file_chunk_dir = os.path.join(CHUNK_UPLOAD_DIR, KLB_id, fileHash)
+            os.makedirs(file_chunk_dir, exist_ok=True)
 
-        # 分块文件路径
-        chunk_file_path = os.path.join(file_chunk_dir, f"chunk_{chunkIndex}.part")
-        
-        # 保存分块
-        async with aiofiles.open(chunk_file_path, 'wb') as f:
-            content = await chunk.read()
-            await f.write(content)
+            chunk_file_path = os.path.join(file_chunk_dir, f"chunk_{chunkIndex}.part")
 
-        print(f"分块上传成功: 文件名={fileName}, 文件哈希={fileHash}, 分块索引={chunkIndex}, 总分块数={totalChunks}")
-        return {
-            "message": "分块上传成功",
-            "fileHash": fileHash,
-            "chunkIndex": chunkIndex,
-            "totalChunks": totalChunks
-        }
-    except Exception as e:
-        print(f"分块上传失败: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"分块上传失败: {str(e)}")
+            async with aiofiles.open(chunk_file_path, 'wb') as f:
+                content = await chunk.read()
+                await f.write(content)
 
-#上传完成后合并文件块
+            print(f"分块上传成功: 文件名={fileName}, 文件哈希={fileHash}, 分块索引={chunkIndex}, 总分块数={totalChunks}")
+            return {
+                "message": "分块上传成功",
+                "fileHash": fileHash,
+                "chunkIndex": chunkIndex,
+                "totalChunks": totalChunks
+            }
+        except Exception as e:
+            print(f"分块上传失败: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"分块上传失败: {str(e)}")
+
 @router.post("/api/upload-complete/")
 async def upload_complete(request: Request):
     """
     合并文件分块
     """
     try:
-        # 从 JSON 请求体中获取参数
+        # JSON
         data = await request.json()
         fileHash = data.get('fileHash')
         fileName = data.get('fileName')
@@ -178,7 +175,6 @@ async def upload_complete(request: Request):
         print(f"接收到的请求参数: fileHash={fileHash}, fileName={fileName}, totalChunks={totalChunks}, KLB_id={KLB_id}")
         file_chunk_dir = os.path.join(CHUNK_UPLOAD_DIR, KLB_id, fileHash)
 
-        # 检查分块是否全部上传
         if not os.path.exists(file_chunk_dir):
             print(f"分块目录 {file_chunk_dir} 不存在")
             raise HTTPException(status_code=400, detail="分块目录不存在")
@@ -187,71 +183,80 @@ async def upload_complete(request: Request):
         if len(uploaded_chunks) != totalChunks:
             raise HTTPException(status_code=400, detail="分块未全部上传")
 
-        # 生成最终文件路径
         file_ext = get_file_type(fileName)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         saved_filename = f"{fileName}-{timestamp}_{fileHash[:8]}{file_ext}"
         final_file_path = os.path.join(UPLOAD_DIR, KLB_id, saved_filename)
 
-        # 确保目录存在
         os.makedirs(os.path.dirname(final_file_path), exist_ok=True)
 
-        # 合并分块
-        with open(final_file_path, 'wb') as outfile:
-            for i in range(totalChunks):
-                chunk_file_path = os.path.join(file_chunk_dir, f"chunk_{i}.part")
-                if not os.path.exists(chunk_file_path):
-                    print(f"分块文件 {chunk_file_path} 不存在")
-                    raise HTTPException(status_code=400, detail=f"分块文件 {chunk_file_path} 不存在")
-                with open(chunk_file_path, 'rb') as infile:
-                    shutil.copyfileobj(infile, outfile)
+        # asyncio.to_thread event loop
+        def _merge_chunks():
+            with open(final_file_path, 'wb') as outfile:
+                for i in range(totalChunks):
+                    chunk_file_path = os.path.join(file_chunk_dir, f"chunk_{i}.part")
+                    if not os.path.exists(chunk_file_path):
+                        raise FileNotFoundError(f"分块文件 {chunk_file_path} 不存在")
+                    with open(chunk_file_path, 'rb') as infile:
+                        shutil.copyfileobj(infile, outfile)
+
+        await asyncio.to_thread(_merge_chunks)
 
         print(f"文件合并成功: 文件名={fileName}, 文件哈希={fileHash}, 总分块数={totalChunks}, 最终文件路径={final_file_path}")
-        # 读取合并后的文件内容
-        async with aiofiles.open(final_file_path, 'rb') as f:
-            content = await f.read()
 
-        # 验证文件
-        is_valid, message = validate_file(fileName, content)
-        if not is_valid:
+        # - 2Calculate file hash -
+        # : content = await f.read() 50MBN =
+        # : MD5 64KB
+        def _compute_hash_and_size(path: str):
+            """流式读取文件，计算 MD5 哈希与文件大小，不把文件载入内存"""
+            md5 = hashlib.md5()
+            size = 0
+            with open(path, 'rb') as f:
+                for block in iter(lambda: f.read(65536), b''):
+                    md5.update(block)
+                    size += len(block)
+            return md5.hexdigest(), size
+
+        existing_file_hash, file_size = await asyncio.to_thread(
+            _compute_hash_and_size, final_file_path
+        )
+
+        file_ext_check = get_file_type(fileName)
+        if file_ext_check not in ALLOWED_EXTENSIONS:
             os.remove(final_file_path)
-            raise HTTPException(status_code=400, detail=message)
+            raise HTTPException(status_code=400, detail=f"不支持的文件类型: {file_ext_check}")
+        if file_size > MAX_FILE_SIZE:
+            os.remove(final_file_path)
+            raise HTTPException(status_code=400, detail=f"文件大小超过限制 ({MAX_FILE_SIZE / 1024 / 1024:.1f}MB)")
+        existing_docs = [doc for doc in doc_manager.get_all_documents()
+                         if doc.get('file_hash') == existing_file_hash]
 
-        # 检查是否已存在相同文件
-        existing_file_hash = get_file_hash(content)
-        existing_docs = [doc for doc in doc_manager.get_all_documents() 
-                    if doc.get('file_hash') == existing_file_hash]
-            
         if existing_docs:
-            # 如果文件已存在，删除旧文件
             for doc in existing_docs:
-                doc_manager.delete_document(doc['id'], KLB_id)
+                await doc_manager.delete_document(doc['id'], KLB_id)
                 print(f"更新文件: {doc['name']}，{KLB_id}")
 
-        # 计算分块数
-        slicing_method = "按段落"  # 可以根据文件类型选择，逻辑还没写
-        chunks = calculate_chunks(content, slicing_method)
+        slicing_method = "按段落"
+        estimated_chunks = max(1, file_size // 1024)  # 1KB1
 
-        # 创建文档记录
         document_data = {
-            "id": None,  # 这里先设为 None，后续由 add_document 方法生成
+            "id": None,  # add_document
             "name": fileName,
             "fileType": file_ext.replace('.', ''),
-            "chunks": chunks,
+            "chunks": estimated_chunks,
             "uploadDate": datetime.now().strftime("%Y-%m-%d"),
             "slicingMethod": slicing_method,
             "enabled": True,
-            "file_size": len(content),
+            "file_size": file_size,
             "file_hash": existing_file_hash,
             "file_path": final_file_path,
             "created_at": datetime.now().isoformat()
         }
 
-        # 保存到本地元数据
-        doc_id = doc_manager.add_document(document_data)
+        doc_id = await doc_manager.add_document(document_data)
         document_data['id'] = doc_id
 
-        # 删除分块临时目录
+        # Temporary directory
         shutil.rmtree(file_chunk_dir)
 
         return {
@@ -260,7 +265,7 @@ async def upload_complete(request: Request):
             "fileId": doc_id,
             "fileName": fileName,
             "filePath": final_file_path,
-            "chunks": chunks,
+            "chunks": estimated_chunks,
             "slicingMethod": slicing_method
         }
     except HTTPException as http_exc:
@@ -278,18 +283,15 @@ def calculate_chunks(content: bytes, slicing_method: str = "按段落") -> int:
     try:
         content_str = content.decode('utf-8', errors='ignore')
     except:
-        # 如果无法解码，返回固定值
         return 1
     
     if slicing_method == "按段落":
-        # 按段落分割（双换行符）
         chunks = len([p for p in content_str.split('\n\n') if p.strip()])
     elif slicing_method == "固定长度":
-        # 按固定长度分割（每1000字符一块）
+        # 1000
         chunk_size = 1000
         chunks = len(content_str) // chunk_size + (1 if len(content_str) % chunk_size else 0)
     else:
-        # 默认按句子分割
         chunks = len([s for s in content_str.split('.') if s.strip()])
     
-    return max(1, chunks)  # 至少有一个分块
+    return max(1, chunks)

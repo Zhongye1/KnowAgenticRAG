@@ -12,10 +12,9 @@ from datetime import datetime, timedelta
 router = APIRouter()
 
 
-# 全局缓存变量
 _models_cache: Optional[List[dict]] = None
 _cache_timestamp: Optional[datetime] = None
-CACHE_DURATION = 1 * 60 * 60  # 1个小时，单位：秒
+CACHE_DURATION = 1 * 60 * 60  # 1
 
 class OllamaModelInfo(BaseModel):
     name: str
@@ -69,7 +68,7 @@ async def get_ollama_models(request: OllamaModelsRequest):
     try:
         result = scrape_ollama_models_with_pagination(
             page_id=request.page_id,
-            page_size=6  # 固定每页6条数据
+            page_size=6  # 6
         )
         
         return OllamaModelsResponse(**result)
@@ -89,18 +88,14 @@ def scrape_ollama_models_with_pagination(page_id: int = 1, page_size: int = 10):
     Returns:
         dict: 包含分页信息的模型数据
     """
-    # 原有的爬虫逻辑保持不变
     model_info_list = scrape_ollama_models()
     
-    # 计算分页信息
     total_count = len(model_info_list)
     total_pages = (total_count + page_size - 1) // page_size
     
-    # 计算当前页的数据范围
     start_index = (page_id - 1) * page_size
     end_index = start_index + page_size
     
-    # 获取当前页的数据
     current_page_models = model_info_list[start_index:end_index]
     
     return {
@@ -117,7 +112,6 @@ def scrape_ollama_models():
     """
     爬取Ollama模型信息，优先使用缓存
     """
-    # 尝试从缓存获取数据
     cached_data = get_cached_models()
     if cached_data is not None:
         print("使用缓存数据")
@@ -135,7 +129,7 @@ def scrape_ollama_models():
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "lxml")
 
-        # ... 保持原有的爬虫解析逻辑不变 ...
+        # ... ...
         model_list_container = soup.find("ul", {"role": "list", "class": "grid grid-cols-1 gap-y-3"})
         if not model_list_container:
             print("未找到模型列表容器")
@@ -145,51 +139,50 @@ def scrape_ollama_models():
         model_info_list = []
 
         for li in models:
-            # 原有解析逻辑保持不变...
+            # ...
             a_tag = li.find("a")
             if not a_tag:
                 continue
 
-            # 1. 模型名称
+            # 1.
             title_div = a_tag.find("div", {"x-test-model-title": True})
             name = title_div.find("span").get_text(strip=True) if title_div and title_div.find("span") else "N/A"
 
-            # 2. 模型描述
+            # 2.
             desc_p = a_tag.find("p", {"class": "break-words"})
             description = desc_p.get_text(strip=True) if desc_p else "N/A"
 
-            # 3. 能力标签（capabilities）
+            # 3. capabilities
             capabilities = [
                 span.get_text(strip=True) 
                 for span in a_tag.find_all("span", {"x-test-capability": True})
             ]
 
-            # 4. 尺寸标签（sizes）
+            # 4. sizes
             sizes = [
                 span.get_text(strip=True) 
                 for span in a_tag.find_all("span", {"x-test-size": True})
             ]
 
-            # 5. 拉取次数、标签数量、更新时间
+            # 5.
             info_p = a_tag.find("p", {"class": "my-4 flex space-x-5 text-[13px] font-medium text-neutral-500"})
             pulls, tags_count, updated = "N/A", "N/A", "N/A"
             if info_p:
                 info_spans = info_p.find_all("span")
                 if len(info_spans) >= 3:
-                    # 拉取次数（第一个 span）
-                    pulls_text = info_spans[0].get_text(strip=True).split()[0]  # 提取 "55.6M" 部分
+                    # span
+                    pulls_text = info_spans[0].get_text(strip=True).split()[0]  # "55.6M"
                     pulls = pulls_text if pulls_text else "N/A"
 
-                    # 标签数量（第二个 span）
-                    tags_text = info_spans[1].get_text(strip=True).split()[0]  # 提取 "35" 部分
+                    # span
+                    tags_text = info_spans[1].get_text(strip=True).split()[0]  # "35"
                     tags_count = tags_text if tags_text else "N/A"
 
-                   # 更新时间（查找具有 x-test-updated 属性的 span）
+                   # x-test-updated span
                     updated_span = a_tag.find("span", {"x-test-updated": True})
                     updated = updated_span.get_text(strip=True) if updated_span else "N/A"
 
 
-            # 整理模型信息
             model_info = {
                 "name": name,
                 "description": description,
@@ -201,7 +194,6 @@ def scrape_ollama_models():
             }
             model_info_list.append(model_info)
 
-        # 更新缓存
         update_cache(model_info_list)
         print(f"成功爬取 {len(model_info_list)} 个模型信息")
         print(f"缓存更新时间: {_cache_timestamp}")

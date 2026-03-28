@@ -1,84 +1,257 @@
-from langchain.chains.retrieval_qa.base import RetrievalQA
+"""
+rag_pipeline.py
+RAG 核心流水线 v3
+新增：
+  - 检索策略扩展（接收前端 RetrievalConfig 参数，支持 vector/BM25/hybrid/RRF/MMR）
+  - 混合检索（HybridRetriever：BM25 + 向量 + RRF 融合）
+  - 引用溯源（返回 sources 列表，含文件名、页码、得分）
+  - 流式回答生成（generator 模式，配合 SSE 使用）
+"""
+
+from __future__ import annotations
+
+import os
+import sys
+from typing import List, Dict, Any, Generator, Optional
+
 from langchain_ollama.llms import OllamaLLM
-#from langchain.vectorstores import FAISS
 from langchain_community.vectorstores import FAISS
+from langchain.docstore.document import Document
 from langchain.prompts import PromptTemplate
 
-import sys
-import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 from models.model_config import get_model_config
+from src.rag.hybrid_retriever import HybridRetriever
+
+# Retrieval strategy
+try:
+    import sys as _sys
+    _BACKEND_DIR = os.path.join(os.path.dirname(__file__), '..', '..', '..')
+    if _BACKEND_DIR not in _sys.path:
+        _sys.path.insert(0, _BACKEND_DIR)
+    from document_processing.retrieval_strategy import RetrievalStrategyExecutor, RetrievalConfig
+    _STRATEGY_AVAILABLE = True
+except ImportError:
+    _STRATEGY_AVAILABLE = False
+    RetrievalStrategyExecutor = None  # type: ignore
+    RetrievalConfig = None  # type: ignore
+
+
+# - Prompt
+_PROMPT_TEMPLATE = """你是知识管理助手，专门回答基于文档的问题。
+
+规则：
+1. 优先基于"参考文档"中的内容回答
+2. 如果文档信息不足，在回答末尾注明"（以上部分内容基于通用知识补充）"
+3. 回答时自然引用来源，例如："根据《文件名》中的内容，..."
+4. 用户未指定语言时默认使用中文
+5. 回答要完整、清晰，如涉及代码/公式/表格则给出对应示例
+6. 与上下文完全无关的问题，说明无关并给出通用参考信息
+
+参考文档（已按相关度排序）：
+{context}
+
+用户问题：{question}
+
+回答："""
+
+PROMPT = PromptTemplate(
+    template=_PROMPT_TEMPLATE,
+    input_variables=["context", "question"],
+)
+
+
+def _format_context(docs_with_sources: List[Dict[str, Any]]) -> str:
+    """将检索结果格式化为 LLM 可用的上下文字符串，附带来源标注"""
+    parts = []
+    for item in docs_with_sources:
+        src = item["source_info"]
+        file_name = src.get("file_name", "未知来源")
+        page = src.get("page")
+        page_str = f"第 {page} 页" if page is not None else ""
+        header = f"【来源 {src['rank']}：{file_name}{' ' + page_str if page_str else ''}】"
+        content = item["document"].page_content.strip()
+        parts.append(f"{header}\n{content}")
+    return "\n\n---\n\n".join(parts)
 
 
 class RAGPipeline:
-    def __init__(self, llm_model: str = None, vectorstore: FAISS = None):
-        # 如果没有提供模型名称，则从统一配置中获取
+    """
+    RAG 流水线 v3
+    支持：混合检索、引用溯源、流式/非流式两种输出模式
+    新增：检索策略参数透传（strategy/topK/scoreThreshold/vectorWeight/bm25Weight/rerank）
+    """
+
+    def __init__(
+        self,
+        llm_model: Optional[str] = None,
+        vectorstore: Optional[FAISS] = None,
+        documents: Optional[List[Document]] = None,
+        use_hybrid: bool = True,
+        retrieval_config: Optional[dict] = None,  # Retrieval strategy
+    ):
+        # Model config
         if llm_model is None:
             model_config = get_model_config()
             llm_model = model_config.llm_model
-            print(f"==================Using default LLM model: {llm_model}")
-            
+            print(f"[RAGPipeline] 使用默认 LLM 模型: {llm_model}")
+
         self.llm = OllamaLLM(model=llm_model)
         self.vectorstore = vectorstore
-        self.qa_chain = self._create_qa_chain()
+        self.use_hybrid = use_hybrid
+        self.documents = documents or []
 
-    def _create_qa_chain(self):
-        """Create the retrieval QA chain with custom prompt"""
-        prompt_template = """你是知识管理助手，专门回答基于文档的技术问题。
+        # Retrieval strategy
+        self._retrieval_config = None
+        if retrieval_config and _STRATEGY_AVAILABLE:
+            self._retrieval_config = RetrievalConfig.from_dict(retrieval_config)
+            print(f"[RAGPipeline] 检索策略: {self._retrieval_config.strategy}, topK={self._retrieval_config.topK}")
 
-    规则：
-    1. 基于提供的上下文回答
-    2. 如果信息不足，说现有文档没有提及信息不足的这一块内容，然后给出自己知道的一些信息，说供参考
-    3. 回答时引用相关文档片段
-    4. 用户没有声明回答所用的语言时用中文回答，否则用所声明语言回答
-    5. 快速而准确的回答是关键，且回答尽量完整
-    6. 如果用户问题中包含代码片段，尽量提供相关代码示例
-    7. 如果用户问题中包含公式，尽量提供相关公式示例
-    8. 如果用户问题中包含表格，尽量提供相关表格示例
-    9. 与上下文无关的提问，指出其与上下文无关，并提供从别处了解的相关信息
+        # Initialize
+        self._strategy_executor = None
+        if _STRATEGY_AVAILABLE and vectorstore is not None:
+            self._strategy_executor = RetrievalStrategyExecutor(
+                vectorstore=vectorstore,
+                documents=self.documents,
+            )
 
-    上下文信息：
-    {context}
+        # Hybrid retrieval fallback
+        self._hybrid_retriever: Optional[HybridRetriever] = None
+        if use_hybrid and vectorstore is not None and self.documents and not _STRATEGY_AVAILABLE:
+            print(f"[RAGPipeline] 初始化混合检索器，文档块数量: {len(self.documents)}")
+            self._hybrid_retriever = HybridRetriever(
+                documents=self.documents,
+                vectorstore=vectorstore,
+            )
+        elif use_hybrid and vectorstore is not None and not self.documents and not _STRATEGY_AVAILABLE:
+            print("[RAGPipeline] 未传入 documents，混合检索降级为纯向量检索")
+            self.use_hybrid = False
 
-    用户问题：{question}
+    def _retrieve(self, query: str) -> List[Dict[str, Any]]:
+        if self._strategy_executor is not None:
+            config = self._retrieval_config  # Noneexecutor
+            return self._strategy_executor.retrieve(query, config)
 
-    回答："""
+        # fallbackHybrid retrieval
+        if self.use_hybrid and self._hybrid_retriever:
+            return self._hybrid_retriever.retrieve_with_scores(query)
 
-        PROMPT = PromptTemplate(
-            template=prompt_template,
-            input_variables=["context", "question"]
-        )
-        
-        # 创建检索器
-        retriever = self.vectorstore.as_retriever(
-            search_type="similarity",
-            search_kwargs={"k": 3, "fetch_k": 5}
-        )
-        
-        return RetrievalQA.from_chain_type(
-            llm=self.llm,
-            chain_type="stuff",
-            retriever=retriever,
-            return_source_documents=True,
-            chain_type_kwargs={
-                "prompt": PROMPT,
-                "verbose": True
-            }
-        )
+        # fallbackVector retrieval
+        raw = self.vectorstore.similarity_search_with_score(query, k=4)
+        results = []
+        for rank, (doc, score) in enumerate(raw, start=1):
+            meta = doc.metadata or {}
+            results.append({
+                "document": doc,
+                "source_info": {
+                    "rank": rank,
+                    "rrf_score": float(score),
+                    "file_name": _extract_filename_from_meta(meta),
+                    "page": meta.get("page"),
+                    "chunk_index": meta.get("chunk_index"),
+                    "source_path": meta.get("source", ""),
+                },
+                "content_preview": doc.page_content[:200],
+            })
+        return results
 
-
-    def process_query(self, query: str) -> dict:
+    def process_query(self, query: str) -> Dict[str, Any]:
         """
-        Process a query through the RAG pipeline
-        
-        Returns:
-            dict: Contains response text and source documents
+        处理查询，返回：
+          answer: str
+          sources: list[dict]  — 引用溯源列表
+          retrieval_mode: str
         """
-        try:
-            result = self.qa_chain({"query": query})
+        docs_with_sources = self._retrieve(query)
+
+        if not docs_with_sources:
             return {
-                "answer": result["result"],
-                "sources": [doc.metadata for doc in result["source_documents"]]
+                "answer": "未找到相关文档，无法回答该问题。",
+                "sources": [],
+                "retrieval_mode": "hybrid" if self.use_hybrid else "vector",
             }
+
+        context = _format_context(docs_with_sources)
+        prompt_text = PROMPT.format(context=context, question=query)
+
+        answer = self.llm.invoke(prompt_text)
+
+        sources = [
+            {
+                "rank": item["source_info"]["rank"],
+                "file_name": item["source_info"]["file_name"],
+                "page": item["source_info"]["page"],
+                "source_path": item["source_info"]["source_path"],
+                "rrf_score": item["source_info"].get("rrf_score"),
+                "content_preview": item["content_preview"],
+            }
+            for item in docs_with_sources
+        ]
+
+        return {
+            "answer": answer,
+            "sources": sources,
+            "retrieval_mode": "hybrid" if self.use_hybrid else "vector",
+        }
+
+    # - generator SSE
+    def stream_query(self, query: str) -> Generator[str, None, None]:
+        """
+        流式查询生成器
+        yield 格式：SSE data 行，以 '\\n\\n' 结尾
+        特殊行：
+          SOURCES: <json>   — 检索来源信息
+          COMPLETE           — 流式输出结束标志
+        """
+        import json
+
+        yield f"data: 正在执行{'混合' if self.use_hybrid else '向量'}检索...\n\n"
+
+        docs_with_sources = self._retrieve(query)
+
+        if not docs_with_sources:
+            yield "data: 未找到相关文档\n\n"
+            yield "data: COMPLETE\n\n"
+            return
+
+        yield f"data: 检索完成，获取到 {len(docs_with_sources)} 个相关文档块\n\n"
+
+        sources = [
+            {
+                "rank": item["source_info"]["rank"],
+                "file_name": item["source_info"]["file_name"],
+                "page": item["source_info"]["page"],
+                "source_path": item["source_info"]["source_path"],
+                "content_preview": item["content_preview"],
+            }
+            for item in docs_with_sources
+        ]
+        yield f"data: SOURCES: {json.dumps(sources, ensure_ascii=False)}\n\n"
+
+        # prompt
+        context = _format_context(docs_with_sources)
+        prompt_text = PROMPT.format(context=context, question=query)
+
+        yield "data: 正在生成回答...\n\n"
+
+        # OllamaLLM Streaming output
+        try:
+            for chunk in self.llm.stream(prompt_text):
+                if chunk:
+                    yield f"data: {chunk}\n\n"
         except Exception as e:
-            raise Exception(f"Error processing query: {str(e)}") 
+            answer = self.llm.invoke(prompt_text)
+            for paragraph in answer.split('\n'):
+                if paragraph.strip():
+                    yield f"data: {paragraph}\n\n"
+
+        yield "data: COMPLETE\n\n"
+
+
+def _extract_filename_from_meta(meta: Dict[str, Any]) -> str:
+    import os as _os
+    for key in ("source", "file_path", "path", "filename", "file_name"):
+        val = meta.get(key, "")
+        if val:
+            return _os.path.basename(str(val))
+    return "未知来源"

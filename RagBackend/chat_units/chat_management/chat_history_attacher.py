@@ -4,16 +4,13 @@ import logging
 from fastapi import FastAPI, HTTPException, APIRouter
 from pathlib import Path
 
-# 创建路由
 router = APIRouter()
 
-# 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-CHAT_DOCUMENT_DIR = "chat_units/chat_documents"  # 统一存储目录
+CHAT_DOCUMENT_DIR = "chat_units/chat_documents"
 
-# 获取所有对话历史文件
 @router.get("/chat-documents")
 async def get_chat_documents():
     """获取所有保存的对话会话列表"""
@@ -39,14 +36,13 @@ async def get_chat_documents():
                             "lastMessage": session_data.get("lastMessage", ""),
                             "history": session_data.get("history", []),
                             "filename": file_path.name,
-                            "created_at": os.path.getctime(file_path)  # 添加创建时间
+                            "created_at": os.path.getctime(file_path)
                         })
             except json.JSONDecodeError as e:
                 logger.error(f"JSON解析失败 {file_path}: {str(e)}")
             except Exception as e:
                 logger.error(f"读取文件失败 {file_path}: {str(e)}")
         
-        # 按创建时间倒序排序
         documents.sort(key=lambda x: x.get("created_at", 0), reverse=True)
         return documents
         
@@ -57,12 +53,11 @@ async def get_chat_documents():
             detail=f"获取对话历史失败: {str(e)}"
         )
 
-# 获取单个对话历史
 @router.get("/chat-document/{session_id}")
 async def get_chat_document(session_id: str):
     """根据会话ID获取单个对话详情"""
     try:
-        chat_dir = Path(CHAT_DOCUMENT_DIR)  # 🔧 修复：使用统一目录
+        chat_dir = Path(CHAT_DOCUMENT_DIR)
         
         if not chat_dir.exists():
             raise HTTPException(status_code=404, detail="对话目录不存在")
@@ -91,7 +86,6 @@ async def get_chat_document(session_id: str):
         )
 
 """更新指定会话的对话数据
-# 更新对话历史
 @router.post("/update-chat-document")
 async def update_chat_document(data: dict):
     
@@ -100,7 +94,7 @@ async def update_chat_document(data: dict):
         if not session_id:
             raise HTTPException(status_code=400, detail="缺少会话ID")
         
-        chat_dir = Path(CHAT_DOCUMENT_DIR)  # 🔧 修复：使用统一目录
+        chat_dir = Path(CHAT_DOCUMENT_DIR)
         
         if not chat_dir.exists():
             raise HTTPException(status_code=404, detail="对话目录不存在")
@@ -111,10 +105,8 @@ async def update_chat_document(data: dict):
                     document = json.load(f)
                     
                 if session_id in document.get("chat_sessions", {}):
-                    # 更新会话数据
                     document["chat_sessions"][session_id] = data
                     
-                    # 写回文件
                     with open(file_path, "w", encoding="utf-8") as f:
                         json.dump(document, f, ensure_ascii=False, indent=2)
                     

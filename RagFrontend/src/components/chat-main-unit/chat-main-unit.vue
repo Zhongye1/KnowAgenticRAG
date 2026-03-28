@@ -1,7 +1,7 @@
 <template>
   <div class="chat-box">
     <t-chat ref="chatRef" :clear-history="chatList.length > 0 && !isStreamLoad" :data="chatList" :text-loading="loading"
-      :is-stream-load="isStreamLoad" style="height: 100%" class="p-5" @scroll="handleChatScroll" @clear="clearConfirm">
+      :is-stream-load="isStreamLoad" class="chat-inner p-5" @scroll="handleChatScroll" @clear="clearConfirm">
       <template #default="{ item, index }">
         <t-chat-item :key="index" :role="item?.role">
           <template #default>
@@ -20,6 +20,28 @@
               <t-chat-content v-if="item.reasoning.length > 0" :content="item.reasoning" />
             </t-chat-reasoning>
             <t-chat-content v-if="item.content.length > 0" :content="item.content" class="custom-chat-dialog" />
+            <!-- 引用溯源 -->
+            <div v-if="item.sources && item.sources.length > 0" class="source-citations">
+              <div class="source-citations__header" @click="toggleSources(item)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="source-icon">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                </svg>
+                <span>{{ item.sources.length }} 个引用来源</span>
+                <svg :class="['chevron', { 'rotated': item._sourcesExpanded }]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+                </svg>
+              </div>
+              <div v-if="item._sourcesExpanded" class="source-citations__list">
+                <div v-for="(src, si) in item.sources" :key="si" class="source-item">
+                  <div class="source-item__header">
+                    <span class="source-num">{{ si + 1 }}</span>
+                    <span class="source-filename">{{ src.filename }}</span>
+                    <span v-if="src.score != null" class="source-score">{{ Math.round(src.score * 100) }}%</span>
+                  </div>
+                  <div class="source-item__content">{{ src.content }}</div>
+                </div>
+              </div>
+            </div>
           </template>
         </t-chat-item>
       </template>
@@ -64,6 +86,14 @@
                   <span>深度思考</span>
                 </t-button>
               </t-tooltip>
+              <!-- 语音输入 -->
+              <t-tooltip content="语音输入（Whisper 本地识别）">
+                <VoiceInput
+                  :language="'zh'"
+                  @transcribed="(text) => { inputValue = text; }"
+                  @error="(msg) => console.warn('[Voice]', msg)"
+                />
+              </t-tooltip>
             </div>
           </template>
         </t-chat-sender>
@@ -78,7 +108,7 @@
   </div>
 </template>
 
-<script setup lang="jsx">
+<script setup lang="tsx">
 import {
   ref,
   reactive,
@@ -91,6 +121,7 @@ import {
 } from "vue";
 //import { MockSSEResponse } from './sseRequest-reasoning';
 import { ArrowDownIcon, CheckCircleIcon, SystemSumIcon } from "tdesign-icons-vue-next";
+import VoiceInput from "@/components/VoiceInput.vue";
 import {
   Chat as TChat,
   ChatAction as TChatAction,
@@ -151,9 +182,24 @@ const selectOptions = ref([]);
 const selectValue = ref({});
 const isChecked = ref(false);
 
+// ── 云端模型前缀标记（用于区分 provider）────────────────
+// value 格式："cloud:deepseek:deepseek-chat"  本地格式："local:qwen2:0.5b"
+const CLOUD_PROVIDERS: Record<string, string> = {
+  deepseek: 'DeepSeek',
+  openai: 'OpenAI',
+  hunyuan: '混元',
+}
+
 // 处理模型选择事件
 const handleModelChange = (value) => {
-  MessagePlugin.success(`已选择模型：${value.label}`);
+  // 同步到 localStorage，让侧边栏 ModelSelector 也感知
+  if (value?.value) {
+    const rawId = value.value.startsWith('cloud:')
+      ? value.value.split(':').slice(2).join(':')
+      : value.value.replace(/^local:/, '')
+    localStorage.setItem('selected_model', rawId)
+  }
+  MessagePlugin.success(`已选择模型：${value.label}`)
 };
 // 深度思考开关
 const checkClick = () => {
@@ -283,10 +329,21 @@ const inputEnter = function (messageContent) {
     actionsState: { good: false, bad: false },
   };
 
+  // 根据当前选中模型动态命名 AI
+  const curModelVal: string = selectValue.value?.value || ''
+  let aiName = "TDesignAI"
+  if (curModelVal.startsWith('cloud:deepseek:')) {
+    aiName = '🤖 DeepSeek'
+  } else if (curModelVal.startsWith('cloud:openai:')) {
+    aiName = '🤖 GPT'
+  } else if (curModelVal.startsWith('cloud:hunyuan:')) {
+    aiName = '🤖 混元'
+  }
+
   // 添加AI占位消息
   const aiMessage = {
     avatar: "https://tdesign.gtimg.com/site/chat-avatar.png",
-    name: "TDesignAI",
+    name: aiName,
     datetime: new Date().toLocaleString(),
     content: "",
     reasoning: "",
@@ -366,7 +423,90 @@ const fetchSSE = async (fetchFn, options) => {
 // src/components/chat-main-unit/chat-main-unit.vue
 
 // 修改数据处理函数
-const emit = defineEmits(["chat-updated"]);
+const emit = defineEmits(["chat-updated", "send-message"]);
+
+// ── 云端模型 SSE 对话（走 /api/models/chat）──────────────────────
+const handleCloudChat = async (messageContent: string, modelId: string, historyList: any[]) => {
+  const lastItem = chatList.value[0];
+  isUserAborted.value = false;
+
+  // 将 chatList 历史转换为 messages 格式（最多保留最近20条）
+  const recentHistory = [...historyList].reverse().slice(-20)
+  const messages = recentHistory
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => ({ role: m.role, content: m.content || '' }))
+  // 最后一条就是本次用户输入
+  if (!messages.length || messages[messages.length - 1]?.content !== messageContent) {
+    messages.push({ role: 'user', content: messageContent })
+  }
+
+  const controller = new AbortController()
+  fetchCancel.value = { controller }
+
+  try {
+    const response = await fetch('/api/models/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: modelId,
+        messages,
+        stream: true,
+        temperature: 0.7,
+        max_tokens: 4096,
+      }),
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      const errText = await response.text()
+      throw new Error(`云端 API 返回 ${response.status}: ${errText}`)
+    }
+
+    const reader = response.body!.getReader()
+    const decoder = new TextDecoder()
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      const chunk = decoder.decode(value, { stream: true })
+      const lines = chunk.split('\n').filter(l => l.trim())
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        try {
+          const data = JSON.parse(line.slice(6))
+          if (data.error) {
+            lastItem.role = 'error'
+            lastItem.content = `❌ ${data.error}`
+            lastItem.reasoning = ''
+          } else if (data.content) {
+            lastItem.content += data.content
+          }
+          if (data.done) {
+            lastItem.duration = 0
+            isStreamLoad.value = false
+            loading.value = false
+            fetchCancel.value = null
+            emit('chat-updated')
+          }
+        } catch { /* skip bad JSON */ }
+      }
+    }
+  } catch (error: any) {
+    if (isUserAborted.value || error.name === 'AbortError') {
+      lastItem.content = lastItem.content || '响应已停止'
+    } else {
+      lastItem.role = 'error'
+      lastItem.content = `云端模型请求失败: ${error.message}`
+      lastItem.reasoning = ''
+    }
+  } finally {
+    isStreamLoad.value = false
+    loading.value = false
+    fetchCancel.value = null
+  }
+}
 
 // 修改数据处理函数
 const handleData = async (messageContent) => {
@@ -374,7 +514,18 @@ const handleData = async (messageContent) => {
 
   isUserAborted.value = false;
   const lastItem = chatList.value[0];
-  const selectedModel = selectValue.value.value;
+  const selectedModelValue: string = selectValue.value?.value || ''
+
+  // ── 云端模型路由（value 以 "cloud:" 开头）────────────────
+  if (selectedModelValue.startsWith('cloud:')) {
+    // cloud:deepseek:deepseek-chat → modelId = deepseek-chat
+    const modelId = selectedModelValue.split(':').slice(2).join(':')
+    await handleCloudChat(messageContent, modelId, chatList.value)
+    return
+  }
+
+  // ── 本地 Ollama 模型（原有逻辑）─────────────────────────
+  const localModel = selectedModelValue.replace(/^local:/, '') || 'llama2'
 
   // 获取 Ollama 配置
   let serverUrl = "http://localhost:11434";
@@ -396,8 +547,8 @@ const handleData = async (messageContent) => {
   try {
     const { response, controller } = await fetchOllamaStream(
       messageContent,
-      selectedModel,
-      serverUrl  // 添加 serverUrl 参数
+      localModel,   // 使用本地模型名（已去掉 local: 前缀）
+      serverUrl
     );
     fetchCancel.value = { controller };
 
@@ -604,43 +755,65 @@ onMounted(async () => {
   console.log(nextMsg.value);
   window.addEventListener("keydown", handleKeyDown);
 
-  // 获取模型列表
+  // ── 从后端拉取全量模型列表（含云端 DeepSeek 等）─────────────
+  const savedModel = localStorage.getItem('selected_model') || ''
+
   try {
-    const models = await ollamaApiService.getModels();
-    
-    models.forEach((model) => {
-      selectOptions.value.push({ label: model.name, value: model.model });
-    });
-    
-    // 获取当前服务器URL用于显示（可选）
-    const serverUrl = ollamaApiService.getServerUrl();
-    console.log("当前Ollama服务器:", serverUrl);
-    
-    // 设置默认选中模型（保持原有逻辑）
-    // 这里需要从localStorage获取设置，因为这是组件特定的逻辑
-    let ollamaSettings = {};
-    try {
-      const savedSettings = localStorage.getItem('ollamaSettings');
-      if (savedSettings) {
-        ollamaSettings = JSON.parse(savedSettings);
-      }
-    } catch (e) {
-      console.error('加载 Ollama 设置失败:', e);
-    }
-    
-    if (ollamaSettings.defaultModel) {
-      const defaultOption = selectOptions.value.find(option => option.value === ollamaSettings.defaultModel);
-      if (defaultOption) {
-        selectValue.value = defaultOption;
+    // 优先走 /api/models/list（含云端模型）
+    const res = await fetch('/api/models/list')
+    const data = await res.json()
+    const allModels: any[] = data.models || []
+
+    // 本地 Ollama 模型
+    const localOpts = allModels
+      .filter(m => m.provider === 'ollama')
+      .map(m => ({ label: m.name, value: `local:${m.id}` }))
+
+    // 云端模型（按 provider 分组标签）
+    const cloudOpts = allModels
+      .filter(m => m.provider !== 'ollama')
+      .map(m => ({
+        label: `${CLOUD_PROVIDERS[m.provider] || m.provider}: ${m.name.replace(/（云端[^）]*）/, '').replace(/\（.*?\）/, '').trim()}${m.available ? '' : ' 🔑未配置'}`,
+        value: `cloud:${m.provider}:${m.id}`,
+        disabled: !m.available,
+      }))
+
+    selectOptions.value = [...localOpts, ...cloudOpts]
+
+    // 恢复上次选择
+    if (savedModel) {
+      const localMatch = selectOptions.value.find(o =>
+        o.value === `local:${savedModel}` || o.value === savedModel
+      )
+      const cloudMatch = selectOptions.value.find(o =>
+        o.value === `cloud:deepseek:${savedModel}` ||
+        o.value === `cloud:openai:${savedModel}` ||
+        o.value.endsWith(`:${savedModel}`)
+      )
+      if (localMatch) {
+        selectValue.value = localMatch
+      } else if (cloudMatch) {
+        selectValue.value = cloudMatch
       } else {
-        selectValue.value = selectOptions.value[0];
+        selectValue.value = selectOptions.value[0] || {}
       }
     } else {
-      selectValue.value = selectOptions.value[0];
+      selectValue.value = selectOptions.value[0] || {}
     }
-  } catch (error) {
-    console.error("获取模型列表失败，请检查API服务是否配置正确:", error);
-    MessagePlugin.error("获取模型列表失败，请检查API服务是否配置正确");
+  } catch (e) {
+    // 后端不可达时降级：只从 Ollama 拉本地模型
+    console.warn('[chat-main-unit] /api/models/list 失败，降级到本地 Ollama:', e)
+    try {
+      const models = await ollamaApiService.getModels()
+      selectOptions.value = models.map(m => ({
+        label: m.name,
+        value: `local:${m.model}`,
+      }))
+    } catch (e2) {
+      console.error("获取模型列表失败:", e2)
+      MessagePlugin.error("获取模型列表失败，请检查 API 服务是否配置正确")
+    }
+    selectValue.value = selectOptions.value[0] || {}
   }
 });
 
@@ -650,6 +823,12 @@ onBeforeUnmount(() => {
     fetchCancel.value.controller.close();
   }
 });
+
+// 引用溯源展开/折叠
+const toggleSources = (item) => {
+  item._sourcesExpanded = !item._sourcesExpanded;
+};
+
 </script>
 
 <style lang="less">
@@ -668,7 +847,18 @@ onBeforeUnmount(() => {
 
 .chat-box {
   position: relative;
+  /* 撑满父容器（chat-main-area）的全部高度 */
   height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  /* chat-inner 让 t-chat 内部自己处理滚动 */
+  .chat-inner {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
 
   .bottomBtn {
     position: absolute;
@@ -887,4 +1077,86 @@ onBeforeUnmount(() => {
   color: var(--td-error-color) !important;
   background-color: var(--td-error-color-1) !important;
 }
+
+/* 引用溯源样式 */
+.source-citations {
+  margin-top: 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 12px;
+}
+.source-citations__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #f8fafc;
+  cursor: pointer;
+  color: #4b5563;
+  user-select: none;
+  transition: background 0.15s;
+  &:hover { background: #f1f5f9; }
+}
+.source-icon { width: 14px; height: 14px; }
+.chevron {
+  width: 14px;
+  height: 14px;
+  margin-left: auto;
+  transition: transform 0.2s;
+  &.rotated { transform: rotate(180deg); }
+}
+.source-citations__list {
+  border-top: 1px solid #e5e7eb;
+  background: #fafafa;
+}
+.source-item {
+  padding: 8px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  &:last-child { border-bottom: none; }
+}
+.source-item__header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.source-num {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #4f7ef8;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.source-filename {
+  font-weight: 600;
+  color: #1f2937;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+.source-score {
+  background: #dcfce7;
+  color: #16a34a;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.source-item__content {
+  color: #6b7280;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
 </style>
+

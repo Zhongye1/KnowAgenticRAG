@@ -1,0 +1,28 @@
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# 测试文件（不进入生产镜像）
+tests/
+
+# 开发环境文件
+.env
+.env.*
+*.log
+
+# 向量库数据（运行时挂载，不打包进镜像）
+RAG_M/faiss_index/
+local-KLB-files/
+metadata/
+user_avatars/
+knowledge_base/uploaded_pics/
+
+# Git
+.git/
+.gitignore
+
+# 文档
+*.md

@@ -6,11 +6,11 @@ import json
 class ModelConfig:
     """统一模型配置管理类"""
     
-    # 默认模型配置
-    DEFAULT_LLM_MODEL = "llama2"
+    # Model config qwen2:0.5b400MB
+    DEFAULT_LLM_MODEL = "qwen2:0.5b"
     DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
     DEFAULT_RERANK_MODEL = "bge-large"
-    DEFAULT_KG_MODEL = "qwen3:0.6b"
+    DEFAULT_KG_MODEL = "qwen2:0.5b"
     
     def __init__(self, config_path: Optional[str] = None):
         """
@@ -69,7 +69,7 @@ class ModelConfig:
         """获取完整配置"""
         return self._config.copy()
 
-# 全局模型配置实例
+# Model config
 _model_config: Optional[ModelConfig] = None
 
 def get_model_config(config_path: Optional[str] = None) -> ModelConfig:

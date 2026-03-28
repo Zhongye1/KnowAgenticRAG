@@ -29,7 +29,6 @@ class KnowledgeItem(BaseModel):
     createdTime: str
     cover: str
 
-# 知识库数据获取
 def knowledge_base_data() -> List[dict]:
     """知识库数据获取"""
 
@@ -37,22 +36,21 @@ def knowledge_base_data() -> List[dict]:
     knowledge_bases = []
     
 
-    # 遍历 base_dir 下的所有子目录
+    # base_dir
     for kb_name in os.listdir(base_dir):
         kb_dir = os.path.join(base_dir, kb_name)
         json_file_path = os.path.join(kb_dir, 'knowledge_data.json')
 
-        # 检查 knowledge_data.json 文件是否存在
+        # knowledge_data.json
         if os.path.exists(json_file_path):
             with open(json_file_path, 'r', encoding='utf-8') as f:
                 kb_data = json.load(f)
                 knowledge_bases.append(kb_data)
 
-    # 按 createdTime 排序
+    # createdTime
     knowledge_bases.sort(key=lambda x: datetime.strptime(x['createdTime'], '%Y-%m-%d %H:%M:%S'))
 
 
-    # 知识库数据列表
     KLB_items = knowledge_bases
 
     print(KLB_items)
@@ -64,21 +62,19 @@ def knowledge_base_data() -> List[dict]:
 
 @router.post("/api/create-knowledgebase/")
 
-async def create_knowledgebase(kbName: str = Form(...)):
-    """创建知识库"""
-    # 定义知识库目录
+async def create_knowledgebase(kbName: str = Form(...), owner_id: Optional[str] = Form(None)):
+    """创建知识库（owner_id 可选，传入则绑定到该用户）"""
     base_dir = "local-KLB-files"
     kb_dir = os.path.join(base_dir, kbName)
 
-    # 检查 base_dir 是否存在，如果不存在则创建
+    # base_dir
     if not os.path.exists(base_dir):
         os.makedirs(base_dir)
 
-    # 检查 kb_dir 是否存在，如果不存在则创建
+    # kb_dir
     if not os.path.exists(kb_dir):
         os.makedirs(kb_dir)
         
-        # 定义要写入的数据
         data = {
             'id': kbName,
             'title': kbName,
@@ -86,7 +82,7 @@ async def create_knowledgebase(kbName: str = Form(...)):
             'description': '新建知识库',
             'createdTime': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'cover': "https://picx.zhimg.com/80/v2-381cc3f4ba85f62cdc483136e5fa4f47_720w.webp?source=d16d100b'",
-            "embedding_model": "sentence-transformers/all-mpnet-base-v2",
+            "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
             "chunk_size": 1000,
             "chunk_overlap": 200,
             "pdfParser": 'PyPDFLoader',
@@ -95,7 +91,6 @@ async def create_knowledgebase(kbName: str = Form(...)):
             "csvParser": 'CsvLoader',
             "txtParser": 'TextLoader',
             "segmentMethod": 'General',
-            # 以下是需要补充的字段
             "name": kbName,
             "vector_dimension": 768,
             "similarity_threshold": 0.7,
@@ -111,10 +106,11 @@ async def create_knowledgebase(kbName: str = Form(...)):
             ],
             "entity_normalization": True,
             "community_report": False,
-            "relation_extraction": True
+            "relation_extraction": True,
+            "owner_id": owner_id or "",
         }
         
-        # 将数据写入 JSON 文件
+        # JSON
         json_file_path = os.path.join(kb_dir, 'knowledge_data.json')
         with open(json_file_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
@@ -132,18 +128,15 @@ async def delete_knowledgebase(KLB_id: str):
     根据知识库ID删除对应的文件夹及其内容
     """
     try:
-        # 定义知识库目录
         base_dir = "local-KLB-files"
         kb_dir = os.path.join(base_dir, KLB_id)
         
-        # 检查知识库目录是否存在
         if not os.path.exists(kb_dir):
             raise HTTPException(
                 status_code=404, 
                 detail=f"知识库 '{KLB_id}' 不存在"
             )
         
-        # 删除整个文件夹及其内容
         import shutil
         shutil.rmtree(kb_dir)
         
@@ -173,11 +166,9 @@ async def update_knowledgebase_config(KLB_id: str, request: Request):
     接收知识库ID和配置数据，更新对应知识库的配置信息
     """
     try:
-        # 读取请求体数据
         body = await request.json()
         print(f"接收到更新请求: KLB_id={KLB_id}, body={body}")
         
-        # 获取所有可能的配置参数
         name = body.get("name")
         description = body.get("description")
         embedding_model = body.get("embedding_model")
@@ -190,23 +181,20 @@ async def update_knowledgebase_config(KLB_id: str, request: Request):
         txtParser = body.get("txtParser")
         segmentMethod = body.get("segmentMethod")
         
-        # 定义知识库目录和配置文件路径
+        # Config file
         base_dir = "local-KLB-files"
         kb_dir = os.path.join(base_dir, KLB_id)
         json_file_path = os.path.join(kb_dir, 'knowledge_data.json')
         
-        # 检查知识库目录是否存在
         if not os.path.exists(kb_dir):
             raise HTTPException(
                 status_code=404, 
                 detail=f"知识库 '{KLB_id}' 不存在"
             )
         
-        # 读取现有配置
         with open(json_file_path, 'r', encoding='utf-8') as f:
             kb_data = json.load(f)
         
-        # 更新所有配置项
         if name:
             kb_data['title'] = name
         if description:
@@ -230,12 +218,11 @@ async def update_knowledgebase_config(KLB_id: str, request: Request):
         if segmentMethod:
             kb_data['segmentMethod'] = segmentMethod
 
-        # 直接更新所有请求体中的配置项，无论原JSON中是否已存在
+        # JSON
         for key, value in body.items():
-            if value is not None:  # 只更新非None的值
+            if value is not None:  # None
                 kb_data[key] = value
             
-        # 保存更新后的配置
         with open(json_file_path, 'w', encoding='utf-8') as f:
             json.dump(kb_data, f, ensure_ascii=False, indent=4)
         
@@ -262,16 +249,20 @@ async def update_knowledgebase_config(KLB_id: str, request: Request):
 
 
 @router.get("/api/get-knowledge-item/")
-
-async def get_knowledge_items():
+async def get_knowledge_items(user_id: Optional[str] = None):
     """
     获取知识库项目列表
-    返回所有可用的知识库项目数据
+    - user_id 为空：返回所有知识库（全局列表，用于 Chat 等场景）
+    - user_id 非空：只返回该用户创建的知识库（用于广场发布选择等场景）
     """
     try:
-        # 生成测试数据
         data = knowledge_base_data()
-        
+
+        # owner_id owner_id ""
+        # user_id owner_id owner_id KB
+        if user_id:
+            data = [kb for kb in data if kb.get("owner_id", "") in (user_id, "")]
+
         return JSONResponse(
             status_code=200,
             content={
@@ -281,12 +272,31 @@ async def get_knowledge_items():
                 "total": len(data)
             }
         )
-        
+
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"获取知识库数据失败: {str(e)}"
         )
+
+
+@router.get("/api/list-knowledge-bases/")
+async def list_knowledge_bases_alias(user_id: Optional[str] = None):
+    """
+    /api/get-knowledge-item/ 的别名接口，返回格式更简洁（直接 list）
+    - user_id 非空：只返回该用户的知识库（owner_id 匹配 或 owner_id 为空的旧数据）
+    """
+    try:
+        data = knowledge_base_data()
+
+        if user_id:
+            data = [kb for kb in data if kb.get("owner_id", "") in (user_id, "")]
+
+        # res.data
+        return JSONResponse(status_code=200, content=data)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取知识库列表失败: {str(e)}")
 
 @router.get("/api/get-knowledge-item/{item_id}")
 async def get_knowledge_item_by_id(item_id: str):
@@ -320,50 +330,3 @@ async def get_knowledge_item_by_id(item_id: str):
             detail=f"获取知识库项目失败: {str(e)}"
         )
 
-# 如果需要分页功能
-@router.get("/api/get-knowledge-item/")
-async def get_knowledge_items_paginated(
-    page: int = 1,
-    page_size: int = 10,
-    search: Optional[str] = None
-):
-    """
-    分页获取知识库项目列表
-    """
-    try:
-        data = knowledge_base_data()
-        
-        # 搜索过滤
-        if search:
-            data = [
-                item for item in data 
-                if search.lower() in item['title'].lower() 
-                or search.lower() in item['description'].lower()
-            ]
-        
-        # 分页
-        total = len(data)
-        start_index = (page - 1) * page_size
-        end_index = start_index + page_size
-        paginated_data = data[start_index:end_index]
-        
-        return JSONResponse(
-            status_code=200,
-            content={
-                "code": 200,
-                "message": "获取知识库数据成功",
-                "data": paginated_data,
-                "pagination": {
-                    "page": page,
-                    "page_size": page_size,
-                    "total": total,
-                    "total_pages": (total + page_size - 1) // page_size
-                }
-            }
-        )
-        
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"获取知识库数据失败: {str(e)}"
-        )

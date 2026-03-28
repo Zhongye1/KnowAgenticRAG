@@ -37,6 +37,11 @@ const routes: Array<RouteRecordRaw> = [
     component: () => import('../views/Ollama_Pages/ollama_basic_pages.vue')
   },
   {
+    path: '/history',
+    name: 'History',
+    component: () => import('../views/History.vue')
+  },
+  {
     path: '/agent',
     name: 'Agent',
     component: () => import('../views/Agent.vue')
@@ -50,6 +55,11 @@ const routes: Array<RouteRecordRaw> = [
     path: '/DOC',
     name: '开发文档',
     component: () => import('../views/DOC.vue')
+  },
+  {
+    path: '/settings',
+    name: 'Settings',
+    component: () => import('../views/Settings.vue')
   },
   {
     path: '/LogonOrRegister',
@@ -83,6 +93,32 @@ const routes: Array<RouteRecordRaw> = [
     name: 'CTE',
     component: () => import('../components/graph-unit/graph-main.vue'),
   },
+  {
+    path: '/square',
+    name: 'SharedSquare',
+    component: () => import('../views/SharedKnowledge/SharedSquare.vue')
+  },
+  {
+    path: '/shared/:id',
+    name: 'SharedDetail',
+    component: () => import('../views/SharedKnowledge/SharedDetail.vue')
+  },
+  {
+    path: '/devtools',
+    name: 'DevTools',
+    component: () => import('../views/DevTools.vue'),
+    meta: { devOnly: true }
+  },
+  {
+    path: '/creation',
+    name: 'Creation',
+    component: () => import('../views/Creation.vue')
+  },
+  {
+    path: '/architecture',
+    name: 'Architecture',
+    component: () => import('../views/Architecture.vue')
+  },
   // 添加专门的404页面路由
   {
     path: '/404',
@@ -105,40 +141,53 @@ const router = createRouter({
   routes
 })
 
-const publicRoutes = ['/LogonOrRegister'];
+const publicRoutes = ['/LogonOrRegister', '/devtools'];
+
+// Flag: set to true right after login/register so the first navigation
+// skips the remote JWT check (avoids race condition where the JWT was
+// just written but the /api/users/me call hasn't resolved yet).
+let _justAuthenticated = false;
+
+export function markJustAuthenticated() {
+  _justAuthenticated = true;
+}
 
 router.beforeEach((to, from, next) => {
-  // 如果是公开路由，直接放行
+  // Public routes: always pass through
   if (publicRoutes.includes(to.path)) {
     return next();
   }
 
   const jwt = localStorage.getItem('jwt');
-  // 没有JWT时重定向到登录页
   if (!jwt) {
     return next(`/LogonOrRegister?redirect=${encodeURIComponent(to.fullPath)}`);
   }
 
-  // 验证JWT有效性
+  // If we just logged in / registered, trust the JWT for this navigation
+  // (it was issued seconds ago, no need to verify remotely)
+  if (_justAuthenticated) {
+    _justAuthenticated = false;
+    return next();
+  }
+
+  // Remote JWT validation
   fetch('/api/users/me', {
     method: 'GET',
-    headers: {
-      'Authorization': `Bearer ${jwt}`
-    }
+    headers: { 'Authorization': `Bearer ${jwt}` }
   })
     .then(response => response.json())
     .then((res: UserResponse) => {
-      if (res.status === "success") {
+      if (res.status === 'success') {
         next();
       } else {
-        // token无效时清理并重定向
         localStorage.removeItem('jwt');
         next(`/LogonOrRegister?redirect=${encodeURIComponent(to.fullPath)}`);
       }
     })
     .catch(() => {
-      localStorage.removeItem('jwt');
-      next(`/LogonOrRegister?redirect=${encodeURIComponent(to.fullPath)}`);
+      // Network error: do NOT delete JWT, just let through.
+      // User might be on a slow connection; killing the session is too aggressive.
+      next();
     });
 });
 

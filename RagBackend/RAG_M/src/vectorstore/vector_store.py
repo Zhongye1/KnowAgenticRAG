@@ -1,6 +1,5 @@
 import os
 import warnings
-from functools import lru_cache
 from typing import List, Optional
 
 from dotenv import load_dotenv
@@ -8,12 +7,10 @@ from langchain.docstore.document import Document
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
-# 修改导入语句，使用正确的绝对导入
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from models.model_config import get_model_config
 
-import os
 import json
 
 
@@ -28,7 +25,7 @@ class VectorStoreManager:
     def __init__(self, docs_dir: str = None):
         """Initialize vector store manager with embedding model from config file"""
         self._embeddings: Optional[HuggingFaceEmbeddings] = None
-        # 优先使用配置文件中的模型，否则使用统一配置
+        # Config file
         self._embedding_model = self._load_embedding_config(docs_dir)
         if not self._embedding_model:
             model_config = get_model_config()
@@ -40,7 +37,7 @@ class VectorStoreManager:
             print("使用默认的 embedding 模型: sentence-transformers/all-MiniLM-L6-v2")
             return "sentence-transformers/all-MiniLM-L6-v2"
         
-        # 获取knowledge_data.json路径
+        # knowledge_data.json
         config_path = os.path.join(docs_dir, "knowledge_data.json")
         
         try:
@@ -56,10 +53,9 @@ class VectorStoreManager:
 
 
     @property
-    @lru_cache(maxsize=1)
     def embeddings(self) -> HuggingFaceEmbeddings:
-        """Lazy load and cache embeddings model"""
-        if not self._embeddings:
+        """Lazy load and cache embeddings model（单例，只初始化一次）"""
+        if self._embeddings is None:
             self._embeddings = HuggingFaceEmbeddings(model_name=self._embedding_model)
         return self._embeddings
 
@@ -72,19 +68,19 @@ class VectorStoreManager:
         print(f"Attempting to create vector store at: {save_path}")
         
         try:
-            # 创建向量存储
+            # Vector store
             print(f"Creating FAISS vector store with {len(documents)} documents...")
             vectorstore = FAISS.from_documents(documents, self.embeddings)
             
-            # 保存向量存储前确保目录存在
+            # Vector store
             print(f"Ensuring save directory exists: {save_path}")
             os.makedirs(save_path, exist_ok=True)
             
-            # 创建临时目录用于保存
+            # Temporary directory
             temp_dir = os.path.join(save_path, "temp_save")
             os.makedirs(temp_dir, exist_ok=True)
             
-            # 验证临时目录是否可写
+            # Temporary directory
             test_file = os.path.join(temp_dir, '.write_test')
             try:
                 with open(test_file, 'w') as f:
@@ -94,23 +90,21 @@ class VectorStoreManager:
             except Exception as e:
                 raise RuntimeError(f"Cannot write to temporary directory: {str(e)}")
             
-            # 保存到临时目录
+            # Temporary directory
             print(f"Saving vector store to temporary directory: {temp_dir}")
             vectorstore.save_local(temp_dir)
             
-            # 移动文件到最终位置
             import shutil
             for file in os.listdir(temp_dir):
                 src = os.path.join(temp_dir, file)
                 dst = os.path.join(save_path, file)
                 shutil.move(src, dst)
             
-            # 清理临时目录
+            # Temporary directory
             shutil.rmtree(temp_dir)
             
             print(f"Vector store successfully created and saved to {save_path}")
             
-            # 验证文件是否创建成功
             required_files = ['index.faiss', 'index.pkl']
             for file in required_files:
                 file_path = os.path.join(save_path, file)
@@ -132,19 +126,14 @@ class VectorStoreManager:
     
     def initialize_vectorstore(self, save_path: str):
         """Initialize an empty vector store with required files"""
-        # 规范化路径并转换为绝对路径
         save_path = os.path.abspath(os.path.normpath(save_path))
         
-        # 确保目录存在且有写权限
         try:
-            # 创建目录（如果不存在）
             os.makedirs(save_path, exist_ok=True)
             
-            # 再次检查目录是否存在
             if not os.path.exists(save_path):
                 raise RuntimeError(f"Failed to create directory: {save_path}")
                 
-            # 测试目录是否可写
             test_file = os.path.join(save_path, '.write_test')
             try:
                 with open(test_file, 'w') as f:
@@ -156,22 +145,20 @@ class VectorStoreManager:
         except Exception as e:
             raise RuntimeError(f"Cannot create vector store directory: {str(e)}")
         
-        # 创建空的向量存储
+        # Vector store
         try:
-            # 创建一个空的文档列表来初始化向量存储
+            # Document listInitializeVector store
             empty_docs = [Document(page_content="")]
             vectorstore = FAISS.from_documents(empty_docs, self.embeddings)
             
-            # 确保目录存在
             os.makedirs(save_path, exist_ok=True)
             
-            # 先尝试创建一个临时文件以确保我们可以写入
             temp_file = os.path.join(save_path, "temp_index.faiss")
             with open(temp_file, 'w') as f:
                 f.write("")
             os.remove(temp_file)
             
-            # 保存向量存储
+            # Vector store
             vectorstore.save_local(save_path)
             print(f"Successfully initialized vector store at {save_path}")
         except Exception as e:
@@ -194,7 +181,6 @@ class VectorStoreManager:
             SecurityError: If trust_source is False
             RuntimeError: If loading fails
         """
-        # 转换为绝对路径
         load_path = os.path.abspath(load_path)
         
         if not os.path.exists(load_path):

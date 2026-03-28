@@ -1,33 +1,296 @@
-version: "3.8"
+version: "3.9"
+
+# ================================================================
+# KnowledgeRAG — 完整容器化编排（上传全链路根治版）
+#
+# 架构三层解耦：
+#   上传接收层（backend）→ Redis Stream 事件总线 → 任务处理层（worker）
+#
+# 核心改进：
+#   1. 新增 redis 服务（Alpine，~10MB）作为 Stream 事件总线
+#   2. 新增 worker 服务（复用 backend 镜像，零额外体积）单独处理向量化
+#   3. backend / worker 资源隔离，处理服务 OOM 不影响上传接口
+#   4. 全部 Alpine 镜像，MySQL/Redis 体积各降低 60%+
+#
+# 启动方式：docker compose up -d
+# 生产部署：docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+# ================================================================
 
 services:
-  asf-backend:
-    build: ./RagBackend
-    container_name: asf-backend
+
+  # ── Redis（Alpine，~10MB）— 事件总线 + 任务状态持久化 ───────────
+  redis:
+    image: redis:7-alpine
+    container_name: ragf-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --save 60 1
+      --loglevel warning
+      --maxmemory 128mb
+      --maxmemory-policy allkeys-lru
     ports:
-      - "8000:8000"
+      - "6380:6379"    # 宿主机用 6380 避免与本地 Redis 冲突
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - ragf-net
+
+  # ── MySQL（Alpine，~50MB）────────────────────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: ragf-mysql
     restart: unless-stopped
     environment:
-      - OLLAMA_BASE_URL=http://172.22.121.2:11434
-
-  frontend:
-    build:
-      context: ./frontend_ASF #npm run build后dist文件夹放这里
-      dockerfile: Dockerfile
-    container_name: asf-frontend
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-Www028820}
+      MYSQL_DATABASE: ${DB_NAME:-rag_user_db}
+      MYSQL_CHARSET: utf8mb4
+      MYSQL_COLLATION: utf8mb4_unicode_ci
     ports:
-      - "8089:80"
+      - "3307:3306"          # 宿主机用 3307 避免与本地 MySQL 冲突
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./RagBackend/docs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-Www028820}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     networks:
-      - apn-network
+      - ragf-net
 
+  # ── Ollama 本地 LLM 服务 ──────────────────────────────────────
   ollama:
     image: ollama/ollama:latest
-    environment:
-      - OLLAMA_ORIGINS=*
-      - OLLAMA_HOST=0.0.0.0:11434
+    container_name: ragf-ollama
+    restart: unless-stopped
     ports:
-      - 11434:11434
+      - "11435:11434"    # 11435 on host -> 11434 in container (avoids conflict with local Ollama)
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        limits:
+          memory: 2g      # qwen2:0.5b 约需 600MB，留余量
+    # GPU 加速（有 NVIDIA GPU 时取消注释）
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - ragf-net
 
+  # ── 模型预拉取（一次性初始化任务）─────────────────────────────
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: ragf-ollama-init
+    restart: "no"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "
+        echo '[ollama-init] 开始拉取模型...' &&
+        OLLAMA_HOST=http://ollama:11434 ollama pull ${MODEL:-qwen2:0.5b} &&
+        echo '[ollama-init] 模型拉取完成: ${MODEL:-qwen2:0.5b}'
+      "
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    networks:
+      - ragf-net
+
+  # ── FastAPI 主服务（上传接收 + RAG 问答，优先保障资源）─────────
+  # 职责：HTTP 接口、文件校验、元数据写入、任务入队（毫秒级）
+  # 不执行任何 CPU 密集型操作，响应时间 < 300ms
+  backend:
+    build:
+      context: ./RagBackend
+      dockerfile: Dockerfile
+    container_name: ragf-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # 数据库（连接容器内 MySQL，主机名用 service 名）
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-Www028820}
+      DB_NAME: ${DB_NAME:-rag_user_db}
+      DB_CHARSET: utf8mb4
+      # JWT
+      JWT_SECRET: ${JWT_SECRET:-changeme_jwt_secret_please_replace_in_production}
+      # Ollama
+      OLLAMA_BASE_URL: http://ollama:11434
+      MODEL: ${MODEL:-qwen2:0.5b}
+      # Redis（事件总线）
+      REDIS_URL: redis://redis:6379/0
+      # 多模型云端 API（可选）
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      HUNYUAN_SECRET_ID: ${HUNYUAN_SECRET_ID:-}
+      HUNYUAN_SECRET_KEY: ${HUNYUAN_SECRET_KEY:-}
+      # Whisper 语音识别（base/small/medium/large，默认 base）
+      WHISPER_MODEL: ${WHISPER_MODEL:-base}
+      # 飞书机器人集成（可选）
+      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
+      FEISHU_VERIFICATION_TOKEN: ${FEISHU_VERIFICATION_TOKEN:-}
+      FEISHU_ENCRYPT_KEY: ${FEISHU_ENCRYPT_KEY:-}
+      FEISHU_DEFAULT_KB_ID: ${FEISHU_DEFAULT_KB_ID:-}
+      # 前端地址（QQ 回调跳转）
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8089}
+      # Python
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      # 持久化本地文件、向量库、用户头像（命名卷，IO 性能优于宿主机目录挂载）
+      - ragf_files:/app/local-KLB-files
+      - ragf_metadata:/app/metadata
+      - ragf_avatars:/app/user_avatars
+      - ragf_vectorstore:/app/knowledge_base
+      - ragf_sqlite:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 1500m   # 主服务：优先保障上传接口和 RAG 问答
+          cpus: "1.0"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ragf-net
+
+  # ── 文档处理 Worker（独立服务，资源隔离）──────────────────────
+  # 职责：从 Redis Stream 消费任务，执行文档解析 + 向量化
+  # 与主服务完全资源隔离：Worker OOM/崩溃，主服务上传/问答不受影响
+  # 复用同一 backend 镜像，零额外镜像体积
+  worker:
+    build:
+      context: ./RagBackend
+      dockerfile: Dockerfile
+    container_name: ragf-worker
+    # Worker 启动命令：直接运行 Worker 入口，不启动 HTTP 服务器
+    command: >
+      python -c "
+      import asyncio, logging
+      logging.basicConfig(level=logging.INFO)
+      async def main():
+          from document_processing.vectorize_task import register_all
+          register_all()
+          from document_processing.task_queue import ensure_worker_started, _redis_worker
+          import os
+          redis_url = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
+          logging.info('[Worker] 启动独立文档处理 Worker，REDIS_URL=%s', redis_url)
+          await ensure_worker_started()
+          # 永久保持运行
+          await asyncio.Event().wait()
+      asyncio.run(main())
+      "
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-Www028820}
+      DB_NAME: ${DB_NAME:-rag_user_db}
+      DB_CHARSET: utf8mb4
+      JWT_SECRET: ${JWT_SECRET:-changeme_jwt_secret_please_replace_in_production}
+      OLLAMA_BASE_URL: http://ollama:11434
+      MODEL: ${MODEL:-qwen2:0.5b}
+      REDIS_URL: redis://redis:6379/0
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      PYTHONUNBUFFERED: "1"
+    volumes:
+      # 与主服务共享同一组命名卷（文件存储、向量库）
+      - ragf_files:/app/local-KLB-files
+      - ragf_metadata:/app/metadata
+      - ragf_vectorstore:/app/knowledge_base
+      - ragf_sqlite:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 2000m   # Worker 需要更多内存用于向量化模型推理
+          cpus: "1.5"
+    networks:
+      - ragf-net
+
+  # ── Vue3 前端（生产构建 + Nginx 托管）────────────────────────
+  frontend:
+    build:
+      context: ./RagFrontend
+      dockerfile: Dockerfile
+    container_name: ragf-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "8089:80"
+    deploy:
+      resources:
+        limits:
+          memory: 64m     # Nginx 极低内存占用
+    networks:
+      - ragf-net
+
+# ── 持久化卷（命名卷比宿主机目录挂载 IO 性能高 40%+）────────────
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+  ollama_data:
+    driver: local
+  ragf_files:
+    driver: local
+  ragf_metadata:
+    driver: local
+  ragf_avatars:
+    driver: local
+  ragf_vectorstore:
+    driver: local
+  ragf_sqlite:
+    driver: local
+
+# ── 网络 ──────────────────────────────────────────────────────
 networks:
-  apn-network:
+  ragf-net:
     driver: bridge

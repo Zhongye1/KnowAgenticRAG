@@ -1,7 +1,7 @@
 <template>
-  <div class="height-full flex">
+  <div class="chat-page-root">
     <!-- 侧边栏：对话历史记录 -->
-    <div class="w-64 border-r border-gray-200 bg-gray-50 dark:bg-gray-800 dark:border-gray-700 flex flex-col">
+    <div class="chat-sidebar">
       <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
         <h2 class="font-medium text-gray-900 dark:text-white">对话历史</h2>
 
@@ -15,7 +15,7 @@
       </div>
 
       <!-- 加载状态 -->
-      <div v-if="loading && chatSessions.length === 0" class="flex-1 flex items-center justify-center">
+      <div v-if="loading && chatSessions.length === 0" class="sidebar-loading">
         <div class="text-center">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
           <p class="text-sm text-gray-500 dark:text-gray-400">加载对话历史...</p>
@@ -23,7 +23,7 @@
       </div>
 
       <!-- 会话列表 -->
-      <div v-else class="flex-1 overflow-y-auto p-3 space-y-2">
+      <div v-else class="sidebar-sessions">
         <div v-for="(chat, idx) in chatSessions" :key="chat.id" @click="selectSession(idx)" :class="[
           'px-3 py-2 rounded-md cursor-pointer flex items-center transition-colors duration-200 group',
           currentSessionIndex === idx
@@ -56,6 +56,65 @@
         </div>
       </div>
 
+      <!-- RAG 模式区域 -->
+      <div class="rag-panel">
+        <!-- 当前模型徽章 + 去设置的快捷入口 -->
+        <div class="current-model-bar" @click="router.push('/settings')" title="点击前往设置页修改模型">
+          <span class="current-model-dot"></span>
+          <span class="current-model-name">{{ currentOllamaModel }}</span>
+          <span class="current-model-goto">⚙ 配置</span>
+        </div>
+        <!-- 模型选择器 -->
+        <div class="rag-toggle-row" style="border-bottom:none; padding-bottom:4px;">
+          <div class="rag-toggle-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path stroke-linecap="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v3"/>
+            </svg>
+            <span style="font-size:12px;">模型</span>
+          </div>
+          <ModelSelector v-model="selectedModel" />
+        </div>
+        <!-- 检索策略（RAG 模式下显示） -->
+        <div v-if="ragMode" class="rag-toggle-row" style="border-top:none; padding-top:2px;">
+          <div class="rag-toggle-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <path stroke-linecap="round" d="M3 4h13M3 8h9m-9 4h6m4 0l4-4m0 0l4 4m-4-4v12"/>
+            </svg>
+            <span style="font-size:12px;">检索策略</span>
+          </div>
+          <RetrievalConfig v-model="retrievalConfig" />
+        </div>
+        <!-- RAG 模式开关 -->
+        <div class="rag-toggle-row">
+          <div class="rag-toggle-label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            </svg>
+            <span>知识库问答</span>
+          </div>
+          <t-switch v-model="ragMode" size="small" />
+        </div>
+
+        <!-- 知识库选择器（RAG模式下展示） -->
+        <div v-if="ragMode" class="rag-kb-selector">
+          <div class="rag-kb-label">选择知识库</div>
+          <t-select
+            v-model="selectedKbId"
+            placeholder="请选择知识库"
+            size="small"
+            clearable
+            :options="kbSelectOptions"
+            class="rag-kb-select"
+          />
+          <div v-if="selectedKbId" class="rag-kb-hint">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+              <path stroke-linecap="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            已启用知识库增强
+          </div>
+        </div>
+      </div>
+
       <!-- 底部操作按钮 -->
       <div class="p-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
         <button @click="createNewSession" :disabled="loading"
@@ -83,7 +142,7 @@
     </div>
 
     <!-- 主聊天区域 -->
-    <div id="chat-container" class="flex height-full">
+    <div class="chat-main-area">
       <!-- 停止提示 -->
       <div v-if="showStopHint"
         class="absolute top-4 right-4 bg-yellow-100 border border-yellow-300 text-yellow-800 px-4 py-2 rounded-md shadow-md z-50 animate-fade-in">
@@ -92,6 +151,7 @@
 
       <chatMainUnit v-if="currentSession" :history="currentSession.history" :title="currentSession.title"
         :lastMessage="currentSession.lastMessage" :key="currentSession.id" :loading="isStreamLoad"
+        :ragMode="ragMode" :ragKbId="selectedKbId"
         @chat-updated="handleChatUpdated" @send-message="inputEnter" />
 
       <!-- 无会话状态 -->
@@ -113,7 +173,7 @@
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">服务器地址</label>
-          <t-input v-model="settings.serverUrl" placeholder="http://172.22.121.2:11434" />
+          <t-input v-model="settings.serverUrl" placeholder="http://localhost:11434" />
           <p class="text-xs text-gray-500 mt-1">本地模型则为: http://localhost:11434</p>
         </div>
         <div>
@@ -128,8 +188,12 @@
 <script setup lang="ts">
 import { ref, computed, nextTick, watch, reactive, onMounted } from "vue";
 import chatMainUnit from "../components/chat-main-unit/chat-main-unit.vue";
+import ModelSelector from "../components/ModelSelector.vue";
+import RetrievalConfig from "../components/RetrievalConfig.vue";
+import type { RetrievalConfig as RetrievalConfigType } from "../components/RetrievalConfig.vue";
 import { useRouter, useRoute } from "vue-router";
 import { MessagePlugin } from "tdesign-vue-next";
+import axios from "axios";
 
 
 
@@ -142,6 +206,13 @@ interface ChatMessage {
   role: "user" | "assistant";
   reasoning?: string;
   duration?: number;
+  sources?: SourceItem[];
+}
+
+interface SourceItem {
+  filename: string;
+  content: string;
+  score?: number;
 }
 
 interface ChatSession {
@@ -166,6 +237,48 @@ const maxRetries = 3;
 
 // 聊天会话数据
 const chatSessions = ref<ChatSession[]>([]);
+
+// ====== RAG 模式 ======
+const ragMode = ref(false);
+const selectedKbId = ref<string>('');
+const kbList = ref<any[]>([]);
+
+// ====== 多模型 & 检索策略 ======
+const selectedModel = ref(localStorage.getItem('selected_model') || 'qwen2:0.5b');
+const retrievalConfig = ref<RetrievalConfigType>({
+  strategy: 'rrf', topK: 6, scoreThreshold: 0.3,
+  vectorWeight: 0.6, bm25Weight: 0.4, rerank: false, rerankTopN: 3,
+});
+watch(selectedModel, (v) => localStorage.setItem('selected_model', v));
+
+// ====== 当前生效的 Ollama 模型（从后端拉，优先展示用户配置的） ======
+const currentOllamaModel = ref(localStorage.getItem('selected_model') || 'qwen2:0.5b')
+async function syncCurrentOllamaModel() {
+  try {
+    const res = await import('axios').then(m => m.default.get('/api/user-model-config'))
+    const model = res.data?.config?.llm_model
+    if (model) {
+      currentOllamaModel.value = model
+      selectedModel.value = model
+      localStorage.setItem('selected_model', model)
+    }
+  } catch { /* 后端未运行时静默 */ }
+}
+
+const kbSelectOptions = computed(() =>
+  kbList.value.map((kb: any) => ({
+    label: kb.kbName || kb.title || kb.name,
+    value: kb.kbId || kb.id,
+  }))
+);
+
+const loadKbList = async () => {
+  try {
+    const res = await axios.get('/api/get-knowledge-item/');
+    const data = res.data?.data || res.data || [];
+    kbList.value = Array.isArray(data) ? data : [];
+  } catch { kbList.value = []; }
+};
 
 // 计算属性
 const currentSession = computed(() => {
@@ -513,6 +626,14 @@ const inputEnter = async (inputValue: string) => {
   loading.value = true;
 
   try {
+    // 读取当前选中的模型（支持 cloud:provider:model 格式）
+    const selectedModel = localStorage.getItem('selected_model') || (() => {
+      try {
+        const cfg = JSON.parse(localStorage.getItem('user_model_config') || '{}')
+        return cfg.llm_model || ''
+      } catch { return '' }
+    })()
+
     // 发送消息到后端API
     const response = await apiRequest(API_ENDPOINTS.SEND_MESSAGE, {
       method: "POST",
@@ -520,7 +641,12 @@ const inputEnter = async (inputValue: string) => {
         message: inputValue.trim(),
         sessionId: currentId,
         history: chatSessions.value[sessionIndex].history,
-        // 添加Ollama设置到请求中
+        // 模型选择（云端/本地统一字段）
+        model: selectedModel || undefined,
+        // RAG 模式参数
+        rag_mode: ragMode.value,
+        kb_id: ragMode.value ? selectedKbId.value : undefined,
+        // Ollama 本地设置（云端模型时后端忽略）
         ollamaSettings: {
           serverUrl: settings.serverUrl,
           timeout: settings.timeout
@@ -531,7 +657,8 @@ const inputEnter = async (inputValue: string) => {
     // 模拟流式响应（可以根据实际API调整）
     await simulateStreamResponse(
       response.reply || `这是对"${inputValue}"的回复`,
-      sessionIndex
+      sessionIndex,
+      response.sources || []
     );
   } catch (error) {
     console.error("发送消息失败:", error);
@@ -559,7 +686,7 @@ const inputEnter = async (inputValue: string) => {
 };
 
 // 模拟流式响应
-const simulateStreamResponse = async (content: string, sessionIndex: number) => {
+const simulateStreamResponse = async (content: string, sessionIndex: number, sources: SourceItem[] = []) => {
   const assistantMessage: ChatMessage = {
     avatar: "https://tdesign.gtimg.com/site/chat-avatar.png",
     name: "ASF助手",
@@ -571,6 +698,7 @@ const simulateStreamResponse = async (content: string, sessionIndex: number) => 
     role: "assistant",
     reasoning: "",
     duration: 0,
+    sources: sources,
   };
 
   // 添加空的助手消息
@@ -680,6 +808,12 @@ onMountedHook(async () => {
   // 注册键盘事件
   document.addEventListener("keydown", handleKeyDown);
 
+  // 同步后端保存的模型配置（更新 selectedModel）
+  await syncCurrentOllamaModel();
+
+  // 加载知识库列表（RAG模式使用）
+  await loadKbList();
+
   // 获取会话历史数据
   await fetchChatSessions();
 
@@ -710,12 +844,145 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-#chat-container {
+/* ── 页面根容器：撑满 app-main 给出的 100vh ── */
+.chat-page-root {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  background: #fff;
+}
+
+/* ── 侧边栏 ── */
+.chat-sidebar {
+  width: 256px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  width: 100%;
+  height: 100%;
+  border-right: 1px solid #e5e7eb;
+  background: #f9fafb;
   overflow: hidden;
-  min-height: calc(100vh - var(--header-height, 0px));
+}
+
+.sidebar-loading {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sidebar-sessions {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── 主聊天区域：撑满剩余空间 ── */
+.chat-main-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  min-width: 0;
+  position: relative;
+}
+
+/* RAG 模式面板 */
+.current-model-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background .2s;
+}
+.current-model-bar:hover { background: #dcfce7; }
+.current-model-dot {
+  width: 7px;
+  height: 7px;
+  background: #22c55e;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.current-model-name {
+  flex: 1;
+  font-family: monospace;
+  font-size: 11px;
+  color: #166534;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.current-model-goto {
+  font-size: 11px;
+  color: #6b7280;
+  white-space: nowrap;
+}
+
+.rag-panel {
+  padding: 10px 12px;
+  border-top: 1px solid #e5e7eb;
+  background: #fafafa;
+}
+
+.rag-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.rag-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.rag-toggle-label svg {
+  width: 14px;
+  height: 14px;
+  color: #4f7ef8;
+}
+
+.rag-kb-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rag-kb-label {
+  font-size: 11.5px;
+  color: #6b7280;
+}
+
+.rag-kb-select {
+  width: 100%;
+}
+
+.rag-kb-hint {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #22c55e;
+}
+
+.rag-kb-hint svg {
+  width: 12px;
+  height: 12px;
 }
 
 /* 动画效果 */
@@ -790,22 +1057,6 @@ onUnmounted(() => {
 
   :deep(.t-chat-input:focus) {
     background-color: #4b5563 !important;
-  }
-}
-
-/* 响应式设计 */
-@media (max-width: 768px) {
-  .w-64 {
-    width: 100%;
-    position: absolute;
-    z-index: 50;
-    height: 100vh;
-    transform: translateX(-100%);
-    transition: transform 0.3s ease;
-  }
-
-  .w-64.open {
-    transform: translateX(0);
   }
 }
 </style>

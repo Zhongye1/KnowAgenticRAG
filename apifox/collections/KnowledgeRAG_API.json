@@ -1,0 +1,792 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "KnowledgeRAG-GZHU API",
+    "description": "RAG 知识库问答系统 — 完整接口集合\n\n## 认证方式\n所有接口（除注册/登录外）均需在 Header 中携带：\n```\nAuthorization: Bearer <token>\n```\n\n## 获取 Token\n调用 `POST /api/login/login`，响应体中的 `access_token` 即为 JWT Token，有效期 **24 小时**。\n\n## 流式接口\n标注 `[SSE]` 的接口返回 `text/event-stream` 格式，每行为 `data: {...}` 或 `data: [DONE]`。",
+    "version": "1.0.0",
+    "contact": {
+      "name": "KnowledgeRAG-GZHU",
+      "url": "https://github.com/March030303/KnowledgeRAG-GZHU"
+    }
+  },
+  "servers": [
+    {
+      "url": "{{base_url}}",
+      "description": "当前环境（通过 Apifox 环境变量切换）"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "本地开发"
+    },
+    {
+      "url": "http://8.163.51.93:8000",
+      "description": "云服务器"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT Token，通过登录接口获取"
+      }
+    },
+    "schemas": {
+      "UserCreate": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "user@example.com" },
+          "password": { "type": "string", "minLength": 6, "example": "MyPassword123" }
+        }
+      },
+      "UserLogin": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": { "type": "string", "format": "email", "example": "user@example.com" },
+          "password": { "type": "string", "example": "MyPassword123" }
+        }
+      },
+      "TokenResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": { "type": "string", "description": "JWT Token，有效期 24 小时" },
+          "token_type": { "type": "string", "example": "bearer" },
+          "email": { "type": "string" }
+        }
+      },
+      "RAGQueryRequest": {
+        "type": "object",
+        "required": ["question", "kb_id"],
+        "properties": {
+          "question": { "type": "string", "description": "用户问题", "example": "什么是 RAG？" },
+          "kb_id": { "type": "string", "description": "知识库 ID", "example": "kb_abc123" },
+          "model": { "type": "string", "description": "模型 ID，留空使用用户配置的默认模型", "example": "deepseek-chat" },
+          "top_k": { "type": "integer", "default": 5, "description": "检索文档数量" },
+          "use_reranker": { "type": "boolean", "default": false, "description": "是否启用 cross-encoder 重排" }
+        }
+      },
+      "ChatMessage": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+          "role": { "type": "string", "enum": ["user", "assistant", "system"] },
+          "content": { "type": "string" }
+        }
+      },
+      "ChatRequest": {
+        "type": "object",
+        "required": ["model", "messages"],
+        "properties": {
+          "model": { "type": "string", "example": "deepseek-chat", "description": "模型 ID，可选：qwen2:0.5b / deepseek-chat / gpt-4o / hunyuan-turbo" },
+          "messages": { "type": "array", "items": { "$ref": "#/components/schemas/ChatMessage" } },
+          "stream": { "type": "boolean", "default": true },
+          "temperature": { "type": "number", "default": 0.7 },
+          "max_tokens": { "type": "integer", "default": 2048 },
+          "kb_id": { "type": "string", "description": "指定知识库 ID 时开启 RAG 模式" }
+        }
+      },
+      "KnowledgeBase": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string" },
+          "doc_count": { "type": "integer" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "detail": { "type": "string", "description": "错误信息" }
+        }
+      }
+    }
+  },
+  "security": [{ "BearerAuth": [] }],
+  "tags": [
+    { "name": "系统", "description": "健康检查、系统信息" },
+    { "name": "用户认证", "description": "注册、登录、退出、QQ OAuth" },
+    { "name": "密码重置", "description": "邮箱验证码 + 重置密码" },
+    { "name": "知识库", "description": "知识库 CRUD、封面管理" },
+    { "name": "文档上传", "description": "分片上传、合并、去重" },
+    { "name": "文档管理", "description": "文件列表、删除、预览" },
+    { "name": "RAG 服务", "description": "向量检索问答（流式 + 同步）" },
+    { "name": "多模型对话", "description": "Ollama / DeepSeek / GPT / 混元 统一接口" },
+    { "name": "Agent 模式", "description": "ReAct 任务、联网搜索" },
+    { "name": "知识图谱", "description": "图谱生成、查询、搜索" },
+    { "name": "知识广场", "description": "公开分享、圈子、收藏" },
+    { "name": "文档创作", "description": "摘要 / 翻译 / 大纲 / 优化 / 扩写（SSE）" },
+    { "name": "模型评测", "description": "运行评测、查询结果" },
+    { "name": "用户设置", "description": "个人信息、头像、模型配置" },
+    { "name": "审计日志", "description": "API 调用记录查询" }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": ["系统"],
+        "summary": "健康检查",
+        "operationId": "health_check",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "服务正常",
+            "content": {
+              "application/json": {
+                "example": { "status": "healthy", "service": "RAG Backend Service", "version": "1.0" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/helloworld/": {
+      "get": {
+        "tags": ["系统"],
+        "summary": "测试端点",
+        "operationId": "hello_world",
+        "security": [],
+        "responses": {
+          "200": { "description": "Hello World 响应" }
+        }
+      }
+    },
+    "/download": {
+      "get": {
+        "tags": ["系统"],
+        "summary": "App 下载页面",
+        "operationId": "app_download_page",
+        "security": [],
+        "responses": {
+          "200": { "description": "HTML 页面，含 Android APK / iOS TestFlight / 源码下载链接" }
+        }
+      }
+    },
+    "/api/register": {
+      "post": {
+        "tags": ["用户认证"],
+        "summary": "用户注册",
+        "operationId": "register_user",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UserCreate" },
+              "example": { "email": "test@rag-gzhu.com", "password": "Test123456" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "注册成功，返回 JWT Token",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TokenResponse" }
+              }
+            }
+          },
+          "400": { "description": "邮箱已存在或参数错误", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ErrorResponse" } } } }
+        }
+      }
+    },
+    "/api/login/login": {
+      "post": {
+        "tags": ["用户认证"],
+        "summary": "用户登录",
+        "description": "⭐ 登录成功后使用后置脚本自动把 access_token 写入 {{token}} 环境变量",
+        "operationId": "login_user",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/UserLogin" },
+              "example": { "email": "test@rag-gzhu.com", "password": "Test123456" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "登录成功",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TokenResponse" },
+                "example": { "access_token": "eyJhbGc...", "token_type": "bearer", "email": "test@rag-gzhu.com" }
+              }
+            }
+          },
+          "401": { "description": "邮箱或密码错误" }
+        }
+      }
+    },
+    "/api/password-reset/send-code": {
+      "post": {
+        "tags": ["密码重置"],
+        "summary": "发送重置验证码",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": { "email": "test@rag-gzhu.com" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "验证码已发送到邮箱" }
+        }
+      }
+    },
+    "/api/password-reset/reset": {
+      "post": {
+        "tags": ["密码重置"],
+        "summary": "重置密码",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": { "email": "test@rag-gzhu.com", "code": "123456", "new_password": "NewPass456" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "密码重置成功" },
+          "400": { "description": "验证码错误或已过期" }
+        }
+      }
+    },
+    "/knowledge/list": {
+      "get": {
+        "tags": ["知识库"],
+        "summary": "获取知识库列表",
+        "operationId": "list_knowledge_bases",
+        "parameters": [
+          { "name": "owner_id", "in": "query", "schema": { "type": "string" }, "description": "用户邮箱，过滤本人知识库" }
+        ],
+        "responses": {
+          "200": {
+            "description": "知识库列表",
+            "content": {
+              "application/json": {
+                "example": [{ "id": "kb_abc123", "name": "我的知识库", "doc_count": 5 }]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/knowledge/create": {
+      "post": {
+        "tags": ["知识库"],
+        "summary": "创建知识库",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": { "name": "测试知识库", "description": "用于 Apifox 测试", "owner_id": "test@rag-gzhu.com" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "创建成功，返回知识库 ID" }
+        }
+      }
+    },
+    "/knowledge/delete/{kb_id}": {
+      "delete": {
+        "tags": ["知识库"],
+        "summary": "删除知识库",
+        "parameters": [
+          { "name": "kb_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "删除成功" },
+          "404": { "description": "知识库不存在" }
+        }
+      }
+    },
+    "/upload-chunk": {
+      "post": {
+        "tags": ["文档上传"],
+        "summary": "上传文件分片",
+        "description": "大文件分片上传，支持并发，最大并发数 3。\n\n**参数说明：**\n- `file`：当前分片二进制\n- `chunk_index`：分片序号（从 0 开始）\n- `total_chunks`：总分片数\n- `file_id`：唯一文件标识（UUID）\n- `filename`：原始文件名",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" },
+                  "chunk_index": { "type": "integer" },
+                  "total_chunks": { "type": "integer" },
+                  "file_id": { "type": "string" },
+                  "filename": { "type": "string" },
+                  "kb_id": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "分片上传成功" }
+        }
+      }
+    },
+    "/merge-chunks": {
+      "post": {
+        "tags": ["文档上传"],
+        "summary": "合并文件分片并触发向量化",
+        "description": "所有分片上传完成后调用，触发异步向量化任务（Redis Stream 队列）。\n\n返回 `task_id` 用于查询向量化进度。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "file_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+                "filename": "document.pdf",
+                "kb_id": "kb_abc123",
+                "total_chunks": 3
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "合并成功，返回任务 ID",
+            "content": {
+              "application/json": {
+                "example": { "status": "queued", "task_id": "task_xyz789", "message": "文档已进入向量化队列" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/files/list": {
+      "get": {
+        "tags": ["文档管理"],
+        "summary": "获取知识库文件列表",
+        "parameters": [
+          { "name": "kb_id", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "文件列表" }
+        }
+      }
+    },
+    "/api/RAG/RAG_query": {
+      "post": {
+        "tags": ["RAG 服务"],
+        "summary": "[SSE] RAG 流式问答",
+        "description": "向量检索 + LLM 生成，**流式返回** `text/event-stream`。\n\n每行格式：\n```\ndata: {\"answer\": \"...\", \"sources\": [...]}\n```\n最后一行：`data: [DONE]`",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RAGQueryRequest" },
+              "example": {
+                "question": "知识库中有关 RAG 的核心概念是什么？",
+                "kb_id": "kb_abc123",
+                "model": "deepseek-chat",
+                "top_k": 5,
+                "use_reranker": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSE 流式响应",
+            "content": {
+              "text/event-stream": {
+                "example": "data: {\"answer\": \"RAG 是检索增强生成...\", \"sources\": [\"doc1.pdf#p3\"]}\n\ndata: [DONE]"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/RAG/RAG_query_sync": {
+      "post": {
+        "tags": ["RAG 服务"],
+        "summary": "RAG 同步问答（测试用）",
+        "description": "同步返回完整回答，适合 Apifox 直接查看响应内容（无需处理 SSE）。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/RAGQueryRequest" },
+              "example": {
+                "question": "请介绍知识库的主要功能",
+                "kb_id": "kb_abc123",
+                "model": "deepseek-chat"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "完整回答",
+            "content": {
+              "application/json": {
+                "example": {
+                  "answer": "知识库的主要功能包括...",
+                  "sources": ["document.pdf#第1页"],
+                  "model_used": "deepseek-chat",
+                  "elapsed_ms": 1240
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/RAG/ingest": {
+      "post": {
+        "tags": ["RAG 服务"],
+        "summary": "[SSE] 文档向量化",
+        "description": "对已上传到知识库的文档执行向量化，**流式返回**进度。\n\n每行格式：`data: {\"progress\": 60, \"status\": \"processing\", \"file\": \"xxx.pdf\"}`",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": { "kb_id": "kb_abc123" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSE 向量化进度流",
+            "content": {
+              "text/event-stream": {
+                "example": "data: {\"progress\": 100, \"status\": \"done\", \"file\": \"doc.pdf\"}\n\ndata: [DONE]"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/models/chat": {
+      "post": {
+        "tags": ["多模型对话"],
+        "summary": "[SSE] 统一多模型对话",
+        "description": "支持 Ollama（本地）/ DeepSeek / OpenAI GPT / 腾讯混元，**流式返回**。\n\n模型 ID 对应关系：\n| 模型 | provider | 说明 |\n|------|----------|------|\n| `qwen2:0.5b` | ollama | 本地轻量，推荐默认 |\n| `qwen:7b-chat` | ollama | 本地高质量，需 17GB 内存 |\n| `deepseek-chat` | deepseek | 深度推理（需 API Key）|\n| `gpt-4o` | openai | OpenAI（需 API Key）|\n| `hunyuan-turbo` | hunyuan | 腾讯混元（需 API Key）|",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ChatRequest" },
+              "example": {
+                "model": "deepseek-chat",
+                "messages": [
+                  { "role": "user", "content": "你好，请介绍一下 RAG 技术" }
+                ],
+                "stream": true,
+                "temperature": 0.7
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "SSE 流式文本回复" }
+        }
+      }
+    },
+    "/api/models/list": {
+      "get": {
+        "tags": ["多模型对话"],
+        "summary": "获取可用模型列表",
+        "description": "返回所有模型的元数据，`available` 字段动态计算（Ollama 模型需本地已安装）。",
+        "responses": {
+          "200": {
+            "description": "模型列表",
+            "content": {
+              "application/json": {
+                "example": {
+                  "models": [
+                    { "id": "qwen2:0.5b", "name": "Qwen2 0.5B（本地·推荐）", "provider": "ollama", "available": true },
+                    { "id": "deepseek-chat", "name": "DeepSeek Chat", "provider": "deepseek", "available": false }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/models/configure": {
+      "post": {
+        "tags": ["多模型对话"],
+        "summary": "保存云端模型 API Key",
+        "description": "写入 `models_config.json`，**无需重启后端**立即生效。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "deepseek": { "api_key": "sk-xxxxxxxxxxxx" },
+                "openai": { "api_key": "sk-xxxxxxxxxxxx", "base_url": "https://api.openai.com/v1" },
+                "hunyuan": { "api_key": "xxxxxxxxxxxx", "secret_id": "AKIDxxxxxxx" }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "配置保存成功" }
+        }
+      }
+    },
+    "/api/agent/task": {
+      "post": {
+        "tags": ["Agent 模式"],
+        "summary": "[SSE] ReAct Agent 任务",
+        "description": "多步骤自动化任务，内部循环 Think→Action→Observe，**流式返回**每步结果。",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "task": "搜索关于量子计算的最新研究并总结要点",
+                "model": "deepseek-chat",
+                "kb_id": null,
+                "max_steps": 5
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "SSE Agent 推理步骤流" }
+        }
+      }
+    },
+    "/api/kg/generate": {
+      "post": {
+        "tags": ["知识图谱"],
+        "summary": "生成知识图谱",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": { "kb_id": "kb_abc123" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "图谱生成成功，返回节点/边数据" }
+        }
+      }
+    },
+    "/api/kg/graph/{kb_id}": {
+      "get": {
+        "tags": ["知识图谱"],
+        "summary": "获取知识图谱数据",
+        "parameters": [
+          { "name": "kb_id", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "图谱节点和边数据（用于前端 D3/ECharts 渲染）" }
+        }
+      }
+    },
+    "/api/square/kbs": {
+      "get": {
+        "tags": ["知识广场"],
+        "summary": "获取广场知识库列表",
+        "security": [],
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "搜索关键词" },
+          { "name": "circle_id", "in": "query", "schema": { "type": "integer" }, "description": "圈子 ID 过滤" },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["latest", "popular", "star"] }, "description": "排序方式" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } }
+        ],
+        "responses": {
+          "200": { "description": "广场知识库列表" }
+        }
+      },
+      "post": {
+        "tags": ["知识广场"],
+        "summary": "发布知识库到广场",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "kb_id": "kb_abc123",
+                "title": "RAG 学习笔记",
+                "description": "整理了 RAG 的核心概念和实现方案",
+                "circle_id": 1,
+                "owner_id": "test@rag-gzhu.com"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "发布成功" }
+        }
+      }
+    },
+    "/api/square/kbs/{share_id}/star": {
+      "post": {
+        "tags": ["知识广场"],
+        "summary": "收藏/取消收藏知识库",
+        "parameters": [
+          { "name": "share_id", "in": "path", "required": true, "schema": { "type": "integer" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": { "owner_id": "test@rag-gzhu.com" }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "收藏状态切换成功" }
+        }
+      }
+    },
+    "/api/creation/generate": {
+      "post": {
+        "tags": ["文档创作"],
+        "summary": "[SSE] 文档创作",
+        "description": "5 种创作模式，**流式返回**生成内容：\n\n| mode | 说明 |\n|------|------|\n| `summary` | 摘要提炼 |\n| `translate` | 翻译（指定 target_lang）|\n| `outline` | 生成大纲 |\n| `optimize` | 语言优化 |\n| `expand` | 内容扩写 |",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "mode": "summary",
+                "content": "这是一段需要处理的文本内容...",
+                "model": "deepseek-chat",
+                "target_lang": "en",
+                "extra": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "SSE 创作内容流" }
+        }
+      }
+    },
+    "/api/eval/run": {
+      "post": {
+        "tags": ["模型评测"],
+        "summary": "运行 RAG 效果评测",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "kb_id": "kb_abc123",
+                "model": "deepseek-chat",
+                "metrics": ["faithfulness", "relevancy", "context_recall"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "评测已提交，返回 run_id" }
+        }
+      }
+    },
+    "/api/eval/results": {
+      "get": {
+        "tags": ["模型评测"],
+        "summary": "获取评测结果列表",
+        "responses": {
+          "200": { "description": "历史评测结果，含雷达图 / 柱状图数据" }
+        }
+      }
+    },
+    "/api/user/profile": {
+      "get": {
+        "tags": ["用户设置"],
+        "summary": "获取用户信息",
+        "responses": {
+          "200": {
+            "description": "用户信息",
+            "content": {
+              "application/json": {
+                "example": {
+                  "email": "test@rag-gzhu.com",
+                  "name": "测试用户",
+                  "signature": "这个人很懒，什么也没写",
+                  "avatar": "https://..."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user/model-config": {
+      "get": {
+        "tags": ["用户设置"],
+        "summary": "获取用户模型配置",
+        "responses": {
+          "200": { "description": "当前用户保存的模型配置" }
+        }
+      },
+      "post": {
+        "tags": ["用户设置"],
+        "summary": "保存用户模型配置",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "example": {
+                "llm_model": "deepseek-chat",
+                "ollama_base_url": "http://localhost:11434",
+                "ollama_timeout": 120,
+                "embedding_model": "moka-ai/m3e-base"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "配置保存成功" }
+        }
+      }
+    },
+    "/api/audit/logs": {
+      "get": {
+        "tags": ["审计日志"],
+        "summary": "查询 API 调用记录",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 } },
+          { "name": "offset", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "path", "in": "query", "schema": { "type": "string" }, "description": "过滤接口路径" }
+        ],
+        "responses": {
+          "200": { "description": "审计日志列表" }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": ["系统监控"],
+        "summary": "Prometheus 指标",
+        "description": "返回 Prometheus 格式的系统指标，可接入 Grafana 大盘。",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Prometheus text format 指标",
+            "content": {
+              "text/plain": {
+                "example": "# HELP http_requests_total 总请求数\nhttp_requests_total{method=\"POST\",endpoint=\"/api/RAG/RAG_query\"} 42"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
