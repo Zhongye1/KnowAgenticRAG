@@ -133,6 +133,8 @@ def create_user(email: str, password: str) -> bool:
     """
     conn = None
     try:
+        # 统一小写，避免大小写不一致导致注册/找回密码逻辑冲突
+        email = email.strip().lower()
         # 对密码进行哈希处理（数据库里要加密）
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
         print(email, password)
@@ -178,6 +180,8 @@ def user_login(email: str, password: str) -> bool:
     """
     conn = None
     try:
+        # 统一小写，与注册时保持一致
+        email = email.strip().lower()
         # 对密码进行哈希处理
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
 
@@ -339,8 +343,9 @@ async def register_user(user: UserCreate):
     """
     用户注册接口 (JSON格式)
     """
-    if create_user(user.email, user.password):
-        token = safe_db_operation(user.email)
+    email = user.email.strip().lower()
+    if create_user(email, user.password):
+        token = safe_db_operation(email)
         return {
             "status": "success",
             "message": "用户注册成功",
@@ -357,6 +362,7 @@ async def register_user_form(email: str = Form(...), password: str = Form(...)):
     """
     用户注册接口 (表单格式)
     """
+    email = email.strip().lower()
     if create_user(email, password):
         token = safe_db_operation(email)
         return {
@@ -376,8 +382,9 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     """
     用户登录接口 (OAuth2标准格式)
     """
-    if user_login(form_data.username, form_data.password):  # OAuth2中username字段实际传的是email
-        token = authenticate_user(form_data.username)
+    email = form_data.username.strip().lower()  # OAuth2中username字段实际传的是email
+    if user_login(email, form_data.password):
+        token = authenticate_user(email)
         return {"access_token": token, "token_type": "bearer"}
     else:
         raise HTTPException(
@@ -391,8 +398,9 @@ async def login_user_json(user: UserLogin):
     """
     用户登录接口 (JSON格式)
     """
-    if user_login(user.email, user.password):
-        token = authenticate_user(user.email)
+    email = user.email.strip().lower()
+    if user_login(email, user.password):
+        token = authenticate_user(email)
         return {
             "status": "success",
             "message": "登录成功",
@@ -409,6 +417,7 @@ async def login_user_form(email: str = Form(...), password: str = Form(...)):
     """
     用户登录接口 (表单格式)
     """
+    email = email.strip().lower()
     if user_login(email, password):
         token = authenticate_user(email)
         return {
