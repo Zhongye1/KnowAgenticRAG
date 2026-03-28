@@ -18,7 +18,8 @@
       },
       "ios": {
         "simulator": true
-      }
+      },
+      "node": "20.19.0"
     },
     "production": {
       "android": {
