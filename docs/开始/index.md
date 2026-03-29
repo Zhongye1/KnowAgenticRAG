@@ -120,13 +120,13 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 -Stop
 
 1. 启动 MySQL（Docker）
 
-```
+```bash
 docker run -d --name ragf-mysql -e MYSQL_ROOT_PASSWORD=yourpw -p 3306:3306 mysql:9.6
 ```
 
 2. 后端
 
-```
+```bash
 cd RagBackend
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
@@ -134,7 +134,7 @@ uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 
 3. 前端
 
-```
+```bash
 cd RagFrontend
 npm install
 npm run dev # → http://localhost:5173
@@ -144,6 +144,6 @@ npm run dev # → http://localhost:5173
 
 ## 下一步
 
-- 了解 [项目功能](/guide/项目功能说明)
-- 查看 [系统架构](/guide/系统架构说明)
-- 阅读 [API 文档](/API_reference/api/)
+- 了解 [项目功能](/开始/项目功能说明)
+- 查看 [系统架构](/开始/系统架构说明)
+- 阅读 [API 文档](/API_reference/api)

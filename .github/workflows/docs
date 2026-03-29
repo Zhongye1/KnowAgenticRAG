@@ -1,0 +1,63 @@
+name: Deploy Docs to GitHub Pages
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - "docs/**"
+            - ".github/workflows/docs.yml"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    pages: write
+    id-token: write
+
+concurrency:
+    group: "pages"
+    cancel-in-progress: true
+
+jobs:
+    deploy:
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            # 1. 安装 pnpm
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 8
+
+            # 2. 设置 Node.js 并启用 pnpm 缓存
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: "pnpm" # 自动缓存 pnpm store
+                  cache-dependency-path: docs/pnpm-lock.yaml # 可选但推荐，指定 lockfile 位置
+
+            # 3. 安装依赖（在 docs 目录下执行）
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+              working-directory: ./docs
+
+            # 4. 构建文档
+            - name: Build docs
+              run: pnpm run build
+              working-directory: ./docs
+
+            - name: Upload artifact
+              uses: actions/upload-pages-artifact@v3
+              with:
+                  path: ./docs/.vitepress/dist
+
+            - name: Deploy to GitHub Pages
+              id: deployment
+              uses: actions/deploy-pages@v4

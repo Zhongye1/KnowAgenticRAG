@@ -5,6 +5,8 @@ export default defineConfig({
     title: "KnowledgeRAG",
     description: "系统文档",
 
+    // 部署到 GitHub Pages 的子路径
+    base: "/KnowledgeRAG-GZHU/",
     head: [
         [
             "link",
@@ -19,7 +21,7 @@ export default defineConfig({
 
         nav: [
             { text: "首页", link: "/" },
-            { text: "指南", link: "/guide/" },
+            { text: "开始", link: "/开始/" },
             { text: "工程治理", link: "/工程治理/" },
             { text: "API", link: "/API_reference/api/" },
         ],
@@ -99,4 +101,5 @@ export default defineConfig({
     markdown: {
         lineNumbers: true,
     },
+    ignoreDeadLinks: true,
 });

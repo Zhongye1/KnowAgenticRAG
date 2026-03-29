@@ -1,18 +1,16 @@
 # .pre-commit-config.yaml
-# 放置于 KnowledgeRAG-GZHU 仓库根目录
 minimum_pre_commit_version: "3.0.0"
 
 repos:
     # 1. 提交消息检查（commitlint）
-    - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
-      rev: v9.24.0
+    - repo: https://github.com/commitizen-tools/commitizen
+      rev: v4.1.0
       hooks:
-          - id: commitlint
+          - id: commitizen
             stages: [commit-msg]
-            additional_dependencies: ["@commitlint/config-conventional"]
-            args: ["--config", "commitlint.config.js"]
+            additional_dependencies: ["cz-conventional-gitmoji"]
 
-    # 2. 前端 ESLint 检查（Vue3 + React Native）—— 已适配 ESLint 9 flat config
+    # 2. ESLint 检查（Vue3 + React Native）——  ESLint 9
     - repo: https://github.com/pre-commit/mirrors-eslint
       rev: v9.6.0
       hooks:
@@ -20,12 +18,7 @@ repos:
             name: ESLint (Frontend + Mobile)
             files: ^(RagFrontend|RagMobile)/.*\.(js|ts|vue|tsx)$
             types: [file]
-            args:
-                [
-                    --fix,
-                    --config,
-                    RagFrontend/eslint.config.cjs,
-                ]
+            args: [--fix, --config, RagFrontend/eslint.config.cjs]
 
     # 3. Prettier 格式化
     - repo: https://github.com/rbubley/mirrors-prettier
