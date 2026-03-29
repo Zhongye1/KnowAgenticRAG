@@ -21,6 +21,7 @@ export default defineConfig({
         nav: [
             { text: "首页", link: "/" },
             { text: "指南", link: "/guide/" },
+            { text: "工程治理", link: "/工程治理/" },
             { text: "API", link: "/API_reference/api/" },
         ],
 
@@ -30,7 +31,33 @@ export default defineConfig({
                 items: [
                     { text: "快速上手", link: "/guide/" },
                     { text: "项目功能", link: "/guide/项目功能说明" },
-                    { text: "系统架构", link: "/guide/架构说明" },
+                    { text: "系统架构", link: "/guide/系统架构说明" },
+                ],
+            },
+            {
+                text: "工程治理[必读]",
+                items: [
+                    { text: "关于工程治理", link: "/工程治理/" },
+                    {
+                        text: "Fastapi后端",
+                        link: "/工程治理/后端",
+                    },
+                    {
+                        text: "vue+ts前端",
+                        link: "/工程治理/前端",
+                    },
+                    {
+                        text: "移动客户端",
+                        link: "/工程治理/移动客户端",
+                    },
+                    {
+                        text: "前后端联调",
+                        link: "/工程治理/前后端联调",
+                    },
+                    {
+                        text: "构建与部署",
+                        link: "/工程治理/构建与部署",
+                    },
                 ],
             },
             {

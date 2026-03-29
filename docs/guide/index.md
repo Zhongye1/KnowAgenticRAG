@@ -8,6 +8,8 @@ KnowledgeRAG 是一个基于 RAG（Retrieval Augmented Generation，检索增强
 
 ### 核心特性
 
+TODO:这里要改正
+
 - 🔍 **混合检索**：BM25 关键词 + FAISS 语义向量双路检索
 - 🤖 **双模式问答**：普通 RAG + ReAct Agent 可切换
 - 📊 **知识图谱**：自动提取文档实体与关系，可视化展示
@@ -18,7 +20,10 @@ KnowledgeRAG 是一个基于 RAG（Retrieval Augmented Generation，检索增强
 
 ## 技术栈
 
+TODO:这里要改正
+
 ### 前端
+
 - Vue 3.4.21 + Vite 5.2.8
 - TypeScript 5.4.4
 - TDesign Vue Next 组件库
@@ -26,6 +31,7 @@ KnowledgeRAG 是一个基于 RAG（Retrieval Augmented Generation，检索增强
 - Vue Router 路由管理
 
 ### 后端
+
 - FastAPI 0.116.1
 - LangChain + LangChain-Community
 - FAISS 向量数据库
@@ -43,36 +49,10 @@ KnowledgeRAG 是一个基于 RAG（Retrieval Augmented Generation，检索增强
 
 ### 安装依赖
 
-```bash
-npm install
-```
-
-### 运行开发服务器
-
-```bash
-npm run docs:dev
-```
-
-这将在本地启动一个热重载的开发服务器，默认地址是 http://localhost:5173。
-
-### 构建静态站点
-
-```bash
-npm run docs:build
-```
-
-这将生成可在生产环境中部署的静态文件。
-
-### 预览构建结果
-
-```bash
-npm run docs:preview
-```
-
-这将启动一个本地服务器来预览构建后的站点。
+TODO:这里要补充
 
 ## 下一步
 
-- 了解 [项目功能](/guide/features)
-- 查看 [系统架构](/guide/architecture)
-- 阅读 [API 文档](/api/)
+- 了解 [项目功能](/guide/项目功能说明)
+- 查看 [系统架构](/guide/系统架构说明)
+- 阅读 [API 文档](/API_reference/api/)
