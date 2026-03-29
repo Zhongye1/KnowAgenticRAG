@@ -14,7 +14,7 @@ pnpm install
 pnpm run dev # 运行开发服务器
 ```
 
-访问 http://localhost:5173 查看文档站点
+访问 http://localhost:6632 查看文档站点
 
 ```bash
 pnpm run build # 构建生产版本

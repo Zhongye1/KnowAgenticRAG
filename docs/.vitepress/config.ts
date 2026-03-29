@@ -14,7 +14,6 @@ export default defineConfig({
             },
         ],
     ],
-
     themeConfig: {
         // https://vitepress.dev/reference/default-theme-config
 
@@ -27,17 +26,21 @@ export default defineConfig({
 
         sidebar: [
             {
-                text: "入门",
+                text: "开始",
                 items: [
-                    { text: "快速上手", link: "/guide/" },
-                    { text: "项目功能", link: "/guide/项目功能说明" },
-                    { text: "系统架构", link: "/guide/系统架构说明" },
+                    { text: "快速上手", link: "/开始/" },
+                    { text: "项目功能", link: "/开始/项目功能说明" },
+                    { text: "系统架构", link: "/开始/系统架构说明" },
                 ],
             },
             {
                 text: "工程治理[必读]",
                 items: [
                     { text: "关于工程治理", link: "/工程治理/" },
+                    {
+                        text: "代码质量与规范",
+                        link: "/工程治理/代码质量与规范",
+                    },
                     {
                         text: "Fastapi后端",
                         link: "/工程治理/后端",

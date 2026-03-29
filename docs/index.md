@@ -11,11 +11,12 @@ hero:
     actions:
         - theme: brand
           text: 快速上手
-          link: /guide
+          link: /开始
         - theme: alt
           text: 查看源码
           link: https://github.com/Zhongye1/KnowledgeRAG-GZHU
 ---
+
 ## 基于检索增强生成（RAG）的知识库问答系统
 
 <div class="badges-container" style="display: flex; flex-wrap: wrap; gap: 12px; margin: 24px 0;">
