@@ -1,0 +1,66 @@
+# .pre-commit-config.yaml
+# 放置于 KnowledgeRAG-GZHU 仓库根目录
+minimum_pre_commit_version: "3.0.0"
+
+repos:
+    # 1. 提交消息检查（commitlint）
+    - repo: https://github.com/alessandrojcm/commitlint-pre-commit-hook
+      rev: v9.24.0
+      hooks:
+          - id: commitlint
+            stages: [commit-msg]
+            additional_dependencies: ["@commitlint/config-conventional"]
+            args: ["--config", "commitlint.config.js"]
+
+    # 2. 前端 ESLint 检查（Vue3 + React Native）—— 已适配 ESLint 9 flat config
+    - repo: https://github.com/pre-commit/mirrors-eslint
+      rev: v9.6.0
+      hooks:
+          - id: eslint
+            name: ESLint (Frontend + Mobile)
+            files: ^(RagFrontend|RagMobile)/.*\.(js|ts|vue|tsx)$
+            types: [file]
+            args:
+                [
+                    --fix,
+                    --config,
+                    RagFrontend/eslint.config.cjs,
+                ]
+
+    # 3. Prettier 格式化
+    - repo: https://github.com/rbubley/mirrors-prettier
+      rev: v3.5.3
+      hooks:
+          - id: prettier
+            name: Prettier (Frontend + Mobile)
+            files: ^(RagFrontend|RagMobile)/.*\.(js|ts|vue|tsx|json|md|yaml|yml|css|scss)$
+
+    # 4. 后端 Python 检查（Ruff）
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+      rev: v0.15.8
+      hooks:
+          - id: ruff
+            files: ^RagBackend/
+            exclude: ^RagBackend/Rag_M/src/
+            args: [--fix, --config, RagBackend/pyproject.toml]
+          - id: ruff-format
+            files: ^RagBackend/
+            exclude: ^RagBackend/Rag_M/src/
+            args: [--config, RagBackend/pyproject.toml]
+
+          - id: ruff
+            files: ^RagBackend/Rag_M/src/
+            args: [--fix, --config, RagBackend/Rag_M/src/pyproject.toml]
+          - id: ruff-format
+            files: ^RagBackend/Rag_M/src/
+            args: [--config, RagBackend/Rag_M/src/pyproject.toml]
+
+    # 5. 通用检查
+    - repo: https://github.com/pre-commit/pre-commit-hooks
+      rev: v5.0.0
+      hooks:
+          - id: trailing-whitespace
+          - id: end-of-file-fixer
+          - id: check-yaml
+          - id: check-added-large-files
+            args: ["--maxkb=500"]

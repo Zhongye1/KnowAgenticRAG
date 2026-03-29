@@ -1,12 +1,6 @@
 {
-  "extends": [
-    "stylelint-config-standard",
-    "stylelint-prettier/recommended"
-  ],
-  "plugins": [
-    "stylelint-less",
-    "stylelint-prettier"
-  ],
+  "extends": ["stylelint-config-standard", "stylelint-prettier/recommended"],
+  "plugins": ["stylelint-less", "stylelint-prettier"],
   "customSyntax": "postcss-less",
   "rules": {
     "prettier/prettier": true,
