@@ -5,23 +5,27 @@
       v-if="visible"
       class="back-to-top"
       :class="{ 'back-to-top--scrolling': isScrolling }"
-      @click="scrollToTop"
-      @mousedown="ripple"
       title="回到顶部"
       aria-label="回到顶部"
+      @click="scrollToTop"
+      @mousedown="ripple"
     >
       <!-- 进度圆环 -->
       <svg class="back-to-top__ring" viewBox="0 0 36 36">
         <circle
           class="ring-bg"
-          cx="18" cy="18" r="15"
+          cx="18"
+          cy="18"
+          r="15"
           fill="none"
           stroke="rgba(255,255,255,0.2)"
           stroke-width="2"
         />
         <circle
           class="ring-progress"
-          cx="18" cy="18" r="15"
+          cx="18"
+          cy="18"
+          r="15"
           fill="none"
           stroke="white"
           stroke-width="2"
@@ -32,8 +36,14 @@
         />
       </svg>
       <!-- 箭头图标 -->
-      <svg class="back-to-top__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+      <svg
+        class="back-to-top__arrow"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.5"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
       </svg>
     </button>
   </transition>
@@ -45,25 +55,27 @@ import { useRipple } from '@/composables/useScrollReveal'
 
 const { ripple } = useRipple()
 
-const visible   = ref(false)
-const progress  = ref(0)
+const visible = ref(false)
+const progress = ref(0)
 const isScrolling = ref(false)
 
-const circumference = 2 * Math.PI * 15  // r=15
+const circumference = 2 * Math.PI * 15 // r=15
 const dashOffset = computed(() => circumference * (1 - progress.value / 100))
 
 let scrollTimer: ReturnType<typeof setTimeout> | null = null
 
 const updateProgress = () => {
-  const scrollTop    = document.documentElement.scrollTop || document.body.scrollTop
+  const scrollTop = document.documentElement.scrollTop || document.body.scrollTop
   const scrollHeight = document.documentElement.scrollHeight - document.documentElement.clientHeight
   progress.value = scrollHeight > 0 ? Math.round((scrollTop / scrollHeight) * 100) : 0
-  visible.value  = scrollTop > 200
+  visible.value = scrollTop > 200
 
   // 滚动中指示
   isScrolling.value = true
   if (scrollTimer) clearTimeout(scrollTimer)
-  scrollTimer = setTimeout(() => { isScrolling.value = false }, 150)
+  scrollTimer = setTimeout(() => {
+    isScrolling.value = false
+  }, 150)
 }
 
 const scrollToTop = () => {
@@ -100,20 +112,20 @@ onUnmounted(() => {
   justify-content: center;
   z-index: 1000;
   overflow: hidden;
-  box-shadow: 0 4px 16px rgba(79, 126, 248, 0.40);
+  box-shadow: 0 4px 16px rgba(79, 126, 248, 0.4);
   transition:
-    transform  0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
+    transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1),
     box-shadow 0.18s ease;
 }
 
 .back-to-top:hover {
   transform: translateY(-3px) scale(1.08);
-  box-shadow: 0 8px 24px rgba(79, 126, 248, 0.50);
+  box-shadow: 0 8px 24px rgba(79, 126, 248, 0.5);
 }
 
 .back-to-top:active {
   transform: translateY(0) scale(0.94) !important;
-  box-shadow: 0 2px 8px rgba(79, 126, 248, 0.30) !important;
+  box-shadow: 0 2px 8px rgba(79, 126, 248, 0.3) !important;
   transition-duration: 0.07s !important;
 }
 

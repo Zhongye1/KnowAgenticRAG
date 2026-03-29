@@ -2,12 +2,13 @@
 Agent 执行失败重试 + 步骤回滚 + 任务暂停/续跑
 + 工具链市场/第三方插件体系
 """
+
 import os
 import json
 import sqlite3
 import time
 from datetime import datetime
-from typing import List, Optional, Dict, Any, Callable
+from typing import List, Optional, Dict
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -75,7 +76,9 @@ init_db()
 
 # - //Retry/-
 class TaskStep:
-    def __init__(self, step_id: int, tool_name: str, params: Dict, description: str = ""):
+    def __init__(
+        self, step_id: int, tool_name: str, params: Dict, description: str = ""
+    ):
         self.step_id = step_id
         self.tool_name = tool_name
         self.params = params
@@ -109,21 +112,39 @@ class TaskExecutor:
 
     def _get_task(self):
         conn = get_db()
-        row = conn.execute("SELECT * FROM agent_tasks WHERE id=?", (self.task_id,)).fetchone()
+        row = conn.execute(
+            "SELECT * FROM agent_tasks WHERE id=?", (self.task_id,)
+        ).fetchone()
         conn.close()
         return dict(row) if row else None
 
-    def _save_steps(self, steps: List[Dict], current_step: int, status: str,
-                    error_count: int = 0, completed_at: str = None):
+    def _save_steps(
+        self,
+        steps: List[Dict],
+        current_step: int,
+        status: str,
+        error_count: int = 0,
+        completed_at: str = None,
+    ):
         conn = get_db()
-        conn.execute("""
+        conn.execute(
+            """
             UPDATE agent_tasks SET steps=?, current_step=?, status=?,
             error_count=?, updated_at=datetime('now','localtime')
             {}
             WHERE id=?
         """.format(", completed_at=?" if completed_at else ""),
-            ([json.dumps(steps, ensure_ascii=False), current_step, status, error_count]
-             + ([completed_at] if completed_at else []) + [self.task_id]))
+            (
+                [
+                    json.dumps(steps, ensure_ascii=False),
+                    current_step,
+                    status,
+                    error_count,
+                ]
+                + ([completed_at] if completed_at else [])
+                + [self.task_id]
+            ),
+        )
         conn.commit()
         conn.close()
 
@@ -155,7 +176,7 @@ class TaskExecutor:
                 step["retry_count"] = attempt + 1
                 step["error"] = str(e)
                 if attempt < self.max_retries - 1:
-                    time.sleep(1.5 ** attempt)
+                    time.sleep(1.5**attempt)
                 else:
                     step["status"] = "failed"
                     step["completed_at"] = datetime.now().isoformat()
@@ -194,14 +215,16 @@ class TaskExecutor:
                 self._save_steps(steps, i, "running", error_count)
                 # 3
                 if error_count >= 3:
-                    self._save_steps(steps, i, "failed", error_count,
-                                     datetime.now().isoformat())
+                    self._save_steps(
+                        steps, i, "failed", error_count, datetime.now().isoformat()
+                    )
                     return {"status": "failed", "failed_at_step": i}
             else:
                 self._save_steps(steps, i + 1, "running", error_count)
 
-        self._save_steps(steps, len(steps), "done", error_count,
-                         datetime.now().isoformat())
+        self._save_steps(
+            steps, len(steps), "done", error_count, datetime.now().isoformat()
+        )
         return {"status": "done", "steps": steps}
 
 
@@ -210,23 +233,41 @@ class TaskCreate(BaseModel):
     user_id: str
     title: str
     goal: str
-    steps: List[Dict]   # [{tool_name, params, description}]
+    steps: List[Dict]  # [{tool_name, params, description}]
     max_retries: Optional[int] = 3
 
 
 @router.post("/tasks/create")
 def create_task(req: TaskCreate):
     import uuid
+
     task_id = str(uuid.uuid4())
-    steps = [{"step_id": i, **s, "status": "pending", "result": None,
-               "error": None, "retry_count": 0}
-             for i, s in enumerate(req.steps)]
+    steps = [
+        {
+            "step_id": i,
+            **s,
+            "status": "pending",
+            "result": None,
+            "error": None,
+            "retry_count": 0,
+        }
+        for i, s in enumerate(req.steps)
+    ]
     conn = get_db()
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO agent_tasks (id, user_id, title, goal, steps, max_retries)
         VALUES (?,?,?,?,?,?)
-    """, (task_id, req.user_id, req.title, req.goal,
-          json.dumps(steps, ensure_ascii=False), req.max_retries))
+    """,
+        (
+            task_id,
+            req.user_id,
+            req.title,
+            req.goal,
+            json.dumps(steps, ensure_ascii=False),
+            req.max_retries,
+        ),
+    )
     conn.commit()
     conn.close()
     return {"task_id": task_id}
@@ -260,7 +301,9 @@ def resume_task(task_id: str):
 @router.post("/tasks/{task_id}/rollback/{step_id}")
 def rollback_step(task_id: str, step_id: int):
     conn = get_db()
-    task = conn.execute("SELECT steps FROM agent_tasks WHERE id=?", (task_id,)).fetchone()
+    task = conn.execute(
+        "SELECT steps FROM agent_tasks WHERE id=?", (task_id,)
+    ).fetchone()
     if not task:
         conn.close()
         raise HTTPException(404, "任务不存在")
@@ -268,8 +311,10 @@ def rollback_step(task_id: str, step_id: int):
     if step_id < len(steps):
         steps[step_id]["status"] = "rolled_back"
         steps[step_id]["result"] = None
-        conn.execute("UPDATE agent_tasks SET steps=?, current_step=? WHERE id=?",
-                     (json.dumps(steps, ensure_ascii=False), step_id, task_id))
+        conn.execute(
+            "UPDATE agent_tasks SET steps=?, current_step=? WHERE id=?",
+            (json.dumps(steps, ensure_ascii=False), step_id, task_id),
+        )
         conn.commit()
     conn.close()
     return {"status": "rolled_back", "step_id": step_id}
@@ -290,10 +335,13 @@ def get_task(task_id: str):
 @router.get("/tasks/user/{user_id}")
 def list_user_tasks(user_id: str):
     conn = get_db()
-    rows = conn.execute("""
+    rows = conn.execute(
+        """
         SELECT id, title, goal, status, current_step, created_at, updated_at
         FROM agent_tasks WHERE user_id=? ORDER BY updated_at DESC LIMIT 50
-    """, (user_id,)).fetchall()
+    """,
+        (user_id,),
+    ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -326,11 +374,21 @@ class PluginRegister(BaseModel):
 def register_plugin(req: PluginRegister):
     conn = get_db()
     try:
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO plugin_registry (name, version, description, author, category, endpoint, schema)
             VALUES (?,?,?,?,?,?,?)
-        """, (req.name, req.version, req.description, req.author, req.category,
-              req.endpoint, json.dumps(req.schema or {}, ensure_ascii=False)))
+        """,
+            (
+                req.name,
+                req.version,
+                req.description,
+                req.author,
+                req.category,
+                req.endpoint,
+                json.dumps(req.schema or {}, ensure_ascii=False),
+            ),
+        )
         conn.commit()
         plugin_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
         conn.close()
@@ -343,8 +401,10 @@ def register_plugin(req: PluginRegister):
 @router.patch("/plugins/{plugin_id}/toggle")
 def toggle_plugin(plugin_id: int, enabled: bool = True):
     conn = get_db()
-    conn.execute("UPDATE plugin_registry SET enabled=? WHERE id=?",
-                 (1 if enabled else 0, plugin_id))
+    conn.execute(
+        "UPDATE plugin_registry SET enabled=? WHERE id=?",
+        (1 if enabled else 0, plugin_id),
+    )
     conn.commit()
     conn.close()
     return {"status": "updated", "enabled": enabled}

@@ -53,7 +53,6 @@ _PROMPTS = {
 额外要求：{requirements}
 
 请输出完整大纲（Markdown格式）：""",
-
     "summary": """你是专业的中文摘要助手。请对以下文本生成一份高质量的摘要。
 
 摘要要求：
@@ -66,7 +65,6 @@ _PROMPTS = {
 {text}
 
 摘要：""",
-
     "translate": """你是专业翻译助手。请将以下文本翻译为{target_lang}。
 
 翻译要求：
@@ -79,7 +77,6 @@ _PROMPTS = {
 {text}
 
 翻译结果：""",
-
     "polish": """你是专业的中文写作优化师。请对以下文本进行格式和措辞优化。
 
 优化目标：
@@ -95,7 +92,6 @@ _PROMPTS = {
 {text}
 
 优化后：""",
-
     "expand": """你是专业的中文内容创作助手。请根据以下大纲/要点，扩写为完整的文章/文档。
 
 扩写要求：
@@ -158,7 +154,10 @@ async def _stream_via_model_router(
     """
     real_model, provider = _get_provider(model)
     messages = [
-        {"role": "system", "content": "你是专业的中文内容创作助手，请严格按照用户要求完成任务。"},
+        {
+            "role": "system",
+            "content": "你是专业的中文内容创作助手，请严格按照用户要求完成任务。",
+        },
         {"role": "user", "content": prompt},
     ]
 
@@ -173,6 +172,7 @@ async def _stream_via_model_router(
                 _stream_openai,
                 _stream_hunyuan,
             )
+
             if provider == "deepseek":
                 stream_fn = _stream_deepseek
             elif provider == "openai":
@@ -211,11 +211,13 @@ async def _stream_via_model_router(
 async def _stream_ollama_local(model: str, prompt: str) -> AsyncGenerator[str, None]:
     """直连 Ollama /api/generate 流式输出"""
     import httpx
+
     # Ollama
     host = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     timeout = 120
     try:
         from models.user_model_config import get_effective_config
+
         cfg = get_effective_config()
         host = cfg.ollama_base_url or host
         model = cfg.llm_model or model
@@ -226,7 +228,9 @@ async def _stream_ollama_local(model: str, prompt: str) -> AsyncGenerator[str, N
     payload = {"model": model, "prompt": prompt, "stream": True}
     try:
         async with httpx.AsyncClient(timeout=timeout) as client:
-            async with client.stream("POST", f"{host}/api/generate", json=payload) as resp:
+            async with client.stream(
+                "POST", f"{host}/api/generate", json=payload
+            ) as resp:
                 if resp.status_code != 200:
                     yield f"data: [ERROR] Ollama 返回 {resp.status_code}\n\n"
                     return
@@ -250,6 +254,7 @@ def _get_default_model() -> str:
     """获取默认模型（用户配置 > 环境变量 > 固定默认值）"""
     try:
         from models.user_model_config import get_effective_config
+
         cfg = get_effective_config()
         return cfg.llm_model or "deepseek-chat"
     except Exception:
@@ -262,20 +267,24 @@ class OutlineRequest(BaseModel):
     requirements: str = "适合学术/技术报告风格，约2000字"
     model: Optional[str] = None
 
+
 class SummaryRequest(BaseModel):
     text: str
     length: int = 300
     model: Optional[str] = None
+
 
 class TranslateRequest(BaseModel):
     text: str
     target_lang: str = "英文"
     model: Optional[str] = None
 
+
 class PolishRequest(BaseModel):
     text: str
     style: str = "正式学术风格"
     model: Optional[str] = None
+
 
 class ExpandRequest(BaseModel):
     outline: str
@@ -312,7 +321,9 @@ async def gen_summary(req: SummaryRequest):
 async def translate(req: TranslateRequest):
     """流式翻译（SSE）"""
     model = req.model or _get_default_model()
-    prompt = _PROMPTS["translate"].format(text=req.text[:4000], target_lang=req.target_lang)
+    prompt = _PROMPTS["translate"].format(
+        text=req.text[:4000], target_lang=req.target_lang
+    )
     return StreamingResponse(
         _stream_via_model_router(model, prompt),
         media_type="text/event-stream",
@@ -336,7 +347,9 @@ async def polish(req: PolishRequest):
 async def expand(req: ExpandRequest):
     """流式内容扩写（SSE）"""
     model = req.model or _get_default_model()
-    prompt = _PROMPTS["expand"].format(outline=req.outline[:3000], target_length=req.target_length)
+    prompt = _PROMPTS["expand"].format(
+        outline=req.outline[:3000], target_length=req.target_length
+    )
     return StreamingResponse(
         _stream_via_model_router(model, prompt),
         media_type="text/event-stream",
@@ -349,10 +362,35 @@ async def get_templates():
     """获取所有支持的创作类型说明"""
     return {
         "types": [
-            {"id": "outline",   "name": "大纲生成", "desc": "根据主题自动生成层次化文章大纲", "icon": "📋"},
-            {"id": "summary",   "name": "摘要生成", "desc": "压缩长文本为要点摘要", "icon": "📝"},
-            {"id": "translate", "name": "文本翻译", "desc": "中英互译，保持专业术语准确性", "icon": "🌐"},
-            {"id": "polish",    "name": "格式优化", "desc": "润色措辞、统一格式、修正语法", "icon": "✨"},
-            {"id": "expand",    "name": "内容扩写", "desc": "从大纲/要点扩展为完整文档", "icon": "📄"},
+            {
+                "id": "outline",
+                "name": "大纲生成",
+                "desc": "根据主题自动生成层次化文章大纲",
+                "icon": "📋",
+            },
+            {
+                "id": "summary",
+                "name": "摘要生成",
+                "desc": "压缩长文本为要点摘要",
+                "icon": "📝",
+            },
+            {
+                "id": "translate",
+                "name": "文本翻译",
+                "desc": "中英互译，保持专业术语准确性",
+                "icon": "🌐",
+            },
+            {
+                "id": "polish",
+                "name": "格式优化",
+                "desc": "润色措辞、统一格式、修正语法",
+                "icon": "✨",
+            },
+            {
+                "id": "expand",
+                "name": "内容扩写",
+                "desc": "从大纲/要点扩展为完整文档",
+                "icon": "📄",
+            },
         ]
     }

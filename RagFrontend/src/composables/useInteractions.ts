@@ -21,8 +21,8 @@ function createRipple(e: MouseEvent) {
 
   const rect = target.getBoundingClientRect()
   const size = Math.max(rect.width, rect.height) * 2
-  const x    = e.clientX - rect.left - size / 2
-  const y    = e.clientY - rect.top  - size / 2
+  const x = e.clientX - rect.left - size / 2
+  const y = e.clientY - rect.top - size / 2
 
   const wave = document.createElement('span')
   wave.className = 'ripple-wave'
@@ -39,11 +39,11 @@ function injectRipple() {
     '.t-button--variant-base',
     '.quick-new-btn',
     '.btn-primary',
-    '.ripple-container',
+    '.ripple-container'
   ]
 
   const els = document.querySelectorAll<HTMLElement>(selectors.join(','))
-  els.forEach((el) => {
+  els.forEach(el => {
     // 防止重复注入
     if (el.dataset.rippleInited) return
     el.dataset.rippleInited = '1'
@@ -58,19 +58,19 @@ function initReveal() {
   revealObserver?.disconnect()
 
   revealObserver = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
+    entries => {
+      entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add('reveal--visible')
           revealObserver?.unobserve(entry.target)
         }
       })
     },
-    { rootMargin: '-50px 0px', threshold: 0.10 }
+    { rootMargin: '-50px 0px', threshold: 0.1 }
   )
 
   const selector = '.reveal, .reveal-left, .reveal-right, .reveal-scale'
-  document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+  document.querySelectorAll<HTMLElement>(selector).forEach(el => {
     if (!el.classList.contains('reveal--visible')) {
       revealObserver?.observe(el)
     }
@@ -85,9 +85,8 @@ function initNavSticky() {
   const scrollEl = document.querySelector<HTMLElement>('.app-main') || window
 
   const handler = () => {
-    const scrollTop = scrollEl instanceof Window
-      ? window.scrollY
-      : (scrollEl as HTMLElement).scrollTop
+    const scrollTop =
+      scrollEl instanceof Window ? window.scrollY : (scrollEl as HTMLElement).scrollTop
 
     navbar.classList.toggle('scrolled', scrollTop > 10)
   }

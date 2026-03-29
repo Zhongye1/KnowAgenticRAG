@@ -2,22 +2,23 @@
 RAG 混合检索 + 向量化 完整流程测试（对齐实际接口）
 不依赖 Ollama / MySQL / 真实 FAISS 文件，纯逻辑 + Mock 验证
 """
+
 import sys
-import os
-import math
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_ROOT))
 sys.path.insert(0, str(BACKEND_ROOT / "RAG_M" / "src"))
+
 
 # ────────────────────────────────────────────
 # Mock langchain Document langchain
 # ────────────────────────────────────────────
 class FakeDocument:
     """模拟 langchain Document 对象"""
+
     def __init__(self, page_content: str, metadata: dict = None):
         self.page_content = page_content
         self.metadata = metadata or {}
@@ -27,18 +28,14 @@ class FakeDocument:
 # 1. BM25
 # ────────────────────────────────────────────
 class TestBM25Core(unittest.TestCase):
-
     def setUp(self):
         # eval BM25 langchain
-        import ast
         src_path = BACKEND_ROOT / "RAG_M" / "src" / "rag" / "hybrid_retriever.py"
         source = src_path.read_text(encoding="utf-8")
         # langchain mock
         source = source.replace(
             "from langchain.docstore.document import Document", ""
-        ).replace(
-            "from langchain_community.vectorstores import FAISS", ""
-        )
+        ).replace("from langchain_community.vectorstores import FAISS", "")
         ns = {
             "Document": FakeDocument,
             "FAISS": MagicMock,
@@ -50,9 +47,13 @@ class TestBM25Core(unittest.TestCase):
         self.reciprocal_rank_fusion = ns["reciprocal_rank_fusion"]
 
         self.docs = [
-            FakeDocument("Python 是一种高级编程语言，广泛用于机器学习", {"source": "doc1.txt"}),
+            FakeDocument(
+                "Python 是一种高级编程语言，广泛用于机器学习", {"source": "doc1.txt"}
+            ),
             FakeDocument("机器学习需要大量数据和算法支持", {"source": "doc2.txt"}),
-            FakeDocument("深度学习是机器学习的子领域，使用神经网络", {"source": "doc3.txt"}),
+            FakeDocument(
+                "深度学习是机器学习的子领域，使用神经网络", {"source": "doc3.txt"}
+            ),
             FakeDocument("Java 是企业级应用开发的主流语言", {"source": "doc4.txt"}),
         ]
         self.bm25 = self.BM25(self.docs)
@@ -111,14 +112,12 @@ class TestBM25Core(unittest.TestCase):
 # 2. RRF
 # ────────────────────────────────────────────
 class TestRRFFusion(unittest.TestCase):
-
     def setUp(self):
-        import ast
         src_path = BACKEND_ROOT / "RAG_M" / "src" / "rag" / "hybrid_retriever.py"
-        source = src_path.read_text(encoding="utf-8").replace(
-            "from langchain.docstore.document import Document", ""
-        ).replace(
-            "from langchain_community.vectorstores import FAISS", ""
+        source = (
+            src_path.read_text(encoding="utf-8")
+            .replace("from langchain.docstore.document import Document", "")
+            .replace("from langchain_community.vectorstores import FAISS", "")
         )
         ns = {"Document": FakeDocument, "FAISS": MagicMock}
         exec(compile(source, str(src_path), "exec"), ns)
@@ -154,13 +153,12 @@ class TestRRFFusion(unittest.TestCase):
 # 3. HybridRetriever Mock FAISS
 # ────────────────────────────────────────────
 class TestHybridRetrieverIntegration(unittest.TestCase):
-
     def setUp(self):
         src_path = BACKEND_ROOT / "RAG_M" / "src" / "rag" / "hybrid_retriever.py"
-        source = src_path.read_text(encoding="utf-8").replace(
-            "from langchain.docstore.document import Document", ""
-        ).replace(
-            "from langchain_community.vectorstores import FAISS", ""
+        source = (
+            src_path.read_text(encoding="utf-8")
+            .replace("from langchain.docstore.document import Document", "")
+            .replace("from langchain_community.vectorstores import FAISS", "")
         )
         ns = {"Document": FakeDocument, "FAISS": MagicMock}
         exec(compile(source, str(src_path), "exec"), ns)
@@ -236,15 +234,17 @@ class TestHybridRetrieverIntegration(unittest.TestCase):
 # 4. vector_store.py
 # ────────────────────────────────────────────
 class TestVectorStoreStructure(unittest.TestCase):
-
     def setUp(self):
-        self.vs_path = BACKEND_ROOT / "RAG_M" / "src" / "vectorstore" / "vector_store.py"
+        self.vs_path = (
+            BACKEND_ROOT / "RAG_M" / "src" / "vectorstore" / "vector_store.py"
+        )
 
     def test_file_exists(self):
         self.assertTrue(self.vs_path.exists(), "vector_store.py 应存在")
 
     def test_syntax_valid(self):
         import ast
+
         try:
             ast.parse(self.vs_path.read_text(encoding="utf-8"))
         except SyntaxError as e:
@@ -253,32 +253,52 @@ class TestVectorStoreStructure(unittest.TestCase):
     def test_has_vectorstore_class_or_functions(self):
         """应有 VectorStore 相关类或函数"""
         import ast
+
         tree = ast.parse(self.vs_path.read_text(encoding="utf-8"))
-        names = {n.name for n in ast.walk(tree) if isinstance(n, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))}
+        names = {
+            n.name
+            for n in ast.walk(tree)
+            if isinstance(n, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+        }
         # initialize_vectorstore, create_vectorstore, load_vectorstore
-        has_create = any("vectorstore" in n.lower() or "vector" in n.lower() for n in names)
+        has_create = any(
+            "vectorstore" in n.lower() or "vector" in n.lower() for n in names
+        )
         self.assertTrue(has_create, f"应有向量存储相关方法/类，实际：{names}")
 
     def test_has_create_vectorstore(self):
         """应有 create_vectorstore 方法"""
         import ast
+
         tree = ast.parse(self.vs_path.read_text(encoding="utf-8"))
-        names = {n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
-        self.assertIn("create_vectorstore", names, f"应有 create_vectorstore 方法，实际：{names}")
+        names = {
+            n.name
+            for n in ast.walk(tree)
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+        self.assertIn(
+            "create_vectorstore", names, f"应有 create_vectorstore 方法，实际：{names}"
+        )
 
     def test_has_load_vectorstore(self):
         """应有 load_vectorstore 方法"""
         import ast
+
         tree = ast.parse(self.vs_path.read_text(encoding="utf-8"))
-        names = {n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
-        self.assertIn("load_vectorstore", names, f"应有 load_vectorstore 方法，实际：{names}")
+        names = {
+            n.name
+            for n in ast.walk(tree)
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+        self.assertIn(
+            "load_vectorstore", names, f"应有 load_vectorstore 方法，实际：{names}"
+        )
 
 
 # ────────────────────────────────────────────
 # 5. RAG Pipeline v2
 # ────────────────────────────────────────────
 class TestRAGPipelineStructure(unittest.TestCase):
-
     def setUp(self):
         self.pipeline_path = BACKEND_ROOT / "RAG_M" / "src" / "rag" / "rag_pipeline.py"
 
@@ -287,6 +307,7 @@ class TestRAGPipelineStructure(unittest.TestCase):
 
     def test_syntax_valid(self):
         import ast
+
         try:
             ast.parse(self.pipeline_path.read_text(encoding="utf-8"))
         except SyntaxError as e:
@@ -295,16 +316,32 @@ class TestRAGPipelineStructure(unittest.TestCase):
     def test_has_stream_query_method(self):
         """pipeline 应有 stream_query 流式方法"""
         import ast
+
         tree = ast.parse(self.pipeline_path.read_text(encoding="utf-8"))
-        methods = {n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
-        self.assertIn("stream_query", methods, f"pipeline 应有 stream_query，实际方法：{methods}")
+        methods = {
+            n.name
+            for n in ast.walk(tree)
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+        self.assertIn(
+            "stream_query", methods, f"pipeline 应有 stream_query，实际方法：{methods}"
+        )
 
     def test_has_process_query_method(self):
         """pipeline 应有 process_query 同步方法"""
         import ast
+
         tree = ast.parse(self.pipeline_path.read_text(encoding="utf-8"))
-        methods = {n.name for n in ast.walk(tree) if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
-        self.assertIn("process_query", methods, f"pipeline 应有 process_query，实际方法：{methods}")
+        methods = {
+            n.name
+            for n in ast.walk(tree)
+            if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+        }
+        self.assertIn(
+            "process_query",
+            methods,
+            f"pipeline 应有 process_query，实际方法：{methods}",
+        )
 
     def test_imports_hybrid_retriever(self):
         """rag_pipeline.py 应导入 HybridRetriever"""
@@ -327,16 +364,16 @@ class TestRAGPipelineStructure(unittest.TestCase):
 # 6. Knowledge graph
 # ────────────────────────────────────────────
 class TestKnowledgeGraphMerge(unittest.TestCase):
-
     def _load_merge_func(self):
         import ast
+
         src_path = BACKEND_ROOT / "knowledge_graph" / "generate_kg.py"
         source = src_path.read_text(encoding="utf-8")
         tree = ast.parse(source)
         lines = source.split("\n")
         for node in ast.walk(tree):
             if isinstance(node, ast.FunctionDef) and node.name == "_merge_graph_data":
-                func_code = "\n".join(lines[node.lineno - 1: node.end_lineno])
+                func_code = "\n".join(lines[node.lineno - 1 : node.end_lineno])
                 ns = {}
                 exec(f"from typing import List\n{func_code}", ns)
                 return ns["_merge_graph_data"]
@@ -348,7 +385,8 @@ class TestKnowledgeGraphMerge(unittest.TestCase):
 
     def test_merge_node_dedup(self):
         fn = self._load_merge_func()
-        if not fn: self.skipTest("无法加载")
+        if not fn:
+            self.skipTest("无法加载")
         g1 = {"nodes": [{"id": "A"}, {"id": "B"}], "edges": []}
         g2 = {"nodes": [{"id": "A"}, {"id": "C"}], "edges": []}
         result = fn([g1, g2])
@@ -358,7 +396,8 @@ class TestKnowledgeGraphMerge(unittest.TestCase):
 
     def test_merge_edge_dedup(self):
         fn = self._load_merge_func()
-        if not fn: self.skipTest("无法加载")
+        if not fn:
+            self.skipTest("无法加载")
         edge = {"source": "A", "target": "B", "label": "关联"}
         g1 = {"nodes": [{"id": "A"}, {"id": "B"}], "edges": [edge]}
         g2 = {"nodes": [{"id": "A"}, {"id": "B"}], "edges": [edge]}
@@ -367,14 +406,17 @@ class TestKnowledgeGraphMerge(unittest.TestCase):
 
     def test_merge_empty_input(self):
         fn = self._load_merge_func()
-        if not fn: self.skipTest("无法加载")
+        if not fn:
+            self.skipTest("无法加载")
         result = fn([])
         self.assertEqual(result["nodes"], [])
         self.assertEqual(result["edges"], [])
 
     def test_new_kg_api_endpoints_registered(self):
         """generate_kg.py 应注册新的三个 API 端点"""
-        content = (BACKEND_ROOT / "knowledge_graph" / "generate_kg.py").read_text(encoding="utf-8")
+        content = (BACKEND_ROOT / "knowledge_graph" / "generate_kg.py").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("get-kb-merged-graph", content)
         self.assertIn("search-nodes", content)
         self.assertIn("graph-stats", content)

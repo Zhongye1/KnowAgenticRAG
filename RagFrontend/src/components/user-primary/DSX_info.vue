@@ -9,9 +9,7 @@
       <div class="text-center py-12">
         <t-icon name="palette" class="text-5xl text-blue-500 mx-auto mb-4" />
         <h3 class="text-lg font-medium text-gray-900 mb-2">功能即将上线</h3>
-        <p class="text-gray-500 max-w-md mx-auto">
-          我们正在开发个性化的外观设置功能，敬请期待！
-        </p>
+        <p class="text-gray-500 max-w-md mx-auto">我们正在开发个性化的外观设置功能，敬请期待！</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
@@ -150,9 +148,7 @@
       <div class="text-center py-12">
         <t-icon name="info-circle" class="text-5xl text-blue-500 mx-auto mb-4" />
         <h3 class="text-lg font-medium text-gray-900 mb-2">功能即将上线</h3>
-        <p class="text-gray-500 max-w-md mx-auto">
-          我们正在努力开发中，请耐心等待！
-        </p>
+        <p class="text-gray-500 max-w-md mx-auto">我们正在努力开发中，请耐心等待！</p>
       </div>
     </section>
 
@@ -173,15 +169,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useRoute } from 'vue-router';
-import {
-  Icon as TIcon,
-  Switch as TSwitch,
-  Button as TButton
-} from 'tdesign-vue-next';
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { Icon as TIcon, Switch as TSwitch, Button as TButton } from 'tdesign-vue-next'
 
-const route = useRoute();
+const route = useRoute()
 
-const activePage = computed(() => route.path);
+const activePage = computed(() => route.path)
 </script>

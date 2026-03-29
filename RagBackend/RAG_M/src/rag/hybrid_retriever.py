@@ -9,13 +9,14 @@ from __future__ import annotations
 
 import math
 import re
-from typing import List, Tuple, Dict, Any, Optional
+from typing import List, Tuple, Dict, Any
 
 from langchain.docstore.document import Document
 from langchain_community.vectorstores import FAISS
 
 
 # - BM25 -
+
 
 class BM25:
     """
@@ -27,14 +28,16 @@ class BM25:
         self.k1 = k1
         self.b = b
         self.documents = documents
-        self.corpus: List[List[str]] = [self._tokenize(d.page_content) for d in documents]
+        self.corpus: List[List[str]] = [
+            self._tokenize(d.page_content) for d in documents
+        ]
         self._build_index()
 
     # - +
     @staticmethod
     def _tokenize(text: str) -> List[str]:
         text = text.lower()
-        tokens = re.findall(r'[\u4e00-\u9fff]|[a-z0-9]+', text)
+        tokens = re.findall(r"[\u4e00-\u9fff]|[a-z0-9]+", text)
         return tokens
 
     def _build_index(self):
@@ -64,7 +67,9 @@ class BM25:
                 tf = tf_map.get(token, 0)
                 idf = self.idf[token]
                 numerator = tf * (self.k1 + 1)
-                denominator = tf + self.k1 * (1 - self.b + self.b * doc_len / self.avgdl)
+                denominator = tf + self.k1 * (
+                    1 - self.b + self.b * doc_len / self.avgdl
+                )
                 score += idf * numerator / denominator
             scores.append(score)
         return scores
@@ -77,9 +82,9 @@ class BM25:
 
 # - RRF -
 
+
 def reciprocal_rank_fusion(
-    ranked_lists: List[List[Tuple[Document, float]]],
-    k: int = 60
+    ranked_lists: List[List[Tuple[Document, float]]], k: int = 60
 ) -> List[Tuple[Document, float]]:
     """
     Reciprocal Rank Fusion
@@ -102,6 +107,7 @@ def reciprocal_rank_fusion(
 
 
 # - Hybrid retrieval -
+
 
 class HybridRetriever:
     """
@@ -152,7 +158,9 @@ class HybridRetriever:
         source_info 包含：file_name、page、chunk_id 等
         """
         bm25_results = self.bm25.retrieve(query, top_k=self.bm25_top_k)
-        vector_raw = self.vectorstore.similarity_search_with_score(query, k=self.vector_top_k)
+        vector_raw = self.vectorstore.similarity_search_with_score(
+            query, k=self.vector_top_k
+        )
         vector_results = [(doc, score) for doc, score in vector_raw]
 
         fused = reciprocal_rank_fusion([bm25_results, vector_results])
@@ -166,13 +174,17 @@ class HybridRetriever:
                 "file_name": _extract_filename(meta),
                 "page": meta.get("page", meta.get("page_number", None)),
                 "chunk_index": meta.get("chunk_index", meta.get("seq_num", None)),
-                "source_path": meta.get("source", meta.get("file_path", meta.get("path", ""))),
+                "source_path": meta.get(
+                    "source", meta.get("file_path", meta.get("path", ""))
+                ),
             }
-            results.append({
-                "document": doc,
-                "source_info": source_info,
-                "content_preview": doc.page_content[:200],
-            })
+            results.append(
+                {
+                    "document": doc,
+                    "source_info": source_info,
+                    "content_preview": doc.page_content[:200],
+                }
+            )
         return results
 
 
@@ -182,5 +194,6 @@ def _extract_filename(meta: Dict[str, Any]) -> str:
         val = meta.get(key, "")
         if val:
             import os
+
             return os.path.basename(str(val))
     return "未知来源"

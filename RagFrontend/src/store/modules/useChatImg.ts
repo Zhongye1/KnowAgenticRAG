@@ -8,17 +8,17 @@ export const useChatImgtore = defineStore('chatImg', {
 
   actions: {
     // 添加新图片
-    addImage (dataUrl: any) {
+    addImage(dataUrl: any) {
       this.uploadedImage = dataUrl
       this.images.push(dataUrl)
     },
 
     // 清除图片
-    clearImage (item:any) {
-        this.images = this.images.filter((img:any) => img !== item)
+    clearImage(item: any) {
+      this.images = this.images.filter((img: any) => img !== item)
     },
-    clearAllImg(){
-        this.images = []
+    clearAllImg() {
+      this.images = []
     }
   }
 })

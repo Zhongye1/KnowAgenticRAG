@@ -1,7 +1,7 @@
 # KnowledgeRAG-GZHU 开发变更报告
 
-> 生成时间：2026-03-24 09:35  
-> 涉及 commit：`c8c5fea` / `224803a`（相对基线 `7585671`）  
+> 生成时间：2026-03-24 09:35
+> 涉及 commit：`c8c5fea` / `224803a`（相对基线 `7585671`）
 > 变更规模：**18 个文件，新增 1846 行，删除 703 行**
 
 ---
@@ -112,11 +112,11 @@ ollama:
 frontend:
   build:
     context: ./RagFrontend   # 正确路径
-    
+
 ollama:
   networks:
     - apn-network             # 加入内部网络
-    
+
 asf-backend:
   environment:
     - DB_PASSWORD=${DB_PASSWORD:-changeme}   # 外置为环境变量

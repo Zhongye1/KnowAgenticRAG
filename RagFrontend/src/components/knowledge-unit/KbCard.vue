@@ -1,6 +1,9 @@
 <template>
   <div
-    :class="['kb-card', { 'kb-card--compact': compact, 'kb-card--starred': starred, 'kb-card--pinned': pinned }]"
+    :class="[
+      'kb-card',
+      { 'kb-card--compact': compact, 'kb-card--starred': starred, 'kb-card--pinned': pinned }
+    ]"
     @click="$emit('click')"
   >
     <!-- 置顶徽章 -->
@@ -14,7 +17,10 @@
         <!-- 图标 -->
         <div class="kb-card__icon" :style="{ background: cardColorLight }">
           <svg viewBox="0 0 24 24" fill="none" :stroke="cardColorDark" stroke-width="2">
-            <path stroke-linecap="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+            <path
+              stroke-linecap="round"
+              d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+            />
           </svg>
         </div>
         <!-- 操作按钮（悬浮显示） -->
@@ -22,39 +28,51 @@
           <!-- 置顶按钮 -->
           <button
             :class="['action-btn', 'pin-btn', { 'pin-btn--active': pinned }]"
+            :title="pinned ? '取消置顶' : '置顶'"
             @click.stop="handlePin"
             @mousedown="ripple"
-            :title="pinned ? '取消置顶' : '置顶'"
           >
             <svg
               :class="{ 'like-pop': pinAnimating }"
-              viewBox="0 0 24 24" fill="none"
-              :stroke="pinned ? '#4f7ef8' : 'currentColor'" stroke-width="2"
+              viewBox="0 0 24 24"
+              fill="none"
+              :stroke="pinned ? '#4f7ef8' : 'currentColor'"
+              stroke-width="2"
             >
-              <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+              />
             </svg>
           </button>
           <!-- 星标按钮 -->
           <button
             :class="['action-btn', 'star-btn', { 'star-btn--active': starred }]"
+            :title="starred ? '取消星标' : '加入星标'"
             @click.stop="handleStar"
             @mousedown="ripple"
-            :title="starred ? '取消星标' : '加入星标'"
           >
             <svg
               :class="{ 'like-pop': starAnimating }"
               viewBox="0 0 24 24"
               :fill="starred ? '#f59e0b' : 'none'"
-              :stroke="starred ? '#f59e0b' : 'currentColor'" stroke-width="2"
+              :stroke="starred ? '#f59e0b' : 'currentColor'"
+              stroke-width="2"
             >
-              <path stroke-linecap="round" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/>
+              <path
+                stroke-linecap="round"
+                d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"
+              />
             </svg>
           </button>
           <!-- 更多操作 -->
           <t-dropdown :options="dropdownOptions" trigger="click" @click="handleDropdown">
-            <button class="action-btn" @click.stop title="更多操作">
+            <button class="action-btn" title="更多操作" @click.stop>
               <svg viewBox="0 0 24 24" fill="currentColor">
-                <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
+                <circle cx="12" cy="5" r="1.5" />
+                <circle cx="12" cy="12" r="1.5" />
+                <circle cx="12" cy="19" r="1.5" />
               </svg>
             </button>
           </t-dropdown>
@@ -70,7 +88,7 @@
       <!-- 底部信息 -->
       <div class="kb-card__footer">
         <span class="kb-card__time">{{ formattedTime }}</span>
-        <div class="kb-card__tags" v-if="!compact">
+        <div v-if="!compact" class="kb-card__tags">
           <span class="kb-card__tag">RAG</span>
         </div>
       </div>
@@ -79,45 +97,49 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { DropdownProps } from 'tdesign-vue-next';
-import { useRipple } from '@/composables/useScrollReveal';
+import { computed, ref } from 'vue'
+import { DropdownProps } from 'tdesign-vue-next'
+import { useRipple } from '@/composables/useScrollReveal'
 
-const { ripple } = useRipple();
+const { ripple } = useRipple()
 
 interface Card {
-  id: string;
-  title: string;
-  avatar?: string;
-  description?: string;
-  cover?: string;
-  createdTime?: string;
+  id: string
+  title: string
+  avatar?: string
+  description?: string
+  cover?: string
+  createdTime?: string
 }
 
 const props = defineProps<{
-  card: Card;
-  starred?: boolean;
-  pinned?: boolean;
-  compact?: boolean;
-}>();
+  card: Card
+  starred?: boolean
+  pinned?: boolean
+  compact?: boolean
+}>()
 
-const emit = defineEmits(['click', 'star', 'pin', 'delete']);
+const emit = defineEmits(['click', 'star', 'pin', 'delete'])
 
 // 微交互状态
-const starAnimating = ref(false);
-const pinAnimating  = ref(false);
+const starAnimating = ref(false)
+const pinAnimating = ref(false)
 
 const handleStar = () => {
-  starAnimating.value = true;
-  setTimeout(() => { starAnimating.value = false }, 500);
-  emit('star');
-};
+  starAnimating.value = true
+  setTimeout(() => {
+    starAnimating.value = false
+  }, 500)
+  emit('star')
+}
 
 const handlePin = () => {
-  pinAnimating.value = true;
-  setTimeout(() => { pinAnimating.value = false }, 400);
-  emit('pin');
-};
+  pinAnimating.value = true
+  setTimeout(() => {
+    pinAnimating.value = false
+  }, 400)
+  emit('pin')
+}
 
 // 颜色方案基于title hash
 const COLOR_SETS = [
@@ -127,60 +149,62 @@ const COLOR_SETS = [
   { bar: 'linear-gradient(135deg,#ec4899,#f472b6)', light: '#fdf2f8', dark: '#db2777' },
   { bar: 'linear-gradient(135deg,#8b5cf6,#a78bfa)', light: '#f5f3ff', dark: '#7c3aed' },
   { bar: 'linear-gradient(135deg,#14b8a6,#2dd4bf)', light: '#f0fdfa', dark: '#0d9488' },
-  { bar: 'linear-gradient(135deg,#f97316,#fb923c)', light: '#fff7ed', dark: '#ea580c' },
-];
+  { bar: 'linear-gradient(135deg,#f97316,#fb923c)', light: '#fff7ed', dark: '#ea580c' }
+]
 
 const colorIndex = computed(() => {
-  let hash = 0;
+  let hash = 0
   for (let i = 0; i < props.card.title.length; i++) {
-    hash = props.card.title.charCodeAt(i) + ((hash << 5) - hash);
+    hash = props.card.title.charCodeAt(i) + ((hash << 5) - hash)
   }
-  return Math.abs(hash) % COLOR_SETS.length;
-});
+  return Math.abs(hash) % COLOR_SETS.length
+})
 
-const cardColor = computed(() => COLOR_SETS[colorIndex.value].bar);
-const cardColorLight = computed(() => COLOR_SETS[colorIndex.value].light);
-const cardColorDark = computed(() => COLOR_SETS[colorIndex.value].dark);
+const cardColor = computed(() => COLOR_SETS[colorIndex.value].bar)
+const cardColorLight = computed(() => COLOR_SETS[colorIndex.value].light)
+const cardColorDark = computed(() => COLOR_SETS[colorIndex.value].dark)
 
 const formattedTime = computed(() => {
-  const t = props.card.createdTime;
-  if (!t) return '';
+  const t = props.card.createdTime
+  if (!t) return ''
   try {
-    const d = new Date(t);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
-    if (diffDays === 0) return '今天';
-    if (diffDays === 1) return '昨天';
-    if (diffDays < 7) return `${diffDays} 天前`;
-    return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-  } catch { return t; }
-});
+    const d = new Date(t)
+    const now = new Date()
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000)
+    if (diffDays === 0) return '今天'
+    if (diffDays === 1) return '昨天'
+    if (diffDays < 7) return `${diffDays} 天前`
+    return d.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+  } catch {
+    return t
+  }
+})
 
 const dropdownOptions: DropdownProps['options'] = [
   { content: '打开', value: 'open' },
   { content: '置顶/取消置顶', value: 'pin' },
-  { content: '删除', value: 'delete' },
-];
+  { content: '删除', value: 'delete' }
+]
 
 const handleDropdown = (data: any) => {
-  if (data.value === 'open') emit('click');
-  if (data.value === 'pin') emit('pin');
-  if (data.value === 'delete') emit('delete');
-};
+  if (data.value === 'open') emit('click')
+  if (data.value === 'pin') emit('pin')
+  if (data.value === 'delete') emit('delete')
+}
 </script>
 
 <style scoped>
 .kb-card {
   background: white;
   border-radius: 12px;
-  border: 1px solid rgba(0,0,0,0.07);
+  border: 1px solid rgba(0, 0, 0, 0.07);
   overflow: hidden;
   cursor: pointer;
   position: relative;
   /* 使用 CSS 变量定义的精细过渡 */
   transition:
-    transform    0.22s cubic-bezier(0.4, 0, 0.2, 1),
-    box-shadow   0.22s ease,
+    transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+    box-shadow 0.22s ease,
     border-color 0.22s ease;
   will-change: transform, box-shadow;
 }
@@ -188,14 +212,16 @@ const handleDropdown = (data: any) => {
 /* hover：浮起 + 阴影扩散 + 边框高亮 */
 .kb-card:hover {
   transform: translateY(-4px) scale(1.005);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.13), 0 4px 8px rgba(0,0,0,0.06);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.13),
+    0 4px 8px rgba(0, 0, 0, 0.06);
   border-color: rgba(79, 126, 248, 0.25);
 }
 
 /* active：按下感 */
 .kb-card:active {
   transform: translateY(-1px) scale(0.99) !important;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.08) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
   transition-duration: 0.08s !important;
 }
 
@@ -205,7 +231,9 @@ const handleDropdown = (data: any) => {
 
 .kb-card--starred:hover {
   border-color: #fbbf24;
-  box-shadow: 0 12px 32px rgba(245, 158, 11, 0.15), 0 4px 8px rgba(0,0,0,0.06);
+  box-shadow:
+    0 12px 32px rgba(245, 158, 11, 0.15),
+    0 4px 8px rgba(0, 0, 0, 0.06);
 }
 
 /* 置顶状态 */
@@ -215,7 +243,9 @@ const handleDropdown = (data: any) => {
 }
 
 .kb-card--pinned:hover {
-  box-shadow: 0 12px 32px rgba(79, 126, 248, 0.18), 0 0 0 2px rgba(79, 126, 248, 0.25);
+  box-shadow:
+    0 12px 32px rgba(79, 126, 248, 0.18),
+    0 0 0 2px rgba(79, 126, 248, 0.25);
 }
 
 .kb-card__pin-badge {
@@ -285,7 +315,9 @@ const handleDropdown = (data: any) => {
   gap: 2px;
   opacity: 0;
   transform: translateY(-3px);
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
 }
 
 .kb-card:hover .kb-card__actions {
@@ -311,19 +343,22 @@ const handleDropdown = (data: any) => {
   align-items: center;
   justify-content: center;
   color: #9ca3af;
-  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
   overflow: hidden; /* 为 ripple */
   position: relative;
 }
 
 .action-btn:hover {
-  background: rgba(79, 126, 248, 0.10);
+  background: rgba(79, 126, 248, 0.1);
   color: #4f7ef8;
   transform: scale(1.12);
 }
 
 .action-btn:active {
-  transform: scale(0.90) !important;
+  transform: scale(0.9) !important;
   transition-duration: 0.06s !important;
 }
 
@@ -392,7 +427,9 @@ const handleDropdown = (data: any) => {
   background: #f3f4f6;
   color: #6b7280;
   border-radius: 10px;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
 .kb-card:hover .kb-card__tag {
@@ -401,8 +438,19 @@ const handleDropdown = (data: any) => {
 }
 
 /* 紧凑模式 */
-.kb-card--compact .kb-card__body  { padding: 10px 12px; }
-.kb-card--compact .kb-card__icon  { width: 30px; height: 30px; border-radius: 7px; }
-.kb-card--compact .kb-card__icon svg { width: 16px; height: 16px; }
-.kb-card--compact .kb-card__title { font-size: 13.5px; }
+.kb-card--compact .kb-card__body {
+  padding: 10px 12px;
+}
+.kb-card--compact .kb-card__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 7px;
+}
+.kb-card--compact .kb-card__icon svg {
+  width: 16px;
+  height: 16px;
+}
+.kb-card--compact .kb-card__title {
+  font-size: 13.5px;
+}
 </style>

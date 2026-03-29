@@ -122,26 +122,26 @@ class ReActRAGAgent:
         self.llm = llm  # Ollama LLM
         self.tools = tools  # 工具集（如检索工具）
         self.max_iterations = max_iterations  # 最大迭代次数
-    
+
     def run(self, question):
         # ReAct 循环
         for i in range(self.max_iterations):
             # 生成 Thought
             thought = self.generate_thought(question, history)
-            
+
             # 决定 Action
             action, action_input = self.parse_action(thought)
-            
+
             # 执行 Action
             if action == "search_knowledge_base":
                 observation = self.search_knowledge_base(action_input)
             else:
                 # 不需要检索，直接生成答案
                 return self.generate_final_answer(thought)
-            
+
             # 记录 Observation
             history.append((thought, action, observation))
-        
+
         # 达到最大迭代次数，强制生成答案
         return self.generate_final_answer(history)
 ```
@@ -317,7 +317,7 @@ class Tool:
     description: str
     input_schema: dict
     output_schema: dict
-    
+
     def execute(self, input_data) -> any:
         pass
 ```

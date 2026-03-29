@@ -20,9 +20,7 @@ from __future__ import annotations
 import io
 import json
 import logging
-import os
 import sqlite3
-import time
 import uuid
 import zipfile
 from datetime import datetime
@@ -38,9 +36,9 @@ router = APIRouter(prefix="/api/backup", tags=["知识库备份"])
 
 # - -
 _BACKEND_ROOT = Path(__file__).parent.parent
-_KB_ROOT      = _BACKEND_ROOT / "local-KLB-files"
-_BACKUP_DIR   = _BACKEND_ROOT / "backups"
-_BACKUP_DB    = _BACKEND_ROOT / "backups" / "backup_index.db"
+_KB_ROOT = _BACKEND_ROOT / "local-KLB-files"
+_BACKUP_DIR = _BACKEND_ROOT / "backups"
+_BACKUP_DB = _BACKEND_ROOT / "backups" / "backup_index.db"
 
 _BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -76,11 +74,19 @@ def _create_backup(bak_id: str, kb_id: Optional[str]):
         if kb_id:
             target_dirs = [_KB_ROOT / kb_id]
         else:
-            target_dirs = [d for d in _KB_ROOT.iterdir() if d.is_dir()] if _KB_ROOT.exists() else []
+            target_dirs = (
+                [d for d in _KB_ROOT.iterdir() if d.is_dir()]
+                if _KB_ROOT.exists()
+                else []
+            )
 
         buf = io.BytesIO()
         file_count = 0
-        metadata = {"backup_id": bak_id, "created_at": datetime.now().isoformat(), "files": []}
+        metadata = {
+            "backup_id": bak_id,
+            "created_at": datetime.now().isoformat(),
+            "files": [],
+        }
 
         with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
             for kb_dir in target_dirs:
@@ -90,12 +96,17 @@ def _create_backup(bak_id: str, kb_id: Optional[str]):
                     if fpath.is_file():
                         arcname = str(fpath.relative_to(_KB_ROOT))
                         zf.write(fpath, arcname)
-                        metadata["files"].append({
-                            "path": arcname,
-                            "size": fpath.stat().st_size,
-                        })
+                        metadata["files"].append(
+                            {
+                                "path": arcname,
+                                "size": fpath.stat().st_size,
+                            }
+                        )
                         file_count += 1
-            zf.writestr("_backup_metadata.json", json.dumps(metadata, ensure_ascii=False, indent=2))
+            zf.writestr(
+                "_backup_metadata.json",
+                json.dumps(metadata, ensure_ascii=False, indent=2),
+            )
 
         buf.seek(0)
         zip_path = _BACKUP_DIR / f"{bak_id}.zip"
@@ -106,9 +117,11 @@ def _create_backup(bak_id: str, kb_id: Optional[str]):
             conn.execute(
                 """UPDATE backups SET file_path=?, size_bytes=?, file_count=?, status='ok'
                    WHERE id=?""",
-                (str(zip_path), size_bytes, file_count, bak_id)
+                (str(zip_path), size_bytes, file_count, bak_id),
             )
-        logger.info(f"[Backup] 备份完成: {bak_id}, {file_count}个文件, {size_bytes/1024:.1f}KB")
+        logger.info(
+            f"[Backup] 备份完成: {bak_id}, {file_count}个文件, {size_bytes / 1024:.1f}KB"
+        )
     except Exception as e:
         logger.error(f"[Backup] 备份失败 {bak_id}: {e}")
         with sqlite3.connect(_BACKUP_DB) as conn:
@@ -117,7 +130,7 @@ def _create_backup(bak_id: str, kb_id: Optional[str]):
 
 # - Request model -
 class BackupRequest(BaseModel):
-    kb_id: Optional[str] = None   # None =
+    kb_id: Optional[str] = None  # None =
     kb_name: str = "全量"
 
 
@@ -129,7 +142,7 @@ async def create_backup(req: BackupRequest, bg: BackgroundTasks):
     with sqlite3.connect(_BACKUP_DB) as conn:
         conn.execute(
             "INSERT INTO backups (id, kb_id, kb_name, created_at) VALUES (?,?,?,?)",
-            (bak_id, req.kb_id or "all", req.kb_name, datetime.now().isoformat())
+            (bak_id, req.kb_id or "all", req.kb_name, datetime.now().isoformat()),
         )
     bg.add_task(_create_backup, bak_id, req.kb_id)
     return {"backup_id": bak_id, "status": "running", "message": "备份任务已启动"}
@@ -183,7 +196,9 @@ async def delete_backup(bak_id: str):
     """删除备份记录（同时删除 ZIP 文件）"""
     with sqlite3.connect(_BACKUP_DB) as conn:
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT file_path FROM backups WHERE id=?", (bak_id,)).fetchone()
+        row = conn.execute(
+            "SELECT file_path FROM backups WHERE id=?", (bak_id,)
+        ).fetchone()
         if not row:
             raise HTTPException(404, "备份不存在")
         if row["file_path"]:

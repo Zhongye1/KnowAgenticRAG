@@ -5,7 +5,11 @@
       <div class="history-header__left">
         <div class="header-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
         </div>
         <div>
@@ -21,8 +25,18 @@
           class="search-input"
         >
           <template #prefix-icon>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="w-4 h-4"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </template>
         </t-input>
@@ -51,7 +65,9 @@
       <div v-if="filteredItems.length === 0" class="empty-state">
         <div class="empty-icon">📭</div>
         <p>{{ searchKeyword ? '没有找到匹配的记录' : '暂无历史记录' }}</p>
-        <span>{{ searchKeyword ? '尝试其他关键词' : '开始对话或创建任务后，记录会出现在这里' }}</span>
+        <span>{{
+          searchKeyword ? '尝试其他关键词' : '开始对话或创建任务后，记录会出现在这里'
+        }}</span>
       </div>
 
       <div v-else class="history-list">
@@ -65,7 +81,9 @@
               :class="['history-card', { 'history-card--pinned': pinnedIds.has(item.id) }]"
               @click="openItem(item)"
             >
-              <div class="history-card__pin-badge" v-if="pinnedIds.has(item.id)" title="已置顶">📌</div>
+              <div v-if="pinnedIds.has(item.id)" class="history-card__pin-badge" title="已置顶">
+                📌
+              </div>
               <div class="history-card__icon" :data-type="item.type">
                 {{ typeIcon(item.type) }}
               </div>
@@ -76,8 +94,17 @@
                   <span class="type-tag" :data-type="item.type">{{ typeLabel(item.type) }}</span>
                   <span class="time-tag">{{ item.timeStr }}</span>
                   <span v-if="item.kbName" class="kb-tag">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3 h-3">
-                      <path stroke-linecap="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      class="w-3 h-3"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+                      />
                     </svg>
                     {{ item.kbName }}
                   </span>
@@ -85,22 +112,59 @@
               </div>
               <div class="history-card__actions">
                 <button
-                  :class="['card-action-btn', { 'card-action-btn--pinned': pinnedIds.has(item.id) }]"
-                  @click.stop="togglePin(item.id)"
+                  :class="[
+                    'card-action-btn',
+                    { 'card-action-btn--pinned': pinnedIds.has(item.id) }
+                  ]"
                   :title="pinnedIds.has(item.id) ? '取消置顶' : '置顶'"
+                  @click.stop="togglePin(item.id)"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"
+                    />
                   </svg>
                 </button>
-                <button class="card-action-btn" @click.stop="copyItem(item)" title="复制内容">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                <button class="card-action-btn" title="复制内容" @click.stop="copyItem(item)">
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2"
+                    />
                   </svg>
                 </button>
-                <button class="card-action-btn danger" @click.stop="deleteItem(item.id)" title="删除">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                <button
+                  class="card-action-btn danger"
+                  title="删除"
+                  @click.stop="deleteItem(item.id)"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
                   </svg>
                 </button>
               </div>
@@ -120,7 +184,9 @@
     >
       <div v-if="selectedItem" class="drawer-content">
         <div class="drawer-meta">
-          <span class="type-tag" :data-type="selectedItem.type">{{ typeLabel(selectedItem.type) }}</span>
+          <span class="type-tag" :data-type="selectedItem.type">{{
+            typeLabel(selectedItem.type)
+          }}</span>
           <span class="time-tag">{{ selectedItem.timeStr }}</span>
         </div>
         <div class="drawer-body" v-html="selectedItem.content"></div>
@@ -130,143 +196,156 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import { MessagePlugin } from 'tdesign-vue-next';
-import { useRouter } from 'vue-router';
-import axios from 'axios';
+import { ref, computed, onMounted } from 'vue'
+import { MessagePlugin } from 'tdesign-vue-next'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 // ── Types ──────────────────────────────────────────────
-type HistoryType = 'chat' | 'task' | 'note' | 'search';
+type HistoryType = 'chat' | 'task' | 'note' | 'search'
 
 interface HistoryItem {
-  id: string;
-  type: HistoryType;
-  title: string;
-  preview: string;
-  content: string;
-  timestamp: number;
-  timeStr: string;
-  kbName?: string;
-  link?: string;
+  id: string
+  type: HistoryType
+  title: string
+  preview: string
+  content: string
+  timestamp: number
+  timeStr: string
+  kbName?: string
+  link?: string
 }
 
 interface DateGroup {
-  date: string;
-  label: string;
-  items: HistoryItem[];
+  date: string
+  label: string
+  items: HistoryItem[]
 }
 
 // ── State ──────────────────────────────────────────────
-const router = useRouter();
-const searchKeyword = ref('');
-const activeTab = ref<HistoryType | 'all'>('all');
-const selectedItem = ref<HistoryItem | null>(null);
-const allItems = ref<HistoryItem[]>([]);
+const router = useRouter()
+const searchKeyword = ref('')
+const activeTab = ref<HistoryType | 'all'>('all')
+const selectedItem = ref<HistoryItem | null>(null)
+const allItems = ref<HistoryItem[]>([])
 
 // 置顶 IDs（持久化到 localStorage）
-const PINNED_KEY = 'history_pinned_ids';
-const pinnedIds = ref<Set<string>>(new Set(JSON.parse(localStorage.getItem(PINNED_KEY) || '[]')));
+const PINNED_KEY = 'history_pinned_ids'
+const pinnedIds = ref<Set<string>>(new Set(JSON.parse(localStorage.getItem(PINNED_KEY) || '[]')))
 
 function togglePin(id: string) {
-  const s = new Set(pinnedIds.value);
-  if (s.has(id)) { s.delete(id); MessagePlugin.success('已取消置顶'); }
-  else { s.add(id); MessagePlugin.success('已置顶'); }
-  pinnedIds.value = s;
-  localStorage.setItem(PINNED_KEY, JSON.stringify([...s]));
+  const s = new Set(pinnedIds.value)
+  if (s.has(id)) {
+    s.delete(id)
+    MessagePlugin.success('已取消置顶')
+  } else {
+    s.add(id)
+    MessagePlugin.success('已置顶')
+  }
+  pinnedIds.value = s
+  localStorage.setItem(PINNED_KEY, JSON.stringify([...s]))
 }
 
 const tabs = [
-  { value: 'all',    icon: '📋', label: '全部' },
-  { value: 'chat',   icon: '💬', label: '对话' },
-  { value: 'task',   icon: '🤖', label: '任务' },
-  { value: 'note',   icon: '📝', label: '笔记' },
-  { value: 'search', icon: '🔍', label: '搜索' },
-];
+  { value: 'all', icon: '📋', label: '全部' },
+  { value: 'chat', icon: '💬', label: '对话' },
+  { value: 'task', icon: '🤖', label: '任务' },
+  { value: 'note', icon: '📝', label: '笔记' },
+  { value: 'search', icon: '🔍', label: '搜索' }
+]
 
 // ── Helpers ────────────────────────────────────────────
-const typeIcon  = (t: string) => ({ chat: '💬', task: '🤖', note: '📝', search: '🔍' }[t] ?? '📄');
-const typeLabel = (t: string) => ({ chat: 'AI对话', task: '任务', note: '笔记', search: '搜索' }[t] ?? t);
+const typeIcon = (t: string) => ({ chat: '💬', task: '🤖', note: '📝', search: '🔍' })[t] ?? '📄'
+const typeLabel = (t: string) =>
+  ({ chat: 'AI对话', task: '任务', note: '笔记', search: '搜索' })[t] ?? t
 
 const getTabCount = (tab: string) => {
-  if (tab === 'all') return allItems.value.length;
-  return allItems.value.filter(i => i.type === tab).length;
-};
+  if (tab === 'all') return allItems.value.length
+  return allItems.value.filter(i => i.type === tab).length
+}
 
 // ── Filtering ─────────────────────────────────────────
 const filteredItems = computed(() => {
-  let items = activeTab.value === 'all'
-    ? allItems.value
-    : allItems.value.filter(i => i.type === activeTab.value);
+  let items =
+    activeTab.value === 'all'
+      ? allItems.value
+      : allItems.value.filter(i => i.type === activeTab.value)
 
   if (searchKeyword.value.trim()) {
-    const kw = searchKeyword.value.toLowerCase();
-    items = items.filter(i =>
-      i.title.toLowerCase().includes(kw) ||
-      i.preview.toLowerCase().includes(kw)
-    );
+    const kw = searchKeyword.value.toLowerCase()
+    items = items.filter(
+      i => i.title.toLowerCase().includes(kw) || i.preview.toLowerCase().includes(kw)
+    )
   }
 
   return items.sort((a, b) => {
     // 置顶的优先显示
-    const aPinned = pinnedIds.value.has(a.id) ? 1 : 0;
-    const bPinned = pinnedIds.value.has(b.id) ? 1 : 0;
-    if (bPinned !== aPinned) return bPinned - aPinned;
-    return b.timestamp - a.timestamp;
-  });
-});
+    const aPinned = pinnedIds.value.has(a.id) ? 1 : 0
+    const bPinned = pinnedIds.value.has(b.id) ? 1 : 0
+    if (bPinned !== aPinned) return bPinned - aPinned
+    return b.timestamp - a.timestamp
+  })
+})
 
 // ── Grouping by date ────────────────────────────────────
 const groupedItems = computed((): DateGroup[] => {
-  const groups = new Map<string, HistoryItem[]>();
-  const now = new Date();
-  const todayStr = now.toDateString();
-  const yesterdayStr = new Date(now.getTime() - 86400000).toDateString();
+  const groups = new Map<string, HistoryItem[]>()
+  const now = new Date()
+  const todayStr = now.toDateString()
+  const yesterdayStr = new Date(now.getTime() - 86400000).toDateString()
 
   filteredItems.value.forEach(item => {
-    const d = new Date(item.timestamp);
-    const ds = d.toDateString();
-    const key = ds === todayStr ? 'today' :
-                ds === yesterdayStr ? 'yesterday' :
-                d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key)!.push(item);
-  });
+    const d = new Date(item.timestamp)
+    const ds = d.toDateString()
+    const key =
+      ds === todayStr
+        ? 'today'
+        : ds === yesterdayStr
+          ? 'yesterday'
+          : d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' })
+    if (!groups.has(key)) groups.set(key, [])
+    groups.get(key)!.push(item)
+  })
 
   return Array.from(groups.entries()).map(([key, items]) => ({
     date: key,
     label: key === 'today' ? '今天' : key === 'yesterday' ? '昨天' : key,
-    items,
-  }));
-});
+    items
+  }))
+})
 
 // ── Data Loading ────────────────────────────────────────
 const loadChatHistory = async () => {
   try {
-    const res = await axios.get('/api/chat/chat-documents');
-    const sessions = Array.isArray(res.data) ? res.data : [];
+    const res = await axios.get('/api/chat/chat-documents')
+    const sessions = Array.isArray(res.data) ? res.data : []
     sessions.forEach((s: any) => {
-      const lastMsg = s.history?.[s.history.length - 1];
+      const lastMsg = s.history?.[s.history.length - 1]
       allItems.value.push({
         id: `chat_${s.id}`,
         type: 'chat',
         title: s.title || s.history?.[1]?.content?.slice(0, 30) || '新对话',
         preview: lastMsg?.content?.slice(0, 80) || '',
-        content: (s.history || []).map((m: any) =>
-          `<p><strong>${m.role === 'user' ? '我' : 'AI'}：</strong>${m.content}</p>`
-        ).join(''),
+        content: (s.history || [])
+          .map(
+            (m: any) => `<p><strong>${m.role === 'user' ? '我' : 'AI'}：</strong>${m.content}</p>`
+          )
+          .join(''),
         timestamp: (s.created_at || 0) * 1000,
         timeStr: formatTime(s.created_at * 1000),
-        link: `/chat/${s.id}`,
-      });
-    });
-  } catch { /* ignore */ }
-};
+        link: `/chat/${s.id}`
+      })
+    })
+  } catch {
+    /* ignore */
+  }
+}
 
 const loadTaskHistory = () => {
   try {
-    const raw = localStorage.getItem('agent_task_history');
-    if (!raw) return;
-    const tasks = JSON.parse(raw);
+    const raw = localStorage.getItem('agent_task_history')
+    if (!raw) return
+    const tasks = JSON.parse(raw)
     tasks.forEach((t: any) => {
       allItems.value.push({
         id: `task_${t.id}`,
@@ -275,21 +354,23 @@ const loadTaskHistory = () => {
         preview: t.output?.slice(0, 80) || '',
         content: `<pre>${t.output || ''}</pre>`,
         timestamp: parseInt(t.id) || Date.now(),
-        timeStr: t.time || formatTime(parseInt(t.id)),
-      });
-    });
-  } catch { /* ignore */ }
-};
+        timeStr: t.time || formatTime(parseInt(t.id))
+      })
+    })
+  } catch {
+    /* ignore */
+  }
+}
 
 const loadNoteHistory = () => {
   // 从 KnowledgeDetail 笔记模块收集
   try {
-    const keys = Object.keys(localStorage).filter(k => k.startsWith('kb_notes_'));
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('kb_notes_'))
     keys.forEach(key => {
-      const kbId = key.replace('kb_notes_', '');
-      const raw = localStorage.getItem(key);
-      if (!raw) return;
-      const notes = JSON.parse(raw);
+      const kbId = key.replace('kb_notes_', '')
+      const raw = localStorage.getItem(key)
+      if (!raw) return
+      const notes = JSON.parse(raw)
       notes.forEach((n: any) => {
         allItems.value.push({
           id: `note_${n.id}`,
@@ -300,54 +381,61 @@ const loadNoteHistory = () => {
           timestamp: n.updatedAt || n.createdAt || Date.now(),
           timeStr: formatTime(n.updatedAt || n.createdAt),
           kbName: `知识库 ${kbId.slice(-6)}`,
-          link: `/knowledge/knowledgeDetail/${kbId}`,
-        });
-      });
-    });
-  } catch { /* ignore */ }
-};
+          link: `/knowledge/knowledgeDetail/${kbId}`
+        })
+      })
+    })
+  } catch {
+    /* ignore */
+  }
+}
 
 const loadAll = async () => {
-  allItems.value = [];
-  await loadChatHistory();
-  loadTaskHistory();
-  loadNoteHistory();
-};
+  allItems.value = []
+  await loadChatHistory()
+  loadTaskHistory()
+  loadNoteHistory()
+}
 
 // ── Actions ─────────────────────────────────────────────
 const openItem = (item: HistoryItem) => {
   if (item.link) {
-    router.push(item.link);
+    router.push(item.link)
   } else {
-    selectedItem.value = item;
+    selectedItem.value = item
   }
-};
+}
 
 const copyItem = (item: HistoryItem) => {
   navigator.clipboard.writeText(item.preview || item.title).then(() => {
-    MessagePlugin.success('已复制');
-  });
-};
+    MessagePlugin.success('已复制')
+  })
+}
 
 const deleteItem = (id: string) => {
-  allItems.value = allItems.value.filter(i => i.id !== id);
-  MessagePlugin.success('已删除');
-};
+  allItems.value = allItems.value.filter(i => i.id !== id)
+  MessagePlugin.success('已删除')
+}
 
 const clearAll = () => {
-  if (!confirm('确定清空全部历史记录？此操作不可恢复。')) return;
-  allItems.value = [];
-  localStorage.removeItem('agent_task_history');
-  MessagePlugin.success('已清空历史记录');
-};
+  if (!confirm('确定清空全部历史记录？此操作不可恢复。')) return
+  allItems.value = []
+  localStorage.removeItem('agent_task_history')
+  MessagePlugin.success('已清空历史记录')
+}
 
 const formatTime = (ts: number): string => {
-  if (!ts) return '';
-  const d = new Date(ts);
-  return d.toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-};
+  if (!ts) return ''
+  const d = new Date(ts)
+  return d.toLocaleString('zh-CN', {
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
 
-onMounted(loadAll);
+onMounted(loadAll)
 </script>
 
 <style scoped>
@@ -384,7 +472,10 @@ onMounted(loadAll);
   justify-content: center;
   color: white;
 }
-.header-icon svg { width: 20px; height: 20px; }
+.header-icon svg {
+  width: 20px;
+  height: 20px;
+}
 .history-header__left h1 {
   font-size: 18px;
   font-weight: 700;
@@ -401,7 +492,9 @@ onMounted(loadAll);
   align-items: center;
   gap: 12px;
 }
-.search-input { width: 240px; }
+.search-input {
+  width: 240px;
+}
 
 /* Filter Tabs */
 .filter-bar {
@@ -427,7 +520,10 @@ onMounted(loadAll);
   background: white;
   transition: all 0.15s;
 }
-.filter-tab:hover { border-color: #4f7ef8; color: #4f7ef8; }
+.filter-tab:hover {
+  border-color: #4f7ef8;
+  color: #4f7ef8;
+}
 .filter-tab.active {
   background: #eff6ff;
   border-color: #4f7ef8;
@@ -459,17 +555,25 @@ onMounted(loadAll);
   text-align: center;
   padding: 60px 20px;
 }
-.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
 .empty-state p {
   font-size: 16px;
   font-weight: 600;
   color: #374151;
   margin-bottom: 6px;
 }
-.empty-state span { font-size: 13px; color: #9ca3af; }
+.empty-state span {
+  font-size: 13px;
+  color: #9ca3af;
+}
 
 /* Date Group */
-.date-group { margin-bottom: 24px; }
+.date-group {
+  margin-bottom: 24px;
+}
 .date-label {
   font-size: 12px;
   font-weight: 600;
@@ -479,7 +583,11 @@ onMounted(loadAll);
   margin-bottom: 10px;
   padding: 0 4px;
 }
-.group-items { display: flex; flex-direction: column; gap: 8px; }
+.group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
 /* History Card */
 .history-card {
@@ -496,7 +604,7 @@ onMounted(loadAll);
 }
 .history-card:hover {
   border-color: #4f7ef8;
-  box-shadow: 0 2px 8px rgba(79,126,248,0.1);
+  box-shadow: 0 2px 8px rgba(79, 126, 248, 0.1);
 }
 .history-card__icon {
   width: 40px;
@@ -509,11 +617,22 @@ onMounted(loadAll);
   flex-shrink: 0;
   background: #f3f4f6;
 }
-.history-card__icon[data-type="chat"]   { background: #eff6ff; }
-.history-card__icon[data-type="task"]   { background: #f0fdf4; }
-.history-card__icon[data-type="note"]   { background: #fefce8; }
-.history-card__icon[data-type="search"] { background: #fdf4ff; }
-.history-card__body { flex: 1; min-width: 0; }
+.history-card__icon[data-type='chat'] {
+  background: #eff6ff;
+}
+.history-card__icon[data-type='task'] {
+  background: #f0fdf4;
+}
+.history-card__icon[data-type='note'] {
+  background: #fefce8;
+}
+.history-card__icon[data-type='search'] {
+  background: #fdf4ff;
+}
+.history-card__body {
+  flex: 1;
+  min-width: 0;
+}
 .history-card__title {
   font-size: 14px;
   font-weight: 600;
@@ -543,11 +662,26 @@ onMounted(loadAll);
   border-radius: 10px;
   font-weight: 600;
 }
-.type-tag[data-type="chat"]   { background: #dbeafe; color: #2563eb; }
-.type-tag[data-type="task"]   { background: #dcfce7; color: #16a34a; }
-.type-tag[data-type="note"]   { background: #fef9c3; color: #ca8a04; }
-.type-tag[data-type="search"] { background: #fae8ff; color: #9333ea; }
-.time-tag { font-size: 11px; color: #9ca3af; }
+.type-tag[data-type='chat'] {
+  background: #dbeafe;
+  color: #2563eb;
+}
+.type-tag[data-type='task'] {
+  background: #dcfce7;
+  color: #16a34a;
+}
+.type-tag[data-type='note'] {
+  background: #fef9c3;
+  color: #ca8a04;
+}
+.type-tag[data-type='search'] {
+  background: #fae8ff;
+  color: #9333ea;
+}
+.time-tag {
+  font-size: 11px;
+  color: #9ca3af;
+}
 .kb-tag {
   display: flex;
   align-items: center;
@@ -565,7 +699,9 @@ onMounted(loadAll);
   opacity: 0;
   transition: opacity 0.15s;
 }
-.history-card:hover .history-card__actions { opacity: 1; }
+.history-card:hover .history-card__actions {
+  opacity: 1;
+}
 .card-action-btn {
   width: 28px;
   height: 28px;
@@ -579,20 +715,34 @@ onMounted(loadAll);
   color: #4b5563;
   transition: all 0.15s;
 }
-.card-action-btn:hover { background: #f3f4f6; }
-.card-action-btn.danger:hover { background: #fef2f2; color: #dc2626; border-color: #fca5a5; }
-.card-action-btn--pinned { color: #4f7ef8; border-color: #c7d7ff; background: #eff4ff; opacity: 1 !important; }
-.card-action-btn--pinned:hover { background: #dbeafe; }
+.card-action-btn:hover {
+  background: #f3f4f6;
+}
+.card-action-btn.danger:hover {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+.card-action-btn--pinned {
+  color: #4f7ef8;
+  border-color: #c7d7ff;
+  background: #eff4ff;
+  opacity: 1 !important;
+}
+.card-action-btn--pinned:hover {
+  background: #dbeafe;
+}
 
 /* 置顶卡片样式 */
 .history-card--pinned {
   border-color: #a5b4fc;
   background: linear-gradient(to right, #fafbff, white);
-  box-shadow: 0 1px 6px rgba(79,126,248,0.08);
+  box-shadow: 0 1px 6px rgba(79, 126, 248, 0.08);
 }
 .history-card__pin-badge {
   position: absolute;
-  top: -8px; right: 8px;
+  top: -8px;
+  right: 8px;
   font-size: 12px;
   background: #4f7ef8;
   color: white;
@@ -602,14 +752,22 @@ onMounted(loadAll);
 }
 
 /* Drawer */
-.drawer-content { padding: 16px; }
-.drawer-meta { display: flex; gap: 8px; margin-bottom: 16px; }
+.drawer-content {
+  padding: 16px;
+}
+.drawer-meta {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
 .drawer-body {
   font-size: 14px;
   line-height: 1.7;
   color: #1f2937;
 }
-.drawer-body :deep(p) { margin: 8px 0; }
+.drawer-body :deep(p) {
+  margin: 8px 0;
+}
 .drawer-body :deep(pre) {
   background: #f3f4f6;
   padding: 12px;

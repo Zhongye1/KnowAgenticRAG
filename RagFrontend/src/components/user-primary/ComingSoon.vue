@@ -1,9 +1,10 @@
 <template>
   <div class="p-6">
-
     <!-- ① 外观设置 (id=1) -->
     <section v-if="route.params.id === '1'" class="mb-8">
-      <h2 class="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">外观设置</h2>
+      <h2 class="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">
+        外观设置
+      </h2>
 
       <!-- 深色模式 -->
       <div class="mb-8 p-5 border border-gray-200 rounded-xl">
@@ -24,12 +25,17 @@
         <h3 class="font-medium text-gray-900 mb-3">主题颜色</h3>
         <div class="flex flex-wrap gap-3">
           <button
-            v-for="c in themeColors" :key="c.key"
-            @click="applyThemeColor(c)"
+            v-for="c in themeColors"
+            :key="c.key"
             :title="c.label"
-            :class="['w-10 h-10 rounded-full border-4 transition-all duration-200 shadow-md',
-              activeColor === c.key ? 'border-gray-700 scale-110' : 'border-white hover:border-gray-300']"
+            :class="[
+              'w-10 h-10 rounded-full border-4 transition-all duration-200 shadow-md',
+              activeColor === c.key
+                ? 'border-gray-700 scale-110'
+                : 'border-white hover:border-gray-300'
+            ]"
             :style="{ background: c.value }"
+            @click="applyThemeColor(c)"
           />
         </div>
         <p class="text-xs text-gray-400 mt-2">当前：{{ currentColorLabel }}</p>
@@ -40,12 +46,15 @@
         <h3 class="font-medium text-gray-900 mb-3">侧边栏布局</h3>
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <button
-            v-for="l in layoutOptions" :key="l.key"
-            @click="applyLayout(l.key)"
-            :class="['p-4 border-2 rounded-xl text-center transition-all duration-200',
+            v-for="l in layoutOptions"
+            :key="l.key"
+            :class="[
+              'p-4 border-2 rounded-xl text-center transition-all duration-200',
               activeLayout === l.key
                 ? 'border-blue-500 bg-blue-50 text-blue-700'
-                : 'border-gray-200 hover:border-blue-300 text-gray-700']"
+                : 'border-gray-200 hover:border-blue-300 text-gray-700'
+            ]"
+            @click="applyLayout(l.key)"
           >
             <div class="text-2xl mb-1">{{ l.icon }}</div>
             <div class="text-sm font-medium">{{ l.label }}</div>
@@ -72,34 +81,52 @@
 
     <!-- ② 第三方账号绑定 (id=2) -->
     <section v-else-if="route.params.id === '2'" class="mb-8">
-      <h2 class="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">第三方账号绑定</h2>
+      <h2 class="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">
+        第三方账号绑定
+      </h2>
       <p class="text-gray-500 text-sm mb-6">绑定第三方账号后，您可以使用其快速登录本系统。</p>
 
       <div class="space-y-4">
-        <div v-for="provider in thirdPartyList" :key="provider.key"
-          class="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-blue-200 transition-all">
+        <div
+          v-for="provider in thirdPartyList"
+          :key="provider.key"
+          class="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-blue-200 transition-all"
+        >
           <div class="flex items-center gap-4">
-            <div :class="['w-12 h-12 rounded-full flex items-center justify-center text-xl', provider.bgClass]">
+            <div
+              :class="[
+                'w-12 h-12 rounded-full flex items-center justify-center text-xl',
+                provider.bgClass
+              ]"
+            >
               {{ provider.icon }}
             </div>
             <div>
               <h4 class="font-medium text-gray-900">{{ provider.label }}</h4>
               <p class="text-xs text-gray-500 mt-0.5">
-                {{ bindingStatus[provider.key] ? `已绑定：${bindingStatus[provider.key]}` : '未绑定' }}
+                {{
+                  bindingStatus[provider.key] ? `已绑定：${bindingStatus[provider.key]}` : '未绑定'
+                }}
               </p>
             </div>
           </div>
           <div class="flex gap-2">
             <t-button
               v-if="!bindingStatus[provider.key]"
-              theme="primary" variant="outline" size="small"
-              @click="bindAccount(provider)">
+              theme="primary"
+              variant="outline"
+              size="small"
+              @click="bindAccount(provider)"
+            >
               绑定
             </t-button>
             <t-button
               v-else
-              theme="danger" variant="outline" size="small"
-              @click="unbindAccount(provider)">
+              theme="danger"
+              variant="outline"
+              size="small"
+              @click="unbindAccount(provider)"
+            >
               解绑
             </t-button>
           </div>
@@ -108,13 +135,21 @@
 
       <!-- 绑定说明 -->
       <div class="mt-8 p-4 bg-blue-50 border border-blue-100 rounded-xl text-sm text-blue-700">
-        <strong>说明：</strong>绑定后，您可在登录页选择「第三方登录」，通过已绑定账号一键登录。解绑需要确保账号密码登录可用。
+        <strong>说明：</strong
+        >绑定后，您可在登录页选择「第三方登录」，通过已绑定账号一键登录。解绑需要确保账号密码登录可用。
       </div>
 
       <!-- 绑定弹窗 -->
-      <t-dialog v-model:visible="bindDialogVisible" :header="`绑定 ${currentProvider?.label} 账号`" :footer="false" width="420px">
+      <t-dialog
+        v-model:visible="bindDialogVisible"
+        :header="`绑定 ${currentProvider?.label} 账号`"
+        :footer="false"
+        width="420px"
+      >
         <div class="py-4">
-          <p class="text-gray-600 text-sm mb-4">请输入您的 {{ currentProvider?.label }} 账号标识（用户名/邮箱/OpenID）：</p>
+          <p class="text-gray-600 text-sm mb-4">
+            请输入您的 {{ currentProvider?.label }} 账号标识（用户名/邮箱/OpenID）：
+          </p>
           <t-input v-model="bindInput" :placeholder="`${currentProvider?.label} 账号`" clearable />
           <div class="flex justify-end gap-3 mt-6">
             <t-button variant="outline" @click="bindDialogVisible = false">取消</t-button>
@@ -126,14 +161,18 @@
 
     <!-- ③ 实验性功能 / 语音交互 (id=3) -->
     <section v-else-if="route.params.id === '3'" class="mb-8">
-      <h2 class="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">探索新功能</h2>
+      <h2 class="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">
+        探索新功能
+      </h2>
 
       <div class="border border-yellow-200 rounded-xl p-4 bg-yellow-50 mb-6">
         <div class="flex items-start gap-3">
           <t-icon name="error" class="text-yellow-500 text-xl mt-0.5" />
           <div>
             <h4 class="font-medium text-yellow-800">实验性功能说明</h4>
-            <p class="text-yellow-700 text-sm mt-1">以下功能处于测试阶段，可能存在不稳定情况，请谨慎使用。</p>
+            <p class="text-yellow-700 text-sm mt-1">
+              以下功能处于测试阶段，可能存在不稳定情况，请谨慎使用。
+            </p>
           </div>
         </div>
       </div>
@@ -149,7 +188,11 @@
                 <p class="text-sm text-gray-500 mt-0.5">通过语音与 AI 对话，支持语音输入和转录</p>
               </div>
             </div>
-            <t-switch v-model="voiceEnabled" size="large" @change="(v: any) => onVoiceToggle(Boolean(v))" />
+            <t-switch
+              v-model="voiceEnabled"
+              size="large"
+              @change="(v: any) => onVoiceToggle(Boolean(v))"
+            />
           </div>
 
           <!-- 语音录制区（仅在启用后显示） -->
@@ -157,12 +200,17 @@
             <div class="flex flex-col items-center gap-4">
               <!-- 录音按钮 -->
               <button
-                @mousedown="startRecording" @mouseup="stopRecording"
-                @touchstart.prevent="startRecording" @touchend.prevent="stopRecording"
-                :class="['w-20 h-20 rounded-full flex items-center justify-center text-3xl shadow-lg transition-all duration-200 select-none',
+                :class="[
+                  'w-20 h-20 rounded-full flex items-center justify-center text-3xl shadow-lg transition-all duration-200 select-none',
                   isRecording
                     ? 'bg-red-500 text-white scale-110 shadow-red-300 animate-pulse'
-                    : 'bg-blue-500 text-white hover:bg-blue-600 hover:scale-105']">
+                    : 'bg-blue-500 text-white hover:bg-blue-600 hover:scale-105'
+                ]"
+                @mousedown="startRecording"
+                @mouseup="stopRecording"
+                @touchstart.prevent="startRecording"
+                @touchend.prevent="stopRecording"
+              >
                 {{ isRecording ? '⏹️' : '🎤' }}
               </button>
               <p class="text-sm text-gray-500">
@@ -171,19 +219,28 @@
 
               <!-- 波形可视化 -->
               <div v-if="isRecording" class="flex items-end gap-1 h-8">
-                <div v-for="n in 12" :key="n"
+                <div
+                  v-for="n in 12"
+                  :key="n"
                   class="w-1.5 bg-blue-400 rounded-full"
-                  :style="{ height: waveHeights[n-1] + 'px', transition: 'height 0.1s ease' }">
-                </div>
+                  :style="{ height: waveHeights[n - 1] + 'px', transition: 'height 0.1s ease' }"
+                ></div>
               </div>
 
               <!-- 转录结果 -->
-              <div v-if="transcriptText" class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+              <div
+                v-if="transcriptText"
+                class="w-full p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700"
+              >
                 <p class="text-xs text-gray-400 mb-1">识别结果：</p>
                 <p>{{ transcriptText }}</p>
                 <div class="flex gap-2 mt-2">
-                  <t-button size="small" theme="primary" @click="sendTranscript">发送到对话</t-button>
-                  <t-button size="small" variant="outline" @click="transcriptText = ''">清除</t-button>
+                  <t-button size="small" theme="primary" @click="sendTranscript"
+                    >发送到对话</t-button
+                  >
+                  <t-button size="small" variant="outline" @click="transcriptText = ''"
+                    >清除</t-button
+                  >
                 </div>
               </div>
 
@@ -203,7 +260,11 @@
                 <p class="text-sm text-gray-500 mt-0.5">沉浸式全屏对话布局，隐藏侧边栏，聚焦内容</p>
               </div>
             </div>
-            <t-switch v-model="newLayoutEnabled" size="large" @change="(v: any) => applyNewLayout(Boolean(v))" />
+            <t-switch
+              v-model="newLayoutEnabled"
+              size="large"
+              @change="(v: any) => applyNewLayout(Boolean(v))"
+            />
           </div>
           <div v-if="newLayoutEnabled" class="mt-3 p-3 bg-blue-50 rounded-lg text-xs text-blue-700">
             ✅ 已启用新布局：侧边栏自动收起，内容区更宽。切换到「AI对话」页即可体验。
@@ -219,20 +280,45 @@
                 <p class="text-sm text-gray-500 mt-0.5">自动为长文档生成摘要，在知识库详情页展示</p>
               </div>
             </div>
-            <t-switch v-model="aiSummaryEnabled" size="large" @change="(v: any) => onAiSummaryToggle(Boolean(v))" />
+            <t-switch
+              v-model="aiSummaryEnabled"
+              size="large"
+              @change="(v: any) => onAiSummaryToggle(Boolean(v))"
+            />
           </div>
 
           <!-- 摘要测试区 -->
           <div v-if="aiSummaryEnabled" class="mt-3 pt-3 border-t border-gray-100">
             <p class="text-xs text-gray-500 mb-2">快速测试：粘贴一段文字，生成摘要</p>
-            <t-textarea v-model="summaryInput" placeholder="粘贴需要摘要的文本..." :rows="3" :maxlength="3000" />
+            <t-textarea
+              v-model="summaryInput"
+              placeholder="粘贴需要摘要的文本..."
+              :rows="3"
+              :maxlength="3000"
+            />
             <div class="flex gap-2 mt-2">
-              <t-button size="small" theme="primary" :loading="summaryLoading" @click="generateSummary">
+              <t-button
+                size="small"
+                theme="primary"
+                :loading="summaryLoading"
+                @click="generateSummary"
+              >
                 生成摘要
               </t-button>
-              <t-button size="small" variant="outline" @click="summaryInput = ''; summaryResult = ''">清除</t-button>
+              <t-button
+                size="small"
+                variant="outline"
+                @click="
+                  summaryInput = ''
+                  summaryResult = ''
+                "
+                >清除</t-button
+              >
             </div>
-            <div v-if="summaryResult" class="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+            <div
+              v-if="summaryResult"
+              class="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700"
+            >
               <p class="text-xs text-gray-400 mb-1 font-medium">AI 摘要结果：</p>
               <p class="leading-relaxed">{{ summaryResult }}</p>
             </div>
@@ -243,7 +329,9 @@
 
     <!-- ④ 反馈与建议 (id=4) -->
     <section v-else-if="route.params.id === '4'" class="mb-8">
-      <h2 class="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">反馈与建议</h2>
+      <h2 class="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">
+        反馈与建议
+      </h2>
       <p class="text-gray-500 text-sm mb-6">您的反馈对我们非常重要，提交后将发送到开发团队邮箱。</p>
 
       <div class="space-y-5">
@@ -260,19 +348,37 @@
 
         <!-- 标题 -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">标题 <span class="text-red-400">*</span></label>
-          <t-input v-model="feedback.title" placeholder="请简要描述您的反馈" clearable :maxlength="80" show-limit-number />
+          <label class="block text-sm font-medium text-gray-700 mb-2"
+            >标题 <span class="text-red-400">*</span></label
+          >
+          <t-input
+            v-model="feedback.title"
+            placeholder="请简要描述您的反馈"
+            clearable
+            :maxlength="80"
+            show-limit-number
+          />
         </div>
 
         <!-- 详情 -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">详细描述 <span class="text-red-400">*</span></label>
-          <t-textarea v-model="feedback.content" placeholder="请详细描述问题或建议，包括复现步骤、期望效果等..." :rows="5" :maxlength="2000" show-limit-number />
+          <label class="block text-sm font-medium text-gray-700 mb-2"
+            >详细描述 <span class="text-red-400">*</span></label
+          >
+          <t-textarea
+            v-model="feedback.content"
+            placeholder="请详细描述问题或建议，包括复现步骤、期望效果等..."
+            :rows="5"
+            :maxlength="2000"
+            show-limit-number
+          />
         </div>
 
         <!-- 联系方式 -->
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">您的邮箱（选填，方便我们回复）</label>
+          <label class="block text-sm font-medium text-gray-700 mb-2"
+            >您的邮箱（选填，方便我们回复）</label
+          >
           <t-input v-model="feedback.email" placeholder="example@email.com" type="text" />
         </div>
 
@@ -286,7 +392,10 @@
         </div>
 
         <!-- 提交成功提示 -->
-        <div v-if="feedbackSent" class="p-4 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 flex items-center gap-2">
+        <div
+          v-if="feedbackSent"
+          class="p-4 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700 flex items-center gap-2"
+        >
           <t-icon name="check-circle" class="text-green-500" />
           反馈已提交！感谢您的宝贵意见，我们将尽快处理。
         </div>
@@ -295,7 +404,9 @@
 
     <!-- ⑤ 隐私政策 (id=5) -->
     <section v-else-if="route.params.id === '5'" class="mb-8">
-      <h2 class="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">隐私政策</h2>
+      <h2 class="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">
+        隐私政策
+      </h2>
       <div class="prose prose-sm text-gray-600 space-y-4">
         <p>RAG-F 智能知识库系统非常重视用户的隐私保护。</p>
         <h3 class="font-medium text-gray-900">数据收集</h3>
@@ -311,7 +422,9 @@
 
     <!-- ⑥ 关于本项目 (id=6) -->
     <section v-else-if="route.params.id === '6'" class="mb-8">
-      <h2 class="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">关于本项目</h2>
+      <h2 class="text-xl font-semibold text-gray-900 mb-6 pb-2 border-b border-gray-100">
+        关于本项目
+      </h2>
       <div class="space-y-4 text-gray-600 text-sm">
         <div class="flex items-center gap-3 p-4 bg-blue-50 rounded-xl">
           <span class="text-3xl">🧠</span>
@@ -321,10 +434,22 @@
           </div>
         </div>
         <div class="grid grid-cols-2 gap-3">
-          <div class="p-3 border border-gray-200 rounded-lg"><span class="text-gray-400 text-xs">前端框架</span><p class="font-medium mt-1">Vue 3 + TypeScript</p></div>
-          <div class="p-3 border border-gray-200 rounded-lg"><span class="text-gray-400 text-xs">后端框架</span><p class="font-medium mt-1">FastAPI (Python)</p></div>
-          <div class="p-3 border border-gray-200 rounded-lg"><span class="text-gray-400 text-xs">AI 推理</span><p class="font-medium mt-1">Ollama + LangChain</p></div>
-          <div class="p-3 border border-gray-200 rounded-lg"><span class="text-gray-400 text-xs">移动端</span><p class="font-medium mt-1">React Native (Expo)</p></div>
+          <div class="p-3 border border-gray-200 rounded-lg">
+            <span class="text-gray-400 text-xs">前端框架</span>
+            <p class="font-medium mt-1">Vue 3 + TypeScript</p>
+          </div>
+          <div class="p-3 border border-gray-200 rounded-lg">
+            <span class="text-gray-400 text-xs">后端框架</span>
+            <p class="font-medium mt-1">FastAPI (Python)</p>
+          </div>
+          <div class="p-3 border border-gray-200 rounded-lg">
+            <span class="text-gray-400 text-xs">AI 推理</span>
+            <p class="font-medium mt-1">Ollama + LangChain</p>
+          </div>
+          <div class="p-3 border border-gray-200 rounded-lg">
+            <span class="text-gray-400 text-xs">移动端</span>
+            <p class="font-medium mt-1">React Native (Expo)</p>
+          </div>
         </div>
       </div>
     </section>
@@ -337,7 +462,6 @@
         <p class="text-gray-500 max-w-md mx-auto">我们正在努力开发中，请耐心等待！</p>
       </div>
     </section>
-
   </div>
 </template>
 
@@ -345,9 +469,15 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
-  Icon as TIcon, Switch as TSwitch, Button as TButton,
-  Input as TInput, Textarea as TTextarea, RadioGroup as TRadioGroup, Radio as TRadio,
-  Dialog as TDialog, MessagePlugin
+  Icon as TIcon,
+  Switch as TSwitch,
+  Button as TButton,
+  Input as TInput,
+  Textarea as TTextarea,
+  RadioGroup as TRadioGroup,
+  Radio as TRadio,
+  Dialog as TDialog,
+  MessagePlugin
 } from 'tdesign-vue-next'
 import axios from 'axios'
 
@@ -361,14 +491,14 @@ const activeLayout = ref(localStorage.getItem('sidebarLayout') || 'default')
 const fontSize = ref(localStorage.getItem('fontSize') || 'md')
 
 const themeColors = [
-  { key: 'blue',   label: '科技蓝', value: '#3b82f6' },
-  { key: 'indigo', label: '靛青',   value: '#6366f1' },
+  { key: 'blue', label: '科技蓝', value: '#3b82f6' },
+  { key: 'indigo', label: '靛青', value: '#6366f1' },
   { key: 'violet', label: '紫罗兰', value: '#8b5cf6' },
-  { key: 'cyan',   label: '青色',   value: '#06b6d4' },
-  { key: 'teal',   label: '绿松石', value: '#14b8a6' },
-  { key: 'green',  label: '绿色',   value: '#22c55e' },
-  { key: 'orange', label: '橙色',   value: '#f97316' },
-  { key: 'rose',   label: '玫瑰红', value: '#f43f5e' },
+  { key: 'cyan', label: '青色', value: '#06b6d4' },
+  { key: 'teal', label: '绿松石', value: '#14b8a6' },
+  { key: 'green', label: '绿色', value: '#22c55e' },
+  { key: 'orange', label: '橙色', value: '#f97316' },
+  { key: 'rose', label: '玫瑰红', value: '#f43f5e' }
 ]
 const currentColorLabel = computed(
   () => themeColors.find(c => c.key === activeColor.value)?.label || '科技蓝'
@@ -376,15 +506,15 @@ const currentColorLabel = computed(
 
 const layoutOptions = [
   { key: 'default', icon: '◧', label: '默认', desc: '左侧固定侧边栏' },
-  { key: 'compact', icon: '▣',  label: '紧凑', desc: '折叠式图标栏' },
-  { key: 'top',     icon: '⬛', label: '顶部导航', desc: '水平顶栏布局' },
+  { key: 'compact', icon: '▣', label: '紧凑', desc: '折叠式图标栏' },
+  { key: 'top', icon: '⬛', label: '顶部导航', desc: '水平顶栏布局' }
 ]
 
 function applyDarkMode(val: boolean) {
   document.documentElement.classList.toggle('dark', val)
   localStorage.setItem('theme', val ? 'dark' : 'light')
 }
-function applyThemeColor(c: typeof themeColors[0]) {
+function applyThemeColor(c: (typeof themeColors)[0]) {
   activeColor.value = c.key
   document.documentElement.style.setProperty('--color-primary', c.value)
   localStorage.setItem('themeColor', c.key)
@@ -401,8 +531,14 @@ function applyFontSize(val: string | number | boolean) {
   // 同时设置 html font-size（影响 rem 单位）和 TDesign CSS 变量
   document.documentElement.style.fontSize = px
   document.documentElement.style.setProperty('--td-font-size-base', px)
-  document.documentElement.style.setProperty('--td-font-size-s', size === 'sm' ? '11px' : size === 'lg' ? '14px' : '12px')
-  document.documentElement.style.setProperty('--td-font-size-l', size === 'sm' ? '15px' : size === 'lg' ? '18px' : '16px')
+  document.documentElement.style.setProperty(
+    '--td-font-size-s',
+    size === 'sm' ? '11px' : size === 'lg' ? '14px' : '12px'
+  )
+  document.documentElement.style.setProperty(
+    '--td-font-size-l',
+    size === 'sm' ? '15px' : size === 'lg' ? '18px' : '16px'
+  )
   // 直接给 body 加 class，方便 CSS 选择器覆盖
   document.body.setAttribute('data-font-size', size)
   localStorage.setItem('fontSize', size)
@@ -423,10 +559,10 @@ onMounted(() => {
 
 // ─────────────────── ② 第三方账号绑定 ──────────────────────────
 const thirdPartyList = [
-  { key: 'github',  label: 'GitHub',  icon: '🐙', bgClass: 'bg-gray-100' },
-  { key: 'wechat',  label: '微信',     icon: '💬', bgClass: 'bg-green-100' },
-  { key: 'qq',      label: 'QQ',       icon: '🐧', bgClass: 'bg-blue-100' },
-  { key: 'feishu',  label: '飞书',     icon: '🪐', bgClass: 'bg-indigo-100' },
+  { key: 'github', label: 'GitHub', icon: '🐙', bgClass: 'bg-gray-100' },
+  { key: 'wechat', label: '微信', icon: '💬', bgClass: 'bg-green-100' },
+  { key: 'qq', label: 'QQ', icon: '🐧', bgClass: 'bg-blue-100' },
+  { key: 'feishu', label: '飞书', icon: '🪐', bgClass: 'bg-indigo-100' }
 ]
 
 // 从 localStorage 还原绑定状态
@@ -434,10 +570,10 @@ const bindingStatus = reactive<Record<string, string>>(
   JSON.parse(localStorage.getItem('thirdPartyBindings') || '{}')
 )
 const bindDialogVisible = ref(false)
-const currentProvider = ref<typeof thirdPartyList[0] | null>(null)
+const currentProvider = ref<(typeof thirdPartyList)[0] | null>(null)
 const bindInput = ref('')
 
-function bindAccount(provider: typeof thirdPartyList[0]) {
+function bindAccount(provider: (typeof thirdPartyList)[0]) {
   currentProvider.value = provider
   bindInput.value = ''
   bindDialogVisible.value = true
@@ -454,7 +590,7 @@ function confirmBind() {
     bindDialogVisible.value = false
   }
 }
-function unbindAccount(provider: typeof thirdPartyList[0]) {
+function unbindAccount(provider: (typeof thirdPartyList)[0]) {
   delete bindingStatus[provider.key]
   localStorage.setItem('thirdPartyBindings', JSON.stringify(bindingStatus))
   MessagePlugin.success(`${provider.label} 账号已解绑`)
@@ -481,14 +617,18 @@ async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     audioChunks = []
     mediaRecorder = new MediaRecorder(stream)
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data) }
+    mediaRecorder.ondataavailable = e => {
+      if (e.data.size > 0) audioChunks.push(e.data)
+    }
     mediaRecorder.onstop = handleRecordingStop
     mediaRecorder.start()
     isRecording.value = true
     voiceStatus.value = '正在录音...'
     // 模拟波形动画
     waveTimer = setInterval(() => {
-      waveHeights.value = Array(12).fill(0).map(() => Math.random() * 24 + 4)
+      waveHeights.value = Array(12)
+        .fill(0)
+        .map(() => Math.random() * 24 + 4)
     }, 120)
   } catch {
     MessagePlugin.error('无法访问麦克风，请检查浏览器权限')
@@ -500,7 +640,10 @@ function stopRecording() {
   mediaRecorder.stop()
   mediaRecorder.stream.getTracks().forEach(t => t.stop())
   isRecording.value = false
-  if (waveTimer) { clearInterval(waveTimer); waveTimer = null }
+  if (waveTimer) {
+    clearInterval(waveTimer)
+    waveTimer = null
+  }
   waveHeights.value = Array(12).fill(4)
   voiceStatus.value = '正在上传转录...'
 }
@@ -524,7 +667,7 @@ async function handleRecordingStop() {
     const jwt = localStorage.getItem('jwt') || ''
     const res = await axios.post('/api/voice/transcribe', formData, {
       headers: { Authorization: `Bearer ${jwt}` },
-      timeout: 15000,
+      timeout: 15000
     })
     transcriptText.value = res.data?.text || ''
     voiceStatus.value = '转录完成（Whisper）'
@@ -535,20 +678,30 @@ async function handleRecordingStop() {
 }
 
 function tryBrowserSpeech(): Promise<string | null> {
-  return new Promise((resolve) => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) { resolve(null); return }
+  return new Promise(resolve => {
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      resolve(null)
+      return
+    }
     const recognition = new SpeechRecognition()
     recognition.lang = 'zh-CN'
     recognition.continuous = false
     recognition.interimResults = false
     // 5秒超时
-    const timer = setTimeout(() => { recognition.stop(); resolve(null) }, 5000)
+    const timer = setTimeout(() => {
+      recognition.stop()
+      resolve(null)
+    }, 5000)
     recognition.onresult = (e: any) => {
       clearTimeout(timer)
       resolve(e.results[0]?.[0]?.transcript || null)
     }
-    recognition.onerror = () => { clearTimeout(timer); resolve(null) }
+    recognition.onerror = () => {
+      clearTimeout(timer)
+      resolve(null)
+    }
     recognition.start()
   })
 }
@@ -587,28 +740,43 @@ function onAiSummaryToggle(val: boolean) {
 }
 
 async function generateSummary() {
-  if (!summaryInput.value.trim()) { MessagePlugin.warning('请先输入需要摘要的文本'); return }
-  if (summaryInput.value.length < 50) { MessagePlugin.warning('文本太短，无需摘要'); return }
+  if (!summaryInput.value.trim()) {
+    MessagePlugin.warning('请先输入需要摘要的文本')
+    return
+  }
+  if (summaryInput.value.length < 50) {
+    MessagePlugin.warning('文本太短，无需摘要')
+    return
+  }
   summaryLoading.value = true
   summaryResult.value = ''
   try {
     // 调用 Ollama 生成摘要
-    const serverUrl = JSON.parse(localStorage.getItem('ollamaSettings') || '{}').serverUrl || 'http://localhost:11434'
+    const serverUrl =
+      JSON.parse(localStorage.getItem('ollamaSettings') || '{}').serverUrl ||
+      'http://localhost:11434'
     const model = localStorage.getItem('selected_model') || 'qwen2:0.5b'
-    const prompt = `请用3-5句话对以下内容进行简洁摘要，只输出摘要内容，不要有任何前缀：\n\n${summaryInput.value.substring(0, 2000)}`
+    const prompt = `请用3-5句话对以下内容进行简洁摘要，只输出摘要内容，不要有任何前缀：\n\n${summaryInput.value.substring(
+      0,
+      2000
+    )}`
     const res = await fetch(`${serverUrl}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ model, prompt, stream: false }),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(30000)
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const data = await res.json()
     summaryResult.value = data.response?.trim() || '摘要生成失败'
   } catch (e: any) {
     // 离线时用简单截断摘要
-    const sentences = summaryInput.value.replace(/\n+/g, ' ').split(/[。！？.!?]/).filter(s => s.trim().length > 5)
-    summaryResult.value = sentences.slice(0, 3).join('。') + '。' || summaryInput.value.substring(0, 100) + '...'
+    const sentences = summaryInput.value
+      .replace(/\n+/g, ' ')
+      .split(/[。！？.!?]/)
+      .filter(s => s.trim().length > 5)
+    summaryResult.value =
+      sentences.slice(0, 3).join('。') + '。' || summaryInput.value.substring(0, 100) + '...'
     MessagePlugin.info('Ollama 离线，已生成基础摘要')
   } finally {
     summaryLoading.value = false
@@ -634,18 +802,30 @@ function resetFeedback() {
 }
 
 async function submitFeedback() {
-  if (!feedback.title.trim()) { MessagePlugin.warning('请填写反馈标题'); return }
-  if (!feedback.content.trim()) { MessagePlugin.warning('请填写详细描述'); return }
+  if (!feedback.title.trim()) {
+    MessagePlugin.warning('请填写反馈标题')
+    return
+  }
+  if (!feedback.content.trim()) {
+    MessagePlugin.warning('请填写详细描述')
+    return
+  }
 
   feedbackLoading.value = true
   let submitted = false
   try {
     const jwt = localStorage.getItem('jwt') || ''
-    const resp = await axios.post('/api/feedback/submit', {
-      type: feedback.type, title: feedback.title,
-      content: feedback.content, email: feedback.email,
-      to: '13425121993@163.com'
-    }, { headers: { Authorization: `Bearer ${jwt}` }, timeout: 8000 })
+    const resp = await axios.post(
+      '/api/feedback/submit',
+      {
+        type: feedback.type,
+        title: feedback.title,
+        content: feedback.content,
+        email: feedback.email,
+        to: '13425121993@163.com'
+      },
+      { headers: { Authorization: `Bearer ${jwt}` }, timeout: 8000 }
+    )
 
     if (resp.data?.message === 'email_sent') {
       MessagePlugin.success('反馈已通过邮件发送给开发团队！')

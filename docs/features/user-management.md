@@ -197,12 +197,12 @@ def generate_token(user_id, email):
 // 前端路由守卫
 router.beforeEach(async (to, from, next) => {
   const token = localStorage.getItem('token');
-  
+
   if (!token && to.path !== '/LogonOrRegister') {
     next('/LogonOrRegister?redirect=' + to.fullPath);
     return;
   }
-  
+
   try {
     // 调用后端验证 Token
     const response = await axios.get('/api/users/me', {
@@ -385,7 +385,7 @@ A: 检查以下几点：
 
 ### Q: Token 过期了怎么办？
 
-A: 
+A:
 - 系统会自动检测到期并重定向到登录页
 - 重新登录即可获得新 Token
 - 下次登录时可勾选"记住我"（如实现）

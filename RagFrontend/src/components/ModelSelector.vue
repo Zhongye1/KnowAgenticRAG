@@ -2,11 +2,21 @@
   <!-- 多模型选择器组件 -->
   <div class="model-selector">
     <!-- 当前模型展示按钮 -->
-    <button class="model-trigger" @click="showPanel = !showPanel" :title="selectedModel?.name">
-      <span class="model-trigger__provider-dot" :class="`dot--${selectedModel?.provider || 'ollama'}`"></span>
+    <button class="model-trigger" :title="selectedModel?.name" @click="showPanel = !showPanel">
+      <span
+        class="model-trigger__provider-dot"
+        :class="`dot--${selectedModel?.provider || 'ollama'}`"
+      ></span>
       <span class="model-trigger__name">{{ selectedModel?.name || '选择模型' }}</span>
-      <svg class="model-trigger__arrow" :class="{ 'rotated': showPanel }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+      <svg
+        class="model-trigger__arrow"
+        :class="{ rotated: showPanel }"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+      >
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
       </svg>
     </button>
 
@@ -16,7 +26,7 @@
         <div class="model-panel" :style="panelStyle">
           <div class="model-panel__header">
             <span>选择模型</span>
-            <button @click="showPanel = false" class="panel-close">✕</button>
+            <button class="panel-close" @click="showPanel = false">✕</button>
           </div>
 
           <!-- 加载状态 -->
@@ -32,9 +42,18 @@
                 <span class="provider-dot dot--ollama"></span>
                 本地模型（Ollama）
               </div>
-              <div v-for="m in localModels" :key="m.id"
-                :class="['model-item', { 'model-item--active': modelValue === m.id, 'model-item--disabled': !m.available }]"
-                @click="selectModel(m)">
+              <div
+                v-for="m in localModels"
+                :key="m.id"
+                :class="[
+                  'model-item',
+                  {
+                    'model-item--active': modelValue === m.id,
+                    'model-item--disabled': !m.available
+                  }
+                ]"
+                @click="selectModel(m)"
+              >
                 <div class="model-item__info">
                   <span class="model-item__name">{{ m.name }}</span>
                   <span class="model-item__desc">{{ m.description }}</span>
@@ -48,11 +67,22 @@
               <div class="model-group__label">
                 <span class="provider-dot" :class="`dot--${provider}`"></span>
                 {{ providerNames[provider] }}
-                <span v-if="!group[0]?.available" class="provider-badge badge--unconfigured">未配置</span>
+                <span v-if="!group[0]?.available" class="provider-badge badge--unconfigured"
+                  >未配置</span
+                >
               </div>
-              <div v-for="m in group" :key="m.id"
-                :class="['model-item', { 'model-item--active': modelValue === m.id, 'model-item--unavailable': !m.available }]"
-                @click="m.available ? selectModel(m) : openKeyConfig(provider)">
+              <div
+                v-for="m in group"
+                :key="m.id"
+                :class="[
+                  'model-item',
+                  {
+                    'model-item--active': modelValue === m.id,
+                    'model-item--unavailable': !m.available
+                  }
+                ]"
+                @click="m.available ? selectModel(m) : openKeyConfig(provider)"
+              >
                 <div class="model-item__info">
                   <span class="model-item__name">{{ m.name }}</span>
                   <span class="model-item__desc">{{ m.description }}</span>
@@ -61,7 +91,13 @@
                   </span>
                 </div>
                 <span v-if="modelValue === m.id" class="model-item__check">✓</span>
-                <button v-else-if="!m.available" class="config-key-btn" @click.stop="openKeyConfig(provider)">配置</button>
+                <button
+                  v-else-if="!m.available"
+                  class="config-key-btn"
+                  @click.stop="openKeyConfig(provider)"
+                >
+                  配置
+                </button>
               </div>
             </div>
           </template>
@@ -72,8 +108,8 @@
             <div v-for="field in keyConfigFields" :key="field.key" class="key-config__field">
               <label>{{ field.label }}</label>
               <input
-                :type="field.type || 'text'"
                 v-model="keyConfigValues[field.key]"
+                :type="field.type || 'text'"
                 :placeholder="field.placeholder"
                 class="key-input"
               />
@@ -126,32 +162,33 @@ const providerNames: Record<string, string> = {
   ollama: '本地 Ollama',
   deepseek: 'DeepSeek（深度推理）',
   openai: 'OpenAI',
-  hunyuan: '腾讯混元',
+  hunyuan: '腾讯混元'
 }
 
-const keyConfigFieldsMap: Record<string, Array<{ key: string; label: string; type?: string; placeholder: string }>> = {
-  deepseek: [{ key: 'DEEPSEEK_API_KEY', label: 'API Key', type: 'password', placeholder: 'sk-...' }],
+const keyConfigFieldsMap: Record<
+  string,
+  Array<{ key: string; label: string; type?: string; placeholder: string }>
+> = {
+  deepseek: [
+    { key: 'DEEPSEEK_API_KEY', label: 'API Key', type: 'password', placeholder: 'sk-...' }
+  ],
   openai: [
     { key: 'OPENAI_API_KEY', label: 'API Key', type: 'password', placeholder: 'sk-...' },
-    { key: 'OPENAI_BASE_URL', label: '服务地址（可选）', placeholder: 'https://api.openai.com/v1' },
+    { key: 'OPENAI_BASE_URL', label: '服务地址（可选）', placeholder: 'https://api.openai.com/v1' }
   ],
   hunyuan: [
     { key: 'HUNYUAN_SECRET_ID', label: 'SecretId', placeholder: 'AKIDxxx...' },
-    { key: 'HUNYUAN_SECRET_KEY', label: 'SecretKey', type: 'password', placeholder: 'xxx...' },
-  ],
+    { key: 'HUNYUAN_SECRET_KEY', label: 'SecretKey', type: 'password', placeholder: 'xxx...' }
+  ]
 }
 
 const keyConfigFields = computed(() =>
-  keyConfigProvider.value ? (keyConfigFieldsMap[keyConfigProvider.value] || []) : []
+  keyConfigProvider.value ? keyConfigFieldsMap[keyConfigProvider.value] || [] : []
 )
 
-const selectedModel = computed(() =>
-  models.value.find(m => m.id === props.modelValue) || null
-)
+const selectedModel = computed(() => models.value.find(m => m.id === props.modelValue) || null)
 
-const localModels = computed(() =>
-  models.value.filter(m => m.provider === 'ollama')
-)
+const localModels = computed(() => models.value.filter(m => m.provider === 'ollama'))
 
 const cloudGroups = computed(() => {
   const groups: Record<string, ModelInfo[]> = {}
@@ -173,8 +210,22 @@ async function fetchModels() {
   } catch (e) {
     // 后端未连接时使用默认本地模型
     models.value = [
-      { id: 'qwen2:0.5b', name: 'Qwen2 0.5B（本地）', provider: 'ollama', description: '推荐本地模型', context_length: 8192, available: true },
-      { id: 'qwen:7b-chat', name: 'Qwen 7B Chat（本地）', provider: 'ollama', description: '高质量本地模型', context_length: 8192, available: true },
+      {
+        id: 'qwen2:0.5b',
+        name: 'Qwen2 0.5B（本地）',
+        provider: 'ollama',
+        description: '推荐本地模型',
+        context_length: 8192,
+        available: true
+      },
+      {
+        id: 'qwen:7b-chat',
+        name: 'Qwen 7B Chat（本地）',
+        provider: 'ollama',
+        description: '高质量本地模型',
+        context_length: 8192,
+        available: true
+      }
     ]
   } finally {
     loading.value = false
@@ -193,7 +244,9 @@ function openKeyConfig(provider: string) {
   // 预填 localStorage 中已有的值
   const fields = keyConfigFieldsMap[provider] || []
   const vals: Record<string, string> = {}
-  fields.forEach(f => { vals[f.key] = localStorage.getItem(f.key) || '' })
+  fields.forEach(f => {
+    vals[f.key] = localStorage.getItem(f.key) || ''
+  })
   keyConfigValues.value = vals
 }
 
@@ -236,141 +289,301 @@ onMounted(fetchModels)
 </script>
 
 <style scoped>
-.model-selector { position: relative; display: inline-flex; }
+.model-selector {
+  position: relative;
+  display: inline-flex;
+}
 
 /* 触发按钮 */
 .model-trigger {
-  display: flex; align-items: center; gap: 6px;
-  padding: 6px 10px; border-radius: 8px;
-  border: 1px solid #e5e7eb; background: #f9fafb;
-  cursor: pointer; font-size: 13px; color: #374151;
-  transition: all 0.2s; max-width: 220px; white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  cursor: pointer;
+  font-size: 13px;
+  color: #374151;
+  transition: all 0.2s;
+  max-width: 220px;
+  white-space: nowrap;
 }
-.model-trigger:hover { background: #f3f4f6; border-color: #d1d5db; }
-.model-trigger__name { flex: 1; overflow: hidden; text-overflow: ellipsis; }
-.model-trigger__arrow { width: 14px; height: 14px; transition: transform 0.2s; flex-shrink: 0; }
-.model-trigger__arrow.rotated { transform: rotate(180deg); }
+.model-trigger:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+.model-trigger__name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.model-trigger__arrow {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.model-trigger__arrow.rotated {
+  transform: rotate(180deg);
+}
 
 /* Provider 颜色点 */
-.provider-dot, .model-trigger__provider-dot {
-  width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+.provider-dot,
+.model-trigger__provider-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
-.dot--ollama { background: #22c55e; }
-.dot--deepseek { background: #3b82f6; }
-.dot--openai { background: #8b5cf6; }
-.dot--hunyuan { background: #f59e0b; }
+.dot--ollama {
+  background: #22c55e;
+}
+.dot--deepseek {
+  background: #3b82f6;
+}
+.dot--openai {
+  background: #8b5cf6;
+}
+.dot--hunyuan {
+  background: #f59e0b;
+}
 
 /* 覆盖层 */
 .model-panel-overlay {
-  position: fixed; inset: 0; z-index: 9999;
-  background: rgba(0,0,0,0.15);
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.15);
 }
 
 /* 面板 */
 .model-panel {
-  position: fixed; width: 380px; max-height: 80vh; overflow-y: auto;
-  background: white; border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+  position: fixed;
+  width: 380px;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
   padding: 0;
   scrollbar-width: thin;
 }
 
 .model-panel__header {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 16px 10px; border-bottom: 1px solid #f0f0f0;
-  font-weight: 600; font-size: 14px; color: #111827;
-  position: sticky; top: 0; background: white; z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid #f0f0f0;
+  font-weight: 600;
+  font-size: 14px;
+  color: #111827;
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 1;
 }
 .panel-close {
-  background: none; border: none; cursor: pointer;
-  font-size: 14px; color: #9ca3af; padding: 2px 6px; border-radius: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  color: #9ca3af;
+  padding: 2px 6px;
+  border-radius: 4px;
 }
-.panel-close:hover { background: #f3f4f6; color: #374151; }
+.panel-close:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
 
 /* 加载 */
 .model-panel__loading {
-  display: flex; align-items: center; gap: 8px;
-  padding: 20px 16px; color: #6b7280; font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 16px;
+  color: #6b7280;
+  font-size: 13px;
 }
 .spinner {
-  width: 16px; height: 16px; border: 2px solid #e5e7eb;
-  border-top-color: #4f7ef8; border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #4f7ef8;
+  border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 /* 模型分组 */
-.model-group { padding: 8px 12px 4px; }
-.model-group + .model-group { border-top: 1px solid #f5f5f5; }
+.model-group {
+  padding: 8px 12px 4px;
+}
+.model-group + .model-group {
+  border-top: 1px solid #f5f5f5;
+}
 .model-group__label {
-  display: flex; align-items: center; gap: 6px;
-  font-size: 11px; font-weight: 600; color: #9ca3af;
-  text-transform: uppercase; letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   padding: 4px 4px 6px;
 }
 
 /* 模型条目 */
 .model-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 8px 8px; border-radius: 8px; cursor: pointer;
-  transition: background 0.15s; margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s;
+  margin-bottom: 2px;
 }
-.model-item:hover { background: #f9fafb; }
-.model-item--active { background: #eff6ff; }
-.model-item--disabled, .model-item--unavailable { opacity: 0.6; }
-.model-item--unavailable { cursor: pointer; }
+.model-item:hover {
+  background: #f9fafb;
+}
+.model-item--active {
+  background: #eff6ff;
+}
+.model-item--disabled,
+.model-item--unavailable {
+  opacity: 0.6;
+}
+.model-item--unavailable {
+  cursor: pointer;
+}
 
-.model-item__info { flex: 1; min-width: 0; }
-.model-item__name { display: block; font-size: 13px; font-weight: 500; color: #111827; }
-.model-item__desc { display: block; font-size: 11px; color: #9ca3af; margin-top: 1px; }
-.model-item__key-hint { display: block; font-size: 11px; color: #f59e0b; margin-top: 2px; }
-.model-item__check { color: #4f7ef8; font-weight: 700; font-size: 14px; }
+.model-item__info {
+  flex: 1;
+  min-width: 0;
+}
+.model-item__name {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: #111827;
+}
+.model-item__desc {
+  display: block;
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 1px;
+}
+.model-item__key-hint {
+  display: block;
+  font-size: 11px;
+  color: #f59e0b;
+  margin-top: 2px;
+}
+.model-item__check {
+  color: #4f7ef8;
+  font-weight: 700;
+  font-size: 14px;
+}
 
 /* 配置按钮 */
 .config-key-btn {
-  padding: 3px 8px; border-radius: 5px;
-  background: #eff6ff; color: #4f7ef8;
-  border: 1px solid #bfdbfe; font-size: 11px; cursor: pointer;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: #eff6ff;
+  color: #4f7ef8;
+  border: 1px solid #bfdbfe;
+  font-size: 11px;
+  cursor: pointer;
 }
-.config-key-btn:hover { background: #dbeafe; }
+.config-key-btn:hover {
+  background: #dbeafe;
+}
 
 /* Provider badge */
 .provider-badge {
-  font-size: 10px; padding: 1px 5px; border-radius: 4px;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
 }
-.badge--unconfigured { background: #fef3c7; color: #92400e; }
+.badge--unconfigured {
+  background: #fef3c7;
+  color: #92400e;
+}
 
 /* Key 配置区 */
 .key-config-section {
-  margin: 8px 12px 12px; padding: 12px;
-  background: #f9fafb; border-radius: 8px;
+  margin: 8px 12px 12px;
+  padding: 12px;
+  background: #f9fafb;
+  border-radius: 8px;
   border: 1px solid #e5e7eb;
 }
 .key-config__title {
-  font-size: 13px; font-weight: 600; color: #111827; margin-bottom: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 10px;
 }
-.key-config__field { margin-bottom: 8px; }
+.key-config__field {
+  margin-bottom: 8px;
+}
 .key-config__field label {
-  display: block; font-size: 12px; color: #6b7280; margin-bottom: 4px;
+  display: block;
+  font-size: 12px;
+  color: #6b7280;
+  margin-bottom: 4px;
 }
 .key-input {
-  width: 100%; padding: 6px 10px; border: 1px solid #d1d5db;
-  border-radius: 6px; font-size: 13px; outline: none;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
 }
-.key-input:focus { border-color: #4f7ef8; box-shadow: 0 0 0 2px rgba(79,126,248,0.15); }
+.key-input:focus {
+  border-color: #4f7ef8;
+  box-shadow: 0 0 0 2px rgba(79, 126, 248, 0.15);
+}
 .key-config__actions {
-  display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 10px;
 }
 .btn-cancel-sm {
-  padding: 5px 12px; border-radius: 6px; border: 1px solid #d1d5db;
-  background: white; font-size: 12px; cursor: pointer; color: #374151;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  background: white;
+  font-size: 12px;
+  cursor: pointer;
+  color: #374151;
 }
 .btn-save-key {
-  padding: 5px 12px; border-radius: 6px; border: none;
-  background: #4f7ef8; color: white; font-size: 12px; cursor: pointer;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: none;
+  background: #4f7ef8;
+  color: white;
+  font-size: 12px;
+  cursor: pointer;
 }
-.btn-save-key:hover { background: #3b6fd4; }
+.btn-save-key:hover {
+  background: #3b6fd4;
+}
 .key-config__hint {
-  font-size: 11px; color: #9ca3af; margin-top: 6px;
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 6px;
 }
 </style>

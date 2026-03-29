@@ -19,24 +19,26 @@ from __future__ import annotations
 import logging
 import time
 from collections import defaultdict, deque
-from typing import Dict, List
+from typing import Dict
 
 from fastapi import APIRouter, Request, Response
-from fastapi.routing import APIRoute
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/metrics", tags=["系统监控"])
 
+
 # - prometheus_client-
 class _Stats:
     def __init__(self):
-        self.request_count: Dict[str, int] = defaultdict(int)       # endpoint → count
-        self.error_count:   Dict[str, int] = defaultdict(int)       # endpoint → errors
-        self.latencies:     Dict[str, deque] = defaultdict(lambda: deque(maxlen=200))  # endpoint → [ms...]
-        self.model_calls:   Dict[str, int] = defaultdict(int)       # model_name → count
-        self.kb_uploads:    int = 0
-        self.start_time:    float = time.time()
+        self.request_count: Dict[str, int] = defaultdict(int)  # endpoint → count
+        self.error_count: Dict[str, int] = defaultdict(int)  # endpoint → errors
+        self.latencies: Dict[str, deque] = defaultdict(
+            lambda: deque(maxlen=200)
+        )  # endpoint → [ms...]
+        self.model_calls: Dict[str, int] = defaultdict(int)  # model_name → count
+        self.kb_uploads: int = 0
+        self.start_time: float = time.time()
 
     def record_request(self, path: str, method: str, status: int, latency_ms: float):
         key = f"{method} {path}"
@@ -72,7 +74,6 @@ STATS = _Stats()
 # - FastAPI Middleware -
 def instrument_app(app):
     """给 FastAPI 应用注入请求监控中间件"""
-    from fastapi import FastAPI
     from starlette.middleware.base import BaseHTTPMiddleware
 
     class MetricsMiddleware(BaseHTTPMiddleware):
@@ -90,7 +91,7 @@ def instrument_app(app):
                 if "/upload" in request.url.path and request.method == "POST":
                     STATS.record_kb_upload()
                 return response
-            except Exception as e:
+            except Exception:
                 latency_ms = (time.perf_counter() - start) * 1000
                 STATS.record_request(request.url.path, request.method, 500, latency_ms)
                 raise
@@ -118,7 +119,9 @@ def _prometheus_text() -> str:
     for key in STATS.request_count:
         method, path = key.split(" ", 1)
         avg = STATS.avg_latency(key)
-        lines.append(f'ragf_request_latency_avg_ms{{method="{method}",path="{path}"}} {avg}')
+        lines.append(
+            f'ragf_request_latency_avg_ms{{method="{method}",path="{path}"}} {avg}'
+        )
 
     lines.append("# HELP ragf_model_calls_total ")
     lines.append("# TYPE ragf_model_calls_total counter")
@@ -167,32 +170,34 @@ async def get_echarts_data():
     return {
         "request_bar": {
             "endpoints": [k for k, _ in top_eps],
-            "counts":    [v for _, v in top_eps],
-            "errors":    [STATS.error_count.get(k, 0) for k, _ in top_eps],
+            "counts": [v for _, v in top_eps],
+            "errors": [STATS.error_count.get(k, 0) for k, _ in top_eps],
         },
         # Response timeavg + p99
         "latency_bar": {
             "endpoints": [k for k, _ in top_eps],
-            "avg_ms":    [STATS.avg_latency(k) for k, _ in top_eps],
-            "p99_ms":    [STATS.p99_latency(k) for k, _ in top_eps],
+            "avg_ms": [STATS.avg_latency(k) for k, _ in top_eps],
+            "p99_ms": [STATS.p99_latency(k) for k, _ in top_eps],
         },
         "model_pie": [
             {"name": model, "value": count}
             for model, count in STATS.model_calls.items()
         ],
         "overview": {
-            "uptime_h":     round(STATS.uptime_seconds() / 3600, 2),
-            "total_reqs":   sum(STATS.request_count.values()),
+            "uptime_h": round(STATS.uptime_seconds() / 3600, 2),
+            "total_reqs": sum(STATS.request_count.values()),
             "total_errors": sum(STATS.error_count.values()),
-            "kb_uploads":   STATS.kb_uploads,
-            "models_used":  len(STATS.model_calls),
+            "kb_uploads": STATS.kb_uploads,
+            "models_used": len(STATS.model_calls),
         },
     }
 
 
 # Prometheus scrape /metrics prefix
 from fastapi import APIRouter as _AR
+
 prometheus_router = _AR()
+
 
 @prometheus_router.get("/metrics")
 async def prometheus_metrics():
@@ -200,6 +205,9 @@ async def prometheus_metrics():
     try:
         # prometheus_client
         from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+
         return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
     except ImportError:
-        return Response(content=_prometheus_text(), media_type="text/plain; version=0.0.4")
+        return Response(
+            content=_prometheus_text(), media_type="text/plain; version=0.0.4"
+        )

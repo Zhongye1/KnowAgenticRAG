@@ -1,6 +1,6 @@
 <template>
   <div :class="{ 'animate-fade-in': !isAnimationDisabled }">
-    <div class="doc-container max-w-7xl mx-auto  px-6 py-8 ">
+    <div class="doc-container max-w-7xl mx-auto px-6 py-8">
       <div class="bg-white shadow-sm rounded-lg p-12 max-h-[85vh] overflow-auto">
         <!-- 标题区域 -->
         <h1 class="text-3xl font-bold text-gray-800 mb-6">RAGF-01 项目文档</h1>
@@ -13,41 +13,41 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
-import hljs from 'highlight.js';
-import 'highlight.js/styles/github.css';
+import { ref, onMounted } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
+import hljs from 'highlight.js'
+import 'highlight.js/styles/github.css'
 
 const isAnimationDisabled = ref(false) // 设置为 true 来禁用动画
 // 配置 marked
 marked.setOptions({
   highlight: (code, lang) => {
     if (lang && hljs.getLanguage(lang)) {
-      return hljs.highlight(code, { language: lang }).value;
+      return hljs.highlight(code, { language: lang }).value
     }
-    return hljs.highlightAuto(code).value;
+    return hljs.highlightAuto(code).value
   },
   breaks: true
-});
+})
 
-const documentContent = ref('');
-const renderedContent = ref('');
+const documentContent = ref('')
+const renderedContent = ref('')
 
 onMounted(async () => {
   try {
     // 加载 Markdown 文件内容
-    const response = await fetch('src/assets/README.md');
-    documentContent.value = await response.text();
+    const response = await fetch('src/assets/README.md')
+    documentContent.value = await response.text()
 
     // 渲染 Markdown 并净化 HTML
-    renderedContent.value = DOMPurify.sanitize(marked(documentContent.value));
+    renderedContent.value = DOMPurify.sanitize(marked(documentContent.value))
   } catch (error) {
-    console.error('加载文档失败:', error);
-    documentContent.value = '# 文档加载失败\n请稍后重试或联系管理员。';
-    renderedContent.value = DOMPurify.sanitize(marked(documentContent.value));
+    console.error('加载文档失败:', error)
+    documentContent.value = '# 文档加载失败\n请稍后重试或联系管理员。'
+    renderedContent.value = DOMPurify.sanitize(marked(documentContent.value))
   }
-});
+})
 </script>
 
 <style>
@@ -98,7 +98,7 @@ onMounted(async () => {
   padding: 0.2em 0.4em;
   background-color: rgba(27, 31, 35, 0.05);
   border-radius: 3px;
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
 }
 
 .markdown-body pre {
@@ -162,7 +162,7 @@ onMounted(async () => {
   margin-bottom: 0.25em;
 }
 
-.markdown-body li+li {
+.markdown-body li + li {
   margin-top: 0.25em;
 }
 

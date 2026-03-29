@@ -8,7 +8,7 @@ import { MessagePlugin } from 'tdesign-vue-next'
 const request = axios.create({
   baseURL: '/',
   timeout: 60000,
-  headers: { 'Content-Type': 'application/json' },
+  headers: { 'Content-Type': 'application/json' }
 })
 
 // 请求拦截：自动附加 JWT
@@ -29,7 +29,9 @@ request.interceptors.response.use(
     if (status === 401) {
       localStorage.removeItem('jwt')
       MessagePlugin.error('登录已过期，请重新登录')
-      setTimeout(() => { window.location.href = '/LogonOrRegister' }, 1500)
+      setTimeout(() => {
+        window.location.href = '/LogonOrRegister'
+      }, 1500)
       return Promise.reject(error)
     }
 
@@ -38,7 +40,7 @@ request.interceptors.response.use(
     config._retryCount = config._retryCount || 0
     if ((status === 503 || status === 500) && config._retryCount < RETRY_LIMIT) {
       config._retryCount++
-      const delay = config._retryCount * 1000  // 1s, 2s
+      const delay = config._retryCount * 1000 // 1s, 2s
       await new Promise(res => setTimeout(res, delay))
       return request(config)
     }
@@ -50,7 +52,8 @@ request.interceptors.response.use(
     }
 
     // 其他错误 → 显示服务端消息
-    const detail = (error.response?.data as Record<string, string>)?.detail || error.message || '请求失败'
+    const detail =
+      (error.response?.data as Record<string, string>)?.detail || error.message || '请求失败'
     if (status !== 404) {
       // 404 由业务层自行处理，不弹 toast
       MessagePlugin.error({ content: `错误 ${status}：${detail}`, duration: 4000 })
@@ -70,9 +73,9 @@ export async function uploadFileWithProgress(
   url: string,
   file: File,
   extraData: Record<string, string> = {},
-  onProgress?: (progress: UploadProgress) => void,
+  onProgress?: (progress: UploadProgress) => void
 ): Promise<AxiosResponse> {
-  const CHUNK_SIZE = 5 * 1024 * 1024  // 5MB 分片
+  const CHUNK_SIZE = 5 * 1024 * 1024 // 5MB 分片
 
   if (file.size <= CHUNK_SIZE) {
     // 小文件直接上传
@@ -81,11 +84,15 @@ export async function uploadFileWithProgress(
     Object.entries(extraData).forEach(([k, v]) => formData.append(k, v))
     return request.post(url, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (e) => {
+      onUploadProgress: e => {
         if (onProgress && e.total) {
-          onProgress({ loaded: e.loaded, total: e.total, percent: Math.round(e.loaded / e.total * 100) })
+          onProgress({
+            loaded: e.loaded,
+            total: e.total,
+            percent: Math.round((e.loaded / e.total) * 100)
+          })
         }
-      },
+      }
     })
   }
 
@@ -111,18 +118,18 @@ export async function uploadFileWithProgress(
     while (attempt < 3) {
       try {
         const res = await request.post(url, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' },
+          headers: { 'Content-Type': 'multipart/form-data' }
         })
         uploadedBytes += chunk.size
         if (onProgress) {
           onProgress({
             loaded: uploadedBytes,
             total: file.size,
-            percent: Math.round(uploadedBytes / file.size * 100),
+            percent: Math.round((uploadedBytes / file.size) * 100)
           })
         }
         if (i === totalChunks - 1) return res
-        break  // 成功，跳出重试循环
+        break // 成功，跳出重试循环
       } catch (e) {
         attempt++
         if (attempt >= 3) throw e
@@ -139,7 +146,9 @@ export const globalLoading = ref(false)
 
 export function withLoading<T>(fn: () => Promise<T>): Promise<T> {
   globalLoading.value = true
-  return fn().finally(() => { globalLoading.value = false })
+  return fn().finally(() => {
+    globalLoading.value = false
+  })
 }
 
 export default request

@@ -1,8 +1,7 @@
 """
 钉钉 / 企业微信 / WPS 深度集成模块
 """
-import os
-import json
+
 import hashlib
 import time
 import hmac
@@ -21,7 +20,7 @@ class DingTalkMessage(BaseModel):
     webhook_url: str
     secret: Optional[str] = None
     content: str
-    msg_type: str = "text"   # text | markdown | actionCard
+    msg_type: str = "text"  # text | markdown | actionCard
     title: Optional[str] = None
     at_all: bool = False
     at_mobiles: Optional[List[str]] = []
@@ -31,7 +30,9 @@ def _dingtalk_sign(secret: str) -> tuple:
     timestamp = str(round(time.time() * 1000))
     sign_raw = f"{timestamp}\n{secret}"
     sign = base64.b64encode(
-        hmac.new(secret.encode("utf-8"), sign_raw.encode("utf-8"), digestmod=hashlib.sha256).digest()
+        hmac.new(
+            secret.encode("utf-8"), sign_raw.encode("utf-8"), digestmod=hashlib.sha256
+        ).digest()
     ).decode("utf-8")
     return timestamp, sign
 
@@ -46,13 +47,13 @@ async def send_dingtalk(req: DingTalkMessage) -> Dict:
         body = {
             "msgtype": "text",
             "text": {"content": req.content},
-            "at": {"atMobiles": req.at_mobiles or [], "isAtAll": req.at_all}
+            "at": {"atMobiles": req.at_mobiles or [], "isAtAll": req.at_all},
         }
     elif req.msg_type == "markdown":
         body = {
             "msgtype": "markdown",
             "markdown": {"title": req.title or "通知", "text": req.content},
-            "at": {"atMobiles": req.at_mobiles or [], "isAtAll": req.at_all}
+            "at": {"atMobiles": req.at_mobiles or [], "isAtAll": req.at_all},
         }
     else:
         body = {"msgtype": "text", "text": {"content": req.content}}
@@ -78,7 +79,7 @@ async def dingtalk_test(data: dict):
         secret=data.get("secret"),
         content="🤖 RAG-F 钉钉集成测试消息 - 连接成功！",
         msg_type="markdown",
-        title="RAG-F 测试"
+        title="RAG-F 测试",
     )
     return await dingtalk_send(req)
 
@@ -88,7 +89,7 @@ async def dingtalk_test(data: dict):
 class WeComMessage(BaseModel):
     webhook_url: str
     content: str
-    msg_type: str = "text"   # text | markdown | news
+    msg_type: str = "text"  # text | markdown | news
     title: Optional[str] = None
     description: Optional[str] = None
     url: Optional[str] = None
@@ -99,19 +100,26 @@ async def send_wecom(req: WeComMessage) -> Dict:
     if req.msg_type == "text":
         body = {
             "msgtype": "text",
-            "text": {"content": req.content, "mentioned_list": req.mentioned_list or []}
+            "text": {
+                "content": req.content,
+                "mentioned_list": req.mentioned_list or [],
+            },
         }
     elif req.msg_type == "markdown":
         body = {"msgtype": "markdown", "markdown": {"content": req.content}}
     elif req.msg_type == "news":
         body = {
             "msgtype": "news",
-            "news": {"articles": [{
-                "title": req.title or "通知",
-                "description": req.description or req.content[:100],
-                "url": req.url or "",
-                "picurl": ""
-            }]}
+            "news": {
+                "articles": [
+                    {
+                        "title": req.title or "通知",
+                        "description": req.description or req.content[:100],
+                        "url": req.url or "",
+                        "picurl": "",
+                    }
+                ]
+            },
         }
     else:
         body = {"msgtype": "text", "text": {"content": req.content}}
@@ -135,7 +143,7 @@ async def wecom_test(data: dict):
     req = WeComMessage(
         webhook_url=data.get("webhook_url", ""),
         content="## RAG-F \n> ",
-        msg_type="markdown"
+        msg_type="markdown",
     )
     return await wecom_send(req)
 
@@ -155,6 +163,7 @@ async def wps_callback(request: Request):
 
         if content and kb_id:
             import asyncio
+
             asyncio.create_task(_vectorize_wps_doc(doc_id, content, kb_id, filename))
             return {"status": "received", "doc_id": doc_id}
         return {"status": "ignored", "reason": "missing content or kb_id"}
@@ -166,7 +175,10 @@ async def _vectorize_wps_doc(doc_id: str, content: str, kb_id: str, filename: st
     """后台向量化 WPS 文档内容"""
     try:
         from document_processing.incremental_vectorizer import vectorize_text
-        await vectorize_text(doc_id=doc_id, content=content, kb_id=kb_id, filename=filename)
+
+        await vectorize_text(
+            doc_id=doc_id, content=content, kb_id=kb_id, filename=filename
+        )
     except Exception as e:
         print(f"[WPS] 向量化失败: {e}")
 
@@ -188,7 +200,9 @@ async def generic_webhook_push(req: WebhookPush):
             if req.method.upper() == "POST":
                 resp = await client.post(req.url, json=req.payload, headers=req.headers)
             else:
-                resp = await client.get(req.url, params=req.payload, headers=req.headers)
+                resp = await client.get(
+                    req.url, params=req.payload, headers=req.headers
+                )
             return {"status": resp.status_code, "body": resp.text[:500]}
     except Exception as e:
         raise HTTPException(500, str(e))
@@ -238,4 +252,3 @@ async def test_notion(data: dict):
 async def test_github(data: dict):
     """GitHub 测试连接（占位）"""
     return {"status": "ok", "message": "GitHub 配置已保存，集成功能待实现"}
-

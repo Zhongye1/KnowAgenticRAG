@@ -2,7 +2,7 @@
 // 避免硬编码 URL，便于统一管理和修改
 
 // 基础 URL 后端服务的api
-const BASE_URL = 'http://localhost:8000';
+const BASE_URL = 'http://localhost:8000'
 
 // API 端点配置
 export const API_ENDPOINTS = {
@@ -17,8 +17,10 @@ export const API_ENDPOINTS = {
   // 文件管理相关
   FILES: {
     ALL_DOCUMENTS: `${BASE_URL}/api/files/api/all-documents/`,
-    DOCUMENT_PREVIEW: (filePath: string) => `${BASE_URL}/api/files/api/document/preview/?file_path=${encodeURIComponent(filePath)}`,
-    DELETE_DOCUMENT: (filePath: string) => `${BASE_URL}/api/files/api/document/?file_path=${encodeURIComponent(filePath)}`
+    DOCUMENT_PREVIEW: (filePath: string) =>
+      `${BASE_URL}/api/files/api/document/preview/?file_path=${encodeURIComponent(filePath)}`,
+    DELETE_DOCUMENT: (filePath: string) =>
+      `${BASE_URL}/api/files/api/document/?file_path=${encodeURIComponent(filePath)}`
   },
 
   // 知识库相关
@@ -30,7 +32,7 @@ export const API_ENDPOINTS = {
     QUERY: `${BASE_URL}/api/RAG/RAG_query`,
     // 原生 RAG（不依赖 LangChain）
     NATIVE_INGEST: `${BASE_URL}/api/RAG/native_ingest`,
-    NATIVE_QUERY: `${BASE_URL}/api/RAG/native_query`,
+    NATIVE_QUERY: `${BASE_URL}/api/RAG/native_query`
   },
 
   // 知识图谱相关
@@ -43,7 +45,7 @@ export const API_ENDPOINTS = {
       `${BASE_URL}/api/kg/search-nodes/${kbId}?keyword=${encodeURIComponent(keyword)}`,
     GRAPH_STATS: (kbId: string) => `${BASE_URL}/api/kg/graph-stats/${kbId}`,
     GET_KB_FILE_GRAPH: (kbId: string, filename: string) =>
-      `${BASE_URL}/api/kg/get-kb-graph-data/${kbId}/${encodeURIComponent(filename)}`,
+      `${BASE_URL}/api/kg/get-kb-graph-data/${kbId}/${encodeURIComponent(filename)}`
   },
 
   // Ollama 模型相关
@@ -64,11 +66,7 @@ export const API_ENDPOINTS = {
     SAVE_SESSION: `${BASE_URL}/api/chat/save-session`,
     DELETE_SESSION: `${BASE_URL}/api/chat/delete-session`,
     DOWNLOAD_CHAT: `${BASE_URL}/api/chat/download-chat-json`
+  }
+}
 
-  },
-
-};
-
-export default API_ENDPOINTS;
-
-
+export default API_ENDPOINTS

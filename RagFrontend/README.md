@@ -18,7 +18,7 @@
 
 ### Contributors 📋
 
-*Thanks goes to these wonderful people:*
+_Thanks goes to these wonderful people:_
 
 <table border="1" cellpadding="10" cellspacing="0" width="100%" align="center">
     <tr>
@@ -80,9 +80,6 @@
     </tr>
 </table>
 
-
-
-
 # RAGF-01 项目开发文档
 
 本文档描述了 RAGF-01 项目的架构、页面和功能实现。
@@ -122,8 +119,6 @@ npm run build
 
 ---
 
-
-
 ## 项目结构
 
 ```
@@ -141,8 +136,6 @@ ASF-RAG/
 ├── tsconfig.node.json    # Node.js TypeScript 配置
 └── vite.config.ts       # Vite 构建工具配置
 ```
-
-
 
 ## src目录结构
 
@@ -183,10 +176,6 @@ src/
 └── vite-env.d.ts       # Vite 环境类型声明
 
 ```
-
-
-
-
 
 ## 目前页面及功能 src/views
 
@@ -237,8 +226,6 @@ src/
        - 知识库名称，封面和描述等各种信息的编辑
        - 删除知识库的功能
        - 保存设置的功能
-
-  
 
   ![img](https://picx.zhimg.com/80/v2-62e0c8025ff9d60e506fae3c59db615f_720w.png?source=d16d100b)
 
@@ -297,8 +284,6 @@ src/
 
 ![img](https://pica.zhimg.com/80/v2-886faf9509f6db51b747f7accef5a8aa_720w.webp)
 
-
-
 ### 模型服务管理页面(OllamaMangement.vue)施工中 📋
 
 提供全局搜索功能，允许用户搜索整个知识库集合。
@@ -310,8 +295,6 @@ src/
 ### 智能代理页面 (Agent.vue) 施工中 📋
 
 提供智能代理功能，可能用于自动执行特定任务。
-
-
 
 ## # 后续开发
 

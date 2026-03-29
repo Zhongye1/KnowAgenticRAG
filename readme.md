@@ -1,6 +1,6 @@
 <div align="center">
 
-# RAG-F · 智能知识管理平台
+# RAG-F · 智能知识管理平台 
 
 **基于检索增强生成（RAG）的私有知识库问答系统**
 
@@ -153,7 +153,7 @@
 
 ### 方式一：Docker Compose（推荐生产/演示）
 
-```
+```bash
 # 克隆仓库
 git clone https://github.com/March030303/KnowledgeRAG-GZHU.git
 cd KnowledgeRAG-GZHU
@@ -175,7 +175,7 @@ docker compose up -d
 
 ### 方式二：一键开发脚本（推荐本地开发）
 
-``powershell
+```powershell
 
 # 启动所有服务（MySQL 用 Docker 托管，后端 + 前端本地运行）
 
@@ -192,9 +192,7 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 -Stop
 # 访问
 
 # 前端（Vite）：http://localhost:5173
-
 # 后端 API： http://localhost:8000
-
 # API 文档： http://localhost:8000/docs
 
 ```
@@ -205,20 +203,23 @@ powershell -ExecutionPolicy Bypass -File .\dev.ps1 -Stop
 
 ### 方式三：手动启动
 
-```
-
 # 1. 启动 MySQL（Docker）
 
+```
 docker run -d --name ragf-mysql -e MYSQL_ROOT_PASSWORD=yourpw -p 3306:3306 mysql:9.6
+```
 
 # 2. 后端
 
+```
 cd RagBackend
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
 
 # 3. 前端
 
+```
 cd RagFrontend
 npm install
 npm run dev # → http://localhost:5173
@@ -721,13 +722,13 @@ POST /api/openapi/keys/create -- 创建 API Key
 GET /api/openapi/keys/list -- 查看所有 Key
 DELETE /api/openapi/keys/{id} -- 撤销 Key
 
-````
+```
 
 ```bash
 curl -H "X-API-Key: ragf_xxxx" \
      -X POST http://localhost:8000/api/chat/send \
      -d '{"question": "你好", "kb_id": "xxx"}'
-````
+```
 
 ---
 
@@ -802,7 +803,7 @@ GET /api/metrics/summary      -- ECharts 用 JSON 摘要数据
 
 ## 8. 移动端 App
 
-**位置：** `KnowledgeRAG-GZHU/RagMobile/`  
+**位置：** `KnowledgeRAG-GZHU/RagMobile/`
 **技术栈：** React Native + Expo SDK 53 + TypeScript + zustand
 
 | 屏幕                  | 功能                          |
@@ -1039,22 +1040,22 @@ OSS_BUCKET=your-bucket
 
 ## 12. 常见问题 FAQ
 
-**Q: Ollama 内存不足 / 500 错误？**  
+**Q: Ollama 内存不足 / 500 错误？**
 A: 切换小模型：`ollama pull qwen2:0.5b`，并在 `.env` 中设置 `MODEL=qwen2:0.5b`。
 
-**Q: 后端启动报 SyntaxError？**  
+**Q: 后端启动报 SyntaxError？**
 A: 检查 Python 文件中是否有中文弯引号（`""`）混入代码字符串，替换为英文引号。
 
-**Q: 访问 localhost:8000 显示 502？**  
+**Q: 访问 localhost:8000 显示 502？**
 A: 可能是 VPN/代理拦截 localhost，在代理设置中排除 `localhost;127.0.0.1`。
 
-**Q: 端口 8000 被占用？**  
+**Q: 端口 8000 被占用？**
 A: `taskkill /F /IM python.exe` 或 `Get-Process -Id (Get-NetTCPConnection -LocalPort 8000).OwningProcess | Stop-Process`
 
-**Q: dev.ps1 乱码 / 报错？**  
+**Q: dev.ps1 乱码 / 报错？**
 A: 脚本必须用纯 ASCII 编码保存（不含中文注释）。
 
-**Q: 如何打包移动端 APK？**  
+**Q: 如何打包移动端 APK？**
 A: 参考 [第8节](#8-移动端-app)，需要 EAS 账号（免费注册 expo.dev），首次打包约 10-15 分钟。
 
 ---

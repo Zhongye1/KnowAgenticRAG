@@ -10,7 +10,6 @@ RAG_app.py  — RAG 服务路由 v2
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from functools import lru_cache
 import os
 import json
 import asyncio
@@ -34,6 +33,7 @@ load_dotenv()
 
 router = APIRouter()
 
+
 def _resolve_rag_model(raw_model: Optional[str]) -> tuple:
     """
     解析 RAG 查询中的模型字段，返回 (model_id, provider, is_cloud)。
@@ -50,6 +50,7 @@ def _resolve_rag_model(raw_model: Optional[str]) -> tuple:
             if _rag_backend not in sys.path:
                 sys.path.insert(0, _rag_backend)
             from models.user_model_config import get_effective_config
+
             cfg = get_effective_config()
             raw_model = cfg.llm_model or os.getenv("MODEL", "qwen2:0.5b")
         except Exception:
@@ -68,6 +69,7 @@ def _resolve_rag_model(raw_model: Optional[str]) -> tuple:
         if _backend_root not in sys.path:
             sys.path.insert(0, _backend_root)
         from multi_model.model_router import _MODEL_CATALOG
+
         for m in _MODEL_CATALOG:
             if m["id"] == raw_model:
                 provider = m.get("provider", "ollama")
@@ -85,6 +87,7 @@ def _resolve_rag_model(raw_model: Optional[str]) -> tuple:
 # docs_dir key manager
 # ────────────────────────────────────────────────────────────
 _vsm_cache: dict = {}
+
 
 def _get_or_create_vsm(docs_dir: str) -> "VectorStoreManager":
     """
@@ -112,6 +115,7 @@ class IngestRequest(BaseModel):
 # Vector store + Document listHybrid retrieval
 # ────────────────────────────────────────────────────────────
 
+
 def _load_vectorstore_and_docs(docs_dir: str):
     """
     加载向量存储，同时返回文档列表（供 BM25 使用）。
@@ -123,14 +127,18 @@ def _load_vectorstore_and_docs(docs_dir: str):
     if not os.path.exists(vectorstore_path):
         raise FileNotFoundError(f"向量存储路径不存在: {vectorstore_path}")
 
-    vectorstore = vector_store_manager.load_vectorstore(vectorstore_path, trust_source=True)
+    vectorstore = vector_store_manager.load_vectorstore(
+        vectorstore_path, trust_source=True
+    )
 
     # FAISS docstore Document list BM25
     documents = []
     try:
-        if hasattr(vectorstore, 'docstore') and hasattr(vectorstore.docstore, '_dict'):
+        if hasattr(vectorstore, "docstore") and hasattr(vectorstore.docstore, "_dict"):
             documents = list(vectorstore.docstore._dict.values())
-            print(f"[RAG_app] 从 docstore 提取到 {len(documents)} 个文档块，启用混合检索")
+            print(
+                f"[RAG_app] 从 docstore 提取到 {len(documents)} 个文档块，启用混合检索"
+            )
     except Exception as e:
         print(f"[RAG_app] 提取 docstore 失败（{e}），混合检索降级为纯向量检索")
 
@@ -141,6 +149,7 @@ def _load_vectorstore_and_docs(docs_dir: str):
 # stdout ingest
 # ────────────────────────────────────────────────────────────
 
+
 @contextlib.contextmanager
 def capture_stdout():
     stdout_buffer = io.StringIO()
@@ -150,6 +159,7 @@ def capture_stdout():
         def write(self, text):
             original_stdout.write(text)
             stdout_buffer.write(text)
+
         def flush(self):
             original_stdout.flush()
             stdout_buffer.flush()
@@ -164,6 +174,7 @@ def capture_stdout():
 # ────────────────────────────────────────────────────────────
 # POST /RAG_query - Hybrid retrieval
 # ────────────────────────────────────────────────────────────
+
 
 @router.post("/RAG_query")
 async def process_query(query_body: QueryRequest):
@@ -182,7 +193,9 @@ async def process_query(query_body: QueryRequest):
                 docs_dir = query_body.docs_dir
             else:
                 vectorstore_path = os.getenv("VECTORSTORE_PATH", "")
-                docs_dir = str(Path(vectorstore_path).parent) if vectorstore_path else ""
+                docs_dir = (
+                    str(Path(vectorstore_path).parent) if vectorstore_path else ""
+                )
 
             if not docs_dir or not os.path.exists(docs_dir):
                 yield "data: ERROR: 文档目录未指定或不存在\n\n"
@@ -206,6 +219,7 @@ async def process_query(query_body: QueryRequest):
             # - Cloud model -
             if is_cloud:
                 from src.rag.hybrid_retriever import HybridRetriever
+
                 if use_hybrid and documents:
                     retriever = HybridRetriever(
                         documents=documents,
@@ -216,7 +230,9 @@ async def process_query(query_body: QueryRequest):
                     )
                     results = retriever.retrieve_with_scores(query_body.query)
                 else:
-                    raw = vectorstore.similarity_search_with_score(query_body.query, k=3)
+                    raw = vectorstore.similarity_search_with_score(
+                        query_body.query, k=3
+                    )
                     results = [
                         {
                             "document": d,
@@ -246,7 +262,9 @@ async def process_query(query_body: QueryRequest):
                         fname = src.get("file_name", "未知来源")
                         page = src.get("page")
                         header = f"【来源：{fname}{(' 第' + str(page) + '页') if page is not None else ''}】"
-                        context_parts.append(f"{header}\n{item['document'].page_content.strip()}")
+                        context_parts.append(
+                            f"{header}\n{item['document'].page_content.strip()}"
+                        )
                     context = "\n\n---\n\n".join(context_parts)
                 else:
                     yield "data: 未找到相关文档，将直接使用模型知识回答\n\n"
@@ -255,22 +273,30 @@ async def process_query(query_body: QueryRequest):
                 prompt_content = (
                     f"请基于以下参考文档回答用户问题。若文档内容不足，可补充通用知识并注明。\n\n"
                     f"参考文档：\n{context}\n\n用户问题：{query_body.query}"
-                    if context else query_body.query
+                    if context
+                    else query_body.query
                 )
                 messages = [
-                    {"role": "system", "content": "你是知识管理助手，专门回答基于文档的问题。回答要完整清晰，引用来源。"},
+                    {
+                        "role": "system",
+                        "content": "你是知识管理助手，专门回答基于文档的问题。回答要完整清晰，引用来源。",
+                    },
                     {"role": "user", "content": prompt_content},
                 ]
 
                 yield "data: 正在调用云端模型生成回答...\n\n"
                 try:
                     from multi_model.model_router import (
-                        _stream_deepseek, _stream_openai, _stream_hunyuan, _stream_ollama
+                        _stream_deepseek,
+                        _stream_openai,
+                        _stream_hunyuan,
+                        _stream_ollama,
                     )
+
                     stream_map = {
                         "deepseek": _stream_deepseek,
-                        "openai":   _stream_openai,
-                        "hunyuan":  _stream_hunyuan,
+                        "openai": _stream_openai,
+                        "hunyuan": _stream_hunyuan,
                     }
                     stream_fn = stream_map.get(provider, _stream_ollama)
                     async for chunk in stream_fn(model_id, messages, 0.7, 2048):
@@ -305,6 +331,7 @@ async def process_query(query_body: QueryRequest):
                 return list(rag.stream_query(query_body.query))
 
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 chunks_future = loop.run_in_executor(pool, _stream_sync)
                 chunks = await chunks_future
@@ -315,6 +342,7 @@ async def process_query(query_body: QueryRequest):
 
         except Exception as e:
             import traceback
+
             yield f"data: ERROR: {str(e)}\n{traceback.format_exc()}\n\n"
 
     return StreamingResponse(
@@ -327,6 +355,7 @@ async def process_query(query_body: QueryRequest):
 # ────────────────────────────────────────────────────────────
 # POST /RAG_query_sync - /
 # ────────────────────────────────────────────────────────────
+
 
 @router.post("/RAG_query_sync")
 async def process_query_sync(query_body: QueryRequest):
@@ -358,17 +387,21 @@ async def process_query_sync(query_body: QueryRequest):
         raise
     except Exception as e:
         import traceback
-        raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}\n{traceback.format_exc()}")
+
+        raise HTTPException(
+            status_code=500, detail=f"查询失败: {str(e)}\n{traceback.format_exc()}"
+        )
 
 
 # ────────────────────────────────────────────────────────────
 # POST /ingest - SSE
 # ────────────────────────────────────────────────────────────
 
+
 @router.post("/ingest")
 async def ingest_documents(ingest_body: IngestRequest):
     """文档导入接口（SSE 流式进度输出）
-    
+
     修复：原 generate() 为同步生成器，直接阻塞 event loop 执行向量化。
     现改为：同步耗时逻辑全部放入 asyncio.to_thread，通过 asyncio.Queue 推送进度到 SSE 流。
     """
@@ -377,6 +410,7 @@ async def ingest_documents(ingest_body: IngestRequest):
     def _ingest_sync():
         """在线程池中运行的同步向量化逻辑，进度通过 msg_queue 回传"""
         import traceback
+
         try:
             from src.ingestion.document_loader import DocumentLoader
             from src.vectorstore.vector_store import VectorStoreManager
@@ -385,10 +419,14 @@ async def ingest_documents(ingest_body: IngestRequest):
             vector_store_manager = VectorStoreManager(docs_dir=ingest_body.docs_dir)
             vectorstore_path = ingest_body.docs_dir + "/vectorstore"
 
-            msg_queue.put_nowait(f"data: Using vector store path: {vectorstore_path}\n\n")
+            msg_queue.put_nowait(
+                f"data: Using vector store path: {vectorstore_path}\n\n"
+            )
 
             if not os.path.exists(ingest_body.docs_dir):
-                msg_queue.put_nowait(f"data: Directory does not exist: {ingest_body.docs_dir}\n\n")
+                msg_queue.put_nowait(
+                    f"data: Directory does not exist: {ingest_body.docs_dir}\n\n"
+                )
                 msg_queue.put_nowait(None)
                 return
 
@@ -401,8 +439,10 @@ async def ingest_documents(ingest_body: IngestRequest):
 
             for root, dirs, files in os.walk(ingest_body.docs_dir):
                 dirs[:] = [d for d in dirs if d not in loader.IGNORED_DIRECTORIES]
-                if 'vectorstore' in os.path.basename(root):
-                    msg_queue.put_nowait(f"data: Skipping vectorstore directory: {root}\n\n")
+                if "vectorstore" in os.path.basename(root):
+                    msg_queue.put_nowait(
+                        f"data: Skipping vectorstore directory: {root}\n\n"
+                    )
                     continue
 
                 msg_queue.put_nowait(f"data: Found {len(files)} files in {root}\n\n")
@@ -412,25 +452,35 @@ async def ingest_documents(ingest_body: IngestRequest):
                     try:
                         should_skip, skip_reason = loader.should_skip_file(file_path)
                         if should_skip:
-                            msg_queue.put_nowait(f"data: Skipping file: {file} ({skip_reason})\n\n")
+                            msg_queue.put_nowait(
+                                f"data: Skipping file: {file} ({skip_reason})\n\n"
+                            )
                             skipped_count += 1
                             continue
 
                         msg_queue.put_nowait(f"data: Processing file: {file_path}\n\n")
                         docs = loader.load_document(file_path)
-                        msg_queue.put_nowait(f"data: Successfully loaded {len(docs)} document chunks from {file_path}\n\n")
+                        msg_queue.put_nowait(
+                            f"data: Successfully loaded {len(docs)} document chunks from {file_path}\n\n"
+                        )
                         documents.extend(docs)
                         processed_count += 1
 
                     except ValueError as ve:
                         if "Skipped file" in str(ve):
-                            msg_queue.put_nowait(f"data: Skipping file: {file} ({str(ve)})\n\n")
+                            msg_queue.put_nowait(
+                                f"data: Skipping file: {file} ({str(ve)})\n\n"
+                            )
                             skipped_count += 1
                         else:
-                            msg_queue.put_nowait(f"data: Unsupported file type {file_path}: {str(ve)}\n\n")
+                            msg_queue.put_nowait(
+                                f"data: Unsupported file type {file_path}: {str(ve)}\n\n"
+                            )
                             error_count += 1
                     except Exception as e:
-                        msg_queue.put_nowait(f"data: Error processing {file_path}: {str(e)}\n\n")
+                        msg_queue.put_nowait(
+                            f"data: Error processing {file_path}: {str(e)}\n\n"
+                        )
                         error_count += 1
 
             msg_queue.put_nowait(
@@ -438,13 +488,19 @@ async def ingest_documents(ingest_body: IngestRequest):
             )
 
             if not documents:
-                msg_queue.put_nowait("data: No documents were processed successfully\n\n")
+                msg_queue.put_nowait(
+                    "data: No documents were processed successfully\n\n"
+                )
                 msg_queue.put_nowait(None)
                 return
 
-            msg_queue.put_nowait(f"data: Creating vector store with {len(documents)} document chunks\n\n")
+            msg_queue.put_nowait(
+                f"data: Creating vector store with {len(documents)} document chunks\n\n"
+            )
             vector_store_manager.create_vectorstore(documents, vectorstore_path)
-            msg_queue.put_nowait(f"data: Vector store successfully created and saved to {vectorstore_path}\n\n")
+            msg_queue.put_nowait(
+                f"data: Vector store successfully created and saved to {vectorstore_path}\n\n"
+            )
 
             result = {
                 "message": f"Successfully ingested {len(documents)} document chunks",
@@ -484,20 +540,25 @@ async def ingest_documents(ingest_body: IngestRequest):
 # POST /init - Initialize
 # ────────────────────────────────────────────────────────────
 
+
 @router.post("/init")
 async def init_project():
     """项目初始化"""
     try:
         from src.scripts.init_project import init_project as init_func
+
         init_func()
         return {"message": "Project initialized successfully"}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Project initialization failed: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Project initialization failed: {str(e)}"
+        )
 
 
 # ────────────────────────────────────────────────────────────
 # GET /health  — Health check
 # ────────────────────────────────────────────────────────────
+
 
 @router.get("/health")
 async def rag_health_check():
@@ -509,14 +570,23 @@ async def rag_health_check():
         "service": "RAG Query Service v2",
         "model": model,
         "vectorstore_path": vectorstore_path,
-        "vectorstore_exists": os.path.exists(vectorstore_path) if vectorstore_path else False,
-        "features": ["hybrid_retrieval", "bm25+vector+rrf", "citation_tracking", "streaming", "react_agent"],
+        "vectorstore_exists": os.path.exists(vectorstore_path)
+        if vectorstore_path
+        else False,
+        "features": [
+            "hybrid_retrieval",
+            "bm25+vector+rrf",
+            "citation_tracking",
+            "streaming",
+            "react_agent",
+        ],
     }
 
 
 # ────────────────────────────────────────────────────────────
 # POST /agent_query - ReAct Agent
 # ────────────────────────────────────────────────────────────
+
 
 class AgentQueryRequest(BaseModel):
     query: str
@@ -537,13 +607,15 @@ async def agent_query(query_body: AgentQueryRequest):
 
     async def generate():
         try:
-            yield f"data: 🤖 启动 ReAct Agent 模式...\n\n"
+            yield "data: 🤖 启动 ReAct Agent 模式...\n\n"
 
             if query_body.docs_dir:
                 docs_dir = query_body.docs_dir
             else:
                 vectorstore_path = os.getenv("VECTORSTORE_PATH", "")
-                docs_dir = str(Path(vectorstore_path).parent) if vectorstore_path else ""
+                docs_dir = (
+                    str(Path(vectorstore_path).parent) if vectorstore_path else ""
+                )
 
             if not docs_dir or not os.path.exists(docs_dir):
                 yield "data: ERROR: 文档目录未指定或不存在\n\n"
@@ -559,7 +631,7 @@ async def agent_query(query_body: AgentQueryRequest):
             yield f"data: ✅ 向量存储加载完成，文档块: {len(documents)} 个\n\n"
 
             # Initialize Agentagent_query OllamaCloud model /api/agent/task
-            model_id, _, _ = _resolve_rag_model(getattr(query_body, 'model', None))
+            model_id, _, _ = _resolve_rag_model(getattr(query_body, "model", None))
             agent = ReActRAGAgent(
                 vectorstore=vectorstore,
                 documents=documents if query_body.use_hybrid else None,
@@ -575,6 +647,7 @@ async def agent_query(query_body: AgentQueryRequest):
                 return list(agent.stream_query(query_body.query))
 
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 chunks_future = loop.run_in_executor(pool, _run_agent)
                 chunks = await chunks_future
@@ -585,6 +658,7 @@ async def agent_query(query_body: AgentQueryRequest):
 
         except Exception as e:
             import traceback
+
             yield f"data: ERROR: {str(e)}\n{traceback.format_exc()}\n\n"
 
     return StreamingResponse(
@@ -602,6 +676,7 @@ async def agent_query(query_body: AgentQueryRequest):
 # RAG LangChain LangChain
 # ────────────────────────────────────────────────────────────
 
+
 class NativeIngestRequest(BaseModel):
     docs_dir: str
 
@@ -610,7 +685,7 @@ class NativeQueryRequest(BaseModel):
     query: str
     docs_dir: str
     use_hybrid: bool = True
-    model: Optional[str] = None     # cloud:provider:model
+    model: Optional[str] = None  # cloud:provider:model
 
 
 @router.post("/native_ingest")
@@ -626,6 +701,7 @@ async def native_ingest_documents(req: NativeIngestRequest):
 
     def _native_ingest_sync():
         import traceback
+
         try:
             from src.rag.native_rag import (
                 load_documents_from_dir,
@@ -633,7 +709,9 @@ async def native_ingest_documents(req: NativeIngestRequest):
                 NativeVectorStore,
             )
 
-            msg_queue.put_nowait(f"data: [原生RAG] 开始向量化，目录: {req.docs_dir}\n\n")
+            msg_queue.put_nowait(
+                f"data: [原生RAG] 开始向量化，目录: {req.docs_dir}\n\n"
+            )
 
             if not os.path.exists(req.docs_dir):
                 msg_queue.put_nowait(f"data: [ERROR] 目录不存在: {req.docs_dir}\n\n")
@@ -645,15 +723,21 @@ async def native_ingest_documents(req: NativeIngestRequest):
             if not raw_docs:
                 msg_queue.put_nowait("data: [ERROR] 未找到可加载的文档\n\n")
                 return
-            msg_queue.put_nowait(f"data: [原生RAG] 加载完成，共 {len(raw_docs)} 页原始文档\n\n")
+            msg_queue.put_nowait(
+                f"data: [原生RAG] 加载完成，共 {len(raw_docs)} 页原始文档\n\n"
+            )
 
             # 2.
             msg_queue.put_nowait("data: [原生RAG] 正在分块...\n\n")
             chunks = split_documents(raw_docs, chunk_size=1000, chunk_overlap=200)
-            msg_queue.put_nowait(f"data: [原生RAG] 分块完成，共 {len(chunks)} 个文本块\n\n")
+            msg_queue.put_nowait(
+                f"data: [原生RAG] 分块完成，共 {len(chunks)} 个文本块\n\n"
+            )
 
             # 3. event loop
-            msg_queue.put_nowait("data: [原生RAG] 正在计算向量（sentence-transformers）...\n\n")
+            msg_queue.put_nowait(
+                "data: [原生RAG] 正在计算向量（sentence-transformers）...\n\n"
+            )
             vs = NativeVectorStore(model_name="sentence-transformers/all-MiniLM-L6-v2")
             vs.build_index(chunks)
 
@@ -699,6 +783,7 @@ async def native_query(req: NativeQueryRequest):
     支持云端模型：检索仍使用原生 FAISS，生成通过 model_router 调用云端
     模型配置优先级：请求字段 > 用户保存的配置 > 环境变量 > 默认值
     """
+
     async def generate():
         try:
             from src.rag.native_rag import NativeVectorStore, NativeRAGPipeline
@@ -717,11 +802,16 @@ async def native_query(req: NativeQueryRequest):
                     if _rag_root not in sys.path:
                         sys.path.insert(0, _rag_root)
                     from models.user_model_config import get_effective_config
+
                     _cfg = get_effective_config()
                     if not req.model:
                         model_id = _cfg.llm_model or model_id
-                    ollama_host = _cfg.ollama_base_url or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
-                    ollama_timeout = _cfg.timeout or int(os.getenv("OLLAMA_TIMEOUT", "120"))
+                    ollama_host = _cfg.ollama_base_url or os.getenv(
+                        "OLLAMA_BASE_URL", "http://localhost:11434"
+                    )
+                    ollama_timeout = _cfg.timeout or int(
+                        os.getenv("OLLAMA_TIMEOUT", "120")
+                    )
                 except Exception as _cfg_err:
                     print(f"[RAG_app] 读取用户模型配置失败，使用环境变量: {_cfg_err}")
                     ollama_host = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
@@ -742,7 +832,12 @@ async def native_query(req: NativeQueryRequest):
 
             # - Cloud model -
             if is_cloud:
-                from src.rag.native_rag import NativeBM25, _rrf_fusion, _format_native_context
+                from src.rag.native_rag import (
+                    NativeBM25,
+                    _rrf_fusion,
+                    _format_native_context,
+                )
+
                 results_raw = vs.similarity_search(req.query, top_k=3)
                 if req.use_hybrid and vs.documents:
                     bm25 = NativeBM25(vs.documents)
@@ -767,7 +862,11 @@ async def native_query(req: NativeQueryRequest):
 
                 if docs_with_sources:
                     sources = [
-                        {"rank": d["source_info"]["rank"], "file_name": d["source_info"]["file_name"], "page": d["source_info"]["page"]}
+                        {
+                            "rank": d["source_info"]["rank"],
+                            "file_name": d["source_info"]["file_name"],
+                            "page": d["source_info"]["page"],
+                        }
                         for d in docs_with_sources
                     ]
                     yield f"data: SOURCES: {json.dumps(sources, ensure_ascii=False)}\n\n"
@@ -779,21 +878,28 @@ async def native_query(req: NativeQueryRequest):
                 prompt_content = (
                     f"请基于以下参考文档回答用户问题。若文档内容不足，可补充通用知识并注明。\n\n"
                     f"参考文档：\n{context}\n\n用户问题：{req.query}"
-                    if context else req.query
+                    if context
+                    else req.query
                 )
                 messages = [
-                    {"role": "system", "content": "你是知识管理助手，专门回答基于文档的问题。回答要完整清晰，引用来源。"},
+                    {
+                        "role": "system",
+                        "content": "你是知识管理助手，专门回答基于文档的问题。回答要完整清晰，引用来源。",
+                    },
                     {"role": "user", "content": prompt_content},
                 ]
                 yield "data: [原生RAG] 正在调用云端模型生成回答...\n\n"
                 try:
                     from multi_model.model_router import (
-                        _stream_deepseek, _stream_openai, _stream_hunyuan
+                        _stream_deepseek,
+                        _stream_openai,
+                        _stream_hunyuan,
                     )
+
                     stream_map = {
                         "deepseek": _stream_deepseek,
-                        "openai":   _stream_openai,
-                        "hunyuan":  _stream_hunyuan,
+                        "openai": _stream_openai,
+                        "hunyuan": _stream_hunyuan,
                     }
                     stream_fn = stream_map[provider]
                     async for chunk in stream_fn(model_id, messages, 0.7, 2048):
@@ -839,6 +945,7 @@ async def native_query(req: NativeQueryRequest):
 
         except Exception as e:
             import traceback
+
             yield f"data: [ERROR] 原生 RAG 查询失败: {e}\n{traceback.format_exc()}\n\n"
 
     return StreamingResponse(
@@ -861,7 +968,7 @@ async def agent_query_sync(query_body: AgentQueryRequest):
 
         vectorstore, documents, _ = _load_vectorstore_and_docs(query_body.docs_dir)
 
-        model_id, _, _ = _resolve_rag_model(getattr(query_body, 'model', None))
+        model_id, _, _ = _resolve_rag_model(getattr(query_body, "model", None))
         agent = ReActRAGAgent(
             vectorstore=vectorstore,
             documents=documents if query_body.use_hybrid else None,
@@ -877,4 +984,8 @@ async def agent_query_sync(query_body: AgentQueryRequest):
         raise
     except Exception as e:
         import traceback
-        raise HTTPException(status_code=500, detail=f"Agent 查询失败: {str(e)}\n{traceback.format_exc()}")
+
+        raise HTTPException(
+            status_code=500,
+            detail=f"Agent 查询失败: {str(e)}\n{traceback.format_exc()}",
+        )

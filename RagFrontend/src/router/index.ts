@@ -3,7 +3,7 @@ import KnowledgeBase from '../views/KnowledgePages/KnowledgeBase.vue'
 import NotFound from '../components/ERS-Pages/404.vue'
 //import { get, post } from '@/utils/ASFaxios'
 interface UserResponse {
-  status: string;
+  status: string
 }
 
 const routes: Array<RouteRecordRaw> = [
@@ -86,12 +86,12 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/acmd_sre',
     name: 'ACMD',
-    component: () => import('../views/ACMD_serach/ACMD_search.vue'),
+    component: () => import('../views/ACMD_serach/ACMD_search.vue')
   },
   {
     path: '/testrange',
     name: 'CTE',
-    component: () => import('../components/graph-unit/graph-main.vue'),
+    component: () => import('../components/graph-unit/graph-main.vue')
   },
   {
     path: '/square',
@@ -141,55 +141,54 @@ const router = createRouter({
   routes
 })
 
-const publicRoutes = ['/LogonOrRegister', '/devtools'];
+const publicRoutes = ['/LogonOrRegister', '/devtools']
 
 // Flag: set to true right after login/register so the first navigation
 // skips the remote JWT check (avoids race condition where the JWT was
 // just written but the /api/users/me call hasn't resolved yet).
-let _justAuthenticated = false;
+let _justAuthenticated = false
 
 export function markJustAuthenticated() {
-  _justAuthenticated = true;
+  _justAuthenticated = true
 }
 
 router.beforeEach((to, from, next) => {
   // Public routes: always pass through
   if (publicRoutes.includes(to.path)) {
-    return next();
+    return next()
   }
 
-  const jwt = localStorage.getItem('jwt');
+  const jwt = localStorage.getItem('jwt')
   if (!jwt) {
-    return next(`/LogonOrRegister?redirect=${encodeURIComponent(to.fullPath)}`);
+    return next(`/LogonOrRegister?redirect=${encodeURIComponent(to.fullPath)}`)
   }
 
   // If we just logged in / registered, trust the JWT for this navigation
   // (it was issued seconds ago, no need to verify remotely)
   if (_justAuthenticated) {
-    _justAuthenticated = false;
-    return next();
+    _justAuthenticated = false
+    return next()
   }
 
   // Remote JWT validation
   fetch('/api/users/me', {
     method: 'GET',
-    headers: { 'Authorization': `Bearer ${jwt}` }
+    headers: { Authorization: `Bearer ${jwt}` }
   })
     .then(response => response.json())
     .then((res: UserResponse) => {
       if (res.status === 'success') {
-        next();
+        next()
       } else {
-        localStorage.removeItem('jwt');
-        next(`/LogonOrRegister?redirect=${encodeURIComponent(to.fullPath)}`);
+        localStorage.removeItem('jwt')
+        next(`/LogonOrRegister?redirect=${encodeURIComponent(to.fullPath)}`)
       }
     })
     .catch(() => {
       // Network error: do NOT delete JWT, just let through.
       // User might be on a slow connection; killing the session is too aggressive.
-      next();
-    });
-});
+      next()
+    })
+})
 
 export default router
-

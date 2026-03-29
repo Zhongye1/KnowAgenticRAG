@@ -1,5 +1,5 @@
-import { create } from 'zustand';
-import { api, cachedGet, invalidateCache } from '../utils/api';
+import { create } from "zustand";
+import { api, cachedGet, invalidateCache } from "../utils/api";
 
 export interface KnowledgeBase {
   id: string;
@@ -15,13 +15,24 @@ interface KbState {
   knowledgeBases: KnowledgeBase[];
   loading: boolean;
   fetchKnowledgeBases: (forceRefresh?: boolean) => Promise<void>;
-  createKnowledgeBase: (name: string, description?: string) => Promise<KnowledgeBase>;
+  createKnowledgeBase: (
+    name: string,
+    description?: string,
+  ) => Promise<KnowledgeBase>;
   deleteKnowledgeBase: (id: string) => Promise<void>;
   toggleStar: (id: string) => void;
 }
 
-const KB_COLORS = ['#4f7ef8', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4', '#ec4899'];
-const KB_LIST_PATH = '/api/knowledge-bases';
+const KB_COLORS = [
+  "#4f7ef8",
+  "#10b981",
+  "#f59e0b",
+  "#8b5cf6",
+  "#ef4444",
+  "#06b6d4",
+  "#ec4899",
+];
+const KB_LIST_PATH = "/api/knowledge-bases";
 
 export const useKbStore = create<KbState>((set, get) => ({
   knowledgeBases: [],
@@ -47,13 +58,13 @@ export const useKbStore = create<KbState>((set, get) => ({
     }
   },
 
-  createKnowledgeBase: async (name, description = '') => {
-    const res = await api.post('/api/knowledge-bases', { name, description });
+  createKnowledgeBase: async (name, description = "") => {
+    const res = await api.post("/api/knowledge-bases", { name, description });
     const kb: KnowledgeBase = {
       ...res.data,
       color: KB_COLORS[get().knowledgeBases.length % KB_COLORS.length],
     };
-    set(state => ({ knowledgeBases: [kb, ...state.knowledgeBases] }));
+    set((state) => ({ knowledgeBases: [kb, ...state.knowledgeBases] }));
     // 清缓存，下次拉取最新
     await invalidateCache(KB_LIST_PATH);
     return kb;
@@ -61,14 +72,16 @@ export const useKbStore = create<KbState>((set, get) => ({
 
   deleteKnowledgeBase: async (id) => {
     await api.delete(`/api/knowledge-bases/${id}`);
-    set(state => ({ knowledgeBases: state.knowledgeBases.filter(kb => kb.id !== id) }));
+    set((state) => ({
+      knowledgeBases: state.knowledgeBases.filter((kb) => kb.id !== id),
+    }));
     await invalidateCache(KB_LIST_PATH);
   },
 
   toggleStar: (id) => {
-    set(state => ({
-      knowledgeBases: state.knowledgeBases.map(kb =>
-        kb.id === id ? { ...kb, is_starred: !kb.is_starred } : kb
+    set((state) => ({
+      knowledgeBases: state.knowledgeBases.map((kb) =>
+        kb.id === id ? { ...kb, is_starred: !kb.is_starred } : kb,
       ),
     }));
   },

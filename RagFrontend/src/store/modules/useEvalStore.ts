@@ -6,8 +6,8 @@ import axios from 'axios'
 
 export const useEvalStore = defineStore('eval', () => {
   const running = ref(false)
-  const progress = ref('')       // 当前进度描述
-  const models = ref('')         // 正在评测的模型名
+  const progress = ref('') // 当前进度描述
+  const models = ref('') // 正在评测的模型名
   const startedAt = ref<number>(0)
 
   // 最近一次结果
@@ -50,7 +50,7 @@ export const useEvalStore = defineStore('eval', () => {
     try {
       const [latestRes, historyRes] = await Promise.all([
         axios.get('/api/eval/latest'),
-        axios.get('/api/eval/results?limit=10'),
+        axios.get('/api/eval/results?limit=10')
       ])
       chartData.value = latestRes.data
       latestRun.value = latestRes.data?.latest_run || null
@@ -71,9 +71,15 @@ export const useEvalStore = defineStore('eval', () => {
   }
 
   return {
-    running, progress, models, startedAt,
-    latestRun, historyList, chartData,
+    running,
+    progress,
+    models,
+    startedAt,
+    latestRun,
+    historyList,
+    chartData,
     isRunning,
-    startEval, fetchLatest,
+    startEval,
+    fetchLatest
   }
 })

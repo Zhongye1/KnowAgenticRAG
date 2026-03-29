@@ -1,9 +1,9 @@
-import { create } from 'zustand';
-import { streamRequest } from '../utils/api';
+import { create } from "zustand";
+import { streamRequest } from "../utils/api";
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   sources?: { title: string; score?: number }[];
   streaming?: boolean;
@@ -43,7 +43,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       createdAt: Date.now(),
       messages: [],
     };
-    set(state => ({
+    set((state) => ({
       sessions: [session, ...state.sessions],
       currentSessionId: id,
       messages: [],
@@ -52,7 +52,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setCurrentSession: (id) => {
-    const session = get().sessions.find(s => s.id === id);
+    const session = get().sessions.find((s) => s.id === id);
     set({ currentSessionId: id, messages: session?.messages ?? [] });
   },
 
@@ -63,63 +63,77 @@ export const useChatStore = create<ChatState>((set, get) => ({
   sendMessage: async (text, kbId) => {
     const userMsg: Message = {
       id: `msg_${Date.now()}_user`,
-      role: 'user',
+      role: "user",
       content: text,
     };
     const assistantMsg: Message = {
       id: `msg_${Date.now()}_ai`,
-      role: 'assistant',
-      content: '',
+      role: "assistant",
+      content: "",
       streaming: true,
     };
 
-    set(state => ({ messages: [...state.messages, userMsg, assistantMsg], streaming: true }));
+    set((state) => ({
+      messages: [...state.messages, userMsg, assistantMsg],
+      streaming: true,
+    }));
 
-    const endpoint = kbId ? '/api/rag/chat-stream' : '/api/chat/stream';
+    const endpoint = kbId ? "/api/rag/chat-stream" : "/api/chat/stream";
     const body = kbId
       ? { query: text, kb_id: kbId, stream: true }
-      : { messages: [...get().messages.slice(0, -1).map(m => ({ role: m.role, content: m.content })),
-                    { role: 'user', content: text }], stream: true };
+      : {
+          messages: [
+            ...get()
+              .messages.slice(0, -1)
+              .map((m) => ({ role: m.role, content: m.content })),
+            { role: "user", content: text },
+          ],
+          stream: true,
+        };
 
-    let aiContent = '';
+    let aiContent = "";
 
     await streamRequest(
       endpoint,
       body,
       (chunk) => {
         aiContent += chunk;
-        set(state => ({
-          messages: state.messages.map(m =>
-            m.id === assistantMsg.id ? { ...m, content: aiContent, streaming: true } : m
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m.id === assistantMsg.id
+              ? { ...m, content: aiContent, streaming: true }
+              : m,
           ),
         }));
       },
       () => {
-        set(state => ({
-          messages: state.messages.map(m =>
-            m.id === assistantMsg.id ? { ...m, streaming: false } : m
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m.id === assistantMsg.id ? { ...m, streaming: false } : m,
           ),
           streaming: false,
         }));
         // 更新 session 历史
         const { currentSessionId, messages } = get();
         if (currentSessionId) {
-          set(state => ({
-            sessions: state.sessions.map(s =>
-              s.id === currentSessionId ? { ...s, messages } : s
+          set((state) => ({
+            sessions: state.sessions.map((s) =>
+              s.id === currentSessionId ? { ...s, messages } : s,
             ),
           }));
         }
       },
       (err) => {
         const errText = `请求失败：${err.message}`;
-        set(state => ({
-          messages: state.messages.map(m =>
-            m.id === assistantMsg.id ? { ...m, content: errText, streaming: false } : m
+        set((state) => ({
+          messages: state.messages.map((m) =>
+            m.id === assistantMsg.id
+              ? { ...m, content: errText, streaming: false }
+              : m,
           ),
           streaming: false,
         }));
-      }
+      },
     );
   },
 }));

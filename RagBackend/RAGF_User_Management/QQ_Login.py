@@ -17,13 +17,12 @@ import hashlib
 import requests
 import urllib.parse
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter
 from fastapi.responses import RedirectResponse, JSONResponse
 
 import jwt as pyjwt
 from datetime import datetime, timedelta
 
-import pymysql
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -34,21 +33,18 @@ router = APIRouter()
 # ─────────────────────────────
 # QQ Environment variable AppID/AppKey
 # ─────────────────────────────
-QQ_APP_ID  = os.getenv("QQ_APP_ID",  "1112499674")
+QQ_APP_ID = os.getenv("QQ_APP_ID", "1112499674")
 QQ_APP_KEY = os.getenv("QQ_APP_KEY", "RVpmB6ec9imXwvdR")
 
 # QQ
 # http://localhost:8000/api/qq/callback
-QQ_REDIRECT_URI = os.getenv(
-    "QQ_REDIRECT_URI",
-    "http://localhost:8000/api/qq/callback"
-)
+QQ_REDIRECT_URI = os.getenv("QQ_REDIRECT_URI", "http://localhost:8000/api/qq/callback")
 
 # QQ API
-QQ_AUTHORIZE_URL  = "https://graph.qq.com/oauth2.0/authorize"
-QQ_TOKEN_URL      = "https://graph.qq.com/oauth2.0/token"
-QQ_OPENID_URL     = "https://graph.qq.com/oauth2.0/me"
-QQ_USERINFO_URL   = "https://graph.qq.com/user/get_user_info"
+QQ_AUTHORIZE_URL = "https://graph.qq.com/oauth2.0/authorize"
+QQ_TOKEN_URL = "https://graph.qq.com/oauth2.0/token"
+QQ_OPENID_URL = "https://graph.qq.com/oauth2.0/me"
+QQ_USERINFO_URL = "https://graph.qq.com/user/get_user_info"
 
 FRONTEND_SUCCESS_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
@@ -62,7 +58,7 @@ JWT_SECRET = os.getenv("JWT_SECRET", "changeme_jwt_secret")
 
 def _get_db():
     conn = _db_connect()
-    cur  = conn.cursor()
+    cur = conn.cursor()
     cur.execute("USE rag_user_db")
     return conn, cur
 
@@ -82,14 +78,17 @@ def _ensure_qq_column():
         cur.execute("DESCRIBE user")
         cols = [r[0] for r in cur.fetchall()]
         if "qq_openid" not in cols:
-            cur.execute("ALTER TABLE user ADD COLUMN qq_openid VARCHAR(100) DEFAULT NULL")
+            cur.execute(
+                "ALTER TABLE user ADD COLUMN qq_openid VARCHAR(100) DEFAULT NULL"
+            )
             conn.commit()
             logger.info("已添加 qq_openid 列")
     except Exception as e:
         logger.warning(f"_ensure_qq_column: {e}")
     finally:
         try:
-            cur.close(); conn.close()
+            cur.close()
+            conn.close()
         except Exception:
             pass
 
@@ -108,10 +107,10 @@ def qq_authorize():
     state = uuid.uuid4().hex  # CSRF Status code session
     params = {
         "response_type": "code",
-        "client_id":     QQ_APP_ID,
-        "redirect_uri":  QQ_REDIRECT_URI,
-        "scope":         "get_user_info",
-        "state":         state,
+        "client_id": QQ_APP_ID,
+        "redirect_uri": QQ_REDIRECT_URI,
+        "scope": "get_user_info",
+        "state": state,
     }
     url = QQ_AUTHORIZE_URL + "?" + urllib.parse.urlencode(params)
     return JSONResponse({"authorize_url": url, "state": state})
@@ -127,12 +126,12 @@ def qq_callback(code: str, state: str = ""):
     """
     # - 2a: code access_token -
     token_params = {
-        "grant_type":   "authorization_code",
-        "client_id":    QQ_APP_ID,
+        "grant_type": "authorization_code",
+        "client_id": QQ_APP_ID,
         "client_secret": QQ_APP_KEY,
-        "code":         code,
+        "code": code,
         "redirect_uri": QQ_REDIRECT_URI,
-        "fmt":          "json",   # JSON query string
+        "fmt": "json",  # JSON query string
     }
     try:
         resp = requests.get(QQ_TOKEN_URL, params=token_params, timeout=10)
@@ -176,27 +175,29 @@ def qq_callback(code: str, state: str = ""):
 
     # - 2c: / -
     nickname = f"QQ用户_{openid[-6:]}"
-    avatar   = ""
+    avatar = ""
     try:
         userinfo_resp = requests.get(
             QQ_USERINFO_URL,
             params={
-                "access_token":       access_token,
+                "access_token": access_token,
                 "oauth_consumer_key": QQ_APP_ID,
-                "openid":             openid,
+                "openid": openid,
             },
             timeout=10,
         )
         userinfo = userinfo_resp.json()
         if userinfo.get("ret") == 0:
             nickname = userinfo.get("nickname", nickname)
-            avatar   = userinfo.get("figureurl_qq_2") or userinfo.get("figureurl_qq_1", "")
+            avatar = userinfo.get("figureurl_qq_2") or userinfo.get(
+                "figureurl_qq_1", ""
+            )
     except Exception as e:
         logger.warning(f"获取 QQ 用户信息失败（不影响登录）: {e}")
 
     # - 2d: / -
     # QQ qq_{openid}@qq.oauth email
-    fake_email  = f"qq_{openid}@qq.oauth"
+    fake_email = f"qq_{openid}@qq.oauth"
     fake_passwd = hashlib.sha256(f"qq_oauth_{openid}".encode()).hexdigest()
 
     try:
@@ -207,17 +208,19 @@ def qq_callback(code: str, state: str = ""):
         row = cur.fetchone()
 
         if row:
-            user_id    = row[0]
+            user_id = row[0]
             user_email = row[1]
         else:
             # fake_email
             cur.execute("SELECT id, email FROM user WHERE email = %s", (fake_email,))
             row = cur.fetchone()
             if row:
-                user_id    = row[0]
+                user_id = row[0]
                 user_email = row[1]
                 # qq_openid
-                cur.execute("UPDATE user SET qq_openid=%s WHERE id=%s", (openid, user_id))
+                cur.execute(
+                    "UPDATE user SET qq_openid=%s WHERE id=%s", (openid, user_id)
+                )
                 conn.commit()
             else:
                 cur.execute(
@@ -225,7 +228,7 @@ def qq_callback(code: str, state: str = ""):
                     (fake_email, fake_passwd, openid),
                 )
                 conn.commit()
-                user_id    = cur.lastrowid
+                user_id = cur.lastrowid
                 user_email = fake_email
 
                 # Initialize profile
@@ -245,7 +248,8 @@ def qq_callback(code: str, state: str = ""):
         return _redirect_fail("服务器内部错误，请稍后重试")
     finally:
         try:
-            cur.close(); conn.close()
+            cur.close()
+            conn.close()
         except Exception:
             pass
 
@@ -261,5 +265,7 @@ def qq_callback(code: str, state: str = ""):
 
 def _redirect_fail(msg: str):
     """登录失败时重定向到前端错误页"""
-    url = f"{FRONTEND_SUCCESS_URL}/LogonOrRegister?oauth_error={urllib.parse.quote(msg)}"
+    url = (
+        f"{FRONTEND_SUCCESS_URL}/LogonOrRegister?oauth_error={urllib.parse.quote(msg)}"
+    )
     return RedirectResponse(url=url, status_code=302)

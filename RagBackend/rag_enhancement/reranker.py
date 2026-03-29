@@ -15,7 +15,7 @@ API:
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -36,6 +36,7 @@ def _get_reranker(model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"):
         return _rerank_model
     try:
         from sentence_transformers import CrossEncoder
+
         logger.info(f"[Reranker] 加载 cross-encoder 模型: {model_name}")
         _rerank_model = CrossEncoder(model_name, max_length=512)
         _rerank_model_name = model_name
@@ -71,7 +72,10 @@ def rerank_documents(
 
     if model is not None:
         # cross-encoder (query, passage)
-        pairs = [(query, c.get("text", c.get("content", c.get("page_content", "")))) for c in candidates]
+        pairs = [
+            (query, c.get("text", c.get("content", c.get("page_content", ""))))
+            for c in candidates
+        ]
         try:
             scores = model.predict(pairs)
             scored = sorted(
@@ -84,7 +88,9 @@ def rerank_documents(
                 d = dict(doc)
                 d["rerank_score"] = round(float(score), 4)
                 result.append(d)
-            logger.debug(f"[Reranker] cross-encoder重排 {len(candidates)}→{len(result)} 条")
+            logger.debug(
+                f"[Reranker] cross-encoder重排 {len(candidates)}→{len(result)} 条"
+            )
             return result
         except Exception as e:
             logger.warning(f"[Reranker] cross-encoder推理失败，降级: {e}")
@@ -99,7 +105,7 @@ def rerank_documents(
 # - FastAPI -
 class RerankRequest(BaseModel):
     query: str
-    candidates: List[Dict[str, Any]]   # "text" "content"
+    candidates: List[Dict[str, Any]]  # "text" "content"
     top_k: int = 5
     model_name: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 

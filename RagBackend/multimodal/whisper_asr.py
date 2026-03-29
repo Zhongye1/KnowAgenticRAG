@@ -24,7 +24,9 @@ router = APIRouter()
 
 # - Whisper -
 _whisper_model = None
-_whisper_model_size: str = os.environ.get("WHISPER_MODEL", "base")  # tiny/base/small/medium/large
+_whisper_model_size: str = os.environ.get(
+    "WHISPER_MODEL", "base"
+)  # tiny/base/small/medium/large
 
 SUPPORTED_AUDIO_EXTENSIONS = {".wav", ".mp3", ".m4a", ".ogg", ".webm", ".flac", ".mp4"}
 
@@ -35,6 +37,7 @@ def _get_whisper_model():
     if _whisper_model is None:
         try:
             import whisper
+
             logger.info(f"[Whisper] 正在加载模型: {_whisper_model_size} ...")
             _whisper_model = whisper.load_model(_whisper_model_size)
             logger.info(f"[Whisper] 模型加载完成: {_whisper_model_size}")
@@ -48,11 +51,14 @@ def _get_whisper_model():
 
 # - API -
 
+
 @router.post("/api/voice/transcribe")
 async def transcribe_audio(
     file: UploadFile = File(..., description="音频文件（wav/mp3/m4a/ogg/webm）"),
     language: Optional[str] = Form(default="zh", description="语言代码，默认中文"),
-    task: str = Form(default="transcribe", description="transcribe（转录）或 translate（翻译为英文）"),
+    task: str = Form(
+        default="transcribe", description="transcribe（转录）或 translate（翻译为英文）"
+    ),
 ):
     """
     语音转文字接口
@@ -62,7 +68,7 @@ async def transcribe_audio(
     if ext not in SUPPORTED_AUDIO_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"不支持的音频格式: {ext}。支持: {', '.join(SUPPORTED_AUDIO_EXTENSIONS)}"
+            detail=f"不支持的音频格式: {ext}。支持: {', '.join(SUPPORTED_AUDIO_EXTENSIONS)}",
         )
 
     with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as tmp:
@@ -72,7 +78,9 @@ async def transcribe_audio(
 
     try:
         model = _get_whisper_model()
-        logger.info(f"[Whisper] 开始转录: {file.filename}, language={language}, task={task}")
+        logger.info(
+            f"[Whisper] 开始转录: {file.filename}, language={language}, task={task}"
+        )
 
         result = model.transcribe(
             tmp_path,
@@ -93,13 +101,15 @@ async def transcribe_audio(
         ]
 
         logger.info(f"[Whisper] 转录完成，文本长度: {len(text)}")
-        return JSONResponse({
-            "success": True,
-            "text": text,
-            "language": result.get("language", language),
-            "segments": segments,
-            "duration": segments[-1]["end"] if segments else 0,
-        })
+        return JSONResponse(
+            {
+                "success": True,
+                "text": text,
+                "language": result.get("language", language),
+                "segments": segments,
+                "duration": segments[-1]["end"] if segments else 0,
+            }
+        )
 
     except RuntimeError as e:
         raise HTTPException(status_code=503, detail=str(e))
@@ -116,7 +126,9 @@ async def transcribe_audio(
 @router.post("/api/voice/ask")
 async def voice_ask(
     file: UploadFile = File(..., description="语音问题音频文件"),
-    kb_id: Optional[str] = Form(default=None, description="知识库 ID（空则不使用 RAG）"),
+    kb_id: Optional[str] = Form(
+        default=None, description="知识库 ID（空则不使用 RAG）"
+    ),
     language: Optional[str] = Form(default="zh"),
     model: Optional[str] = Form(default=None, description="LLM 模型名，默认从配置读取"),
 ):
@@ -136,7 +148,9 @@ async def voice_ask(
 
     try:
         whisper_model = _get_whisper_model()
-        result = whisper_model.transcribe(tmp_path, language=language if language != "auto" else None, fp16=False)
+        result = whisper_model.transcribe(
+            tmp_path, language=language if language != "auto" else None, fp16=False
+        )
         question = result.get("text", "").strip()
         recognized_language = result.get("language", language)
     except RuntimeError as e:
@@ -148,7 +162,9 @@ async def voice_ask(
             pass
 
     if not question:
-        raise HTTPException(status_code=400, detail="未能从音频中识别出文本，请检查音频质量")
+        raise HTTPException(
+            status_code=400, detail="未能从音频中识别出文本，请检查音频质量"
+        )
 
     logger.info(f"[VoiceAsk] 识别问题: {question!r}, kb_id={kb_id}")
 
@@ -160,12 +176,18 @@ async def voice_ask(
             if kb_id:
                 # RAG
                 from RAG_M.RAG_app import _stream_rag_answer
-                async for chunk in _stream_rag_answer(question=question, kb_id=kb_id, llm_model=model):
+
+                async for chunk in _stream_rag_answer(
+                    question=question, kb_id=kb_id, llm_model=model
+                ):
                     yield chunk
             else:
                 # LLM
                 from RAG_M.RAG_app import _stream_llm_direct
-                async for chunk in _stream_llm_direct(question=question, llm_model=model):
+
+                async for chunk in _stream_llm_direct(
+                    question=question, llm_model=model
+                ):
                     yield chunk
         except Exception as e:
             yield f"data: {json.dumps({'type': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
@@ -179,11 +201,47 @@ async def voice_ask(
 async def list_whisper_models():
     """列出可用的 Whisper 模型及资源需求"""
     models = [
-        {"name": "tiny",   "size": "~39MB",  "vram": "~1GB",  "speed": "极快", "accuracy": "较低",  "recommended": False},
-        {"name": "base",   "size": "~74MB",  "vram": "~1GB",  "speed": "快",   "accuracy": "一般",  "recommended": True,  "note": "默认，适合中文识别"},
-        {"name": "small",  "size": "~244MB", "vram": "~2GB",  "speed": "中等", "accuracy": "良好",  "recommended": False},
-        {"name": "medium", "size": "~769MB", "vram": "~5GB",  "speed": "慢",   "accuracy": "很好",  "recommended": False},
-        {"name": "large",  "size": "~1.5GB", "vram": "~10GB", "speed": "极慢", "accuracy": "最佳",  "recommended": False},
+        {
+            "name": "tiny",
+            "size": "~39MB",
+            "vram": "~1GB",
+            "speed": "极快",
+            "accuracy": "较低",
+            "recommended": False,
+        },
+        {
+            "name": "base",
+            "size": "~74MB",
+            "vram": "~1GB",
+            "speed": "快",
+            "accuracy": "一般",
+            "recommended": True,
+            "note": "默认，适合中文识别",
+        },
+        {
+            "name": "small",
+            "size": "~244MB",
+            "vram": "~2GB",
+            "speed": "中等",
+            "accuracy": "良好",
+            "recommended": False,
+        },
+        {
+            "name": "medium",
+            "size": "~769MB",
+            "vram": "~5GB",
+            "speed": "慢",
+            "accuracy": "很好",
+            "recommended": False,
+        },
+        {
+            "name": "large",
+            "size": "~1.5GB",
+            "vram": "~10GB",
+            "speed": "极慢",
+            "accuracy": "最佳",
+            "recommended": False,
+        },
     ]
     current = _whisper_model_size
     return {"models": models, "current": current}
@@ -204,7 +262,11 @@ async def load_whisper_model(model_size: str = Form(...)):
     _whisper_model_size = model_size
     try:
         _get_whisper_model()
-        return {"success": True, "model": model_size, "message": f"模型 {model_size} 加载完成"}
+        return {
+            "success": True,
+            "model": model_size,
+            "message": f"模型 {model_size} 加载完成",
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -214,12 +276,14 @@ async def whisper_health():
     """检查 Whisper 服务状态"""
     try:
         import whisper  # noqa
+
         whisper_available = True
     except ImportError:
         whisper_available = False
 
     # ffmpeg
     import shutil
+
     ffmpeg_available = shutil.which("ffmpeg") is not None
 
     model_loaded = _whisper_model is not None
@@ -232,7 +296,8 @@ async def whisper_health():
         "model_loaded": model_loaded,
         "current_model": _whisper_model_size,
         "install_hint": (
-            None if ready else
-            "请运行: pip install openai-whisper && 安装 ffmpeg (https://ffmpeg.org)"
-        )
+            None
+            if ready
+            else "请运行: pip install openai-whisper && 安装 ffmpeg (https://ffmpeg.org)"
+        ),
     }

@@ -1,19 +1,21 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { COLORS, RADIUS, SPACING } from '../constants/theme';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { COLORS, RADIUS, SPACING } from "../constants/theme";
 
 export interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   sources?: { title: string; score?: number }[];
   streaming?: boolean;
 }
 
-interface Props { message: Message }
+interface Props {
+  message: Message;
+}
 
 export default function MessageBubble({ message }: Props) {
-  const isUser = message.role === 'user';
+  const isUser = message.role === "user";
 
   return (
     <View style={[styles.row, isUser ? styles.rowUser : styles.rowAssistant]}>
@@ -22,8 +24,15 @@ export default function MessageBubble({ message }: Props) {
           <Text style={styles.avatarText}>AI</Text>
         </View>
       )}
-      <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
-        <Text style={[styles.text, isUser ? styles.textUser : styles.textAssistant]}>
+      <View
+        style={[
+          styles.bubble,
+          isUser ? styles.bubbleUser : styles.bubbleAssistant,
+        ]}
+      >
+        <Text
+          style={[styles.text, isUser ? styles.textUser : styles.textAssistant]}
+        >
           {message.content}
         </Text>
         {message.streaming && (
@@ -38,9 +47,13 @@ export default function MessageBubble({ message }: Props) {
             {message.sources.map((s, i) => (
               <View key={i} style={styles.sourceItem}>
                 <Text style={styles.sourceDot}>·</Text>
-                <Text style={styles.sourceText} numberOfLines={1}>{s.title}</Text>
+                <Text style={styles.sourceText} numberOfLines={1}>
+                  {s.title}
+                </Text>
                 {s.score != null && (
-                  <Text style={styles.sourceScore}>{(s.score * 100).toFixed(0)}%</Text>
+                  <Text style={styles.sourceScore}>
+                    {(s.score * 100).toFixed(0)}%
+                  </Text>
                 )}
               </View>
             ))}
@@ -57,18 +70,29 @@ export default function MessageBubble({ message }: Props) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, gap: 8 },
-  rowUser: { justifyContent: 'flex-end' },
-  rowAssistant: { justifyContent: 'flex-start' },
-  avatar: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: COLORS.primary + 'cc',
-    alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+  row: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 12,
+    gap: 8,
   },
-  userAvatar: { backgroundColor: '#e5e7eb' },
-  avatarText: { fontSize: 11, fontWeight: '700', color: 'white' },
+  rowUser: { justifyContent: "flex-end" },
+  rowAssistant: { justifyContent: "flex-start" },
+  avatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.primary + "cc",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+  userAvatar: { backgroundColor: "#e5e7eb" },
+  avatarText: { fontSize: 11, fontWeight: "700", color: "white" },
   bubble: {
-    maxWidth: '78%', borderRadius: RADIUS.md, padding: SPACING.sm,
+    maxWidth: "78%",
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm,
   },
   bubbleUser: {
     backgroundColor: COLORS.primary,
@@ -76,28 +100,47 @@ const styles = StyleSheet.create({
   },
   bubbleAssistant: {
     backgroundColor: COLORS.card,
-    borderWidth: 1, borderColor: COLORS.border,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     borderBottomLeftRadius: 4,
   },
   text: { fontSize: 15, lineHeight: 22 },
-  textUser: { color: 'white' },
+  textUser: { color: "white" },
   textAssistant: { color: COLORS.text },
   cursorRow: { marginTop: 4 },
   cursor: {
-    width: 8, height: 14, borderRadius: 1,
-    backgroundColor: COLORS.primary, opacity: 0.7,
+    width: 8,
+    height: 14,
+    borderRadius: 1,
+    backgroundColor: COLORS.primary,
+    opacity: 0.7,
   },
   sources: {
-    marginTop: 10, paddingTop: 8,
-    borderTopWidth: 1, borderTopColor: COLORS.border + '80',
+    marginTop: 10,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border + "80",
   },
-  sourcesTitle: { fontSize: 11, fontWeight: '700', color: COLORS.textMuted, marginBottom: 4 },
-  sourceItem: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 },
+  sourcesTitle: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: COLORS.textMuted,
+    marginBottom: 4,
+  },
+  sourceItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 2,
+  },
   sourceDot: { color: COLORS.textMuted, fontSize: 12 },
-  sourceText: { flex: 1, fontSize: 12, color: '#1d4ed8' },
+  sourceText: { flex: 1, fontSize: 12, color: "#1d4ed8" },
   sourceScore: {
-    fontSize: 10, color: 'white',
-    backgroundColor: COLORS.primary + 'cc', borderRadius: 8,
-    paddingHorizontal: 5, paddingVertical: 1,
+    fontSize: 10,
+    color: "white",
+    backgroundColor: COLORS.primary + "cc",
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
   },
 });

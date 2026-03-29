@@ -28,4 +28,3 @@ python-multipart==0.0.6
 sentence-transformers>=5.1.0
 # Redis async client (Redis Stream task queue + status persistence)
 redis[hiredis]>=5.0.0
-

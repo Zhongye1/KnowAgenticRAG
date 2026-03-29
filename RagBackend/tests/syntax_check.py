@@ -1,6 +1,7 @@
 """
 全量语法检查脚本 - 扫描 RagBackend 下所有 .py 文件
 """
+
 import ast
 import pathlib
 import sys

@@ -27,7 +27,7 @@ export default defineConfig(async ({ mode }) => ({
         target: 'https://api.lens.org',
         changeOrigin: true,
         secure: false,
-        rewrite: (path) => path.replace(/^\/lens-api/, '')
+        rewrite: path => path.replace(/^\/lens-api/, '')
       }
     }
   },
@@ -52,7 +52,7 @@ export default defineConfig(async ({ mode }) => ({
           // Markdown 渲染
           'vendor-marked': ['marked'],
           // 网络请求
-          'vendor-axios': ['axios'],
+          'vendor-axios': ['axios']
         }
       }
     }

@@ -4,12 +4,17 @@
     <div class="sidebar__logo">
       <div class="sidebar__logo-icon">
         <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect width="32" height="32" rx="8" fill="url(#grad)"/>
-          <path d="M8 10h10M8 16h14M8 22h10" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+          <rect width="32" height="32" rx="8" fill="url(#grad)" />
+          <path
+            d="M8 10h10M8 16h14M8 22h10"
+            stroke="white"
+            stroke-width="2.2"
+            stroke-linecap="round"
+          />
           <defs>
             <linearGradient id="grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-              <stop stop-color="#4f7ef8"/>
-              <stop offset="1" stop-color="#8b5cf6"/>
+              <stop stop-color="#4f7ef8" />
+              <stop offset="1" stop-color="#8b5cf6" />
             </linearGradient>
           </defs>
         </svg>
@@ -18,18 +23,38 @@
         <span v-if="!isCollapsed" class="sidebar__logo-text">RAGF-01</span>
       </transition>
       <!-- 折叠按钮 -->
-      <button class="sidebar__collapse-btn" @click="toggleCollapse" :title="isCollapsed ? '展开侧边栏' : '折叠侧边栏'">
-        <svg :class="['collapse-icon', { 'rotate-180': isCollapsed }]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+      <button
+        class="sidebar__collapse-btn"
+        :title="isCollapsed ? '展开侧边栏' : '折叠侧边栏'"
+        @click="toggleCollapse"
+      >
+        <svg
+          :class="['collapse-icon', { 'rotate-180': isCollapsed }]"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" />
         </svg>
       </button>
     </div>
 
     <!-- 快速新建按钮 -->
     <div class="sidebar__quick-action">
-      <button class="quick-new-btn" @click="$emit('quickCreate')" :title="isCollapsed ? '新建知识库' : ''">
-        <svg class="quick-new-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+      <button
+        class="quick-new-btn"
+        :title="isCollapsed ? '新建知识库' : ''"
+        @click="$emit('quickCreate')"
+      >
+        <svg
+          class="quick-new-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4" />
         </svg>
         <transition name="fade-text">
           <span v-if="!isCollapsed">快速新建</span>
@@ -45,7 +70,11 @@
         </transition>
         <ul class="sidebar__nav-list">
           <li v-for="item in mainNavItems" :key="item.path">
-            <t-tooltip :content="isCollapsed ? item.label : ''" placement="right" :show-arrow="false">
+            <t-tooltip
+              :content="isCollapsed ? item.label : ''"
+              placement="right"
+              :show-arrow="false"
+            >
               <button
                 :class="['nav-item', { 'nav-item--active': isActive(item.path) }]"
                 @click="navigateTo(item.path)"
@@ -55,7 +84,9 @@
                   <span v-if="!isCollapsed" class="nav-item__label">{{ item.label }}</span>
                 </transition>
                 <transition name="fade-text">
-                  <span v-if="!isCollapsed && item.badge" class="nav-item__badge">{{ item.badge }}</span>
+                  <span v-if="!isCollapsed && item.badge" class="nav-item__badge">{{
+                    item.badge
+                  }}</span>
                 </transition>
               </button>
             </t-tooltip>
@@ -69,7 +100,11 @@
         </transition>
         <ul class="sidebar__nav-list">
           <li v-for="item in toolNavItems" :key="item.path">
-            <t-tooltip :content="isCollapsed ? item.label : ''" placement="right" :show-arrow="false">
+            <t-tooltip
+              :content="isCollapsed ? item.label : ''"
+              placement="right"
+              :show-arrow="false"
+            >
               <button
                 :class="['nav-item', { 'nav-item--active': isActive(item.path) }]"
                 @click="navigateTo(item.path)"
@@ -90,8 +125,15 @@
       <!-- 快捷搜索提示 -->
       <transition name="fade-text">
         <button v-if="!isCollapsed" class="shortcut-hint" @click="$emit('openSearch')">
-          <svg class="shortcut-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+          <svg
+            class="shortcut-icon"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path stroke-linecap="round" d="M21 21l-4.35-4.35" />
           </svg>
           <span>搜索</span>
           <kbd>Ctrl K</kbd>
@@ -101,28 +143,41 @@
         <button v-if="isCollapsed" class="nav-item" @click="$emit('openSearch')">
           <span class="nav-item__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" d="M21 21l-4.35-4.35"/>
+              <circle cx="11" cy="11" r="8" />
+              <path stroke-linecap="round" d="M21 21l-4.35-4.35" />
             </svg>
           </span>
         </button>
       </t-tooltip>
 
       <!-- 语言切换 -->
-      <t-tooltip :content="isCollapsed ? (locale === 'zh' ? 'Switch to English' : '切换中文') : ''" placement="right" :show-arrow="false">
-        <button class="nav-item" @click="handleToggleLocale" :title="locale === 'zh' ? 'Switch to English' : '切换中文'">
-          <span class="nav-item__icon" style="font-size:15px;">🌐</span>
+      <t-tooltip
+        :content="isCollapsed ? (locale === 'zh' ? 'Switch to English' : '切换中文') : ''"
+        placement="right"
+        :show-arrow="false"
+      >
+        <button
+          class="nav-item"
+          :title="locale === 'zh' ? 'Switch to English' : '切换中文'"
+          @click="handleToggleLocale"
+        >
+          <span class="nav-item__icon" style="font-size: 15px">🌐</span>
           <transition name="fade-text">
-            <span v-if="!isCollapsed" class="nav-item__label" style="font-size:12px;">{{ locale === 'zh' ? 'EN' : '中文' }}</span>
+            <span v-if="!isCollapsed" class="nav-item__label" style="font-size: 12px">{{
+              locale === 'zh' ? 'EN' : '中文'
+            }}</span>
           </transition>
         </button>
       </t-tooltip>
 
       <!-- GitHub链接 -->
       <t-tooltip :content="isCollapsed ? 'GitHub仓库' : ''" placement="right" :show-arrow="false">
-        <button class="nav-item" @click="openGitHub" title="GitHub仓库">
+        <button class="nav-item" title="GitHub仓库" @click="openGitHub">
           <span class="nav-item__icon">
             <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+              <path
+                d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+              />
             </svg>
           </span>
           <transition name="fade-text">
@@ -132,13 +187,17 @@
       </t-tooltip>
 
       <!-- App下载 -->
-      <t-tooltip :content="isCollapsed ? '下载移动端 App' : ''" placement="right" :show-arrow="false">
-        <button class="nav-item nav-item--download" @click="openAppDownload" title="下载移动端 App">
+      <t-tooltip
+        :content="isCollapsed ? '下载移动端 App' : ''"
+        placement="right"
+        :show-arrow="false"
+      >
+        <button class="nav-item nav-item--download" title="下载移动端 App" @click="openAppDownload">
           <span class="nav-item__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
-              <line x1="12" y1="18" x2="12" y2="18.01"/>
-              <path stroke-linecap="round" stroke-linejoin="round" d="M8 11l4 4 4-4M12 7v8"/>
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+              <line x1="12" y1="18" x2="12" y2="18.01" />
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 11l4 4 4-4M12 7v8" />
             </svg>
           </span>
           <transition name="fade-text">
@@ -150,7 +209,12 @@
       <!-- 用户信息 -->
       <t-dropdown :min-column-width="160" trigger="click" placement="right-bottom">
         <div :class="['user-info', { 'user-info--collapsed': isCollapsed }]">
-          <t-avatar :image="userAvatar" :hide-on-load-failed="false" size="small" class="user-avatar" />
+          <t-avatar
+            :image="userAvatar"
+            :hide-on-load-failed="false"
+            size="small"
+            class="user-avatar"
+          />
           <transition name="fade-text">
             <div v-if="!isCollapsed" class="user-meta">
               <span class="user-name">{{ userName }}</span>
@@ -158,8 +222,15 @@
             </div>
           </transition>
           <transition name="fade-text">
-            <svg v-if="!isCollapsed" class="user-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+            <svg
+              v-if="!isCollapsed"
+              class="user-chevron"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+            >
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
             </svg>
           </transition>
         </div>
@@ -173,7 +244,7 @@
               <t-icon name="code" />
               <span class="ml-2">开发者模式</span>
             </t-dropdown-item>
-            <t-dropdown-item divided @click="logout" class="text-red-500">
+            <t-dropdown-item divided class="text-red-500" @click="logout">
               <t-icon name="logout" />
               <span class="ml-2">退出登录</span>
             </t-dropdown-item>
@@ -185,14 +256,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
-import { MessagePlugin } from 'tdesign-vue-next';
-import { useDataUserStore } from '@/store';
-import API_ENDPOINTS from '@/utils/apiConfig';
-import { useI18n, setLocale, locale as _locale } from '@/i18n';
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { MessagePlugin } from 'tdesign-vue-next'
+import { useDataUserStore } from '@/store'
+import API_ENDPOINTS from '@/utils/apiConfig'
+import { useI18n, setLocale, locale as _locale } from '@/i18n'
 
-const { toggleLocale } = useI18n();
+const { toggleLocale } = useI18n()
 
 // 使用原始 _locale ref 确保响应式
 const locale = _locale
@@ -204,58 +275,61 @@ const handleToggleLocale = () => {
   MessagePlugin.success(locale.value === 'en' ? 'Language: English' : '语言：中文')
 }
 
-const emit = defineEmits(['openSearch']);
+const emit = defineEmits(['openSearch'])
 
-const router = useRouter();
-const route = useRoute();
-const userStore = useDataUserStore();
-const isCollapsed = ref(false);
+const router = useRouter()
+const route = useRoute()
+const userStore = useDataUserStore()
+const isCollapsed = ref(false)
 
 const toggleCollapse = () => {
-  isCollapsed.value = !isCollapsed.value;
-};
+  isCollapsed.value = !isCollapsed.value
+}
 
 const isActive = (path: string) => {
-  if (path === '/chat') return route.path.startsWith('/chat');
-  if (path === '/user') return route.path.startsWith('/user');
-  return route.path === path || route.path.startsWith(path + '/');
-};
+  if (path === '/chat') return route.path.startsWith('/chat')
+  if (path === '/user') return route.path.startsWith('/user')
+  return route.path === path || route.path.startsWith(path + '/')
+}
 
-const navigateTo = (path: string) => router.push(path);
-const openGitHub = () => window.open('https://github.com/March030303/KnowledgeRAG-GZHU/tree/master', '_blank');
-const openAppDownload = () => window.open('/download', '_blank');
+const navigateTo = (path: string) => router.push(path)
+const openGitHub = () =>
+  window.open('https://github.com/March030303/KnowledgeRAG-GZHU/tree/master', '_blank')
+const openAppDownload = () => window.open('/download', '_blank')
 
 const logout = async () => {
-  await router.push('/LogonOrRegister');
-  MessagePlugin.success('已登出账号');
-};
+  await router.push('/LogonOrRegister')
+  MessagePlugin.success('已登出账号')
+}
 
 const userAvatar = computed(() => {
-  if (!userStore.userData) return 'https://tdesign.gtimg.com/site/avatar.jpg';
-  const avatar = userStore.userData?.avatar || '';
-  if (avatar && avatar.startsWith('/static/')) return API_ENDPOINTS.USER.AVATAR(avatar);
-  return avatar || 'https://tdesign.gtimg.com/site/avatar.jpg';
-});
+  if (!userStore.userData) return 'https://tdesign.gtimg.com/site/avatar.jpg'
+  const avatar = userStore.userData?.avatar || ''
+  if (avatar && avatar.startsWith('/static/')) return API_ENDPOINTS.USER.AVATAR(avatar)
+  return avatar || 'https://tdesign.gtimg.com/site/avatar.jpg'
+})
 
 const userName = computed(() => {
-  return userStore.userData?.name || userStore.userData?.email?.split('@')[0] || '用户';
-});
+  return userStore.userData?.name || userStore.userData?.email?.split('@')[0] || '用户'
+})
 
 const userEmail = computed(() => {
-  const email = userStore.userData?.email || '';
-  if (email.length > 18) return email.substring(0, 15) + '...';
-  return email;
-});
+  const email = userStore.userData?.email || ''
+  if (email.length > 18) return email.substring(0, 15) + '...'
+  return email
+})
 
 onMounted(async () => {
-  try { await userStore.fetchUserData(); } catch {}
-});
+  try {
+    await userStore.fetchUserData()
+  } catch {}
+})
 
 interface NavItem {
-  path: string;
-  label: string;
-  icon: string;
-  badge?: string;
+  path: string
+  label: string
+  icon: string
+  badge?: string
 }
 
 // 主导航项
@@ -265,28 +339,28 @@ const mainNavItems: NavItem[] = [
     label: '知识库',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-    </svg>`,
+    </svg>`
   },
   {
     path: '/square',
     label: '知识广场',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-    </svg>`,
+    </svg>`
   },
   {
     path: '/chat',
     label: 'AI 对话',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
-    </svg>`,
+    </svg>`
   },
   {
     path: '/acmd_sre',
     label: '学术检索',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-    </svg>`,
+    </svg>`
   },
   {
     path: '/agent',
@@ -294,9 +368,9 @@ const mainNavItems: NavItem[] = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v3M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
     </svg>`,
-    badge: 'Beta',
-  },
-];
+    badge: 'Beta'
+  }
+]
 
 const toolNavItems: NavItem[] = [
   {
@@ -304,7 +378,7 @@ const toolNavItems: NavItem[] = [
     label: '历史记录',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
-    </svg>`,
+    </svg>`
   },
   {
     path: '/creation',
@@ -312,37 +386,37 @@ const toolNavItems: NavItem[] = [
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
     </svg>`,
-    badge: 'New',
+    badge: 'New'
   },
   {
     path: '/files',
     label: '文件管理',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/>
-    </svg>`,
+    </svg>`
   },
   {
     path: '/service',
     label: '模型管理',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
-    </svg>`,
+    </svg>`
   },
   {
     path: '/settings',
     label: '系统设置',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/>
-    </svg>`,
+    </svg>`
   },
   {
     path: '/architecture',
     label: '系统架构',
     icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path stroke-linecap="round" stroke-linejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
-    </svg>`,
-  },
-];
+    </svg>`
+  }
+]
 </script>
 
 <style scoped>
@@ -490,7 +564,9 @@ const toolNavItems: NavItem[] = [
   padding: 6px 0;
   scrollbar-width: none;
 }
-.sidebar__nav::-webkit-scrollbar { display: none; }
+.sidebar__nav::-webkit-scrollbar {
+  display: none;
+}
 
 .sidebar__nav-section {
   margin-bottom: 4px;
@@ -533,10 +609,10 @@ const toolNavItems: NavItem[] = [
   cursor: pointer;
   /* 精细过渡：只用 transform/background/color，不用 all */
   transition:
-    background   0.14s ease,
-    color        0.14s ease,
-    transform    0.14s ease,
-    box-shadow   0.14s ease;
+    background 0.14s ease,
+    color 0.14s ease,
+    transform 0.14s ease,
+    box-shadow 0.14s ease;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -577,8 +653,12 @@ const toolNavItems: NavItem[] = [
 }
 
 @keyframes navIndicatorIn {
-  from { transform: translateY(-50%) scaleY(0); }
-  to   { transform: translateY(-50%) scaleY(1); }
+  from {
+    transform: translateY(-50%) scaleY(0);
+  }
+  to {
+    transform: translateY(-50%) scaleY(1);
+  }
 }
 
 .nav-item__icon {
@@ -673,7 +753,7 @@ const toolNavItems: NavItem[] = [
   background: #dbeafe;
   border-color: #93c5fd;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(79, 126, 248, 0.20);
+  box-shadow: 0 4px 12px rgba(79, 126, 248, 0.2);
 }
 
 .quick-new-btn:active {
@@ -766,7 +846,7 @@ kbd {
   cursor: pointer;
   transition:
     background 0.14s ease,
-    transform  0.14s ease;
+    transform 0.14s ease;
   overflow: hidden;
   margin-top: 2px;
 }
@@ -847,7 +927,10 @@ kbd {
   align-items: center;
   justify-content: center;
   color: #9ca3af;
-  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
   flex-shrink: 0;
   margin-left: auto;
 }
@@ -855,7 +938,7 @@ kbd {
 .sidebar__collapse-btn:hover {
   background: #f3f4f6;
   color: #374151;
-  transform: scale(1.10);
+  transform: scale(1.1);
 }
 
 .sidebar__collapse-btn:active {
@@ -876,7 +959,9 @@ kbd {
 /* ===== 文字淡入淡出动画 ===== */
 .fade-text-enter-active,
 .fade-text-leave-active {
-  transition: opacity 0.15s ease, max-width 0.25s ease;
+  transition:
+    opacity 0.15s ease,
+    max-width 0.25s ease;
   overflow: hidden;
 }
 

@@ -44,7 +44,7 @@ BLOCKED=0
 for i in "${!PORTS[@]}"; do
     PORT=${PORTS[$i]}
     NAME=${PORT_NAMES[$i]}
-    
+
     # 检查端口是否被占用（兼容 Linux/macOS）
     if command -v lsof &>/dev/null; then
         PID=$(lsof -ti tcp:"$PORT" 2>/dev/null || true)
@@ -53,7 +53,7 @@ for i in "${!PORTS[@]}"; do
     else
         PID=""
     fi
-    
+
     if [ -n "$PID" ]; then
         PROC=$(ps -p "$PID" -o comm= 2>/dev/null || echo "未知进程")
         echo -e "  ${RED}✗ 端口 ${PORT}（${NAME}）被进程占用：${PROC}（PID: ${PID}）${NC}"

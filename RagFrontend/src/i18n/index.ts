@@ -21,7 +21,6 @@ export function toggleLocale() {
   setLocale(_locale.value === 'zh' ? 'en' : 'zh')
 }
 
-
 // ── 核心 t() 函数（响应式版：依赖 _locale，自动更新）────────────
 export function t(key: string, params?: Record<string, string>): string {
   const dict = messages[_locale.value] || messages['zh']
@@ -40,8 +39,7 @@ export function useI18n() {
   const isZh = computed(() => _locale.value === 'zh')
   const isEn = computed(() => _locale.value === 'en')
   // useT 返回响应式翻译函数（在 computed 内调用 t 即可追踪 _locale）
-  const useT = (key: string, params?: Record<string, string>) =>
-    computed(() => t(key, params))
+  const useT = (key: string, params?: Record<string, string>) => computed(() => t(key, params))
   return { t, useT, locale: currentLocale, setLocale, toggleLocale, isZh, isEn }
 }
 
@@ -144,7 +142,7 @@ const messages: Record<Locale, Record<string, string>> = {
     'error.notFound': '资源不存在',
     'error.uploadFailed': '文件上传失败',
     'error.retry': '重试',
-    'error.ollamaDown': 'Ollama 服务未启动，请先运行 ollama serve',
+    'error.ollamaDown': 'Ollama 服务未启动，请先运行 ollama serve'
   },
   en: {
     // General
@@ -243,8 +241,6 @@ const messages: Record<Locale, Record<string, string>> = {
     'error.notFound': 'Resource not found',
     'error.uploadFailed': 'File upload failed',
     'error.retry': 'Retry',
-    'error.ollamaDown': 'Ollama service not running, please run: ollama serve',
-  },
+    'error.ollamaDown': 'Ollama service not running, please run: ollama serve'
+  }
 }
-
-

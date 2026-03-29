@@ -7,12 +7,12 @@ export const useDataUserStore = defineStore('dataUser', {
     return {
       userData: {
         name: '未知',
-        avatar: 'https://avatars.githubusercontent.com/u/145737758?s=400&u=90eecb2edb0caf7cea2cd073d75270cbaa155cdf&v=4',
+        avatar:
+          'https://avatars.githubusercontent.com/u/145737758?s=400&u=90eecb2edb0caf7cea2cd073d75270cbaa155cdf&v=4',
         signature: '未知', // 修正字段名保持一致
         email: '', // 添加 email 字段
         social_media: '' // 添加 social_media 字段
-      },
-
+      }
     }
   },
 
@@ -26,7 +26,8 @@ export const useDataUserStore = defineStore('dataUser', {
         MessagePlugin.error('获取用户数据失败！')
       }
     },
-    async updateUserData(name: string, avatar: string, signature: string) { // 修改参数名保持一致
+    async updateUserData(name: string, avatar: string, signature: string) {
+      // 修改参数名保持一致
       try {
         const data = new FormData()
         data.append('name', name)
@@ -41,10 +42,9 @@ export const useDataUserStore = defineStore('dataUser', {
         console.log('API Response:', response.data)
         // 触发整个页面的刷新
 
-        window.location.reload();
+        window.location.reload()
       } catch (error) {
         MessagePlugin.error('更新用户数据失败！')
-
       }
     }
   }

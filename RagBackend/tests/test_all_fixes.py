@@ -14,13 +14,12 @@ import ast
 import os
 import re
 import sys
-import json
 import unittest
 from pathlib import Path
 
 # tests/ -> RagBackend/ -> KnowledgeRAG/ -> WorkBuddy/
-BACKEND_ROOT = Path(__file__).resolve().parent.parent   # RagBackend/
-PROJECT_ROOT = BACKEND_ROOT.parent                       # KnowledgeRAG/
+BACKEND_ROOT = Path(__file__).resolve().parent.parent  # RagBackend/
+PROJECT_ROOT = BACKEND_ROOT.parent  # KnowledgeRAG/
 sys.path.insert(0, str(BACKEND_ROOT))
 sys.path.insert(0, str(BACKEND_ROOT / "RAG_M"))
 
@@ -29,7 +28,6 @@ sys.path.insert(0, str(BACKEND_ROOT / "RAG_M"))
 # Test 1: doc_list.py &
 # ═══════════════════════════════════════════════════════════
 class TestDocListFix(unittest.TestCase):
-
     def setUp(self):
         self.filepath = BACKEND_ROOT / "document_processing" / "doc_list.py"
 
@@ -47,7 +45,9 @@ class TestDocListFix(unittest.TestCase):
         with open(self.filepath, encoding="utf-8") as f:
             source = f.read()
         count = source.count("def search_documents(")
-        self.assertEqual(count, 1, f"search_documents 被定义了 {count} 次，应该只有 1 次")
+        self.assertEqual(
+            count, 1, f"search_documents 被定义了 {count} 次，应该只有 1 次"
+        )
 
     def test_no_duplicate_preview_document(self):
         """
@@ -58,6 +58,7 @@ class TestDocListFix(unittest.TestCase):
         真正要检查的是：DocumentManager 类内部不能有两个 preview_document。
         """
         import ast
+
         with open(self.filepath, encoding="utf-8") as f:
             source = f.read()
         tree = ast.parse(source)
@@ -65,13 +66,15 @@ class TestDocListFix(unittest.TestCase):
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and node.name == "DocumentManager":
                 method_names = [
-                    n.name for n in ast.walk(node)
+                    n.name
+                    for n in ast.walk(node)
                     if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
                 ]
                 count = method_names.count("preview_document")
                 self.assertEqual(
-                    count, 1,
-                    f"DocumentManager.preview_document 被定义了 {count} 次，应该只有 1 次"
+                    count,
+                    1,
+                    f"DocumentManager.preview_document 被定义了 {count} 次，应该只有 1 次",
                 )
 
 
@@ -79,7 +82,6 @@ class TestDocListFix(unittest.TestCase):
 # Test 2: /secret
 # ═══════════════════════════════════════════════════════════
 class TestNoHardcodedSecrets(unittest.TestCase):
-
     TARGETS = [
         BACKEND_ROOT / "RAGF_User_Management" / "LogonAndLogin.py",
         BACKEND_ROOT / "RAGF_User_Management" / "User_settings.py",
@@ -90,11 +92,10 @@ class TestNoHardcodedSecrets(unittest.TestCase):
         with open(filepath, encoding="utf-8") as f:
             source = f.read()
         # = "secret" = 'secret' key
-        pattern = r'''secret_key\s*=\s*['"]secret['"]'''
+        pattern = r"""secret_key\s*=\s*['"]secret['"]"""
         matches = re.findall(pattern, source)
         self.assertEqual(
-            len(matches), 0,
-            f"{filepath.name} 仍然存在硬编码 secret: {matches}"
+            len(matches), 0, f"{filepath.name} 仍然存在硬编码 secret: {matches}"
         )
 
     def test_logon_no_hardcoded(self):
@@ -107,16 +108,17 @@ class TestNoHardcodedSecrets(unittest.TestCase):
         """User_Management.py 中不应有 jwt.decode(token, "secret", ...)"""
         with open(self.TARGETS[2], encoding="utf-8") as f:
             source = f.read()
-        pattern = r'''jwt\.decode\([^,]+,\s*["']secret["']'''
+        pattern = r"""jwt\.decode\([^,]+,\s*["']secret["']"""
         matches = re.findall(pattern, source)
-        self.assertEqual(len(matches), 0, f"User_Management.py 仍有硬编码 secret: {matches}")
+        self.assertEqual(
+            len(matches), 0, f"User_Management.py 仍有硬编码 secret: {matches}"
+        )
 
 
 # ═══════════════════════════════════════════════════════════
 # Test 3: docker-compose.yml
 # ═══════════════════════════════════════════════════════════
 class TestDockerComposeFix(unittest.TestCase):
-
     def setUp(self):
         self.filepath = PROJECT_ROOT / "docker-compose.yml"
         with open(self.filepath, encoding="utf-8") as f:
@@ -124,15 +126,21 @@ class TestDockerComposeFix(unittest.TestCase):
 
     def test_frontend_context_correct(self):
         """前端 build context 应该是 RagFrontend"""
-        self.assertIn("./RagFrontend", self.content,
-                      "docker-compose.yml 前端 build context 未修正为 ./RagFrontend")
-        self.assertNotIn("./frontend_ASF", self.content,
-                         "docker-compose.yml 仍然有错误的 ./frontend_ASF")
+        self.assertIn(
+            "./RagFrontend",
+            self.content,
+            "docker-compose.yml 前端 build context 未修正为 ./RagFrontend",
+        )
+        self.assertNotIn(
+            "./frontend_ASF",
+            self.content,
+            "docker-compose.yml 仍然有错误的 ./frontend_ASF",
+        )
 
     def test_ollama_in_network(self):
         """Ollama 服务应该加入 apn-network"""
         # ollama networks
-        lines = self.content.split('\n')
+        lines = self.content.split("\n")
         in_ollama = False
         ollama_has_network = False
         for line in lines:
@@ -141,7 +149,11 @@ class TestDockerComposeFix(unittest.TestCase):
             if in_ollama and "apn-network" in line:
                 ollama_has_network = True
                 break
-            if in_ollama and line.strip().startswith("networks:") and "apn-network" not in line:
+            if (
+                in_ollama
+                and line.strip().startswith("networks:")
+                and "apn-network" not in line
+            ):
                 pass
         self.assertTrue(ollama_has_network, "Ollama 服务未加入 apn-network")
 
@@ -155,13 +167,14 @@ class TestDockerComposeFix(unittest.TestCase):
 # Test 4: BM25
 # ═══════════════════════════════════════════════════════════
 class TestBM25(unittest.TestCase):
-
     def setUp(self):
         from langchain.docstore.document import Document
         from src.rag.hybrid_retriever import BM25
 
         self.docs = [
-            Document(page_content="机器学习是人工智能的一个重要分支，用于从数据中学习模式"),
+            Document(
+                page_content="机器学习是人工智能的一个重要分支，用于从数据中学习模式"
+            ),
             Document(page_content="深度学习使用神经网络来处理复杂问题，如图像识别"),
             Document(page_content="自然语言处理让计算机理解和生成人类语言"),
             Document(page_content="知识图谱是一种结构化知识表示方式"),
@@ -184,6 +197,7 @@ class TestBM25(unittest.TestCase):
     def test_returns_documents(self):
         """BM25 返回正确类型"""
         from langchain.docstore.document import Document
+
         results = self.bm25.retrieve("机器学习", top_k=3)
         for doc, score in results:
             self.assertIsInstance(doc, Document)
@@ -194,9 +208,9 @@ class TestBM25(unittest.TestCase):
 # Test 5: RRF
 # ═══════════════════════════════════════════════════════════
 class TestRRFFusion(unittest.TestCase):
-
     def setUp(self):
         from langchain.docstore.document import Document
+
         self.Document = Document
 
     def _make_doc(self, text):
@@ -224,6 +238,7 @@ class TestRRFFusion(unittest.TestCase):
     def test_rrf_scores_descending(self):
         """RRF 结果应按得分降序排列"""
         from src.rag.hybrid_retriever import reciprocal_rank_fusion
+
         docs = [self._make_doc(f"文档{i}") for i in range(5)]
         list1 = [(d, 1.0) for d in docs]
         list2 = [(d, 0.5) for d in reversed(docs)]
@@ -236,11 +251,11 @@ class TestRRFFusion(unittest.TestCase):
 # Test 6: Knowledge graph
 # ═══════════════════════════════════════════════════════════
 class TestGraphMerge(unittest.TestCase):
-
     def test_merge_deduplicates_nodes(self):
         """合并后重复节点 id 只保留一个"""
         # router
         sys.path.insert(0, str(BACKEND_ROOT))
+
         def _merge(graph_list):
             merged_nodes = {}
             merged_edges = {}
@@ -250,16 +265,29 @@ class TestGraphMerge(unittest.TestCase):
                     if nid and nid not in merged_nodes:
                         merged_nodes[nid] = node
                 for edge in graph.get("edges", []):
-                    key = (edge.get("source", ""), edge.get("target", ""), edge.get("label", ""))
+                    key = (
+                        edge.get("source", ""),
+                        edge.get("target", ""),
+                        edge.get("label", ""),
+                    )
                     if key[0] and key[1] and key not in merged_edges:
                         merged_edges[key] = edge
-            return {"nodes": list(merged_nodes.values()), "edges": list(merged_edges.values())}
+            return {
+                "nodes": list(merged_nodes.values()),
+                "edges": list(merged_edges.values()),
+            }
 
-        g1 = {"nodes": [{"id": "A", "label": "实体A"}, {"id": "B", "label": "实体B"}],
-              "edges": [{"source": "A", "target": "B", "label": "关系1"}]}
-        g2 = {"nodes": [{"id": "B", "label": "实体B"}, {"id": "C", "label": "实体C"}],
-              "edges": [{"source": "A", "target": "B", "label": "关系1"},
-                        {"source": "B", "target": "C", "label": "关系2"}]}
+        g1 = {
+            "nodes": [{"id": "A", "label": "实体A"}, {"id": "B", "label": "实体B"}],
+            "edges": [{"source": "A", "target": "B", "label": "关系1"}],
+        }
+        g2 = {
+            "nodes": [{"id": "B", "label": "实体B"}, {"id": "C", "label": "实体C"}],
+            "edges": [
+                {"source": "A", "target": "B", "label": "关系1"},
+                {"source": "B", "target": "C", "label": "关系2"},
+            ],
+        }
 
         merged = _merge([g1, g2])
         node_ids = [n["id"] for n in merged["nodes"]]
@@ -268,18 +296,27 @@ class TestGraphMerge(unittest.TestCase):
 
     def test_merge_deduplicates_edges(self):
         """合并后重复边只保留一条"""
+
         def _merge(graph_list):
             merged_edges = {}
             for graph in graph_list:
                 for edge in graph.get("edges", []):
-                    key = (edge.get("source", ""), edge.get("target", ""), edge.get("label", ""))
+                    key = (
+                        edge.get("source", ""),
+                        edge.get("target", ""),
+                        edge.get("label", ""),
+                    )
                     if key[0] and key[1] and key not in merged_edges:
                         merged_edges[key] = edge
             return {"edges": list(merged_edges.values())}
 
         g1 = {"edges": [{"source": "A", "target": "B", "label": "关系1"}]}
-        g2 = {"edges": [{"source": "A", "target": "B", "label": "关系1"},
-                        {"source": "B", "target": "C", "label": "关系2"}]}
+        g2 = {
+            "edges": [
+                {"source": "A", "target": "B", "label": "关系1"},
+                {"source": "B", "target": "C", "label": "关系2"},
+            ]
+        }
 
         merged = _merge([g1, g2])
         self.assertEqual(len(merged["edges"]), 2, "合并后应有 2 条边（去重后）")
@@ -289,11 +326,9 @@ class TestGraphMerge(unittest.TestCase):
 # Test 7:
 # ═══════════════════════════════════════════════════════════
 class TestCitationTracking(unittest.TestCase):
-
     def test_source_info_fields(self):
         """source_info 必须包含 rank、file_name、source_path"""
-        from src.rag.hybrid_retriever import HybridRetriever, _extract_filename
-        from langchain.docstore.document import Document
+        from src.rag.hybrid_retriever import _extract_filename
 
         # _extract_filename
         meta1 = {"source": "/path/to/test.pdf"}
@@ -307,13 +342,22 @@ class TestCitationTracking(unittest.TestCase):
 
     def test_required_fields_in_source_info(self):
         """HybridRetriever.retrieve_with_scores 返回的每条结果必须有完整 source_info"""
-        required_keys = {"rank", "rrf_score", "file_name", "page", "chunk_index", "source_path"}
+        required_keys = {
+            "rank",
+            "rrf_score",
+            "file_name",
+            "page",
+            "chunk_index",
+            "source_path",
+        }
 
         # Vector store
         from src.rag.hybrid_retriever import reciprocal_rank_fusion
         from langchain.docstore.document import Document
 
-        doc = Document(page_content="测试内容", metadata={"source": "/test/file.txt", "page": 1})
+        doc = Document(
+            page_content="测试内容", metadata={"source": "/test/file.txt", "page": 1}
+        )
         fused = reciprocal_rank_fusion([[(doc, 0.9)]])
 
         # source_info

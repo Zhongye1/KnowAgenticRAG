@@ -2,14 +2,14 @@
 开放 API 体系 - API Key 管理 + 验证中间件
 支持外部系统通过 API Key 调用受保护接口
 """
-from fastapi import APIRouter, HTTPException, Header, Depends, Query
+
+from fastapi import APIRouter, HTTPException, Header
 from pydantic import BaseModel
 from typing import Optional
 import sqlite3
 import secrets
 import hashlib
 import time
-import os
 import logging
 from pathlib import Path
 
@@ -19,10 +19,12 @@ router = APIRouter()
 # - API Key -
 APIKEY_DB_PATH = Path(__file__).parent.parent / "metadata" / "api_keys.db"
 
+
 def _get_conn():
     conn = sqlite3.connect(str(APIKEY_DB_PATH))
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def ensure_apikey_table():
     try:
@@ -61,7 +63,8 @@ def verify_api_key(key: str) -> Optional[dict]:
         key_hash = _hash_key(key)
         with _get_conn() as conn:
             row = conn.execute(
-                "SELECT * FROM api_keys WHERE key_hash = ? AND is_active = 1", (key_hash,)
+                "SELECT * FROM api_keys WHERE key_hash = ? AND is_active = 1",
+                (key_hash,),
             ).fetchone()
             if not row:
                 return None
@@ -70,7 +73,7 @@ def verify_api_key(key: str) -> Optional[dict]:
                 return None
             conn.execute(
                 "UPDATE api_keys SET last_used_at = ?, usage_count = usage_count + 1 WHERE key_hash = ?",
-                (time.time(), key_hash)
+                (time.time(), key_hash),
             )
             conn.commit()
             return row_dict
@@ -83,7 +86,7 @@ def verify_api_key(key: str) -> Optional[dict]:
 class CreateApiKeyRequest(BaseModel):
     name: str
     description: Optional[str] = None
-    expires_days: Optional[int] = None     # None =
+    expires_days: Optional[int] = None  # None =
     rate_limit: int = 1000
     permissions: list[str] = ["read", "query"]
     user_id: Optional[str] = None
@@ -116,15 +119,25 @@ async def create_api_key(req: CreateApiKeyRequest):
 
     try:
         with _get_conn() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 INSERT INTO api_keys (key_hash, key_prefix, user_id, user_email, name, description,
                     created_at, expires_at, rate_limit, permissions)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                key_hash, key_prefix, req.user_id, req.user_email,
-                req.name, req.description, time.time(), expires_at,
-                req.rate_limit, str(req.permissions).replace("'", '"')
-            ))
+            """,
+                (
+                    key_hash,
+                    key_prefix,
+                    req.user_id,
+                    req.user_email,
+                    req.name,
+                    req.description,
+                    time.time(),
+                    expires_at,
+                    req.rate_limit,
+                    str(req.permissions).replace("'", '"'),
+                ),
+            )
             conn.commit()
             key_id = cursor.lastrowid
 
@@ -134,7 +147,7 @@ async def create_api_key(req: CreateApiKeyRequest):
             "key_prefix": key_prefix,
             "name": req.name,
             "expires_at": expires_at,
-            "message": "API Key 已创建。请妥善保存，该密钥仅显示一次。"
+            "message": "API Key 已创建。请妥善保存，该密钥仅显示一次。",
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"创建 API Key 失败: {e}")
@@ -164,11 +177,15 @@ async def toggle_api_key(key_id: int):
     """启用/禁用 API Key"""
     try:
         with _get_conn() as conn:
-            row = conn.execute("SELECT is_active FROM api_keys WHERE id = ?", (key_id,)).fetchone()
+            row = conn.execute(
+                "SELECT is_active FROM api_keys WHERE id = ?", (key_id,)
+            ).fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="API Key 不存在")
             new_status = 0 if row["is_active"] else 1
-            conn.execute("UPDATE api_keys SET is_active = ? WHERE id = ?", (new_status, key_id))
+            conn.execute(
+                "UPDATE api_keys SET is_active = ? WHERE id = ?", (new_status, key_id)
+            )
             conn.commit()
         return {"id": key_id, "is_active": bool(new_status)}
     except HTTPException:

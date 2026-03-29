@@ -20,7 +20,6 @@ import logging
 import re
 import urllib.parse
 import urllib.request
-from typing import Optional
 from langchain.tools import Tool
 
 logger = logging.getLogger(__name__)
@@ -134,8 +133,8 @@ def _search_ddg_html(query: str, max_results: int = 5) -> str:
     snippets = re.findall(r'class="result__snippet"[^>]*>(.*?)</a>', html, re.DOTALL)
     links = re.findall(r'class="result__url"[^>]*>\s*(https?://[^\s<]+)', html)
 
-    titles = [re.sub(r'<[^>]+>', '', t).strip() for t in titles]
-    snippets = [re.sub(r'<[^>]+>', '', s).strip() for s in snippets]
+    titles = [re.sub(r"<[^>]+>", "", t).strip() for t in titles]
+    snippets = [re.sub(r"<[^>]+>", "", s).strip() for s in snippets]
 
     if not titles:
         return f"未找到关于'{query}'的相关结果。"
@@ -145,7 +144,7 @@ def _search_ddg_html(query: str, max_results: int = 5) -> str:
         title = titles[i] if i < len(titles) else ""
         snippet = snippets[i] if i < len(snippets) else ""
         link = links[i] if i < len(links) else ""
-        entry = f"[{i+1}] {title}"
+        entry = f"[{i + 1}] {title}"
         if snippet:
             entry += f"\n    {snippet}"
         if link:
@@ -158,6 +157,7 @@ def _search_ddg_html(query: str, max_results: int = 5) -> str:
 # ─────────────────────────────────────────────────────────────────
 # LangChain Tool
 # ─────────────────────────────────────────────────────────────────
+
 
 def build_web_search_tool(max_results: int = 5) -> Tool:
     """
@@ -198,6 +198,7 @@ def build_web_search_tool(max_results: int = 5) -> Tool:
 # ─────────────────────────────────────────────────────────────────
 
 from fastapi import APIRouter, Query
+
 api_router = APIRouter()
 
 
@@ -211,6 +212,7 @@ async def api_web_search(
     不需要 API Key，基于 DuckDuckGo 免费接口。
     """
     import asyncio
+
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(
         None, lambda: _search_ddg_instant(q, max_results=max_results)

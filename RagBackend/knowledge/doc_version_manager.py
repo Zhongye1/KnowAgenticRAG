@@ -3,11 +3,10 @@
 - 每次文档更新自动保存历史版本
 - 支持版本对比、回滚、变更记录
 """
+
 import os
-import json
 import hashlib
-from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import sqlite3
@@ -70,7 +69,7 @@ def save_version(req: VersionCreate):
 
     cur = conn.execute(
         "SELECT content_hash FROM doc_versions WHERE doc_id=? AND is_current=1",
-        (req.doc_id,)
+        (req.doc_id,),
     )
     row = cur.fetchone()
     if row and row["content_hash"] == content_hash:
@@ -78,8 +77,7 @@ def save_version(req: VersionCreate):
         return {"status": "unchanged", "message": "内容未变化，无需保存新版本"}
 
     cur = conn.execute(
-        "SELECT MAX(version) as max_v FROM doc_versions WHERE doc_id=?",
-        (req.doc_id,)
+        "SELECT MAX(version) as max_v FROM doc_versions WHERE doc_id=?", (req.doc_id,)
     )
     row = cur.fetchone()
     next_version = (row["max_v"] or 0) + 1
@@ -87,12 +85,23 @@ def save_version(req: VersionCreate):
     conn.execute("UPDATE doc_versions SET is_current=0 WHERE doc_id=?", (req.doc_id,))
 
     # 5000
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO doc_versions (doc_id, kb_id, version, filename, content_hash,
                                   content_snapshot, change_summary, created_by, is_current)
         VALUES (?,?,?,?,?,?,?,?,1)
-    """, (req.doc_id, req.kb_id, next_version, req.filename,
-          content_hash, req.content[:5000], req.change_summary, req.created_by))
+    """,
+        (
+            req.doc_id,
+            req.kb_id,
+            next_version,
+            req.filename,
+            content_hash,
+            req.content[:5000],
+            req.change_summary,
+            req.created_by,
+        ),
+    )
     conn.commit()
     conn.close()
     return {"status": "saved", "version": next_version}
@@ -102,10 +111,13 @@ def save_version(req: VersionCreate):
 def list_versions(doc_id: str):
     """获取文档所有历史版本列表"""
     conn = get_db()
-    rows = conn.execute("""
+    rows = conn.execute(
+        """
         SELECT id, version, filename, change_summary, created_by, created_at, is_current, content_hash
         FROM doc_versions WHERE doc_id=? ORDER BY version DESC
-    """, (doc_id,)).fetchall()
+    """,
+        (doc_id,),
+    ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -114,9 +126,12 @@ def list_versions(doc_id: str):
 def get_version(doc_id: str, version: int):
     """获取指定版本内容快照"""
     conn = get_db()
-    row = conn.execute("""
+    row = conn.execute(
+        """
         SELECT * FROM doc_versions WHERE doc_id=? AND version=?
-    """, (doc_id, version)).fetchone()
+    """,
+        (doc_id, version),
+    ).fetchone()
     conn.close()
     if not row:
         raise HTTPException(404, "版本不存在")
@@ -129,14 +144,16 @@ def rollback_version(req: RollbackRequest):
     conn = get_db()
     row = conn.execute(
         "SELECT * FROM doc_versions WHERE doc_id=? AND version=?",
-        (req.doc_id, req.target_version)
+        (req.doc_id, req.target_version),
     ).fetchone()
     if not row:
         conn.close()
         raise HTTPException(404, "目标版本不存在")
     conn.execute("UPDATE doc_versions SET is_current=0 WHERE doc_id=?", (req.doc_id,))
-    conn.execute("UPDATE doc_versions SET is_current=1 WHERE doc_id=? AND version=?",
-                 (req.doc_id, req.target_version))
+    conn.execute(
+        "UPDATE doc_versions SET is_current=1 WHERE doc_id=? AND version=?",
+        (req.doc_id, req.target_version),
+    )
     conn.commit()
     conn.close()
     return {"status": "rolled_back", "version": req.target_version}
@@ -146,17 +163,28 @@ def rollback_version(req: RollbackRequest):
 def diff_versions(doc_id: str, v1: int, v2: int):
     """简单对比两个版本的文本差异（行级）"""
     import difflib
+
     conn = get_db()
-    row1 = conn.execute("SELECT content_snapshot FROM doc_versions WHERE doc_id=? AND version=?",
-                        (doc_id, v1)).fetchone()
-    row2 = conn.execute("SELECT content_snapshot FROM doc_versions WHERE doc_id=? AND version=?",
-                        (doc_id, v2)).fetchone()
+    row1 = conn.execute(
+        "SELECT content_snapshot FROM doc_versions WHERE doc_id=? AND version=?",
+        (doc_id, v1),
+    ).fetchone()
+    row2 = conn.execute(
+        "SELECT content_snapshot FROM doc_versions WHERE doc_id=? AND version=?",
+        (doc_id, v2),
+    ).fetchone()
     conn.close()
     if not row1 or not row2:
         raise HTTPException(404, "版本不存在")
     lines1 = (row1["content_snapshot"] or "").splitlines()
     lines2 = (row2["content_snapshot"] or "").splitlines()
-    diff = list(difflib.unified_diff(lines1, lines2,
-                                     fromfile=f"v{v1}", tofile=f"v{v2}", lineterm=""))
-    return {"diff": diff, "additions": sum(1 for l in diff if l.startswith('+')),
-            "deletions": sum(1 for l in diff if l.startswith('-'))}
+    diff = list(
+        difflib.unified_diff(
+            lines1, lines2, fromfile=f"v{v1}", tofile=f"v{v2}", lineterm=""
+        )
+    )
+    return {
+        "diff": diff,
+        "additions": sum(1 for l in diff if l.startswith("+")),
+        "deletions": sum(1 for l in diff if l.startswith("-")),
+    }

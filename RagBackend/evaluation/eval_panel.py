@@ -18,15 +18,13 @@ API:
 
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 import sqlite3
 import time
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException
 from pydantic import BaseModel
@@ -91,31 +89,131 @@ def _init_db():
 def _seed_questions(conn):
     """内置 20 条中文测试题"""
     questions = [
-        ("什么是RAG技术？", "RAG（检索增强生成）是一种将外部知识库检索与大模型生成结合的技术", "retrieval", "RAG,检索,生成"),
-        ("向量数据库的作用是什么？", "向量数据库用于存储和检索高维向量，支持语义相似度搜索", "retrieval", "向量,数据库,相似度"),
-        ("什么是Embedding？", "Embedding是将文本转换为固定长度的稠密向量表示，用于捕捉语义信息", "retrieval", "Embedding,向量,语义"),
-        ("知识库和普通数据库有什么区别？", "知识库支持语义搜索和自然语言查询，而普通数据库基于精确匹配", "retrieval", "知识库,语义,检索"),
-        ("如何评估RAG系统的检索质量？", "可通过召回率、精确率、MRR、NDCG等指标评估检索质量", "retrieval", "评估,召回,精确"),
-        ("请简述大语言模型的主要应用场景", "包括文本生成、问答系统、代码生成、翻译、摘要等自然语言处理任务", "summary", "大模型,应用,场景"),
-        ("什么是Prompt Engineering？", "Prompt工程是通过设计和优化输入提示词来引导大模型生成更好输出的技术", "summary", "Prompt,工程,优化"),
-        ("解释一下Fine-tuning和RAG的区别", "Fine-tuning修改模型参数，RAG在推理时动态检索外部知识，无需修改参数", "summary", "Fine-tuning,RAG,区别"),
-        ("什么是上下文窗口？", "上下文窗口是模型单次处理的最大token数量，限制了输入文本的长度", "summary", "上下文,窗口,token"),
-        ("如何处理长文档的知识库构建？", "通过文本分块（chunking）将长文档切割为小段，再分别向量化存储", "summary", "长文档,分块,向量化"),
-        ("如果知识库中没有相关信息，模型应该怎么处理？", "应该告知用户该问题超出知识库范围，避免产生幻觉", "reasoning", "幻觉,范围,告知"),
-        ("为什么RAG比直接用大模型更准确？", "RAG基于实际文档检索，减少了模型的幻觉问题，答案可溯源验证", "reasoning", "准确,幻觉,溯源"),
-        ("向量相似度搜索和关键词搜索各有什么优缺点？", "向量搜索理解语义但计算量大；关键词搜索快速精确但无法理解同义词", "reasoning", "相似度,关键词,优缺点"),
-        ("如何提高知识库问答的响应速度？", "可通过向量缓存、减小模型规模、优化索引结构、限制topK等方式提速", "reasoning", "速度,缓存,优化"),
-        ("为什么要对文档进行分块处理？", "过长的文档超出上下文窗口，分块后可精准定位相关片段，提升检索精度", "reasoning", "分块,上下文,精度"),
+        (
+            "什么是RAG技术？",
+            "RAG（检索增强生成）是一种将外部知识库检索与大模型生成结合的技术",
+            "retrieval",
+            "RAG,检索,生成",
+        ),
+        (
+            "向量数据库的作用是什么？",
+            "向量数据库用于存储和检索高维向量，支持语义相似度搜索",
+            "retrieval",
+            "向量,数据库,相似度",
+        ),
+        (
+            "什么是Embedding？",
+            "Embedding是将文本转换为固定长度的稠密向量表示，用于捕捉语义信息",
+            "retrieval",
+            "Embedding,向量,语义",
+        ),
+        (
+            "知识库和普通数据库有什么区别？",
+            "知识库支持语义搜索和自然语言查询，而普通数据库基于精确匹配",
+            "retrieval",
+            "知识库,语义,检索",
+        ),
+        (
+            "如何评估RAG系统的检索质量？",
+            "可通过召回率、精确率、MRR、NDCG等指标评估检索质量",
+            "retrieval",
+            "评估,召回,精确",
+        ),
+        (
+            "请简述大语言模型的主要应用场景",
+            "包括文本生成、问答系统、代码生成、翻译、摘要等自然语言处理任务",
+            "summary",
+            "大模型,应用,场景",
+        ),
+        (
+            "什么是Prompt Engineering？",
+            "Prompt工程是通过设计和优化输入提示词来引导大模型生成更好输出的技术",
+            "summary",
+            "Prompt,工程,优化",
+        ),
+        (
+            "解释一下Fine-tuning和RAG的区别",
+            "Fine-tuning修改模型参数，RAG在推理时动态检索外部知识，无需修改参数",
+            "summary",
+            "Fine-tuning,RAG,区别",
+        ),
+        (
+            "什么是上下文窗口？",
+            "上下文窗口是模型单次处理的最大token数量，限制了输入文本的长度",
+            "summary",
+            "上下文,窗口,token",
+        ),
+        (
+            "如何处理长文档的知识库构建？",
+            "通过文本分块（chunking）将长文档切割为小段，再分别向量化存储",
+            "summary",
+            "长文档,分块,向量化",
+        ),
+        (
+            "如果知识库中没有相关信息，模型应该怎么处理？",
+            "应该告知用户该问题超出知识库范围，避免产生幻觉",
+            "reasoning",
+            "幻觉,范围,告知",
+        ),
+        (
+            "为什么RAG比直接用大模型更准确？",
+            "RAG基于实际文档检索，减少了模型的幻觉问题，答案可溯源验证",
+            "reasoning",
+            "准确,幻觉,溯源",
+        ),
+        (
+            "向量相似度搜索和关键词搜索各有什么优缺点？",
+            "向量搜索理解语义但计算量大；关键词搜索快速精确但无法理解同义词",
+            "reasoning",
+            "相似度,关键词,优缺点",
+        ),
+        (
+            "如何提高知识库问答的响应速度？",
+            "可通过向量缓存、减小模型规模、优化索引结构、限制topK等方式提速",
+            "reasoning",
+            "速度,缓存,优化",
+        ),
+        (
+            "为什么要对文档进行分块处理？",
+            "过长的文档超出上下文窗口，分块后可精准定位相关片段，提升检索精度",
+            "reasoning",
+            "分块,上下文,精度",
+        ),
         # /
-        ("LangChain是什么？", "LangChain是一个用于构建LLM应用的Python框架，提供链式调用、工具集成等功能", "technical", "LangChain,框架,Python"),
-        ("什么是FAISS？", "FAISS是Facebook开发的高效向量相似度搜索库，支持十亿级别向量检索", "technical", "FAISS,向量,搜索"),
-        ("FastAPI和Flask有什么区别？", "FastAPI基于异步IO，自动生成OpenAPI文档，性能更好；Flask更简单轻量", "technical", "FastAPI,Flask,异步"),
-        ("什么是BM25算法？", "BM25是基于词频和文档长度的信息检索算法，是传统关键词搜索的经典方法", "technical", "BM25,词频,检索"),
-        ("如何实现流式输出（Streaming）？", "通过SSE（Server-Sent Events）或WebSocket，模型生成token时逐步推送到前端", "technical", "流式,SSE,WebSocket"),
+        (
+            "LangChain是什么？",
+            "LangChain是一个用于构建LLM应用的Python框架，提供链式调用、工具集成等功能",
+            "technical",
+            "LangChain,框架,Python",
+        ),
+        (
+            "什么是FAISS？",
+            "FAISS是Facebook开发的高效向量相似度搜索库，支持十亿级别向量检索",
+            "technical",
+            "FAISS,向量,搜索",
+        ),
+        (
+            "FastAPI和Flask有什么区别？",
+            "FastAPI基于异步IO，自动生成OpenAPI文档，性能更好；Flask更简单轻量",
+            "technical",
+            "FastAPI,Flask,异步",
+        ),
+        (
+            "什么是BM25算法？",
+            "BM25是基于词频和文档长度的信息检索算法，是传统关键词搜索的经典方法",
+            "technical",
+            "BM25,词频,检索",
+        ),
+        (
+            "如何实现流式输出（Streaming）？",
+            "通过SSE（Server-Sent Events）或WebSocket，模型生成token时逐步推送到前端",
+            "technical",
+            "流式,SSE,WebSocket",
+        ),
     ]
     conn.executemany(
         "INSERT INTO eval_questions (question, expected, category, keywords) VALUES (?,?,?,?)",
-        questions
+        questions,
     )
 
 
@@ -145,12 +243,20 @@ def _keyword_score(answer: str, expected: str, keywords: str) -> float:
     answer_lower = answer.lower()
 
     # expected
-    exp_words = [w for w in expected.replace("，", " ").replace("。", " ").split() if len(w) >= 2]
-    exp_score = sum(1 for w in exp_words if w.lower() in answer_lower) / max(len(exp_words), 1)
+    exp_words = [
+        w for w in expected.replace("，", " ").replace("。", " ").split() if len(w) >= 2
+    ]
+    exp_score = sum(1 for w in exp_words if w.lower() in answer_lower) / max(
+        len(exp_words), 1
+    )
 
     # keywords
     kw_list = [k.strip() for k in keywords.split(",") if k.strip()]
-    kw_score = sum(1 for k in kw_list if k.lower() in answer_lower) / max(len(kw_list), 1) if kw_list else exp_score
+    kw_score = (
+        sum(1 for k in kw_list if k.lower() in answer_lower) / max(len(kw_list), 1)
+        if kw_list
+        else exp_score
+    )
 
     return round(exp_score * 0.7 + kw_score * 0.3, 3)
 
@@ -160,7 +266,17 @@ def _source_accuracy(answer: str) -> tuple[bool, bool]:
     判断答案是否包含溯源信息
     返回：(has_source, source_ok)
     """
-    source_markers = ["来源", "根据", "参考", "文档", "片段", "Source", "Reference", "【", "「"]
+    source_markers = [
+        "来源",
+        "根据",
+        "参考",
+        "文档",
+        "片段",
+        "Source",
+        "Reference",
+        "【",
+        "「",
+    ]
     has_source = any(m in answer for m in source_markers)
     # source_ok
     source_ok = has_source
@@ -168,9 +284,12 @@ def _source_accuracy(answer: str) -> tuple[bool, bool]:
 
 
 # - -
-async def _call_model(model_name: str, question: str, kb_id: Optional[str]) -> tuple[str, float]:
+async def _call_model(
+    model_name: str, question: str, kb_id: Optional[str]
+) -> tuple[str, float]:
     """调用模型获取答案，返回 (answer, latency_ms)"""
     import httpx
+
     start = time.perf_counter()
     answer = ""
     try:
@@ -193,7 +312,9 @@ async def _call_model(model_name: str, question: str, kb_id: Optional[str]) -> t
                     "prompt": f"请用中文简洁回答：{question}",
                     "stream": False,
                 }
-                resp2 = await client.post("http://localhost:11434/api/generate", json=ollama_payload)
+                resp2 = await client.post(
+                    "http://localhost:11434/api/generate", json=ollama_payload
+                )
                 if resp2.status_code == 200:
                     answer = resp2.json().get("response", "")
     except Exception as e:
@@ -202,7 +323,9 @@ async def _call_model(model_name: str, question: str, kb_id: Optional[str]) -> t
     return answer, round(latency_ms, 1)
 
 
-async def _run_eval_task(run_id: str, model_name: str, questions: list, kb_id: Optional[str]):
+async def _run_eval_task(
+    run_id: str, model_name: str, questions: list, kb_id: Optional[str]
+):
     """后台评测任务"""
     details = []
     total_score = 0.0
@@ -214,44 +337,57 @@ async def _run_eval_task(run_id: str, model_name: str, questions: list, kb_id: O
         score = _keyword_score(answer, q["expected"], q["keywords"])
         has_source, source_ok = _source_accuracy(answer)
 
-        details.append({
-            "run_id": run_id,
-            "q_id": q["id"],
-            "question": q["question"],
-            "category": q["category"],
-            "answer": answer[:1000],
-            "expected": q["expected"],
-            "latency_ms": latency_ms,
-            "score": score,
-            "has_source": int(has_source),
-            "source_ok": int(source_ok),
-        })
+        details.append(
+            {
+                "run_id": run_id,
+                "q_id": q["id"],
+                "question": q["question"],
+                "category": q["category"],
+                "answer": answer[:1000],
+                "expected": q["expected"],
+                "latency_ms": latency_ms,
+                "score": score,
+                "has_source": int(has_source),
+                "source_ok": int(source_ok),
+            }
+        )
         total_score += score
         total_latency += latency_ms
         if source_ok:
             source_hits += 1
 
     n = len(questions)
-    accuracy   = round(total_score / n, 3) if n else 0
+    accuracy = round(total_score / n, 3) if n else 0
     avg_latency = round(total_latency / n, 1) if n else 0
-    source_acc  = round(source_hits / n, 3) if n else 0
-    overall     = round(accuracy * 0.5 + source_acc * 0.3 + max(0, 1 - avg_latency / 10000) * 0.2, 3)
+    source_acc = round(source_hits / n, 3) if n else 0
+    overall = round(
+        accuracy * 0.5 + source_acc * 0.3 + max(0, 1 - avg_latency / 10000) * 0.2, 3
+    )
 
     with _get_db() as conn:
         conn.executemany(
             """INSERT INTO eval_details
                (run_id,q_id,question,category,answer,expected,latency_ms,score,has_source,source_ok)
                VALUES (:run_id,:q_id,:question,:category,:answer,:expected,:latency_ms,:score,:has_source,:source_ok)""",
-            details
+            details,
         )
         conn.execute(
             """UPDATE eval_runs SET status='done', total_q=?, passed_q=?, avg_latency=?,
                accuracy=?, source_acc=?, overall=? WHERE id=?""",
-            (n, sum(1 for d in details if d["score"] >= 0.6), avg_latency,
-             accuracy, source_acc, overall, run_id)
+            (
+                n,
+                sum(1 for d in details if d["score"] >= 0.6),
+                avg_latency,
+                accuracy,
+                source_acc,
+                overall,
+                run_id,
+            ),
         )
 
-    logger.info(f"[Eval] {model_name} run={run_id} acc={accuracy} latency={avg_latency}ms overall={overall}")
+    logger.info(
+        f"[Eval] {model_name} run={run_id} acc={accuracy} latency={avg_latency}ms overall={overall}"
+    )
 
 
 # - API -
@@ -263,7 +399,7 @@ async def run_evaluation(req: EvalRunRequest, bg: BackgroundTasks):
             placeholders = ",".join("?" * len(req.question_ids))
             qs = conn.execute(
                 f"SELECT * FROM eval_questions WHERE id IN ({placeholders}) AND active=1",
-                req.question_ids
+                req.question_ids,
             ).fetchall()
         else:
             qs = conn.execute("SELECT * FROM eval_questions WHERE active=1").fetchall()
@@ -278,7 +414,7 @@ async def run_evaluation(req: EvalRunRequest, bg: BackgroundTasks):
             run_id = str(uuid.uuid4())[:8]
             conn.execute(
                 "INSERT INTO eval_runs (id, model_name, run_at, total_q) VALUES (?,?,?,?)",
-                (run_id, model, datetime.now().isoformat(), len(questions))
+                (run_id, model, datetime.now().isoformat(), len(questions)),
             )
             run_ids.append(run_id)
             bg.add_task(_run_eval_task, run_id, model, questions, req.kb_id)
@@ -317,26 +453,28 @@ async def get_latest_echarts():
         for run in runs:
             # latency0~10000ms 0~1
             speed_score = round(max(0, 1 - run["avg_latency"] / 8000), 3)
-            radar_data.append({
-                "name": run["model_name"],
-                "run_id": run["id"],
-                "value": [
-                    round(run["accuracy"] * 100, 1),
-                    round(speed_score * 100, 1),
-                    round(run["source_acc"] * 100, 1),
-                ]
-            })
+            radar_data.append(
+                {
+                    "name": run["model_name"],
+                    "run_id": run["id"],
+                    "value": [
+                        round(run["accuracy"] * 100, 1),
+                        round(speed_score * 100, 1),
+                        round(run["source_acc"] * 100, 1),
+                    ],
+                }
+            )
 
         latest_run = runs[0]
         cat_rows = conn.execute(
             """SELECT category, AVG(score) as avg_score, COUNT(*) as cnt
                FROM eval_details WHERE run_id=? GROUP BY category""",
-            (latest_run["id"],)
+            (latest_run["id"],),
         ).fetchall()
         category_bar = {
             "categories": [r["category"] for r in cat_rows],
-            "scores":     [round(r["avg_score"] * 100, 1) for r in cat_rows],
-            "counts":     [r["cnt"] for r in cat_rows],
+            "scores": [round(r["avg_score"] * 100, 1) for r in cat_rows],
+            "counts": [r["cnt"] for r in cat_rows],
         }
 
         latency_rows = conn.execute(
@@ -345,15 +483,21 @@ async def get_latest_echarts():
         buckets = [0] * 6  # 0-500, 500-1000, 1000-2000, 2000-4000, 4000-8000, 8000+
         for row in latency_rows:
             ms = row["latency_ms"]
-            if ms < 500:       buckets[0] += 1
-            elif ms < 1000:    buckets[1] += 1
-            elif ms < 2000:    buckets[2] += 1
-            elif ms < 4000:    buckets[3] += 1
-            elif ms < 8000:    buckets[4] += 1
-            else:              buckets[5] += 1
+            if ms < 500:
+                buckets[0] += 1
+            elif ms < 1000:
+                buckets[1] += 1
+            elif ms < 2000:
+                buckets[2] += 1
+            elif ms < 4000:
+                buckets[3] += 1
+            elif ms < 8000:
+                buckets[4] += 1
+            else:
+                buckets[5] += 1
         latency_hist = {
-            "labels":  ["<0.5s", "0.5-1s", "1-2s", "2-4s", "4-8s", ">8s"],
-            "counts":  buckets,
+            "labels": ["<0.5s", "0.5-1s", "1-2s", "2-4s", "4-8s", ">8s"],
+            "counts": buckets,
         }
 
     return {
@@ -407,7 +551,7 @@ async def add_question(req: AddQuestionRequest):
     with _get_db() as conn:
         cur = conn.execute(
             "INSERT INTO eval_questions (question, expected, category, keywords) VALUES (?,?,?,?)",
-            (req.question, req.expected, req.category, req.keywords)
+            (req.question, req.expected, req.category, req.keywords),
         )
     return {"id": cur.lastrowid, "message": "Question added"}
 

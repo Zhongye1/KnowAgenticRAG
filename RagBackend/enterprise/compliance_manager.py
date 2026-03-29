@@ -1,6 +1,7 @@
 """
 企业合规模块：SSO单点登录、多租户隔离、数据脱敏、API限流、数据加密
 """
+
 import os
 import re
 import json
@@ -8,9 +9,8 @@ import time
 import hashlib
 import sqlite3
 from datetime import datetime
-from typing import Optional, Dict, List
-from fastapi import APIRouter, HTTPException, Request, Depends
-from fastapi.responses import JSONResponse
+from typing import Optional, Dict
+from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 import secrets
 
@@ -83,10 +83,20 @@ def create_tenant(req: TenantCreate):
     tenant_id = hashlib.md5(req.name.encode()).hexdigest()[:16]
     conn = get_db()
     try:
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO tenants (id, name, plan, quota_kb, quota_docs, quota_queries)
             VALUES (?,?,?,?,?,?)
-        """, (tenant_id, req.name, req.plan, req.quota_kb, req.quota_docs, req.quota_queries))
+        """,
+            (
+                tenant_id,
+                req.name,
+                req.plan,
+                req.quota_kb,
+                req.quota_docs,
+                req.quota_queries,
+            ),
+        )
         conn.commit()
         conn.close()
         return {"tenant_id": tenant_id, "name": req.name}
@@ -98,8 +108,10 @@ def create_tenant(req: TenantCreate):
 @router.post("/tenants/{tenant_id}/add-user")
 def add_tenant_user(tenant_id: str, user_id: str, role: str = "member"):
     conn = get_db()
-    conn.execute("INSERT OR REPLACE INTO tenant_users (tenant_id, user_id, role) VALUES (?,?,?)",
-                 (tenant_id, user_id, role))
+    conn.execute(
+        "INSERT OR REPLACE INTO tenant_users (tenant_id, user_id, role) VALUES (?,?,?)",
+        (tenant_id, user_id, role),
+    )
     conn.commit()
     conn.close()
     return {"status": "added"}
@@ -118,7 +130,7 @@ def check_quota(tenant_id: str):
 # - SSO -
 class SSOConfig(BaseModel):
     tenant_id: str
-    provider: str        # oidc | saml | ldap | github | google
+    provider: str  # oidc | saml | ldap | github | google
     client_id: Optional[str] = None
     client_secret: Optional[str] = None
     issuer_url: Optional[str] = None
@@ -131,12 +143,15 @@ def configure_sso(req: SSOConfig):
     config = {
         "client_id": req.client_id,
         "issuer_url": req.issuer_url,
-        "redirect_uri": req.redirect_uri
+        "redirect_uri": req.redirect_uri,
     }
     # client_secret Environment variable
-    conn.execute("""
+    conn.execute(
+        """
         UPDATE tenants SET sso_enabled=1, sso_provider=?, sso_config=? WHERE id=?
-    """, (req.provider, json.dumps(config), req.tenant_id))
+    """,
+        (req.provider, json.dumps(config), req.tenant_id),
+    )
     conn.commit()
     conn.close()
     return {"status": "configured", "provider": req.provider}
@@ -154,17 +169,21 @@ def sso_login_url(tenant_id: str):
     provider = tenant["sso_provider"]
     state = secrets.token_urlsafe(16)
     if provider == "github":
-        url = f"https://github.com/login/oauth/authorize?client_id={config.get('client_id','')}&state={state}&scope=user:email"
+        url = f"https://github.com/login/oauth/authorize?client_id={config.get('client_id', '')}&state={state}&scope=user:email"
     elif provider == "google":
-        url = (f"https://accounts.google.com/o/oauth2/auth?"
-               f"client_id={config.get('client_id','')}&response_type=code"
-               f"&scope=openid email profile&state={state}"
-               f"&redirect_uri={config.get('redirect_uri','')}")
+        url = (
+            f"https://accounts.google.com/o/oauth2/auth?"
+            f"client_id={config.get('client_id', '')}&response_type=code"
+            f"&scope=openid email profile&state={state}"
+            f"&redirect_uri={config.get('redirect_uri', '')}"
+        )
     elif provider in ("oidc",):
-        url = (f"{config.get('issuer_url','')}/authorize?"
-               f"client_id={config.get('client_id','')}&response_type=code"
-               f"&scope=openid email profile&state={state}"
-               f"&redirect_uri={config.get('redirect_uri','')}")
+        url = (
+            f"{config.get('issuer_url', '')}/authorize?"
+            f"client_id={config.get('client_id', '')}&response_type=code"
+            f"&scope=openid email profile&state={state}"
+            f"&redirect_uri={config.get('redirect_uri', '')}"
+        )
     else:
         url = f"/sso/{provider}/login?state={state}"
     return {"login_url": url, "state": state}
@@ -172,12 +191,14 @@ def sso_login_url(tenant_id: str):
 
 # - -
 DESENSITIZE_PATTERNS = [
-    (r'\b1[3-9]\d{9}\b', lambda m: m.group()[:3] + '****' + m.group()[-4:]),
-    (r'\b\d{15}(\d{3})?\b', lambda m: m.group()[:4] + '**' * 5 + m.group()[-4:]),
-    (r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
-     lambda m: m.group()[:2] + '***' + m.group()[m.group().find('@'):]),
-    (r'\b(?:\d{4}[- ]?){3}\d{4}\b', lambda m: '**** **** **** ' + m.group()[-4:]),
-    (r'\b\d{3}-\d{4}-\d{4}\b', lambda m: '***-****-' + m.group()[-4:]),
+    (r"\b1[3-9]\d{9}\b", lambda m: m.group()[:3] + "****" + m.group()[-4:]),
+    (r"\b\d{15}(\d{3})?\b", lambda m: m.group()[:4] + "**" * 5 + m.group()[-4:]),
+    (
+        r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b",
+        lambda m: m.group()[:2] + "***" + m.group()[m.group().find("@") :],
+    ),
+    (r"\b(?:\d{4}[- ]?){3}\d{4}\b", lambda m: "**** **** **** " + m.group()[-4:]),
+    (r"\b\d{3}-\d{4}-\d{4}\b", lambda m: "***-****-" + m.group()[-4:]),
 ]
 
 
@@ -196,8 +217,8 @@ def desensitize_api(data: dict):
 
 # - API Middleware -
 RATE_LIMIT_RULES = {
-    "free":       {"per_minute": 20,  "per_hour": 200,   "per_day": 1000},
-    "pro":        {"per_minute": 60,  "per_hour": 1000,  "per_day": 10000},
+    "free": {"per_minute": 20, "per_hour": 200, "per_day": 1000},
+    "pro": {"per_minute": 60, "per_hour": 1000, "per_day": 10000},
     "enterprise": {"per_minute": 300, "per_hour": 10000, "per_day": 100000},
 }
 
@@ -212,17 +233,20 @@ def check_rate_limit(key: str, plan: str = "free", window: str = "per_minute") -
     conn = get_db()
     row = conn.execute(
         "SELECT count FROM rate_limit_log WHERE key=? AND window_start=?",
-        (f"{key}:{window}", window_start)
+        (f"{key}:{window}", window_start),
     ).fetchone()
 
     current = row["count"] if row else 0
     allowed = current < limit
 
     if allowed:
-        conn.execute("""
+        conn.execute(
+            """
             INSERT INTO rate_limit_log (key, window_start, count) VALUES (?,?,1)
             ON CONFLICT(key, window_start) DO UPDATE SET count=count+1
-        """, (f"{key}:{window}", window_start))
+        """,
+            (f"{key}:{window}", window_start),
+        )
         conn.commit()
     conn.close()
     return {
@@ -230,14 +254,16 @@ def check_rate_limit(key: str, plan: str = "free", window: str = "per_minute") -
         "current": current + 1,
         "limit": limit,
         "window": window,
-        "reset_in": window_secs - (int(time.time()) % window_secs)
+        "reset_in": window_secs - (int(time.time()) % window_secs),
     }
 
 
 @router.get("/rate-limit/check")
 def check_rate_limit_api(user_id: str, plan: str = "free"):
-    results = {w: check_rate_limit(user_id, plan, w)
-               for w in ["per_minute", "per_hour", "per_day"]}
+    results = {
+        w: check_rate_limit(user_id, plan, w)
+        for w in ["per_minute", "per_hour", "per_day"]
+    }
     allowed = all(r["allowed"] for r in results.values())
     return {"allowed": allowed, "details": results}
 
@@ -262,5 +288,5 @@ def compliance_report(tenant_id: str = "default", days: int = 30):
             {"item": "数据脱敏", "status": "✅ 手机/邮箱/身份证自动脱敏"},
             {"item": "SSO单点登录", "status": "⚙️ 可配置（支持OIDC/GitHub/Google）"},
             {"item": "GDPR合规", "status": "⚠️ 需补充数据删除申请接口"},
-        ]
+        ],
     }

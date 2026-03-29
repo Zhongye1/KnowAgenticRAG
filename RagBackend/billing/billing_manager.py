@@ -1,11 +1,12 @@
 """
 商业化能力：定价体系、付费服务、开发者文档、工单系统
 """
+
 import os
 import json
 import sqlite3
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict
+from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -93,7 +94,9 @@ init_db()
 @router.get("/plans")
 def list_plans():
     conn = get_db()
-    rows = conn.execute("SELECT * FROM plans WHERE is_active=1 ORDER BY price_monthly").fetchall()
+    rows = conn.execute(
+        "SELECT * FROM plans WHERE is_active=1 ORDER BY price_monthly"
+    ).fetchall()
     conn.close()
     result = []
     for r in rows:
@@ -134,20 +137,32 @@ def subscribe(req: SubscribeRequest):
         conn.close()
         raise HTTPException(404, "方案不存在")
 
-    conn.execute("""
+    conn.execute(
+        """
         UPDATE subscriptions SET status='cancelled'
         WHERE user_id=? AND tenant_id=? AND status='active'
-    """, (req.user_id, req.tenant_id))
+    """,
+        (req.user_id, req.tenant_id),
+    )
 
     now = datetime.now()
     days = 365 if req.billing_cycle == "yearly" else 30
     expires_at = (now + timedelta(days=days)).isoformat()
 
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO subscriptions (user_id, tenant_id, plan_id, started_at, expires_at, auto_renew)
         VALUES (?,?,?,?,?,?)
-    """, (req.user_id, req.tenant_id, req.plan_id,
-          now.isoformat(), expires_at, 1 if req.auto_renew else 0))
+    """,
+        (
+            req.user_id,
+            req.tenant_id,
+            req.plan_id,
+            now.isoformat(),
+            expires_at,
+            1 if req.auto_renew else 0,
+        ),
+    )
     conn.commit()
     sub_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.close()
@@ -157,12 +172,15 @@ def subscribe(req: SubscribeRequest):
 @router.get("/subscription/{user_id}")
 def get_subscription(user_id: str):
     conn = get_db()
-    row = conn.execute("""
+    row = conn.execute(
+        """
         SELECT s.*, p.display_name, p.features, p.quota
         FROM subscriptions s JOIN plans p ON s.plan_id=p.id
         WHERE s.user_id=? AND s.status='active'
         ORDER BY s.created_at DESC LIMIT 1
-    """, (user_id,)).fetchone()
+    """,
+        (user_id,),
+    ).fetchone()
     conn.close()
     if not row:
         return {"plan": "free", "status": "no_subscription"}
@@ -178,8 +196,8 @@ class TicketCreate(BaseModel):
     tenant_id: Optional[str] = "default"
     title: str
     description: str
-    category: str = "other"    # bug|feature|billing|other
-    priority: str = "normal"   # low|normal|high|urgent
+    category: str = "other"  # bug|feature|billing|other
+    priority: str = "normal"  # low|normal|high|urgent
 
 
 class TicketReply(BaseModel):
@@ -193,10 +211,20 @@ class TicketReply(BaseModel):
 @router.post("/tickets/create")
 def create_ticket(req: TicketCreate):
     conn = get_db()
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO tickets (user_id, tenant_id, title, description, category, priority)
         VALUES (?,?,?,?,?,?)
-    """, (req.user_id, req.tenant_id, req.title, req.description, req.category, req.priority))
+    """,
+        (
+            req.user_id,
+            req.tenant_id,
+            req.title,
+            req.description,
+            req.category,
+            req.priority,
+        ),
+    )
     ticket_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.commit()
     conn.close()
@@ -220,12 +248,23 @@ def list_tickets(user_id: str, status: Optional[str] = None):
 @router.post("/tickets/reply")
 def reply_ticket(req: TicketReply):
     conn = get_db()
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO ticket_replies (ticket_id, author_id, author_name, is_staff, content)
         VALUES (?,?,?,?,?)
-    """, (req.ticket_id, req.author_id, req.author_name, 1 if req.is_staff else 0, req.content))
-    conn.execute("UPDATE tickets SET updated_at=datetime('now','localtime') WHERE id=?",
-                 (req.ticket_id,))
+    """,
+        (
+            req.ticket_id,
+            req.author_id,
+            req.author_name,
+            1 if req.is_staff else 0,
+            req.content,
+        ),
+    )
+    conn.execute(
+        "UPDATE tickets SET updated_at=datetime('now','localtime') WHERE id=?",
+        (req.ticket_id,),
+    )
     conn.commit()
     conn.close()
     return {"status": "replied"}
@@ -235,13 +274,18 @@ def reply_ticket(req: TicketReply):
 def update_ticket_status(ticket_id: int, status: str, resolution: Optional[str] = None):
     conn = get_db()
     if status == "resolved":
-        conn.execute("""
+        conn.execute(
+            """
             UPDATE tickets SET status=?, resolution=?, resolved_at=datetime('now','localtime'),
             updated_at=datetime('now','localtime') WHERE id=?
-        """, (status, resolution, ticket_id))
+        """,
+            (status, resolution, ticket_id),
+        )
     else:
-        conn.execute("UPDATE tickets SET status=?, updated_at=datetime('now','localtime') WHERE id=?",
-                     (status, ticket_id))
+        conn.execute(
+            "UPDATE tickets SET status=?, updated_at=datetime('now','localtime') WHERE id=?",
+            (status, ticket_id),
+        )
     conn.commit()
     conn.close()
     return {"status": "updated"}
@@ -250,8 +294,11 @@ def update_ticket_status(ticket_id: int, status: str, resolution: Optional[str] 
 @router.get("/tickets/{ticket_id}/replies")
 def get_ticket_replies(ticket_id: int):
     conn = get_db()
-    rows = conn.execute("""
+    rows = conn.execute(
+        """
         SELECT * FROM ticket_replies WHERE ticket_id=? ORDER BY created_at
-    """, (ticket_id,)).fetchall()
+    """,
+        (ticket_id,),
+    ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
