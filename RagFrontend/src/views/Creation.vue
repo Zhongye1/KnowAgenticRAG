@@ -3,9 +3,13 @@
     <div class="creation-sidebar">
       <div class="cs-title">📄 文档创作</div>
       <div
-        v-for="t in types" :key="t.id"
+        v-for="t in types"
+        :key="t.id"
         :class="['cs-item', activeType === t.id && 'cs-item--active']"
-        @click="activeType = t.id; output = ''"
+        @click="
+          activeType = t.id
+          output = ''
+        "
       >
         <span class="cs-icon">{{ t.icon }}</span>
         <div>
@@ -21,11 +25,20 @@
         <h3>📋 大纲生成</h3>
         <div class="cf-row">
           <label>主题 / 标题</label>
-          <input v-model="form.topic" placeholder="如：基于RAG的知识库问答系统设计与实现" class="cf-input" />
+          <input
+            v-model="form.topic"
+            placeholder="如：基于RAG的知识库问答系统设计与实现"
+            class="cf-input"
+          />
         </div>
         <div class="cf-row">
           <label>额外要求</label>
-          <textarea v-model="form.requirements" rows="2" class="cf-textarea" placeholder="如：技术报告风格，约2000字，面向本科生读者"></textarea>
+          <textarea
+            v-model="form.requirements"
+            rows="2"
+            class="cf-textarea"
+            placeholder="如：技术报告风格，约2000字，面向本科生读者"
+          ></textarea>
         </div>
       </div>
 
@@ -34,11 +47,22 @@
         <h3>📝 摘要生成</h3>
         <div class="cf-row">
           <label>原文（支持粘贴长文本）</label>
-          <textarea v-model="form.text" rows="6" class="cf-textarea" placeholder="粘贴需要摘要的文章内容..."></textarea>
+          <textarea
+            v-model="form.text"
+            rows="6"
+            class="cf-textarea"
+            placeholder="粘贴需要摘要的文章内容..."
+          ></textarea>
         </div>
         <div class="cf-row">
           <label>摘要长度（字）</label>
-          <input v-model.number="form.summaryLength" type="number" min="50" max="1000" class="cf-input cf-input--short" />
+          <input
+            v-model.number="form.summaryLength"
+            type="number"
+            min="50"
+            max="1000"
+            class="cf-input cf-input--short"
+          />
         </div>
       </div>
 
@@ -47,7 +71,12 @@
         <h3>🌐 文本翻译</h3>
         <div class="cf-row">
           <label>原文</label>
-          <textarea v-model="form.text" rows="6" class="cf-textarea" placeholder="粘贴需要翻译的文本..."></textarea>
+          <textarea
+            v-model="form.text"
+            rows="6"
+            class="cf-textarea"
+            placeholder="粘贴需要翻译的文本..."
+          ></textarea>
         </div>
         <div class="cf-row">
           <label>目标语言</label>
@@ -66,7 +95,12 @@
         <h3>✨ 格式优化</h3>
         <div class="cf-row">
           <label>原文</label>
-          <textarea v-model="form.text" rows="6" class="cf-textarea" placeholder="粘贴需要优化的文本..."></textarea>
+          <textarea
+            v-model="form.text"
+            rows="6"
+            class="cf-textarea"
+            placeholder="粘贴需要优化的文本..."
+          ></textarea>
         </div>
         <div class="cf-row">
           <label>优化风格</label>
@@ -84,34 +118,58 @@
         <h3>📄 内容扩写</h3>
         <div class="cf-row">
           <label>大纲 / 要点</label>
-          <textarea v-model="form.outline" rows="6" class="cf-textarea" placeholder="输入大纲或关键要点，每行一条或使用 Markdown 格式..."></textarea>
+          <textarea
+            v-model="form.outline"
+            rows="6"
+            class="cf-textarea"
+            placeholder="输入大纲或关键要点，每行一条或使用 Markdown 格式..."
+          ></textarea>
         </div>
         <div class="cf-row">
           <label>目标字数</label>
-          <input v-model.number="form.expandLength" type="number" min="200" max="5000" class="cf-input cf-input--short" />
+          <input
+            v-model.number="form.expandLength"
+            type="number"
+            min="200"
+            max="5000"
+            class="cf-input cf-input--short"
+          />
         </div>
       </div>
 
       <!-- 生成按钮 -->
       <div class="cf-actions">
-        <button class="cf-btn-gen" @click="generate" :disabled="generating">
+        <button class="cf-btn-gen" :disabled="generating" @click="generate">
           {{ generating ? '⏳ 生成中...' : '✨ 立即生成' }}
         </button>
         <!-- 模型选择 -->
         <div class="cf-model-selector">
           <label class="cf-model-label">🤖 模型</label>
-          <select v-model="selectedModel" class="cf-model-select" @change="onModelChange" :disabled="generating">
+          <select
+            v-model="selectedModel"
+            class="cf-model-select"
+            :disabled="generating"
+            @change="onModelChange"
+          >
             <optgroup label="☁️ 云端模型">
               <option
                 v-for="m in availableModels.filter(m => m.provider !== 'ollama')"
-                :key="m.id" :value="m.id" :disabled="!m.available"
-              >{{ m.name }}{{ !m.available ? ' (需配置Key)' : '' }}</option>
+                :key="m.id"
+                :value="m.id"
+                :disabled="!m.available"
+              >
+                {{ m.name }}{{ !m.available ? ' (需配置Key)' : '' }}
+              </option>
             </optgroup>
             <optgroup label="🖥️ 本地模型">
               <option
                 v-for="m in availableModels.filter(m => m.provider === 'ollama')"
-                :key="m.id" :value="m.id" :disabled="!m.available"
-              >{{ m.name }}{{ !m.available ? ' (未启动)' : '' }}</option>
+                :key="m.id"
+                :value="m.id"
+                :disabled="!m.available"
+              >
+                {{ m.name }}{{ !m.available ? ' (未启动)' : '' }}
+              </option>
             </optgroup>
           </select>
         </div>
@@ -134,11 +192,11 @@ import { ref, reactive, onMounted } from 'vue'
 import axios from 'axios'
 
 const types = [
-  { id: 'outline',   name: '大纲生成', desc: '主题→层次化大纲', icon: '📋' },
-  { id: 'summary',   name: '摘要生成', desc: '长文本→要点摘要', icon: '📝' },
-  { id: 'translate', name: '文本翻译', desc: '中英互译',         icon: '🌐' },
-  { id: 'polish',    name: '格式优化', desc: '润色措辞格式',     icon: '✨' },
-  { id: 'expand',    name: '内容扩写', desc: '大纲→完整文档',   icon: '📄' },
+  { id: 'outline', name: '大纲生成', desc: '主题→层次化大纲', icon: '📋' },
+  { id: 'summary', name: '摘要生成', desc: '长文本→要点摘要', icon: '📝' },
+  { id: 'translate', name: '文本翻译', desc: '中英互译', icon: '🌐' },
+  { id: 'polish', name: '格式优化', desc: '润色措辞格式', icon: '✨' },
+  { id: 'expand', name: '内容扩写', desc: '大纲→完整文档', icon: '📄' }
 ]
 
 const activeType = ref('outline')
@@ -146,7 +204,12 @@ const generating = ref(false)
 const output = ref('')
 
 // ── 模型选择 ─────────────────────────────────────────────────
-interface ModelOption { id: string; name: string; provider: string; available: boolean }
+interface ModelOption {
+  id: string
+  name: string
+  provider: string
+  available: boolean
+}
 const availableModels = ref<ModelOption[]>([])
 const selectedModel = ref('')
 
@@ -173,7 +236,7 @@ async function loadModels() {
     // 离线降级
     availableModels.value = [
       { id: 'deepseek-chat', name: 'DeepSeek Chat（云端）', provider: 'deepseek', available: true },
-      { id: 'qwen2:0.5b',    name: 'Qwen2 0.5B（本地）',   provider: 'ollama',   available: false },
+      { id: 'qwen2:0.5b', name: 'Qwen2 0.5B（本地）', provider: 'ollama', available: false }
     ]
     selectedModel.value = 'deepseek-chat'
   }
@@ -191,7 +254,7 @@ const form = reactive({
   targetLang: '英文',
   style: '正式学术风格',
   outline: '',
-  expandLength: 1500,
+  expandLength: 1500
 })
 
 async function generate() {
@@ -201,11 +264,23 @@ async function generate() {
   const model = selectedModel.value
 
   const endpointMap: Record<string, { url: string; body: any }> = {
-    outline:   { url: '/api/creation/outline',   body: { topic: form.topic, requirements: form.requirements, model } },
-    summary:   { url: '/api/creation/summary',   body: { text: form.text, length: form.summaryLength, model } },
-    translate: { url: '/api/creation/translate', body: { text: form.text, target_lang: form.targetLang, model } },
-    polish:    { url: '/api/creation/polish',    body: { text: form.text, style: form.style, model } },
-    expand:    { url: '/api/creation/expand',    body: { outline: form.outline, target_length: form.expandLength, model } },
+    outline: {
+      url: '/api/creation/outline',
+      body: { topic: form.topic, requirements: form.requirements, model }
+    },
+    summary: {
+      url: '/api/creation/summary',
+      body: { text: form.text, length: form.summaryLength, model }
+    },
+    translate: {
+      url: '/api/creation/translate',
+      body: { text: form.text, target_lang: form.targetLang, model }
+    },
+    polish: { url: '/api/creation/polish', body: { text: form.text, style: form.style, model } },
+    expand: {
+      url: '/api/creation/expand',
+      body: { outline: form.outline, target_length: form.expandLength, model }
+    }
   }
 
   const { url, body } = endpointMap[activeType.value]
@@ -214,7 +289,7 @@ async function generate() {
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      body: JSON.stringify(body)
     })
 
     if (!resp.ok) {
@@ -234,7 +309,7 @@ async function generate() {
       buf += decoder.decode(value, { stream: true })
       // 按行处理，避免 chunk 不完整导致 JSON 截断
       const lines = buf.split('\n')
-      buf = lines.pop() ?? ''   // 最后一行可能不完整，留待下次
+      buf = lines.pop() ?? '' // 最后一行可能不完整，留待下次
 
       for (const line of lines) {
         const trimmed = line.trim()
@@ -309,24 +384,50 @@ onMounted(() => {
   padding: 10px 8px;
   border-radius: 8px;
   cursor: pointer;
-  transition: background .15s;
+  transition: background 0.15s;
   margin-bottom: 2px;
 }
-.cs-item:hover { background: #f3f4f6; }
-.cs-item--active { background: #eff6ff; }
-.cs-icon { font-size: 18px; }
-.cs-name { font-size: 13px; font-weight: 600; }
-.cs-desc { font-size: 11px; color: #9ca3af; }
+.cs-item:hover {
+  background: #f3f4f6;
+}
+.cs-item--active {
+  background: #eff6ff;
+}
+.cs-icon {
+  font-size: 18px;
+}
+.cs-name {
+  font-size: 13px;
+  font-weight: 600;
+}
+.cs-desc {
+  font-size: 11px;
+  color: #9ca3af;
+}
 
 .creation-main {
   flex: 1;
   overflow-y: auto;
   padding: 20px 24px;
 }
-.creation-form h3 { margin: 0 0 16px; font-size: 16px; }
-.cf-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
-.cf-row label { font-size: 12px; color: #6b7280; font-weight: 500; }
-.cf-input, .cf-textarea, .cf-select {
+.creation-form h3 {
+  margin: 0 0 16px;
+  font-size: 16px;
+}
+.cf-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+.cf-row label {
+  font-size: 12px;
+  color: #6b7280;
+  font-weight: 500;
+}
+.cf-input,
+.cf-textarea,
+.cf-select {
   padding: 8px 12px;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
@@ -335,13 +436,25 @@ onMounted(() => {
   color: var(--td-text-color-primary, #111);
   resize: vertical;
   outline: none;
-  transition: border-color .2s;
+  transition: border-color 0.2s;
   font-family: inherit;
 }
-.cf-input:focus, .cf-textarea:focus { border-color: #6366f1; }
-.cf-input--short { max-width: 120px; }
-.cf-select { appearance: auto; }
-.cf-actions { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.cf-input:focus,
+.cf-textarea:focus {
+  border-color: #6366f1;
+}
+.cf-input--short {
+  max-width: 120px;
+}
+.cf-select {
+  appearance: auto;
+}
+.cf-actions {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
 .cf-btn-gen {
   padding: 9px 26px;
   background: #6366f1;
@@ -350,11 +463,17 @@ onMounted(() => {
   border-radius: 6px;
   font-size: 14px;
   cursor: pointer;
-  transition: background .2s;
+  transition: background 0.2s;
 }
-.cf-btn-gen:hover:not(:disabled) { background: #4f46e5; }
-.cf-btn-gen:disabled { opacity: .6; cursor: not-allowed; }
-.cf-btn-copy, .cf-btn-clear {
+.cf-btn-gen:hover:not(:disabled) {
+  background: #4f46e5;
+}
+.cf-btn-gen:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.cf-btn-copy,
+.cf-btn-clear {
   padding: 9px 16px;
   border: 1px solid #e5e7eb;
   border-radius: 6px;
@@ -362,8 +481,14 @@ onMounted(() => {
   cursor: pointer;
   background: #f9fafb;
 }
-.cf-btn-copy:hover { background: #f3f4f6; }
-.cf-btn-clear:hover { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+.cf-btn-copy:hover {
+  background: #f3f4f6;
+}
+.cf-btn-clear:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
 .cf-output {
   border: 1px solid #e5e7eb;
   border-radius: 8px;
@@ -386,7 +511,9 @@ onMounted(() => {
   white-space: pre-wrap;
   word-break: break-word;
 }
-.cf-output-content :deep(h1), .cf-output-content :deep(h2), .cf-output-content :deep(h3) {
+.cf-output-content :deep(h1),
+.cf-output-content :deep(h2),
+.cf-output-content :deep(h3) {
   margin: 10px 0 6px;
 }
 .cf-output-content :deep(pre) {
@@ -402,7 +529,11 @@ onMounted(() => {
   color: #6366f1;
   padding: 0 14px 10px;
 }
-@keyframes blink { 50% { opacity: 0; } }
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
 
 /* 模型选择器 */
 .cf-model-selector {
@@ -428,6 +559,11 @@ onMounted(() => {
   transition: border-color 0.15s;
 }
 .cf-model-select:hover:not(:disabled),
-.cf-model-select:focus:not(:disabled) { border-color: #6366f1; }
-.cf-model-select:disabled { opacity: 0.6; cursor: not-allowed; }
+.cf-model-select:focus:not(:disabled) {
+  border-color: #6366f1;
+}
+.cf-model-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 </style>

@@ -22,35 +22,36 @@ GOOGLE_DRIVE_CREDENTIALS_PATH = os.getenv("GOOGLE_DRIVE_CREDENTIALS_PATH")
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class GoogleDriveLoader:
     """Handles authentication and file downloading from Google Drive using service account"""
 
-    SCOPES = ['https://www.googleapis.com/auth/drive.readonly']
+    SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
     DOWNLOAD_DIR = GOOGLE_DRIVE_FOLDER
 
     # Map of Google Workspace MIME types to export formats
     EXPORT_FORMATS = {
-        'application/vnd.google-apps.document': {
-            'mime_type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'extension': '.docx'
+        "application/vnd.google-apps.document": {
+            "mime_type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            "extension": ".docx",
         },
-        'application/vnd.google-apps.spreadsheet': {
-            'mime_type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'extension': '.xlsx'
+        "application/vnd.google-apps.spreadsheet": {
+            "mime_type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "extension": ".xlsx",
         },
-        'application/vnd.google-apps.presentation': {
-            'mime_type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-            'extension': '.pptx'
-        }
+        "application/vnd.google-apps.presentation": {
+            "mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "extension": ".pptx",
+        },
     }
 
     # Map of common MIME types to file extensions
     MIME_TO_EXTENSION = {
-        'application/pdf': '.pdf',
-        'text/plain': '.txt',
-        'image/jpeg': '.jpg',
-        'image/png': '.png',
-        **{k: v['extension'] for k, v in EXPORT_FORMATS.items()}
+        "application/pdf": ".pdf",
+        "text/plain": ".txt",
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
+        **{k: v["extension"] for k, v in EXPORT_FORMATS.items()},
     }
 
     def __init__(self, credentials_path: Optional[str] = None) -> None:
@@ -76,10 +77,9 @@ class GoogleDriveLoader:
 
         try:
             credentials = service_account.Credentials.from_service_account_file(
-                self.credentials_path,
-                scopes=self.SCOPES
+                self.credentials_path, scopes=self.SCOPES
             )
-            self._service = build('drive', 'v3', credentials=credentials)
+            self._service = build("drive", "v3", credentials=credentials)
             return self._service
         except Exception as e:
             raise Exception(f"Authentication failed: {str(e)}")
@@ -88,8 +88,7 @@ class GoogleDriveLoader:
         """Get appropriate export request based on file type"""
         if mime_type in self.EXPORT_FORMATS:
             return service.files().export_media(
-                fileId=file_id,
-                mimeType=self.EXPORT_FORMATS[mime_type]['mime_type']
+                fileId=file_id, mimeType=self.EXPORT_FORMATS[mime_type]["mime_type"]
             )
         return service.files().get_media(fileId=file_id)
 
@@ -115,13 +114,15 @@ class GoogleDriveLoader:
 
         try:
             file_metadata = service.files().get(fileId=file_id).execute()
-            file_name = file_metadata['name']
-            mime_type = file_metadata['mimeType']
+            file_name = file_metadata["name"]
+            mime_type = file_metadata["mimeType"]
 
-            if mime_type.startswith('application/vnd.google-apps.'):
+            if mime_type.startswith("application/vnd.google-apps."):
                 if mime_type not in self.EXPORT_FORMATS:
-                    raise ValueError(f"Unsupported Google Workspace file type: {mime_type}")
-                file_name += self.EXPORT_FORMATS[mime_type]['extension']
+                    raise ValueError(
+                        f"Unsupported Google Workspace file type: {mime_type}"
+                    )
+                file_name += self.EXPORT_FORMATS[mime_type]["extension"]
 
             request = self._get_export_request(service, file_id, mime_type)
             file_handle = io.BytesIO()
@@ -133,16 +134,18 @@ class GoogleDriveLoader:
                 status, done = downloader.next_chunk()
                 logger.info("Download %d%% completed", int(status.progress() * 100))
 
-            save_path = save_path or self._get_unique_path(os.path.join(self.DOWNLOAD_DIR, file_name))
+            save_path = save_path or self._get_unique_path(
+                os.path.join(self.DOWNLOAD_DIR, file_name)
+            )
             Path(save_path).parent.mkdir(parents=True, exist_ok=True)
 
-            with open(save_path, 'wb') as f:
+            with open(save_path, "wb") as f:
                 f.write(file_handle.getvalue())
 
             logger.info("Saved file to: %s", save_path)
             return save_path
 
-        except (Exception) as e:
+        except Exception as e:
             raise Exception(f"Error downloading file from Google Drive: {str(e)}")
 
     def list_files_in_folder(self, folder_id: str) -> List[Dict[str, str]]:
@@ -152,15 +155,19 @@ class GoogleDriveLoader:
 
         def list_files_recursive(folder_id: str):
             try:
-                results = service.files().list(
-                    q=f"'{folder_id}' in parents and trashed=false",
-                    fields="files(id, name, mimeType)",
-                    pageSize=1000
-                ).execute()
+                results = (
+                    service.files()
+                    .list(
+                        q=f"'{folder_id}' in parents and trashed=false",
+                        fields="files(id, name, mimeType)",
+                        pageSize=1000,
+                    )
+                    .execute()
+                )
 
-                for file in results.get('files', []):
-                    if file['mimeType'] == 'application/vnd.google-apps.folder':
-                        list_files_recursive(file['id'])
+                for file in results.get("files", []):
+                    if file["mimeType"] == "application/vnd.google-apps.folder":
+                        list_files_recursive(file["id"])
                     else:
                         all_files.append(file)
             except Exception as e:
@@ -176,11 +183,17 @@ class GoogleDriveLoader:
 
         try:
             service = self.authenticate()
-            file = service.files().get(fileId=file_id, fields="id, name, mimeType").execute()
+            file = (
+                service.files()
+                .get(fileId=file_id, fields="id, name, mimeType")
+                .execute()
+            )
 
-            file_name = file['name']
-            mime_type = file['mimeType']
-            extension = Path(file_name).suffix or self.MIME_TO_EXTENSION.get(mime_type, '')
+            file_name = file["name"]
+            mime_type = file["mimeType"]
+            extension = Path(file_name).suffix or self.MIME_TO_EXTENSION.get(
+                mime_type, ""
+            )
 
             save_path = Path(save_dir) / f"{Path(file_name).stem}{extension}"
             return self.download_file(file_id, str(save_path))

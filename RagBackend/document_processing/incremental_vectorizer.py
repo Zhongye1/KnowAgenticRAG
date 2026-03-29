@@ -27,11 +27,10 @@ import hashlib
 import json
 import os
 import sys
-import shutil
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 # - -
 # update/delete O(N)
@@ -63,6 +62,7 @@ os.makedirs(HASH_INDEX_ROOT, exist_ok=True)
 
 # ─────────────────────────────────────────────────────────────────
 # ─────────────────────────────────────────────────────────────────
+
 
 class HashIndex:
     """
@@ -141,18 +141,19 @@ class HashIndex:
         return dict(self._data)
 
     def stats(self) -> dict:
-        active  = [v for v in self._data.values() if not v.get("deleted")]
+        active = [v for v in self._data.values() if not v.get("deleted")]
         deleted = [v for v in self._data.values() if v.get("deleted")]
         return {
-            "kb_id":            self.kb_id,
-            "total_documents":  len(active),
-            "total_chunks":     sum(r.get("chunk_count", 0) for r in active),
+            "kb_id": self.kb_id,
+            "total_documents": len(active),
+            "total_chunks": sum(r.get("chunk_count", 0) for r in active),
             "pending_deletion": len(deleted),
         }
 
 
 # ─────────────────────────────────────────────────────────────────
 # ─────────────────────────────────────────────────────────────────
+
 
 def compute_file_hash(file_path: str) -> str:
     """计算文件 SHA256 哈希（比 MD5 更抗碰撞）"""
@@ -172,6 +173,7 @@ def compute_bytes_hash(content: bytes) -> str:
 # Incremental vectorization
 # ─────────────────────────────────────────────────────────────────
 
+
 class IncrementalVectorizer:
     """
     增量向量化管理器：按知识库 (kb_id) 隔离向量存储，
@@ -189,9 +191,11 @@ class IncrementalVectorizer:
         if self._vs_manager is None:
             try:
                 from RAG_M.src.vectorstore.vector_store import VectorStoreManager
+
                 self._vs_manager = VectorStoreManager(docs_dir=self.vectorstore_path)
             except ImportError:
                 from src.vectorstore.vector_store import VectorStoreManager
+
                 self._vs_manager = VectorStoreManager(docs_dir=self.vectorstore_path)
         return self._vs_manager
 
@@ -201,7 +205,9 @@ class IncrementalVectorizer:
         index_file = os.path.join(self.vectorstore_path, "index.faiss")
         if os.path.exists(index_file):
             try:
-                return vs_manager.load_vectorstore(self.vectorstore_path, trust_source=True)
+                return vs_manager.load_vectorstore(
+                    self.vectorstore_path, trust_source=True
+                )
             except Exception as e:
                 logger.warning(f"[IncrementalVectorizer] 加载向量库失败: {e}")
                 return None
@@ -217,6 +223,7 @@ class IncrementalVectorizer:
             except ImportError:
                 # Fallback:
                 from langchain.docstore.document import Document
+
                 with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                     text = f.read()
                 # ~500
@@ -226,7 +233,7 @@ class IncrementalVectorizer:
                 return [
                     Document(
                         page_content=chunk,
-                        metadata={"source": file_path, "chunk_index": i}
+                        metadata={"source": file_path, "chunk_index": i},
                     )
                     for i, chunk in enumerate(chunks)
                 ]
@@ -264,19 +271,24 @@ class IncrementalVectorizer:
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"文件不存在: {file_path}")
 
-        doc_key  = doc_key or os.path.relpath(file_path, str(_BACKEND_DIR))
+        doc_key = doc_key or os.path.relpath(file_path, str(_BACKEND_DIR))
         new_hash = compute_file_hash(file_path)
 
         existing = self.hash_index.get(doc_key)
 
-        if not force and existing and not existing.get("deleted") and existing.get("file_hash") == new_hash:
+        if (
+            not force
+            and existing
+            and not existing.get("deleted")
+            and existing.get("file_hash") == new_hash
+        ):
             logger.info(f"[IncrementalVectorizer] 跳过（哈希未变）: {doc_key}")
             return {
-                "status":      "skipped",
-                "doc_key":     doc_key,
+                "status": "skipped",
+                "doc_key": doc_key,
                 "chunk_count": existing.get("chunk_count", 0),
-                "file_hash":   new_hash,
-                "message":     "文档内容未变化，跳过向量化",
+                "file_hash": new_hash,
+                "message": "文档内容未变化，跳过向量化",
             }
 
         status = "updated" if (existing and not existing.get("deleted")) else "added"
@@ -288,8 +300,8 @@ class IncrementalVectorizer:
 
         # chunk doc_key
         for i, doc in enumerate(documents):
-            doc.metadata["doc_key"]     = doc_key
-            doc.metadata["source"]      = file_path
+            doc.metadata["doc_key"] = doc_key
+            doc.metadata["source"] = file_path
             doc.metadata["chunk_index"] = i
 
         # - deleted
@@ -298,7 +310,7 @@ class IncrementalVectorizer:
             self.hash_index.soft_delete(doc_key)
 
         # - chunkO(1)
-        vs_manager  = self._get_vs_manager()
+        vs_manager = self._get_vs_manager()
         existing_vs = self._load_vectorstore()
 
         if existing_vs is not None:
@@ -310,31 +322,38 @@ class IncrementalVectorizer:
             vs_manager.create_vectorstore(documents, self.vectorstore_path)
 
         # - active
-        self.hash_index.set(doc_key, {
-            "file_hash":     new_hash,
-            "file_path":     file_path,
-            "vectorized_at": datetime.now().isoformat(),
-            "chunk_count":   len(documents),
-            "status":        status,
-            "deleted":       False,
-        })
+        self.hash_index.set(
+            doc_key,
+            {
+                "file_hash": new_hash,
+                "file_path": file_path,
+                "vectorized_at": datetime.now().isoformat(),
+                "chunk_count": len(documents),
+                "status": status,
+                "deleted": False,
+            },
+        )
 
         # - compaction
         compacted = False
         if self.hash_index.pending_compaction():
-            logger.info(f"[IncrementalVectorizer] 触发 compaction（软删除累积达阈值）: {self.kb_id}")
+            logger.info(
+                f"[IncrementalVectorizer] 触发 compaction（软删除累积达阈值）: {self.kb_id}"
+            )
             self._compact()
             compacted = True
 
-        logger.info(f"[IncrementalVectorizer] 完成 ({status}): {doc_key}, {len(documents)} chunks")
+        logger.info(
+            f"[IncrementalVectorizer] 完成 ({status}): {doc_key}, {len(documents)} chunks"
+        )
 
         return {
-            "status":      status,
-            "doc_key":     doc_key,
+            "status": status,
+            "doc_key": doc_key,
             "chunk_count": len(documents),
-            "file_hash":   new_hash,
-            "compacted":   compacted,
-            "message":     f"向量化{'更新' if status == 'updated' else '新增'}成功",
+            "file_hash": new_hash,
+            "compacted": compacted,
+            "message": f"向量化{'更新' if status == 'updated' else '新增'}成功",
         }
 
     def _compact(self):
@@ -349,11 +368,12 @@ class IncrementalVectorizer:
             return
 
         deleted_keys = set(self.hash_index.get_deleted_keys())
-        all_docs     = list(existing_vs.docstore._dict.values())
+        all_docs = list(existing_vs.docstore._dict.values())
 
         # doc_key chunk
         clean_docs = [
-            d for d in all_docs
+            d
+            for d in all_docs
             if hasattr(d, "metadata") and d.metadata.get("doc_key") not in deleted_keys
         ]
 
@@ -369,7 +389,9 @@ class IncrementalVectorizer:
         for dk in list(deleted_keys):
             self.hash_index.delete(dk)
 
-        logger.info(f"[IncrementalVectorizer] compaction 完成: 清除 {len(deleted_keys)} 个废弃文档，保留 {len(clean_docs)} 个 chunk")
+        logger.info(
+            f"[IncrementalVectorizer] compaction 完成: 清除 {len(deleted_keys)} 个废弃文档，保留 {len(clean_docs)} 个 chunk"
+        )
 
     def remove_file(self, doc_key: str) -> dict:
         """
@@ -391,15 +413,17 @@ class IncrementalVectorizer:
         # compaction
         compacted = False
         if self.hash_index.pending_compaction():
-            logger.info(f"[IncrementalVectorizer] 触发 compaction（remove 后达阈值）: {self.kb_id}")
+            logger.info(
+                f"[IncrementalVectorizer] 触发 compaction（remove 后达阈值）: {self.kb_id}"
+            )
             self._compact()
             compacted = True
 
         return {
-            "status":    "removed",
-            "doc_key":   doc_key,
+            "status": "removed",
+            "doc_key": doc_key,
             "compacted": compacted,
-            "message":   "文档已标记废弃，查询时自动过滤",
+            "message": "文档已标记废弃，查询时自动过滤",
         }
 
     def batch_ingest(self, file_paths: List[str], force: bool = False) -> dict:
@@ -412,11 +436,13 @@ class IncrementalVectorizer:
                 results["details"].append(r)
             except Exception as e:
                 results["failed"] += 1
-                results["details"].append({
-                    "status": "failed",
-                    "file_path": fp,
-                    "error": str(e),
-                })
+                results["details"].append(
+                    {
+                        "status": "failed",
+                        "file_path": fp,
+                        "error": str(e),
+                    }
+                )
         return results
 
     def get_stats(self) -> dict:
@@ -434,6 +460,7 @@ class IncrementalVectorizer:
 # ─────────────────────────────────────────────────────────────────
 # FastAPI main.py include
 # ─────────────────────────────────────────────────────────────────
+
 
 class IngestRequest(BaseModel):
     kb_id: str
@@ -453,7 +480,9 @@ class RemoveDocRequest(BaseModel):
     doc_key: str
 
 
-@router.post("/api/vectorize/ingest", summary="增量向量化单个文档（异步，立即返回 task_id）")
+@router.post(
+    "/api/vectorize/ingest", summary="增量向量化单个文档（异步，立即返回 task_id）"
+)
 async def api_ingest_file(req: IngestRequest):
     """
     增量向量化：仅处理内容有变化的文档（哈希比对）。
@@ -480,7 +509,9 @@ async def api_ingest_file(req: IngestRequest):
     }
 
 
-@router.post("/api/vectorize/batch", summary="批量增量向量化（异步，立即返回 task_id 列表）")
+@router.post(
+    "/api/vectorize/batch", summary="批量增量向量化（异步，立即返回 task_id 列表）"
+)
 async def api_batch_ingest(req: BatchIngestRequest):
     """
     批量处理多个文件，每个文件独立入队，返回 task_id 列表。
@@ -548,6 +579,7 @@ async def api_task_status(task_id: str):
     Redis 可用时从持久化 Hash 读取，服务重启后状态依然可查。
     """
     from document_processing.task_queue import get_task_status, get_queue_length
+
     info = await get_task_status(task_id)
     if info is None:
         raise HTTPException(status_code=404, detail=f"任务不存在: {task_id}")
@@ -558,5 +590,5 @@ async def api_task_status(task_id: str):
 async def api_queue_status():
     """返回当前待处理任务数"""
     from document_processing.task_queue import get_queue_length
-    return {"queue_length": get_queue_length()}
 
+    return {"queue_length": get_queue_length()}

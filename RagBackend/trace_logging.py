@@ -57,8 +57,11 @@ def setup_trace_logging(level: int = logging.INFO):
 
     root_logger = logging.getLogger()
     root_logger.setLevel(level)
-    if not any(isinstance(h, logging.StreamHandler) and isinstance(h.filters[0], TraceIdFilter)
-               for h in root_logger.handlers if h.filters):
+    if not any(
+        isinstance(h, logging.StreamHandler) and isinstance(h.filters[0], TraceIdFilter)
+        for h in root_logger.handlers
+        if h.filters
+    ):
         root_logger.handlers.clear()
         root_logger.addHandler(handler)
 

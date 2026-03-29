@@ -1,13 +1,9 @@
-from fastapi import UploadFile, File, APIRouter, HTTPException , Form
-from fastapi.responses import JSONResponse
-from typing import List, Optional
+from fastapi import APIRouter, HTTPException
+from typing import List
 from pydantic import BaseModel
 import os
 import json
-import hashlib
 from datetime import datetime
-import aiofiles
-from pathlib import Path
 import asyncio
 
 router = APIRouter()
@@ -55,11 +51,10 @@ DocumentResponse：文档响应的数据模型，包含文档的所有属性
 """
 
 
-
-
 # Model config
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from models.model_config import get_model_config
 
 # rerank
@@ -78,13 +73,16 @@ os.makedirs(METADATA_DIR, exist_ok=True)
 
 METADATA_FILE = os.path.join(METADATA_DIR, "documents.json")
 
+
 # Pydantic
 class DocumentStatus(BaseModel):
     documentId: int
     enabled: bool
 
+
 class DeleteDocuments(BaseModel):
     documentIds: List[int]
+
 
 class DocumentResponse(BaseModel):
     id: int
@@ -96,6 +94,7 @@ class DocumentResponse(BaseModel):
     enabled: bool
     file_size: int
     file_hash: str
+
 
 # Document management
 class LocalDocumentManager:
@@ -120,7 +119,7 @@ class LocalDocumentManager:
         """从本地JSON文件加载文档元数据（同步，仅供锁内调用）"""
         if os.path.exists(self.metadata_file):
             try:
-                with open(self.metadata_file, 'r', encoding='utf-8') as f:
+                with open(self.metadata_file, "r", encoding="utf-8") as f:
                     return json.load(f)
             except Exception as e:
                 print(f"加载文档元数据失败: {e}")
@@ -133,7 +132,7 @@ class LocalDocumentManager:
         """
         tmp_path = self.metadata_file + ".tmp"
         try:
-            with open(tmp_path, 'w', encoding='utf-8') as f:
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(self.documents, f, ensure_ascii=False, indent=2)
                 f.flush()
                 os.fsync(f.fileno())
@@ -152,7 +151,7 @@ class LocalDocumentManager:
         """添加新文档（需在锁内调用）"""
         self.documents = self._load_documents()
         doc_id = max(map(int, self.documents.keys()), default=0) + 1
-        doc_data['id'] = doc_id
+        doc_data["id"] = doc_id
         self.documents[str(doc_id)] = doc_data
         self._save_documents()
         return doc_id
@@ -162,7 +161,7 @@ class LocalDocumentManager:
         self.documents = self._load_documents()
         if str(doc_id) in self.documents:
             self.documents[str(doc_id)].update(updates)
-            self.documents[str(doc_id)]['updated_at'] = datetime.now().isoformat()
+            self.documents[str(doc_id)]["updated_at"] = datetime.now().isoformat()
             self._save_documents()
             return True
         return False
@@ -172,9 +171,9 @@ class LocalDocumentManager:
         self.documents = self._load_documents()
         if str(doc_id) in self.documents:
             doc = self.documents[str(doc_id)]
-            if 'file_path' in doc and os.path.exists(doc['file_path']):
+            if "file_path" in doc and os.path.exists(doc["file_path"]):
                 try:
-                    os.remove(doc['file_path'])
+                    os.remove(doc["file_path"])
                     print(f"删除文件成功: {doc['file_path']}")
                 except Exception as e:
                     print(f"删除文件失败: {e}")
@@ -211,7 +210,9 @@ class LocalDocumentManager:
         """获取所有文档（读取磁盘最新版本）"""
         return list(self._load_documents().values())
 
-    def search_documents(self, KLB_id: str, search_term: str = None, status: str = None) -> List[dict]:
+    def search_documents(
+        self, KLB_id: str, search_term: str = None, status: str = None
+    ) -> List[dict]:
         """按知识库ID搜索文档（读取磁盘最新版本）"""
         kb_dir = os.path.join(UPLOAD_DIR, KLB_id)
         if not os.path.exists(kb_dir):
@@ -228,7 +229,7 @@ class LocalDocumentManager:
         for file in files:
             file_path = os.path.join(kb_dir, file)
             for doc in documents.values():
-                if doc.get('file_path') == file_path:
+                if doc.get("file_path") == file_path:
                     results.append(doc)
                     break
 
@@ -242,21 +243,25 @@ class LocalDocumentManager:
 
     def get_enabled_documents(self) -> int:
         """获取启用文档的数量"""
-        return sum(1 for doc in self._load_documents().values() if doc.get('enabled', True))
+        return sum(
+            1 for doc in self._load_documents().values() if doc.get("enabled", True)
+        )
 
     def get_disabled_documents(self) -> int:
         """获取禁用文档的数量"""
-        return sum(1 for doc in self._load_documents().values() if not doc.get('enabled', True))
+        return sum(
+            1 for doc in self._load_documents().values() if not doc.get("enabled", True)
+        )
 
     def get_total_size(self) -> int:
         """获取所有文档的总大小"""
-        return sum(doc.get('file_size', 0) for doc in self._load_documents().values())
+        return sum(doc.get("file_size", 0) for doc in self._load_documents().values())
 
     def get_file_types(self) -> dict:
         """按文件类型统计文档数量"""
         file_types = {}
         for doc in self._load_documents().values():
-            file_type = doc.get('fileType', 'unknown')
+            file_type = doc.get("fileType", "unknown")
             file_types[file_type] = file_types.get(file_type, 0) + 1
         return file_types
 
@@ -264,32 +269,35 @@ class LocalDocumentManager:
 # Document management
 doc_manager = LocalDocumentManager()
 
+
 @router.post("/api/update-document-status/")
 async def update_document_status(status: DocumentStatus):
     """
     更新文档启用状态
     """
     try:
-        success = await doc_manager.update_document(status.documentId, {"enabled": status.enabled})
-        
+        success = await doc_manager.update_document(
+            status.documentId, {"enabled": status.enabled}
+        )
+
         print(f"更新文档是否成功: {success}")
         print(f"文档ID: {status.documentId}")
         if not success:
             print("文档不存在", status.documentId)
             raise HTTPException(status_code=404, detail="文档不存在")
 
-        
         return {
             "message": "文档状态更新成功",
             "documentId": status.documentId,
             "enabled": status.enabled,
-            "updatedAt": datetime.now().isoformat()
+            "updatedAt": datetime.now().isoformat(),
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"更新文档状态失败: {str(e)}")
+
 
 @router.post("/api/delete-documents/")
 async def delete_documents(KLB_id: str, delete_request: DeleteDocuments):
@@ -300,24 +308,24 @@ async def delete_documents(KLB_id: str, delete_request: DeleteDocuments):
     try:
         deleted_files = []
         not_found_files = []
-        
+
         for doc_id in delete_request.documentIds:
             if await doc_manager.delete_document(doc_id, KLB_id):
                 deleted_files.append(doc_id)
             else:
                 not_found_files.append(doc_id)
-        
+
         return {
             "message": "文档删除操作完成",
             "deleted": deleted_files,
             "notFound": not_found_files,
             "totalDeleted": len(deleted_files),
-            "deletedAt": datetime.now().isoformat()
+            "deletedAt": datetime.now().isoformat(),
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"删除文档失败: {str(e)}")
-    
+
 
 # Test endpoint
 @router.post("/api/search-test/")
@@ -327,7 +335,7 @@ async def search_test(
     keyword_weight: int = 50,
     rerank_model: str = DEFAULT_RERANK_MODEL,
     use_knowledge_graph: bool = False,
-    selected_documents: List[int] = []
+    selected_documents: List[int] = [],
 ):
     """
     执行知识库搜索测试
@@ -337,35 +345,44 @@ async def search_test(
         if selected_documents:
             for doc_id in selected_documents:
                 doc = doc_manager.get_document(doc_id)
-                if doc and doc.get('enabled', True):
+                if doc and doc.get("enabled", True):
                     search_docs.append(doc)
         else:
-            search_docs = [doc for doc in doc_manager.get_all_documents() 
-                          if doc.get('enabled', True)]
-        
+            search_docs = [
+                doc
+                for doc in doc_manager.get_all_documents()
+                if doc.get("enabled", True)
+            ]
+
         mock_results = []
         for doc in search_docs:
-            file_path = doc.get('file_path')
+            file_path = doc.get("file_path")
             if file_path and os.path.exists(file_path):
                 try:
-                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
                         content = f.read()
-                    
+
                     if query.lower() in content.lower():
-                        lines = content.split('\n')
-                        relevant_lines = [line for line in lines if query.lower() in line.lower()]
-                        
+                        lines = content.split("\n")
+                        relevant_lines = [
+                            line for line in lines if query.lower() in line.lower()
+                        ]
+
                         if relevant_lines:
-                            mock_results.append({
-                                "source": doc['name'],
-                                "content": relevant_lines[0][:200] + "..." if len(relevant_lines[0]) > 200 else relevant_lines[0],
-                                "file": doc['name'],
-                                "chunk": 1,
-                                "score": 0.85
-                            })
+                            mock_results.append(
+                                {
+                                    "source": doc["name"],
+                                    "content": relevant_lines[0][:200] + "..."
+                                    if len(relevant_lines[0]) > 200
+                                    else relevant_lines[0],
+                                    "file": doc["name"],
+                                    "chunk": 1,
+                                    "score": 0.85,
+                                }
+                            )
                 except:
                     continue
-        
+
         return {
             "results": mock_results,
             "query": query,
@@ -376,12 +393,13 @@ async def search_test(
                 "similarity_threshold": similarity_threshold,
                 "keyword_weight": keyword_weight,
                 "rerank_model": rerank_model,
-                "use_knowledge_graph": use_knowledge_graph
-            }
+                "use_knowledge_graph": use_knowledge_graph,
+            },
         }
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"搜索测试失败: {str(e)}")
+
 
 @router.get("/api/stats/")
 async def get_stats():
@@ -405,12 +423,14 @@ async def get_stats():
             "uploadDir": UPLOAD_DIR,
             "diskUsage": {
                 "used": total_size,
-                "usedMB": round(total_size / (1024 * 1024), 2)
-            }
+                "usedMB": round(total_size / (1024 * 1024), 2),
+            },
         }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取统计信息失败: {str(e)}")
+
+
 @router.get("/api/documents-list/{KLB_id}/", response_model=List[DocumentResponse])
 async def get_documents(KLB_id):
     """
@@ -419,13 +439,12 @@ async def get_documents(KLB_id):
     try:
         # KLB_id
         print(f"Received KLB_id: {KLB_id}")
-        
+
         # Document list
         documents = doc_manager.search_documents(KLB_id)
-        
-        #print(f"Documents for KLB_id {KLB_id}: {documents}")
-        
+
+        # print(f"Documents for KLB_id {KLB_id}: {documents}")
+
         return documents
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"获取文档列表失败: {str(e)}")
-

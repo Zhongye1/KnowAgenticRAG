@@ -9,7 +9,6 @@ Obsidian Vault 双向同步模块
 
 from __future__ import annotations
 
-import os
 import re
 import json
 import time
@@ -27,7 +26,9 @@ router = APIRouter()
 
 # - -
 _CONFIG_PATH = Path(__file__).parent.parent / "metadata" / "obsidian_config.json"
-_SYNC_STATE_PATH = Path(__file__).parent.parent / "metadata" / "obsidian_sync_state.json"
+_SYNC_STATE_PATH = (
+    Path(__file__).parent.parent / "metadata" / "obsidian_sync_state.json"
+)
 
 
 def _load_config() -> dict:
@@ -41,7 +42,9 @@ def _load_config() -> dict:
 
 def _save_config(config: dict):
     _CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _CONFIG_PATH.write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
+    _CONFIG_PATH.write_text(
+        json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
 
 def _load_sync_state() -> dict:
@@ -55,7 +58,9 @@ def _load_sync_state() -> dict:
 
 def _save_sync_state(state: dict):
     _SYNC_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    _SYNC_STATE_PATH.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    _SYNC_STATE_PATH.write_text(
+        json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
 
 
 # - Obsidian Markdown -
@@ -73,9 +78,10 @@ def _parse_md_file(file_path: Path) -> Dict[str, Any]:
     body = text
     fm_match = FRONTMATTER_RE.match(text)
     if fm_match:
-        body = text[fm_match.end():]
+        body = text[fm_match.end() :]
         try:
             import yaml
+
             frontmatter = yaml.safe_load(fm_match.group(1)) or {}
         except Exception:
             pass
@@ -84,7 +90,9 @@ def _parse_md_file(file_path: Path) -> Dict[str, Any]:
     wikilinks = list(set(WIKILINK_RE.findall(text)))
 
     # #tag
-    tags = re.findall(r"(?<!\S)#([a-zA-Z\u4e00-\u9fff][a-zA-Z0-9\u4e00-\u9fff_/-]*)", body)
+    tags = re.findall(
+        r"(?<!\S)#([a-zA-Z\u4e00-\u9fff][a-zA-Z0-9\u4e00-\u9fff_/-]*)", body
+    )
 
     return {
         "title": frontmatter.get("title") or file_path.stem,
@@ -102,7 +110,10 @@ def _file_hash(path: Path) -> str:
 
 # - -
 
-def _do_sync(vault_path: str, kb_id: Optional[str], exclude_patterns: List[str]) -> Dict[str, Any]:
+
+def _do_sync(
+    vault_path: str, kb_id: Optional[str], exclude_patterns: List[str]
+) -> Dict[str, Any]:
     """
     遍历 vault 目录，找出变化的 .md 文件，写入知识库文件目录
     返回同步统计：added / updated / skipped / errors
@@ -117,17 +128,18 @@ def _do_sync(vault_path: str, kb_id: Optional[str], exclude_patterns: List[str])
     stats = {"added": 0, "updated": 0, "skipped": 0, "errors": 0, "files": []}
 
     if kb_id:
-        target_dir = Path(__file__).parent.parent / "local-KLB-files" / kb_id / "obsidian"
+        target_dir = (
+            Path(__file__).parent.parent / "local-KLB-files" / kb_id / "obsidian"
+        )
     else:
-        target_dir = Path(__file__).parent.parent / "local-KLB-files" / "_obsidian_import"
+        target_dir = (
+            Path(__file__).parent.parent / "local-KLB-files" / "_obsidian_import"
+        )
     target_dir.mkdir(parents=True, exist_ok=True)
 
     for md_file in vault.rglob("*.md"):
         rel = md_file.relative_to(vault).as_posix()
-        excluded = any(
-            re.search(pattern, rel)
-            for pattern in (exclude_patterns or [])
-        )
+        excluded = any(re.search(pattern, rel) for pattern in (exclude_patterns or []))
         if excluded:
             stats["skipped"] += 1
             continue
@@ -144,24 +156,35 @@ def _do_sync(vault_path: str, kb_id: Optional[str], exclude_patterns: List[str])
 
             dest = target_dir / rel
             dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_text(md_file.read_text(encoding="utf-8", errors="ignore"), encoding="utf-8")
+            dest.write_text(
+                md_file.read_text(encoding="utf-8", errors="ignore"), encoding="utf-8"
+            )
 
             # sidecar
             sidecar = dest.with_suffix(".meta.json")
-            sidecar.write_text(json.dumps({
-                "title": parsed["title"],
-                "tags": parsed["tags"],
-                "wikilinks": parsed["wikilinks"],
-                "word_count": parsed["word_count"],
-                "frontmatter": parsed["frontmatter"],
-                "source": "obsidian",
-                "vault_rel_path": rel,
-                "synced_at": time.time(),
-            }, ensure_ascii=False, indent=2), encoding="utf-8")
+            sidecar.write_text(
+                json.dumps(
+                    {
+                        "title": parsed["title"],
+                        "tags": parsed["tags"],
+                        "wikilinks": parsed["wikilinks"],
+                        "word_count": parsed["word_count"],
+                        "frontmatter": parsed["frontmatter"],
+                        "source": "obsidian",
+                        "vault_rel_path": rel,
+                        "synced_at": time.time(),
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
 
             action = "updated" if prev_hash else "added"
             stats[action] += 1
-            stats["files"].append({"path": rel, "action": action, "title": parsed["title"]})
+            stats["files"].append(
+                {"path": rel, "action": action, "title": parsed["title"]}
+            )
 
             vault_state[rel] = {"hash": current_hash, "synced_at": time.time()}
 
@@ -189,15 +212,17 @@ def _do_sync(vault_path: str, kb_id: Optional[str], exclude_patterns: List[str])
 
 # - Pydantic -
 
+
 class ObsidianConfigRequest(BaseModel):
-    vault_path: str                       # Obsidian vault
-    kb_id: Optional[str] = None          # ID
+    vault_path: str  # Obsidian vault
+    kb_id: Optional[str] = None  # ID
     auto_sync: bool = False
     exclude_patterns: List[str] = []
     note: Optional[str] = None
 
 
 # - API -
+
 
 @router.post("/api/integrations/obsidian/configure")
 async def configure_obsidian(req: ObsidianConfigRequest):
@@ -225,7 +250,7 @@ async def configure_obsidian(req: ObsidianConfigRequest):
         "success": True,
         "vault_path": str(req.vault_path),
         "md_file_count": md_count,
-        "message": f"Vault 配置成功，共找到 {md_count} 个 Markdown 文件"
+        "message": f"Vault 配置成功，共找到 {md_count} 个 Markdown 文件",
     }
 
 
@@ -236,7 +261,7 @@ async def sync_obsidian(background_tasks: BackgroundTasks, force: bool = False):
     if not config:
         raise HTTPException(
             status_code=400,
-            detail="尚未配置 Obsidian Vault，请先调用 /api/integrations/obsidian/configure"
+            detail="尚未配置 Obsidian Vault，请先调用 /api/integrations/obsidian/configure",
         )
 
     vault_path = config["vault_path"]
@@ -268,7 +293,9 @@ async def obsidian_status():
         "kb_id": config.get("kb_id"),
         "auto_sync": config.get("auto_sync", False),
         "synced_files": len(vault_state),
-        "last_sync": max((v.get("synced_at", 0) for v in vault_state.values()), default=None),
+        "last_sync": max(
+            (v.get("synced_at", 0) for v in vault_state.values()), default=None
+        ),
         "exclude_patterns": config.get("exclude_patterns", []),
     }
 
@@ -292,5 +319,5 @@ async def list_obsidian_files(page: int = 1, page_size: int = 50):
         "total": total,
         "page": page,
         "page_size": page_size,
-        "items": items[start: start + page_size],
+        "items": items[start : start + page_size],
     }

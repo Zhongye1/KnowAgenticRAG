@@ -24,7 +24,6 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
@@ -33,15 +32,87 @@ logger = logging.getLogger(__name__)
 
 # - -
 ZH_STOPWORDS = {
-    "的", "了", "在", "是", "我", "有", "和", "就", "不", "人",
-    "都", "一", "一个", "上", "也", "很", "到", "说", "要", "去",
-    "你", "会", "着", "没有", "看", "好", "自己", "这", "那", "而",
-    "但", "与", "或", "及", "等", "为", "被", "把", "从", "对",
-    "于", "之", "以", "使", "让", "将", "已", "可", "能", "得",
-    "地", "来", "过", "所", "方", "如", "又", "这个", "那个",
-    "因为", "所以", "但是", "然而", "不过", "虽然", "如果", "只是",
-    "这样", "那样", "这些", "那些", "什么", "怎么", "为什么",
-    "的话", "而且", "另外", "同时", "其中", "其实", "其他",
+    "的",
+    "了",
+    "在",
+    "是",
+    "我",
+    "有",
+    "和",
+    "就",
+    "不",
+    "人",
+    "都",
+    "一",
+    "一个",
+    "上",
+    "也",
+    "很",
+    "到",
+    "说",
+    "要",
+    "去",
+    "你",
+    "会",
+    "着",
+    "没有",
+    "看",
+    "好",
+    "自己",
+    "这",
+    "那",
+    "而",
+    "但",
+    "与",
+    "或",
+    "及",
+    "等",
+    "为",
+    "被",
+    "把",
+    "从",
+    "对",
+    "于",
+    "之",
+    "以",
+    "使",
+    "让",
+    "将",
+    "已",
+    "可",
+    "能",
+    "得",
+    "地",
+    "来",
+    "过",
+    "所",
+    "方",
+    "如",
+    "又",
+    "这个",
+    "那个",
+    "因为",
+    "所以",
+    "但是",
+    "然而",
+    "不过",
+    "虽然",
+    "如果",
+    "只是",
+    "这样",
+    "那样",
+    "这些",
+    "那些",
+    "什么",
+    "怎么",
+    "为什么",
+    "的话",
+    "而且",
+    "另外",
+    "同时",
+    "其中",
+    "其实",
+    "其他",
 }
 
 
@@ -76,30 +147,30 @@ class SemanticChunker:
     5. 字符硬切（最后兜底）
     """
 
-    DEFAULT_CHUNK_SIZE    = 500
+    DEFAULT_CHUNK_SIZE = 500
     DEFAULT_CHUNK_OVERLAP = 50
-    DEFAULT_MIN_CHUNK     = 50
+    DEFAULT_MIN_CHUNK = 50
 
     def __init__(
         self,
-        chunk_size: int    = DEFAULT_CHUNK_SIZE,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         chunk_overlap: int = DEFAULT_CHUNK_OVERLAP,
         min_chunk_size: int = DEFAULT_MIN_CHUNK,
         filter_stopwords: bool = True,
     ):
-        self.chunk_size       = chunk_size
-        self.chunk_overlap    = chunk_overlap
-        self.min_chunk_size   = min_chunk_size
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.min_chunk_size = min_chunk_size
         self.filter_stopwords = filter_stopwords
 
         self._separators = [
-            r"\n#{1,6}\s", # Markdown
+            r"\n#{1,6}\s",  # Markdown
             r"\n[=\-]{3,}\n",
             r"\n\n+",
             r"(?<=[。！？\!?])\s*\n",  # +
             r"(?<=[。！？\!?])",
             r"(?<=[；;])",
-            r"(?<=[，,、])",            # /
+            r"(?<=[，,、])",  # /
             r"\s+",
             r"",
         ]
@@ -125,12 +196,14 @@ class SemanticChunker:
             if start == -1:
                 start = pos
             end = start + len(chunk_text)
-            chunks.append(TextChunk(
-                text=chunk_text,
-                start_idx=start,
-                end_idx=end,
-                chunk_id=i,
-            ))
+            chunks.append(
+                TextChunk(
+                    text=chunk_text,
+                    start_idx=start,
+                    end_idx=end,
+                    chunk_id=i,
+                )
+            )
             pos = max(0, end - self.chunk_overlap)
 
         logger.debug(f"[SemanticChunker] {len(text)} chars → {len(chunks)} chunks")
@@ -162,7 +235,10 @@ class SemanticChunker:
 
         for sep in separators:
             if sep == "":
-                return [text[i:i+self.chunk_size] for i in range(0, len(text), self.chunk_size - self.chunk_overlap)]
+                return [
+                    text[i : i + self.chunk_size]
+                    for i in range(0, len(text), self.chunk_size - self.chunk_overlap)
+                ]
 
             parts = re.split(sep, text)
             if len(parts) <= 1:
@@ -176,11 +252,18 @@ class SemanticChunker:
                 if len(part) <= self.chunk_size:
                     result.append(part)
                 else:
-                    result.extend(self._recursive_split(part, separators[separators.index(sep)+1:]))
+                    result.extend(
+                        self._recursive_split(
+                            part, separators[separators.index(sep) + 1 :]
+                        )
+                    )
             if result:
                 return result
 
-        return [text[i:i+self.chunk_size] for i in range(0, len(text), self.chunk_size - self.chunk_overlap)]
+        return [
+            text[i : i + self.chunk_size]
+            for i in range(0, len(text), self.chunk_size - self.chunk_overlap)
+        ]
 
     def _merge_small_chunks(self, chunks: List[str]) -> List[str]:
         """将过小的块合并到相邻块"""
@@ -204,6 +287,7 @@ def jieba_tokenize_safe(text: str) -> List[str]:
     """尝试 jieba 分词，不可用时退回空格分割"""
     try:
         import jieba
+
         return list(jieba.cut(text))
     except ImportError:
         return text.split()
@@ -226,9 +310,9 @@ class INT8VectorStore:
     """
 
     def __init__(self, dim: int = 384):
-        self.dim    = dim
-        self._texts: List[str]    = []
-        self._vecs: Optional[np.ndarray] = None   # shape: (N, dim), dtype int8
+        self.dim = dim
+        self._texts: List[str] = []
+        self._vecs: Optional[np.ndarray] = None  # shape: (N, dim), dtype int8
         self._scales: Optional[np.ndarray] = None  # per-vector scale, shape: (N,)
         self._meta: List[Dict] = []
 
@@ -245,15 +329,17 @@ class INT8VectorStore:
         int8_vecs, scales = self._quantize(arr)
 
         if self._vecs is None:
-            self._vecs   = int8_vecs
+            self._vecs = int8_vecs
             self._scales = scales
         else:
-            self._vecs   = np.vstack([self._vecs, int8_vecs])
+            self._vecs = np.vstack([self._vecs, int8_vecs])
             self._scales = np.concatenate([self._scales, scales])
 
         self._texts.extend(texts)
         self._meta.extend(metadata or [{} for _ in texts])
-        logger.debug(f"[INT8Store] Added {len(texts)} vectors, total={len(self._texts)}")
+        logger.debug(
+            f"[INT8Store] Added {len(texts)} vectors, total={len(self._texts)}"
+        )
         return len(texts)
 
     def search(
@@ -281,24 +367,26 @@ class INT8VectorStore:
             score = float(scores[idx])
             if score < score_threshold:
                 continue
-            results.append({
-                "text":     self._texts[idx],
-                "score":    round(score, 4),
-                "metadata": self._meta[idx],
-                "index":    int(idx),
-            })
+            results.append(
+                {
+                    "text": self._texts[idx],
+                    "score": round(score, 4),
+                    "metadata": self._meta[idx],
+                    "index": int(idx),
+                }
+            )
         return results
 
     def memory_usage_mb(self) -> Dict[str, float]:
         """估算内存占用"""
         if self._vecs is None:
             return {"int8_mb": 0, "float32_equiv_mb": 0, "saved_mb": 0}
-        int8_mb   = self._vecs.nbytes / 1024 / 1024
+        int8_mb = self._vecs.nbytes / 1024 / 1024
         float32_mb = int8_mb * 4
         return {
-            "int8_mb":        round(int8_mb, 2),
+            "int8_mb": round(int8_mb, 2),
             "float32_equiv_mb": round(float32_mb, 2),
-            "saved_mb":       round(float32_mb - int8_mb, 2),
+            "saved_mb": round(float32_mb - int8_mb, 2),
             "compression_ratio": "4:1",
         }
 
@@ -318,9 +406,9 @@ class INT8VectorStore:
         """从磁盘加载"""
         try:
             data = np.load(path + ".npz", allow_pickle=True)
-            self._vecs   = data["vecs"]
+            self._vecs = data["vecs"]
             self._scales = data["scales"]
-            self._texts  = list(data["texts"])
+            self._texts = list(data["texts"])
             logger.info(f"[INT8Store] Loaded {len(self._texts)} vectors from {path}")
             return True
         except Exception as e:
@@ -367,7 +455,9 @@ try:
         return {
             "total_chunks": len(chunks),
             "total_chars": len(req.text),
-            "avg_chunk_size": round(sum(c.char_count for c in chunks) / max(len(chunks), 1)),
+            "avg_chunk_size": round(
+                sum(c.char_count for c in chunks) / max(len(chunks), 1)
+            ),
             "chunks": [
                 {
                     "id": c.chunk_id,

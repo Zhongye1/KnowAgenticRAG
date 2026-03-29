@@ -19,7 +19,6 @@ react_agent.py — LangChain ReAct Agent 核心模块
 
 from __future__ import annotations
 
-import os
 import sys
 import json
 from typing import List, Dict, Any, Optional, Generator
@@ -46,6 +45,7 @@ from src.rag.hybrid_retriever import HybridRetriever
 
 try:
     from agent_tools.web_search_tool import build_web_search_tool
+
     _WEB_SEARCH_AVAILABLE = True
 except ImportError:
     _WEB_SEARCH_AVAILABLE = False
@@ -92,6 +92,7 @@ REACT_PROMPT = PromptTemplate(
 # RAG
 # ─────────────────────────────────────────────
 
+
 def build_rag_search_tool(
     vectorstore: FAISS,
     documents: Optional[List[Document]] = None,
@@ -134,17 +135,19 @@ def build_rag_search_tool(
                 for rank, (doc, score) in enumerate(raw, start=1):
                     meta = doc.metadata or {}
                     file_name = _extract_filename(meta)
-                    results.append({
-                        "document": doc,
-                        "source_info": {
-                            "rank": rank,
-                            "rrf_score": float(score),
-                            "file_name": file_name,
-                            "page": meta.get("page"),
-                            "source_path": meta.get("source", ""),
-                        },
-                        "content_preview": doc.page_content[:200],
-                    })
+                    results.append(
+                        {
+                            "document": doc,
+                            "source_info": {
+                                "rank": rank,
+                                "rrf_score": float(score),
+                                "file_name": file_name,
+                                "page": meta.get("page"),
+                                "source_path": meta.get("source", ""),
+                            },
+                            "content_preview": doc.page_content[:200],
+                        }
+                    )
 
             if not results:
                 return "知识库中未找到与该问题相关的内容。"
@@ -179,6 +182,7 @@ def build_rag_search_tool(
 # ─────────────────────────────────────────────
 # ReAct Agent
 # ─────────────────────────────────────────────
+
 
 class ReActRAGAgent:
     """
@@ -284,7 +288,8 @@ class ReActRAGAgent:
                 # observation
                 if "【来源" in str(observation):
                     import re
-                    matches = re.findall(r'【来源\s*\d+：([^】]+)】', str(observation))
+
+                    matches = re.findall(r"【来源\s*\d+：([^】]+)】", str(observation))
                     for m in matches:
                         sources_set.add(m.strip())
 
@@ -298,6 +303,7 @@ class ReActRAGAgent:
 
         except Exception as e:
             import traceback
+
             return {
                 "answer": f"Agent 执行失败: {str(e)}",
                 "steps": [],
@@ -315,7 +321,7 @@ class ReActRAGAgent:
           data: <text>          — 回答文本片段
           data: COMPLETE        — 结束标志
         """
-        yield f"data: 🤖 ReAct Agent 开始推理...\n\n"
+        yield "data: 🤖 ReAct Agent 开始推理...\n\n"
         yield f"data: 📝 问题: {question}\n\n"
 
         try:
@@ -337,14 +343,13 @@ class ReActRAGAgent:
 
             yield "data: 💬 正在生成回答...\n\n"
 
-            for paragraph in answer.split('\n'):
+            for paragraph in answer.split("\n"):
                 if paragraph.strip():
                     yield f"data: {paragraph}\n\n"
 
             yield "data: COMPLETE\n\n"
 
         except Exception as e:
-            import traceback
             yield f"data: ERROR: Agent 执行失败: {str(e)}\n\n"
             yield "data: COMPLETE\n\n"
 
@@ -352,9 +357,11 @@ class ReActRAGAgent:
 # ─────────────────────────────────────────────
 # ─────────────────────────────────────────────
 
+
 def _extract_filename(meta: Dict[str, Any]) -> str:
     """从文档元数据中提取文件名"""
     import os as _os
+
     for key in ("source", "file_path", "path", "filename", "file_name"):
         val = meta.get(key, "")
         if val:

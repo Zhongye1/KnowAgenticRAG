@@ -1,9 +1,8 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
-import uuid
 import json
 import logging
 from pydantic import BaseModel
@@ -18,6 +17,7 @@ sys.path.append(str(project_root))
 
 # Configure structured loggingEach log carries trace_id for full traceability
 from trace_logging import setup_trace_logging, TraceMiddleware
+
 setup_trace_logging()
 logger = logging.getLogger(__name__)
 
@@ -34,6 +34,7 @@ async def _init_db_tables():
     """应用启动后尝试初始化 MySQL 表，连接失败只警告不崩溃"""
     try:
         from RAGF_User_Management.LogonAndLogin import ensure_tables_exist
+
         ensure_tables_exist()
         logger.info("MySQL 数据表初始化完成")
     except Exception as e:
@@ -46,6 +47,7 @@ async def _init_db_tables():
         from audit.audit_log import ensure_audit_table
         from open_api.api_key_manager import ensure_apikey_table
         from data_sources.datasource_manager import ensure_datasource_table
+
         ensure_audit_table()
         ensure_apikey_table()
         ensure_datasource_table()
@@ -56,6 +58,7 @@ async def _init_db_tables():
     # Register vectorization task handler (must be registered before worker starts)
     try:
         from document_processing.vectorize_task import register_all
+
         register_all()
         logger.info("向量化任务处理函数注册完成")
     except Exception as e:
@@ -64,10 +67,14 @@ async def _init_db_tables():
     # Start async task queue worker (Redis Stream preferred, in-memory fallback)
     try:
         from document_processing.task_queue import ensure_worker_started
+
         await ensure_worker_started()
-        logger.info("向量化任务队列 Worker 已启动（Redis Stream / 内存降级，最大并发: 2）")
+        logger.info(
+            "向量化任务队列 Worker 已启动（Redis Stream / 内存降级，最大并发: 2）"
+        )
     except Exception as e:
         logger.warning(f"任务队列 Worker 启动失败: {e}")
+
 
 # Configure CORS
 app.add_middleware(
@@ -84,6 +91,7 @@ app.add_middleware(TraceMiddleware)
 # Audit log middleware (registered after CORS, records all API calls)
 try:
     from audit.audit_log import AuditMiddleware
+
     app.add_middleware(AuditMiddleware)
     logger.info("审计日志中间件已挂载")
 except Exception as _e:
@@ -94,72 +102,100 @@ except Exception as _e:
 # from celery import Celery
 # celery = Celery('tasks', broker='redis://localhost:6379/0', backend='redis://localhost:6379/0')
 
+
 # Request model
 class QueryRequest(BaseModel):
     question: str
 
 
-
 # Import document processing module
-from document_processing.doc_manage import router as doc_manage  # Import file processing service interface
-from document_processing.doc_upload import router as upload_models # Import file upload service interface
-from document_processing.doc_list import router as doc_list # Import file list service interface
+from document_processing.doc_manage import (
+    router as doc_manage,
+)  # Import file processing service interface
+from document_processing.doc_upload import (
+    router as upload_models,
+)  # Import file upload service interface
+from document_processing.doc_list import (
+    router as doc_list,
+)  # Import file list service interface
 
-from knowledge_base.knowledgeBASE4CURD import router as knowledge_CURD # Import knowledge base CRUD interface
-from knowledge_base.knowledgebase_cover import router as pic_cover_manage # Import cover image management interface
-#Ollama model list interface
+from knowledge_base.knowledgeBASE4CURD import (
+    router as knowledge_CURD,
+)  # Import knowledge base CRUD interface
+from knowledge_base.knowledgebase_cover import (
+    router as pic_cover_manage,
+)  # Import cover image management interface
+
+# Ollama model list interface
 from ollama_management.ollama_sRCP import router as get_ollama_models
-#RAG service
+
+# RAG service
 from RAG_M.RAG_app import router as rag_service
-#Chat management
+
+# Chat management
 from chat_units.chat_management.chat_main import router as chat_manager_router
 
 # Import knowledge graph module
 from knowledge_graph.generate_kg import router as kg_graph
+
 #
 from RAGF_User_Management.LogonAndLogin import router as login_router
 from RAGF_User_Management.User_Management import router as user_management_router
 
-#User settings page
+# User settings page
 from RAGF_User_Management.User_settings import router as user_settings_router
+
 # QQ login
 from RAGF_User_Management.QQ_Login import router as qq_login_router
+
 # Password reset
 from RAGF_User_Management.Reset_Password import router as reset_password_router
 
 # - New module imports -
 from multi_model.model_router import router as model_router
-from audit.audit_log import router as audit_router, ensure_audit_table, AuditMiddleware
-from open_api.api_key_manager import router as apikey_router, ensure_apikey_table
-from data_sources.datasource_manager import router as datasource_router, ensure_datasource_table
+from audit.audit_log import router as audit_router, AuditMiddleware
+from open_api.api_key_manager import router as apikey_router
+from data_sources.datasource_manager import router as datasource_router
+
 # Incremental vectorization
-from document_processing.incremental_vectorizer import router as incremental_vectorize_router
+from document_processing.incremental_vectorizer import (
+    router as incremental_vectorize_router,
+)
+
 # Agent web search
 from agent_tools.web_search_tool import api_router as web_search_router
+
 # Multimodal speech recognition (Whisper)
 try:
     from multimodal.whisper_asr import router as whisper_router
+
     _whisper_available = True
 except ImportError as _e:
     logger.warning(f"Whisper 模块导入失败（openai-whisper 未安装？）: {_e}")
     _whisper_available = False
 # User feedback
 from feedback.feedback_router import router as feedback_router
+
 # Office ecosystem integration (Obsidian + Feishu)
 try:
     from integrations.obsidian_sync import router as obsidian_router
     from integrations.feishu_bot import router as feishu_router
+
     _integrations_available = True
 except ImportError as _e:
     logger.warning(f"集成模块导入失败: {_e}")
     _integrations_available = False
 
-app.include_router(knowledge_CURD, tags=["知识库CURD接口"])  # Knowledge base CRUD interface
+app.include_router(
+    knowledge_CURD, tags=["知识库CURD接口"]
+)  # Knowledge base CRUD interface
 app.include_router(doc_manage, tags=["文件处理服务接口"])  # File management interface
-app.include_router(upload_models, tags=["文档上传服务接口"]) #File upload interface
-app.include_router(pic_cover_manage, tags=["封面图床管理"])#Cover image management
-app.include_router(get_ollama_models, tags=["OLLAMA模型列表获取接口"])  # Ollama model list interface
-#Chat service
+app.include_router(upload_models, tags=["文档上传服务接口"])  # File upload interface
+app.include_router(pic_cover_manage, tags=["封面图床管理"])  # Cover image management
+app.include_router(
+    get_ollama_models, tags=["OLLAMA模型列表获取接口"]
+)  # Ollama model list interface
+# Chat service
 app.include_router(chat_manager_router, prefix="/api/chat", tags=["对话管理服务接口"])
 # RAG service
 app.include_router(rag_service, prefix="/api/RAG", tags=["RAG 服务接口"])
@@ -168,9 +204,11 @@ app.include_router(kg_graph, prefix="/api/kg", tags=["知识图谱接口"])
 
 # User management interface (legacy, prefixed to avoid conflict with user_settings_router)
 app.include_router(login_router, tags=["用户登录和注册接口"])
-app.include_router(user_management_router, prefix="/api/legacy/user", tags=["用户管理接口(旧版)"])
+app.include_router(
+    user_management_router, prefix="/api/legacy/user", tags=["用户管理接口(旧版)"]
+)
 
-#User settings interface
+# User settings interface
 app.include_router(user_settings_router, tags=["用户设置接口"])
 # QQ login
 app.include_router(qq_login_router, tags=["QQ OAuth2.0 登录"])
@@ -178,7 +216,9 @@ app.include_router(qq_login_router, tags=["QQ OAuth2.0 登录"])
 app.include_router(reset_password_router, tags=["密码重置"])
 
 #
-app.include_router(doc_list, prefix="/api/files",tags=["文件列表服务接口"])  # Document list interface
+app.include_router(
+    doc_list, prefix="/api/files", tags=["文件列表服务接口"]
+)  # Document list interface
 
 # - New router registrations -
 app.include_router(model_router, tags=["多模型适配接口"])
@@ -202,6 +242,7 @@ try:
     from knowledge.doc_tag_manager import router as doc_tag_router
     from knowledge.rbac_manager import router as rbac_router
     from knowledge.doc_comment_manager import router as doc_comment_router
+
     app.include_router(ocr_router, tags=["知识库-OCR解析"])
     app.include_router(doc_version_router, tags=["知识库-文档版本管理"])
     app.include_router(doc_tag_router, tags=["知识库-标签与归档"])
@@ -216,6 +257,7 @@ try:
     from rag_enhancement.rag_evaluator import router as rag_eval_router
     from rag_enhancement.conversation_memory import router as conv_memory_router
     from rag_enhancement.retrieval_visualizer import router as retrieval_viz_router
+
     app.include_router(rag_eval_router, tags=["RAG-效果评估与调优"])
     app.include_router(conv_memory_router, tags=["RAG-对话记忆持久化"])
     app.include_router(retrieval_viz_router, tags=["RAG-检索可视化与纠错"])
@@ -226,6 +268,7 @@ except Exception as _e:
 # Agent enterprise toolchain
 try:
     from agent_tools.agent_advanced import router as agent_advanced_router
+
     app.include_router(agent_advanced_router, tags=["Agent-企业工具链与插件市场"])
     logger.info("Agent企业工具链已加载")
 except Exception as _e:
@@ -234,6 +277,7 @@ except Exception as _e:
 # Multi-model extension
 try:
     from multi_model.extended_model_router import router as ext_model_router
+
     app.include_router(ext_model_router, tags=["多模型-百炼/星火/负载均衡/统计"])
     logger.info("扩展多模型路由已加载")
 except Exception as _e:
@@ -242,6 +286,7 @@ except Exception as _e:
 # Enterprise compliance
 try:
     from enterprise.compliance_manager import router as compliance_router
+
     app.include_router(compliance_router, tags=["企业合规-SSO/多租户/限流/脱敏"])
     logger.info("企业合规模块已加载")
 except Exception as _e:
@@ -250,6 +295,7 @@ except Exception as _e:
 # Ecosystem integration
 try:
     from integrations.dingtalk_wecom import router as dingtalk_wecom_router
+
     app.include_router(dingtalk_wecom_router, tags=["生态-钉钉/企微/WPS集成"])
     logger.info("钉钉/企微集成已加载")
 except Exception as _e:
@@ -258,6 +304,7 @@ except Exception as _e:
 # Full-text search
 try:
     from search.fulltext_search import router as fulltext_router
+
     app.include_router(fulltext_router, tags=["全文检索-FTS5跨库搜索"])
     logger.info("全文检索模块已加载")
 except Exception as _e:
@@ -266,6 +313,7 @@ except Exception as _e:
 # Commercialization
 try:
     from billing.billing_manager import router as billing_router
+
     app.include_router(billing_router, tags=["商业化-定价/订阅/工单系统"])
     logger.info("商业化模块已加载")
 except Exception as _e:
@@ -274,6 +322,7 @@ except Exception as _e:
 # User custom model config
 try:
     from models.user_model_config import router as user_model_config_router
+
     app.include_router(user_model_config_router, tags=["用户模型配置"])
     logger.info("用户模型配置模块已加载")
 except Exception as _e:
@@ -282,6 +331,7 @@ except Exception as _e:
 # Evaluation panelLangChain Evaluation ECharts
 try:
     from evaluation.eval_panel import router as eval_router
+
     app.include_router(eval_router, tags=["模型评测面板"])
     logger.info("模型评测面板已加载")
 except Exception as _e:
@@ -290,6 +340,7 @@ except Exception as _e:
 # Semantic chunking APIRecursiveCharacter + INT8
 try:
     from document_processing.semantic_splitter import split_router
+
     if split_router:
         app.include_router(split_router, tags=["语义分块-预览与向量化"])
         logger.info("语义分块模块已加载")
@@ -299,6 +350,7 @@ except Exception as _e:
 # cross-encoder Reranking
 try:
     from rag_enhancement.reranker import router as reranker_router
+
     app.include_router(reranker_router, tags=["RAG-cross-encoder重排"])
     logger.info("cross-encoder重排模块已加载")
 except Exception as _e:
@@ -307,6 +359,7 @@ except Exception as _e:
 # Document creation
 try:
     from creation.doc_creation import router as creation_router
+
     app.include_router(creation_router, tags=["文档创作-摘要/翻译/大纲/优化"])
     logger.info("文档创作模块已加载")
 except Exception as _e:
@@ -315,6 +368,7 @@ except Exception as _e:
 # Prometheus
 try:
     from monitoring.metrics import router as metrics_router, instrument_app
+
     instrument_app(app)
     app.include_router(metrics_router, tags=["系统监控-Prometheus指标"])
     logger.info("系统监控模块已加载")
@@ -324,6 +378,7 @@ except Exception as _e:
 # Knowledge base backup
 try:
     from enterprise.kb_backup import router as backup_router
+
     app.include_router(backup_router, tags=["知识库备份-Markdown/ZIP"])
     logger.info("知识库备份模块已加载")
 except Exception as _e:
@@ -332,6 +387,7 @@ except Exception as _e:
 # - Square router -
 try:
     from square import square_router
+
     app.include_router(square_router, tags=["知识广场-分享/圈子/搜索"])
     logger.info("知识广场模块已加载")
 except Exception as _e:
@@ -350,15 +406,15 @@ app.mount("/static/avatars", StaticFiles(directory=str(avatar_path)), name="avat
 
 
 # API
-#@app.post("/query")
-#async def handle_query(request: QueryRequest, file: UploadFile = File(None)):
+# @app.post("/query")
+# async def handle_query(request: QueryRequest, file: UploadFile = File(None)):
 # """File upload"""
 #    try:
 #        if file:
 #            task_id = str(uuid.uuid4())
 # logger.info(f"ID: {task_id}")
 #            file_content = await file.read()
-            # Celery
+# Celery
 #            task = celery.send_task(
 #                'process_document',
 #                args=[file_content, request.question, file.filename],
@@ -367,7 +423,7 @@ app.mount("/static/avatars", StaticFiles(directory=str(avatar_path)), name="avat
 #            return {"task_id": task.id, "status": "processing"}
 #        else:
 # logger.info(f": {request.question}")
-            # LLM
+# LLM
 #            from llm_engine import LLMEngine
 #            llm_engine = LLMEngine()
 #            answer = llm_engine.direct_answer(request.question)
@@ -376,8 +432,8 @@ app.mount("/static/avatars", StaticFiles(directory=str(avatar_path)), name="avat
 # logger.error(f": {str(e)}")
 # raise HTTPException(status_code=500, detail=f": {str(e)}")
 
-#@app.get("/result/{task_id}")
-#def get_result(task_id: str):
+# @app.get("/result/{task_id}")
+# def get_result(task_id: str):
 # """"""
 #    try:
 #        result = celery.AsyncResult(task_id)
@@ -395,12 +451,16 @@ app.mount("/static/avatars", StaticFiles(directory=str(avatar_path)), name="avat
 # logger.error(f": {str(e)}")
 # raise HTTPException(status_code=500, detail=f": {str(e)}")
 
+
 @app.get("/helloworld/", response_model=dict)
 async def hello_world():
     """
     测试端点
     """
-    return {"message": "Hello World-格林尼治-秋明-共青城-武汉-环日第七迭代-我看见神在近地轨道上完整-3902-2321-2421-3821"}
+    return {
+        "message": "Hello World-格林尼治-秋明-共青城-武汉-环日第七迭代-我看见神在近地轨道上完整-3902-2321-2421-3821"
+    }
+
 
 @app.get("/")
 async def health_check():
@@ -509,13 +569,12 @@ async def app_download_page():
 </html>"""
     return HTMLResponse(content=html)
 
+
 # Error handling
 @app.exception_handler(Exception)
-
 async def general_exception_handler(request, exc):
     return JSONResponse(
-        status_code=500,
-        content=json.dumps({"detail": f"服务器内部错误: {str(exc)}"})
+        status_code=500, content=json.dumps({"detail": f"服务器内部错误: {str(exc)}"})
     )
 
 
@@ -523,46 +582,53 @@ if __name__ == "__main__":
     import uvicorn
     import sys
     import threading
-    
-    if getattr(sys, 'frozen', False):
+
+    if getattr(sys, "frozen", False):
         try:
-            from PyQt5.QtWidgets import QApplication, QSystemTrayIcon, QMenu, QMessageBox
+            from PyQt5.QtWidgets import (
+                QApplication,
+                QSystemTrayIcon,
+                QMenu,
+                QMessageBox,
+            )
             from PyQt5.QtGui import QIcon
             from PyQt5.QtCore import QTimer
             import os
-            
+
             # FastAPI
             def run_server():
                 uvicorn.run(app, host="0.0.0.0", port=8000)
-            
+
             server_thread = threading.Thread(target=run_server, daemon=True)
             server_thread.start()
-            
+
             app_gui = QApplication(sys.argv)
-            
+
             tray_icon = QSystemTrayIcon()
             tray_icon.setIcon(QIcon("assets/icon.ico"))
-            
+
             menu = QMenu()
             exit_action = menu.addAction("退出")
             exit_action.triggered.connect(lambda: os._exit(0))
-            
+
             show_action = menu.addAction("服务信息")
-            show_action.triggered.connect(lambda: QMessageBox.information(
-                None, 
-                "服务信息", 
-                "ASF-RAG 后端服务正在运行\n访问地址: http://localhost:8000\n\n点击托盘图标可查看菜单"
-            ))
-            
+            show_action.triggered.connect(
+                lambda: QMessageBox.information(
+                    None,
+                    "服务信息",
+                    "ASF-RAG 后端服务正在运行\n访问地址: http://localhost:8000\n\n点击托盘图标可查看菜单",
+                )
+            )
+
             tray_icon.setContextMenu(menu)
             tray_icon.show()
             tray_icon.showMessage(
                 "ASF-RAG 后端服务",
                 "服务已启动，访问地址: http://localhost:8000",
                 QSystemTrayIcon.Information,
-                3000
+                3000,
             )
-            
+
             sys.exit(app_gui.exec_())
         except ImportError:
             # PyQt5
@@ -576,10 +642,10 @@ if __name__ == "__main__":
     else:
         uvicorn.run(app, host="0.0.0.0", port=8000)
 
-#pyinstaller --onefile --noconsole --add-data 
-# "local-KLB-files;local-KLB-files" --add-data "assets;assets" 
-# --add-data "chat_units;chat_units" 
-# --add-data "document_processing;document_processing" 
-# --add-data "knowledge_base;knowledge_base" 
-# --add-data "knowledge_graph;knowledge_graph" --add-data "RAG_M;RAG_M" 
+# pyinstaller --onefile --noconsole --add-data
+# "local-KLB-files;local-KLB-files" --add-data "assets;assets"
+# --add-data "chat_units;chat_units"
+# --add-data "document_processing;document_processing"
+# --add-data "knowledge_base;knowledge_base"
+# --add-data "knowledge_graph;knowledge_graph" --add-data "RAG_M;RAG_M"
 # --add-data "user_avatars;user_avatars" --add-data "metadata;metadata" main.py

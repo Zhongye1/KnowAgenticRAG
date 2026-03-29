@@ -1,63 +1,63 @@
-const { withGradleProperties } = require('@expo/config-plugins');
+const { withGradleProperties } = require("@expo/config-plugins");
 
 /** @type {import('@expo/config').ExpoConfig} */
 const config = {
-  name: 'KnowledgeRAG',
-  slug: 'knowledgerag-gzhu',
-  version: '1.0.0',
-  orientation: 'portrait',
-  icon: './assets/icon.png',
-  userInterfaceStyle: 'light',
+  name: "KnowledgeRAG",
+  slug: "knowledgerag-gzhu",
+  version: "1.0.0",
+  orientation: "portrait",
+  icon: "./assets/icon.png",
+  userInterfaceStyle: "light",
   newArchEnabled: false,
   splash: {
-    image: './assets/splash-icon.png',
-    resizeMode: 'contain',
-    backgroundColor: '#ffffff',
+    image: "./assets/splash-icon.png",
+    resizeMode: "contain",
+    backgroundColor: "#ffffff",
   },
   ios: {
     supportsTablet: false,
-    bundleIdentifier: 'com.knowledgerag.app',
-    buildNumber: '1',
+    bundleIdentifier: "com.knowledgerag.app",
+    buildNumber: "1",
     infoPlist: {
-      NSMicrophoneUsageDescription: '语音输入功能需要访问麦克风',
-      NSDocumentsFolderUsageDescription: '文档导入功能需要访问文件',
+      NSMicrophoneUsageDescription: "语音输入功能需要访问麦克风",
+      NSDocumentsFolderUsageDescription: "文档导入功能需要访问文件",
     },
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: './assets/android-icon-foreground.png',
-      backgroundImage: './assets/android-icon-background.png',
-      monochromeImage: './assets/android-icon-monochrome.png',
+      foregroundImage: "./assets/android-icon-foreground.png",
+      backgroundImage: "./assets/android-icon-background.png",
+      monochromeImage: "./assets/android-icon-monochrome.png",
     },
-    package: 'com.knowledgerag.app',
+    package: "com.knowledgerag.app",
     versionCode: 1,
     permissions: [
-      'android.permission.RECORD_AUDIO',
-      'android.permission.READ_EXTERNAL_STORAGE',
-      'android.permission.WRITE_EXTERNAL_STORAGE',
-      'android.permission.INTERNET',
-      'android.permission.MODIFY_AUDIO_SETTINGS',
+      "android.permission.RECORD_AUDIO",
+      "android.permission.READ_EXTERNAL_STORAGE",
+      "android.permission.WRITE_EXTERNAL_STORAGE",
+      "android.permission.INTERNET",
+      "android.permission.MODIFY_AUDIO_SETTINGS",
     ],
   },
   web: {
-    favicon: './assets/favicon.png',
+    favicon: "./assets/favicon.png",
   },
   plugins: [
-    'expo-secure-store',
-    'expo-av',
-    'expo-file-system',
+    "expo-secure-store",
+    "expo-av",
+    "expo-file-system",
     [
-      'expo-document-picker',
+      "expo-document-picker",
       {
-        iCloudContainerEnvironment: 'Production',
+        iCloudContainerEnvironment: "Production",
       },
     ],
     // 强制关闭新架构，确保 gradle.properties 中 newArchEnabled=false
     (config) =>
       withGradleProperties(config, (gradleConfig) => {
         gradleConfig.modResults = gradleConfig.modResults.map((item) => {
-          if (item.key === 'newArchEnabled') {
-            return { ...item, value: 'false' };
+          if (item.key === "newArchEnabled") {
+            return { ...item, value: "false" };
           }
           return item;
         });
@@ -65,9 +65,9 @@ const config = {
       }),
   ],
   extra: {
-    apiUrl: 'http://8.163.51.93:8000',
+    apiUrl: "http://8.163.51.93:8000",
     eas: {
-      projectId: 'bd7173c5-0e97-433b-ac99-12d7ee9f8038',
+      projectId: "bd7173c5-0e97-433b-ac99-12d7ee9f8038",
     },
   },
 };

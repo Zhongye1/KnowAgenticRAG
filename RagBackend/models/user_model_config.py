@@ -9,7 +9,7 @@ user_model_config.py
 
 from fastapi import APIRouter
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional
 import os
 import json
 import requests
@@ -22,12 +22,13 @@ _CONFIG_PATH = Path(__file__).parent.parent / "models_config.json"
 
 # - -
 
+
 class UserModelConfig(BaseModel):
     llm_model: str = "qwen2:0.5b"
     ollama_base_url: str = "http://localhost:11434"
-    timeout: int = 120           # Ollama
+    timeout: int = 120  # Ollama
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
-    kg_model: Optional[str] = None   # Knowledge graph llm_model
+    kg_model: Optional[str] = None  # Knowledge graph llm_model
 
 
 class TestConfigRequest(BaseModel):
@@ -37,6 +38,7 @@ class TestConfigRequest(BaseModel):
 
 
 # - -
+
 
 def _read_config_file() -> dict:
     """读取 models_config.json，不存在则返回空字典"""
@@ -64,16 +66,17 @@ def get_effective_config() -> UserModelConfig:
     file_cfg = _read_config_file()
     return UserModelConfig(
         llm_model=file_cfg.get("llm_model") or os.getenv("MODEL", "qwen2:0.5b"),
-        ollama_base_url=file_cfg.get("ollama_base_url") or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+        ollama_base_url=file_cfg.get("ollama_base_url")
+        or os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
         timeout=int(file_cfg.get("timeout") or os.getenv("OLLAMA_TIMEOUT", "120")),
-        embedding_model=file_cfg.get("embedding_model") or os.getenv(
-            "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
-        ),
+        embedding_model=file_cfg.get("embedding_model")
+        or os.getenv("EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"),
         kg_model=file_cfg.get("kg_model") or os.getenv("KG_MODEL") or None,
     )
 
 
 # - -
+
 
 @router.get("/api/user-model-config")
 async def get_user_model_config():
@@ -150,7 +153,9 @@ async def test_model_config(req: TestConfigRequest):
             result["message"] = f"连接正常，模型 {req.llm_model!r} 已就绪"
 
     except requests.exceptions.ConnectionError:
-        result["message"] = f"无法连接 Ollama（{req.ollama_base_url}），请确认服务已启动"
+        result["message"] = (
+            f"无法连接 Ollama（{req.ollama_base_url}），请确认服务已启动"
+        )
     except requests.exceptions.Timeout:
         result["message"] = f"连接超时（{req.timeout}s），请检查 Ollama 地址"
     except Exception as e:

@@ -29,27 +29,31 @@ from typing import List, Dict, Any, Generator, Optional, Tuple
 # 0.
 # ────────────────────────────────────────────────
 
+
 class NativeDocument:
     """轻量文档对象，对应 LangChain Document"""
+
     def __init__(self, page_content: str, metadata: Dict[str, Any] = None):
         self.page_content = page_content
         self.metadata = metadata or {}
 
     def __repr__(self):
-        return f"NativeDocument(content={self.page_content[:60]!r}, meta={self.metadata})"
+        return (
+            f"NativeDocument(content={self.page_content[:60]!r}, meta={self.metadata})"
+        )
 
 
 # ────────────────────────────────────────────────
 # 1. Document loading
 # ────────────────────────────────────────────────
 
-SUPPORTED_EXTENSIONS = {'.pdf', '.txt', '.md', '.docx', '.csv'}
+SUPPORTED_EXTENSIONS = {".pdf", ".txt", ".md", ".docx", ".csv"}
 
 
 def _load_txt(file_path: str) -> List[NativeDocument]:
     """加载纯文本 / Markdown"""
     try:
-        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             text = f.read()
         return [NativeDocument(page_content=text, metadata={"source": file_path})]
     except Exception as e:
@@ -61,16 +65,18 @@ def _load_pdf(file_path: str) -> List[NativeDocument]:
     """加载 PDF（使用 pypdf）"""
     try:
         import pypdf
+
         docs = []
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             reader = pypdf.PdfReader(f)
             for i, page in enumerate(reader.pages):
                 text = page.extract_text() or ""
                 if text.strip():
-                    docs.append(NativeDocument(
-                        page_content=text,
-                        metadata={"source": file_path, "page": i}
-                    ))
+                    docs.append(
+                        NativeDocument(
+                            page_content=text, metadata={"source": file_path, "page": i}
+                        )
+                    )
         return docs
     except ImportError:
         print("[NativeRAG] pypdf 未安装，尝试用文本模式读取 PDF")
@@ -84,6 +90,7 @@ def _load_docx(file_path: str) -> List[NativeDocument]:
     """加载 Word 文档（使用 docx2txt）"""
     try:
         import docx2txt
+
         text = docx2txt.process(file_path)
         return [NativeDocument(page_content=text, metadata={"source": file_path})]
     except ImportError:
@@ -98,12 +105,13 @@ def _load_csv(file_path: str) -> List[NativeDocument]:
     """加载 CSV"""
     try:
         import csv
+
         rows = []
-        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             reader = csv.reader(f)
             for row in reader:
-                rows.append(', '.join(row))
-        text = '\n'.join(rows)
+                rows.append(", ".join(row))
+        text = "\n".join(rows)
         return [NativeDocument(page_content=text, metadata={"source": file_path})]
     except Exception as e:
         print(f"[NativeRAG] 加载 CSV 失败 {file_path}: {e}")
@@ -113,7 +121,13 @@ def _load_csv(file_path: str) -> List[NativeDocument]:
 def load_documents_from_dir(docs_dir: str) -> List[NativeDocument]:
     """扫描目录，加载所有支持格式的文档"""
     docs = []
-    IGNORE_DIRS = {'vectorstore', 'native_vectorstore', '__pycache__', '.git', 'node_modules'}
+    IGNORE_DIRS = {
+        "vectorstore",
+        "native_vectorstore",
+        "__pycache__",
+        ".git",
+        "node_modules",
+    }
 
     for root, dirs, files in os.walk(docs_dir):
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
@@ -123,13 +137,13 @@ def load_documents_from_dir(docs_dir: str) -> List[NativeDocument]:
                 continue
             file_path = os.path.join(root, fname)
             print(f"[NativeRAG] 加载文件: {file_path}")
-            if ext in ('.txt', '.md'):
+            if ext in (".txt", ".md"):
                 docs.extend(_load_txt(file_path))
-            elif ext == '.pdf':
+            elif ext == ".pdf":
                 docs.extend(_load_pdf(file_path))
-            elif ext == '.docx':
+            elif ext == ".docx":
                 docs.extend(_load_docx(file_path))
-            elif ext == '.csv':
+            elif ext == ".csv":
                 docs.extend(_load_csv(file_path))
 
     print(f"[NativeRAG] 共加载原始文档 {len(docs)} 页")
@@ -140,10 +154,9 @@ def load_documents_from_dir(docs_dir: str) -> List[NativeDocument]:
 # 2.
 # ────────────────────────────────────────────────
 
+
 def split_documents(
-    docs: List[NativeDocument],
-    chunk_size: int = 1000,
-    chunk_overlap: int = 200
+    docs: List[NativeDocument], chunk_size: int = 1000, chunk_overlap: int = 200
 ) -> List[NativeDocument]:
     """简单滑动窗口分块"""
     chunks = []
@@ -156,7 +169,7 @@ def split_documents(
             chunk_text = text[start:end].strip()
             if chunk_text:
                 meta = dict(doc.metadata)
-                meta['chunk_index'] = chunk_idx
+                meta["chunk_index"] = chunk_idx
                 chunks.append(NativeDocument(page_content=chunk_text, metadata=meta))
             chunk_idx += 1
             if end == len(text):
@@ -170,6 +183,7 @@ def split_documents(
 # ────────────────────────────────────────────────
 # 3. Vector storeFAISS
 # ────────────────────────────────────────────────
+
 
 class NativeVectorStore:
     """
@@ -185,6 +199,7 @@ class NativeVectorStore:
     def _get_model(self):
         if self._model is None:
             from sentence_transformers import SentenceTransformer
+
             print(f"[NativeVectorStore] 加载 embedding 模型: {self.model_name}")
             self._model = SentenceTransformer(self.model_name)
         return self._model
@@ -196,11 +211,11 @@ class NativeVectorStore:
     def build_index(self, documents: List[NativeDocument]) -> None:
         """构建 FAISS 索引"""
         import faiss
-        import numpy as np
+
         self._documents = documents
         texts = [d.page_content for d in documents]
         print(f"[NativeVectorStore] 对 {len(texts)} 个文本块计算向量...")
-        vectors = self._encode(texts).astype('float32')
+        vectors = self._encode(texts).astype("float32")
         dim = vectors.shape[1]
         self._index = faiss.IndexFlatIP(dim)  # normalize
         self._index.add(vectors)
@@ -209,11 +224,12 @@ class NativeVectorStore:
     def save(self, save_path: str) -> None:
         """保存索引和文档到磁盘"""
         import faiss
+
         os.makedirs(save_path, exist_ok=True)
         faiss.write_index(self._index, os.path.join(save_path, "native.index"))
-        with open(os.path.join(save_path, "native_docs.pkl"), 'wb') as f:
+        with open(os.path.join(save_path, "native_docs.pkl"), "wb") as f:
             pickle.dump(self._documents, f)
-        with open(os.path.join(save_path, "native_config.json"), 'w') as f:
+        with open(os.path.join(save_path, "native_config.json"), "w") as f:
             json.dump({"model_name": self.model_name}, f)
         print(f"[NativeVectorStore] 已保存到 {save_path}")
 
@@ -221,30 +237,37 @@ class NativeVectorStore:
     def load(cls, load_path: str) -> "NativeVectorStore":
         """从磁盘加载"""
         import faiss
+
         config_path = os.path.join(load_path, "native_config.json")
         if os.path.exists(config_path):
             with open(config_path) as f:
                 config = json.load(f)
-            obj = cls(model_name=config.get("model_name", "sentence-transformers/all-MiniLM-L6-v2"))
+            obj = cls(
+                model_name=config.get(
+                    "model_name", "sentence-transformers/all-MiniLM-L6-v2"
+                )
+            )
         else:
             obj = cls()
         obj._index = faiss.read_index(os.path.join(load_path, "native.index"))
-        with open(os.path.join(load_path, "native_docs.pkl"), 'rb') as f:
+        with open(os.path.join(load_path, "native_docs.pkl"), "rb") as f:
             obj._documents = pickle.load(f)
-        print(f"[NativeVectorStore] 已从 {load_path} 加载，共 {len(obj._documents)} 个文档块")
+        print(
+            f"[NativeVectorStore] 已从 {load_path} 加载，共 {len(obj._documents)} 个文档块"
+        )
         return obj
 
     @classmethod
     def exists(cls, load_path: str) -> bool:
-        return (
-            os.path.exists(os.path.join(load_path, "native.index")) and
-            os.path.exists(os.path.join(load_path, "native_docs.pkl"))
-        )
+        return os.path.exists(
+            os.path.join(load_path, "native.index")
+        ) and os.path.exists(os.path.join(load_path, "native_docs.pkl"))
 
-    def similarity_search(self, query: str, top_k: int = 5) -> List[Tuple[NativeDocument, float]]:
+    def similarity_search(
+        self, query: str, top_k: int = 5
+    ) -> List[Tuple[NativeDocument, float]]:
         """向量相似度检索，返回 (doc, score) 列表"""
-        import numpy as np
-        q_vec = self._encode([query]).astype('float32')
+        q_vec = self._encode([query]).astype("float32")
         scores, indices = self._index.search(q_vec, top_k)
         results = []
         for score, idx in zip(scores[0], indices[0]):
@@ -262,10 +285,13 @@ class NativeVectorStore:
 # 4. BM25 NativeDocument
 # ────────────────────────────────────────────────
 
+
 class NativeBM25:
     """针对 NativeDocument 的内存 BM25"""
 
-    def __init__(self, documents: List[NativeDocument], k1: float = 1.5, b: float = 0.75):
+    def __init__(
+        self, documents: List[NativeDocument], k1: float = 1.5, b: float = 0.75
+    ):
         self.k1 = k1
         self.b = b
         self.documents = documents
@@ -274,7 +300,7 @@ class NativeBM25:
 
     @staticmethod
     def _tokenize(text: str) -> List[str]:
-        return re.findall(r'[\u4e00-\u9fff]|[a-z0-9]+', text.lower())
+        return re.findall(r"[\u4e00-\u9fff]|[a-z0-9]+", text.lower())
 
     def _build(self):
         N = len(self.corpus)
@@ -284,11 +310,12 @@ class NativeBM25:
             for t in set(tokens):
                 df[t] = df.get(t, 0) + 1
         self.idf: Dict[str, float] = {
-            t: math.log((N - freq + 0.5) / (freq + 0.5) + 1)
-            for t, freq in df.items()
+            t: math.log((N - freq + 0.5) / (freq + 0.5) + 1) for t, freq in df.items()
         }
 
-    def retrieve(self, query: str, top_k: int = 5) -> List[Tuple[NativeDocument, float]]:
+    def retrieve(
+        self, query: str, top_k: int = 5
+    ) -> List[Tuple[NativeDocument, float]]:
         q_tokens = self._tokenize(query)
         scores = []
         for doc_tokens in self.corpus:
@@ -301,8 +328,11 @@ class NativeBM25:
                 if t not in self.idf:
                     continue
                 tf = tf_map.get(t, 0)
-                score += self.idf[t] * tf * (self.k1 + 1) / (
-                    tf + self.k1 * (1 - self.b + self.b * dl / self.avgdl)
+                score += (
+                    self.idf[t]
+                    * tf
+                    * (self.k1 + 1)
+                    / (tf + self.k1 * (1 - self.b + self.b * dl / self.avgdl))
                 )
             scores.append(score)
         ranked = sorted(enumerate(scores), key=lambda x: x[1], reverse=True)[:top_k]
@@ -310,8 +340,7 @@ class NativeBM25:
 
 
 def _rrf_fusion(
-    ranked_lists: List[List[Tuple[NativeDocument, float]]],
-    k: int = 60
+    ranked_lists: List[List[Tuple[NativeDocument, float]]], k: int = 60
 ) -> List[Tuple[NativeDocument, float]]:
     """Reciprocal Rank Fusion"""
     rrf_scores: Dict[str, float] = {}
@@ -328,6 +357,7 @@ def _rrf_fusion(
 # ────────────────────────────────────────────────
 # 5. LLM Ollama HTTP API
 # ────────────────────────────────────────────────
+
 
 def _ollama_generate(
     model: str,
@@ -450,7 +480,7 @@ class NativeRAGPipeline:
         bm25_top_k: int = 5,
         vector_top_k: int = 5,
         final_top_k: int = 4,
-        ollama_timeout: int = 120,   # Ollama
+        ollama_timeout: int = 120,  # Ollama
     ):
         self.vectorstore = vectorstore
         self.llm_model = llm_model
@@ -481,7 +511,9 @@ class NativeRAGPipeline:
 
     def _retrieve(self, query: str) -> List[Dict[str, Any]]:
         """混合检索 or 纯向量检索，返回带 source_info 的列表"""
-        vector_results = self.vectorstore.similarity_search(query, top_k=self.vector_top_k)
+        vector_results = self.vectorstore.similarity_search(
+            query, top_k=self.vector_top_k
+        )
 
         if self.use_hybrid and self._bm25:
             bm25_results = self._bm25.retrieve(query, top_k=self.bm25_top_k)
@@ -490,20 +522,22 @@ class NativeRAGPipeline:
             fused = vector_results
 
         results = []
-        for rank, (doc, score) in enumerate(fused[:self.final_top_k], start=1):
+        for rank, (doc, score) in enumerate(fused[: self.final_top_k], start=1):
             meta = doc.metadata or {}
-            results.append({
-                "document": doc,
-                "source_info": {
-                    "rank": rank,
-                    "rrf_score": round(score, 6),
-                    "file_name": _extract_filename_native(meta),
-                    "page": meta.get("page"),
-                    "chunk_index": meta.get("chunk_index"),
-                    "source_path": meta.get("source", ""),
-                },
-                "content_preview": doc.page_content[:200],
-            })
+            results.append(
+                {
+                    "document": doc,
+                    "source_info": {
+                        "rank": rank,
+                        "rrf_score": round(score, 6),
+                        "file_name": _extract_filename_native(meta),
+                        "page": meta.get("page"),
+                        "chunk_index": meta.get("chunk_index"),
+                        "source_path": meta.get("source", ""),
+                    },
+                    "content_preview": doc.page_content[:200],
+                }
+            )
         return results
 
     def stream_query(self, query: str) -> Generator[str, None, None]:
@@ -564,19 +598,23 @@ class NativeRAGPipeline:
             return {
                 "answer": "未找到相关文档，无法回答该问题。",
                 "sources": [],
-                "retrieval_mode": "native_hybrid" if self.use_hybrid else "native_vector",
+                "retrieval_mode": "native_hybrid"
+                if self.use_hybrid
+                else "native_vector",
             }
 
         context = _format_native_context(docs_with_sources)
         prompt = self._prompt_template.format(context=context, question=query)
 
-        answer_parts = list(_ollama_generate(
-            model=self.llm_model,
-            prompt=prompt,
-            host=self.ollama_host,
-            stream=False,
-            timeout=self.ollama_timeout,
-        ))
+        answer_parts = list(
+            _ollama_generate(
+                model=self.llm_model,
+                prompt=prompt,
+                host=self.ollama_host,
+                stream=False,
+                timeout=self.ollama_timeout,
+            )
+        )
         answer = "".join(answer_parts)
 
         sources = [

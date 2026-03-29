@@ -31,6 +31,7 @@ eas build:configure
 ```
 
 > `eas build:configure` 会：
+>
 > - 在 expo.dev 上创建项目
 > - 自动把 `projectId` 写入 `app.json`
 > - 确认 `eas.json` 配置
@@ -45,7 +46,7 @@ eas build:configure
 
 ```ts
 // 改成你电脑的局域网 IP（cmd 中运行 ipconfig 查看）
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.xxx:8000';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || "http://192.168.1.xxx:8000";
 ```
 
 或者用环境变量方式，在项目根目录新建 `.env`：
@@ -55,7 +56,7 @@ EXPO_PUBLIC_API_URL=http://192.168.1.xxx:8000
 ```
 
 > 💡 查看本机 IP：Windows 运行 `ipconfig`，找 "IPv4 地址"
-> 
+>
 > 如果要打包给别人用/生产环境，填你服务器的公网 IP 或域名：
 > `EXPO_PUBLIC_API_URL=http://your-server.com:8000`
 
@@ -71,6 +72,7 @@ eas build -p android --profile preview
 构建过程大约 **5~15 分钟**，全程在云端，本机无需操作。
 
 完成后终端会显示：
+
 ```
 ✅ Build finished.
 🤖 Android APK:
@@ -93,31 +95,36 @@ eas build -p android --profile production
 
 ## 构建 Profile 说明
 
-| Profile | 格式 | 用途 |
-|---------|------|------|
-| `preview` | `.apk` | 测试用，直接安装到手机 ✅ 推荐 |
-| `production` | `.aab` | 发布 Google Play 商店 |
-| `development` | `.apk` | 开发调试（含 dev client） |
+| Profile       | 格式   | 用途                           |
+| ------------- | ------ | ------------------------------ |
+| `preview`     | `.apk` | 测试用，直接安装到手机 ✅ 推荐 |
+| `production`  | `.aab` | 发布 Google Play 商店          |
+| `development` | `.apk` | 开发调试（含 dev client）      |
 
 ---
 
 ## 常见问题
 
 ### Q: 构建失败 "Project not found"
+
 ```bash
 eas build:configure  # 重新初始化
 ```
 
 ### Q: 手机安装时提示"未知来源"
+
 打开手机 **设置 → 安全 → 允许未知来源安装**，然后重新安装 APK。
 
 ### Q: 打开 App 后连不上后端
+
 - 确认手机和电脑**在同一个 WiFi**
 - 把 `api.ts` 里的 IP 改成电脑的局域网 IP
 - 确认后端服务已启动：`uvicorn main:app --host 0.0.0.0 --port 8000`
 
 ### Q: 免费额度用完了怎么办
+
 EAS 免费账号每月 **30 次**构建，一般够用。超出可以：
+
 - 升级 EAS 付费计划
 - 改用本地构建（需安装 JDK 17 + Android Studio）
 

@@ -1,11 +1,11 @@
 """
 扩展多模型路由：新增阿里云百炼、讯飞星火、自动负载均衡、使用量统计
 """
+
 import os
 import json
 import sqlite3
 import time
-import asyncio
 from datetime import datetime
 from typing import Optional, AsyncIterator, Dict, List
 from fastapi import APIRouter
@@ -107,7 +107,9 @@ class LoadBalancer:
         self._fail_counts[model_id] = self._fail_counts.get(model_id, 0) + 1
         self._last_fail[model_id] = time.time()
 
-    def pick_model(self, preferred: str = None, exclude: List[str] = None) -> Optional[str]:
+    def pick_model(
+        self, preferred: str = None, exclude: List[str] = None
+    ) -> Optional[str]:
         """选择最优可用模型"""
         exclude = exclude or []
         conn = get_db()
@@ -123,9 +125,13 @@ class LoadBalancer:
         for row in models:
             mid = row["model_id"]
             if mid not in exclude and self.is_available(mid):
-                key_env = conn.execute(
-                    "SELECT api_key_env FROM model_config WHERE model_id=?", (mid,)
-                ) if False else None
+                key_env = (
+                    conn.execute(
+                        "SELECT api_key_env FROM model_config WHERE model_id=?", (mid,)
+                    )
+                    if False
+                    else None
+                )
                 return mid
         return None
 
@@ -136,10 +142,14 @@ _lb = LoadBalancer()
 # - SSE -
 async def stream_ollama(model_id: str, prompt: str) -> AsyncIterator[str]:
     import httpx
+
     base_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     async with httpx.AsyncClient(timeout=60) as client:
-        async with client.stream("POST", f"{base_url}/api/generate",
-                                 json={"model": model_id, "prompt": prompt, "stream": True}) as resp:
+        async with client.stream(
+            "POST",
+            f"{base_url}/api/generate",
+            json={"model": model_id, "prompt": prompt, "stream": True},
+        ) as resp:
             async for line in resp.aiter_lines():
                 if line:
                     data = json.loads(line)
@@ -151,24 +161,38 @@ async def stream_ollama(model_id: str, prompt: str) -> AsyncIterator[str]:
 async def stream_dashscope(model_id: str, messages: List[Dict]) -> AsyncIterator[str]:
     """阿里云百炼 DashScope SSE"""
     import httpx
+
     api_key = os.getenv("DASHSCOPE_API_KEY", "")
     if not api_key:
         yield "[错误] DASHSCOPE_API_KEY 未配置"
         return
-    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json",
-                "X-DashScope-SSE": "enable"}
-    body = {"model": model_id, "input": {"messages": messages},
-            "parameters": {"result_format": "message", "incremental_output": True}}
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "X-DashScope-SSE": "enable",
+    }
+    body = {
+        "model": model_id,
+        "input": {"messages": messages},
+        "parameters": {"result_format": "message", "incremental_output": True},
+    }
     async with httpx.AsyncClient(timeout=60) as client:
-        async with client.stream("POST",
-                                 "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
-                                 headers=headers, json=body) as resp:
+        async with client.stream(
+            "POST",
+            "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation",
+            headers=headers,
+            json=body,
+        ) as resp:
             async for line in resp.aiter_lines():
                 if line.startswith("data:"):
                     try:
                         data = json.loads(line[5:])
-                        content = data.get("output", {}).get("choices", [{}])[0]\
-                                      .get("message", {}).get("content", "")
+                        content = (
+                            data.get("output", {})
+                            .get("choices", [{}])[0]
+                            .get("message", {})
+                            .get("content", "")
+                        )
                         if content:
                             yield content
                     except:
@@ -177,8 +201,11 @@ async def stream_dashscope(model_id: str, messages: List[Dict]) -> AsyncIterator
 
 async def stream_xfyun_spark(model_id: str, messages: List[Dict]) -> AsyncIterator[str]:
     """讯飞星火 WebSocket SSE"""
-    import hashlib, hmac, base64
+    import hashlib
+    import hmac
+    import base64
     from urllib.parse import urlencode
+
     api_key = os.getenv("XFYUN_API_KEY", "")
     api_secret = os.getenv("XFYUN_API_SECRET", "")
     app_id = os.getenv("XFYUN_APP_ID", "")
@@ -187,20 +214,34 @@ async def stream_xfyun_spark(model_id: str, messages: List[Dict]) -> AsyncIterat
         return
     # URL
     host = "spark-api.xf-yun.com"
-    path_map = {"spark-lite": "/v1.1/chat", "spark-pro": "/v3.1/chat", "spark-max": "/v3.5/chat"}
+    path_map = {
+        "spark-lite": "/v1.1/chat",
+        "spark-pro": "/v3.1/chat",
+        "spark-max": "/v3.5/chat",
+    }
     path = path_map.get(model_id, "/v1.1/chat")
     from datetime import timezone
+
     now = datetime.now(timezone.utc)
-    date = now.strftime('%a, %d %b %Y %H:%M:%S GMT')
+    date = now.strftime("%a, %d %b %Y %H:%M:%S GMT")
     sign_raw = f"host: {host}\ndate: {date}\nGET {path} HTTP/1.1"
-    sign = base64.b64encode(hmac.new(api_secret.encode(), sign_raw.encode(), hashlib.sha256).digest()).decode()
-    auth = base64.b64encode(f'api_key="{api_key}", algorithm="hmac-sha256", headers="host date request-line", signature="{sign}"'.encode()).decode()
+    sign = base64.b64encode(
+        hmac.new(api_secret.encode(), sign_raw.encode(), hashlib.sha256).digest()
+    ).decode()
+    auth = base64.b64encode(
+        f'api_key="{api_key}", algorithm="hmac-sha256", headers="host date request-line", signature="{sign}"'.encode()
+    ).decode()
     url = f"wss://{host}{path}?{urlencode({'authorization': auth, 'date': date, 'host': host})}"
     try:
         import websockets
-        body = {"header": {"app_id": app_id, "uid": "user"},
-                "parameter": {"chat": {"domain": model_id.replace("-", "_"), "max_tokens": 2048}},
-                "payload": {"message": {"text": messages}}}
+
+        body = {
+            "header": {"app_id": app_id, "uid": "user"},
+            "parameter": {
+                "chat": {"domain": model_id.replace("-", "_"), "max_tokens": 2048}
+            },
+            "payload": {"message": {"text": messages}},
+        }
         async with websockets.connect(url) as ws:
             await ws.send(json.dumps(body))
             while True:
@@ -220,7 +261,7 @@ async def stream_xfyun_spark(model_id: str, messages: List[Dict]) -> AsyncIterat
 # - Chat API + -
 class ChatRequest(BaseModel):
     model_id: Optional[str] = None
-    messages: List[Dict]        # [{role, content}]
+    messages: List[Dict]  # [{role, content}]
     user_id: Optional[str] = "anonymous"
     stream: bool = True
 
@@ -232,8 +273,9 @@ async def unified_chat(req: ChatRequest):
         return {"error": "没有可用的模型"}
 
     conn = get_db()
-    row = conn.execute("SELECT provider FROM model_config WHERE model_id=?",
-                       (model_id,)).fetchone()
+    row = conn.execute(
+        "SELECT provider FROM model_config WHERE model_id=?", (model_id,)
+    ).fetchone()
     conn.close()
     provider = row["provider"] if row else "ollama"
     start = time.time()
@@ -271,10 +313,13 @@ async def unified_chat(req: ChatRequest):
 
 def _save_usage(user_id, model_id, provider, chars, latency_ms, success):
     conn = get_db()
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO model_usage (user_id, model_id, provider, total_tokens, latency_ms, success)
         VALUES (?,?,?,?,?,?)
-    """, (user_id, model_id, provider, chars, latency_ms, 1 if success else 0))
+    """,
+        (user_id, model_id, provider, chars, latency_ms, 1 if success else 0),
+    )
     conn.commit()
     conn.close()
 
@@ -282,7 +327,9 @@ def _save_usage(user_id, model_id, provider, chars, latency_ms, success):
 @router.get("/models")
 def list_models():
     conn = get_db()
-    rows = conn.execute("SELECT * FROM model_config ORDER BY provider, priority DESC").fetchall()
+    rows = conn.execute(
+        "SELECT * FROM model_config ORDER BY provider, priority DESC"
+    ).fetchall()
     conn.close()
     result = []
     for r in rows:
@@ -290,7 +337,9 @@ def list_models():
         # API Key
         env = d.get("api_key_env", "")
         d["key_configured"] = bool(os.getenv(env, "")) if env else True
-        d["available"] = _lb.is_available(d["model_id"]) and (d["key_configured"] or d["provider"] == "ollama")
+        d["available"] = _lb.is_available(d["model_id"]) and (
+            d["key_configured"] or d["provider"] == "ollama"
+        )
         result.append(d)
     return result
 

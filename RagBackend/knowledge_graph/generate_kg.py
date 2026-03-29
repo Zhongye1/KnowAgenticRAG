@@ -1,12 +1,11 @@
 # generate_kg.py
-import logging
 import os
 import requests
 import json
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 from pydantic import BaseModel
 import re
 from langchain_community.document_loaders import PyPDFLoader
@@ -15,7 +14,8 @@ from docx import Document
 router = APIRouter()
 
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from models.model_config import get_model_config
 
 
@@ -31,13 +31,16 @@ KNOWLEDGE_BASE_PATH = os.path.join(PROJECT_ROOT, "test")
 class ProcessFileRequest(BaseModel):
     filename: str
 
+
 class ProcessFilesResponse(BaseModel):
     message: str
     graph_data: dict
 
+
 # Split text into chunks
 def split_text_into_chunks(text, chunk_size):
-    return [text[i:i + chunk_size] for i in range(0, len(text), chunk_size)]
+    return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+
 
 # Extract text from PDF
 def extract_pdf_text(file_path):
@@ -50,6 +53,7 @@ def extract_pdf_text(file_path):
         print(f"Unable to extract PDF file {file_path}: {e}")
         return ""
 
+
 # Extract text from DOC/DOCX
 def extract_doc_text(file_path):
     try:
@@ -60,27 +64,30 @@ def extract_doc_text(file_path):
         print(f"Unable to extract DOC file {file_path}: {e}")
         return ""
 
+
 # Extract text from text files
 def extract_text_file(file_path):
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return f.read()
     except Exception as e:
         print(f"Unable to read file {file_path}: {e}")
         return ""
 
+
 # Extract text based on file type
 def extract_text(file_path):
     ext = os.path.splitext(file_path)[1].lower()
-    if ext == '.pdf':
+    if ext == ".pdf":
         return extract_pdf_text(file_path)
-    elif ext in ['.doc', '.docx']:
+    elif ext in [".doc", ".docx"]:
         return extract_doc_text(file_path)
-    elif ext in ['.txt', '.md']:
+    elif ext in [".txt", ".md"]:
         return extract_text_file(file_path)
     else:
         print(f"Unsupported file type: {ext}")
         return ""
+
 
 # Extract graph data using Ollama API
 def extract_graph_data(chunk):
@@ -111,18 +118,20 @@ def extract_graph_data(chunk):
     data = {
         "model": OLLAMA_MODEL,
         "prompt": prompt,
-        "stream": False  # Ensure full response is returned
+        "stream": False,  # Ensure full response is returned
     }
     try:
         response = requests.post(OLLAMA_API_URL, json=data, timeout=300)
         print(f"API request status code: {response.status_code}")
         if response.status_code == 200:
             result = response.json()
-            generated_text = result.get('response', '')
-            print(f"API response: {generated_text[:100]}...")  # Print first 100 characters
+            generated_text = result.get("response", "")
+            print(
+                f"API response: {generated_text[:100]}..."
+            )  # Print first 100 characters
 
             # Attempt to extract JSON from the response using regex
-            json_pattern = r'(\{.*\})'
+            json_pattern = r"(\{.*\})"
             match = re.search(json_pattern, generated_text, re.DOTALL)
             if match:
                 json_str = match.group(1).strip()
@@ -131,7 +140,9 @@ def extract_graph_data(chunk):
                     if "nodes" in parsed_json and "edges" in parsed_json:
                         return parsed_json
                     else:
-                        print("Warning: JSON does not contain 'nodes' and 'edges' keys.")
+                        print(
+                            "Warning: JSON does not contain 'nodes' and 'edges' keys."
+                        )
                         return {"nodes": [], "edges": []}
                 except json.JSONDecodeError:
                     print(f"Failed to parse extracted JSON: {json_str[:50]}...")
@@ -146,38 +157,42 @@ def extract_graph_data(chunk):
         print(f"API call error: {str(e)}")
         return {"nodes": [], "edges": []}
 
+
 @router.post("/process-file", response_model=ProcessFilesResponse)
 async def process_single_file(request: ProcessFileRequest):
     """
     处理单个文件并生成知识图谱数据
     """
     file_path = os.path.join(KNOWLEDGE_BASE_PATH, request.filename)
-    
+
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail=f"File {request.filename} not found")
-    
+        raise HTTPException(
+            status_code=404, detail=f"File {request.filename} not found"
+        )
+
     # Extract text
     content = extract_text(file_path)
     if not content:
-        raise HTTPException(status_code=400, detail=f"Unable to extract content from {request.filename}")
-    
+        raise HTTPException(
+            status_code=400, detail=f"Unable to extract content from {request.filename}"
+        )
+
     # Split into chunks
     chunks = split_text_into_chunks(content, CHUNK_SIZE)
-    
+
     # Extract graph data
     graph_data = {"nodes": [], "edges": []}
     for i, chunk in enumerate(chunks):
-        print(f"Processing chunk {i+1}/{len(chunks)}")
+        print(f"Processing chunk {i + 1}/{len(chunks)}")
         result = extract_graph_data(chunk)
         if result and "nodes" in result and "edges" in result:
             graph_data["nodes"].extend(result["nodes"])
             graph_data["edges"].extend(result["edges"])
         else:
-            print(f"Failed to extract valid graph data for chunk {i+1}")
-    
+            print(f"Failed to extract valid graph data for chunk {i + 1}")
+
     return ProcessFilesResponse(
-        message=f"Successfully processed {request.filename}",
-        graph_data=graph_data
+        message=f"Successfully processed {request.filename}", graph_data=graph_data
     )
 
 
@@ -187,55 +202,67 @@ async def process_all_files():
     处理所有文件并生成知识图谱数据
     """
     if not os.path.exists(KNOWLEDGE_BASE_PATH):
-        raise HTTPException(status_code=404, detail=f"Directory {KNOWLEDGE_BASE_PATH} does not exist")
-    
-    files = [f for f in os.listdir(KNOWLEDGE_BASE_PATH) if os.path.isfile(os.path.join(KNOWLEDGE_BASE_PATH, f))]
-    
+        raise HTTPException(
+            status_code=404, detail=f"Directory {KNOWLEDGE_BASE_PATH} does not exist"
+        )
+
+    files = [
+        f
+        for f in os.listdir(KNOWLEDGE_BASE_PATH)
+        if os.path.isfile(os.path.join(KNOWLEDGE_BASE_PATH, f))
+    ]
+
     results = []
     for file in files:
         try:
             file_path = os.path.join(KNOWLEDGE_BASE_PATH, file)
             print(f"Processing file: {file}")
-            
+
             # Extract text
             content = extract_text(file_path)
             if not content:
                 print(f"Skipping file {file}, unable to extract content")
                 continue
-            
+
             # Split into chunks
             chunks = split_text_into_chunks(content, CHUNK_SIZE)
-            
+
             # Extract graph data
             graph_data = {"nodes": [], "edges": []}
             for i, chunk in enumerate(chunks):
-                print(f"Processing chunk {i+1}/{len(chunks)}")
+                print(f"Processing chunk {i + 1}/{len(chunks)}")
                 result = extract_graph_data(chunk)
                 if result and "nodes" in result and "edges" in result:
                     graph_data["nodes"].extend(result["nodes"])
                     graph_data["edges"].extend(result["edges"])
                 else:
-                    print(f"Failed to extract valid graph data for chunk {i+1}")
-            
-            results.append(ProcessFilesResponse(
-                message=f"Successfully processed {file}",
-                graph_data=graph_data
-            ))
-            
+                    print(f"Failed to extract valid graph data for chunk {i + 1}")
+
+            results.append(
+                ProcessFilesResponse(
+                    message=f"Successfully processed {file}", graph_data=graph_data
+                )
+            )
+
             # Save cumulative graph data
-            output_file = os.path.join(KNOWLEDGE_BASE_PATH, f"{os.path.splitext(file)[0]}_graph.json")
-            with open(output_file, 'w', encoding='utf-8') as f:
+            output_file = os.path.join(
+                KNOWLEDGE_BASE_PATH, f"{os.path.splitext(file)[0]}_graph.json"
+            )
+            with open(output_file, "w", encoding="utf-8") as f:
                 json.dump(graph_data, f, indent=4, ensure_ascii=False)
             print(f"Graph data saved to {output_file}")
-            
+
         except Exception as e:
             print(f"Error processing file {file}: {str(e)}")
-            results.append(ProcessFilesResponse(
-                message=f"Error processing {file}: {str(e)}",
-                graph_data={"nodes": [], "edges": []}
-            ))
-    
+            results.append(
+                ProcessFilesResponse(
+                    message=f"Error processing {file}: {str(e)}",
+                    graph_data={"nodes": [], "edges": []},
+                )
+            )
+
     return results
+
 
 @router.get("/get-graph-data/{filename}")
 async def get_graph_data(filename: str):
@@ -246,22 +273,24 @@ async def get_graph_data(filename: str):
     name_without_ext = os.path.splitext(filename)[0]
     graph_filename = f"{name_without_ext}_graph.json"
     file_path = os.path.join(KNOWLEDGE_BASE_PATH, graph_filename)
-    
+
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail=f"Graph data for {filename} not found")
-    
+        raise HTTPException(
+            status_code=404, detail=f"Graph data for {filename} not found"
+        )
+
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             graph_data = json.load(f)
         return graph_data
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading graph data: {str(e)}")
-    
-
+        raise HTTPException(
+            status_code=500, detail=f"Error reading graph data: {str(e)}"
+        )
 
 
 ######################################################################
-#Generate graph
+# Generate graph
 
 
 class ProcessFolderRequest(BaseModel):
@@ -274,69 +303,81 @@ async def process_knowledge_base(request: ProcessFolderRequest):
     处理指定知识库ID下的所有文档文件并生成知识图谱数据
     """
     kb_folder_path = os.path.join("local-KLB-files", request.folder_path)
-    
+
     if not os.path.exists(kb_folder_path):
-        raise HTTPException(status_code=404, detail=f"Knowledge base directory {request.folder_path} does not exist")
-    
+        raise HTTPException(
+            status_code=404,
+            detail=f"Knowledge base directory {request.folder_path} does not exist",
+        )
+
     if not os.path.isdir(kb_folder_path):
-        raise HTTPException(status_code=400, detail=f"{kb_folder_path} is not a directory")
-    
-    supported_extensions = ['.pdf', '.doc', '.docx', '.txt', '.md']
-    files = [f for f in os.listdir(kb_folder_path) 
-             if os.path.isfile(os.path.join(kb_folder_path, f)) 
-             and os.path.splitext(f)[1].lower() in supported_extensions]
-    
+        raise HTTPException(
+            status_code=400, detail=f"{kb_folder_path} is not a directory"
+        )
+
+    supported_extensions = [".pdf", ".doc", ".docx", ".txt", ".md"]
+    files = [
+        f
+        for f in os.listdir(kb_folder_path)
+        if os.path.isfile(os.path.join(kb_folder_path, f))
+        and os.path.splitext(f)[1].lower() in supported_extensions
+    ]
+
     if not files:
         return JSONResponse(
-            content={"message": f"No supported files found in knowledge base {request.folder_path}"},
-            status_code=200
+            content={
+                "message": f"No supported files found in knowledge base {request.folder_path}"
+            },
+            status_code=200,
         )
-    
+
     results = []
     for file in files:
         try:
             file_path = os.path.join(kb_folder_path, file)
             print(f"Processing file: {file}")
-            
+
             content = extract_text(file_path)
             if not content:
                 print(f"Skipping file {file}, unable to extract content")
                 continue
-            
+
             chunks = split_text_into_chunks(content, CHUNK_SIZE)
-            
+
             graph_data = {"nodes": [], "edges": []}
             for i, chunk in enumerate(chunks):
-                print(f"Processing chunk {i+1}/{len(chunks)}")
+                print(f"Processing chunk {i + 1}/{len(chunks)}")
                 result = extract_graph_data(chunk)
                 if result and "nodes" in result and "edges" in result:
                     graph_data["nodes"].extend(result["nodes"])
                     graph_data["edges"].extend(result["edges"])
                 else:
-                    print(f"Failed to extract valid graph data for chunk {i+1}")
-            
-            results.append(ProcessFilesResponse(
-                message=f"Successfully processed {file}",
-                graph_data=graph_data
-            ))
-            
+                    print(f"Failed to extract valid graph data for chunk {i + 1}")
+
+            results.append(
+                ProcessFilesResponse(
+                    message=f"Successfully processed {file}", graph_data=graph_data
+                )
+            )
+
             # Knowledge graph
-            output_file = os.path.join(kb_folder_path, f"{os.path.splitext(file)[0]}_graph.json")
-            with open(output_file, 'w', encoding='utf-8') as f:
+            output_file = os.path.join(
+                kb_folder_path, f"{os.path.splitext(file)[0]}_graph.json"
+            )
+            with open(output_file, "w", encoding="utf-8") as f:
                 json.dump(graph_data, f, indent=4, ensure_ascii=False)
             print(f"Graph data saved to {output_file}")
-            
+
         except Exception as e:
             print(f"Error processing file {file}: {str(e)}")
-            results.append(ProcessFilesResponse(
-                message=f"Error processing {file}: {str(e)}",
-                graph_data={"nodes": [], "edges": []}
-            ))
-    
+            results.append(
+                ProcessFilesResponse(
+                    message=f"Error processing {file}: {str(e)}",
+                    graph_data={"nodes": [], "edges": []},
+                )
+            )
+
     return results
-
-
-
 
 
 @router.get("/get-kb-graph-data/{kb_id}/{filename}")
@@ -345,36 +386,44 @@ async def get_kb_graph_data(kb_id: str, filename: str):
     获取特定知识库中特定文件的知识图谱数据
     """
     kb_folder_path = os.path.join("local-KLB-files", kb_id)
-    
+
     if not os.path.exists(kb_folder_path):
-        raise HTTPException(status_code=404, detail=f"Knowledge base directory {kb_id} not found")
-    
+        raise HTTPException(
+            status_code=404, detail=f"Knowledge base directory {kb_id} not found"
+        )
+
     name_without_ext = os.path.splitext(filename)[0]
     graph_filename = f"{name_without_ext}_graph.json"
     file_path = os.path.join(kb_folder_path, graph_filename)
-    
+
     if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail=f"Graph data for {filename} in knowledge base {kb_id} not found")
-    
+        raise HTTPException(
+            status_code=404,
+            detail=f"Graph data for {filename} in knowledge base {kb_id} not found",
+        )
+
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             graph_data = json.load(f)
         return graph_data
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error reading graph data: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error reading graph data: {str(e)}"
+        )
 
 
 # ──────────────────────────────────────────────────────────
 # Graph statistics
 # ──────────────────────────────────────────────────────────
 
+
 def _merge_graph_data(graph_list: List[dict]) -> dict:
     """
     合并多个图谱数据（去重节点 + 去重边）
     节点去重基于 id，边去重基于 (source, target, label) 三元组
     """
-    merged_nodes: dict = {}      # id -> node
-    merged_edges: dict = {}      # (source,target,label) -> edge
+    merged_nodes: dict = {}  # id -> node
+    merged_edges: dict = {}  # (source,target,label) -> edge
 
     for graph in graph_list:
         for node in graph.get("nodes", []):
@@ -382,7 +431,11 @@ def _merge_graph_data(graph_list: List[dict]) -> dict:
             if nid and nid not in merged_nodes:
                 merged_nodes[nid] = node
         for edge in graph.get("edges", []):
-            key = (edge.get("source", ""), edge.get("target", ""), edge.get("label", ""))
+            key = (
+                edge.get("source", ""),
+                edge.get("target", ""),
+                edge.get("label", ""),
+            )
             if key[0] and key[1] and key not in merged_edges:
                 merged_edges[key] = edge
 
@@ -404,17 +457,22 @@ async def get_kb_merged_graph(kb_id: str):
         raise HTTPException(status_code=404, detail=f"知识库目录 {kb_id} 不存在")
 
     graph_files = [
-        f for f in os.listdir(kb_folder_path)
+        f
+        for f in os.listdir(kb_folder_path)
         if f.endswith("_graph.json") and os.path.isfile(os.path.join(kb_folder_path, f))
     ]
 
     if not graph_files:
-        return {"nodes": [], "edges": [], "message": "该知识库暂无图谱数据，请先生成图谱"}
+        return {
+            "nodes": [],
+            "edges": [],
+            "message": "该知识库暂无图谱数据，请先生成图谱",
+        }
 
     graph_list = []
     for gf in graph_files:
         try:
-            with open(os.path.join(kb_folder_path, gf), 'r', encoding='utf-8') as f:
+            with open(os.path.join(kb_folder_path, gf), "r", encoding="utf-8") as f:
                 graph_list.append(json.load(f))
         except Exception as e:
             print(f"[KG] 读取图谱文件 {gf} 失败: {e}")
@@ -441,13 +499,14 @@ async def search_nodes(kb_id: str, keyword: str = ""):
         raise HTTPException(status_code=400, detail="请提供搜索关键词")
 
     graph_files = [
-        f for f in os.listdir(kb_folder_path)
+        f
+        for f in os.listdir(kb_folder_path)
         if f.endswith("_graph.json") and os.path.isfile(os.path.join(kb_folder_path, f))
     ]
     graph_list = []
     for gf in graph_files:
         try:
-            with open(os.path.join(kb_folder_path, gf), 'r', encoding='utf-8') as f:
+            with open(os.path.join(kb_folder_path, gf), "r", encoding="utf-8") as f:
                 graph_list.append(json.load(f))
         except Exception:
             pass
@@ -456,7 +515,8 @@ async def search_nodes(kb_id: str, keyword: str = ""):
     kw_lower = keyword.lower()
 
     matched_ids = {
-        n["id"] for n in merged["nodes"]
+        n["id"]
+        for n in merged["nodes"]
         if kw_lower in n.get("label", "").lower() or kw_lower in n.get("id", "").lower()
     }
 
@@ -493,14 +553,15 @@ async def get_graph_stats(kb_id: str):
         raise HTTPException(status_code=404, detail=f"知识库目录 {kb_id} 不存在")
 
     graph_files = [
-        f for f in os.listdir(kb_folder_path)
+        f
+        for f in os.listdir(kb_folder_path)
         if f.endswith("_graph.json") and os.path.isfile(os.path.join(kb_folder_path, f))
     ]
 
     graph_list = []
     for gf in graph_files:
         try:
-            with open(os.path.join(kb_folder_path, gf), 'r', encoding='utf-8') as f:
+            with open(os.path.join(kb_folder_path, gf), "r", encoding="utf-8") as f:
                 graph_list.append(json.load(f))
         except Exception:
             pass

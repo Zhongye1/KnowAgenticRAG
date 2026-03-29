@@ -29,14 +29,14 @@ logger = logging.getLogger(__name__)
 
 # ── Build config from environment ────────────────────────────────────────────
 DB_CONFIG = {
-    "host":            os.getenv("DB_HOST",    "127.0.0.1"),
-    "port":            int(os.getenv("DB_PORT", 3306)),
-    "user":            os.getenv("DB_USER",    "root"),
-    "password":        os.getenv("DB_PASSWORD", ""),
-    "database":        os.getenv("DB_NAME",    "rag_user_db"),
-    "charset":         os.getenv("DB_CHARSET", "utf8mb4"),
+    "host": os.getenv("DB_HOST", "127.0.0.1"),
+    "port": int(os.getenv("DB_PORT", 3306)),
+    "user": os.getenv("DB_USER", "root"),
+    "password": os.getenv("DB_PASSWORD", ""),
+    "database": os.getenv("DB_NAME", "rag_user_db"),
+    "charset": os.getenv("DB_CHARSET", "utf8mb4"),
     "connect_timeout": 10,
-    "autocommit":      False,
+    "autocommit": False,
 }
 
 
@@ -79,7 +79,7 @@ def db_cursor():
     conn = None
     cur = None
     try:
-        conn = get_db_connection()   # raises HTTP 503 if MySQL is unreachable
+        conn = get_db_connection()  # raises HTTP 503 if MySQL is unreachable
         cur = conn.cursor()
         yield cur
         conn.commit()

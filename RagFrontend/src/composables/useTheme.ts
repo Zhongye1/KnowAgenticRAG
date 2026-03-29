@@ -16,24 +16,24 @@
 
 // ── 颜色映射表 ──────────────────────────────────────────────────
 export const COLOR_MAP: Record<string, string> = {
-  blue:   '#4f7ef8',
+  blue: '#4f7ef8',
   indigo: '#6366f1',
   violet: '#8b5cf6',
-  cyan:   '#06b6d4',
-  teal:   '#14b8a6',
-  green:  '#22c55e',
+  cyan: '#06b6d4',
+  teal: '#14b8a6',
+  green: '#22c55e',
   orange: '#f97316',
-  rose:   '#f43f5e',
+  rose: '#f43f5e'
 }
 
 // ── 字体大小映射 ─────────────────────────────────────────────────
 export const FONT_SIZE_MAP: Record<string, string> = {
-  small:  '13px',
+  small: '13px',
   medium: '14px',
-  large:  '16px',
-  sm:     '13px',
-  md:     '14px',
-  lg:     '16px',
+  large: '16px',
+  sm: '13px',
+  md: '14px',
+  lg: '16px'
 }
 
 // ── 默认外观配置 ─────────────────────────────────────────────────
@@ -45,10 +45,10 @@ export interface AppearanceConfig {
 }
 
 const DEFAULT_APPEARANCE: AppearanceConfig = {
-  theme:    'light',
-  color:    'blue',
+  theme: 'light',
+  color: 'blue',
   fontSize: 'medium',
-  layout:   'normal',
+  layout: 'normal'
 }
 
 // ── 系统媒体查询（跟随系统用）────────────────────────────────────
@@ -66,13 +66,13 @@ export function loadAppearance(): AppearanceConfig {
     // 旧版迁移：读 theme + themeColor + fontSize 三个独立键
     const legacyTheme = localStorage.getItem('theme') as AppearanceConfig['theme'] | null
     const legacyColor = localStorage.getItem('themeColor') || 'blue'
-    const legacyFont  = localStorage.getItem('fontSize') || 'medium'
+    const legacyFont = localStorage.getItem('fontSize') || 'medium'
     if (legacyTheme) {
       const config: AppearanceConfig = {
-        theme:    legacyTheme,
-        color:    legacyColor,
+        theme: legacyTheme,
+        color: legacyColor,
         fontSize: legacyFont,
-        layout:   'normal',
+        layout: 'normal'
       }
       // 迁移到新键
       saveAppearance(config)
@@ -105,20 +105,16 @@ export function applyTheme(theme: 'light' | 'dark' | 'auto') {
     const apply = (dark: boolean) => {
       document.documentElement.classList.toggle('dark', dark)
       document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light')
-      document.documentElement.style.setProperty(
-        '--app-bg', dark ? '#1e1e2e' : '#f9fafb'
-      )
+      document.documentElement.style.setProperty('--app-bg', dark ? '#1e1e2e' : '#f9fafb')
     }
     apply(_mediaQuery.matches)
-    _mediaListener = (e) => apply(e.matches)
+    _mediaListener = e => apply(e.matches)
     _mediaQuery.addEventListener('change', _mediaListener)
   } else {
     const isDark = theme === 'dark'
     document.documentElement.classList.toggle('dark', isDark)
     document.documentElement.setAttribute('data-theme', theme)
-    document.documentElement.style.setProperty(
-      '--app-bg', isDark ? '#1e1e2e' : '#f9fafb'
-    )
+    document.documentElement.style.setProperty('--app-bg', isDark ? '#1e1e2e' : '#f9fafb')
     // 更新背景色（直接作用于 html/body）
     document.documentElement.style.backgroundColor = isDark ? '#1e1e2e' : ''
     document.body.style.backgroundColor = isDark ? '#1e1e2e' : ''
@@ -140,7 +136,10 @@ export function applyColor(colorId: string) {
   document.documentElement.style.setProperty('--color-primary-dark', adjustColor(value, -20))
   document.documentElement.style.setProperty('--color-primary-light', hexToRgba(value, 0.12))
   document.documentElement.style.setProperty('--ripple-color', hexToRgba(value, 0.25))
-  document.documentElement.style.setProperty('--shadow-hover-btn', `0 6px 18px ${hexToRgba(value, 0.32)}`)
+  document.documentElement.style.setProperty(
+    '--shadow-hover-btn',
+    `0 6px 18px ${hexToRgba(value, 0.32)}`
+  )
 }
 
 // ── 应用字体大小 ──────────────────────────────────────────────────
@@ -159,13 +158,11 @@ export function applyFontSize(fontSize: string) {
 export function applyLayout(layout: string) {
   document.documentElement.setAttribute('data-layout', layout)
   const densityMap: Record<string, string> = {
-    compact:  '12px',
-    normal:   '16px',
-    spacious: '20px',
+    compact: '12px',
+    normal: '16px',
+    spacious: '20px'
   }
-  document.documentElement.style.setProperty(
-    '--spacing-base', densityMap[layout] || '16px'
-  )
+  document.documentElement.style.setProperty('--spacing-base', densityMap[layout] || '16px')
 }
 
 // ── 一次性应用全部外观 ────────────────────────────────────────────
@@ -190,5 +187,7 @@ function adjustColor(hex: string, amount: number): string {
   const r = clamp(parseInt(hex.slice(1, 3), 16) + amount)
   const g = clamp(parseInt(hex.slice(3, 5), 16) + amount)
   const b = clamp(parseInt(hex.slice(5, 7), 16) + amount)
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b
+    .toString(16)
+    .padStart(2, '0')}`
 }

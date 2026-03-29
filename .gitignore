@@ -21,6 +21,7 @@ dist/
 .env
 .env.local
 .env.*.local
+.venv
 
 # ── Build artifacts ──────────────────────────────────────────────
 *.manifest

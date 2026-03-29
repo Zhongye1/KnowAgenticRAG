@@ -4,7 +4,9 @@
       <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-gray-800">文件管理</h1>
         <div class="flex gap-3 items-center">
-          <span v-if="pinnedFiles.length > 0" class="text-sm text-blue-500 font-medium">📌 {{ pinnedFiles.length }} 个已置顶</span>
+          <span v-if="pinnedFiles.length > 0" class="text-sm text-blue-500 font-medium"
+            >📌 {{ pinnedFiles.length }} 个已置顶</span
+          >
           <t-button theme="primary" @click="refreshData">
             <template #icon>
               <refresh-icon />
@@ -19,10 +21,14 @@
         <div class="pinned-header">📌 置顶文件</div>
         <div class="pinned-list">
           <div v-for="file in pinnedFiles" :key="file.id" class="pinned-item">
-            <t-tag variant="light" :theme="getFileTypeTheme(file.file_type)" class="mr-2">{{ file.file_type.toUpperCase() }}</t-tag>
+            <t-tag variant="light" :theme="getFileTypeTheme(file.file_type)" class="mr-2">{{
+              file.file_type.toUpperCase()
+            }}</t-tag>
             <span class="pinned-name">{{ file.file_name }}</span>
-            <span class="pinned-size text-gray-400 text-xs ml-2">{{ formatFileSize(file.file_size) }}</span>
-            <button class="unpin-btn" @click="togglePin(file)" title="取消置顶">✕</button>
+            <span class="pinned-size text-gray-400 text-xs ml-2">{{
+              formatFileSize(file.file_size)
+            }}</span>
+            <button class="unpin-btn" title="取消置顶" @click="togglePin(file)">✕</button>
           </div>
         </div>
       </div>
@@ -30,8 +36,15 @@
       <t-loading :loading="loading">
         <t-tabs v-model="activeTab" class="file-tabs" @change="handleTabChange">
           <t-tab-panel value="all" label="全部文档">
-            <t-table :data="allDocuments" :columns="columns" row-key="id" :pagination="pagination"
-              @page-change="onPageChange" @change="onTableChange" class="mt-4">
+            <t-table
+              :data="allDocuments"
+              :columns="columns"
+              row-key="id"
+              :pagination="pagination"
+              class="mt-4"
+              @page-change="onPageChange"
+              @change="onTableChange"
+            >
               <template #file_name="{ row }">
                 <span class="font-medium">{{ row.file_name }}</span>
               </template>
@@ -57,7 +70,12 @@
 
               <template #action="{ row }">
                 <t-space>
-                  <t-button variant="text" :theme="pinnedIds.has(row.id) ? 'primary' : 'default'" @click="togglePin(row)" :title="pinnedIds.has(row.id) ? '取消置顶' : '置顶'">
+                  <t-button
+                    variant="text"
+                    :theme="pinnedIds.has(row.id) ? 'primary' : 'default'"
+                    :title="pinnedIds.has(row.id) ? '取消置顶' : '置顶'"
+                    @click="togglePin(row)"
+                  >
                     {{ pinnedIds.has(row.id) ? '📌' : '置顶' }}
                   </t-button>
                   <t-button variant="text" theme="primary" @click="previewDocument(row)">
@@ -71,15 +89,26 @@
             </t-table>
           </t-tab-panel>
 
-          <t-tab-panel v-for="folder in folders" :key="folder.folder_path" :value="folder.folder_path"
-            :label="`${folder.folder_name} (${folder.document_count})`">
+          <t-tab-panel
+            v-for="folder in folders"
+            :key="folder.folder_path"
+            :value="folder.folder_path"
+            :label="`${folder.folder_name} (${folder.document_count})`"
+          >
             <div class="folder-info mb-4 p-4 bg-gray-50 rounded-lg">
               <p><span class="font-medium">文件夹:</span> {{ folder.folder_name }}</p>
               <p><span class="font-medium">文档数量:</span> {{ folder.document_count }}</p>
-              <p><span class="font-medium">总大小:</span> {{ formatFileSize(folder.total_size) }}</p>
+              <p>
+                <span class="font-medium">总大小:</span> {{ formatFileSize(folder.total_size) }}
+              </p>
             </div>
 
-            <t-table v-if="folder.document_count > 0" :data="folder.documents" :columns="folderColumns" row-key="id">
+            <t-table
+              v-if="folder.document_count > 0"
+              :data="folder.documents"
+              :columns="folderColumns"
+              row-key="id"
+            >
               <template #file_name="{ row }">
                 <span class="font-medium">{{ row.file_name }}</span>
               </template>
@@ -105,7 +134,11 @@
 
               <template #action="{ row }">
                 <t-space>
-                  <t-button variant="text" :theme="pinnedIds.has(row.id) ? 'primary' : 'default'" @click="togglePin(row)">
+                  <t-button
+                    variant="text"
+                    :theme="pinnedIds.has(row.id) ? 'primary' : 'default'"
+                    @click="togglePin(row)"
+                  >
                     {{ pinnedIds.has(row.id) ? '📌' : '置顶' }}
                   </t-button>
                   <t-button variant="text" theme="primary" @click="previewDocument(row)">
@@ -125,23 +158,45 @@
     </t-card>
 
     <!-- 预览对话框 -->
-    <t-dialog v-model:visible="previewDialogVisible" :header="previewDocumentData?.file_name" width="800px"
-      :on-close="closePreviewDialog">
+    <t-dialog
+      v-model:visible="previewDialogVisible"
+      :header="previewDocumentData?.file_name"
+      width="800px"
+      :on-close="closePreviewDialog"
+    >
       <t-loading :loading="previewLoading">
         <div class="preview-content">
-          <div v-if="previewDocumentDetail && previewDocumentDetail.file_type === 'txt'" class="txt-preview">
+          <div
+            v-if="previewDocumentDetail && previewDocumentDetail.file_type === 'txt'"
+            class="txt-preview"
+          >
             <pre class="whitespace-pre-wrap">{{ previewDocumentDetail.content_preview }}</pre>
           </div>
-          <div v-else-if="previewDocumentDetail && previewDocumentDetail.file_type === 'md'" class="md-preview">
+          <div
+            v-else-if="previewDocumentDetail && previewDocumentDetail.file_type === 'md'"
+            class="md-preview"
+          >
             <div v-html="renderMarkdown(previewDocumentDetail.content_preview)"></div>
           </div>
-          <div v-else-if="previewDocumentDetail && ['doc', 'docx', 'pdf'].includes(previewDocumentDetail.file_type)"
-            class="doc-preview">
+          <div
+            v-else-if="
+              previewDocumentDetail &&
+              ['doc', 'docx', 'pdf'].includes(previewDocumentDetail.file_type)
+            "
+            class="doc-preview"
+          >
             <pre class="whitespace-pre-wrap">{{ previewDocumentDetail.content_preview }}</pre>
           </div>
-          <div v-else-if="previewDocumentDetail && ['xls', 'xlsx'].includes(previewDocumentDetail.file_type)"
-            class="file-preview">
-            <t-alert theme="info" :message="`这是 ${previewDocumentDetail.file_type.toUpperCase()} 文件，无法直接预览内容。`" />
+          <div
+            v-else-if="
+              previewDocumentDetail && ['xls', 'xlsx'].includes(previewDocumentDetail.file_type)
+            "
+            class="file-preview"
+          >
+            <t-alert
+              theme="info"
+              :message="`这是 ${previewDocumentDetail.file_type.toUpperCase()} 文件，无法直接预览内容。`"
+            />
           </div>
           <div v-else-if="previewDocumentDetail">
             <t-alert theme="warning" message="该文件类型暂不支持预览" />
@@ -160,96 +215,92 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
-import {
-  RefreshIcon
-} from 'tdesign-icons-vue-next';
-import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next';
-import axios from 'axios';
-import { marked } from 'marked';
-import API_ENDPOINTS from '@/utils/apiConfig';
-
-
+import { ref, onMounted, computed } from 'vue'
+import { RefreshIcon } from 'tdesign-icons-vue-next'
+import { MessagePlugin, DialogPlugin } from 'tdesign-vue-next'
+import axios from 'axios'
+import { marked } from 'marked'
+import API_ENDPOINTS from '@/utils/apiConfig'
 
 interface Document {
-  id: number;
-  file_name: string;
-  file_path: string;
-  file_size: number;
-  file_type: string;
-  upload_time: string;
-  status: string;
+  id: number
+  file_name: string
+  file_path: string
+  file_size: number
+  file_type: string
+  upload_time: string
+  status: string
 }
 
 interface Folder {
-  folder_path: string;
-  folder_name: string;
-  document_count: number;
-  total_size: number;
-  documents: Document[];
+  folder_path: string
+  folder_name: string
+  document_count: number
+  total_size: number
+  documents: Document[]
 }
 
 interface ApiResponse {
-  folders: Folder[];
-  total_folders: number;
-  total_documents: number;
-  total_size: number;
+  folders: Folder[]
+  total_folders: number
+  total_documents: number
+  total_size: number
 }
 
 interface DocumentPreviewResponse {
-  file_name: string;
-  file_path: string;
-  file_size: number;
-  file_type: string;
-  upload_time: string;
-  content_preview: string;
-  status: string;
+  file_name: string
+  file_path: string
+  file_size: number
+  file_type: string
+  upload_time: string
+  content_preview: string
+  status: string
 }
 
 // 响应式数据
-const loading = ref(false);
-const previewLoading = ref(false);
-const activeTab = ref('all');
-const folders = ref<Folder[]>([]);
-const allDocuments = ref<Document[]>([]);
-const previewDialogVisible = ref(false);
-const previewDocumentData = ref<Document | null>(null);
-const previewDocumentDetail = ref<DocumentPreviewResponse | null>(null);
+const loading = ref(false)
+const previewLoading = ref(false)
+const activeTab = ref('all')
+const folders = ref<Folder[]>([])
+const allDocuments = ref<Document[]>([])
+const previewDialogVisible = ref(false)
+const previewDocumentData = ref<Document | null>(null)
+const previewDocumentDetail = ref<DocumentPreviewResponse | null>(null)
 
 // 置顶功能
-const FILE_PIN_KEY = 'file_pinned_ids';
-const pinnedIds = ref<Set<number>>(new Set());
+const FILE_PIN_KEY = 'file_pinned_ids'
+const pinnedIds = ref<Set<number>>(new Set())
 
 const loadPinned = () => {
   try {
-    const raw = localStorage.getItem(FILE_PIN_KEY);
-    pinnedIds.value = new Set(raw ? JSON.parse(raw) : []);
-  } catch { pinnedIds.value = new Set(); }
-};
+    const raw = localStorage.getItem(FILE_PIN_KEY)
+    pinnedIds.value = new Set(raw ? JSON.parse(raw) : [])
+  } catch {
+    pinnedIds.value = new Set()
+  }
+}
 
 const togglePin = (doc: Document) => {
-  const s = new Set(pinnedIds.value);
+  const s = new Set(pinnedIds.value)
   if (s.has(doc.id)) {
-    s.delete(doc.id);
-    MessagePlugin.info(`「${doc.file_name}」已取消置顶`);
+    s.delete(doc.id)
+    MessagePlugin.info(`「${doc.file_name}」已取消置顶`)
   } else {
-    s.add(doc.id);
-    MessagePlugin.success(`「${doc.file_name}」已置顶`);
+    s.add(doc.id)
+    MessagePlugin.success(`「${doc.file_name}」已置顶`)
   }
-  pinnedIds.value = s;
-  localStorage.setItem(FILE_PIN_KEY, JSON.stringify([...s]));
-};
+  pinnedIds.value = s
+  localStorage.setItem(FILE_PIN_KEY, JSON.stringify([...s]))
+}
 
-const pinnedFiles = computed(() =>
-  allDocuments.value.filter(d => pinnedIds.value.has(d.id))
-);
+const pinnedFiles = computed(() => allDocuments.value.filter(d => pinnedIds.value.has(d.id)))
 
 // 分页配置
 const pagination = ref({
   defaultPageSize: 10,
   total: 0,
-  defaultCurrent: 1,
-});
+  defaultCurrent: 1
+})
 
 // 表格列定义 - 全部文档
 const columns = ref([
@@ -258,8 +309,8 @@ const columns = ref([
   { colKey: 'file_size', title: '大小', width: '120px' },
   { colKey: 'upload_time', title: '上传时间', width: '200px' },
   { colKey: 'status', title: '状态', width: '100px' },
-  { colKey: 'action', title: '操作', width: '150px', fixed: 'right' },
-]);
+  { colKey: 'action', title: '操作', width: '150px', fixed: 'right' }
+])
 
 // 表格列定义 - 文件夹内文档
 const folderColumns = ref([
@@ -268,128 +319,128 @@ const folderColumns = ref([
   { colKey: 'file_size', title: '大小' },
   { colKey: 'upload_time', title: '上传时间' },
   { colKey: 'status', title: '状态' },
-  { colKey: 'action', title: '操作', fixed: 'right' },
-]);
+  { colKey: 'action', title: '操作', fixed: 'right' }
+])
 
 // 格式化文件大小
 const formatFileSize = (size: number): string => {
   if (size < 1024) {
-    return size + ' B';
+    return size + ' B'
   } else if (size < 1024 * 1024) {
-    return (size / 1024).toFixed(2) + ' KB';
+    return (size / 1024).toFixed(2) + ' KB'
   } else if (size < 1024 * 1024 * 1024) {
-    return (size / (1024 * 1024)).toFixed(2) + ' MB';
+    return (size / (1024 * 1024)).toFixed(2) + ' MB'
   } else {
-    return (size / (1024 * 1024 * 1024)).toFixed(2) + ' GB';
+    return (size / (1024 * 1024 * 1024)).toFixed(2) + ' GB'
   }
-};
+}
 
 // 根据文件类型返回主题色
 const getFileTypeTheme = (fileType: string): string => {
   switch (fileType.toLowerCase()) {
     case 'pdf':
-      return 'danger';
+      return 'danger'
     case 'txt':
-      return 'success';
+      return 'success'
     case 'doc':
     case 'docx':
-      return 'primary';
+      return 'primary'
     case 'xls':
     case 'xlsx':
-      return 'warning';
+      return 'warning'
     default:
-      return 'default';
+      return 'default'
   }
-};
+}
 
 // 格式化日期时间
 const formatDateTime = (dateTime: string): string => {
-  return new Date(dateTime).toLocaleString('zh-CN');
-};
+  return new Date(dateTime).toLocaleString('zh-CN')
+}
 
 // 渲染Markdown
 const renderMarkdown = (markdown: string) => {
-  return marked(markdown);
-};
+  return marked(markdown)
+}
 
 // 刷新数据
 const refreshData = () => {
-  fetchData();
-};
+  fetchData()
+}
 
 // 获取数据
 const fetchData = async () => {
-  loading.value = true;
+  loading.value = true
   try {
-    const response = await axios.get<ApiResponse>(API_ENDPOINTS.FILES.ALL_DOCUMENTS);
-    folders.value = response.data.folders;
+    const response = await axios.get<ApiResponse>(API_ENDPOINTS.FILES.ALL_DOCUMENTS)
+    folders.value = response.data.folders
 
     // 合并所有文档到一个数组（置顶优先）
     allDocuments.value = response.data.folders
       .flatMap(folder => folder.documents)
       .sort((a, b) => {
-        const ap = pinnedIds.value.has(a.id) ? 1 : 0;
-        const bp = pinnedIds.value.has(b.id) ? 1 : 0;
-        if (bp !== ap) return bp - ap;
-        return new Date(b.upload_time).getTime() - new Date(a.upload_time).getTime();
-      });
+        const ap = pinnedIds.value.has(a.id) ? 1 : 0
+        const bp = pinnedIds.value.has(b.id) ? 1 : 0
+        if (bp !== ap) return bp - ap
+        return new Date(b.upload_time).getTime() - new Date(a.upload_time).getTime()
+      })
 
-    pagination.value.total = allDocuments.value.length;
-    MessagePlugin.success('数据加载成功');
+    pagination.value.total = allDocuments.value.length
+    MessagePlugin.success('数据加载成功')
   } catch (error) {
-    console.error('获取文档数据失败:', error);
-    MessagePlugin.error('获取文档数据失败');
+    console.error('获取文档数据失败:', error)
+    MessagePlugin.error('获取文档数据失败')
   } finally {
-    loading.value = false;
+    loading.value = false
   }
-};
+}
 
 // 处理标签页切换
 const handleTabChange = () => {
   // 标签页切换逻辑
-};
+}
 
 // 分页变化
 const onPageChange = (pageInfo: { current: number; pageSize: number }) => {
   pagination.value = {
     ...pagination.value,
-    ...pageInfo,
-  };
-};
+    ...pageInfo
+  }
+}
 
 // 表格变化
 const onTableChange = (changeParams: any, triggerAndData: any) => {
   // 表格变化处理逻辑
-};
+}
 
 // 预览文档
 const previewDocument = async (document: Document) => {
-  previewDocumentData.value = document;
-  previewDialogVisible.value = true;
-  previewLoading.value = true;
+  previewDocumentData.value = document
+  previewDialogVisible.value = true
+  previewLoading.value = true
 
   try {
     const response = await axios.get<DocumentPreviewResponse>(
       API_ENDPOINTS.FILES.DOCUMENT_PREVIEW(document.file_path)
-    );
-    previewDocumentDetail.value = response.data;
+    )
+    previewDocumentDetail.value = response.data
   } catch (error) {
-    console.error('预览文档失败:', error);
-    MessagePlugin.error('预览文档失败');
-    previewDocumentDetail.value = null;
+    console.error('预览文档失败:', error)
+    MessagePlugin.error('预览文档失败')
+    previewDocumentDetail.value = null
   } finally {
-    previewLoading.value = false;
+    previewLoading.value = false
   }
-};
+}
 
 // 关闭预览对话框
 const closePreviewDialog = () => {
-  previewDialogVisible.value = false;
+  previewDialogVisible.value = false
   setTimeout(() => {
-    previewDocumentData.value = null;
-    previewDocumentDetail.value = null;
-  }, 300); // 延迟清除数据，确保关闭动画完成
-};
+    previewDocumentData.value = null
+    previewDocumentDetail.value = null
+  }, 300) // 延迟清除数据，确保关闭动画完成
+}
 
 // 删除文档
 // 删除文档
@@ -406,39 +457,37 @@ const deleteDocument = (document: Document) => {
       content: '取消'
     },
     onConfirm: () => {
-      performDelete(document);
-      confirmDialog.destroy();
+      performDelete(document)
+      confirmDialog.destroy()
     },
     onClose: () => {
-      confirmDialog.destroy();
+      confirmDialog.destroy()
     },
     onCancel: () => {
-      confirmDialog.destroy();
+      confirmDialog.destroy()
     }
-  });
-};
+  })
+}
 
 // 执行删除操作
 const performDelete = async (document: Document) => {
   try {
-    await axios.delete(
-      API_ENDPOINTS.FILES.DELETE_DOCUMENT(document.file_path)
-    );
+    await axios.delete(API_ENDPOINTS.FILES.DELETE_DOCUMENT(document.file_path))
 
-    MessagePlugin.success(`文件 "${document.file_name}" 已删除`);
+    MessagePlugin.success(`文件 "${document.file_name}" 已删除`)
     // 重新加载数据
-    fetchData();
+    fetchData()
   } catch (error) {
-    console.error('删除文档失败:', error);
-    MessagePlugin.error('删除文档失败');
+    console.error('删除文档失败:', error)
+    MessagePlugin.error('删除文档失败')
   }
-};
+}
 
 // 组件挂载时获取数据
 onMounted(() => {
-  loadPinned();
-  fetchData();
-});
+  loadPinned()
+  fetchData()
+})
 </script>
 
 <style scoped>

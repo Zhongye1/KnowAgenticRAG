@@ -26,17 +26,18 @@ from typing import Any, Callable, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 # - Redis Environment variable ragf-net -
-REDIS_URL  = os.environ.get("REDIS_URL", "redis://redis:6379/0")
-STREAM_KEY = "rag:upload:tasks"           # Redis Stream
-GROUP_NAME = "rag-worker-group"           # Consumer group
-CONSUMER   = "worker-0"                   # Worker consume
+REDIS_URL = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+STREAM_KEY = "rag:upload:tasks"  # Redis Stream
+GROUP_NAME = "rag-worker-group"  # Consumer group
+CONSUMER = "worker-0"  # Worker consume
+
 
 # ── Task status enum ──────────────────────────────────────────────────
 class TaskStatus:
-    PENDING  = "pending"
-    RUNNING  = "running"
-    DONE     = "done"
-    FAILED   = "failed"
+    PENDING = "pending"
+    RUNNING = "running"
+    DONE = "done"
+    FAILED = "failed"
 
 
 # - Redis Initialize-
@@ -51,7 +52,10 @@ async def _get_redis():
         return _redis_client if _redis_available else None
     try:
         import redis.asyncio as aioredis
-        client = aioredis.from_url(REDIS_URL, decode_responses=True, socket_connect_timeout=2)
+
+        client = aioredis.from_url(
+            REDIS_URL, decode_responses=True, socket_connect_timeout=2
+        )
         await client.ping()
         _redis_client = client
         _redis_available = True
@@ -76,7 +80,7 @@ async def _ensure_stream_group(r):
 _mem_queue: Optional[asyncio.Queue] = None
 _mem_task_store: Dict[str, Dict[str, Any]] = {}
 _MAX_CONCURRENCY = 2
-_worker_started  = False
+_worker_started = False
 
 
 def _get_mem_queue() -> asyncio.Queue:
@@ -101,12 +105,11 @@ def register_task(task_type: str, func: Callable):
 def _log(level: str, task_id: str, msg: str, **kwargs):
     """统一结构化日志格式，每条日志携带 trace_id 方便全链路追溯"""
     extra = " ".join(f"{k}={v}" for k, v in kwargs.items())
-    getattr(logger, level)(
-        "[TaskQueue] trace_id=%s %s %s", task_id, msg, extra
-    )
+    getattr(logger, level)("[TaskQueue] trace_id=%s %s %s", task_id, msg, extra)
 
 
 # - -
+
 
 async def _persist_status(task_id: str, **fields):
     """将任务状态写入 Redis Hash（key = rag:task:{task_id}），TTL 24h"""
@@ -138,6 +141,7 @@ async def _load_status(task_id: str) -> Optional[Dict[str, Any]]:
 
 # - Worker -
 
+
 async def _redis_worker():
     """
     Redis Stream 消费者 Worker。
@@ -161,9 +165,7 @@ async def _redis_worker():
 
             # 2. 1s
             messages = await r.xreadgroup(
-                GROUP_NAME, CONSUMER,
-                {STREAM_KEY: ">"},
-                count=5, block=1000
+                GROUP_NAME, CONSUMER, {STREAM_KEY: ">"}, count=5, block=1000
             )
 
             all_entries = []
@@ -171,7 +173,9 @@ async def _redis_worker():
                 # pending XCLAIMownership
                 for pid in pending_ids:
                     try:
-                        claimed = await r.xclaim(STREAM_KEY, GROUP_NAME, CONSUMER, 30000, [pid])
+                        claimed = await r.xclaim(
+                            STREAM_KEY, GROUP_NAME, CONSUMER, 30000, [pid]
+                        )
                         all_entries.extend(claimed)
                     except Exception:
                         pass
@@ -181,11 +185,12 @@ async def _redis_worker():
                     all_entries.extend(entries)
 
             for msg_id, fields in all_entries:
-                task_id   = fields.get("task_id", str(uuid.uuid4()))
+                task_id = fields.get("task_id", str(uuid.uuid4()))
                 task_type = fields.get("task_type", "vectorize")
                 task_args = fields.get("args", "{}")
 
                 import json as _json
+
                 try:
                     args_dict = _json.loads(task_args)
                 except Exception:
@@ -195,21 +200,30 @@ async def _redis_worker():
 
                 async def _run(tid=task_id, ttype=task_type, kw=args_dict, mid=msg_id):
                     async with semaphore:
-                        await _persist_status(tid, status=TaskStatus.RUNNING,
-                                              started_at=datetime.now().isoformat())
+                        await _persist_status(
+                            tid,
+                            status=TaskStatus.RUNNING,
+                            started_at=datetime.now().isoformat(),
+                        )
                         try:
                             func = _TASK_REGISTRY.get(ttype)
                             if func is None:
                                 raise ValueError(f"未注册的任务类型: {ttype}")
                             result = await asyncio.to_thread(func, **kw)
-                            await _persist_status(tid, status=TaskStatus.DONE,
-                                                  result=str(result),
-                                                  finished_at=datetime.now().isoformat())
+                            await _persist_status(
+                                tid,
+                                status=TaskStatus.DONE,
+                                result=str(result),
+                                finished_at=datetime.now().isoformat(),
+                            )
                             _log("info", tid, "任务完成")
                         except Exception as e:
-                            await _persist_status(tid, status=TaskStatus.FAILED,
-                                                  error=str(e),
-                                                  finished_at=datetime.now().isoformat())
+                            await _persist_status(
+                                tid,
+                                status=TaskStatus.FAILED,
+                                error=str(e),
+                                finished_at=datetime.now().isoformat(),
+                            )
                             _log("error", tid, "任务失败", error=str(e))
                         finally:
                             # ACK ACKRetry
@@ -229,7 +243,7 @@ async def _redis_worker():
 
 async def _mem_worker():
     """内存降级 Worker（Redis 不可用时使用）"""
-    q   = _get_mem_queue()
+    q = _get_mem_queue()
     sem = asyncio.Semaphore(_MAX_CONCURRENCY)
     logger.info("[TaskQueue] 内存降级 Worker 已启动")
     while True:
@@ -240,20 +254,25 @@ async def _mem_worker():
             try:
                 result = await asyncio.to_thread(func, *args, **kwargs)
                 _mem_task_store[task_id].update(
-                    status=TaskStatus.DONE, result=str(result),
-                    finished_at=datetime.now().isoformat()
+                    status=TaskStatus.DONE,
+                    result=str(result),
+                    finished_at=datetime.now().isoformat(),
                 )
                 logger.info("[TaskQueue] 内存任务完成: %s", task_id)
             except Exception as e:
                 _mem_task_store[task_id].update(
-                    status=TaskStatus.FAILED, error=str(e),
-                    finished_at=datetime.now().isoformat()
+                    status=TaskStatus.FAILED,
+                    error=str(e),
+                    finished_at=datetime.now().isoformat(),
                 )
-                logger.error("[TaskQueue] 内存任务失败: %s — %s", task_id, e, exc_info=True)
+                logger.error(
+                    "[TaskQueue] 内存任务失败: %s — %s", task_id, e, exc_info=True
+                )
         q.task_done()
 
 
 # - API -
+
 
 async def ensure_worker_started():
     """
@@ -274,11 +293,7 @@ async def ensure_worker_started():
         logger.info("[TaskQueue] 内存降级 Worker 任务已创建")
 
 
-async def enqueue_task(
-    task_type: str,
-    task_id: Optional[str] = None,
-    **kwargs
-) -> str:
+async def enqueue_task(task_type: str, task_id: Optional[str] = None, **kwargs) -> str:
     """
     将任务发布到 Redis Stream（或降级到内存队列）。
 
@@ -291,18 +306,19 @@ async def enqueue_task(
         task_id (str)
     """
     import json as _json
+
     tid = task_id or str(uuid.uuid4())
 
     # Initialize
     init_fields = {
-        "task_id":    tid,
-        "task_type":  task_type,
-        "status":     TaskStatus.PENDING,
+        "task_id": tid,
+        "task_type": task_type,
+        "status": TaskStatus.PENDING,
         "created_at": datetime.now().isoformat(),
         "started_at": "",
         "finished_at": "",
-        "result":     "",
-        "error":      "",
+        "result": "",
+        "error": "",
     }
     _mem_task_store[tid] = dict(init_fields)
     await _persist_status(tid, **init_fields)
@@ -310,11 +326,14 @@ async def enqueue_task(
     r = await _get_redis()
     if r:
         try:
-            await r.xadd(STREAM_KEY, {
-                "task_id":   tid,
-                "task_type": task_type,
-                "args":      _json.dumps(kwargs, ensure_ascii=False),
-            })
+            await r.xadd(
+                STREAM_KEY,
+                {
+                    "task_id": tid,
+                    "task_type": task_type,
+                    "args": _json.dumps(kwargs, ensure_ascii=False),
+                },
+            )
             _log("info", tid, "任务已发布到 Redis Stream", task_type=task_type)
             return tid
         except Exception as e:
@@ -337,13 +356,13 @@ def create_task(func: Callable, *args, task_id: Optional[str] = None, **kwargs) 
     """
     tid = task_id or str(uuid.uuid4())
     _mem_task_store[tid] = {
-        "task_id":    tid,
-        "status":     TaskStatus.PENDING,
+        "task_id": tid,
+        "status": TaskStatus.PENDING,
         "created_at": datetime.now().isoformat(),
-        "started_at":  None,
+        "started_at": None,
         "finished_at": None,
-        "result":     None,
-        "error":      None,
+        "result": None,
+        "error": None,
     }
     q = _get_mem_queue()
     q.put_nowait((tid, func, args, kwargs))

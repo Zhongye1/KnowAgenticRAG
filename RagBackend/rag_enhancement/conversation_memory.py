@@ -3,11 +3,10 @@
 - 突破小模型上下文窗口限制（滑动窗口 + 摘要压缩）
 - 对话记忆持久化，跨会话精准溯源
 """
+
 import os
 import json
 import sqlite3
-import hashlib
-from datetime import datetime
 from typing import List, Optional, Dict
 from fastapi import APIRouter
 from pydantic import BaseModel
@@ -60,7 +59,7 @@ init_db()
 
 def estimate_tokens(text: str) -> int:
     """粗略估算 token 数（中文约 1.5 token/字）"""
-    cn_count = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+    cn_count = sum(1 for c in text if "\u4e00" <= c <= "\u9fff")
     en_count = len(text) - cn_count
     return int(cn_count * 1.5 + en_count * 0.3)
 
@@ -68,17 +67,21 @@ def estimate_tokens(text: str) -> int:
 def summarize_messages(messages: List[Dict], model: str = None) -> str:
     """将超出窗口的消息压缩为摘要（LLM调用 or 简单截断）"""
     try:
-        import httpx, os
+        import httpx
+        import os
+
         ollama_url = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
         model = model or os.getenv("MODEL", "qwen2:0.5b")
         history_text = "\n".join(
-            f"{'用户' if m['role']=='user' else 'AI'}：{m['content'][:200]}"
+            f"{'用户' if m['role'] == 'user' else 'AI'}：{m['content'][:200]}"
             for m in messages
         )
         prompt = f"请用3-5句话总结以下对话的核心内容：\n{history_text}"
-        resp = httpx.post(f"{ollama_url}/api/generate",
-                          json={"model": model, "prompt": prompt, "stream": False},
-                          timeout=30)
+        resp = httpx.post(
+            f"{ollama_url}/api/generate",
+            json={"model": model, "prompt": prompt, "stream": False},
+            timeout=30,
+        )
         return resp.json().get("response", "")
     except:
         # 100
@@ -103,12 +106,16 @@ class MessageAdd(BaseModel):
 @router.post("/conversations/create")
 def create_conversation(req: ConvCreate):
     import uuid
+
     conv_id = str(uuid.uuid4())
     conn = get_db()
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO conversations (id, user_id, kb_ids, title)
         VALUES (?,?,?,?)
-    """, (conv_id, req.user_id, json.dumps(req.kb_ids), req.title))
+    """,
+        (conv_id, req.user_id, json.dumps(req.kb_ids), req.title),
+    )
     conn.commit()
     conn.close()
     return {"conv_id": conv_id}
@@ -118,16 +125,27 @@ def create_conversation(req: ConvCreate):
 def add_message(req: MessageAdd):
     token_est = estimate_tokens(req.content)
     conn = get_db()
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO messages (conv_id, role, content, sources, token_est)
         VALUES (?,?,?,?,?)
-    """, (req.conv_id, req.role, req.content,
-          json.dumps(req.sources, ensure_ascii=False), token_est))
-    conn.execute("""
+    """,
+        (
+            req.conv_id,
+            req.role,
+            req.content,
+            json.dumps(req.sources, ensure_ascii=False),
+            token_est,
+        ),
+    )
+    conn.execute(
+        """
         UPDATE conversations
         SET turn_count=turn_count+1, updated_at=datetime('now','localtime')
         WHERE id=?
-    """, (req.conv_id,))
+    """,
+        (req.conv_id,),
+    )
     conn.commit()
     conn.close()
     return {"status": "added", "token_est": token_est}
@@ -144,10 +162,13 @@ def get_context_window(conv_id: str, max_tokens: int = DEFAULT_WINDOW_TOKENS):
     conv = conn.execute("SELECT * FROM conversations WHERE id=?", (conv_id,)).fetchone()
     if not conv:
         return {"messages": [], "summary": None}
-    all_msgs = conn.execute("""
+    all_msgs = conn.execute(
+        """
         SELECT role, content, sources, token_est
         FROM messages WHERE conv_id=? ORDER BY id ASC
-    """, (conv_id,)).fetchall()
+    """,
+        (conv_id,),
+    ).fetchall()
     conn.close()
 
     messages = [dict(m) for m in all_msgs]
@@ -178,18 +199,21 @@ def get_context_window(conv_id: str, max_tokens: int = DEFAULT_WINDOW_TOKENS):
         "summary": summary,
         "total_turns": len(messages),
         "window_turns": len(window_msgs),
-        "used_tokens": used_tokens
+        "used_tokens": used_tokens,
     }
 
 
 @router.get("/conversations/{user_id}/list")
 def list_conversations(user_id: str, limit: int = 20):
     conn = get_db()
-    rows = conn.execute("""
+    rows = conn.execute(
+        """
         SELECT id, title, turn_count, updated_at, summary
         FROM conversations WHERE user_id=?
         ORDER BY updated_at DESC LIMIT ?
-    """, (user_id, limit)).fetchall()
+    """,
+        (user_id, limit),
+    ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
 
@@ -198,11 +222,14 @@ def list_conversations(user_id: str, limit: int = 20):
 def get_all_sources(conv_id: str):
     """聚合对话中所有 AI 引用的来源（精准溯源）"""
     conn = get_db()
-    rows = conn.execute("""
+    rows = conn.execute(
+        """
         SELECT sources, created_at FROM messages
         WHERE conv_id=? AND role='assistant' AND sources != '[]'
         ORDER BY id ASC
-    """, (conv_id,)).fetchall()
+    """,
+        (conv_id,),
+    ).fetchall()
     conn.close()
     all_sources = []
     seen = set()

@@ -4,7 +4,8 @@
 API Key 优先级（每次请求动态读取，无需重启）：
   文件（models_config.json）> 环境变量（.env）> 空
 """
-from fastapi import APIRouter, HTTPException, Header
+
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, AsyncGenerator
@@ -47,15 +48,17 @@ def _get_base_url(provider: str, env_var: str, default: str) -> str:
 
 # - / -
 class ChatCompletionRequest(BaseModel):
-    model: str                          # "gpt-4o", "hunyuan", "deepseek-chat", "qwen2:0.5b"
-    messages: list[dict]                # [{role, content}]
+    model: str  # "gpt-4o", "hunyuan", "deepseek-chat", "qwen2:0.5b"
+    messages: list[dict]  # [{role, content}]
     stream: bool = True
     temperature: float = 0.7
     max_tokens: int = 2048
-    kb_id: Optional[str] = None         # IDRAG
+    kb_id: Optional[str] = None  # IDRAG
+
 
 class ModelListResponse(BaseModel):
     models: list[dict]
+
 
 # - Model configavailable -
 _MODEL_CATALOG = [
@@ -147,10 +150,14 @@ def _build_model_list() -> list:
         result.append(entry)
     return result
 
+
 # - provider -
-async def _stream_ollama(model: str, messages: list, temperature: float, max_tokens: int) -> AsyncGenerator[str, None]:
+async def _stream_ollama(
+    model: str, messages: list, temperature: float, max_tokens: int
+) -> AsyncGenerator[str, None]:
     """调用本地 Ollama 流式接口"""
     import aiohttp
+
     ollama_url = _get_base_url("ollama", "OLLAMA_BASE_URL", "http://localhost:11434")
     payload = {
         "model": model,
@@ -160,7 +167,11 @@ async def _stream_ollama(model: str, messages: list, temperature: float, max_tok
     }
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(f"{ollama_url}/api/chat", json=payload, timeout=aiohttp.ClientTimeout(total=300)) as resp:
+            async with session.post(
+                f"{ollama_url}/api/chat",
+                json=payload,
+                timeout=aiohttp.ClientTimeout(total=300),
+            ) as resp:
                 if resp.status != 200:
                     err = await resp.text()
                     yield f"data: {json.dumps({'error': f'Ollama 返回错误: {err}'})}\n\n"
@@ -183,13 +194,16 @@ async def _stream_ollama(model: str, messages: list, temperature: float, max_tok
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 
-async def _stream_deepseek(model: str, messages: list, temperature: float, max_tokens: int) -> AsyncGenerator[str, None]:
+async def _stream_deepseek(
+    model: str, messages: list, temperature: float, max_tokens: int
+) -> AsyncGenerator[str, None]:
     """调用 DeepSeek API 流式接口"""
     api_key = _get_key("deepseek", "DEEPSEEK_API_KEY")
     if not api_key:
         yield f"data: {json.dumps({'error': '未配置 DeepSeek API Key，请在「设置 → 多模型」填写并保存'})}\n\n"
         return
     import aiohttp
+
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
         "model": model,
@@ -200,7 +214,12 @@ async def _stream_deepseek(model: str, messages: list, temperature: float, max_t
     }
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post("https://api.deepseek.com/chat/completions", json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=300)) as resp:
+            async with session.post(
+                "https://api.deepseek.com/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=300),
+            ) as resp:
                 if resp.status != 200:
                     err = await resp.text()
                     yield f"data: {json.dumps({'error': f'DeepSeek 返回错误({resp.status}): {err}'})}\n\n"
@@ -224,7 +243,9 @@ async def _stream_deepseek(model: str, messages: list, temperature: float, max_t
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 
-async def _stream_openai(model: str, messages: list, temperature: float, max_tokens: int) -> AsyncGenerator[str, None]:
+async def _stream_openai(
+    model: str, messages: list, temperature: float, max_tokens: int
+) -> AsyncGenerator[str, None]:
     """调用 OpenAI 兼容接口（同样支持 Kimi / Moonshot 等兼容服务）"""
     api_key = _get_key("openai", "OPENAI_API_KEY")
     base_url = _get_base_url("openai", "OPENAI_BASE_URL", "https://api.openai.com/v1")
@@ -232,6 +253,7 @@ async def _stream_openai(model: str, messages: list, temperature: float, max_tok
         yield f"data: {json.dumps({'error': '未配置 OpenAI API Key，请在「设置 → 多模型」填写并保存'})}\n\n"
         return
     import aiohttp
+
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
         "model": model,
@@ -242,7 +264,12 @@ async def _stream_openai(model: str, messages: list, temperature: float, max_tok
     }
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post(f"{base_url}/chat/completions", json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=300)) as resp:
+            async with session.post(
+                f"{base_url}/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=300),
+            ) as resp:
                 if resp.status != 200:
                     err = await resp.text()
                     yield f"data: {json.dumps({'error': f'OpenAI 返回错误({resp.status}): {err}'})}\n\n"
@@ -266,9 +293,13 @@ async def _stream_openai(model: str, messages: list, temperature: float, max_tok
         yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
 
-async def _stream_hunyuan(model: str, messages: list, temperature: float, max_tokens: int) -> AsyncGenerator[str, None]:
+async def _stream_hunyuan(
+    model: str, messages: list, temperature: float, max_tokens: int
+) -> AsyncGenerator[str, None]:
     """调用腾讯混元 API（使用 OpenAI 兼容接口）"""
-    secret_id = _get_key("hunyuan", "HUNYUAN_SECRET_ID") or os.getenv("HUNYUAN_SECRET_ID", "")
+    secret_id = _get_key("hunyuan", "HUNYUAN_SECRET_ID") or os.getenv(
+        "HUNYUAN_SECRET_ID", ""
+    )
     secret_key = os.getenv("HUNYUAN_SECRET_KEY", "")
     # hunyuan api_key Bearer token
     file_keys = _read_cloud_keys().get("hunyuan", {})
@@ -280,6 +311,7 @@ async def _stream_hunyuan(model: str, messages: list, temperature: float, max_to
         return
     # OpenAI API key
     import aiohttp
+
     # api_keyEnvironment variable secretId:secretKey
     api_key = secret_id if not secret_key else f"{secret_id}:{secret_key}"
     headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
@@ -292,7 +324,12 @@ async def _stream_hunyuan(model: str, messages: list, temperature: float, max_to
     }
     try:
         async with aiohttp.ClientSession() as session:
-            async with session.post("https://api.hunyuan.cloud.tencent.com/v1/chat/completions", json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=300)) as resp:
+            async with session.post(
+                "https://api.hunyuan.cloud.tencent.com/v1/chat/completions",
+                json=payload,
+                headers=headers,
+                timeout=aiohttp.ClientTimeout(total=300),
+            ) as resp:
                 if resp.status != 200:
                     err = await resp.text()
                     yield f"data: {json.dumps({'error': f'混元 API 返回错误({resp.status}): {err}'})}\n\n"
@@ -339,16 +376,24 @@ async def model_chat(req: ChatCompletionRequest):
 
     async def generate():
         if provider == "ollama":
-            async for chunk in _stream_ollama(req.model, req.messages, req.temperature, req.max_tokens):
+            async for chunk in _stream_ollama(
+                req.model, req.messages, req.temperature, req.max_tokens
+            ):
                 yield chunk
         elif provider == "deepseek":
-            async for chunk in _stream_deepseek(req.model, req.messages, req.temperature, req.max_tokens):
+            async for chunk in _stream_deepseek(
+                req.model, req.messages, req.temperature, req.max_tokens
+            ):
                 yield chunk
         elif provider == "openai":
-            async for chunk in _stream_openai(req.model, req.messages, req.temperature, req.max_tokens):
+            async for chunk in _stream_openai(
+                req.model, req.messages, req.temperature, req.max_tokens
+            ):
                 yield chunk
         elif provider == "hunyuan":
-            async for chunk in _stream_hunyuan(req.model, req.messages, req.temperature, req.max_tokens):
+            async for chunk in _stream_hunyuan(
+                req.model, req.messages, req.temperature, req.max_tokens
+            ):
                 yield chunk
         else:
             yield f"data: {json.dumps({'error': f'不支持的 provider: {provider}'})}\n\n"
@@ -358,9 +403,10 @@ async def model_chat(req: ChatCompletionRequest):
 
 # - MultiModelTab saveProvider -
 
+
 class ProviderConfigRequest(BaseModel):
-    provider_id: str   # ollama / deepseek / openai / hunyuan / bailian / xinghuo
-    config: dict       # { api_key, base_url, model, temperature, max_tokens }
+    provider_id: str  # ollama / deepseek / openai / hunyuan / bailian / xinghuo
+    config: dict  # { api_key, base_url, model, temperature, max_tokens }
 
 
 @router.post("/api/models/configure")
@@ -404,6 +450,7 @@ async def test_provider(req: ProviderTestRequest):
     """
     import time
     import aiohttp
+
     start = time.monotonic()
     provider = req.provider_id
     cfg = req.config
@@ -413,20 +460,43 @@ async def test_provider(req: ProviderTestRequest):
         if provider == "ollama":
             base_url = cfg.get("base_url", "http://localhost:11434")
             async with aiohttp.ClientSession() as s:
-                async with s.get(f"{base_url}/api/tags", timeout=aiohttp.ClientTimeout(total=8)) as r:
+                async with s.get(
+                    f"{base_url}/api/tags", timeout=aiohttp.ClientTimeout(total=8)
+                ) as r:
                     ok = r.status == 200
             latency = int((time.monotonic() - start) * 1000)
-            return {"ok": ok, "message": "Ollama 服务正常" if ok else "无法连接 Ollama", "latency": latency}
+            return {
+                "ok": ok,
+                "message": "Ollama 服务正常" if ok else "无法连接 Ollama",
+                "latency": latency,
+            }
 
         elif provider == "deepseek":
             if not api_key:
                 return {"ok": False, "message": "API Key 为空"}
-            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-            payload = {"model": cfg.get("model", "deepseek-chat"), "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1, "stream": False}
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": cfg.get("model", "deepseek-chat"),
+                "messages": [{"role": "user", "content": "hi"}],
+                "max_tokens": 1,
+                "stream": False,
+            }
             async with aiohttp.ClientSession() as s:
-                async with s.post("https://api.deepseek.com/chat/completions", json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=15)) as r:
+                async with s.post(
+                    "https://api.deepseek.com/chat/completions",
+                    json=payload,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=15),
+                ) as r:
                     ok = r.status == 200
-                    msg = "连接成功，API Key 有效" if ok else f"API 返回 {r.status}，请检查 Key"
+                    msg = (
+                        "连接成功，API Key 有效"
+                        if ok
+                        else f"API 返回 {r.status}，请检查 Key"
+                    )
             latency = int((time.monotonic() - start) * 1000)
             return {"ok": ok, "message": msg, "latency": latency}
 
@@ -434,12 +504,29 @@ async def test_provider(req: ProviderTestRequest):
             if not api_key:
                 return {"ok": False, "message": "API Key 为空"}
             base_url = cfg.get("base_url", "https://api.openai.com/v1")
-            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-            payload = {"model": cfg.get("model", "gpt-4o-mini"), "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1, "stream": False}
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            }
+            payload = {
+                "model": cfg.get("model", "gpt-4o-mini"),
+                "messages": [{"role": "user", "content": "hi"}],
+                "max_tokens": 1,
+                "stream": False,
+            }
             async with aiohttp.ClientSession() as s:
-                async with s.post(f"{base_url}/chat/completions", json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=15)) as r:
+                async with s.post(
+                    f"{base_url}/chat/completions",
+                    json=payload,
+                    headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=15),
+                ) as r:
                     ok = r.status == 200
-                    msg = "连接成功，API Key 有效" if ok else f"API 返回 {r.status}，请检查 Key 或 Base URL"
+                    msg = (
+                        "连接成功，API Key 有效"
+                        if ok
+                        else f"API 返回 {r.status}，请检查 Key 或 Base URL"
+                    )
             latency = int((time.monotonic() - start) * 1000)
             return {"ok": ok, "message": msg, "latency": latency}
 
@@ -448,7 +535,11 @@ async def test_provider(req: ProviderTestRequest):
                 return {"ok": False, "message": "API Key 为空"}
             # Key
             latency = int((time.monotonic() - start) * 1000)
-            return {"ok": True, "message": "API Key 已填写（格式校验通过）", "latency": latency}
+            return {
+                "ok": True,
+                "message": "API Key 已填写（格式校验通过）",
+                "latency": latency,
+            }
 
         else:
             return {"ok": False, "message": f"未知 provider: {provider}"}
@@ -476,10 +567,15 @@ async def providers_status():
         "openai": {
             "configured": bool(_get_key("openai", "OPENAI_API_KEY")),
             "key_hint": "在设置→多模型中配置",
-            "base_url": _get_base_url("openai", "OPENAI_BASE_URL", "https://api.openai.com/v1"),
+            "base_url": _get_base_url(
+                "openai", "OPENAI_BASE_URL", "https://api.openai.com/v1"
+            ),
         },
         "hunyuan": {
-            "configured": bool(_get_key("hunyuan", "HUNYUAN_SECRET_ID") or os.getenv("HUNYUAN_SECRET_ID")),
+            "configured": bool(
+                _get_key("hunyuan", "HUNYUAN_SECRET_ID")
+                or os.getenv("HUNYUAN_SECRET_ID")
+            ),
             "key_hint": "在设置→多模型中配置",
         },
     }
@@ -487,10 +583,11 @@ async def providers_status():
 
 # - Agent Task mode+Local model-
 
+
 class AgentTaskRequest(BaseModel):
     query: str
-    model: str = "deepseek-chat"        # model idOllama
-    kb_id: Optional[str] = None         # IDRAG
+    model: str = "deepseek-chat"  # model idOllama
+    kb_id: Optional[str] = None  # IDRAG
     temperature: float = 0.7
     max_tokens: int = 4096
 
@@ -537,25 +634,28 @@ async def agent_task(req: AgentTaskRequest):
 
     async def generate():
         # - Step 1: -
-        yield f"data: {json.dumps({'event':'step','index':0,'name':'理解任务目标','detail':req.query[:80]}, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'event': 'step', 'index': 0, 'name': '理解任务目标', 'detail': req.query[:80]}, ensure_ascii=False)}\n\n"
         await asyncio.sleep(0.05)
 
         # - Step 2: RAG -
         rag_context = ""
         if req.kb_id:
-            yield f"data: {json.dumps({'event':'step','index':1,'name':'检索知识库','detail':f'知识库 {req.kb_id}'}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'event': 'step', 'index': 1, 'name': '检索知识库', 'detail': f'知识库 {req.kb_id}'}, ensure_ascii=False)}\n\n"
             try:
                 import sys
                 from pathlib import Path as _P
+
                 _backend_root = str(_P(__file__).resolve().parent.parent)
                 if _backend_root not in sys.path:
                     sys.path.insert(0, _backend_root)
 
                 from RAG_M.RAG_app import _load_vectorstore_and_docs
+
                 docs_dir = f"local-KLB-files/{req.kb_id}"
                 vectorstore, documents, _ = _load_vectorstore_and_docs(docs_dir)
 
                 from RAG_M.src.rag.hybrid_retriever import HybridRetriever
+
                 if documents:
                     retriever = HybridRetriever(
                         documents=documents,
@@ -567,23 +667,35 @@ async def agent_task(req: AgentTaskRequest):
                     results = retriever.retrieve_with_scores(req.query)
                 else:
                     raw = vectorstore.similarity_search_with_score(req.query, k=3)
-                    results = [{"document": d, "source_info": {"rank": i+1, "file_name": d.metadata.get("source",""), "rrf_score": s}} for i,(d,s) in enumerate(raw)]
+                    results = [
+                        {
+                            "document": d,
+                            "source_info": {
+                                "rank": i + 1,
+                                "file_name": d.metadata.get("source", ""),
+                                "rrf_score": s,
+                            },
+                        }
+                        for i, (d, s) in enumerate(raw)
+                    ]
 
                 if results:
                     rag_parts = []
                     for item in results:
                         src = item["source_info"]
-                        rag_parts.append(f"【来源：{src.get('file_name','?')}】\n{item['document'].page_content.strip()}")
+                        rag_parts.append(
+                            f"【来源：{src.get('file_name', '?')}】\n{item['document'].page_content.strip()}"
+                        )
                     rag_context = "\n\n---\n\n".join(rag_parts)
-                    yield f"data: {json.dumps({'event':'step_result','index':1,'detail':f'检索到 {len(results)} 个相关片段'}, ensure_ascii=False)}\n\n"
+                    yield f"data: {json.dumps({'event': 'step_result', 'index': 1, 'detail': f'检索到 {len(results)} 个相关片段'}, ensure_ascii=False)}\n\n"
             except Exception as e:
-                yield f"data: {json.dumps({'event':'step_result','index':1,'detail':f'知识库检索失败: {e}，将直接使用模型知识'}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'event': 'step_result', 'index': 1, 'detail': f'知识库检索失败: {e}，将直接使用模型知识'}, ensure_ascii=False)}\n\n"
         else:
-            yield f"data: {json.dumps({'event':'step','index':1,'name':'规划执行流程','detail':'基于模型知识直接推理'}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'event': 'step', 'index': 1, 'name': '规划执行流程', 'detail': '基于模型知识直接推理'}, ensure_ascii=False)}\n\n"
             await asyncio.sleep(0.05)
 
         # - Step 3: Prompt -
-        yield f"data: {json.dumps({'event':'step','index':2,'name':'生成结构化草稿','detail':f'使用 {req.model}'}, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'event': 'step', 'index': 2, 'name': '生成结构化草稿', 'detail': f'使用 {req.model}'}, ensure_ascii=False)}\n\n"
 
         system_prompt = (
             "你是一个高效的任务执行 AI 助手。请严格按照用户要求完成任务，"
@@ -603,11 +715,13 @@ async def agent_task(req: AgentTaskRequest):
 
         # - Step 4: LLMStreaming output -
         full_answer = []
-        yield f"data: {json.dumps({'event':'step','index':3,'name':'润色与优化','detail':'流式生成中...'}, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'event': 'step', 'index': 3, 'name': '润色与优化', 'detail': '流式生成中...'}, ensure_ascii=False)}\n\n"
 
         try:
             if provider == "ollama":
-                async for chunk in _stream_ollama(req.model, messages, req.temperature, req.max_tokens):
+                async for chunk in _stream_ollama(
+                    req.model, messages, req.temperature, req.max_tokens
+                ):
                     yield chunk
                     if chunk.startswith("data: "):
                         try:
@@ -617,7 +731,9 @@ async def agent_task(req: AgentTaskRequest):
                         except Exception:
                             pass
             elif provider == "deepseek":
-                async for chunk in _stream_deepseek(req.model, messages, req.temperature, req.max_tokens):
+                async for chunk in _stream_deepseek(
+                    req.model, messages, req.temperature, req.max_tokens
+                ):
                     yield chunk
                     if chunk.startswith("data: "):
                         try:
@@ -627,7 +743,9 @@ async def agent_task(req: AgentTaskRequest):
                         except Exception:
                             pass
             elif provider == "openai":
-                async for chunk in _stream_openai(req.model, messages, req.temperature, req.max_tokens):
+                async for chunk in _stream_openai(
+                    req.model, messages, req.temperature, req.max_tokens
+                ):
                     yield chunk
                     if chunk.startswith("data: "):
                         try:
@@ -637,7 +755,9 @@ async def agent_task(req: AgentTaskRequest):
                         except Exception:
                             pass
             elif provider == "hunyuan":
-                async for chunk in _stream_hunyuan(req.model, messages, req.temperature, req.max_tokens):
+                async for chunk in _stream_hunyuan(
+                    req.model, messages, req.temperature, req.max_tokens
+                ):
                     yield chunk
                     if chunk.startswith("data: "):
                         try:
@@ -650,11 +770,11 @@ async def agent_task(req: AgentTaskRequest):
                 yield f"data: {json.dumps({'error': f'不支持的 provider: {provider}'})}\n\n"
                 return
         except Exception as e:
-            yield f"data: {json.dumps({'event':'error','message': str(e)}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'event': 'error', 'message': str(e)}, ensure_ascii=False)}\n\n"
             return
 
         # - DONE -
-        yield f"data: {json.dumps({'event':'done','model':req.model,'provider':provider,'has_rag': bool(req.kb_id)}, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'event': 'done', 'model': req.model, 'provider': provider, 'has_rag': bool(req.kb_id)}, ensure_ascii=False)}\n\n"
 
     return StreamingResponse(
         generate(),
@@ -664,6 +784,7 @@ async def agent_task(req: AgentTaskRequest):
 
 
 # - -
+
 
 async def call_model_once(
     model: str,
@@ -687,10 +808,10 @@ async def call_model_once(
     provider = _get_provider_for_model(model)
 
     stream_map = {
-        "ollama":   _stream_ollama,
+        "ollama": _stream_ollama,
         "deepseek": _stream_deepseek,
-        "openai":   _stream_openai,
-        "hunyuan":  _stream_hunyuan,
+        "openai": _stream_openai,
+        "hunyuan": _stream_hunyuan,
     }
     stream_fn = stream_map.get(provider, _stream_ollama)
     return await _collect_stream(stream_fn(model, messages, temperature, max_tokens))

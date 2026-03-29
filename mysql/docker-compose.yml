@@ -4,9 +4,9 @@ services:
 
   mysql-db:
     # 指定容器的名称
-    container_name: ASF-mysql     
+    container_name: ASF-mysql
     # 指定镜像和版本
-    image: mysql:8.0                   
+    image: mysql:8.0
     ports:
       - "3306:3306"
     restart: always
@@ -24,4 +24,4 @@ services:
       # 挂载初始化脚本目录
       - "./init:/docker-entrypoint-initdb.d"
       # 挂载配置文件目录到当前目录下的 mysql/config
-      - "./config:/etc/mysql/conf.d" 
+      - "./config:/etc/mysql/conf.d"

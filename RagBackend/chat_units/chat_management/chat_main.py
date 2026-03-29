@@ -1,7 +1,4 @@
-import os
-import json
-from fastapi import FastAPI, HTTPException,APIRouter
-from pathlib import Path
+from fastapi import APIRouter
 
 router = APIRouter()
 
@@ -13,6 +10,4 @@ from .chat_send import router as chat_send_router
 router.include_router(chat_download_router)
 router.include_router(chat_history_attacher_router)
 router.include_router(chat_delete_router)
-router.include_router(chat_send_router)           # / Ollama
-
-
+router.include_router(chat_send_router)  # / Ollama

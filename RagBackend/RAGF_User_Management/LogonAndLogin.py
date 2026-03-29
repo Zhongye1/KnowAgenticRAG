@@ -1,5 +1,3 @@
-from contextlib import closing
-
 from fastapi import APIRouter, HTTPException, Form, Depends, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 import jwt
@@ -15,20 +13,25 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+
 class UserCreate(BaseModel):
     email: str
     password: str
+
 
 class UserLogin(BaseModel):
     email: str
     password: str
 
+
 class Token(BaseModel):
     access_token: str
     token_type: str
 
+
 class TokenData(BaseModel):
     email: Optional[str] = None
+
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/login/login")
@@ -46,17 +49,17 @@ def create_user_table():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("CREATE DATABASE IF NOT EXISTS rag_user_db")
         cursor.execute("USE rag_user_db")
 
-        cursor.execute('''CREATE TABLE IF NOT EXISTS user(
+        cursor.execute("""CREATE TABLE IF NOT EXISTS user(
             id INT AUTO_INCREMENT PRIMARY KEY,
             email VARCHAR(255) NOT NULL UNIQUE,
             password VARCHAR(255) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )''')
-        
+        )""")
+
         conn.commit()
         logger.info("用户表验证完成")
         return True
@@ -81,17 +84,17 @@ def create_userData_table():
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("USE rag_user_db")
-        
-        cursor.execute('''CREATE TABLE IF NOT EXISTS user_profile(
+
+        cursor.execute("""CREATE TABLE IF NOT EXISTS user_profile(
            user_id INT PRIMARY KEY,
            name VARCHAR(100) DEFAULT 'New User',
            signature VARCHAR(500) DEFAULT '',
            social_media VARCHAR(500) DEFAULT '',
            avatar VARCHAR(255) DEFAULT '',
            FOREIGN KEY(user_id) REFERENCES user(id) ON DELETE CASCADE
-        )''')
+        )""")
         conn.commit()
         logger.info("用户数据表验证完成")
         return True
@@ -115,6 +118,7 @@ def ensure_tables_exist():
     create_user_table()
     create_userData_table()
 
+
 # ensure_tables_exist()
 # create_user_table()
 # create_userData_table()
@@ -132,7 +136,7 @@ def create_user(email: str, password: str) -> bool:
         print(email, password)
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("USE rag_user_db")
 
         cursor.execute("SELECT * FROM user WHERE email = %s", (email,))
@@ -140,8 +144,10 @@ def create_user(email: str, password: str) -> bool:
             logger.warn("邮箱已存在")
             return False
 
-        cursor.execute("INSERT INTO user (email, password) VALUES (%s, %s)",
-                       (email, hashed_password))
+        cursor.execute(
+            "INSERT INTO user (email, password) VALUES (%s, %s)",
+            (email, hashed_password),
+        )
         conn.commit()
 
         cursor.execute("SELECT * FROM user WHERE email = %s", (email,))
@@ -173,11 +179,13 @@ def user_login(email: str, password: str) -> bool:
 
         conn = get_db_connection()
         cursor = conn.cursor()
-        
+
         cursor.execute("USE rag_user_db")
 
-        cursor.execute("SELECT * FROM user WHERE email = %s AND password = %s",
-                       (email, hashed_password))
+        cursor.execute(
+            "SELECT * FROM user WHERE email = %s AND password = %s",
+            (email, hashed_password),
+        )
         user = cursor.fetchone()
 
         return user is not None
@@ -198,39 +206,41 @@ def authenticate_user(email: str) -> str:
     """
     生成JWT令牌
     """
-    secret_key = os.getenv('JWT_SECRET', 'changeme_jwt_secret')
+    secret_key = os.getenv("JWT_SECRET", "changeme_jwt_secret")
     payload = {
         "sub": email,
-        "exp": datetime.utcnow() + timedelta(hours=24)  # 24h
+        "exp": datetime.utcnow() + timedelta(hours=24),  # 24h
     }
     try:
         return jwt.encode(payload, secret_key, algorithm="HS256")
     except AttributeError:
         try:
             from jwt import encode as jwt_encode
+
             return jwt_encode(payload, secret_key, algorithm="HS256")
         except (ImportError, AttributeError):
             raise Exception("无法生成JWT令牌，请检查PyJWT库的安装")
+
 
 # JWT token
 def verify_jwt(token: str) -> dict:
     """
     验证JWT令牌
     """
-    secret_key = os.getenv('JWT_SECRET', 'changeme_jwt_secret')
+    secret_key = os.getenv("JWT_SECRET", "changeme_jwt_secret")
     try:
         return jwt.decode(token, secret_key, algorithms=["HS256"])
     except AttributeError:
         try:
             from jwt import decode as jwt_decode
+
             return jwt_decode(token, secret_key, algorithms=["HS256"])
         except (ImportError, AttributeError):
             return {"error": "无法解码JWT令牌"}
 
 
-
-
 # user_profile.dbInitialize
+
 
 def init_profile(email: str) -> bool:
     """
@@ -286,6 +296,7 @@ def safe_db_operation(email):
     init_profile(email)
     return token
 
+
 # - JSON
 @router.post("/api/register", response_model=dict)
 async def register_user(user: UserCreate):
@@ -295,16 +306,10 @@ async def register_user(user: UserCreate):
     email = user.email.strip().lower()
     if create_user(email, user.password):
         token = safe_db_operation(email)
-        return {
-            "status": "success",
-            "message": "用户注册成功",
-            "token": token
-        }
+        return {"status": "success", "message": "用户注册成功", "token": token}
     else:
-        raise HTTPException(
-            status_code=400,
-            detail="用户注册失败（可能邮箱已存在）"
-        )
+        raise HTTPException(status_code=400, detail="用户注册失败（可能邮箱已存在）")
+
 
 @router.post("/api/register/form", response_model=dict)
 async def register_user_form(email: str = Form(...), password: str = Form(...)):
@@ -314,16 +319,10 @@ async def register_user_form(email: str = Form(...), password: str = Form(...)):
     email = email.strip().lower()
     if create_user(email, password):
         token = safe_db_operation(email)
-        return {
-            "status": "success",
-            "message": "用户注册成功",
-            "token": token
-        }
+        return {"status": "success", "message": "用户注册成功", "token": token}
     else:
-        raise HTTPException(
-            status_code=400,
-            detail="用户注册失败（可能邮箱已存在）"
-        )
+        raise HTTPException(status_code=400, detail="用户注册失败（可能邮箱已存在）")
+
 
 @router.post("/api/login", response_model=Token)
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -341,6 +340,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+
 @router.post("/api/login/json", response_model=dict)
 async def login_user_json(user: UserLogin):
     """
@@ -349,16 +349,10 @@ async def login_user_json(user: UserLogin):
     email = user.email.strip().lower()
     if user_login(email, user.password):
         token = authenticate_user(email)
-        return {
-            "status": "success",
-            "message": "登录成功",
-            "token": token
-        }
+        return {"status": "success", "message": "登录成功", "token": token}
     else:
-        raise HTTPException(
-            status_code=401,
-            detail="用户名或密码错误"
-        )
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+
 
 @router.post("/api/login/form", response_model=dict)
 async def login_user_form(email: str = Form(...), password: str = Form(...)):
@@ -368,16 +362,10 @@ async def login_user_form(email: str = Form(...), password: str = Form(...)):
     email = email.strip().lower()
     if user_login(email, password):
         token = authenticate_user(email)
-        return {
-            "status": "success",
-            "message": "登录成功",
-            "token": token
-        }
+        return {"status": "success", "message": "登录成功", "token": token}
     else:
-        raise HTTPException(
-            status_code=401,
-            detail="用户名或密码错误"
-        )
+        raise HTTPException(status_code=401, detail="用户名或密码错误")
+
 
 @router.get("/api/users/me", response_model=dict)
 async def read_users_me(token: str = Depends(oauth2_scheme)):
@@ -386,48 +374,38 @@ async def read_users_me(token: str = Depends(oauth2_scheme)):
     """
     result = verify_jwt(token)
     if "error" in result:
-        raise HTTPException(
-            status_code=401,
-            detail=result["error"]
-        )
-    
+        raise HTTPException(status_code=401, detail=result["error"])
+
     conn = None
     cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("USE rag_user_db")
-        
-        cursor.execute("SELECT id, email, created_at FROM user WHERE email = %s", (result["sub"],))
+
+        cursor.execute(
+            "SELECT id, email, created_at FROM user WHERE email = %s", (result["sub"],)
+        )
         user = cursor.fetchone()
-        
+
         if user:
             return {
                 "status": "success",
-                "user": {
-                    "id": user[0],
-                    "email": user[1],
-                    "created_at": user[2]
-                }
+                "user": {"id": user[0], "email": user[1], "created_at": user[2]},
             }
         else:
-            raise HTTPException(
-                status_code=404,
-                detail="用户不存在"
-            )
+            raise HTTPException(status_code=404, detail="用户不存在")
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"获取用户信息出错: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="服务器内部错误"
-        )
+        raise HTTPException(status_code=500, detail="服务器内部错误")
     finally:
         if cursor:
             cursor.close()
         if conn:
             conn.close()
+
 
 @router.post("/api/verify-token", response_model=dict)
 async def verify_token_endpoint(token: str = Form(...)):
@@ -436,15 +414,9 @@ async def verify_token_endpoint(token: str = Form(...)):
     """
     result = verify_jwt(token)
     if "error" in result:
-        raise HTTPException(
-            status_code=401,
-            detail=result["error"]
-        )
-    return {
-        "status": "success",
-        "message": "令牌有效",
-        "data": result
-    }
+        raise HTTPException(status_code=401, detail=result["error"])
+    return {"status": "success", "message": "令牌有效", "data": result}
+
 
 @router.post("/api/logout", response_model=dict)
 async def logout_user():
@@ -453,7 +425,4 @@ async def logout_user():
     注意：JWT是无状态的，服务端无法直接使其失效
     这里只是返回成功消息，实际的token清理需要客户端处理
     """
-    return {
-        "status": "success",
-        "message": "退出登录成功"
-    }
+    return {"status": "success", "message": "退出登录成功"}

@@ -8,7 +8,8 @@ from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
 
 import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from models.model_config import get_model_config
 
 import json
@@ -18,10 +19,12 @@ os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
 
 load_dotenv()
 
-#VECTORSTORE_PATH = os.getenv("VECTORSTORE_PATH")
+# VECTORSTORE_PATH = os.getenv("VECTORSTORE_PATH")
+
 
 class VectorStoreManager:
     """Manager for creating and loading FAISS vector stores"""
+
     def __init__(self, docs_dir: str = None):
         """Initialize vector store manager with embedding model from config file"""
         self._embeddings: Optional[HuggingFaceEmbeddings] = None
@@ -36,21 +39,24 @@ class VectorStoreManager:
         if not docs_dir:
             print("使用默认的 embedding 模型: sentence-transformers/all-MiniLM-L6-v2")
             return "sentence-transformers/all-MiniLM-L6-v2"
-        
+
         # knowledge_data.json
         config_path = os.path.join(docs_dir, "knowledge_data.json")
-        
+
         try:
             if os.path.exists(config_path):
-                with open(config_path, 'r', encoding='utf-8') as f:
+                with open(config_path, "r", encoding="utf-8") as f:
                     config = json.load(f)
-                    print(f"加载embedding配置成功，使用模型: {config.get('embedding_model', 'sentence-transformers/all-MiniLM-L6-v2')}")
-                    return config.get("embedding_model", "sentence-transformers/all-MiniLM-L6-v2")
+                    print(
+                        f"加载embedding配置成功，使用模型: {config.get('embedding_model', 'sentence-transformers/all-MiniLM-L6-v2')}"
+                    )
+                    return config.get(
+                        "embedding_model", "sentence-transformers/all-MiniLM-L6-v2"
+                    )
             return "sentence-transformers/all-MiniLM-L6-v2"
         except Exception as e:
             print(f"加载embedding配置失败: {e}")
             return "sentence-transformers/all-MiniLM-L6-v2"
-
 
     @property
     def embeddings(self) -> HuggingFaceEmbeddings:
@@ -63,57 +69,60 @@ class VectorStoreManager:
         """Create and save a FAISS vector store from documents"""
         if not documents:
             raise ValueError("No documents provided to create vector store")
-        
+
         save_path = os.path.abspath(os.path.normpath(save_path))
         print(f"Attempting to create vector store at: {save_path}")
-        
+
         try:
             # Vector store
             print(f"Creating FAISS vector store with {len(documents)} documents...")
             vectorstore = FAISS.from_documents(documents, self.embeddings)
-            
+
             # Vector store
             print(f"Ensuring save directory exists: {save_path}")
             os.makedirs(save_path, exist_ok=True)
-            
+
             # Temporary directory
             temp_dir = os.path.join(save_path, "temp_save")
             os.makedirs(temp_dir, exist_ok=True)
-            
+
             # Temporary directory
-            test_file = os.path.join(temp_dir, '.write_test')
+            test_file = os.path.join(temp_dir, ".write_test")
             try:
-                with open(test_file, 'w') as f:
-                    f.write('test')
+                with open(test_file, "w") as f:
+                    f.write("test")
                 os.remove(test_file)
                 print("Temporary directory write permissions verified")
             except Exception as e:
                 raise RuntimeError(f"Cannot write to temporary directory: {str(e)}")
-            
+
             # Temporary directory
             print(f"Saving vector store to temporary directory: {temp_dir}")
             vectorstore.save_local(temp_dir)
-            
+
             import shutil
+
             for file in os.listdir(temp_dir):
                 src = os.path.join(temp_dir, file)
                 dst = os.path.join(save_path, file)
                 shutil.move(src, dst)
-            
+
             # Temporary directory
             shutil.rmtree(temp_dir)
-            
+
             print(f"Vector store successfully created and saved to {save_path}")
-            
-            required_files = ['index.faiss', 'index.pkl']
+
+            required_files = ["index.faiss", "index.pkl"]
             for file in required_files:
                 file_path = os.path.join(save_path, file)
                 if not os.path.exists(file_path):
-                    raise RuntimeError(f"Expected file not found after save: {file_path}")
+                    raise RuntimeError(
+                        f"Expected file not found after save: {file_path}"
+                    )
                 print(f"Verified file exists: {file_path}")
-            
+
             return vectorstore
-            
+
         except Exception as e:
             print(f"Error creating vector store: {str(e)}")
             print(f"Current working directory: {os.getcwd()}")
@@ -123,66 +132,64 @@ class VectorStoreManager:
                 print(f"Contents of save directory: {os.listdir(save_path)}")
             raise
 
-    
     def initialize_vectorstore(self, save_path: str):
         """Initialize an empty vector store with required files"""
         save_path = os.path.abspath(os.path.normpath(save_path))
-        
+
         try:
             os.makedirs(save_path, exist_ok=True)
-            
+
             if not os.path.exists(save_path):
                 raise RuntimeError(f"Failed to create directory: {save_path}")
-                
-            test_file = os.path.join(save_path, '.write_test')
+
+            test_file = os.path.join(save_path, ".write_test")
             try:
-                with open(test_file, 'w') as f:
-                    f.write('test')
+                with open(test_file, "w") as f:
+                    f.write("test")
                 os.remove(test_file)
             except Exception as e:
                 raise RuntimeError(f"Cannot write to vector store directory: {str(e)}")
-                
+
         except Exception as e:
             raise RuntimeError(f"Cannot create vector store directory: {str(e)}")
-        
+
         # Vector store
         try:
             # Document listInitializeVector store
             empty_docs = [Document(page_content="")]
             vectorstore = FAISS.from_documents(empty_docs, self.embeddings)
-            
+
             os.makedirs(save_path, exist_ok=True)
-            
+
             temp_file = os.path.join(save_path, "temp_index.faiss")
-            with open(temp_file, 'w') as f:
+            with open(temp_file, "w") as f:
                 f.write("")
             os.remove(temp_file)
-            
+
             # Vector store
             vectorstore.save_local(save_path)
             print(f"Successfully initialized vector store at {save_path}")
         except Exception as e:
             raise RuntimeError(f"Failed to initialize vector store: {str(e)}")
 
-
     def load_vectorstore(self, load_path: str, trust_source: bool = False) -> FAISS:
         """
         Load a FAISS vector store from disk
-        
+
         Args:
             load_path: Path to the vector store
             trust_source: If True, allows deserialization of the vector store.
                         WARNING: Only set to True if you trust the source.
-        
+
         Returns:
             FAISS vector store instance
-            
+
         Raises:
             SecurityError: If trust_source is False
             RuntimeError: If loading fails
         """
         load_path = os.path.abspath(load_path)
-        
+
         if not os.path.exists(load_path):
             raise FileNotFoundError(f"Vector store not found at {load_path}")
 
@@ -191,15 +198,23 @@ class VectorStoreManager:
                 "Loading vector stores requires deserializing pickle files, which can be unsafe. "
                 "If you trust the source of this vector store (e.g., you created it), "
                 "set trust_source=True. Never set trust_source=True with files from untrusted sources.",
-                UserWarning
+                UserWarning,
             )
-            raise SecurityError("Refusing to load vector store without explicit trust_source=True")
+            raise SecurityError(
+                "Refusing to load vector store without explicit trust_source=True"
+            )
 
         try:
-            return FAISS.load_local(load_path, self.embeddings, allow_dangerous_deserialization=True)
+            return FAISS.load_local(
+                load_path, self.embeddings, allow_dangerous_deserialization=True
+            )
         except RuntimeError as e:
-            raise RuntimeError(f"Failed to load vector store from {load_path}. Error: {str(e)}")
+            raise RuntimeError(
+                f"Failed to load vector store from {load_path}. Error: {str(e)}"
+            )
+
 
 class SecurityError(Exception):
     """Raised when attempting unsafe operations without explicit permission"""
+
     pass

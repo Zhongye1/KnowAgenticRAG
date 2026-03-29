@@ -12,22 +12,22 @@
    §1  CSS 变量（动效参数集中管理）
    ---------------------------------------------------------------- */
 :root {
-  --anim-fast:    0.12s;
-  --anim-normal:  0.22s;
-  --anim-slow:    0.36s;
-  --ease-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
-  --ease-out:     cubic-bezier(0.4, 0, 0.2, 1);
-  --ease-in-out:  cubic-bezier(0.4, 0, 0.6, 1);
+  --anim-fast: 0.12s;
+  --anim-normal: 0.22s;
+  --anim-slow: 0.36s;
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.6, 1);
 
   /* 阴影层级系统 */
   --shadow-0: none;
-  --shadow-1: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
-  --shadow-2: 0 4px 12px rgba(0,0,0,0.09), 0 2px 4px rgba(0,0,0,0.05);
-  --shadow-3: 0 10px 28px rgba(0,0,0,0.11), 0 4px 8px rgba(0,0,0,0.05);
-  --shadow-4: 0 20px 48px rgba(0,0,0,0.13), 0 8px 16px rgba(0,0,0,0.06);
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.07), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.09), 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-3: 0 10px 28px rgba(0, 0, 0, 0.11), 0 4px 8px rgba(0, 0, 0, 0.05);
+  --shadow-4: 0 20px 48px rgba(0, 0, 0, 0.13), 0 8px 16px rgba(0, 0, 0, 0.06);
   --shadow-hover-btn: 0 6px 18px rgba(79, 126, 248, 0.32);
-  --shadow-hover-card: 0 12px 32px rgba(0,0,0,0.13), 0 4px 8px rgba(0,0,0,0.06);
-  --shadow-focus: 0 0 0 3px rgba(79, 126, 248, 0.20);
+  --shadow-hover-card: 0 12px 32px rgba(0, 0, 0, 0.13), 0 4px 8px rgba(0, 0, 0, 0.06);
+  --shadow-focus: 0 0 0 3px rgba(79, 126, 248, 0.2);
 
   /* 主题色（可被外观设置覆盖） */
   --color-primary: #4f7ef8;
@@ -36,14 +36,13 @@
 
   /* 状态色 */
   --color-success: #22c55e;
-  --color-error:   #ef4444;
-  --color-warn:    #f59e0b;
-  --color-info:    #3b82f6;
+  --color-error: #ef4444;
+  --color-warn: #f59e0b;
+  --color-info: #3b82f6;
 
   /* 波纹色 */
   --ripple-color: rgba(79, 126, 248, 0.25);
 }
-
 
 /* ================================================================
    §2  基础交互动效 — 按钮
@@ -52,16 +51,16 @@
 /* 全局按钮基础过渡（不影响已有样式，仅叠加） */
 button,
 .btn,
-[role="button"],
+[role='button'],
 .t-button {
   transition:
-    transform       var(--anim-fast) var(--ease-out),
-    box-shadow      var(--anim-fast) var(--ease-out),
+    transform var(--anim-fast) var(--ease-out),
+    box-shadow var(--anim-fast) var(--ease-out),
     background-color var(--anim-normal) var(--ease-out),
-    border-color    var(--anim-normal) var(--ease-out),
-    opacity         var(--anim-fast) var(--ease-out);
+    border-color var(--anim-normal) var(--ease-out),
+    opacity var(--anim-fast) var(--ease-out);
   will-change: transform, box-shadow;
-  position: relative;   /* 为 ripple 做准备 */
+  position: relative; /* 为 ripple 做准备 */
   overflow: hidden;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
@@ -102,7 +101,7 @@ button:active:not(:disabled),
 /* ── 危险按钮 ── */
 .btn-danger:hover:not(:disabled),
 .t-button--theme-danger:hover:not(:disabled) {
-  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.30) !important;
+  box-shadow: 0 6px 18px rgba(239, 68, 68, 0.3) !important;
   transform: translateY(-1px) scale(1.01);
 }
 
@@ -110,10 +109,10 @@ button:active:not(:disabled),
 .icon-btn,
 .action-btn {
   transition:
-    transform     var(--anim-fast) var(--ease-out),
-    background    var(--anim-normal) var(--ease-out),
-    color         var(--anim-normal) var(--ease-out),
-    box-shadow    var(--anim-fast)  var(--ease-out);
+    transform var(--anim-fast) var(--ease-out),
+    background var(--anim-normal) var(--ease-out),
+    color var(--anim-normal) var(--ease-out),
+    box-shadow var(--anim-fast) var(--ease-out);
 }
 
 .icon-btn:hover,
@@ -129,7 +128,6 @@ button:active:not(:disabled),
   transition-duration: 0.06s !important;
 }
 
-
 /* ================================================================
    §3  波纹效果（Ripple — 纯 CSS 配合 JS 动态注入 .ripple 元素）
    ================================================================ */
@@ -141,9 +139,18 @@ button:active:not(:disabled),
 }
 
 @keyframes ripple-expand {
-  0%   { transform: scale(0);   opacity: 0.55; }
-  80%  { transform: scale(2.5); opacity: 0.15; }
-  100% { transform: scale(3);   opacity: 0; }
+  0% {
+    transform: scale(0);
+    opacity: 0.55;
+  }
+  80% {
+    transform: scale(2.5);
+    opacity: 0.15;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
 }
 
 /* JS 注入的 span.ripple 元素 */
@@ -156,7 +163,6 @@ button:active:not(:disabled),
   animation: ripple-expand 0.55s var(--ease-out) forwards;
 }
 
-
 /* ================================================================
    §4  输入框交互
    ================================================================ */
@@ -168,8 +174,8 @@ select,
 .t-textarea__inner {
   transition:
     border-color var(--anim-normal) var(--ease-out),
-    box-shadow   var(--anim-normal) var(--ease-out),
-    transform    var(--anim-normal) var(--ease-out);
+    box-shadow var(--anim-normal) var(--ease-out),
+    transform var(--anim-normal) var(--ease-out);
   will-change: box-shadow;
 }
 
@@ -201,11 +207,22 @@ input.is-success,
 
 /* 输入框抖动（验证失败） */
 @keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%       { transform: translateX(-5px); }
-  40%       { transform: translateX(5px); }
-  60%       { transform: translateX(-3px); }
-  80%       { transform: translateX(3px); }
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-5px);
+  }
+  40% {
+    transform: translateX(5px);
+  }
+  60% {
+    transform: translateX(-3px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
 }
 
 .shake {
@@ -214,14 +231,19 @@ input.is-success,
 
 /* 状态图标淡入 */
 @keyframes statusFadeIn {
-  from { opacity: 0; transform: scale(0.5) rotate(-45deg); }
-  to   { opacity: 1; transform: scale(1) rotate(0deg); }
+  from {
+    opacity: 0;
+    transform: scale(0.5) rotate(-45deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 .input-status-icon {
   animation: statusFadeIn 0.2s var(--ease-spring);
 }
-
 
 /* ================================================================
    §5  卡片悬浮效果
@@ -232,8 +254,8 @@ input.is-success,
 .kb-card,
 .t-card {
   transition:
-    transform    var(--anim-normal) var(--ease-out),
-    box-shadow   var(--anim-normal) var(--ease-out),
+    transform var(--anim-normal) var(--ease-out),
+    box-shadow var(--anim-normal) var(--ease-out),
     border-color var(--anim-normal) var(--ease-out);
   will-change: transform, box-shadow;
 }
@@ -253,8 +275,9 @@ input.is-success,
 
 /* 列表项 hover */
 .list-item-hover {
-  transition: background var(--anim-fast) var(--ease-out),
-              transform  var(--anim-fast) var(--ease-out);
+  transition:
+    background var(--anim-fast) var(--ease-out),
+    transform var(--anim-fast) var(--ease-out);
 }
 
 .list-item-hover:hover {
@@ -262,17 +285,16 @@ input.is-success,
   transform: translateX(3px);
 }
 
-
 /* ================================================================
    §6  导航项交互
    ================================================================ */
 
 .nav-item {
   transition:
-    background   var(--anim-fast) var(--ease-out),
-    transform    var(--anim-fast) var(--ease-out),
-    box-shadow   var(--anim-fast) var(--ease-out),
-    color        var(--anim-normal) var(--ease-out);
+    background var(--anim-fast) var(--ease-out),
+    transform var(--anim-fast) var(--ease-out),
+    box-shadow var(--anim-fast) var(--ease-out),
+    color var(--anim-normal) var(--ease-out);
   position: relative;
 }
 
@@ -350,7 +372,6 @@ input.is-success,
   transform: scaleX(1);
 }
 
-
 /* ================================================================
    §7  开关 / 标签页状态切换
    ================================================================ */
@@ -366,9 +387,16 @@ input.is-success,
 
 /* 复选框勾选动效 */
 @keyframes checkmark {
-  0%   { stroke-dashoffset: 20; opacity: 0; }
-  50%  { opacity: 1; }
-  100% { stroke-dashoffset: 0; }
+  0% {
+    stroke-dashoffset: 20;
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
 }
 
 .checkbox-check {
@@ -380,8 +408,9 @@ input.is-success,
 /* 标签页切换内容区 */
 .tab-pane-enter-active,
 .tab-pane-leave-active {
-  transition: opacity var(--anim-normal) var(--ease-out),
-              transform var(--anim-normal) var(--ease-out);
+  transition:
+    opacity var(--anim-normal) var(--ease-out),
+    transform var(--anim-normal) var(--ease-out);
 }
 
 .tab-pane-enter-from {
@@ -394,20 +423,21 @@ input.is-success,
   transform: translateX(-12px);
 }
 
-
 /* ================================================================
    §8  页面 / 路由过渡动效
    ================================================================ */
 
 /* 标准页面切换（淡入 + 微上移） */
 .page-enter-active {
-  transition: opacity var(--anim-normal) var(--ease-out),
-              transform var(--anim-normal) var(--ease-out);
+  transition:
+    opacity var(--anim-normal) var(--ease-out),
+    transform var(--anim-normal) var(--ease-out);
 }
 
 .page-leave-active {
-  transition: opacity 0.16s var(--ease-in-out),
-              transform 0.16s var(--ease-in-out);
+  transition:
+    opacity 0.16s var(--ease-in-out),
+    transform 0.16s var(--ease-in-out);
 }
 
 .page-enter-from {
@@ -433,8 +463,9 @@ input.is-success,
 
 /* 向上滑入（弹性，用于小卡片/提示） */
 .slide-up-enter-active {
-  transition: opacity var(--anim-slow) var(--ease-out),
-              transform var(--anim-slow) var(--ease-spring);
+  transition:
+    opacity var(--anim-slow) var(--ease-out),
+    transform var(--anim-slow) var(--ease-spring);
 }
 
 .slide-up-enter-from {
@@ -445,9 +476,10 @@ input.is-success,
 /* 向下展开（用于折叠面板） */
 .slide-down-enter-active,
 .slide-down-leave-active {
-  transition: opacity var(--anim-normal) var(--ease-out),
-              transform var(--anim-normal) var(--ease-out),
-              max-height var(--anim-normal) var(--ease-out);
+  transition:
+    opacity var(--anim-normal) var(--ease-out),
+    transform var(--anim-normal) var(--ease-out),
+    max-height var(--anim-normal) var(--ease-out);
   overflow: hidden;
   max-height: 600px;
 }
@@ -462,8 +494,9 @@ input.is-success,
 /* 从右侧滑入 */
 .slide-right-enter-active,
 .slide-right-leave-active {
-  transition: opacity var(--anim-normal) var(--ease-out),
-              transform var(--anim-normal) var(--ease-out);
+  transition:
+    opacity var(--anim-normal) var(--ease-out),
+    transform var(--anim-normal) var(--ease-out);
 }
 
 .slide-right-enter-from {
@@ -479,8 +512,9 @@ input.is-success,
 /* 文字淡入（侧边栏展开/折叠） */
 .fade-text-enter-active,
 .fade-text-leave-active {
-  transition: opacity 0.18s var(--ease-out),
-              transform 0.18s var(--ease-out);
+  transition:
+    opacity 0.18s var(--ease-out),
+    transform 0.18s var(--ease-out);
 }
 
 .fade-text-enter-from,
@@ -488,7 +522,6 @@ input.is-success,
   opacity: 0;
   transform: translateX(-6px);
 }
-
 
 /* ================================================================
    §9  弹窗 / Modal 分步动效
@@ -507,18 +540,36 @@ input.is-success,
 
 /* 弹窗主体（scale + 上移 + 淡入） */
 @keyframes modalIn {
-  0%   { opacity: 0; transform: scale(0.88) translateY(16px); }
-  65%  { transform: scale(1.015) translateY(-2px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
+  0% {
+    opacity: 0;
+    transform: scale(0.88) translateY(16px);
+  }
+  65% {
+    transform: scale(1.015) translateY(-2px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 @keyframes modalOut {
-  0%   { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(0.92) translateY(8px); }
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
 }
 
-.modal-enter-active { animation: modalIn 0.32s var(--ease-out) both; }
-.modal-leave-active { animation: modalOut 0.2s var(--ease-in-out) both; }
+.modal-enter-active {
+  animation: modalIn 0.32s var(--ease-out) both;
+}
+.modal-leave-active {
+  animation: modalOut 0.2s var(--ease-in-out) both;
+}
 
 /* TDesign Dialog 适配 */
 .t-dialog__ctx {
@@ -527,9 +578,17 @@ input.is-success,
 
 /* 弹出动效（下拉菜单/tooltip） */
 @keyframes popIn {
-  0%   { opacity: 0; transform: scale(0.90) translateY(-6px); }
-  65%  { transform: scale(1.02) translateY(1px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(-6px);
+  }
+  65% {
+    transform: scale(1.02) translateY(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .pop-in {
@@ -539,8 +598,9 @@ input.is-success,
 /* TDesign Dropdown 适配 */
 .t-select-option,
 .t-dropdown__item {
-  transition: background var(--anim-fast) var(--ease-out),
-              transform  var(--anim-fast) var(--ease-out) !important;
+  transition:
+    background var(--anim-fast) var(--ease-out),
+    transform var(--anim-fast) var(--ease-out) !important;
 }
 
 .t-select-option:hover,
@@ -549,26 +609,24 @@ input.is-success,
   transform: translateX(3px);
 }
 
-
 /* ================================================================
    §10  骨架屏（Skeleton Screen）
    ================================================================ */
 
 @keyframes shimmer {
-  0%   { background-position: -100% 0; }
-  100% { background-position: 200% 0; }
+  0% {
+    background-position: -100% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
 }
 
 .skeleton,
 .skeleton-text,
 .skeleton-avatar,
 .skeleton-btn {
-  background: linear-gradient(
-    90deg,
-    #f0f2f5 25%,
-    #e8eaed 37%,
-    #f0f2f5 63%
-  );
+  background: linear-gradient(90deg, #f0f2f5 25%, #e8eaed 37%, #f0f2f5 63%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease infinite;
   border-radius: 6px;
@@ -576,32 +634,41 @@ input.is-success,
   pointer-events: none;
 }
 
-.skeleton-text  { height: 14px; width: 100%; border-radius: 4px; }
-.skeleton-avatar{ border-radius: 50%; }
-.skeleton-btn   { border-radius: 6px; height: 32px; }
+.skeleton-text {
+  height: 14px;
+  width: 100%;
+  border-radius: 4px;
+}
+.skeleton-avatar {
+  border-radius: 50%;
+}
+.skeleton-btn {
+  border-radius: 6px;
+  height: 32px;
+}
 
 /* 暗黑模式骨架屏 */
 .dark .skeleton,
 .dark .skeleton-text,
 .dark .skeleton-avatar {
-  background: linear-gradient(
-    90deg,
-    #2a2d35 25%,
-    #323540 37%,
-    #2a2d35 63%
-  );
+  background: linear-gradient(90deg, #2a2d35 25%, #323540 37%, #2a2d35 63%);
   background-size: 200% 100%;
   animation: shimmer 1.5s ease infinite;
 }
-
 
 /* ================================================================
    §11  列表渐进加载
    ================================================================ */
 
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(14px) scale(0.98); }
-  to   { opacity: 1; transform: translateY(0)    scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .list-item-anim {
@@ -609,18 +676,39 @@ input.is-success,
 }
 
 /* 延迟辅助类（0 ~ 10项） */
-.delay-0  { animation-delay: 0s; }
-.delay-1  { animation-delay: 0.06s; }
-.delay-2  { animation-delay: 0.12s; }
-.delay-3  { animation-delay: 0.18s; }
-.delay-4  { animation-delay: 0.24s; }
-.delay-5  { animation-delay: 0.30s; }
-.delay-6  { animation-delay: 0.36s; }
-.delay-7  { animation-delay: 0.42s; }
-.delay-8  { animation-delay: 0.48s; }
-.delay-9  { animation-delay: 0.54s; }
-.delay-10 { animation-delay: 0.60s; }
-
+.delay-0 {
+  animation-delay: 0s;
+}
+.delay-1 {
+  animation-delay: 0.06s;
+}
+.delay-2 {
+  animation-delay: 0.12s;
+}
+.delay-3 {
+  animation-delay: 0.18s;
+}
+.delay-4 {
+  animation-delay: 0.24s;
+}
+.delay-5 {
+  animation-delay: 0.3s;
+}
+.delay-6 {
+  animation-delay: 0.36s;
+}
+.delay-7 {
+  animation-delay: 0.42s;
+}
+.delay-8 {
+  animation-delay: 0.48s;
+}
+.delay-9 {
+  animation-delay: 0.54s;
+}
+.delay-10 {
+  animation-delay: 0.6s;
+}
 
 /* ================================================================
    §12  滚动渐入（Scroll Reveal）
@@ -630,8 +718,9 @@ input.is-success,
 .reveal {
   opacity: 0;
   transform: translateY(24px);
-  transition: opacity 0.55s var(--ease-out),
-              transform 0.55s var(--ease-out);
+  transition:
+    opacity 0.55s var(--ease-out),
+    transform 0.55s var(--ease-out);
   will-change: opacity, transform;
 }
 
@@ -644,13 +733,17 @@ input.is-success,
 .reveal-left {
   opacity: 0;
   transform: translateX(-28px);
-  transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out);
+  transition:
+    opacity 0.5s var(--ease-out),
+    transform 0.5s var(--ease-out);
 }
 
 .reveal-right {
   opacity: 0;
   transform: translateX(28px);
-  transition: opacity 0.5s var(--ease-out), transform 0.5s var(--ease-out);
+  transition:
+    opacity 0.5s var(--ease-out),
+    transform 0.5s var(--ease-out);
 }
 
 .reveal-left.reveal--visible,
@@ -662,7 +755,9 @@ input.is-success,
 .reveal-scale {
   opacity: 0;
   transform: scale(0.92);
-  transition: opacity 0.45s var(--ease-out), transform 0.45s var(--ease-spring);
+  transition:
+    opacity 0.45s var(--ease-out),
+    transform 0.45s var(--ease-spring);
 }
 
 .reveal-scale.reveal--visible {
@@ -671,36 +766,47 @@ input.is-success,
 }
 
 /* 延迟组（用于列组中） */
-.reveal-group > *:nth-child(1)  { transition-delay: 0.05s; }
-.reveal-group > *:nth-child(2)  { transition-delay: 0.10s; }
-.reveal-group > *:nth-child(3)  { transition-delay: 0.15s; }
-.reveal-group > *:nth-child(4)  { transition-delay: 0.20s; }
-.reveal-group > *:nth-child(5)  { transition-delay: 0.25s; }
-.reveal-group > *:nth-child(6)  { transition-delay: 0.30s; }
-
+.reveal-group > *:nth-child(1) {
+  transition-delay: 0.05s;
+}
+.reveal-group > *:nth-child(2) {
+  transition-delay: 0.1s;
+}
+.reveal-group > *:nth-child(3) {
+  transition-delay: 0.15s;
+}
+.reveal-group > *:nth-child(4) {
+  transition-delay: 0.2s;
+}
+.reveal-group > *:nth-child(5) {
+  transition-delay: 0.25s;
+}
+.reveal-group > *:nth-child(6) {
+  transition-delay: 0.3s;
+}
 
 /* ================================================================
    §13  导航栏吸顶变形（配合 .scrolled 类由 JS 动态切换）
    ================================================================ */
 
 .navbar-sticky {
-  transition: background   var(--anim-normal) var(--ease-out),
-              box-shadow   var(--anim-normal) var(--ease-out),
-              transform    var(--anim-normal) var(--ease-out),
-              padding      var(--anim-normal) var(--ease-out);
+  transition:
+    background var(--anim-normal) var(--ease-out),
+    box-shadow var(--anim-normal) var(--ease-out),
+    transform var(--anim-normal) var(--ease-out),
+    padding var(--anim-normal) var(--ease-out);
 }
 
 .navbar-sticky.scrolled {
-  background: rgba(255,255,255,0.92) !important;
+  background: rgba(255, 255, 255, 0.92) !important;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.08);
 }
 
 .dark .navbar-sticky.scrolled {
-  background: rgba(24,25,32,0.92) !important;
+  background: rgba(24, 25, 32, 0.92) !important;
 }
-
 
 /* ================================================================
    §14  微交互（Micro-interaction）
@@ -708,11 +814,21 @@ input.is-success,
 
 /* 点赞 / 收藏：图标弹跳 */
 @keyframes likePopBounce {
-  0%   { transform: scale(1);    }
-  30%  { transform: scale(1.35) rotate(-8deg); }
-  55%  { transform: scale(0.90) rotate(4deg);  }
-  75%  { transform: scale(1.12) rotate(-2deg); }
-  100% { transform: scale(1)    rotate(0deg);  }
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.35) rotate(-8deg);
+  }
+  55% {
+    transform: scale(0.9) rotate(4deg);
+  }
+  75% {
+    transform: scale(1.12) rotate(-2deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 .like-pop {
@@ -721,9 +837,17 @@ input.is-success,
 
 /* 心形填充色彩扩散 */
 @keyframes heartFill {
-  0%   { opacity: 0; transform: scale(0.3); }
-  60%  { transform: scale(1.2); }
-  100% { opacity: 1; transform: scale(1); }
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  60% {
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .heart-fill {
@@ -732,9 +856,15 @@ input.is-success,
 
 /* 数字跳动（收藏数/点赞数） */
 @keyframes countBump {
-  0%   { transform: translateY(0)    scale(1);   }
-  40%  { transform: translateY(-4px) scale(1.15); }
-  100% { transform: translateY(0)    scale(1);   }
+  0% {
+    transform: translateY(0) scale(1);
+  }
+  40% {
+    transform: translateY(-4px) scale(1.15);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+  }
 }
 
 .count-bump {
@@ -743,14 +873,23 @@ input.is-success,
 
 /* 回到顶部按钮出现 */
 @keyframes fabIn {
-  from { opacity: 0; transform: scale(0.5) translateY(12px); }
-  to   { opacity: 1; transform: scale(1)   translateY(0); }
+  from {
+    opacity: 0;
+    transform: scale(0.5) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
-.back-to-top-enter-active { animation: fabIn 0.3s var(--ease-spring); }
+.back-to-top-enter-active {
+  animation: fabIn 0.3s var(--ease-spring);
+}
 .back-to-top-leave-active {
-  transition: opacity 0.2s var(--ease-out),
-              transform 0.2s var(--ease-out);
+  transition:
+    opacity 0.2s var(--ease-out),
+    transform 0.2s var(--ease-out);
 }
 .back-to-top-leave-to {
   opacity: 0;
@@ -759,23 +898,47 @@ input.is-success,
 
 /* 通知 toast 从右滑入 */
 @keyframes toastSlideIn {
-  from { opacity: 0; transform: translateX(110%); }
-  to   { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(110%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes toastSlideOut {
-  from { opacity: 1; transform: translateX(0); }
-  to   { opacity: 0; transform: translateX(110%); }
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(110%);
+  }
 }
 
-.toast-enter-active { animation: toastSlideIn 0.3s var(--ease-spring); }
-.toast-leave-active { animation: toastSlideOut 0.25s var(--ease-in-out); }
+.toast-enter-active {
+  animation: toastSlideIn 0.3s var(--ease-spring);
+}
+.toast-leave-active {
+  animation: toastSlideOut 0.25s var(--ease-in-out);
+}
 
 /* 置顶徽章弹入 */
 @keyframes pinBadgeIn {
-  from { opacity: 0; transform: scale(0) translateY(-6px) rotate(-15deg); }
-  60%  { transform: scale(1.15) translateY(1px) rotate(5deg); }
-  to   { opacity: 1; transform: scale(1) translateY(0) rotate(0deg); }
+  from {
+    opacity: 0;
+    transform: scale(0) translateY(-6px) rotate(-15deg);
+  }
+  60% {
+    transform: scale(1.15) translateY(1px) rotate(5deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0) rotate(0deg);
+  }
 }
 
 .pin-badge-anim {
@@ -784,14 +947,19 @@ input.is-success,
 
 /* 智能助手浮入 */
 @keyframes assistantSlideIn {
-  from { opacity: 0; transform: translateX(32px) scale(0.94); }
-  to   { opacity: 1; transform: translateX(0)    scale(1); }
+  from {
+    opacity: 0;
+    transform: translateX(32px) scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
 }
 
 .assistant-enter {
   animation: assistantSlideIn 0.35s var(--ease-spring);
 }
-
 
 /* ================================================================
    §15  状态反馈指示
@@ -804,9 +972,18 @@ input.is-success,
 }
 
 @keyframes progressIndeterminate {
-  0%   { left: -30%; width: 30%; }
-  50%  { left: 50%;  width: 40%; }
-  100% { left: 110%; width: 30%; }
+  0% {
+    left: -30%;
+    width: 30%;
+  }
+  50% {
+    left: 50%;
+    width: 40%;
+  }
+  100% {
+    left: 110%;
+    width: 30%;
+  }
 }
 
 .progress-indeterminate {
@@ -817,21 +994,28 @@ input.is-success,
 .progress-indeterminate::after {
   content: '';
   position: absolute;
-  top: 0; bottom: 0;
-  background: rgba(255,255,255,0.45);
+  top: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.45);
   animation: progressIndeterminate 1.4s ease-in-out infinite;
 }
 
 /* 加载旋转 */
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.spin { animation: spin 0.9s linear infinite; }
+.spin {
+  animation: spin 0.9s linear infinite;
+}
 
 /* 环形渐变 loading（品牌风格） */
 @keyframes ringRotate {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-ring {
@@ -845,39 +1029,68 @@ input.is-success,
 
 /* 圆点跳动 */
 @keyframes dotBounce {
-  0%, 80%, 100% { transform: translateY(0); }
-  40%           { transform: translateY(-8px); }
+  0%,
+  80%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-8px);
+  }
 }
 
 .dot-loading span {
   display: inline-block;
-  width: 6px; height: 6px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--color-primary);
   animation: dotBounce 1.2s ease-in-out infinite;
 }
 
-.dot-loading span:nth-child(2) { animation-delay: 0.15s; }
-.dot-loading span:nth-child(3) { animation-delay: 0.30s; }
+.dot-loading span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.dot-loading span:nth-child(3) {
+  animation-delay: 0.3s;
+}
 
 /* 脉冲（在线指示灯） */
 @keyframes pulseDot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%       { opacity: 0.55; transform: scale(1.3); }
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(1.3);
+  }
 }
 
-.pulse { animation: pulseDot 1.6s ease-in-out infinite; }
+.pulse {
+  animation: pulseDot 1.6s ease-in-out infinite;
+}
 
 /* 全页面 loading 顶部进度条 */
 @keyframes nprogress {
-  0%   { opacity: 1; transform: scaleX(0.15); }
-  80%  { transform: scaleX(0.8); }
-  100% { opacity: 0; transform: scaleX(1); }
+  0% {
+    opacity: 1;
+    transform: scaleX(0.15);
+  }
+  80% {
+    transform: scaleX(0.8);
+  }
+  100% {
+    opacity: 0;
+    transform: scaleX(1);
+  }
 }
 
 .page-loading-bar {
   position: fixed;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 3px;
   background: var(--color-primary);
@@ -886,48 +1099,74 @@ input.is-success,
   animation: nprogress 1.5s var(--ease-out) forwards;
 }
 
-
 /* ================================================================
    §16  数字统计动效
    ================================================================ */
 
 @keyframes countUp {
-  from { opacity: 0; transform: translateY(8px) scale(0.88); }
-  to   { opacity: 1; transform: translateY(0)   scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.88);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
-.count-up { animation: countUp 0.4s var(--ease-spring); }
-
+.count-up {
+  animation: countUp 0.4s var(--ease-spring);
+}
 
 /* ================================================================
    §17  视觉层次辅助类
    ================================================================ */
 
 /* 阴影层级 */
-.shadow-0 { box-shadow: var(--shadow-0); }
-.shadow-1 { box-shadow: var(--shadow-1); }
-.shadow-2 { box-shadow: var(--shadow-2); }
-.shadow-3 { box-shadow: var(--shadow-3); }
-.shadow-4 { box-shadow: var(--shadow-4); }
-.shadow-md  { box-shadow: var(--shadow-2); }
-.shadow-lg  { box-shadow: var(--shadow-3); }
-.shadow-xl  { box-shadow: var(--shadow-4); }
+.shadow-0 {
+  box-shadow: var(--shadow-0);
+}
+.shadow-1 {
+  box-shadow: var(--shadow-1);
+}
+.shadow-2 {
+  box-shadow: var(--shadow-2);
+}
+.shadow-3 {
+  box-shadow: var(--shadow-3);
+}
+.shadow-4 {
+  box-shadow: var(--shadow-4);
+}
+.shadow-md {
+  box-shadow: var(--shadow-2);
+}
+.shadow-lg {
+  box-shadow: var(--shadow-3);
+}
+.shadow-xl {
+  box-shadow: var(--shadow-4);
+}
 
 /* 微妙边框 */
-.border-subtle { border: 1px solid rgba(0,0,0,0.06); }
-.border-medium { border: 1px solid rgba(0,0,0,0.10); }
+.border-subtle {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+.border-medium {
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 /* 毛玻璃 */
 .glass {
-  background: rgba(255,255,255,0.82);
+  background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255,255,255,0.55);
+  border: 1px solid rgba(255, 255, 255, 0.55);
 }
 
 .dark .glass {
-  background: rgba(24,25,32,0.80);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(24, 25, 32, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* 文字渐变 */
@@ -946,27 +1185,27 @@ input.is-success,
 }
 
 /* 平滑滚动 */
-html { scroll-behavior: smooth; }
-
+html {
+  scroll-behavior: smooth;
+}
 
 /* ================================================================
    §18  暗黑模式适配
    ================================================================ */
 
 .dark {
-  --shadow-1: 0 1px 3px rgba(0,0,0,0.25), 0 1px 2px rgba(0,0,0,0.18);
-  --shadow-2: 0 4px 12px rgba(0,0,0,0.30), 0 2px 4px rgba(0,0,0,0.18);
-  --shadow-3: 0 10px 28px rgba(0,0,0,0.35), 0 4px 8px rgba(0,0,0,0.20);
-  --shadow-4: 0 20px 48px rgba(0,0,0,0.40), 0 8px 16px rgba(0,0,0,0.22);
-  --shadow-hover-btn:  0 6px 18px rgba(79, 126, 248, 0.20);
-  --shadow-hover-card: 0 12px 32px rgba(0,0,0,0.40), 0 4px 8px rgba(0,0,0,0.22);
-  --shadow-focus: 0 0 0 3px rgba(79, 126, 248, 0.30);
-  --ripple-color: rgba(129, 140, 248, 0.20);
+  --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.25), 0 1px 2px rgba(0, 0, 0, 0.18);
+  --shadow-2: 0 4px 12px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.18);
+  --shadow-3: 0 10px 28px rgba(0, 0, 0, 0.35), 0 4px 8px rgba(0, 0, 0, 0.2);
+  --shadow-4: 0 20px 48px rgba(0, 0, 0, 0.4), 0 8px 16px rgba(0, 0, 0, 0.22);
+  --shadow-hover-btn: 0 6px 18px rgba(79, 126, 248, 0.2);
+  --shadow-hover-card: 0 12px 32px rgba(0, 0, 0, 0.4), 0 4px 8px rgba(0, 0, 0, 0.22);
+  --shadow-focus: 0 0 0 3px rgba(79, 126, 248, 0.3);
+  --ripple-color: rgba(129, 140, 248, 0.2);
   --color-primary-light: rgba(79, 126, 248, 0.15);
 }
 
 /* 暗黑模式骨架屏已在 §10 中定义 */
-
 
 /* ================================================================
    §19  无障碍 & 性能优化
@@ -977,26 +1216,36 @@ html { scroll-behavior: smooth; }
   *,
   *::before,
   *::after {
-    animation-duration:        0.01ms !important;
-    animation-iteration-count: 1      !important;
-    transition-duration:       0.01ms !important;
-    scroll-behavior: auto              !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
 /* 自定义滚动条（全局） */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
-  background: rgba(0,0,0,0.15);
+  background: rgba(0, 0, 0, 0.15);
   border-radius: 3px;
   transition: background 0.2s ease;
 }
-::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.28); }
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.28);
+}
 
-.dark ::-webkit-scrollbar-thumb       { background: rgba(255,255,255,0.15); }
-.dark ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
-
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
 
 /* ================================================================
    §20  深色模式：全局语义色变量
@@ -1009,25 +1258,25 @@ html { scroll-behavior: smooth; }
 
 :root {
   /* ── 背景层级 ── */
-  --bg-page:       #f9fafb;   /* 最外层页面背景 */
-  --bg-card:       #ffffff;   /* 卡片/面板背景 */
-  --bg-input:      #ffffff;   /* 输入框背景 */
-  --bg-sidebar:    #ffffff;   /* 侧边栏背景 */
-  --bg-hover:      #f3f4f6;   /* hover 背景 */
-  --bg-active:     #eff6ff;   /* 选中/激活背景 */
-  --bg-code:       #f8fafc;   /* 代码块背景 */
+  --bg-page: #f9fafb; /* 最外层页面背景 */
+  --bg-card: #ffffff; /* 卡片/面板背景 */
+  --bg-input: #ffffff; /* 输入框背景 */
+  --bg-sidebar: #ffffff; /* 侧边栏背景 */
+  --bg-hover: #f3f4f6; /* hover 背景 */
+  --bg-active: #eff6ff; /* 选中/激活背景 */
+  --bg-code: #f8fafc; /* 代码块背景 */
 
   /* ── 文字层级 ── */
-  --text-primary:   #111827;  /* 主要文字 */
-  --text-secondary: #374151;  /* 次要文字 */
-  --text-tertiary:  #6b7280;  /* 辅助文字 */
-  --text-disabled:  #9ca3af;  /* 禁用文字 */
-  --text-inverse:   #ffffff;  /* 反色（用于深色背景上） */
+  --text-primary: #111827; /* 主要文字 */
+  --text-secondary: #374151; /* 次要文字 */
+  --text-tertiary: #6b7280; /* 辅助文字 */
+  --text-disabled: #9ca3af; /* 禁用文字 */
+  --text-inverse: #ffffff; /* 反色（用于深色背景上） */
 
   /* ── 边框 ── */
-  --border-color:  #e5e7eb;   /* 通用边框 */
-  --border-light:  #f0f0f0;   /* 轻边框 */
-  --border-strong: #d1d5db;   /* 强边框 */
+  --border-color: #e5e7eb; /* 通用边框 */
+  --border-light: #f0f0f0; /* 轻边框 */
+  --border-strong: #d1d5db; /* 强边框 */
 
   /* ── 应用背景（App.vue 直接用） ── */
   --app-bg: #f9fafb;
@@ -1036,24 +1285,24 @@ html { scroll-behavior: smooth; }
 /* ── 深色模式覆盖 ── */
 .dark {
   /* 背景 */
-  --bg-page:       #0f0f17;
-  --bg-card:       #1a1b2e;
-  --bg-input:      #16172b;
-  --bg-sidebar:    #13141f;
-  --bg-hover:      #252638;
-  --bg-active:     #1e2a4a;
-  --bg-code:       #12131e;
+  --bg-page: #0f0f17;
+  --bg-card: #1a1b2e;
+  --bg-input: #16172b;
+  --bg-sidebar: #13141f;
+  --bg-hover: #252638;
+  --bg-active: #1e2a4a;
+  --bg-code: #12131e;
 
   /* 文字 */
-  --text-primary:   #e8eaf0;
+  --text-primary: #e8eaf0;
   --text-secondary: #b0b3c6;
-  --text-tertiary:  #7880a0;
-  --text-disabled:  #4a4f6a;
-  --text-inverse:   #111827;
+  --text-tertiary: #7880a0;
+  --text-disabled: #4a4f6a;
+  --text-inverse: #111827;
 
   /* 边框 */
-  --border-color:  #2a2d45;
-  --border-light:  #1f2138;
+  --border-color: #2a2d45;
+  --border-light: #1f2138;
   --border-strong: #363a58;
 
   /* 应用背景 */
@@ -1086,7 +1335,7 @@ html { scroll-behavior: smooth; }
 }
 
 /* 输入框 */
-.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.dark input:not([type='checkbox']):not([type='radio']):not([type='range']),
 .dark textarea,
 .dark select {
   background: var(--bg-input) !important;
@@ -1118,15 +1367,23 @@ html { scroll-behavior: smooth; }
 }
 
 /* 标题和描述文字 */
-.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6 {
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
   color: var(--text-primary);
 }
-.dark p, .dark span, .dark label {
+.dark p,
+.dark span,
+.dark label {
   color: var(--text-secondary);
 }
 
 /* 代码块 */
-.dark pre, .dark code {
+.dark pre,
+.dark code {
   background: var(--bg-code) !important;
   color: #a9c4f5 !important;
 }
@@ -1138,7 +1395,8 @@ html { scroll-behavior: smooth; }
 .dark table tr:hover {
   background: var(--bg-hover) !important;
 }
-.dark table td, .dark table th {
+.dark table td,
+.dark table th {
   border-color: var(--border-color) !important;
   color: var(--text-primary);
 }
@@ -1239,11 +1497,11 @@ html { scroll-behavior: smooth; }
 }
 
 /* ── 暗色: 表单输入框统一 ── */
-.dark input[type="text"],
-.dark input[type="email"],
-.dark input[type="password"],
-.dark input[type="search"],
-.dark input[type="number"] {
+.dark input[type='text'],
+.dark input[type='email'],
+.dark input[type='password'],
+.dark input[type='search'],
+.dark input[type='number'] {
   background: var(--bg-input) !important;
   color: var(--text-primary) !important;
   border-color: var(--border-strong) !important;
@@ -1266,7 +1524,9 @@ html { scroll-behavior: smooth; }
    ================================================================
    applyFontSize() 设置 html.style.fontSize，这里确保子元素继承
    ================================================================ */
-html, body, #app {
+html,
+body,
+#app {
   font-size: inherit;
 }
 
@@ -1288,11 +1548,11 @@ body {
 }
 
 /* 确保小字号(13px)和大字号(16px)在全局生效 */
-html[style*="font-size: 13px"] body,
-html[style*="font-size:13px"] body {
+html[style*='font-size: 13px'] body,
+html[style*='font-size:13px'] body {
   font-size: 13px;
 }
-html[style*="font-size: 16px"] body,
-html[style*="font-size:16px"] body {
+html[style*='font-size: 16px'] body,
+html[style*='font-size:16px'] body {
   font-size: 16px;
 }

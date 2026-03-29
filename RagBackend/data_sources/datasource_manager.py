@@ -1,7 +1,8 @@
 """
 多数据源接入模块 - 支持 OSS / S3 / 数据库数据源配置与导入
 """
-from fastapi import APIRouter, HTTPException, UploadFile, File, BackgroundTasks
+
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from typing import Optional, Literal
 import sqlite3
@@ -17,10 +18,12 @@ router = APIRouter()
 # - -
 DS_DB_PATH = Path(__file__).parent.parent / "metadata" / "datasources.db"
 
+
 def _get_conn():
     conn = sqlite3.connect(str(DS_DB_PATH))
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def ensure_datasource_table():
     try:
@@ -55,13 +58,15 @@ class OSSConfig(BaseModel):
     region: Optional[str] = None
     prefix: Optional[str] = None
 
+
 class S3Config(BaseModel):
-    endpoint_url: Optional[str] = None    # MinIO
+    endpoint_url: Optional[str] = None  # MinIO
     bucket: str
     aws_access_key_id: str
     aws_secret_access_key: str
     region_name: str = "us-east-1"
     prefix: Optional[str] = None
+
 
 class DatabaseConfig(BaseModel):
     db_type: Literal["mysql", "postgresql", "sqlite"]
@@ -70,9 +75,10 @@ class DatabaseConfig(BaseModel):
     database: str
     username: Optional[str] = None
     password: Optional[str] = None
-    query: str              # SQL
+    query: str  # SQL
     text_column: str
     id_column: str = "id"
+
 
 class CreateDatasourceRequest(BaseModel):
     name: str
@@ -87,13 +93,19 @@ async def list_datasources():
     """获取所有数据源配置"""
     try:
         with _get_conn() as conn:
-            rows = conn.execute("SELECT * FROM datasources ORDER BY created_at DESC").fetchall()
+            rows = conn.execute(
+                "SELECT * FROM datasources ORDER BY created_at DESC"
+            ).fetchall()
         result = []
         for row in rows:
             d = dict(row)
             try:
                 cfg = json.loads(d.get("config", "{}"))
-                for sensitive_key in ["access_key_secret", "aws_secret_access_key", "password"]:
+                for sensitive_key in [
+                    "access_key_secret",
+                    "aws_secret_access_key",
+                    "password",
+                ]:
                     if sensitive_key in cfg:
                         cfg[sensitive_key] = "****"
                 d["config"] = cfg
@@ -111,13 +123,21 @@ async def create_datasource(req: CreateDatasourceRequest):
     try:
         config_str = json.dumps(req.config)
         with _get_conn() as conn:
-            cursor = conn.execute("""
+            cursor = conn.execute(
+                """
                 INSERT INTO datasources (name, type, config, kb_id, created_at)
                 VALUES (?, ?, ?, ?, ?)
-            """, (req.name, req.type, config_str, req.kb_id, time.time()))
+            """,
+                (req.name, req.type, config_str, req.kb_id, time.time()),
+            )
             conn.commit()
             ds_id = cursor.lastrowid
-        return {"id": ds_id, "name": req.name, "type": req.type, "message": "数据源创建成功"}
+        return {
+            "id": ds_id,
+            "name": req.name,
+            "type": req.type,
+            "message": "数据源创建成功",
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -139,14 +159,16 @@ async def test_datasource(ds_id: int):
     """测试数据源连通性"""
     try:
         with _get_conn() as conn:
-            row = conn.execute("SELECT * FROM datasources WHERE id = ?", (ds_id,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM datasources WHERE id = ?", (ds_id,)
+            ).fetchone()
         if not row:
             raise HTTPException(status_code=404, detail="数据源不存在")
-        
+
         ds = dict(row)
         ds_type = ds["type"]
         config = json.loads(ds.get("config", "{}"))
-        
+
         if ds_type == "oss":
             return await _test_oss_connection(config)
         elif ds_type == "s3":
@@ -170,13 +192,21 @@ async def _test_oss_connection(config: dict) -> dict:
     """测试阿里云 OSS 连通性"""
     try:
         import oss2
+
         auth = oss2.Auth(config["access_key_id"], config["access_key_secret"])
         bucket = oss2.Bucket(auth, config["endpoint"], config["bucket"])
         # 3
         objects = list(oss2.ObjectIterator(bucket, max_keys=3))
-        return {"status": "ok", "message": f"OSS 连通成功，共可访问对象若干", "sample_count": len(objects)}
+        return {
+            "status": "ok",
+            "message": "OSS 连通成功，共可访问对象若干",
+            "sample_count": len(objects),
+        }
     except ImportError:
-        return {"status": "warning", "message": "oss2 库未安装，请运行: pip install oss2"}
+        return {
+            "status": "warning",
+            "message": "oss2 库未安装，请运行: pip install oss2",
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -185,6 +215,7 @@ async def _test_s3_connection(config: dict) -> dict:
     """测试 AWS S3 / MinIO 连通性"""
     try:
         import boto3
+
         kwargs = {
             "aws_access_key_id": config["aws_access_key_id"],
             "aws_secret_access_key": config["aws_secret_access_key"],
@@ -196,7 +227,10 @@ async def _test_s3_connection(config: dict) -> dict:
         s3.head_bucket(Bucket=config["bucket"])
         return {"status": "ok", "message": f"S3 Bucket '{config['bucket']}' 连通成功"}
     except ImportError:
-        return {"status": "warning", "message": "boto3 库未安装，请运行: pip install boto3"}
+        return {
+            "status": "warning",
+            "message": "boto3 库未安装，请运行: pip install boto3",
+        }
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
@@ -206,6 +240,7 @@ async def _test_db_connection(db_type: str, config: dict) -> dict:
     try:
         if db_type == "mysql":
             import pymysql
+
             conn = pymysql.connect(
                 host=config.get("host", "localhost"),
                 port=config.get("port", 3306),
@@ -218,6 +253,7 @@ async def _test_db_connection(db_type: str, config: dict) -> dict:
             return {"status": "ok", "message": "MySQL 连通成功"}
         elif db_type == "postgresql":
             import psycopg2
+
             conn = psycopg2.connect(
                 host=config.get("host", "localhost"),
                 port=config.get("port", 5432),
@@ -239,12 +275,14 @@ async def sync_datasource(ds_id: int, background_tasks: BackgroundTasks):
     """触发数据源同步（OSS/S3 下载文件到知识库目录，数据库提取文本）"""
     try:
         with _get_conn() as conn:
-            row = conn.execute("SELECT * FROM datasources WHERE id = ?", (ds_id,)).fetchone()
+            row = conn.execute(
+                "SELECT * FROM datasources WHERE id = ?", (ds_id,)
+            ).fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="数据源不存在")
             conn.execute(
                 "UPDATE datasources SET status = 'syncing', sync_count = sync_count + 1 WHERE id = ?",
-                (ds_id,)
+                (ds_id,),
             )
             conn.commit()
 
@@ -258,7 +296,7 @@ async def sync_datasource(ds_id: int, background_tasks: BackgroundTasks):
         return {
             "task_id": f"sync_{ds_id}_{int(time.time())}",
             "status": "syncing",
-            "message": "同步任务已提交，后台执行中"
+            "message": "同步任务已提交，后台执行中",
         }
     except HTTPException:
         raise
@@ -266,9 +304,16 @@ async def sync_datasource(ds_id: int, background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-async def _do_datasource_sync(ds_id: int, ds_type: str, config: dict, kb_id: Optional[str]):
+async def _do_datasource_sync(
+    ds_id: int, ds_type: str, config: dict, kb_id: Optional[str]
+):
     """实际执行数据源同步的后台任务"""
-    target_dir = Path(__file__).parent.parent / "local-KLB-files" / (kb_id or "_datasource_import") / ds_type
+    target_dir = (
+        Path(__file__).parent.parent
+        / "local-KLB-files"
+        / (kb_id or "_datasource_import")
+        / ds_type
+    )
     target_dir.mkdir(parents=True, exist_ok=True)
 
     try:
@@ -284,7 +329,7 @@ async def _do_datasource_sync(ds_id: int, ds_type: str, config: dict, kb_id: Opt
         with _get_conn() as conn:
             conn.execute(
                 "UPDATE datasources SET status = 'idle', last_sync = ?, last_error = NULL WHERE id = ?",
-                (time.time(), ds_id)
+                (time.time(), ds_id),
             )
             conn.commit()
         logger.info(f"[DatasourceSync] id={ds_id} 同步完成: {result}")
@@ -294,7 +339,7 @@ async def _do_datasource_sync(ds_id: int, ds_type: str, config: dict, kb_id: Opt
         with _get_conn() as conn:
             conn.execute(
                 "UPDATE datasources SET status = 'error', last_error = ? WHERE id = ?",
-                (str(e)[:500], ds_id)
+                (str(e)[:500], ds_id),
             )
             conn.commit()
 
@@ -303,6 +348,7 @@ async def _sync_oss(config: dict, target_dir: Path) -> dict:
     """从阿里云 OSS 下载文件"""
     try:
         import oss2
+
         auth = oss2.Auth(config["access_key_id"], config["access_key_secret"])
         bucket = oss2.Bucket(auth, config["endpoint"], config["bucket"])
         prefix = config.get("prefix", "")
@@ -324,6 +370,7 @@ async def _sync_s3(config: dict, target_dir: Path) -> dict:
     """从 S3/MinIO 下载文件"""
     try:
         import boto3
+
         kwargs = {
             "aws_access_key_id": config["aws_access_key_id"],
             "aws_secret_access_key": config["aws_secret_access_key"],
@@ -358,6 +405,7 @@ async def _sync_database(db_type: str, config: dict, target_dir: Path) -> dict:
     try:
         if db_type == "sqlite":
             import sqlite3
+
             conn = sqlite3.connect(config["database"])
             cursor = conn.execute(query)
             rows = cursor.fetchall()
@@ -365,10 +413,14 @@ async def _sync_database(db_type: str, config: dict, target_dir: Path) -> dict:
             conn.close()
         elif db_type == "mysql":
             import pymysql
+
             conn = pymysql.connect(
-                host=config.get("host", "localhost"), port=config.get("port", 3306),
-                database=config["database"], user=config.get("username", "root"),
-                password=config.get("password", ""), charset="utf8mb4",
+                host=config.get("host", "localhost"),
+                port=config.get("port", 3306),
+                database=config["database"],
+                user=config.get("username", "root"),
+                password=config.get("password", ""),
+                charset="utf8mb4",
             )
             cursor = conn.cursor()
             cursor.execute(query)
@@ -377,9 +429,12 @@ async def _sync_database(db_type: str, config: dict, target_dir: Path) -> dict:
             conn.close()
         elif db_type == "postgresql":
             import psycopg2
+
             conn = psycopg2.connect(
-                host=config.get("host"), port=config.get("port", 5432),
-                dbname=config["database"], user=config.get("username"),
+                host=config.get("host"),
+                port=config.get("port", 5432),
+                dbname=config["database"],
+                user=config.get("username"),
                 password=config.get("password"),
             )
             cursor = conn.cursor()
@@ -413,11 +468,41 @@ async def datasource_types():
     """获取支持的数据源类型说明"""
     return {
         "types": [
-            {"id": "oss", "name": "阿里云 OSS", "description": "对象存储，需要 oss2 库", "status": "supported"},
-            {"id": "s3", "name": "AWS S3 / MinIO", "description": "兼容 S3 协议的对象存储", "status": "supported"},
-            {"id": "mysql", "name": "MySQL 数据库", "description": "从 MySQL 表中提取文本内容", "status": "supported"},
-            {"id": "postgresql", "name": "PostgreSQL", "description": "从 PostgreSQL 表中提取文本", "status": "supported"},
-            {"id": "sqlite", "name": "SQLite 文件", "description": "本地 SQLite 数据库文件", "status": "supported"},
-            {"id": "webdav", "name": "WebDAV", "description": "WebDAV 协议文件服务（坚果云等）", "status": "planned"},
+            {
+                "id": "oss",
+                "name": "阿里云 OSS",
+                "description": "对象存储，需要 oss2 库",
+                "status": "supported",
+            },
+            {
+                "id": "s3",
+                "name": "AWS S3 / MinIO",
+                "description": "兼容 S3 协议的对象存储",
+                "status": "supported",
+            },
+            {
+                "id": "mysql",
+                "name": "MySQL 数据库",
+                "description": "从 MySQL 表中提取文本内容",
+                "status": "supported",
+            },
+            {
+                "id": "postgresql",
+                "name": "PostgreSQL",
+                "description": "从 PostgreSQL 表中提取文本",
+                "status": "supported",
+            },
+            {
+                "id": "sqlite",
+                "name": "SQLite 文件",
+                "description": "本地 SQLite 数据库文件",
+                "status": "supported",
+            },
+            {
+                "id": "webdav",
+                "name": "WebDAV",
+                "description": "WebDAV 协议文件服务（坚果云等）",
+                "status": "planned",
+            },
         ]
     }

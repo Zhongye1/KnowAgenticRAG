@@ -2,17 +2,14 @@
 审计日志模块
 记录用户操作行为（API调用、文件上传、查询、删除等），写入 SQLite 文件
 """
-from fastapi import APIRouter, Request, Depends, Query, HTTPException
-from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+
+from fastapi import APIRouter, Request, Query, HTTPException
 from typing import Optional
 import sqlite3
 import time
-import json
 import os
 import logging
 from pathlib import Path
-from functools import wraps
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -20,10 +17,12 @@ router = APIRouter()
 # - Audit log -
 AUDIT_DB_PATH = Path(__file__).parent.parent / "metadata" / "audit_log.db"
 
+
 def _get_conn():
     conn = sqlite3.connect(str(AUDIT_DB_PATH))
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def ensure_audit_table():
     """确保审计日志表存在"""
@@ -48,9 +47,15 @@ def ensure_audit_table():
                     duration_ms REAL
                 )
             """)
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_logs(timestamp)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id)")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action)")
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON audit_logs(timestamp)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_audit_user ON audit_logs(user_id)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_logs(action)"
+            )
             conn.commit()
         logger.info("审计日志表初始化完成")
     except Exception as e:
@@ -75,17 +80,31 @@ def write_audit_log(
     """写入一条审计记录（非阻塞，失败不抛出）"""
     try:
         with _get_conn() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO audit_logs (
                     timestamp, user_id, user_email, action, resource_type, resource_id,
                     resource_name, ip_address, user_agent, request_path, request_method,
                     status_code, detail, duration_ms
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                time.time(), user_id, user_email, action, resource_type, resource_id,
-                resource_name, ip_address, user_agent, request_path, request_method,
-                status_code, detail, duration_ms
-            ))
+            """,
+                (
+                    time.time(),
+                    user_id,
+                    user_email,
+                    action,
+                    resource_type,
+                    resource_id,
+                    resource_name,
+                    ip_address,
+                    user_agent,
+                    request_path,
+                    request_method,
+                    status_code,
+                    detail,
+                    duration_ms,
+                ),
+            )
             conn.commit()
     except Exception as e:
         logger.debug(f"写入审计日志失败（不影响业务）: {e}")
@@ -99,6 +118,7 @@ def _extract_user_from_request(request: Request) -> dict:
         auth = request.headers.get("Authorization", "")
         if auth.startswith("Bearer "):
             import PyJWT as jwt_lib
+
             token = auth[7:]
             secret = os.getenv("JWT_SECRET", "default_secret")
             payload = jwt_lib.decode(token, secret, algorithms=["HS256"])
@@ -112,9 +132,16 @@ def _extract_user_from_request(request: Request) -> dict:
 # - FastAPI Middleware API -
 class AuditMiddleware:
     """ASGI 中间件，自动记录 API 调用审计日志"""
+
     def __init__(self, app, skip_paths: list = None):
         self.app = app
-        self.skip_paths = skip_paths or ["/static", "/docs", "/openapi.json", "/redoc", "/"]
+        self.skip_paths = skip_paths or [
+            "/static",
+            "/docs",
+            "/openapi.json",
+            "/redoc",
+            "/",
+        ]
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
@@ -128,30 +155,35 @@ class AuditMiddleware:
 
         start_time = time.time()
         method = scope.get("method", "")
-        
+
         # IP
         client = scope.get("client")
         ip = client[0] if client else "unknown"
-        
+
         # headers
         headers = dict(scope.get("headers", []))
         user_agent = headers.get(b"user-agent", b"").decode("utf-8", errors="ignore")
-        auth_header = headers.get(b"authorization", b"").decode("utf-8", errors="ignore")
-        
+        auth_header = headers.get(b"authorization", b"").decode(
+            "utf-8", errors="ignore"
+        )
+
         user_info = {"user_id": None, "user_email": None}
         if auth_header.startswith("Bearer "):
             try:
                 import PyJWT as jwt_lib
+
                 token = auth_header[7:]
                 secret = os.getenv("JWT_SECRET", "default_secret")
                 payload = jwt_lib.decode(token, secret, algorithms=["HS256"])
-                user_info["user_id"] = str(payload.get("user_id") or payload.get("sub", ""))
+                user_info["user_id"] = str(
+                    payload.get("user_id") or payload.get("sub", "")
+                )
                 user_info["user_email"] = payload.get("email", "")
             except Exception:
                 pass
 
         status_code = 500
-        
+
         async def send_wrapper(message):
             nonlocal status_code
             if message["type"] == "http.response.start":
@@ -257,10 +289,12 @@ async def get_audit_logs(
         offset = (page - 1) * page_size
 
         with _get_conn() as conn:
-            total = conn.execute(f"SELECT COUNT(*) FROM audit_logs {where}", params).fetchone()[0]
+            total = conn.execute(
+                f"SELECT COUNT(*) FROM audit_logs {where}", params
+            ).fetchone()[0]
             rows = conn.execute(
                 f"SELECT * FROM audit_logs {where} ORDER BY timestamp DESC LIMIT ? OFFSET ?",
-                params + [page_size, offset]
+                params + [page_size, offset],
             ).fetchall()
 
         return {
@@ -280,7 +314,9 @@ async def audit_stats():
         with _get_conn() as conn:
             total = conn.execute("SELECT COUNT(*) FROM audit_logs").fetchone()[0]
             today_start = time.time() - 86400
-            today = conn.execute("SELECT COUNT(*) FROM audit_logs WHERE timestamp >= ?", (today_start,)).fetchone()[0]
+            today = conn.execute(
+                "SELECT COUNT(*) FROM audit_logs WHERE timestamp >= ?", (today_start,)
+            ).fetchone()[0]
             top_actions = conn.execute(
                 "SELECT action, COUNT(*) as cnt FROM audit_logs GROUP BY action ORDER BY cnt DESC LIMIT 10"
             ).fetchall()
@@ -303,7 +339,9 @@ async def clean_old_logs(days: int = Query(90, ge=7, le=365)):
     cutoff = time.time() - days * 86400
     try:
         with _get_conn() as conn:
-            result = conn.execute("DELETE FROM audit_logs WHERE timestamp < ?", (cutoff,))
+            result = conn.execute(
+                "DELETE FROM audit_logs WHERE timestamp < ?", (cutoff,)
+            )
             conn.commit()
         return {"deleted_count": result.rowcount, "days": days}
     except Exception as e:

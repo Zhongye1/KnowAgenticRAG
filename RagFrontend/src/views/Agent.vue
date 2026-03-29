@@ -6,8 +6,11 @@
         <div class="agent-header__title">
           <div class="agent-header__icon">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v3M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v3M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+              />
             </svg>
           </div>
           <div>
@@ -17,8 +20,18 @@
         </div>
         <!-- 历史任务入口 -->
         <button class="history-btn" @click="showHistory = !showHistory">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="w-4 h-4"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
           </svg>
           历史任务
         </button>
@@ -27,22 +40,47 @@
           <span class="model-selector-label">🤖 执行模型</span>
           <select v-model="selectedModel" class="model-select-dropdown" @change="onModelChange">
             <optgroup label="🖥️ 本地模型">
-              <option v-for="m in availableModels.filter(m => m.provider === 'ollama')"
-                :key="m.id" :value="m.id" :disabled="!m.available">
+              <option
+                v-for="m in availableModels.filter(m => m.provider === 'ollama')"
+                :key="m.id"
+                :value="m.id"
+                :disabled="!m.available"
+              >
                 {{ m.name }}{{ !m.available ? ' (不可用)' : '' }}
               </option>
             </optgroup>
             <optgroup label="☁️ 云端模型">
-              <option v-for="m in availableModels.filter(m => m.provider !== 'ollama')"
-                :key="m.id" :value="m.id" :disabled="!m.available">
+              <option
+                v-for="m in availableModels.filter(m => m.provider !== 'ollama')"
+                :key="m.id"
+                :value="m.id"
+                :disabled="!m.available"
+              >
                 {{ m.name }}{{ !m.available ? ' (需配置Key)' : '' }}
               </option>
             </optgroup>
           </select>
-          <span :class="['model-status-dot', selectedModelInfo?.provider === 'ollama' ? (ollamaStatus === 'online' ? 'dot--online' : 'dot--offline') : (selectedModelInfo?.available ? 'dot--online' : 'dot--offline')]">
-            {{ selectedModelInfo?.provider === 'ollama'
-              ? (ollamaStatus === 'online' ? '🟢 在线' : '🔴 离线')
-              : (selectedModelInfo?.available ? '☁️ 就绪' : '⚠️ 未配置') }}
+          <span
+            :class="[
+              'model-status-dot',
+              selectedModelInfo?.provider === 'ollama'
+                ? ollamaStatus === 'online'
+                  ? 'dot--online'
+                  : 'dot--offline'
+                : selectedModelInfo?.available
+                  ? 'dot--online'
+                  : 'dot--offline'
+            ]"
+          >
+            {{
+              selectedModelInfo?.provider === 'ollama'
+                ? ollamaStatus === 'online'
+                  ? '🟢 在线'
+                  : '🔴 离线'
+                : selectedModelInfo?.available
+                  ? '☁️ 就绪'
+                  : '⚠️ 未配置'
+            }}
           </span>
         </div>
       </div>
@@ -54,15 +92,18 @@
         <div v-if="showHistory" class="history-panel">
           <div class="history-panel__header">
             <span>历史任务</span>
-            <button @click="showHistory = false" class="close-btn">✕</button>
+            <button class="close-btn" @click="showHistory = false">✕</button>
           </div>
           <div class="history-list">
             <div v-if="taskHistory.length === 0" class="empty-history">
               <p>暂无历史任务</p>
             </div>
-            <div v-for="hist in taskHistory" :key="hist.id"
+            <div
+              v-for="hist in taskHistory"
+              :key="hist.id"
               class="history-item"
-              @click="loadHistoryTask(hist)">
+              @click="loadHistoryTask(hist)"
+            >
               <div class="history-item__title">{{ hist.input }}</div>
               <div class="history-item__meta">
                 <span :class="['status-dot', hist.status]"></span>
@@ -84,8 +125,12 @@
           <div class="example-tasks">
             <p class="example-label">示例任务</p>
             <div class="example-grid">
-              <button v-for="ex in exampleTasks" :key="ex.title"
-                class="example-card" @click="taskInput = ex.prompt">
+              <button
+                v-for="ex in exampleTasks"
+                :key="ex.title"
+                class="example-card"
+                @click="taskInput = ex.prompt"
+              >
                 <span class="example-card__icon">{{ ex.icon }}</span>
                 <div>
                   <div class="example-card__title">{{ ex.title }}</div>
@@ -113,9 +158,19 @@
                   <span class="option-label">使用知识库</span>
                   <t-switch v-model="taskOptions.useKnowledgeBase" size="small" />
                 </label>
-                <label class="option-item" v-if="taskOptions.useKnowledgeBase">
-                  <t-select v-model="taskOptions.selectedKbId" size="small" placeholder="选择知识库" style="width:160px">
-                    <t-option v-for="kb in knowledgeBases" :key="kb.id" :value="kb.id" :label="kb.title" />
+                <label v-if="taskOptions.useKnowledgeBase" class="option-item">
+                  <t-select
+                    v-model="taskOptions.selectedKbId"
+                    size="small"
+                    placeholder="选择知识库"
+                    style="width: 160px"
+                  >
+                    <t-option
+                      v-for="kb in knowledgeBases"
+                      :key="kb.id"
+                      :value="kb.id"
+                      :label="kb.title"
+                    />
                   </t-select>
                 </label>
                 <label class="option-item">
@@ -124,13 +179,24 @@
                   <t-switch v-model="taskOptions.webSearch" size="small" />
                 </label>
               </div>
-              <button
-                class="start-btn"
-                :disabled="!taskInput.trim()"
-                @click="startTask">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/>
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              <button class="start-btn" :disabled="!taskInput.trim()" @click="startTask">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="w-4 h-4"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                  />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 开始执行 <kbd>Ctrl+↵</kbd>
               </button>
@@ -144,8 +210,19 @@
           <div class="task-exec-header">
             <div class="task-exec-info">
               <div :class="['task-status-icon', currentTask?.status || 'running']">
-                <svg v-if="isRunning" class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                <svg
+                  v-if="isRunning"
+                  class="spin-icon"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                  />
                 </svg>
                 <span v-else-if="currentTask?.status === 'completed'">✅</span>
                 <span v-else>❌</span>
@@ -155,7 +232,9 @@
                 <div class="task-exec-meta">
                   {{ isRunning ? '执行中...' : currentTask?.statusText }}
                   <span v-if="currentTask?.duration"> · 耗时 {{ currentTask.duration }}s</span>
-                  <span v-if="currentTask?.model" class="task-model-tag">{{ currentTask.model }}</span>
+                  <span v-if="currentTask?.model" class="task-model-tag">{{
+                    currentTask.model
+                  }}</span>
                 </div>
               </div>
             </div>
@@ -166,13 +245,19 @@
           </div>
 
           <!-- 步骤流程 -->
-          <div class="steps-timeline" v-if="steps.length">
-            <div v-for="(step, idx) in steps" :key="idx"
-              :class="['step-item', step.status]">
-              <div class="step-connector" v-if="idx > 0"></div>
+          <div v-if="steps.length" class="steps-timeline">
+            <div v-for="(step, idx) in steps" :key="idx" :class="['step-item', step.status]">
+              <div v-if="idx > 0" class="step-connector"></div>
               <div class="step-dot">
-                <svg v-if="step.status === 'running'" class="spin-icon w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9"/>
+                <svg
+                  v-if="step.status === 'running'"
+                  class="spin-icon w-3 h-3"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.5"
+                >
+                  <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9" />
                 </svg>
                 <span v-else-if="step.status === 'completed'" class="text-xs">✓</span>
                 <span v-else-if="step.status === 'error'" class="text-xs">✗</span>
@@ -180,7 +265,9 @@
               </div>
               <div class="step-content">
                 <div class="step-header">
-                  <span class="step-type-badge" :data-type="step.type">{{ stepTypeLabel(step.type) }}</span>
+                  <span class="step-type-badge" :data-type="step.type">{{
+                    stepTypeLabel(step.type)
+                  }}</span>
                   <span class="step-name">{{ step.name }}</span>
                 </div>
                 <div v-if="step.detail" class="step-detail">{{ step.detail }}</div>
@@ -197,8 +284,18 @@
               <span>📄 任务结果</span>
               <div class="output-actions">
                 <button class="action-btn" @click="copyOutput">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    class="w-4 h-4"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"
+                    />
                   </svg>
                   复制
                 </button>
@@ -215,115 +312,118 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { marked } from 'marked';
-import DOMPurify from 'dompurify';
-import { MessagePlugin } from 'tdesign-vue-next';
-import axios from 'axios';
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
+import { MessagePlugin } from 'tdesign-vue-next'
+import axios from 'axios'
 
 // ── Types ──────────────────────────────────────────────
 interface TaskStep {
-  name: string;
-  type: 'search' | 'read' | 'write' | 'think' | 'tool';
-  status: 'pending' | 'running' | 'completed' | 'error';
-  detail?: string;
-  result?: string;
+  name: string
+  type: 'search' | 'read' | 'write' | 'think' | 'tool'
+  status: 'pending' | 'running' | 'completed' | 'error'
+  detail?: string
+  result?: string
 }
 
 interface TaskRecord {
-  id: string;
-  input: string;
-  status: 'completed' | 'error' | 'running';
-  statusText: string;
-  time: string;
-  duration?: number;
-  output?: string;
-  model?: string;
+  id: string
+  input: string
+  status: 'completed' | 'error' | 'running'
+  statusText: string
+  time: string
+  duration?: number
+  output?: string
+  model?: string
 }
 
 interface ModelInfo {
-  id: string;
-  name: string;
-  provider: string;
-  available: boolean;
+  id: string
+  name: string
+  provider: string
+  available: boolean
 }
 
 // ── State ──────────────────────────────────────────────
-const taskInput = ref('');
-const isRunning = ref(false);
-const showHistory = ref(false);
-const steps = ref<TaskStep[]>([]);
-const finalOutput = ref('');
-const currentTask = ref<TaskRecord | null>(null);
-const taskHistory = ref<TaskRecord[]>([]);
-const knowledgeBases = ref<{id: string; title: string}[]>([]);
+const taskInput = ref('')
+const isRunning = ref(false)
+const showHistory = ref(false)
+const steps = ref<TaskStep[]>([])
+const finalOutput = ref('')
+const currentTask = ref<TaskRecord | null>(null)
+const taskHistory = ref<TaskRecord[]>([])
+const knowledgeBases = ref<{ id: string; title: string }[]>([])
 
 // ── 模型选择 ───────────────────────────────────────────
-const availableModels = ref<ModelInfo[]>([]);
-const selectedModel = ref('deepseek-chat'); // 默认用云端 DS
-const selectedModelInfo = computed(() => availableModels.value.find(m => m.id === selectedModel.value));
+const availableModels = ref<ModelInfo[]>([])
+const selectedModel = ref('deepseek-chat') // 默认用云端 DS
+const selectedModelInfo = computed(() =>
+  availableModels.value.find(m => m.id === selectedModel.value)
+)
 
 // ── Ollama 状态检测（本地模型时仍需要） ────────────────
-const ollamaStatus = ref<'checking' | 'online' | 'offline'>('checking');
-let ollamaCheckInterval: ReturnType<typeof setInterval> | null = null;
+const ollamaStatus = ref<'checking' | 'online' | 'offline'>('checking')
+let ollamaCheckInterval: ReturnType<typeof setInterval> | null = null
 
 async function checkOllamaStatus() {
   try {
-    let ollamaUrl = 'http://localhost:11434';
+    let ollamaUrl = 'http://localhost:11434'
     try {
-      const cfgRaw = localStorage.getItem('user_model_config') || localStorage.getItem('ollamaSettings');
+      const cfgRaw =
+        localStorage.getItem('user_model_config') || localStorage.getItem('ollamaSettings')
       if (cfgRaw) {
-        const cfg = JSON.parse(cfgRaw);
-        ollamaUrl = cfg.serverUrl || cfg.ollama_base_url || ollamaUrl;
+        const cfg = JSON.parse(cfgRaw)
+        ollamaUrl = cfg.serverUrl || cfg.ollama_base_url || ollamaUrl
       }
     } catch {}
-    const res = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) });
-    ollamaStatus.value = res.ok ? 'online' : 'offline';
+    const res = await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(3000) })
+    ollamaStatus.value = res.ok ? 'online' : 'offline'
   } catch {
-    ollamaStatus.value = 'offline';
+    ollamaStatus.value = 'offline'
   }
 }
 
 // 加载模型列表（从后端 /api/models/list）
 async function loadModels() {
   try {
-    const res = await axios.get<{ models: ModelInfo[] }>('/api/models/list');
+    const res = await axios.get<{ models: ModelInfo[] }>('/api/models/list')
     if (res.data?.models) {
-      availableModels.value = res.data.models;
+      availableModels.value = res.data.models
       // 优先选第一个 available 的云端模型
-      const cloud = res.data.models.find(m => m.provider !== 'ollama' && m.available);
-      const local = res.data.models.find(m => m.provider === 'ollama' && m.available);
-      const saved = localStorage.getItem('agent_selected_model');
+      const cloud = res.data.models.find(m => m.provider !== 'ollama' && m.available)
+      const local = res.data.models.find(m => m.provider === 'ollama' && m.available)
+      const saved = localStorage.getItem('agent_selected_model')
       if (saved && res.data.models.find(m => m.id === saved && m.available)) {
-        selectedModel.value = saved;
+        selectedModel.value = saved
       } else if (cloud) {
-        selectedModel.value = cloud.id;
+        selectedModel.value = cloud.id
       } else if (local) {
-        selectedModel.value = local.id;
+        selectedModel.value = local.id
       }
     }
   } catch {
     // 离线时使用默认模型列表
     availableModels.value = [
       { id: 'qwen2:0.5b', name: 'Qwen2 0.5B（本地）', provider: 'ollama', available: true },
-      { id: 'deepseek-chat', name: 'DeepSeek Chat（云端）', provider: 'deepseek', available: false },
-    ];
+      { id: 'deepseek-chat', name: 'DeepSeek Chat（云端）', provider: 'deepseek', available: false }
+    ]
   }
 }
 
 function onModelChange() {
-  localStorage.setItem('agent_selected_model', selectedModel.value);
+  localStorage.setItem('agent_selected_model', selectedModel.value)
 }
 
 const taskOptions = ref({
   useKnowledgeBase: false,
   selectedKbId: '',
-  webSearch: false,
-});
+  webSearch: false
+})
 
-let stopSignal = false;
-let taskStartTime = 0;
-let taskAbortController: AbortController | null = null;
+let stopSignal = false
+let taskStartTime = 0
+let taskAbortController: AbortController | null = null
 
 // ── 示例任务 ───────────────────────────────────────────
 const exampleTasks = [
@@ -331,27 +431,27 @@ const exampleTasks = [
     icon: '📊',
     title: '行业分析报告',
     desc: '生成结构化分析报告',
-    prompt: '写一份2026年AI大模型行业分析报告，包含市场规模、主要玩家、技术趋势和未来展望四个部分',
+    prompt: '写一份2026年AI大模型行业分析报告，包含市场规模、主要玩家、技术趋势和未来展望四个部分'
   },
   {
     icon: '📝',
     title: '知识库摘要',
     desc: '提取知识库核心要点',
-    prompt: '对当前知识库中的所有文档生成结构化摘要，按主题分类，提炼核心观点',
+    prompt: '对当前知识库中的所有文档生成结构化摘要，按主题分类，提炼核心观点'
   },
   {
     icon: '🔍',
     title: '对比分析',
     desc: '多维度对比研究',
-    prompt: '对比分析 GPT-4、Claude 3 和 Gemini Pro 的性能差异、适用场景和定价策略',
+    prompt: '对比分析 GPT-4、Claude 3 和 Gemini Pro 的性能差异、适用场景和定价策略'
   },
   {
     icon: '📋',
     title: '会议纪要',
     desc: '整理会议记录',
-    prompt: '根据提供的会议记录，生成正式会议纪要，包含议题、讨论内容、决议和待办事项',
-  },
-];
+    prompt: '根据提供的会议记录，生成正式会议纪要，包含议题、讨论内容、决议和待办事项'
+  }
+]
 
 // ── 步骤类型标签 ───────────────────────────────────────
 const stepTypeLabel = (type: string) => {
@@ -360,45 +460,49 @@ const stepTypeLabel = (type: string) => {
     read: '📖 精读',
     write: '✍️ 写作',
     think: '🧠 思考',
-    tool: '🔧 工具',
-  };
-  return labels[type] || type;
-};
+    tool: '🔧 工具'
+  }
+  return labels[type] || type
+}
 
 // ── 渲染 Markdown 输出 ─────────────────────────────────
 const renderedOutput = computed(() => {
-  if (!finalOutput.value) return '';
+  if (!finalOutput.value) return ''
   try {
-    return DOMPurify.sanitize(marked(finalOutput.value) as string);
+    return DOMPurify.sanitize(marked(finalOutput.value) as string)
   } catch {
-    return finalOutput.value;
+    return finalOutput.value
   }
-});
+})
 
 // ── 加载知识库列表 ─────────────────────────────────────
 const loadKnowledgeBases = async () => {
   try {
-    const res = await axios.get<{code: number; data: {id:string; title:string}[]}>('/api/get-knowledge-item/');
+    const res = await axios.get<{ code: number; data: { id: string; title: string }[] }>(
+      '/api/get-knowledge-item/'
+    )
     if (res.data.code === 200) {
-      knowledgeBases.value = res.data.data;
+      knowledgeBases.value = res.data.data
     }
-  } catch { /* ignore */ }
-};
+  } catch {
+    /* ignore */
+  }
+}
 
 // ── 任务执行（云端/本地模型均走 /api/agent/task SSE） ──
 const startTask = async () => {
-  if (!taskInput.value.trim() || isRunning.value) return;
+  if (!taskInput.value.trim() || isRunning.value) return
 
-  stopSignal = false;
-  isRunning.value = true;
-  steps.value = [];
-  finalOutput.value = '';
-  taskStartTime = Date.now();
-  taskAbortController = new AbortController();
+  stopSignal = false
+  isRunning.value = true
+  steps.value = []
+  finalOutput.value = ''
+  taskStartTime = Date.now()
+  taskAbortController = new AbortController()
 
-  const query = taskInput.value;
-  const model = selectedModel.value;
-  const modelInfo = selectedModelInfo.value;
+  const query = taskInput.value
+  const model = selectedModel.value
+  const modelInfo = selectedModelInfo.value
 
   const taskRecord: TaskRecord = {
     id: Date.now().toString(),
@@ -406,138 +510,153 @@ const startTask = async () => {
     status: 'running',
     statusText: '执行中',
     time: new Date().toLocaleTimeString(),
-    model,
-  };
-  currentTask.value = taskRecord;
+    model
+  }
+  currentTask.value = taskRecord
 
   // 初始化步骤（服务端会动态更新）
   steps.value = [
-    { name: '理解任务目标', type: 'think', status: 'pending', detail: `${query.slice(0, 60)}${query.length > 60 ? '...' : ''}` },
-    { name: taskOptions.value.useKnowledgeBase ? '检索知识库' : '规划执行流程', type: taskOptions.value.useKnowledgeBase ? 'search' : 'think', status: 'pending', detail: taskOptions.value.useKnowledgeBase ? `知识库 ${taskOptions.value.selectedKbId}` : '基于模型知识推理' },
-    { name: '生成结构化草稿', type: 'write', status: 'pending', detail: `使用 ${modelInfo?.name || model}` },
-    { name: '润色与优化', type: 'write', status: 'pending', detail: '流式生成输出' },
-  ];
+    {
+      name: '理解任务目标',
+      type: 'think',
+      status: 'pending',
+      detail: `${query.slice(0, 60)}${query.length > 60 ? '...' : ''}`
+    },
+    {
+      name: taskOptions.value.useKnowledgeBase ? '检索知识库' : '规划执行流程',
+      type: taskOptions.value.useKnowledgeBase ? 'search' : 'think',
+      status: 'pending',
+      detail: taskOptions.value.useKnowledgeBase
+        ? `知识库 ${taskOptions.value.selectedKbId}`
+        : '基于模型知识推理'
+    },
+    {
+      name: '生成结构化草稿',
+      type: 'write',
+      status: 'pending',
+      detail: `使用 ${modelInfo?.name || model}`
+    },
+    { name: '润色与优化', type: 'write', status: 'pending', detail: '流式生成输出' }
+  ]
 
   try {
     // 判断 provider：云端 / 本地均走统一的 /api/agent/task 端点
-    const isCloud = modelInfo?.provider !== 'ollama';
+    const isCloud = modelInfo?.provider !== 'ollama'
 
     if (isCloud || true) {
       // 使用新的统一 /api/agent/task 端点（云端+本地都支持）
-      await runViaAgentTaskAPI(query, model, taskRecord);
+      await runViaAgentTaskAPI(query, model, taskRecord)
     }
-
   } catch (e: any) {
     if (!stopSignal) {
-      taskRecord.status = 'error';
-      taskRecord.statusText = '执行失败';
-      MessagePlugin.error(`任务执行失败：${e.message || '未知错误'}`);
+      taskRecord.status = 'error'
+      taskRecord.statusText = '执行失败'
+      MessagePlugin.error(`任务执行失败：${e.message || '未知错误'}`)
     }
   } finally {
-    isRunning.value = false;
-    currentTask.value = { ...taskRecord };
-    taskAbortController = null;
+    isRunning.value = false
+    currentTask.value = { ...taskRecord }
+    taskAbortController = null
   }
-};
+}
 
 // ── 通过 /api/agent/task SSE 运行任务（云端+本地统一） ─
 async function runViaAgentTaskAPI(query: string, model: string, taskRecord: TaskRecord) {
   const payload = {
     query,
     model,
-    kb_id: taskOptions.value.useKnowledgeBase && taskOptions.value.selectedKbId
-      ? taskOptions.value.selectedKbId
-      : null,
+    kb_id:
+      taskOptions.value.useKnowledgeBase && taskOptions.value.selectedKbId
+        ? taskOptions.value.selectedKbId
+        : null,
     temperature: 0.7,
-    max_tokens: 4096,
-  };
+    max_tokens: 4096
+  }
 
   const resp = await fetch('/api/agent/task', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-    signal: taskAbortController?.signal,
-  });
+    signal: taskAbortController?.signal
+  })
 
   if (!resp.ok) {
-    throw new Error(`后端返回 ${resp.status}`);
+    throw new Error(`后端返回 ${resp.status}`)
   }
 
-  const reader = resp.body!.getReader();
-  const decoder = new TextDecoder();
-  let contentBuffer = '';
+  const reader = resp.body!.getReader()
+  const decoder = new TextDecoder()
+  let contentBuffer = ''
 
   // 步骤序号映射（backend index → front steps[]）
-  const stepMap: Record<number, number> = { 0: 0, 1: 1, 2: 2, 3: 3 };
+  const stepMap: Record<number, number> = { 0: 0, 1: 1, 2: 2, 3: 3 }
 
   while (true) {
-    const { done, value } = await reader.read();
-    if (done || stopSignal) break;
+    const { done, value } = await reader.read()
+    if (done || stopSignal) break
 
-    const text = decoder.decode(value, { stream: true });
-    const lines = text.split('\n');
+    const text = decoder.decode(value, { stream: true })
+    const lines = text.split('\n')
 
     for (const line of lines) {
-      if (!line.startsWith('data: ')) continue;
-      const raw = line.slice(6).trim();
-      if (!raw) continue;
+      if (!line.startsWith('data: ')) continue
+      const raw = line.slice(6).trim()
+      if (!raw) continue
 
       try {
-        const evt = JSON.parse(raw);
+        const evt = JSON.parse(raw)
 
         if (evt.event === 'step') {
           // 步骤开始
-          const idx = stepMap[evt.index] ?? evt.index;
+          const idx = stepMap[evt.index] ?? evt.index
           if (idx < steps.value.length) {
             // 把之前步骤标完成
             for (let i = 0; i < idx; i++) {
-              if (steps.value[i].status !== 'completed') steps.value[i].status = 'completed';
+              if (steps.value[i].status !== 'completed') steps.value[i].status = 'completed'
             }
-            steps.value[idx].status = 'running';
-            if (evt.name) steps.value[idx].name = evt.name;
-            if (evt.detail) steps.value[idx].detail = evt.detail;
+            steps.value[idx].status = 'running'
+            if (evt.name) steps.value[idx].name = evt.name
+            if (evt.detail) steps.value[idx].detail = evt.detail
           }
-
         } else if (evt.event === 'step_result') {
-          const idx = stepMap[evt.index] ?? evt.index;
+          const idx = stepMap[evt.index] ?? evt.index
           if (idx < steps.value.length && evt.detail) {
-            steps.value[idx].result = evt.detail;
+            steps.value[idx].result = evt.detail
           }
-
         } else if (evt.content !== undefined) {
           // 内容片段（来自 _stream_xxx 的 {content, done} 格式）
           if (evt.content && !evt.done) {
-            contentBuffer += evt.content;
-            finalOutput.value = contentBuffer;
+            contentBuffer += evt.content
+            finalOutput.value = contentBuffer
             // 标记第3步（生成草稿）为running
-            if (steps.value[2]?.status !== 'completed') steps.value[2].status = 'running';
+            if (steps.value[2]?.status !== 'completed') steps.value[2].status = 'running'
           }
           if (evt.done) {
             // 流结束
           }
-
         } else if (evt.event === 'done') {
           // 全部完成
-          steps.value.forEach(s => { if (s.status !== 'completed') s.status = 'completed'; });
-          taskRecord.status = 'completed';
-          taskRecord.statusText = '已完成';
-          taskRecord.duration = Math.round((Date.now() - taskStartTime) / 1000);
-          taskRecord.output = finalOutput.value;
-          taskHistory.value.unshift({ ...taskRecord });
-          saveHistory();
-
+          steps.value.forEach(s => {
+            if (s.status !== 'completed') s.status = 'completed'
+          })
+          taskRecord.status = 'completed'
+          taskRecord.statusText = '已完成'
+          taskRecord.duration = Math.round((Date.now() - taskStartTime) / 1000)
+          taskRecord.output = finalOutput.value
+          taskHistory.value.unshift({ ...taskRecord })
+          saveHistory()
         } else if (evt.event === 'error') {
-          steps.value.forEach(s => { if (s.status === 'running') s.status = 'error'; });
-          MessagePlugin.error(`模型错误：${evt.message}`);
-          taskRecord.status = 'error';
-          taskRecord.statusText = '执行失败';
-
+          steps.value.forEach(s => {
+            if (s.status === 'running') s.status = 'error'
+          })
+          MessagePlugin.error(`模型错误：${evt.message}`)
+          taskRecord.status = 'error'
+          taskRecord.statusText = '执行失败'
         } else if (evt.error) {
-          MessagePlugin.error(`模型错误：${evt.error}`);
-          taskRecord.status = 'error';
-          taskRecord.statusText = '执行失败';
+          MessagePlugin.error(`模型错误：${evt.error}`)
+          taskRecord.status = 'error'
+          taskRecord.statusText = '执行失败'
         }
-
       } catch {
         // 非 JSON 行（如日志），忽略
       }
@@ -546,94 +665,98 @@ async function runViaAgentTaskAPI(query: string, model: string, taskRecord: Task
 
   // 若流结束但没收到 done 事件（如连接中断），设为完成
   if (taskRecord.status === 'running' && finalOutput.value) {
-    steps.value.forEach(s => { if (s.status === 'running' || s.status === 'pending') s.status = 'completed'; });
-    taskRecord.status = 'completed';
-    taskRecord.statusText = '已完成';
-    taskRecord.duration = Math.round((Date.now() - taskStartTime) / 1000);
-    taskRecord.output = finalOutput.value;
-    taskHistory.value.unshift({ ...taskRecord });
-    saveHistory();
+    steps.value.forEach(s => {
+      if (s.status === 'running' || s.status === 'pending') s.status = 'completed'
+    })
+    taskRecord.status = 'completed'
+    taskRecord.statusText = '已完成'
+    taskRecord.duration = Math.round((Date.now() - taskStartTime) / 1000)
+    taskRecord.output = finalOutput.value
+    taskHistory.value.unshift({ ...taskRecord })
+    saveHistory()
   }
 }
 
 // ── 辅助方法 ───────────────────────────────────────────
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
 const stopTask = () => {
-  stopSignal = true;
-  taskAbortController?.abort();
-  isRunning.value = false;
+  stopSignal = true
+  taskAbortController?.abort()
+  isRunning.value = false
   if (currentTask.value) {
-    currentTask.value.status = 'error';
-    currentTask.value.statusText = '已停止';
+    currentTask.value.status = 'error'
+    currentTask.value.statusText = '已停止'
   }
   steps.value.forEach(s => {
-    if (s.status === 'running') s.status = 'pending';
-  });
-};
+    if (s.status === 'running') s.status = 'pending'
+  })
+}
 
 const resetTask = () => {
-  taskInput.value = '';
-  steps.value = [];
-  finalOutput.value = '';
-  currentTask.value = null;
-  isRunning.value = false;
-  stopSignal = false;
-};
+  taskInput.value = ''
+  steps.value = []
+  finalOutput.value = ''
+  currentTask.value = null
+  isRunning.value = false
+  stopSignal = false
+}
 
 const copyOutput = () => {
   navigator.clipboard.writeText(finalOutput.value).then(() => {
-    MessagePlugin.success('已复制到剪贴板');
-  });
-};
+    MessagePlugin.success('已复制到剪贴板')
+  })
+}
 
 const downloadOutput = (format: 'md' | 'txt') => {
-  const ext = format === 'md' ? '.md' : '.txt';
-  const blob = new Blob([finalOutput.value], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `任务结果_${Date.now()}${ext}`;
-  a.click();
-  URL.revokeObjectURL(url);
-  MessagePlugin.success('下载成功');
-};
+  const ext = format === 'md' ? '.md' : '.txt'
+  const blob = new Blob([finalOutput.value], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `任务结果_${Date.now()}${ext}`
+  a.click()
+  URL.revokeObjectURL(url)
+  MessagePlugin.success('下载成功')
+}
 
 const loadHistoryTask = (hist: TaskRecord) => {
-  currentTask.value = hist;
-  finalOutput.value = hist.output || '';
-  steps.value = [];
-  showHistory.value = false;
-};
+  currentTask.value = hist
+  finalOutput.value = hist.output || ''
+  steps.value = []
+  showHistory.value = false
+}
 
 const clearHistory = () => {
-  taskHistory.value = [];
-  localStorage.removeItem('agent_task_history');
-};
+  taskHistory.value = []
+  localStorage.removeItem('agent_task_history')
+}
 
 const saveHistory = () => {
-  const saved = taskHistory.value.slice(0, 20);
-  localStorage.setItem('agent_task_history', JSON.stringify(saved));
-};
+  const saved = taskHistory.value.slice(0, 20)
+  localStorage.setItem('agent_task_history', JSON.stringify(saved))
+}
 
 const loadHistory = () => {
   try {
-    const raw = localStorage.getItem('agent_task_history');
-    if (raw) taskHistory.value = JSON.parse(raw);
-  } catch { /* ignore */ }
-};
+    const raw = localStorage.getItem('agent_task_history')
+    if (raw) taskHistory.value = JSON.parse(raw)
+  } catch {
+    /* ignore */
+  }
+}
 
 onMounted(() => {
-  loadKnowledgeBases();
-  loadHistory();
-  loadModels();
-  checkOllamaStatus();
-  ollamaCheckInterval = setInterval(checkOllamaStatus, 10000);
-});
+  loadKnowledgeBases()
+  loadHistory()
+  loadModels()
+  checkOllamaStatus()
+  ollamaCheckInterval = setInterval(checkOllamaStatus, 10000)
+})
 
 onUnmounted(() => {
-  if (ollamaCheckInterval) clearInterval(ollamaCheckInterval);
-});
+  if (ollamaCheckInterval) clearInterval(ollamaCheckInterval)
+})
 </script>
 
 <style scoped>
@@ -673,7 +796,10 @@ onUnmounted(() => {
   justify-content: center;
   color: white;
 }
-.agent-header__icon svg { width: 20px; height: 20px; }
+.agent-header__icon svg {
+  width: 20px;
+  height: 20px;
+}
 .agent-header__title h1 {
   font-size: 18px;
   font-weight: 700;
@@ -709,19 +835,33 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.15s;
 }
-.history-btn:hover { background: #f3f4f6; }
+.history-btn:hover {
+  background: #f3f4f6;
+}
 
 /* AI 状态指示器 */
-.agent-ai-status { display: flex; align-items: center; }
+.agent-ai-status {
+  display: flex;
+  align-items: center;
+}
 .ai-badge {
   font-size: 12px;
   padding: 4px 10px;
   border-radius: 20px;
   font-weight: 500;
 }
-.ai-badge--checking { background: #fef3c7; color: #92400e; }
-.ai-badge--online { background: #dcfce7; color: #166534; }
-.ai-badge--offline { background: #fee2e2; color: #991b1b; }
+.ai-badge--checking {
+  background: #fef3c7;
+  color: #92400e;
+}
+.ai-badge--online {
+  background: #dcfce7;
+  color: #166534;
+}
+.ai-badge--offline {
+  background: #fee2e2;
+  color: #991b1b;
+}
 
 /* 模型选择器 */
 .agent-model-selector {
@@ -747,7 +887,9 @@ onUnmounted(() => {
   transition: border-color 0.15s;
 }
 .model-select-dropdown:hover,
-.model-select-dropdown:focus { border-color: #4f7ef8; }
+.model-select-dropdown:focus {
+  border-color: #4f7ef8;
+}
 .model-status-dot {
   font-size: 11px;
   padding: 3px 8px;
@@ -755,8 +897,14 @@ onUnmounted(() => {
   white-space: nowrap;
   font-weight: 500;
 }
-.dot--online { background: #dcfce7; color: #166534; }
-.dot--offline { background: #fee2e2; color: #991b1b; }
+.dot--online {
+  background: #dcfce7;
+  color: #166534;
+}
+.dot--offline {
+  background: #fee2e2;
+  color: #991b1b;
+}
 
 /* Content Layout */
 .agent-content {
@@ -809,7 +957,9 @@ onUnmounted(() => {
   margin-bottom: 4px;
   transition: background 0.15s;
 }
-.history-item:hover { background: #f3f4f6; }
+.history-item:hover {
+  background: #f3f4f6;
+}
 .history-item__title {
   font-size: 13px;
   color: #374151;
@@ -830,9 +980,15 @@ onUnmounted(() => {
   height: 6px;
   border-radius: 50%;
 }
-.status-dot.completed { background: #10b981; }
-.status-dot.error { background: #ef4444; }
-.status-dot.running { background: #f59e0b; }
+.status-dot.completed {
+  background: #10b981;
+}
+.status-dot.error {
+  background: #ef4444;
+}
+.status-dot.running {
+  background: #f59e0b;
+}
 .clear-history-btn {
   padding: 10px;
   text-align: center;
@@ -887,9 +1043,11 @@ onUnmounted(() => {
 }
 .example-card:hover {
   border-color: #4f7ef8;
-  box-shadow: 0 2px 8px rgba(79,126,248,0.12);
+  box-shadow: 0 2px 8px rgba(79, 126, 248, 0.12);
 }
-.example-card__icon { font-size: 24px; }
+.example-card__icon {
+  font-size: 24px;
+}
 .example-card__title {
   font-size: 13px;
   font-weight: 600;
@@ -907,7 +1065,7 @@ onUnmounted(() => {
   border: 1px solid #e5e7eb;
   border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
 }
 .task-textarea {
   width: 100%;
@@ -942,8 +1100,12 @@ onUnmounted(() => {
   color: #4b5563;
   cursor: pointer;
 }
-.option-icon { font-size: 14px; }
-.option-label { white-space: nowrap; }
+.option-icon {
+  font-size: 14px;
+}
+.option-label {
+  white-space: nowrap;
+}
 .start-btn {
   display: flex;
   align-items: center;
@@ -964,7 +1126,7 @@ onUnmounted(() => {
 }
 .start-btn kbd {
   font-size: 10px;
-  background: rgba(255,255,255,0.2);
+  background: rgba(255, 255, 255, 0.2);
   padding: 1px 5px;
   border-radius: 4px;
 }
@@ -1000,9 +1162,15 @@ onUnmounted(() => {
   font-size: 18px;
   flex-shrink: 0;
 }
-.task-status-icon.running { background: #eff6ff; }
-.task-status-icon.completed { background: #f0fdf4; }
-.task-status-icon.error { background: #fef2f2; }
+.task-status-icon.running {
+  background: #eff6ff;
+}
+.task-status-icon.completed {
+  background: #f0fdf4;
+}
+.task-status-icon.error {
+  background: #fef2f2;
+}
 .task-exec-title {
   font-size: 14px;
   font-weight: 600;
@@ -1029,7 +1197,8 @@ onUnmounted(() => {
   gap: 8px;
   flex-shrink: 0;
 }
-.stop-btn, .new-task-btn {
+.stop-btn,
+.new-task-btn {
   padding: 6px 14px;
   border-radius: 8px;
   font-size: 12px;
@@ -1038,10 +1207,22 @@ onUnmounted(() => {
   transition: all 0.15s;
   border: 1px solid;
 }
-.stop-btn { border-color: #fca5a5; background: #fef2f2; color: #dc2626; }
-.stop-btn:hover { background: #fee2e2; }
-.new-task-btn { border-color: #e5e7eb; background: white; color: #374151; }
-.new-task-btn:hover { background: #f3f4f6; }
+.stop-btn {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #dc2626;
+}
+.stop-btn:hover {
+  background: #fee2e2;
+}
+.new-task-btn {
+  border-color: #e5e7eb;
+  background: white;
+  color: #374151;
+}
+.new-task-btn:hover {
+  background: #f3f4f6;
+}
 
 /* Steps Timeline */
 .steps-timeline {
@@ -1058,7 +1239,9 @@ onUnmounted(() => {
   position: relative;
   padding-bottom: 16px;
 }
-.step-item:last-child { padding-bottom: 0; }
+.step-item:last-child {
+  padding-bottom: 0;
+}
 .step-connector {
   position: absolute;
   left: 13px;
@@ -1079,12 +1262,36 @@ onUnmounted(() => {
   font-weight: 700;
   transition: all 0.3s;
 }
-.step-item.pending .step-dot { background: #f3f4f6; color: #9ca3af; border: 2px solid #e5e7eb; }
-.step-item.running .step-dot { background: #eff6ff; color: #3b82f6; border: 2px solid #93c5fd; }
-.step-item.completed .step-dot { background: #f0fdf4; color: #16a34a; border: 2px solid #86efac; }
-.step-item.error .step-dot { background: #fef2f2; color: #dc2626; border: 2px solid #fca5a5; }
-.step-content { flex: 1; padding-top: 4px; }
-.step-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.step-item.pending .step-dot {
+  background: #f3f4f6;
+  color: #9ca3af;
+  border: 2px solid #e5e7eb;
+}
+.step-item.running .step-dot {
+  background: #eff6ff;
+  color: #3b82f6;
+  border: 2px solid #93c5fd;
+}
+.step-item.completed .step-dot {
+  background: #f0fdf4;
+  color: #16a34a;
+  border: 2px solid #86efac;
+}
+.step-item.error .step-dot {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 2px solid #fca5a5;
+}
+.step-content {
+  flex: 1;
+  padding-top: 4px;
+}
+.step-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
 .step-type-badge {
   font-size: 11px;
   padding: 1px 8px;
@@ -1093,9 +1300,20 @@ onUnmounted(() => {
   color: #6b7280;
   white-space: nowrap;
 }
-.step-name { font-size: 13px; font-weight: 600; color: #1f2937; }
-.step-detail { font-size: 12px; color: #9ca3af; }
-.step-result { font-size: 12px; color: #374151; margin-top: 4px; }
+.step-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+}
+.step-detail {
+  font-size: 12px;
+  color: #9ca3af;
+}
+.step-result {
+  font-size: 12px;
+  color: #374151;
+  margin-top: 4px;
+}
 .step-result pre {
   background: #f3f4f6;
   padding: 8px 12px;
@@ -1122,7 +1340,10 @@ onUnmounted(() => {
   font-weight: 600;
   color: #1f2937;
 }
-.output-actions { display: flex; gap: 8px; }
+.output-actions {
+  display: flex;
+  gap: 8px;
+}
 .action-btn {
   display: flex;
   align-items: center;
@@ -1136,7 +1357,9 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.15s;
 }
-.action-btn:hover { background: #f3f4f6; }
+.action-btn:hover {
+  background: #f3f4f6;
+}
 .final-output__body {
   padding: 20px;
   font-size: 14px;
@@ -1145,11 +1368,27 @@ onUnmounted(() => {
   max-height: 60vh;
   overflow-y: auto;
 }
-.final-output__body :deep(h2) { font-size: 17px; font-weight: 700; margin: 16px 0 8px; }
-.final-output__body :deep(h3) { font-size: 15px; font-weight: 600; margin: 12px 0 6px; }
-.final-output__body :deep(p) { margin: 6px 0; }
-.final-output__body :deep(ul), .final-output__body :deep(ol) { padding-left: 20px; margin: 6px 0; }
-.final-output__body :deep(li) { margin: 3px 0; }
+.final-output__body :deep(h2) {
+  font-size: 17px;
+  font-weight: 700;
+  margin: 16px 0 8px;
+}
+.final-output__body :deep(h3) {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 12px 0 6px;
+}
+.final-output__body :deep(p) {
+  margin: 6px 0;
+}
+.final-output__body :deep(ul),
+.final-output__body :deep(ol) {
+  padding-left: 20px;
+  margin: 6px 0;
+}
+.final-output__body :deep(li) {
+  margin: 3px 0;
+}
 .final-output__body :deep(blockquote) {
   border-left: 3px solid #4f7ef8;
   padding: 8px 16px;
@@ -1175,15 +1414,23 @@ onUnmounted(() => {
   color: inherit;
   padding: 0;
 }
-.final-output__body :deep(hr) { border: none; border-top: 1px solid #e5e7eb; margin: 16px 0; }
+.final-output__body :deep(hr) {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 16px 0;
+}
 
 /* Spin animation */
 .spin-icon {
   animation: spin 1s linear infinite;
 }
 @keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Transitions */

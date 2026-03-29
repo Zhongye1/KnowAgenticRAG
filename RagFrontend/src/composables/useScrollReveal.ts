@@ -14,10 +14,10 @@
 import { onMounted, onUnmounted } from 'vue'
 
 interface ScrollRevealOptions {
-  rootMargin?: string   // 触发偏移，默认 "-60px"
-  threshold?: number    // 可见比例，默认 0.12
-  once?: boolean        // 只触发一次，默认 true
-  selector?: string     // 目标选择器，默认 ".reveal, .reveal-left, .reveal-right, .reveal-scale"
+  rootMargin?: string // 触发偏移，默认 "-60px"
+  threshold?: number // 可见比例，默认 0.12
+  once?: boolean // 只触发一次，默认 true
+  selector?: string // 目标选择器，默认 ".reveal, .reveal-left, .reveal-right, .reveal-scale"
 }
 
 let observer: IntersectionObserver | null = null
@@ -25,15 +25,15 @@ let observer: IntersectionObserver | null = null
 export function useScrollReveal(options: ScrollRevealOptions = {}) {
   const {
     rootMargin = '-60px 0px',
-    threshold  = 0.12,
-    once       = true,
-    selector   = '.reveal, .reveal-left, .reveal-right, .reveal-scale',
+    threshold = 0.12,
+    once = true,
+    selector = '.reveal, .reveal-left, .reveal-right, .reveal-scale'
   } = options
 
   const setup = () => {
     observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
+      entries => {
+        entries.forEach(entry => {
           if (entry.isIntersecting) {
             entry.target.classList.add('reveal--visible')
             if (once) observer?.unobserve(entry.target)
@@ -45,10 +45,10 @@ export function useScrollReveal(options: ScrollRevealOptions = {}) {
       { rootMargin, threshold }
     )
 
-    document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+    document.querySelectorAll<HTMLElement>(selector).forEach(el => {
       // 如果是 reveal-group，改为观察子元素
       if (el.classList.contains('reveal-group')) {
-        el.querySelectorAll<HTMLElement>('*').forEach((child) => {
+        el.querySelectorAll<HTMLElement>('*').forEach(child => {
           child.classList.add('reveal')
           observer?.observe(child)
         })
@@ -75,16 +75,16 @@ export function useScrollReveal(options: ScrollRevealOptions = {}) {
 export function initScrollReveal(options: ScrollRevealOptions = {}) {
   const {
     rootMargin = '-50px 0px',
-    threshold  = 0.10,
-    once       = true,
-    selector   = '.reveal, .reveal-left, .reveal-right, .reveal-scale',
+    threshold = 0.1,
+    once = true,
+    selector = '.reveal, .reveal-left, .reveal-right, .reveal-scale'
   } = options
 
   if (typeof window === 'undefined') return
 
   const obs = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
+    entries => {
+      entries.forEach(entry => {
         if (entry.isIntersecting) {
           entry.target.classList.add('reveal--visible')
           if (once) obs.unobserve(entry.target)
@@ -96,7 +96,7 @@ export function initScrollReveal(options: ScrollRevealOptions = {}) {
     { rootMargin, threshold }
   )
 
-  document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+  document.querySelectorAll<HTMLElement>(selector).forEach(el => {
     obs.observe(el)
   })
 
@@ -124,7 +124,7 @@ export function useRipple() {
     const rect = target.getBoundingClientRect()
     const size = Math.max(rect.width, rect.height) * 2
     const x = e.clientX - rect.left - size / 2
-    const y = e.clientY - rect.top  - size / 2
+    const y = e.clientY - rect.top - size / 2
 
     const wave = document.createElement('span')
     wave.className = 'ripple-wave'

@@ -1,16 +1,14 @@
 <template>
   <div class="error-container">
     <div class="error-content">
-      <img 
-        src="https://picx.zhimg.com/80/v2-f58285d1aa6ef461cc4a5edd8f251407_720w.webp" 
-        alt="404错误" 
+      <img
+        src="https://picx.zhimg.com/80/v2-f58285d1aa6ef461cc4a5edd8f251407_720w.webp"
+        alt="404错误"
         class="error-image"
       />
       <h1 class="error-title">404 not found</h1>
       <p class="error-message">抱歉，您访问的页面不存在或已被移除</p>
-      <router-link to="/" class="return-button">
-        返回首页
-      </router-link>
+      <router-link to="/" class="return-button"> 返回首页 </router-link>
     </div>
   </div>
 </template>

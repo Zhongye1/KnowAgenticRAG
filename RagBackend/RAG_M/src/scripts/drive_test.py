@@ -14,6 +14,7 @@ from dotenv import load_dotenv
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 def main():
     """
     Main function to test the Google Drive loader functionality with recursive folder processing.
@@ -21,10 +22,12 @@ def main():
     load_dotenv()
     try:
         loader = GoogleDriveLoader()
-        folder_id = os.getenv('GOOGLE_DRIVE_FOLDER_ID')
+        folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
 
         if not folder_id:
-            raise ValueError("Google Drive folder ID is not set in the environment variables.")
+            raise ValueError(
+                "Google Drive folder ID is not set in the environment variables."
+            )
 
         logger.info("Starting recursive download...")
         downloaded_files = loader.download_all_files_recursively(folder_id)
@@ -33,6 +36,7 @@ def main():
             logger.info("- %s", file_path)
     except Exception as e:
         logger.error("Test failed: %s", e)
+
 
 if __name__ == "__main__":
     main()

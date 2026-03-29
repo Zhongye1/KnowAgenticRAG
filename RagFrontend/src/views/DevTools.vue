@@ -5,9 +5,15 @@
       <div class="devtools-login-card">
         <div class="devtools-logo">
           <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" class="w-10 h-10">
-            <rect width="40" height="40" rx="10" fill="#1a1a2e"/>
-            <path d="M10 14h6l4 12 4-12h6" stroke="#4f7ef8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="30" cy="28" r="3" fill="#8b5cf6"/>
+            <rect width="40" height="40" rx="10" fill="#1a1a2e" />
+            <path
+              d="M10 14h6l4 12 4-12h6"
+              stroke="#4f7ef8"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle cx="30" cy="28" r="3" fill="#8b5cf6" />
           </svg>
           <span class="devtools-title">RAG-F DevTools</span>
         </div>
@@ -25,7 +31,7 @@
           <p v-if="authError" class="auth-error">{{ authError }}</p>
         </div>
 
-        <button class="auth-btn" @click="authenticate" :disabled="authLoading">
+        <button class="auth-btn" :disabled="authLoading" @click="authenticate">
           <span v-if="authLoading">验证中...</span>
           <span v-else>进入开发者模式</span>
         </button>
@@ -44,9 +50,15 @@
       <header class="devtools-header">
         <div class="devtools-header-left">
           <svg viewBox="0 0 40 40" fill="none" class="w-7 h-7">
-            <rect width="40" height="40" rx="8" fill="#1a1a2e"/>
-            <path d="M10 14h6l4 12 4-12h6" stroke="#4f7ef8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <circle cx="30" cy="28" r="3" fill="#8b5cf6"/>
+            <rect width="40" height="40" rx="8" fill="#1a1a2e" />
+            <path
+              d="M10 14h6l4 12 4-12h6"
+              stroke="#4f7ef8"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+            <circle cx="30" cy="28" r="3" fill="#8b5cf6" />
           </svg>
           <span class="font-bold text-white ml-2">RAG-F DevTools</span>
           <span class="dev-badge">DEV</span>
@@ -60,16 +72,18 @@
 
       <!-- 标签页 -->
       <div class="devtools-tabs">
-        <button v-for="tab in tabs" :key="tab.key"
+        <button
+          v-for="tab in tabs"
+          :key="tab.key"
           :class="['dev-tab', { 'dev-tab--active': activeTab === tab.key }]"
-          @click="activeTab = tab.key">
+          @click="activeTab = tab.key"
+        >
           {{ tab.label }}
         </button>
       </div>
 
       <!-- 内容区 -->
       <div class="devtools-content">
-
         <!-- ① 系统概览 -->
         <div v-if="activeTab === 'overview'" class="tab-panel">
           <h2>系统概览</h2>
@@ -83,7 +97,9 @@
             <div class="info-card">
               <div class="info-label">API Docs</div>
               <div class="info-value">
-                <a href="http://localhost:8000/docs" target="_blank" class="dev-link">localhost:8000/docs ↗</a>
+                <a href="http://localhost:8000/docs" target="_blank" class="dev-link"
+                  >localhost:8000/docs ↗</a
+                >
               </div>
             </div>
             <div class="info-card">
@@ -125,14 +141,33 @@
                 <option>DELETE</option>
                 <option>PUT</option>
               </select>
-              <input v-model="apiUrl" class="dev-input flex-1" placeholder="/api/..." @keyup.enter="callApi" />
-              <button class="auth-btn" style="width:auto;padding:0 16px;" @click="callApi" :disabled="apiLoading">
+              <input
+                v-model="apiUrl"
+                class="dev-input flex-1"
+                placeholder="/api/..."
+                @keyup.enter="callApi"
+              />
+              <button
+                class="auth-btn"
+                style="width: auto; padding: 0 16px"
+                :disabled="apiLoading"
+                @click="callApi"
+              >
                 {{ apiLoading ? '请求中...' : '发送' }}
               </button>
             </div>
-            <textarea v-if="apiMethod !== 'GET'" v-model="apiBody" class="dev-textarea" rows="4" placeholder='{"key":"value"}'></textarea>
+            <textarea
+              v-if="apiMethod !== 'GET'"
+              v-model="apiBody"
+              class="dev-textarea"
+              rows="4"
+              placeholder='{"key":"value"}'
+            ></textarea>
             <div v-if="apiResponse" class="api-response">
-              <div class="response-status" :class="apiStatus < 300 ? 'text-green-400' : 'text-red-400'">
+              <div
+                class="response-status"
+                :class="apiStatus < 300 ? 'text-green-400' : 'text-red-400'"
+              >
                 HTTP {{ apiStatus }}
               </div>
               <pre class="response-body">{{ apiResponse }}</pre>
@@ -142,8 +177,7 @@
           <!-- 快捷 API 按钮 -->
           <h3 class="mt-4 mb-2">快捷接口</h3>
           <div class="quick-apis">
-            <button class="quick-btn" v-for="qa in quickApis" :key="qa.path"
-              @click="quickCall(qa)">
+            <button v-for="qa in quickApis" :key="qa.path" class="quick-btn" @click="quickCall(qa)">
               <span class="qa-method">{{ qa.method }}</span> {{ qa.path }}
             </button>
           </div>
@@ -153,19 +187,33 @@
         <div v-else-if="activeTab === 'audit'" class="tab-panel">
           <div class="flex justify-between items-center mb-4">
             <h2>审计日志</h2>
-            <button class="auth-btn" style="width:auto;padding:4px 16px;font-size:12px;" @click="loadAuditLogs">刷新</button>
+            <button
+              class="auth-btn"
+              style="width: auto; padding: 4px 16px; font-size: 12px"
+              @click="loadAuditLogs"
+            >
+              刷新
+            </button>
           </div>
-          <div v-if="auditLogs.length === 0" class="text-gray-500 text-center py-8">暂无审计记录</div>
+          <div v-if="auditLogs.length === 0" class="text-gray-500 text-center py-8">
+            暂无审计记录
+          </div>
           <div v-else class="audit-table">
             <div class="audit-header">
-              <span>时间</span><span>用户</span><span>操作</span><span>路径</span><span>状态</span><span>耗时</span>
+              <span>时间</span><span>用户</span><span>操作</span><span>路径</span><span>状态</span
+              ><span>耗时</span>
             </div>
             <div v-for="log in auditLogs" :key="log.id" class="audit-row">
               <span class="text-xs">{{ formatTs(log.timestamp) }}</span>
               <span class="text-xs">{{ log.user_email || '-' }}</span>
               <span class="audit-action">{{ log.action }}</span>
               <span class="text-xs font-mono truncate">{{ log.request_path }}</span>
-              <span :class="['text-xs font-bold', log.status_code < 300 ? 'text-green-400' : 'text-red-400']">
+              <span
+                :class="[
+                  'text-xs font-bold',
+                  log.status_code < 300 ? 'text-green-400' : 'text-red-400'
+                ]"
+              >
                 {{ log.status_code }}
               </span>
               <span class="text-xs">{{ log.duration_ms?.toFixed(0) }}ms</span>
@@ -178,7 +226,7 @@
           <h2>WorkBuddy AI 助手接入</h2>
           <p class="text-gray-400 text-sm mb-4">
             通过下方对话框直接与 WorkBuddy AI 交互，可以修改项目代码、分析问题、执行开发任务。
-            <br/>需要本地运行 WorkBuddy 服务（默认端口 3000）。
+            <br />需要本地运行 WorkBuddy 服务（默认端口 3000）。
           </p>
 
           <div class="wb-status-bar">
@@ -186,10 +234,12 @@
             <span :class="wbOnline ? 'text-green-400' : 'text-yellow-400'">
               {{ wbOnline ? '✅ 已连接' : '⚠️ 未检测到（请先启动 WorkBuddy）' }}
             </span>
-            <button class="ml-4 text-xs text-blue-400 underline" @click="checkWbStatus">重新检测</button>
+            <button class="ml-4 text-xs text-blue-400 underline" @click="checkWbStatus">
+              重新检测
+            </button>
           </div>
 
-          <div class="wb-setup" v-if="!wbOnline">
+          <div v-if="!wbOnline" class="wb-setup">
             <h4 class="text-white font-medium mt-4 mb-2">启动 WorkBuddy 本地服务</h4>
             <div class="code-block">
               <p class="text-gray-400 text-xs mb-1">方法一：通过 WorkBuddy 桌面应用（推荐）</p>
@@ -205,21 +255,33 @@
           <div class="wb-config mt-4">
             <label class="text-gray-300 text-sm">WorkBuddy API Key（可选）</label>
             <div class="flex gap-2 mt-1">
-              <input v-model="wbApiKey" type="password" class="dev-input flex-1" placeholder="wb_****" />
-              <button class="auth-btn" style="width:auto;padding:0 16px;" @click="saveWbKey">保存</button>
+              <input
+                v-model="wbApiKey"
+                type="password"
+                class="dev-input flex-1"
+                placeholder="wb_****"
+              />
+              <button class="auth-btn" style="width: auto; padding: 0 16px" @click="saveWbKey">
+                保存
+              </button>
             </div>
           </div>
 
           <!-- 对话界面 -->
           <div class="wb-chat mt-4">
-            <div class="wb-messages" ref="wbMsgsEl">
+            <div ref="wbMsgsEl" class="wb-messages">
               <div v-if="wbMessages.length === 0" class="text-center text-gray-500 py-8">
                 <p>👋 WorkBuddy 开发助手已就绪</p>
                 <p class="text-xs mt-1">可直接提问关于本项目的任何开发问题</p>
               </div>
-              <div v-for="(msg, i) in wbMessages" :key="i"
-                :class="['wb-msg', msg.role === 'user' ? 'wb-msg--user' : 'wb-msg--ai']">
-                <div class="wb-msg-role">{{ msg.role === 'user' ? '👤 开发者' : '🤖 WorkBuddy' }}</div>
+              <div
+                v-for="(msg, i) in wbMessages"
+                :key="i"
+                :class="['wb-msg', msg.role === 'user' ? 'wb-msg--user' : 'wb-msg--ai']"
+              >
+                <div class="wb-msg-role">
+                  {{ msg.role === 'user' ? '👤 开发者' : '🤖 WorkBuddy' }}
+                </div>
                 <div class="wb-msg-content">{{ msg.content }}</div>
               </div>
               <div v-if="wbLoading" class="wb-msg wb-msg--ai">
@@ -228,15 +290,32 @@
               </div>
             </div>
             <div class="wb-input-area">
-              <textarea v-model="wbInput" class="dev-textarea" rows="2"
+              <textarea
+                v-model="wbInput"
+                class="dev-textarea"
+                rows="2"
                 placeholder="向 WorkBuddy 提问，例如：帮我分析 Chat.vue 的 UI 布局问题..."
-                @keydown.ctrl.enter="sendWbMessage">
+                @keydown.ctrl.enter="sendWbMessage"
+              >
               </textarea>
               <div class="flex justify-between items-center mt-2">
                 <span class="text-xs text-gray-500">Ctrl+Enter 发送</span>
                 <div class="flex gap-2">
-                  <button class="quick-btn" style="font-size:11px;padding:4px 10px;" @click="wbInput = '帮我检查 Chat.vue 的布局问题'">示例问题</button>
-                  <button class="auth-btn" style="width:auto;padding:4px 16px;" @click="sendWbMessage" :disabled="wbLoading">发送</button>
+                  <button
+                    class="quick-btn"
+                    style="font-size: 11px; padding: 4px 10px"
+                    @click="wbInput = '帮我检查 Chat.vue 的布局问题'"
+                  >
+                    示例问题
+                  </button>
+                  <button
+                    class="auth-btn"
+                    style="width: auto; padding: 4px 16px"
+                    :disabled="wbLoading"
+                    @click="sendWbMessage"
+                  >
+                    发送
+                  </button>
                 </div>
               </div>
             </div>
@@ -248,7 +327,7 @@
           <h2>环境配置</h2>
           <p class="text-gray-400 text-sm mb-4">以下为前端运行时可见的配置（不含敏感信息）</p>
           <div class="info-grid">
-            <div class="info-card" v-for="(val, key) in envVars" :key="key">
+            <div v-for="(val, key) in envVars" :key="key" class="info-card">
               <div class="info-label">{{ key }}</div>
               <div class="info-value font-mono text-xs">{{ val }}</div>
             </div>
@@ -257,13 +336,14 @@
           <h3 class="mt-6 mb-3">后端 .env 配置指南</h3>
           <div class="code-block">
             <p class="text-gray-400 text-xs mb-2">路径：KnowledgeRAG-GZHU/RagBackend/.env</p>
-            <pre>SMTP_USER=your@163.com     # 反馈邮件发件箱
+            <pre>
+SMTP_USER=your@163.com     # 反馈邮件发件箱
 SMTP_PASS=your_auth_code   # 163授权码
 DEV_KEY=ragf-dev-2026      # DevTools访问密钥（建议修改）
-OSS_BUCKET=your-bucket     # 阿里云OSS存储桶名</pre>
+OSS_BUCKET=your-bucket     # 阿里云OSS存储桶名</pre
+            >
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -278,23 +358,30 @@ import { MessagePlugin } from 'tdesign-vue-next'
 const route = useRoute()
 
 // ─── 身份验证 ───────────────────────────────────────────────
-const DEV_KEY = 'ragf-dev-2026'  // 默认密钥，生产环境应改为环境变量
+const DEV_KEY = 'ragf-dev-2026' // 默认密钥，生产环境应改为环境变量
 const authed = ref(false)
 const devKey = ref('')
 const authError = ref('')
 const authLoading = ref(false)
 
 function authenticate() {
-  if (!devKey.value) { authError.value = '请输入开发者密钥'; return }
+  if (!devKey.value) {
+    authError.value = '请输入开发者密钥'
+    return
+  }
   authLoading.value = true
   setTimeout(() => {
     const storedKey = localStorage.getItem('devKey') || DEV_KEY
-    if (devKey.value === DEV_KEY || devKey.value === storedKey || devKey.value === 'ragf-dev-2026') {
+    if (
+      devKey.value === DEV_KEY ||
+      devKey.value === storedKey ||
+      devKey.value === 'ragf-dev-2026'
+    ) {
       authed.value = true
       authError.value = ''
       // 持久化：存储密钥（加密存储），下次无需重新输入
       localStorage.setItem('devtools_authed', '1')
-      localStorage.setItem('devtools_key_hash', btoa(devKey.value))  // 简单混淆存储
+      localStorage.setItem('devtools_key_hash', btoa(devKey.value)) // 简单混淆存储
       loadAll()
     } else {
       authError.value = '密钥错误，请重试'
@@ -305,17 +392,17 @@ function authenticate() {
 
 // ─── 标签页 ──────────────────────────────────────────────────
 const tabs = [
-  { key: 'overview',   label: '📊 系统概览' },
-  { key: 'api',        label: '🔌 API测试' },
-  { key: 'audit',      label: '📋 审计日志' },
-  { key: 'workbuddy',  label: '🤖 WorkBuddy' },
-  { key: 'env',        label: '⚙️ 环境配置' },
+  { key: 'overview', label: '📊 系统概览' },
+  { key: 'api', label: '🔌 API测试' },
+  { key: 'audit', label: '📋 审计日志' },
+  { key: 'workbuddy', label: '🤖 WorkBuddy' },
+  { key: 'env', label: '⚙️ 环境配置' }
 ]
 const activeTab = ref('overview')
 
 // ─── 系统概览 ─────────────────────────────────────────────────
 const backendOnline = ref(false)
-const backendStatus = computed(() => backendOnline.value ? '✅ localhost:8000' : '❌ 未连接')
+const backendStatus = computed(() => (backendOnline.value ? '✅ localhost:8000' : '❌ 未连接'))
 const currentUser = ref('')
 
 const lsData = reactive<Record<string, string>>({})
@@ -342,14 +429,21 @@ async function checkBackend() {
     try {
       await axios.get('/api/get-knowledge-item/', { timeout: 3000 })
       backendOnline.value = true
-    } catch { backendOnline.value = false }
+    } catch {
+      backendOnline.value = false
+    }
   }
   const jwt = localStorage.getItem('jwt')
   if (jwt) {
     try {
-      const res = await axios.get('/api/users/me', { headers: { Authorization: `Bearer ${jwt}` }, timeout: 3000 })
+      const res = await axios.get('/api/users/me', {
+        headers: { Authorization: `Bearer ${jwt}` },
+        timeout: 3000
+      })
       currentUser.value = res.data?.email || res.data?.data?.email || ''
-    } catch { currentUser.value = '' }
+    } catch {
+      currentUser.value = ''
+    }
   }
 }
 
@@ -362,12 +456,12 @@ const apiStatus = ref(0)
 const apiLoading = ref(false)
 
 const quickApis = [
-  { method: 'GET',  path: '/api/get-knowledge-item/' },
-  { method: 'GET',  path: '/api/users/me' },
-  { method: 'GET',  path: '/api/audit/logs?page=1&page_size=20' },
-  { method: 'GET',  path: '/api/audit/stats' },
-  { method: 'GET',  path: '/api/chat/chat-documents' },
-  { method: 'POST', path: '/api/feedback/submit' },
+  { method: 'GET', path: '/api/get-knowledge-item/' },
+  { method: 'GET', path: '/api/users/me' },
+  { method: 'GET', path: '/api/audit/logs?page=1&page_size=20' },
+  { method: 'GET', path: '/api/audit/stats' },
+  { method: 'GET', path: '/api/chat/chat-documents' },
+  { method: 'POST', path: '/api/feedback/submit' }
 ]
 
 async function callApi() {
@@ -379,7 +473,11 @@ async function callApi() {
     if (apiMethod.value !== 'GET') headers['Content-Type'] = 'application/json'
     const config: any = { method: apiMethod.value, url: apiUrl.value, headers }
     if (apiBody.value && apiMethod.value !== 'GET') {
-      try { config.data = JSON.parse(apiBody.value) } catch { config.data = apiBody.value }
+      try {
+        config.data = JSON.parse(apiBody.value)
+      } catch {
+        config.data = apiBody.value
+      }
     }
     const res = await axios(config)
     apiStatus.value = res.status
@@ -405,14 +503,22 @@ async function loadAuditLogs() {
   try {
     const jwt = localStorage.getItem('jwt') || ''
     const res = await axios.get('/api/audit/logs?page=1&page_size=50', {
-      headers: { Authorization: `Bearer ${jwt}` },
+      headers: { Authorization: `Bearer ${jwt}` }
     })
     auditLogs.value = res.data?.logs || []
-  } catch { auditLogs.value = [] }
+  } catch {
+    auditLogs.value = []
+  }
 }
 
 function formatTs(ts: number) {
-  return new Date(ts * 1000).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  return new Date(ts * 1000).toLocaleString('zh-CN', {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
 }
 
 // ─── WorkBuddy 接入（上下文感知版）──────────────────────────────
@@ -447,7 +553,7 @@ const frontendFileTree = [
   'src/i18n/index.ts',
   'src/router/index.ts',
   'src/store/index.ts',
-  'src/utils/request.ts',
+  'src/utils/request.ts'
 ]
 const backendFileTree = [
   'main.py',
@@ -464,7 +570,7 @@ const backendFileTree = [
   'integrations/obsidian_sync.py',
   'integrations/feishu_bot.py',
   'feedback/feedback_router.py',
-  'agent_tools/web_search_tool.py',
+  'agent_tools/web_search_tool.py'
 ]
 
 // ── 收集运行时上下文 ──────────────────────────────────────────
@@ -482,11 +588,14 @@ async function collectProjectContext(): Promise<string> {
   lines.push('\n=== 后端运行状态 ===')
   lines.push(`后端(8000)：${backendOnline.value ? '✅ 在线' : '❌ 离线'}`)
   lines.push(`WorkBuddy(3000)：${wbOnline.value ? '✅ 在线' : '❌ 离线'}`)
-  const ollamaUrl = JSON.parse(localStorage.getItem('ollamaSettings') || '{}').serverUrl || 'http://localhost:11434'
+  const ollamaUrl =
+    JSON.parse(localStorage.getItem('ollamaSettings') || '{}').serverUrl || 'http://localhost:11434'
   try {
     await fetch(`${ollamaUrl}/api/tags`, { signal: AbortSignal.timeout(1000) })
     lines.push(`Ollama(${ollamaUrl})：✅ 在线`)
-  } catch { lines.push(`Ollama(${ollamaUrl})：❌ 离线`) }
+  } catch {
+    lines.push(`Ollama(${ollamaUrl})：❌ 离线`)
+  }
 
   // 3. 近期API调用记录（从apiResponse取最后一次）
   if (apiResponse.value) {
@@ -498,7 +607,16 @@ async function collectProjectContext(): Promise<string> {
 
   // 4. localStorage 关键配置
   lines.push('\n=== 关键配置(localStorage) ===')
-  const importantKeys = ['jwt', 'selected_model', 'locale', 'fontSize', 'theme', 'ollamaSettings', 'newLayoutEnabled', 'devtools_authed']
+  const importantKeys = [
+    'jwt',
+    'selected_model',
+    'locale',
+    'fontSize',
+    'theme',
+    'ollamaSettings',
+    'newLayoutEnabled',
+    'devtools_authed'
+  ]
   for (const k of importantKeys) {
     const v = localStorage.getItem(k)
     if (v !== null) {
@@ -531,7 +649,9 @@ async function collectProjectContext(): Promise<string> {
 
   // 9. 已知的 Bug / 最近修复
   lines.push('\n=== 最近修复记录 ===')
-  lines.push('  commit c9693f8: 9项修复 - Chat布局/RAG开关/字体/语言/语音/反馈邮件/探索功能/DevTools')
+  lines.push(
+    '  commit c9693f8: 9项修复 - Chat布局/RAG开关/字体/语言/语音/反馈邮件/探索功能/DevTools'
+  )
   lines.push('  已知问题: Docker Hub 拉取镜像需翻墙，本地启动方式已验证可用')
 
   return lines.join('\n')
@@ -541,7 +661,9 @@ async function checkWbStatus() {
   try {
     await axios.get('http://localhost:3000/api/health', { timeout: 2000 })
     wbOnline.value = true
-  } catch { wbOnline.value = false }
+  } catch {
+    wbOnline.value = false
+  }
 }
 
 function saveWbKey() {
@@ -559,7 +681,9 @@ async function initWbContext() {
     wbMessages.value.push({
       role: 'system',
       isSystem: true,
-      content: `✅ 项目上下文已加载（${ctx.split('\n').length} 行）\n\n我已读取项目文件树、后端状态、配置信息和最近操作记录。你现在可以直接问我关于这个项目的任何开发问题，我会结合项目实际情况回答。`,
+      content: `✅ 项目上下文已加载（${
+        ctx.split('\n').length
+      } 行）\n\n我已读取项目文件树、后端状态、配置信息和最近操作记录。你现在可以直接问我关于这个项目的任何开发问题，我会结合项目实际情况回答。`
     })
   }
 }
@@ -575,7 +699,7 @@ async function sendWbMessage() {
   wbMsgsEl.value?.scrollTo({ top: wbMsgsEl.value.scrollHeight, behavior: 'smooth' })
 
   // 构建包含项目上下文的系统提示
-  const systemContext = wbContextSummary.value || await collectProjectContext()
+  const systemContext = wbContextSummary.value || (await collectProjectContext())
   const systemPrompt = `你是 RAG-F 项目的首席开发助手，拥有对项目所有代码和运行状态的完整感知。
 
 以下是当前项目的实时快照，请基于这些信息精准回答开发问题：
@@ -592,15 +716,19 @@ ${systemContext}
   try {
     // 优先尝试 WorkBuddy 本地服务
     if (wbOnline.value) {
-      const res = await axios.post('http://localhost:3000/api/chat', {
-        message: userMsg,
-        systemPrompt,
-        project: 'KnowledgeRAG-GZHU',
-        context: systemContext,
-      }, {
-        headers: { 'X-API-Key': wbApiKey.value || '', 'Content-Type': 'application/json' },
-        timeout: 60000,
-      })
+      const res = await axios.post(
+        'http://localhost:3000/api/chat',
+        {
+          message: userMsg,
+          systemPrompt,
+          project: 'KnowledgeRAG-GZHU',
+          context: systemContext
+        },
+        {
+          headers: { 'X-API-Key': wbApiKey.value || '', 'Content-Type': 'application/json' },
+          timeout: 60000
+        }
+      )
       const reply = res.data?.response || res.data?.message || res.data?.content || '收到'
       wbMessages.value.push({ role: 'assistant', content: reply })
       return
@@ -609,14 +737,16 @@ ${systemContext}
   } catch {
     // 回退到 Ollama 本地模型（注入完整系统提示）
     try {
-      const serverUrl = JSON.parse(localStorage.getItem('ollamaSettings') || '{}').serverUrl || 'http://localhost:11434'
+      const serverUrl =
+        JSON.parse(localStorage.getItem('ollamaSettings') || '{}').serverUrl ||
+        'http://localhost:11434'
       const model = localStorage.getItem('selected_model') || 'qwen2:0.5b'
       const fullPrompt = `${systemPrompt}\n\n开发者问题：${userMsg}\n\n请基于上面的项目信息回答：`
       const res = await fetch(`${serverUrl}/api/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model, prompt: fullPrompt, stream: false }),
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(60000)
       })
       if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`)
       const data = await res.json()
@@ -630,7 +760,7 @@ ${systemContext}
 - 启动 WorkBuddy：打开客户端 → 设置 → 启用本地 API
 - 或启动 Ollama：\`ollama serve\`，然后 \`ollama pull qwen2:0.5b\`
 
-您的问题「${userMsg}」已记录，连接成功后请重新发送。`,
+您的问题「${userMsg}」已记录，连接成功后请重新发送。`
       })
     }
   } finally {
@@ -647,17 +777,18 @@ const wbQuickQuestions = [
   '如何启动完整的本地开发环境？',
   '最近修改了哪些文件？有什么需要注意的？',
   '前端路由结构是否合理？有优化建议吗？',
-  '审计日志为什么没有记录数据？',
+  '审计日志为什么没有记录数据？'
 ]
 
 // ─── 环境变量 ────────────────────────────────────────────────
 const envVars = reactive<Record<string, string>>({
-  'VITE_APP_VERSION': import.meta.env.VITE_APP_VERSION || '未配置',
-  'MODE': import.meta.env.MODE || 'development',
-  'DEV': String(import.meta.env.DEV),
-  'BASE_URL': import.meta.env.BASE_URL || '/',
-  'API_BASE': '/api',
-  'OLLAMA_URL': JSON.parse(localStorage.getItem('ollamaSettings') || '{}').serverUrl || 'http://localhost:11434',
+  VITE_APP_VERSION: import.meta.env.VITE_APP_VERSION || '未配置',
+  MODE: import.meta.env.MODE || 'development',
+  DEV: String(import.meta.env.DEV),
+  BASE_URL: import.meta.env.BASE_URL || '/',
+  API_BASE: '/api',
+  OLLAMA_URL:
+    JSON.parse(localStorage.getItem('ollamaSettings') || '{}').serverUrl || 'http://localhost:11434'
 })
 
 // ─── 初始化 ───────────────────────────────────────────────────
@@ -673,14 +804,18 @@ onMounted(() => {
   if (localStorage.getItem('devtools_authed') === '1') {
     // 自动填入上次的密钥
     if (keyHash) {
-      try { devKey.value = atob(keyHash) } catch { devKey.value = DEV_KEY }
+      try {
+        devKey.value = atob(keyHash)
+      } catch {
+        devKey.value = DEV_KEY
+      }
     }
     authed.value = true
     loadAll()
   }
 })
 
-watch(activeTab, (tab) => {
+watch(activeTab, tab => {
   if (tab === 'audit') loadAuditLogs()
   if (tab === 'overview') loadLs()
 })
@@ -780,8 +915,13 @@ watch(activeTab, (tab) => {
   transition: background 0.2s;
 }
 
-.auth-btn:hover:not(:disabled) { background: #3b6de6; }
-.auth-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.auth-btn:hover:not(:disabled) {
+  background: #3b6de6;
+}
+.auth-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 .default-key-hint {
   margin-top: 16px;
@@ -847,7 +987,8 @@ watch(activeTab, (tab) => {
   margin-left: 8px;
 }
 
-.logout-btn, .back-home-btn {
+.logout-btn,
+.back-home-btn {
   background: #21262d;
   border: 1px solid #30363d;
   color: #e6edf3;
@@ -859,7 +1000,10 @@ watch(activeTab, (tab) => {
   transition: background 0.15s;
 }
 
-.logout-btn:hover, .back-home-btn:hover { background: #30363d; }
+.logout-btn:hover,
+.back-home-btn:hover {
+  background: #30363d;
+}
 
 .devtools-tabs {
   display: flex;
@@ -882,7 +1026,9 @@ watch(activeTab, (tab) => {
   white-space: nowrap;
 }
 
-.dev-tab:hover { color: #e6edf3; }
+.dev-tab:hover {
+  color: #e6edf3;
+}
 .dev-tab--active {
   color: #58a6ff;
   border-bottom-color: #58a6ff;
@@ -921,8 +1067,15 @@ watch(activeTab, (tab) => {
   padding: 12px 16px;
 }
 
-.info-label { font-size: 11px; color: #8b949e; margin-bottom: 4px; }
-.info-value { font-size: 13px; color: #e6edf3; }
+.info-label {
+  font-size: 11px;
+  color: #8b949e;
+  margin-bottom: 4px;
+}
+.info-value {
+  font-size: 13px;
+  color: #e6edf3;
+}
 
 .ls-table {
   background: #161b22;
@@ -943,8 +1096,15 @@ watch(activeTab, (tab) => {
   font-size: 11px;
 }
 
-.ls-key { color: #79c0ff; }
-.ls-val { color: #8b949e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-key {
+  color: #79c0ff;
+}
+.ls-val {
+  color: #8b949e;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ls-del {
   background: transparent;
   border: none;
@@ -955,9 +1115,16 @@ watch(activeTab, (tab) => {
   border-radius: 4px;
   transition: background 0.1s;
 }
-.ls-del:hover { background: rgba(248,81,73,0.1); }
+.ls-del:hover {
+  background: rgba(248, 81, 73, 0.1);
+}
 
-.api-tester { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
+.api-tester {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 16px;
+}
 
 .dev-select {
   background: #0d1117;
@@ -981,11 +1148,30 @@ watch(activeTab, (tab) => {
   font-family: inherit;
 }
 
-.api-response { margin-top: 12px; background: #0d1117; border-radius: 6px; padding: 10px; }
-.response-status { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
-.response-body { font-size: 11px; color: #8b949e; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+.api-response {
+  margin-top: 12px;
+  background: #0d1117;
+  border-radius: 6px;
+  padding: 10px;
+}
+.response-status {
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+.response-body {
+  font-size: 11px;
+  color: #8b949e;
+  white-space: pre-wrap;
+  max-height: 300px;
+  overflow-y: auto;
+}
 
-.quick-apis { display: flex; flex-wrap: wrap; gap: 8px; }
+.quick-apis {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .quick-btn {
   background: #21262d;
   border: 1px solid #30363d;
@@ -996,10 +1182,22 @@ watch(activeTab, (tab) => {
   cursor: pointer;
   transition: all 0.15s;
 }
-.quick-btn:hover { background: #30363d; color: #e6edf3; }
-.qa-method { color: #79c0ff; font-weight: 700; margin-right: 4px; }
+.quick-btn:hover {
+  background: #30363d;
+  color: #e6edf3;
+}
+.qa-method {
+  color: #79c0ff;
+  font-weight: 700;
+  margin-right: 4px;
+}
 
-.audit-table { background: #161b22; border: 1px solid #30363d; border-radius: 8px; overflow: hidden; }
+.audit-table {
+  background: #161b22;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  overflow: hidden;
+}
 .audit-header {
   display: grid;
   grid-template-columns: 120px 140px 80px 1fr 60px 60px;
@@ -1039,7 +1237,9 @@ watch(activeTab, (tab) => {
   gap: 8px;
 }
 
-.wb-config { max-width: 500px; }
+.wb-config {
+  max-width: 500px;
+}
 
 .wb-chat {
   background: #161b22;
@@ -1057,9 +1257,15 @@ watch(activeTab, (tab) => {
   gap: 12px;
 }
 
-.wb-msg { max-width: 85%; }
-.wb-msg--user { align-self: flex-end; }
-.wb-msg--ai { align-self: flex-start; }
+.wb-msg {
+  max-width: 85%;
+}
+.wb-msg--user {
+  align-self: flex-end;
+}
+.wb-msg--ai {
+  align-self: flex-start;
+}
 
 .wb-msg-role {
   font-size: 10px;
@@ -1083,9 +1289,13 @@ watch(activeTab, (tab) => {
   color: #bee3f8;
 }
 
-.wb-input-area { padding: 12px; border-top: 1px solid #30363d; }
+.wb-input-area {
+  padding: 12px;
+  border-top: 1px solid #30363d;
+}
 
-.wb-setup, .code-block pre {
+.wb-setup,
+.code-block pre {
   font-family: 'SF Mono', monospace;
   font-size: 11px;
   color: #79c0ff;
@@ -1098,5 +1308,9 @@ watch(activeTab, (tab) => {
   padding: 10px 14px;
 }
 
-.dev-link { color: #58a6ff; text-decoration: underline; font-size: 12px; }
+.dev-link {
+  color: #58a6ff;
+  text-decoration: underline;
+  font-size: 12px;
+}
 </style>

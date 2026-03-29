@@ -1,6 +1,7 @@
 """
 检索段落相似度可视化 + 人工纠错召回模块
 """
+
 import os
 import json
 import sqlite3
@@ -68,11 +69,18 @@ class CorrectionSubmit(BaseModel):
 @router.post("/log")
 def log_retrieval(req: RetrievalLog):
     conn = get_db()
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO retrieval_logs (session_id, question, strategy, retrieved)
         VALUES (?,?,?,?)
-    """, (req.session_id, req.question, req.strategy,
-          json.dumps(req.retrieved, ensure_ascii=False)))
+    """,
+        (
+            req.session_id,
+            req.question,
+            req.strategy,
+            json.dumps(req.retrieved, ensure_ascii=False),
+        ),
+    )
     log_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
     conn.commit()
     conn.close()
@@ -98,27 +106,31 @@ def visualize_retrieval(log_id: int):
     viz_data = []
     for r in retrieved:
         norm_score = round((r.get("score", 0) - min_s) / range_s * 100, 1)
-        viz_data.append({
-            "rank": r.get("rank", 0),
-            "doc_id": r.get("doc_id", ""),
-            "raw_score": r.get("score", 0),
-            "normalized_score": norm_score,
-            "content_preview": r.get("content", "")[:150],
-            "bar_width": f"{norm_score}%",
-            "color": _score_to_color(norm_score)
-        })
+        viz_data.append(
+            {
+                "rank": r.get("rank", 0),
+                "doc_id": r.get("doc_id", ""),
+                "raw_score": r.get("score", 0),
+                "normalized_score": norm_score,
+                "content_preview": r.get("content", "")[:150],
+                "bar_width": f"{norm_score}%",
+                "color": _score_to_color(norm_score),
+            }
+        )
     return {
         "log_id": log_id,
         "question": row["question"],
         "strategy": row["strategy"],
-        "items": viz_data
+        "items": viz_data,
     }
 
 
 def _score_to_color(score: float) -> str:
     """分数 → 颜色（绿高分 → 黄中分 → 红低分）"""
-    if score >= 70: return "#4caf50"
-    if score >= 40: return "#ff9800"
+    if score >= 70:
+        return "#4caf50"
+    if score >= 40:
+        return "#ff9800"
     return "#f44336"
 
 
@@ -126,13 +138,23 @@ def _score_to_color(score: float) -> str:
 def submit_correction(req: CorrectionSubmit):
     """用户提交人工纠错"""
     conn = get_db()
-    conn.execute("""
+    conn.execute(
+        """
         INSERT INTO retrieval_corrections
         (log_id, question, correct_doc_id, correct_content,
          incorrect_doc_id, user_id, note)
         VALUES (?,?,?,?,?,?,?)
-    """, (req.log_id, req.question, req.correct_doc_id, req.correct_content,
-          req.incorrect_doc_id, req.user_id, req.note))
+    """,
+        (
+            req.log_id,
+            req.question,
+            req.correct_doc_id,
+            req.correct_content,
+            req.incorrect_doc_id,
+            req.user_id,
+            req.note,
+        ),
+    )
     conn.commit()
     conn.close()
     return {"status": "correction_recorded"}
@@ -142,8 +164,11 @@ def submit_correction(req: CorrectionSubmit):
 def list_corrections(limit: int = 50):
     """查看所有人工纠错记录（用于后续模型优化）"""
     conn = get_db()
-    rows = conn.execute("""
+    rows = conn.execute(
+        """
         SELECT * FROM retrieval_corrections ORDER BY created_at DESC LIMIT ?
-    """, (limit,)).fetchall()
+    """,
+        (limit,),
+    ).fetchall()
     conn.close()
     return [dict(r) for r in rows]

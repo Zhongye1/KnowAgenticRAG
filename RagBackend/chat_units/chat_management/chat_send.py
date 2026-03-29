@@ -10,8 +10,8 @@ chat_send.py — 对话消息发送接口（多模型统一路由版）
   - 否则按 model_id 在 _MODEL_CATALOG 中查找 provider
   - 未匹配 → 仍走 Ollama（兼容旧行为）
 """
+
 import os
-import json
 import logging
 import sys
 from pathlib import Path
@@ -32,7 +32,7 @@ DEFAULT_MODEL = os.getenv("MODEL", "qwen2:0.5b")
 
 
 class ChatMessage(BaseModel):
-    role: str          # "user" or "assistant"
+    role: str  # "user" or "assistant"
     content: str
 
 
@@ -71,6 +71,7 @@ def _resolve_model(raw_model: str) -> tuple[str, str]:
     # _MODEL_CATALOG provider
     try:
         from multi_model.model_router import _MODEL_CATALOG
+
         for m in _MODEL_CATALOG:
             if m["id"] == raw_model:
                 return raw_model, m.get("provider", "ollama")
@@ -80,7 +81,9 @@ def _resolve_model(raw_model: str) -> tuple[str, str]:
     return raw_model, "ollama"
 
 
-async def _call_cloud_model(model_id: str, provider: str, messages: list, timeout: int = 60) -> str:
+async def _call_cloud_model(
+    model_id: str, provider: str, messages: list, timeout: int = 60
+) -> str:
     """
     调用云端模型（复用 model_router 的流式函数，收集完整回复）。
     """
@@ -96,12 +99,14 @@ async def _call_cloud_model(model_id: str, provider: str, messages: list, timeou
 
     stream_map = {
         "deepseek": _stream_deepseek,
-        "openai":   _stream_openai,
-        "hunyuan":  _stream_hunyuan,
+        "openai": _stream_openai,
+        "hunyuan": _stream_hunyuan,
     }
     stream_fn = stream_map.get(provider)
     if not stream_fn:
-        raise HTTPException(status_code=400, detail=f"不支持的云端 provider: {provider}")
+        raise HTTPException(
+            status_code=400, detail=f"不支持的云端 provider: {provider}"
+        )
 
     try:
         reply = await _collect_stream(
@@ -157,7 +162,9 @@ async def send_message(req: SendMessageRequest):
     )
 
     try:
-        logger.info(f"[chat_send] Ollama: {server_url}, model={model_id}, 消息数={len(messages)}")
+        logger.info(
+            f"[chat_send] Ollama: {server_url}, model={model_id}, 消息数={len(messages)}"
+        )
         response = sync_requests.post(
             f"{server_url}/api/chat",
             json={"model": model_id, "messages": messages, "stream": False},
@@ -185,12 +192,12 @@ async def send_message(req: SendMessageRequest):
     except sync_requests.exceptions.ConnectionError:
         raise HTTPException(
             status_code=500,
-            detail=f"连接 Ollama 失败，请检查服务是否在运行: {server_url}"
+            detail=f"连接 Ollama 失败，请检查服务是否在运行: {server_url}",
         )
     except sync_requests.exceptions.Timeout:
         raise HTTPException(
             status_code=500,
-            detail=f"Ollama 响应超时（{timeout}s），请尝试更换更小的模型或增加超时时间"
+            detail=f"Ollama 响应超时（{timeout}s），请尝试更换更小的模型或增加超时时间",
         )
     except HTTPException:
         raise

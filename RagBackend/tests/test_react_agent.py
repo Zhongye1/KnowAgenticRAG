@@ -11,11 +11,10 @@ test_react_agent.py — ReAct Agent 单元测试
 """
 
 import sys
-import os
 import ast
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 BACKEND_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BACKEND_ROOT))
@@ -25,6 +24,7 @@ sys.path.insert(0, str(BACKEND_ROOT / "RAG_M"))
 
 class FakeDocument:
     """模拟 langchain Document"""
+
     def __init__(self, page_content: str, metadata: dict = None):
         self.page_content = page_content
         self.metadata = metadata or {}
@@ -34,7 +34,6 @@ class FakeDocument:
 # Test 1: react_agent.py
 # ─────────────────────────────────────────────────────
 class TestReactAgentSyntax(unittest.TestCase):
-
     def setUp(self):
         self.agent_path = BACKEND_ROOT / "RAG_M" / "src" / "agent" / "react_agent.py"
 
@@ -67,7 +66,9 @@ class TestReactAgentSyntax(unittest.TestCase):
     def test_has_build_rag_search_tool(self):
         """应有 build_rag_search_tool 工厂函数"""
         content = self.agent_path.read_text(encoding="utf-8")
-        self.assertIn("def build_rag_search_tool(", content, "应有 build_rag_search_tool")
+        self.assertIn(
+            "def build_rag_search_tool(", content, "应有 build_rag_search_tool"
+        )
 
     def test_uses_ollama_llm(self):
         """应使用 OllamaLLM"""
@@ -91,7 +92,6 @@ class TestReactAgentSyntax(unittest.TestCase):
 # Test 2: RAG_app.py
 # ─────────────────────────────────────────────────────
 class TestRAGAppNewEndpoints(unittest.TestCase):
-
     def setUp(self):
         self.app_path = BACKEND_ROOT / "RAG_M" / "RAG_app.py"
         self.content = self.app_path.read_text(encoding="utf-8")
@@ -124,29 +124,23 @@ class TestRAGAppNewEndpoints(unittest.TestCase):
 # Test 3: Mock FAISS
 # ─────────────────────────────────────────────────────
 class TestRAGSearchTool(unittest.TestCase):
-
     def setUp(self):
         """动态加载 build_rag_search_tool，替换 langchain 依赖为 Mock"""
         agent_path = BACKEND_ROOT / "RAG_M" / "src" / "agent" / "react_agent.py"
         source = agent_path.read_text(encoding="utf-8")
 
         # Mock
-        source = source.replace(
-            "from langchain_ollama.llms import OllamaLLM", ""
-        ).replace(
-            "from langchain.tools import Tool", ""
-        ).replace(
-            "from langchain.agents import AgentExecutor, create_react_agent", ""
-        ).replace(
-            "from langchain.prompts import PromptTemplate", ""
-        ).replace(
-            "from langchain.docstore.document import Document", ""
-        ).replace(
-            "from langchain_community.vectorstores import FAISS", ""
-        ).replace(
-            "from src.rag.hybrid_retriever import HybridRetriever", ""
-        ).replace(
-            "from models.model_config import get_model_config", ""
+        source = (
+            source.replace("from langchain_ollama.llms import OllamaLLM", "")
+            .replace("from langchain.tools import Tool", "")
+            .replace(
+                "from langchain.agents import AgentExecutor, create_react_agent", ""
+            )
+            .replace("from langchain.prompts import PromptTemplate", "")
+            .replace("from langchain.docstore.document import Document", "")
+            .replace("from langchain_community.vectorstores import FAISS", "")
+            .replace("from src.rag.hybrid_retriever import HybridRetriever", "")
+            .replace("from models.model_config import get_model_config", "")
         )
 
         class FakeTool:
@@ -229,7 +223,6 @@ class TestRAGSearchTool(unittest.TestCase):
 # Test 4: __init__.py
 # ─────────────────────────────────────────────────────
 class TestAgentPackageStructure(unittest.TestCase):
-
     def test_agent_init_exists(self):
         """agent/__init__.py 应存在"""
         init_path = BACKEND_ROOT / "RAG_M" / "src" / "agent" / "__init__.py"

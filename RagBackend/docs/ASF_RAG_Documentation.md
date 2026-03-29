@@ -41,7 +41,7 @@ ASF-RAG 后端服务是一个基于 FastAPI + Ollama 提供服务的 RAG (检索
 
 ```
 ASF-RAG-backend/
-├── ASF_SRE/                    
+├── ASF_SRE/
 ├── assets/                     # 静态资源目录
 ├── chat_units/                 # 聊天相关功能
 │   ├── chat_documents/        # 聊天文档存储

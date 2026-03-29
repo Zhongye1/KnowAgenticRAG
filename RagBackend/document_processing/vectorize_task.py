@@ -12,7 +12,6 @@ Worker 从 Redis Stream 消费时通过 task_type 查找并执行。
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 

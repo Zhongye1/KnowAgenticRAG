@@ -9,26 +9,34 @@
         <div class="space-y-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">服务器地址</label>
-            <t-input v-model="serverUrl" placeholder="http://localhost:11434" class="transition-all duration-300" />
+            <t-input
+              v-model="serverUrl"
+              placeholder="http://localhost:11434"
+              class="transition-all duration-300"
+            />
             <p class="text-xs text-gray-500 mt-1">本地模型则为: http://localhost:11434</p>
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">连接超时（秒）</label>
-            <t-input-number v-model="timeout" :min="1" :max="300" class="transition-all duration-300" />
+            <t-input-number
+              v-model="timeout"
+              :min="1"
+              :max="300"
+              class="transition-all duration-300"
+            />
           </div>
         </div>
       </div>
 
       <!-- 保存按钮 -->
       <div class="mt-6 save-button">
-        <t-button theme="primary" @click="saveSettings" class="transition-all duration-300">
+        <t-button theme="primary" class="transition-all duration-300" @click="saveSettings">
           保存设置
         </t-button>
       </div>
     </div>
   </div>
 </template>
-
 
 <script setup>
 import { ref, onMounted } from 'vue'
@@ -54,9 +62,11 @@ const saveSettings = () => {
   MessagePlugin.success('设置已保存')
 
   // 发送事件通知其他组件设置已更新
-  window.dispatchEvent(new CustomEvent('ollamaSettingsUpdated', {
-    detail: settings
-  }))
+  window.dispatchEvent(
+    new CustomEvent('ollamaSettingsUpdated', {
+      detail: settings
+    })
+  )
 }
 
 // 加载设置

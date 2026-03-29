@@ -24,7 +24,7 @@ export const fetchCardData = async (): Promise<CardDataType[]> => {
   try {
     const response = await axios.get<ApiResponse>('/api/get-knowledge-item/')
     console.log('API Response:', response.data)
-    
+
     // 检查响应状态
     if (response.data.code === 200) {
       return response.data.data || []
@@ -46,16 +46,16 @@ export const useCardDataStore = defineStore('CardData', {
     error: null as string | null,
     total: 0
   }),
-  
+
   actions: {
     async fetchCards() {
       this.loading = true
       this.error = null
-      
+
       try {
         // 直接调用 API 并处理响应
         const response = await axios.get<ApiResponse>('/api/get-knowledge-item/')
-        
+
         if (response.data.code === 200) {
           this.allCards = response.data.data || []
           this.total = response.data.total || 0
@@ -74,20 +74,20 @@ export const useCardDataStore = defineStore('CardData', {
         this.loading = false
       }
     },
-    
+
     filterCardData(keyword: string) {
       this.searchKeyword = keyword.trim()
     },
-    
+
     resetFilters() {
       this.searchKeyword = ''
     },
-    
+
     // 根据ID获取单个卡片
     getCardById(id: string): CardDataType | undefined {
       return this.allCards.find(card => card.id === id)
     },
-    
+
     // 清空数据
     clearCards() {
       this.allCards = []
@@ -95,30 +95,31 @@ export const useCardDataStore = defineStore('CardData', {
       this.error = null
     }
   },
-  
+
   getters: {
     filteredCards(state): CardDataType[] {
       if (!state.searchKeyword) {
         return state.allCards
       }
-      
+
       const keyword = state.searchKeyword.toLowerCase()
-      return state.allCards.filter((card: CardDataType) =>
-        card.title.toLowerCase().includes(keyword) ||
-        card.description.toLowerCase().includes(keyword)
+      return state.allCards.filter(
+        (card: CardDataType) =>
+          card.title.toLowerCase().includes(keyword) ||
+          card.description.toLowerCase().includes(keyword)
       )
     },
-    
+
     // 获取过滤后的卡片数量
     filteredCount(): number {
       return this.filteredCards.length
     },
-    
+
     // 检查是否有数据
     hasCards(): boolean {
       return this.allCards.length > 0
     },
-    
+
     // 检查是否正在搜索
     isSearching(state): boolean {
       return state.searchKeyword.trim() !== ''
