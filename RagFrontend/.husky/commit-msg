@@ -1,0 +1,24 @@
+#!/bin/sh
+# commit-msg
+. "$(dirname "$0")/_/husky.sh"
+echo "开始代码和提交消息检查..."
+
+# 先运行 lint-staged 进行代码检查
+npx lint-staged
+
+# 检查执行结果
+if [ $? -ne 0 ]; then
+  echo "代码检查未通过，请修复错误后重新提交"
+  exit 1
+fi
+
+# 运行 commitlint 进行提交消息检查
+npx commitlint --edit $1
+
+# 检查提交消息检查结果
+if [ $? -ne 0 ]; then
+  echo "提交消息格式不符合规范，请按照规范修改"
+  exit 1
+fi
+
+echo "所有检查通过"
