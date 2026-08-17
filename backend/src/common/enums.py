@@ -1,0 +1,48 @@
+from enum import Enum
+from enum import IntEnum as SourceIntEnum
+from typing import Any, TypeVar
+
+T = TypeVar('T', bound=Enum)
+
+
+class _EnumBase:
+    """枚举基类，提供通用方法"""
+
+    @classmethod
+    def get_member_keys(cls) -> list[str]:
+        """获取枚举成员名称列表"""
+        return list(cls.__members__.keys())
+
+    @classmethod
+    def get_member_values(cls) -> list:
+        """获取枚举成员值列表"""
+        return [item.value for item in cls.__members__.values()]
+
+    @classmethod
+    def get_member_dict(cls) -> dict[str, Any]:
+        """获取枚举成员字典"""
+        return {name: item.value for name, item in cls.__members__.items()}
+
+
+class IntEnum(_EnumBase, SourceIntEnum):
+    """整型枚举基类"""
+
+
+class StrEnum(_EnumBase, str, Enum):
+    """字符串枚举基类"""
+
+class StatusType(IntEnum):
+    """状态类型"""
+    disable = 0
+    enable = 1
+
+class LifespanStage(IntEnum):
+    """lifespan 生命周期执行阶段枚举"""
+    core = 0
+    plugin = 1
+    tail = 2
+
+class DataBaseType(StrEnum):
+    """数据库类型"""
+    mysql = 'mysql'
+    postgresql = 'postgresql'
