@@ -1,32 +1,33 @@
 import zoneinfo
-
-from datetime import datetime
-from datetime import timezone as datetime_timezone
+from datetime import UTC, datetime
 from typing import Final
 
 from backend.src.core.config import settings
 
 # 基于 wikipedia：https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List
-_UTC_IDENTIFIERS: Final = frozenset({
-    'Etc/UCT',
-    'Etc/Universal',
-    'Etc/UTC',
-    'Etc/Zulu',
-    'UCT',
-    'Universal',
-    'UTC',
-    'Zulu',
-})
+_UTC_IDENTIFIERS: Final = frozenset(
+    {
+        "Etc/UCT",
+        "Etc/Universal",
+        "Etc/UTC",
+        "Etc/Zulu",
+        "UCT",
+        "Universal",
+        "UTC",
+        "Zulu",
+    }
+)
 
 
 class TimeZone:
     """
     鉴于 Python 原生时区 API 的坑，这里封装一个timezone类
     """
+
     def __init__(self) -> None:
         """初始化时区转换器"""
         if settings.DATETIME_TIMEZONE in _UTC_IDENTIFIERS:
-            self.tz_info = datetime_timezone.utc
+            self.tz_info = UTC
         else:
             self.tz_info = zoneinfo.ZoneInfo(settings.DATETIME_TIMEZONE)
 
@@ -43,7 +44,9 @@ class TimeZone:
         """
         return t.astimezone(self.tz_info)
 
-    def from_str(self, t_str: str, format_str: str = settings.DATETIME_FORMAT) -> datetime:
+    def from_str(
+        self, t_str: str, format_str: str = settings.DATETIME_FORMAT
+    ) -> datetime:
         """
         将时间字符串转换为当前时区的 datetime 对象
 
@@ -73,8 +76,8 @@ class TimeZone:
         :return:
         """
         if isinstance(t, datetime):
-            return t.astimezone(datetime_timezone.utc)
-        return datetime.fromtimestamp(t, tz=datetime_timezone.utc)
+            return t.astimezone(UTC)
+        return datetime.fromtimestamp(t, tz=UTC)
 
 
 timezone: TimeZone = TimeZone()

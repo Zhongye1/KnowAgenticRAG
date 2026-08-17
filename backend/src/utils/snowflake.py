@@ -3,7 +3,6 @@ import datetime
 import os
 import threading
 import time
-
 from dataclasses import dataclass
 
 from backend.src.common.dataclasses import SnowflakeInfo
@@ -50,14 +49,14 @@ class SnowflakeNodeManager:
         """初始化节点管理器"""
         self.datacenter_id: int | None = None
         self.worker_id: int | None = None
-        self.node_redis_prefix: str = f'{settings.SNOWFLAKE_REDIS_PREFIX}:nodes'
+        self.node_redis_prefix: str = f"{settings.SNOWFLAKE_REDIS_PREFIX}:nodes"
         self._heartbeat_task: asyncio.Task | None = None
 
     async def acquire_node_id(self) -> tuple[int, int]:
         """从 Redis 获取可用的 datacenter_id 和 worker_id"""
         occupied_nodes = set()
-        async for key in redis_client.scan_iter(match=f'{self.node_redis_prefix}:*'):
-            parts = key.split(':')
+        async for key in redis_client.scan_iter(match=f"{self.node_redis_prefix}:*"):
+            parts = key.split(":")
             if len(parts) >= 5:
                 try:
                     datacenter_id = int(parts[-2])
@@ -69,15 +68,22 @@ class SnowflakeNodeManager:
         # 顺序查找第一个可用的 ID 组合
         for datacenter_id in range(SnowflakeConfig.MAX_DATACENTER_ID + 1):
             for worker_id in range(SnowflakeConfig.MAX_WORKER_ID + 1):
-                if (datacenter_id, worker_id) not in occupied_nodes and await self._register(datacenter_id, worker_id):
+                if (
+                    datacenter_id,
+                    worker_id,
+                ) not in occupied_nodes and await self._register(
+                    datacenter_id, worker_id
+                ):
                     return datacenter_id, worker_id
 
-        raise errors.ServerError(msg='无可用的雪花算法节点，节点已耗尽')
+        raise errors.ServerError(msg="无可用的雪花算法节点，节点已耗尽")
 
     async def _register(self, datacenter_id: int, worker_id: int) -> bool:
-        key = f'{self.node_redis_prefix}:{datacenter_id}:{worker_id}'
-        value = f'pid:{os.getpid()}-ts:{timezone.now().timestamp()}'
-        return await redis_client.set(key, value, nx=True, ex=settings.SNOWFLAKE_NODE_TTL_SECONDS)
+        key = f"{self.node_redis_prefix}:{datacenter_id}:{worker_id}"
+        value = f"pid:{os.getpid()}-ts:{timezone.now().timestamp()}"
+        return await redis_client.set(
+            key, value, nx=True, ex=settings.SNOWFLAKE_NODE_TTL_SECONDS
+        )
 
     async def start_heartbeat(self, datacenter_id: int, worker_id: int) -> None:
         """启动节点心跳"""
@@ -85,14 +91,16 @@ class SnowflakeNodeManager:
         self.worker_id = worker_id
 
         async def heartbeat() -> None:
-            key = f'{self.node_redis_prefix}:{datacenter_id}:{worker_id}'
+            key = f"{self.node_redis_prefix}:{datacenter_id}:{worker_id}"
             while True:
                 await asyncio.sleep(settings.SNOWFLAKE_HEARTBEAT_INTERVAL_SECONDS)
                 try:
                     await redis_client.expire(key, settings.SNOWFLAKE_NODE_TTL_SECONDS)
-                    log.debug(f'雪花算法节点心跳任务开始：datacenter_id={datacenter_id}, worker_id={worker_id}')
+                    log.debug(
+                        f"雪花算法节点心跳任务开始：datacenter_id={datacenter_id}, worker_id={worker_id}"
+                    )
                 except Exception as e:
-                    log.error(f'雪花算法节点心跳任务失败：{e}')
+                    log.error(f"雪花算法节点心跳任务失败：{e}")
 
         self._heartbeat_task = asyncio.create_task(heartbeat())
 
@@ -103,10 +111,12 @@ class SnowflakeNodeManager:
             try:
                 await self._heartbeat_task
             except asyncio.CancelledError:
-                log.debug(f'雪花算法节点心跳任务释放：datacenter_id={self.datacenter_id}, worker_id={self.worker_id}')
+                log.debug(
+                    f"雪花算法节点心跳任务释放：datacenter_id={self.datacenter_id}, worker_id={self.worker_id}"
+                )
 
         if self.datacenter_id is not None and self.worker_id is not None:
-            key = f'{self.node_redis_prefix}:{self.datacenter_id}:{self.worker_id}'
+            key = f"{self.node_redis_prefix}:{self.datacenter_id}:{self.worker_id}"
             await redis_client.delete(key)
 
 
@@ -132,34 +142,56 @@ class Snowflake:
 
         with self._lock:
             # 环境变量固定分配
-            if settings.SNOWFLAKE_DATACENTER_ID is not None and settings.SNOWFLAKE_WORKER_ID is not None:
+            if (
+                settings.SNOWFLAKE_DATACENTER_ID is not None
+                and settings.SNOWFLAKE_WORKER_ID is not None
+            ):
                 self.datacenter_id = settings.SNOWFLAKE_DATACENTER_ID
                 self.worker_id = settings.SNOWFLAKE_WORKER_ID
                 log.debug(
-                    f'雪花算法使用环境变量固定节点：datacenter_id={self.datacenter_id}, worker_id={self.worker_id}'
+                    f"雪花算法使用环境变量固定节点：datacenter_id={self.datacenter_id}, worker_id={self.worker_id}"
                 )
-            elif (settings.SNOWFLAKE_DATACENTER_ID is not None and settings.SNOWFLAKE_WORKER_ID is None) or (
-                    settings.SNOWFLAKE_DATACENTER_ID is None and settings.SNOWFLAKE_WORKER_ID is not None
+            elif (
+                settings.SNOWFLAKE_DATACENTER_ID is not None
+                and settings.SNOWFLAKE_WORKER_ID is None
+            ) or (
+                settings.SNOWFLAKE_DATACENTER_ID is None
+                and settings.SNOWFLAKE_WORKER_ID is not None
             ):
-                log.error('雪花算法 datacenter_id 和 worker_id 配置错误，只允许同时非 None 或同时为 None')
-                raise errors.ServerError(msg='雪花算法配置失败，请联系系统管理员')
+                log.error(
+                    "雪花算法 datacenter_id 和 worker_id 配置错误，只允许同时非 None 或同时为 None"
+                )
+                raise errors.ServerError(msg="雪花算法配置失败，请联系系统管理员")
             else:
                 # Redis 动态分配
                 self._node_manager = SnowflakeNodeManager()
-                self.datacenter_id, self.worker_id = await self._node_manager.acquire_node_id()
+                (
+                    self.datacenter_id,
+                    self.worker_id,
+                ) = await self._node_manager.acquire_node_id()
                 self._auto_allocated = True
-                await self._node_manager.start_heartbeat(self.datacenter_id, self.worker_id)
+                await self._node_manager.start_heartbeat(
+                    self.datacenter_id, self.worker_id
+                )
                 log.debug(
-                    f'雪花算法使用 Redis 动态分配节点：datacenter_id={self.datacenter_id}, worker_id={self.worker_id}'
+                    f"雪花算法使用 Redis 动态分配节点：datacenter_id={self.datacenter_id}, worker_id={self.worker_id}"
                 )
 
             # 严格校验范围
             if not (0 <= self.datacenter_id <= SnowflakeConfig.MAX_DATACENTER_ID):
-                log.error(f'雪花算法 datacenter_id 配置失败，必须在 0~{SnowflakeConfig.MAX_DATACENTER_ID} 之间')
-                raise errors.ServerError(msg='雪花算法数据中心配置失败，请联系系统管理员')
+                log.error(
+                    f"雪花算法 datacenter_id 配置失败，必须在 0~{SnowflakeConfig.MAX_DATACENTER_ID} 之间"
+                )
+                raise errors.ServerError(
+                    msg="雪花算法数据中心配置失败，请联系系统管理员"
+                )
             if not (0 <= self.worker_id <= SnowflakeConfig.MAX_WORKER_ID):
-                log.error(f'雪花算法 worker_id 配置失败，必须在 0~{SnowflakeConfig.MAX_WORKER_ID} 之间')
-                raise errors.ServerError(msg='雪花算法工作机器配置失败，请联系系统管理员')
+                log.error(
+                    f"雪花算法 worker_id 配置失败，必须在 0~{SnowflakeConfig.MAX_WORKER_ID} 之间"
+                )
+                raise errors.ServerError(
+                    msg="雪花算法工作机器配置失败，请联系系统管理员"
+                )
 
             self._initialized = True
 
@@ -183,7 +215,7 @@ class Snowflake:
     def generate(self) -> int:
         """生成雪花 ID"""
         if not self._initialized:
-            raise errors.ServerError(msg='雪花 ID 生成失败，雪花算法未初始化')
+            raise errors.ServerError(msg="雪花 ID 生成失败，雪花算法未初始化")
 
         with self._lock:
             timestamp = self._current_ms()
@@ -192,10 +224,12 @@ class Snowflake:
             if timestamp < self.last_timestamp:
                 back_ms = self.last_timestamp - timestamp
                 if back_ms <= SnowflakeConfig.CLOCK_BACKWARD_TOLERANCE_MS:
-                    log.warning(f'检测到时钟回拨 {back_ms} ms，等待恢复...')
+                    log.warning(f"检测到时钟回拨 {back_ms} ms，等待恢复...")
                     timestamp = self._till_next_ms(self.last_timestamp)
                 else:
-                    raise errors.ServerError(msg=f'雪花 ID 生成失败，时钟回拨超过 {back_ms} ms，请立即联系系统管理员')
+                    raise errors.ServerError(
+                        msg=f"雪花 ID 生成失败，时钟回拨超过 {back_ms} ms，请立即联系系统管理员"
+                    )
 
             # 同毫秒内序列号递增
             if timestamp == self.last_timestamp:
@@ -209,10 +243,13 @@ class Snowflake:
 
             # 组合 64 位 ID
             return (
-                    ((timestamp - SnowflakeConfig.EPOCH) << SnowflakeConfig.TIMESTAMP_LEFT_SHIFT)
-                    | (self.datacenter_id << SnowflakeConfig.DATACENTER_ID_SHIFT)
-                    | (self.worker_id << SnowflakeConfig.WORKER_ID_SHIFT)
-                    | self.sequence
+                (
+                    (timestamp - SnowflakeConfig.EPOCH)
+                    << SnowflakeConfig.TIMESTAMP_LEFT_SHIFT
+                )
+                | (self.datacenter_id << SnowflakeConfig.DATACENTER_ID_SHIFT)
+                | (self.worker_id << SnowflakeConfig.WORKER_ID_SHIFT)
+                | self.sequence
             )
 
     @staticmethod
@@ -223,17 +260,26 @@ class Snowflake:
         :param snowflake_id: 雪花ID
         :return:
         """
-        timestamp = (snowflake_id >> SnowflakeConfig.TIMESTAMP_LEFT_SHIFT) + SnowflakeConfig.EPOCH
-        datacenter_id = (snowflake_id >> SnowflakeConfig.DATACENTER_ID_SHIFT) & SnowflakeConfig.MAX_DATACENTER_ID
-        worker_id = (snowflake_id >> SnowflakeConfig.WORKER_ID_SHIFT) & SnowflakeConfig.MAX_WORKER_ID
+        timestamp = (
+            snowflake_id >> SnowflakeConfig.TIMESTAMP_LEFT_SHIFT
+        ) + SnowflakeConfig.EPOCH
+        datacenter_id = (
+            snowflake_id >> SnowflakeConfig.DATACENTER_ID_SHIFT
+        ) & SnowflakeConfig.MAX_DATACENTER_ID
+        worker_id = (
+            snowflake_id >> SnowflakeConfig.WORKER_ID_SHIFT
+        ) & SnowflakeConfig.MAX_WORKER_ID
         sequence = snowflake_id & SnowflakeConfig.SEQUENCE_MASK
 
         return SnowflakeInfo(
             timestamp=timestamp,
-            datetime=timezone.to_str(datetime.datetime.fromtimestamp(timestamp / 1000, timezone.tz_info)),
+            datetime=timezone.to_str(
+                datetime.datetime.fromtimestamp(timestamp / 1000, timezone.tz_info)
+            ),
             datacenter_id=datacenter_id,
             worker_id=worker_id,
             sequence=sequence,
         )
+
 
 snowflake = Snowflake()

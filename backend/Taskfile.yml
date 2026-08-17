@@ -21,6 +21,12 @@ tasks:
     cmds:
       - uv run ruff check .
 
+  lint-fix:
+    desc: 运行 ruff 静态检查
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - uv run ruff check . --fix
+
   format:
     desc: 使用 ruff 自动格式化代码
     dir: "{{.TASKFILE_DIR}}"

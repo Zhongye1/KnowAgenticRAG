@@ -2,7 +2,7 @@ from enum import Enum
 from enum import IntEnum as SourceIntEnum
 from typing import Any, TypeVar
 
-T = TypeVar('T', bound=Enum)
+T = TypeVar("T", bound=Enum)
 
 
 class _EnumBase:
@@ -31,18 +31,24 @@ class IntEnum(_EnumBase, SourceIntEnum):
 class StrEnum(_EnumBase, str, Enum):
     """字符串枚举基类"""
 
+
 class StatusType(IntEnum):
     """状态类型"""
+
     disable = 0
     enable = 1
 
+
 class LifespanStage(IntEnum):
     """lifespan 生命周期执行阶段枚举"""
+
     core = 0
     plugin = 1
     tail = 2
 
+
 class DataBaseType(StrEnum):
     """数据库类型"""
-    mysql = 'mysql'
-    postgresql = 'postgresql'
+
+    mysql = "mysql"
+    postgresql = "postgresql"
