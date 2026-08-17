@@ -1,0 +1,54 @@
+# https://taskfile.dev
+# 后端开发与代码质量任务
+# 用法（在 backend/ 目录下）: task dev / task lint / task format / task check ...
+version: "3"
+
+tasks:
+  default:
+    desc: 列出所有可用任务
+    cmds:
+      - task --list
+
+  dev:
+    desc: 启动 FastAPI 开发服务器（热重载）
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - uv run uvicorn backend.main:app --reload --app-dir ..
+
+  lint:
+    desc: 运行 ruff 静态检查
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - uv run ruff check .
+
+  format:
+    desc: 使用 ruff 自动格式化代码
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - uv run ruff format .
+
+  format-check:
+    desc: 检查代码格式（只读，不修改）
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - uv run ruff format --check .
+
+  check:
+    desc: 提交前完整检查（lint + 格式 + 编译）
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - uv run ruff check .
+      - uv run ruff format --check .
+      - uv run python -m compileall -q .
+
+  sync:
+    desc: 按 uv.lock 同步依赖
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - uv sync
+
+  test:
+    desc: 运行测试（临时加载 pytest；无测试时视为通过）
+    dir: "{{.TASKFILE_DIR}}"
+    cmds:
+      - uv run --with pytest pytest -q || [ $? -eq 5 ]

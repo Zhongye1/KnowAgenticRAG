@@ -23,3 +23,8 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["backend"]
+
+[dependency-groups]
+dev = [
+    "task>=0.1.0",
+]
