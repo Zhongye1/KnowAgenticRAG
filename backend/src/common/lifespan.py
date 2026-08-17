@@ -1,16 +1,18 @@
 """
 Fastapi 后端生命周期管理
 """
-from typing import TypeAlias, Any, overload
+
 from collections.abc import Callable
+from contextlib import AbstractAsyncContextManager, AsyncExitStack, asynccontextmanager
+from typing import Any, overload
 
 from fastapi import FastAPI
-from contextlib import AbstractAsyncContextManager, asynccontextmanager, AsyncExitStack
 
-from src.common.enums import LifespanStage
+from backend.src.common.enums import LifespanStage
 
-
-LifespanFunc: TypeAlias = Callable[[FastAPI], AbstractAsyncContextManager[dict[str,Any] | None]]
+type LifespanFunc = Callable[
+    [FastAPI], AbstractAsyncContextManager[dict[str, Any] | None]
+]
 
 
 class LifespanManager:
@@ -27,10 +29,15 @@ class LifespanManager:
     def register(self, func: LifespanFunc) -> LifespanFunc: ...
 
     @overload
-    def register(self, *, stage: LifespanStage) -> Callable[[LifespanFunc], LifespanFunc]: ...
+    def register(
+        self, *, stage: LifespanStage
+    ) -> Callable[[LifespanFunc], LifespanFunc]: ...
 
     def register(
-            self, func: LifespanFunc | None = None, *, stage: LifespanStage = LifespanStage.core
+        self,
+        func: LifespanFunc | None = None,
+        *,
+        stage: LifespanStage = LifespanStage.core,
     ) -> LifespanFunc | Callable[[LifespanFunc], LifespanFunc]:
         """
         注册 lifespan hook
@@ -52,7 +59,6 @@ class LifespanManager:
         if func is not None:
             return decorator(func)
         return decorator
-
 
     def build(self) -> LifespanFunc:
         """

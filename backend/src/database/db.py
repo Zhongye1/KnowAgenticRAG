@@ -1,13 +1,11 @@
 import sys
-
 from collections.abc import AsyncGenerator, Mapping
 from contextlib import AbstractAsyncContextManager
-from functools import partial
 from typing import Annotated, Any, TypeAlias
 from uuid import uuid4
 
 from fastapi import Depends
-from sqlalchemy import URL, event
+from sqlalchemy import URL
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -20,8 +18,8 @@ from backend.src.common.log import log
 from backend.src.common.model import MappedBase
 from backend.src.core.config import settings
 
-# TODO 数据库监控
-# SQLA 连接池指标监听
+# TODO 数据库监控 | SQLA 连接池指标监听
+
 
 def get_database_url(*, unittest: bool = False, with_database: bool = True) -> URL:
     """
@@ -32,12 +30,18 @@ def get_database_url(*, unittest: bool = False, with_database: bool = True) -> U
     :return:
     """
     if with_database:
-        database = settings.DATABASE_SCHEMA if not unittest else f'{settings.DATABASE_SCHEMA}_test'
+        database = (
+            settings.DATABASE_SCHEMA
+            if not unittest
+            else f"{settings.DATABASE_SCHEMA}_test"
+        )
     else:
-        database = None if DataBaseType.mysql == settings.DATABASE_TYPE else 'postgres'
+        database = None if DataBaseType.mysql == settings.DATABASE_TYPE else "postgres"
 
     url = URL.create(
-        drivername='mysql+asyncmy' if DataBaseType.mysql == settings.DATABASE_TYPE else 'postgresql+asyncpg',
+        drivername="mysql+asyncmy"
+        if DataBaseType.mysql == settings.DATABASE_TYPE
+        else "postgresql+asyncpg",
         username=settings.DATABASE_USER,
         password=settings.DATABASE_PASSWORD,
         host=settings.DATABASE_HOST,
@@ -45,7 +49,7 @@ def get_database_url(*, unittest: bool = False, with_database: bool = True) -> U
         database=database,
     )
     if DataBaseType.mysql == settings.DATABASE_TYPE and with_database:
-        url = url.update_query_dict({'charset': settings.DATABASE_CHARSET})
+        url = url.update_query_dict({"charset": settings.DATABASE_CHARSET})
     return url
 
 
@@ -71,7 +75,7 @@ def create_database_async_engine(url: str | URL) -> AsyncEngine:
             pool_use_lifo=False,  # 低：False 高：True
         )
     except Exception as e:
-        log.error(f'数据库连接失败 {e}')
+        log.error(f"数据库连接失败 {e}")
         sys.exit()
 
 
@@ -79,8 +83,8 @@ class DatabaseAsyncSessionMaker:
     """按数据源名选择对应的 async_sessionmaker"""
 
     def __init__(self, makers: Mapping[str, async_sessionmaker[AsyncSession]]) -> None:
-        if 'default' not in makers:
-            raise ValueError('会话工厂必须包含 default 数据源')
+        if "default" not in makers:
+            raise ValueError("会话工厂必须包含 default 数据源")
         self._makers = dict(makers)
 
     def _get_maker(self, source: str) -> async_sessionmaker[AsyncSession]:
@@ -93,9 +97,9 @@ class DatabaseAsyncSessionMaker:
         try:
             return self._makers[source]
         except KeyError as e:
-            raise ValueError(f'未知数据库数据源: {source}') from e
+            raise ValueError(f"未知数据库数据源: {source}") from e
 
-    def __call__(self, source: str = 'default', **kwargs: Any) -> AsyncSession:
+    def __call__(self, source: str = "default", **kwargs: Any) -> AsyncSession:
         """
         创建数据库会话
 
@@ -104,7 +108,9 @@ class DatabaseAsyncSessionMaker:
         """
         return self._get_maker(source)(**kwargs)
 
-    def begin(self, source: str = 'default') -> AbstractAsyncContextManager[AsyncSession]:
+    def begin(
+        self, source: str = "default"
+    ) -> AbstractAsyncContextManager[AsyncSession]:
         """
         创建会话并开启事务，退出时提交并关闭
 
@@ -115,9 +121,9 @@ class DatabaseAsyncSessionMaker:
 
 
 def create_database_async_session(
-        async_engine: AsyncEngine,
-        *,
-        source_binds: Mapping[str, AsyncEngine] | None = None,
+    async_engine: AsyncEngine,
+    *,
+    source_binds: Mapping[str, AsyncEngine] | None = None,
 ) -> DatabaseAsyncSessionMaker:
     """
     创建支持命名数据源的数据库异步会话
@@ -127,11 +133,15 @@ def create_database_async_session(
     :return:
     """
     engines = dict(source_binds or {})
-    engines.setdefault('default', async_engine)
-    return DatabaseAsyncSessionMaker({
-        source: async_sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
-        for source, engine in engines.items()
-    })
+    engines.setdefault("default", async_engine)
+    return DatabaseAsyncSessionMaker(
+        {
+            source: async_sessionmaker(
+                bind=engine, autoflush=False, expire_on_commit=False
+            )
+            for source, engine in engines.items()
+        }
+    )
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
@@ -165,13 +175,15 @@ def uuid4_str() -> str:
 
 # SQLA 异步引擎和会话
 async_engine = create_database_async_engine(get_database_url())
-_database_engines: dict[str, AsyncEngine] = {'default': async_engine}
+_database_engines: dict[str, AsyncEngine] = {"default": async_engine}
 for source, url in settings.DATABASE_SOURCES.items():
-    if not source or source == 'default':
-        raise ValueError('DATABASE_SOURCES 数据源名称不能为空且不能为 default')
+    if not source or source == "default":
+        raise ValueError("DATABASE_SOURCES 数据源名称不能为空且不能为 default")
     _database_engines[source] = create_database_async_engine(url)
 
-async_db_session = create_database_async_session(async_engine, source_binds=_database_engines)
+async_db_session = create_database_async_session(
+    async_engine, source_binds=_database_engines
+)
 
 
 def get_database_engines() -> Mapping[str, AsyncEngine]:
@@ -184,6 +196,9 @@ async def dispose_database() -> None:
     for engine in _database_engines.values():
         await engine.dispose()
 
+
 # Session Annotated
 CurrentSession: TypeAlias = Annotated[AsyncSession, Depends(get_db)]
-CurrentSessionTransaction: TypeAlias = Annotated[AsyncSession, Depends(get_db_transaction)]
+CurrentSessionTransaction: TypeAlias = Annotated[
+    AsyncSession, Depends(get_db_transaction)
+]

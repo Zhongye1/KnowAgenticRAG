@@ -15,17 +15,18 @@ register_app()          # 总装入口
 └── register_metrics()     # Prometheus + OpenTelemetry
 
 """
+
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
 
 from fastapi import FastAPI
 
-from src.common.lifespan import lifespan_manager
+from backend.src.common.lifespan import lifespan_manager
 
 
 @lifespan_manager.register
 @asynccontextmanager
-async    def regsiter_init(app: FastAPI) -> AsyncGenerator[None,None]:
+async def regsiter_init(app: FastAPI) -> AsyncGenerator[None, None]:
     """启动初始化
     :param app: FastAPI 应用实例
     :return:
