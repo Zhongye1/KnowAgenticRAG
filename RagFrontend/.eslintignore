@@ -1,7 +1,0 @@
-node_modules/
-dist/
-uploads/
-public/
-*.config.js
-*.d.ts
-.husky/
