@@ -1,0 +1,19 @@
+version: '3'
+
+# 前端开发任务（本 Taskfile 位于 frontend/ 目录）
+#
+# 注意：前端工程尚未迁移，以下任务为预留占位。
+# 迁移完成后按实际技术栈（如 npm/pnpm/yarn）补充脚本。
+
+tasks:
+  install:
+    desc: 安装前端依赖（预留）
+    cmds:
+      - echo "前端工程未迁移，跳过安装"
+    silent: true
+
+  dev:
+    desc: 启动前端开发服务器（预留）
+    cmds:
+      - echo "前端工程未迁移，跳过启动"
+    silent: true

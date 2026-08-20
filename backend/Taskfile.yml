@@ -1,60 +1,90 @@
-# https://taskfile.dev
-# 后端开发与代码质量任务
-# 用法（在 backend/ 目录下）: task dev / task lint / task format / task check ...
-version: "3"
+version: '3'
+
+# 后端开发任务（本 Taskfile 位于 backend/ 目录）
+#
+# 注意：
+# - backend 包位于仓库根的 backend/ 目录下，开发服务器需从仓库根启动
+# - dev/run 任务使用 dir: '..' 切换到仓库根（相对 include 目录解析）
+# - VENV_PY 使用 {{.TASKFILE_DIR}} 绝对定位，避免相对路径解析错误
+
+vars:
+  VENV_PY: '{{.TASKFILE_DIR}}/.venv/bin/python'
 
 tasks:
-  default:
-    desc: 列出所有可用任务
-    cmds:
-      - task --list
-
-  dev:
-    desc: 启动 FastAPI 开发服务器（热重载）
-    dir: "{{.TASKFILE_DIR}}"
-    cmds:
-      - uv run uvicorn backend.main:app --reload --app-dir ..
-
-  lint:
-    desc: 运行 ruff 静态检查
-    dir: "{{.TASKFILE_DIR}}"
-    cmds:
-      - uv run ruff check .
-
-  lint-fix:
-    desc: 运行 ruff 静态检查
-    dir: "{{.TASKFILE_DIR}}"
-    cmds:
-      - uv run ruff check . --fix
-
-  format:
-    desc: 使用 ruff 自动格式化代码
-    dir: "{{.TASKFILE_DIR}}"
-    cmds:
-      - uv run ruff format .
-
-  format-check:
-    desc: 检查代码格式（只读，不修改）
-    dir: "{{.TASKFILE_DIR}}"
-    cmds:
-      - uv run ruff format --check .
-
-  check:
-    desc: 提交前完整检查（lint + 格式 + 编译）
-    dir: "{{.TASKFILE_DIR}}"
-    cmds:
-      - uv run ruff check .
-      - uv run ruff format --check .
-      - uv run python -m compileall -q .
-
-  sync:
-    desc: 按 uv.lock 同步依赖
-    dir: "{{.TASKFILE_DIR}}"
+  install:
+    desc: 安装依赖
     cmds:
       - uv sync
 
-  test:
-    desc: 运行测试（临时加载 pytest；无测试时视为通过）
-    dir: "{{.TASKFILE_DIR}}"
+  dev:
+    desc: 启动后端开发服务器（热重载，端口 8000）
+    dir: '..'
     cmds:
-      - uv run --with pytest pytest -q || [ $? -eq 5 ]
+      - '{{.VENV_PY}} -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload'
+
+  run:
+    desc: 通过 run.py 启动后端（IDE 调试友好）
+    dir: '..'
+    cmds:
+      - '{{.VENV_PY}} backend/run.py'
+
+  init-db:
+    desc: 初始化数据库与 Redis（建表 + 连通性检查，幂等）
+    dir: '..'
+    cmds:
+      - '{{.VENV_PY}} -c "import asyncio; from backend.src.database.db import create_tables; asyncio.run(create_tables())"'
+      - '{{.VENV_PY}} -c "import asyncio; from backend.src.database.redis import redis_client; asyncio.run(redis_client.init())"'
+
+  worker:
+    desc: 启动 Celery Worker（消息队列消费者）
+    dir: '..'
+    cmds:
+      - '{{.VENV_PY}} -m celery -A backend.src.app.task.celery:celery_app worker --loglevel=INFO'
+
+  beat:
+    desc: 启动 Celery Beat（定时任务调度器）
+    dir: '..'
+    cmds:
+      - '{{.VENV_PY}} -m celery -A backend.src.app.task.celery:celery_app beat --loglevel=INFO'
+
+  db-init:
+    desc: 导入数据库初始化数据（可选：部门/菜单等种子数据，已初始化则跳过）
+    dir: '..'
+    cmds:
+      - |
+        if docker compose exec -T ragf_postgres psql -U postgres -d ragf -tAc "SELECT to_regclass('public.sys_dept') IS NOT NULL AND (SELECT count(*) FROM sys_dept) = 0" 2>/dev/null | grep -q t; then
+          docker compose exec -T ragf_postgres psql -U postgres -d ragf -v ON_ERROR_STOP=1 -f - < '{{.TASKFILE_DIR}}/src/sql/postgresql/init_test_data.sql'
+          echo '初始化数据导入完成'
+        else
+          echo '初始化数据已存在（或表未创建，请先 task dev），跳过'
+        fi
+
+  lint:
+    desc: 代码检查
+    cmds:
+      - ruff check .
+
+  lint-fix:
+    desc: 自动修复代码检查
+    cmds:
+      - ruff check --fix .
+
+  format:
+    desc: 格式化代码
+    cmds:
+      - ruff format .
+
+  build:
+    desc: 构建 Python 安装包（wheel + sdist，输出到 backend/dist）
+    cmds:
+      - uv build
+
+  export:
+    desc: 导出 requirements.txt
+    cmds:
+      - uv export --no-hashes -o requirements.txt
+
+  test:
+    desc: 运行测试
+    cmds:
+      - pytest
