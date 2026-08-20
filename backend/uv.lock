@@ -80,6 +80,7 @@ dependencies = [
     { name = "redis" },
     { name = "rtoml" },
     { name = "ruff" },
+    { name = "socketio" },
     { name = "sqlalchemy" },
     { name = "starlette-context" },
     { name = "user-agents" },
@@ -111,6 +112,7 @@ requires-dist = [
     { name = "redis", specifier = ">=8.1.0" },
     { name = "rtoml", specifier = ">=0.13.0" },
     { name = "ruff", specifier = ">=0.16.3" },
+    { name = "socketio", specifier = ">=0.2.1" },
     { name = "sqlalchemy", specifier = ">=2.0.52" },
     { name = "starlette-context", specifier = ">=0.5.1" },
     { name = "user-agents", specifier = ">=2.2.0" },
@@ -803,6 +805,12 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/ea/1d/0d85cc79d0ccf5508e9c846cc66552a6a16bf92abd1dbd8362617f7b35cd/msgspec-0.21.1-cp314-cp314t-win_amd64.whl", hash = "sha256:740fbf1c9d59992ca3537d6fbe9ebbf9eaf726a65fbf31448e0ecbc710697a63", size = 206650, upload-time = "2026-04-12T21:44:47.601Z" },
     { url = "https://files.pythonhosted.org/packages/90/91/56c5d560f20e6c20e9e4f55bd0e458f7f162aa689ee350346c04c48eac0b/msgspec-0.21.1-cp314-cp314t-win_arm64.whl", hash = "sha256:0d2cc73df6058d811a126ac3a8ad63a4dfa210c82f9cf5a004802eaf4712de90", size = 183149, upload-time = "2026-04-12T21:44:48.833Z" },
 ]
+
+[[package]]
+name = "netifaces"
+version = "0.10.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/01/ba076082628901bca750bf53b322a8ff10c1d757dc29196a8e6082711c9d/netifaces-0.10.6.tar.gz", hash = "sha256:0c4da523f36d36f1ef92ee183f2512f3ceb9a9d2a45f7d19cda5a42c6689ebe0", size = 25166, upload-time = "2017-06-01T13:44:12.375Z" }
 
 [[package]]
 name = "opentelemetry-api"
@@ -1598,6 +1606,15 @@ wheels = [
 ]
 
 [[package]]
+name = "setuptools"
+version = "3.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/82/e6/049fc4474cf5cebab5748e886836af23b41436f8b069eac836c7231e7325/setuptools-3.3.tar.gz", hash = "sha256:f3e6155f9bb62bfd59b7f6cc2ecda21aae903e6b585f8bc55e801609c5f7814f", size = 792267, upload-time = "2014-03-16T09:04:50.586Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/fc/20/0b304ea9830d53c9068e1e96bbf1ee529283f96ee0ee6ccaaa697f7b2383/setuptools-3.3-py2.py3-none-any.whl", hash = "sha256:4705222d7b1d308f67bd4a34ff2fb8a35b8a42f68ccb4a60586a2dd979665875", size = 545341, upload-time = "2014-03-16T09:04:56.037Z" },
+]
+
+[[package]]
 name = "shellingham"
 version = "1.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -1614,6 +1631,16 @@ sdist = { url = "https://files.pythonhosted.org/packages/94/e7/b2c673351809dca68
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b7/ce/149a00dd41f10bc29e5921b496af8b574d8413afcd5e30dfa0ed46c2cc5e/six-1.17.0-py2.py3-none-any.whl", hash = "sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274", size = 11050, upload-time = "2024-12-04T17:35:26.475Z" },
 ]
+
+[[package]]
+name = "socketio"
+version = "0.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "netifaces" },
+    { name = "setuptools" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e0/bf/37ebfc6f628741a1ece11a3147b1927168ff70839b6ec83d0f9a1526abee/socketio-0.2.1.tar.gz", hash = "sha256:dee5abde39c6021d9d1874582479a4e7f8a8352b38bc7731fb6b27b76976f62c", size = 6081, upload-time = "2019-08-12T12:33:43.719Z" }
 
 [[package]]
 name = "sqlalchemy"

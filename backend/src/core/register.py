@@ -21,14 +21,31 @@ import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
+from common import socketio
 from common.cache.pubsub import cache_pubsub_manager
+from common.exception.exception_handler import register_exception
 from common.log import set_custom_logfile, setup_logging
+from common.observability.otel import init_otel
+from common.response.response_code import StandardResponseCode
 from database.db import create_tables, dispose_database
 from database.redis import redis_client
 from fastapi import FastAPI
+from fastapi.params import Depends
+from fastapi_pagination import add_pagination
+from middleware.access_middleware import AccessMiddleware
+from middleware.i18n_middleware import I18nMiddleware
 from middleware.jwt_auth_middleware import JwtAuthMiddleware
+from plugin.hooks import init_plugin_otel_hooks, register_plugin_hooks
+from plugin.router import build_final_router
+from prometheus_client import make_asgi_app
 from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
+from starlette_context.middleware import ContextMiddleware
+from starlette_context.plugins import RequestIdPlugin
+from utils.demo_mode import demo_site
+from utils.openapi import ensure_unique_route_names, simplify_operation_ids
+from utils.trace_id import OtelTraceIdPlugin
 
 from backend.src.common.lifespan import lifespan_manager
 from backend.src.core.config import settings
@@ -102,6 +119,19 @@ def register_app() -> FastAPI:
     )
 
     # 注册组件
+    register_logger()
+    register_socket_app(app)
+    register_static_file(app)
+    register_middleware(app)
+    register_router(app)
+    register_page(app)
+    register_exception(app)
+
+    # 注册插件钩子
+    register_plugin_hooks(app)
+
+    if settings.GRAFANA_METRICS_ENABLE:
+        register_metrics(app)
 
     return app
 
@@ -149,21 +179,25 @@ def register_middleware(app: FastAPI) -> None:
         on_error=JwtAuthMiddleware.auth_exception_handler,
     )
 
-    # I18n
+    # I18n 中间件
     app.add_middleware(I18nMiddleware)
 
-    # Access log
+    # Access log 访问日志中间件
     app.add_middleware(AccessMiddleware)
 
     # ContextVar
-    plugins = (
-        [OtelTraceIdPlugin()]
-        if settings.GRAFANA_METRICS_ENABLE
-        else [RequestIdPlugin(validate=True)]
-    )
+    # 请求上下文（ContextVar）中间件注册，给每个请求注入一个"请求追踪 ID"，放进 ContextVar 上下文供后续代码（日志，Context中间件等）读取
+    if settings.GRAFANA_METRICS_ENABLE:
+        # 开启可观测性，日志关联到 Tempo 的调用链（同一个 Trace ID）
+        plugins = [OtelTraceIdPlugin()]
+    else:
+        # 生成一个随机 UUID，无法与 OTel 链路关联
+        plugins = [RequestIdPlugin(validate=True)]
+
     app.add_middleware(
         ContextMiddleware,
-        plugins=plugins,
+        plugins=plugins,  # 进入请求时，插件把 trace_id/request_id 注入上下文
+        # 兜底
         default_error_response=MsgSpecJSONResponse(
             content={
                 "code": StandardResponseCode.HTTP_400,
@@ -186,3 +220,67 @@ def register_middleware(app: FastAPI) -> None:
             allow_headers=["*"],
             expose_headers=settings.CORS_EXPOSE_HEADERS,
         )
+
+
+def register_router(app: FastAPI) -> None:
+    """
+    注册路由
+
+    :param app: FastAPI 应用实例
+    :return:
+    """
+
+    if settings.DEMO_MODE:
+        dependencies = Depends(demo_site())
+    else:
+        dependencies = None
+
+    # API
+    router = build_final_router()
+    app.include_router(router, dependencies=dependencies)
+
+    # Extra
+    ensure_unique_route_names(app)
+    simplify_operation_ids(app)
+
+
+def register_page(app: FastAPI) -> None:
+    """
+    注册分页查询功能
+
+    :param app: FastAPI 应用实例
+    :return:
+    """
+    add_pagination(app)
+
+
+def register_socket_app(app: FastAPI) -> None:
+    """
+    注册 Socket.IO 应用
+
+    :param app: FastAPI 应用实例
+    :return:
+    """
+    from backend.src.common.socketio.server import sio
+
+    socket_app = socketio.ASGIApp(
+        socketio_server=sio,
+        other_asgi_app=app,
+        # 切勿删除此配置：https://github.com/pyropy/fastapi-socketio/issues/51
+        socketio_path="/ws/socket.io",
+    )
+    app.mount("/ws", socket_app)
+
+
+def register_metrics(app: FastAPI) -> None:
+    """
+    注册指标
+
+    :param app: FastAPI 应用实例
+    :return:
+    """
+    metrics_app = make_asgi_app()
+    app.mount(settings.GRAFANA_METRICS_PATH, metrics_app)
+
+    init_otel(app)
+    init_plugin_otel_hooks(app)

@@ -27,6 +27,7 @@ dependencies = [
     "redis>=8.1.0",
     "rtoml>=0.13.0",
     "ruff>=0.16.3",
+    "socketio>=0.2.1",
     "sqlalchemy>=2.0.52",
     "starlette-context>=0.5.1",
     "user-agents>=2.2.0",
