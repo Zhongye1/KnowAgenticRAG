@@ -18,20 +18,19 @@
             pkgs.nodejs_22
             pkgs.nodePackages.pnpm
 
-            # 后端工具链
+            # 后端工具链（uv 管理 Python 与虚拟环境）
             pkgs.python312
             pkgs.uv
-            pkgs.python312Packages.pip
-            pkgs.python312Packages.virtualenv
+
+            # 项目任务入口（Taskfile）
+            pkgs.go-task
 
             # 常用开发工具
             pkgs.git
-            pkgs.just
-            pkgs.watchexec
           ];
 
           shellHook = ''
-            echo "🟢 DevShell OK. Node: $(node -v); Python: $(python3 --version)"
+            echo "🟢 DevShell OK. Node: $(node -v); Python: $(python3 --version); Task: $(task --version)"
           '';
         };
       }
