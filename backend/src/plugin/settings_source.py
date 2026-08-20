@@ -2,10 +2,11 @@ import os
 from typing import Any
 
 import rtoml
-from backend import PLUGIN_DIR
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefinedType
 from pydantic_settings import PydanticBaseSettingsSource
+
+from backend.src.core.path_conf import PLUGIN_DIR
 
 
 class PluginSettingsSource(PydanticBaseSettingsSource):
