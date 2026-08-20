@@ -1,10 +1,10 @@
 from fastapi import Depends, Request
 
-from backend.common.context import ctx
-from backend.common.enums import MethodType, StatusType
-from backend.common.exception import errors
-from backend.common.security.jwt import DependsJwtAuth
-from backend.core.conf import settings
+from backend.src.common.context import ctx
+from backend.src.common.enums import MethodType, StatusType
+from backend.src.common.exception import errors
+from backend.src.common.security.jwt import DependsJwtAuth
+from backend.src.core.conf import settings
 
 
 async def rbac_verify(request: Request, _token: str = DependsJwtAuth) -> None:  # ruff:ignore[complex-structure]
@@ -75,7 +75,7 @@ async def rbac_verify(request: Request, _token: str = DependsJwtAuth) -> None:  
     else:
         # casbin 模式
         try:
-            from backend.plugin.casbin_rbac.rbac import casbin_verify
+            from backend.src.plugin.casbin_rbac.rbac import casbin_verify
         except ImportError:
             raise errors.ServerError(msg='Casbin RBAC 插件用法导入失败，请联系系统管理员')
 

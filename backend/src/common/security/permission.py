@@ -5,15 +5,15 @@ from sqlalchemy import Alias, ColumnElement, Table, and_, or_
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy_crud_plus.types import Model
 
-from backend.common.context import ctx
-from backend.common.enums import RoleDataRuleExpressionType, RoleDataRuleOperatorType
-from backend.common.exception import errors
-from backend.core.conf import settings
-from backend.utils.dynamic_import import get_all_models
-from backend.utils.timezone import timezone
+from backend.src.common.context import ctx
+from backend.src.common.enums import RoleDataRuleExpressionType, RoleDataRuleOperatorType
+from backend.src.common.exception import errors
+from backend.src.core.conf import settings
+from backend.src.utils.dynamic_import import get_all_models
+from backend.src.utils.timezone import timezone
 
 if TYPE_CHECKING:
-    from backend.app.admin.model import DataRule
+    from backend.src.app.admin.model import DataRule
 
 
 class RequestPermission:
