@@ -23,6 +23,7 @@ dependencies = [
     "fastapi-oauth20>=0.0.3",
     "fastapi-pagination>=0.15.16",
     "fastapi[standard]>=0.141.1",
+    "gevent>=24.11.1",
     "itsdangerous>=2.2.0",
     "loguru>=0.7.3",
     "msgspec>=0.21.1",
@@ -36,6 +37,7 @@ dependencies = [
     "opentelemetry-instrumentation-sqlalchemy>=0.65b0",
     "prometheus-client>=0.26.0",
     "psutil>=7.2.2",
+    "psycopg[binary]>=3.2",
     "pwdlib>=0.3.1",
     "py-ip2region>=3.0.4",
     "pyrate-limiter>=4.4.0",
@@ -63,7 +65,35 @@ prepend_sys_path = ["."]
 version_locations = ["%(here)s/src/alembic/versions"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["backend"]
+# backend 包即项目根目录自身（backend/__init__.py 位于 project root），
+# 因此用 force-include 将需要的文件/目录映射为 wheel 内的 backend/ 包。
+# 注意：hatchling 的 exclude 不作用于 force-include，未列出的内容不会进包。
+[tool.hatch.build.targets.wheel."force-include"]
+"__init__.py" = "backend/__init__.py"
+"main.py" = "backend/main.py"
+"src/__init__.py" = "backend/src/__init__.py"
+"src/alembic.ini" = "backend/src/alembic.ini"
+"src/alembic" = "backend/src/alembic"
+"src/app" = "backend/src/app"
+"src/common" = "backend/src/common"
+"src/core" = "backend/src/core"
+"src/database" = "backend/src/database"
+"src/locale" = "backend/src/locale"
+"src/middleware" = "backend/src/middleware"
+"src/plugin" = "backend/src/plugin"
+"src/sql" = "backend/src/sql"
+"src/static" = "backend/src/static"
+"src/utils" = "backend/src/utils"
+"src/.env.example" = "backend/src/.env.example"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".venv",
+    "dist",
+    "src/log",
+    "src/.env",
+    "scripts",
+]
 
 [tool.hatch.version]
 path = "__init__.py"
