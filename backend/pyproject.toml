@@ -48,6 +48,7 @@ dependencies = [
     "sqlparse>=0.6.0",
     "starlette-context>=0.5.1",
     "user-agents>=2.2.0",
+    "opentelemetry-instrumentation-celery>=0.65b0",
 ]
 
 [build-system]
