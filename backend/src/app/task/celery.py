@@ -7,11 +7,11 @@ import celery_aio_pool
 from celery.signals import worker_process_init
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
-from backend.app.task.tasks.beat import get_local_beat_schedule
-from backend.common.enums import DataBaseType
-from backend.common.observability.otel import init_resource, init_tracer
-from backend.core.conf import settings
-from backend.core.path_conf import BASE_PATH
+from backend.src.app.task.tasks.beat import get_local_beat_schedule
+from backend.src.common.enums import DataBaseType
+from backend.src.common.observability.otel import init_resource, init_tracer
+from backend.src.core.conf import settings
+from backend.src.core.path_conf import BASE_PATH
 
 _celery_otel_initialized = False
 
@@ -68,8 +68,8 @@ def init_celery() -> celery.Celery:
         # result_expires=0,
         # beat_sync_every=1,
         beat_schedule=get_local_beat_schedule(),
-        beat_scheduler='backend.app.task.utils.schedulers:DatabaseScheduler',
-        task_cls='backend.app.task.tasks.base:TaskBase',
+        beat_scheduler='backend.src.app.task.utils.schedulers:DatabaseScheduler',
+        task_cls='backend.src.app.task.tasks.base:TaskBase',
         task_track_started=True,
         enable_utc=False,
         timezone=settings.DATETIME_TIMEZONE,
@@ -79,7 +79,7 @@ def init_celery() -> celery.Celery:
 
     # 在 Celery 中设置此参数无效
     # 参数：https://github.com/celery/celery/issues/7270
-    app.loader.override_backends = {'db': 'backend.app.task.database:DatabaseBackend'}
+    app.loader.override_backends = {'db': 'backend.src.app.task.database:DatabaseBackend'}
 
     # 自动发现任务
     packages = find_task_packages()

@@ -3,8 +3,8 @@ from datetime import datetime
 from pydantic import ConfigDict, Field
 from pydantic.types import JsonValue
 
-from backend.app.task.enums import PeriodType, TaskSchedulerType
-from backend.common.schema import SchemaBase
+from backend.src.app.task.enums import PeriodType, TaskSchedulerType
+from backend.src.common.schema import SchemaBase
 
 
 class TaskSchedulerSchemeBase(SchemaBase):

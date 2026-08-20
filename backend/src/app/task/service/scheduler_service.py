@@ -6,14 +6,14 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
-from backend.app.task.celery import celery_app
-from backend.app.task.crud.crud_scheduler import task_scheduler_dao
-from backend.app.task.enums import TaskSchedulerType
-from backend.app.task.model import TaskScheduler
-from backend.app.task.schema.scheduler import CreateTaskSchedulerParam, UpdateTaskSchedulerParam
-from backend.app.task.utils.tzcrontab import crontab_verify
-from backend.common.exception import errors
-from backend.common.pagination import paging_data
+from backend.src.app.task.celery import celery_app
+from backend.src.app.task.crud.crud_scheduler import task_scheduler_dao
+from backend.src.app.task.enums import TaskSchedulerType
+from backend.src.app.task.model import TaskScheduler
+from backend.src.app.task.schema.scheduler import CreateTaskSchedulerParam, UpdateTaskSchedulerParam
+from backend.src.app.task.utils.tzcrontab import crontab_verify
+from backend.src.common.exception import errors
+from backend.src.common.pagination import paging_data
 
 
 class TaskSchedulerService:

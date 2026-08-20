@@ -4,9 +4,9 @@ from sqlalchemy import Select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_crud_plus import CRUDPlus
 
-from backend.app.task.model import TaskScheduler
-from backend.app.task.schema.scheduler import CreateTaskSchedulerParam, UpdateTaskSchedulerParam
-from backend.utils.timezone import timezone
+from backend.src.app.task.model import TaskScheduler
+from backend.src.app.task.schema.scheduler import CreateTaskSchedulerParam, UpdateTaskSchedulerParam
+from backend.src.utils.timezone import timezone
 
 
 class CRUDTaskScheduler(CRUDPlus[TaskScheduler]):

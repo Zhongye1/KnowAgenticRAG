@@ -3,8 +3,8 @@ import sqlalchemy as sa
 from celery import states
 from sqlalchemy.types import PickleType
 
-from backend.common.model import MappedBase, TimeZone
-from backend.utils.timezone import timezone
+from backend.src.common.model import MappedBase, TimeZone
+from backend.src.utils.timezone import timezone
 
 """
 重写 celery.backends.database.models 内部所有模型，适配 fba 创建表和 alembic 迁移

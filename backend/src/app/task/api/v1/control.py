@@ -3,13 +3,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path
 from starlette.concurrency import run_in_threadpool
 
-from backend.app.task import celery_app
-from backend.app.task.schema.control import TaskRegisteredDetail
-from backend.common.exception import errors
-from backend.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
-from backend.common.security.jwt import DependsJwtAuth
-from backend.common.security.permission import RequestPermission
-from backend.common.security.rbac import DependsRBAC
+from backend.src.app.task import celery_app
+from backend.src.app.task.schema.control import TaskRegisteredDetail
+from backend.src.common.exception import errors
+from backend.src.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
+from backend.src.common.security.jwt import DependsJwtAuth
+from backend.src.common.security.permission import RequestPermission
+from backend.src.common.security.rbac import DependsRBAC
 
 router = APIRouter()
 

@@ -2,7 +2,7 @@ from time import sleep
 
 from anyio import sleep as asleep
 
-from backend.app.task.celery import celery_app
+from backend.src.app.task.celery import celery_app
 
 
 @celery_app.task(name='task_demo')

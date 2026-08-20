@@ -6,8 +6,8 @@ from celery.utils.time import maybe_timedelta
 from sqlalchemy import PickleType
 from sqlalchemy.orm import Session
 
-from backend.app.task.model.result import Task, TaskExtended, TaskSet
-from backend.app.task.session import SessionManager
+from backend.src.app.task.model.result import Task, TaskExtended, TaskSet
+from backend.src.app.task.session import SessionManager
 
 
 class DatabaseBackend(BaseBackend):

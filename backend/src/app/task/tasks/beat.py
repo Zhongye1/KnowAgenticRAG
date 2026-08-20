@@ -2,7 +2,7 @@ from typing import Any
 
 from celery.schedules import schedule
 
-from backend.app.task.utils.tzcrontab import TzAwareCrontab
+from backend.src.app.task.utils.tzcrontab import TzAwareCrontab
 
 
 def get_local_beat_schedule() -> dict[str, dict[str, Any]]:
@@ -24,11 +24,11 @@ def get_local_beat_schedule() -> dict[str, dict[str, Any]]:
             'kwargs': {'world': '世界'},
         },
         '清理操作日志': {
-            'task': 'backend.app.task.tasks.db_log.tasks.delete_db_opera_log',
+            'task': 'backend.src.app.task.tasks.db_log.tasks.delete_db_opera_log',
             'schedule': TzAwareCrontab('0', '0', day_of_week='6'),
         },
         '清理登录日志': {
-            'task': 'backend.app.task.tasks.db_log.tasks.delete_db_login_log',
+            'task': 'backend.src.app.task.tasks.db_log.tasks.delete_db_login_log',
             'schedule': TzAwareCrontab('0', '0', day_of_month='15'),
         },
     }

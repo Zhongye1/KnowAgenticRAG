@@ -1,8 +1,8 @@
 from celery import schedules
 from celery.schedules import ParseException
 
-from backend.common.exception import errors
-from backend.utils.timezone import timezone
+from backend.src.common.exception import errors
+from backend.src.utils.timezone import timezone
 
 
 class TzAwareCrontab(schedules.crontab):

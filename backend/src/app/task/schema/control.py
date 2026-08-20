@@ -1,4 +1,4 @@
-from backend.common.schema import SchemaBase
+from backend.src.common.schema import SchemaBase
 
 
 class TaskRegisteredDetail(SchemaBase):

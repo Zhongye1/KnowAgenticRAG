@@ -1,7 +1,7 @@
 from starlette.concurrency import run_in_threadpool
 
-from backend.app.task.celery import celery_app
-from backend.common.socketio.server import sio
+from backend.src.app.task.celery import celery_app
+from backend.src.common.socketio.server import sio
 
 
 @sio.event

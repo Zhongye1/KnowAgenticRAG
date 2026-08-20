@@ -2,11 +2,11 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.task.crud.crud_result import task_result_dao
-from backend.app.task.model import TaskResult
-from backend.app.task.schema.result import DeleteTaskResultParam
-from backend.common.exception import errors
-from backend.common.pagination import paging_data
+from backend.src.app.task.crud.crud_result import task_result_dao
+from backend.src.app.task.model import TaskResult
+from backend.src.app.task.schema.result import DeleteTaskResultParam
+from backend.src.common.exception import errors
+from backend.src.common.pagination import paging_data
 
 
 class TaskResultService:

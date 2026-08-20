@@ -1,8 +1,8 @@
 from celery import shared_task
 
-from backend.app.admin.service.login_log_service import login_log_service
-from backend.app.admin.service.opera_log_service import opera_log_service
-from backend.database.db import async_db_session
+from backend.src.app.admin.service.login_log_service import login_log_service
+from backend.src.app.admin.service.opera_log_service import opera_log_service
+from backend.src.database.db import async_db_session
 
 
 @shared_task

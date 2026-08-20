@@ -3,8 +3,8 @@ from typing import Any
 
 from pydantic import ConfigDict, Field, field_serializer
 
-from backend.app.task import celery_app
-from backend.common.schema import SchemaBase
+from backend.src.app.task import celery_app
+from backend.src.common.schema import SchemaBase
 
 
 class TaskResultSchemaBase(SchemaBase):

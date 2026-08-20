@@ -15,17 +15,17 @@ from celery.utils.log import get_logger
 from sqlalchemy import select
 from sqlalchemy.exc import DatabaseError, InterfaceError
 
-from backend.app.task.enums import PeriodType, TaskSchedulerType
-from backend.app.task.model.scheduler import TaskScheduler
-from backend.app.task.schema.scheduler import CreateTaskSchedulerParam
-from backend.app.task.utils.tzcrontab import TzAwareCrontab, crontab_verify
-from backend.common.exception import errors
-from backend.core.conf import settings
-from backend.database.db import async_db_session
-from backend.database.redis import redis_client
-from backend.utils.async_helper import run_await
-from backend.utils.serializers import select_as_dict
-from backend.utils.timezone import timezone
+from backend.src.app.task.enums import PeriodType, TaskSchedulerType
+from backend.src.app.task.model.scheduler import TaskScheduler
+from backend.src.app.task.schema.scheduler import CreateTaskSchedulerParam
+from backend.src.app.task.utils.tzcrontab import TzAwareCrontab, crontab_verify
+from backend.src.common.exception import errors
+from backend.src.core.conf import settings
+from backend.src.database.db import async_db_session
+from backend.src.database.redis import redis_client
+from backend.src.utils.async_helper import run_await
+from backend.src.utils.serializers import select_as_dict
+from backend.src.utils.timezone import timezone
 
 if TYPE_CHECKING:
     from redis.asyncio.lock import Lock

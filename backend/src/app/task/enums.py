@@ -1,4 +1,4 @@
-from backend.common.enums import IntEnum, StrEnum
+from backend.src.common.enums import IntEnum, StrEnum
 
 
 class TaskSchedulerType(IntEnum):
