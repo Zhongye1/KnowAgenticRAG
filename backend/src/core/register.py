@@ -18,43 +18,49 @@ register_app()          # 总装入口
 
 import asyncio
 import os
+
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 import socketio
-from backend.src.common.cache.pubsub import cache_pubsub_manager
-from backend.src.common.exception.exception_handler import register_exception
-from backend.src.common.log import set_custom_logfile, setup_logging
-from backend.src.common.observability.otel import init_otel
-from backend.src.common.response.response_code import StandardResponseCode
-from backend.src.database.db import create_tables, dispose_database
-from backend.src.database.redis import redis_client
+
 from fastapi import FastAPI
 from fastapi.params import Depends
 from fastapi_pagination import add_pagination
-from backend.src.middleware.access_middleware import AccessMiddleware
-from backend.src.middleware.i18n_middleware import I18nMiddleware
-from backend.src.middleware.jwt_auth_middleware import JwtAuthMiddleware
-from backend.src.plugin.hooks import init_plugin_otel_hooks, register_plugin_hooks
-from backend.src.plugin.router import build_final_router
 from prometheus_client import make_asgi_app
+from redis.exceptions import RedisError
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 from starlette_context.middleware import ContextMiddleware
 from starlette_context.plugins import RequestIdPlugin
-from backend.src.utils.demo_mode import demo_site
-from backend.src.utils.openapi import ensure_unique_route_names, simplify_operation_ids
-from backend.src.utils.trace_id import OtelTraceIdPlugin
 
 from backend import __version__
+from backend.src.common.cache.pubsub import cache_pubsub_manager
+from backend.src.common.exception.exception_handler import register_exception
 from backend.src.common.lifespan import lifespan_manager
+from backend.src.common.log import set_custom_logfile, setup_logging
+from backend.src.common.observability.otel import init_otel
+from backend.src.common.response.response_code import StandardResponseCode
 from backend.src.core.config import settings
 from backend.src.core.path_conf import STATIC_DIR, UPLOAD_DIR
+from backend.src.database.db import create_tables, dispose_database
+from backend.src.database.redis import redis_client
+from backend.src.middleware.access_middleware import AccessMiddleware
+from backend.src.middleware.i18n_middleware import I18nMiddleware
+from backend.src.middleware.jwt_auth_middleware import JwtAuthMiddleware
 from backend.src.middleware.logs_middleware import OperaLogMiddleware
 from backend.src.middleware.request_state_middleware import StateMiddleware
+from backend.src.plugin.hooks import init_plugin_otel_hooks, register_plugin_hooks
+from backend.src.plugin.router import build_final_router
+from backend.src.utils.demo_mode import demo_site
+from backend.src.utils.openapi import ensure_unique_route_names, simplify_operation_ids
 from backend.src.utils.serializers import MsgSpecJSONResponse
 from backend.src.utils.snowflake import snowflake
+from backend.src.utils.trace_id import OtelTraceIdPlugin
 
 
 @lifespan_manager.register
@@ -153,11 +159,11 @@ def register_static_file(app: FastAPI) -> None:
     # 上传静态资源
     if not os.path.exists(UPLOAD_DIR):
         os.makedirs(UPLOAD_DIR)
-    app.mount("/static/upload", StaticFiles(directory=UPLOAD_DIR), name="upload")
+    app.mount('/static/upload', StaticFiles(directory=UPLOAD_DIR), name='upload')
 
     # 固有静态资源
     if settings.FASTAPI_STATIC_FILES:
-        app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+        app.mount('/static', StaticFiles(directory=STATIC_DIR), name='static')
 
 
 def register_middleware(app: FastAPI) -> None:
@@ -187,13 +193,8 @@ def register_middleware(app: FastAPI) -> None:
     app.add_middleware(AccessMiddleware)
 
     # ContextVar
-    # 请求上下文（ContextVar）中间件注册，给每个请求注入一个"请求追踪 ID"，放进 ContextVar 上下文供后续代码（日志，Context中间件等）读取
-    if settings.GRAFANA_METRICS_ENABLE:
-        # 开启可观测性，日志关联到 Tempo 的调用链（同一个 Trace ID）
-        plugins = [OtelTraceIdPlugin()]
-    else:
-        # 生成一个随机 UUID，无法与 OTel 链路关联
-        plugins = [RequestIdPlugin(validate=True)]
+    # 请求上下文（ContextVar）中间件注册，给每个请求注入请求追踪 ID
+    plugins = [OtelTraceIdPlugin()] if settings.GRAFANA_METRICS_ENABLE else [RequestIdPlugin(validate=True)]
 
     app.add_middleware(
         ContextMiddleware,
@@ -201,9 +202,9 @@ def register_middleware(app: FastAPI) -> None:
         # 兜底
         default_error_response=MsgSpecJSONResponse(
             content={
-                "code": StandardResponseCode.HTTP_400,
-                "msg": "BAD_REQUEST",
-                "data": None,
+                'code': StandardResponseCode.HTTP_400,
+                'msg': 'BAD_REQUEST',
+                'data': None,
             },
             status_code=StandardResponseCode.HTTP_400,
         ),
@@ -217,8 +218,8 @@ def register_middleware(app: FastAPI) -> None:
             CORSMiddleware,
             allow_origins=settings.CORS_ALLOWED_ORIGINS,
             allow_credentials=True,
-            allow_methods=["*"],
-            allow_headers=["*"],
+            allow_methods=['*'],
+            allow_headers=['*'],
             expose_headers=settings.CORS_EXPOSE_HEADERS,
         )
 
@@ -231,10 +232,7 @@ def register_router(app: FastAPI) -> None:
     :return:
     """
 
-    if settings.DEMO_MODE:
-        dependencies = Depends(demo_site())
-    else:
-        dependencies = None
+    dependencies = Depends(demo_site()) if settings.DEMO_MODE else None
 
     # API
     router = build_final_router()
@@ -243,6 +241,37 @@ def register_router(app: FastAPI) -> None:
     # Extra
     ensure_unique_route_names(app)
     simplify_operation_ids(app)
+
+    register_health_check(app)
+
+
+def register_health_check(app: FastAPI) -> None:
+    """注册健康检查接口"""
+
+    from backend.src.common.response.response_schema import response_base
+
+    @app.get(f'{settings.FASTAPI_API_V1_PATH}/health', summary='健康检查', tags=['Health'])
+    async def health_check() -> Any:
+        """服务健康检查"""
+        from backend.src.database.db import async_db_session
+        from backend.src.database.redis import redis_client
+
+        status = {'status': 'ok'}
+        try:
+            async with async_db_session() as session:
+                await session.execute(text('SELECT 1'))
+            status['database'] = 'ok'
+        except SQLAlchemyError:
+            status['database'] = 'error'
+            status['status'] = 'degraded'
+        try:
+            async with asyncio.timeout(5):
+                await redis_client.ping()
+            status['redis'] = 'ok'
+        except (RedisError, TimeoutError):
+            status['redis'] = 'error'
+            status['status'] = 'degraded'
+        return response_base.success(data=status)
 
 
 def register_page(app: FastAPI) -> None:
@@ -268,9 +297,9 @@ def register_socket_app(app: FastAPI) -> None:
         socketio_server=sio,
         other_asgi_app=app,
         # 切勿删除此配置：https://github.com/pyropy/fastapi-socketio/issues/51
-        socketio_path="/ws/socket.io",
+        socketio_path='/ws/socket.io',
     )
-    app.mount("/ws", socket_app)
+    app.mount('/ws', socket_app)
 
 
 def register_metrics(app: FastAPI) -> None:

@@ -1,6 +1,6 @@
 [project]
 name = "backend"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Add your description here"
 readme = "README.md"
 authors = [
@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "aiosmtplib>=5.1.2",
+    "alembic>=1.19.1",
     "asyncio>=4.0.0",
     "asyncmy>=0.2.14",
     "asyncpg>=0.31.0",
@@ -55,11 +56,213 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.alembic]
+script_location = "%(here)s/src/alembic"
+file_template = "%%(year)d-%%(month).2d-%%(day).2d-%%(hour).2d_%%(minute).2d_%%(second).2d-%%(rev)s_%%(slug)s"
+prepend_sys_path = ["."]
+version_locations = ["%(here)s/src/alembic/versions"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["backend"]
+
+[tool.hatch.version]
+path = "__init__.py"
 
 [dependency-groups]
 dev = [
     "pytest>=9.1.1",
     "task>=0.1.0",
 ]
+lint = [
+    "prek>=0.4.13",
+]
+server = [
+    "aio-pika>=9.6.2",
+    "wait-for-it>=2.3.0",
+]
+
+[tool.uv]
+python-downloads = "manual"
+default-groups = ["dev", "lint"]
+
+[tool.ruff]
+line-length = 120
+preview = true
+fix = true
+unsafe-fixes = true
+show-fixes = true
+required-version = ">=0.15.0"
+
+[tool.ruff.lint]
+select = [
+  "FAST",
+  "missing-type-function-argument",
+  "missing-return-type-undocumented-public-function",
+  "missing-return-type-private-function",
+  "missing-return-type-special-method",
+  "missing-return-type-static-method",
+  "missing-return-type-class-method",
+  "async-busy-wait",
+  "long-sleep-not-forever",
+  "blocking-http-call-in-async-function",
+  "blocking-http-call-httpx-in-async-function",
+  "blocking-open-call-in-async-function",
+  "blocking-path-method-in-async-function",
+  "blocking-input-in-async-function",
+  "blocking-sleep-in-async-function",
+  "suspicious-url-open-usage",
+  "boolean-type-hint-positional-argument",
+  "boolean-default-value-positional-argument",
+  "unary-prefix-increment-decrement",
+  "strip-with-multi-characters",
+  "mutable-argument-default",
+  "unused-loop-control-variable",
+  "function-call-in-default-argument",
+  "get-attr-with-constant",
+  "set-attr-with-constant",
+  "redundant-tuple-in-exception-handler",
+  "duplicate-handler-exception",
+  "cached-instance-method",
+  "loop-variable-overrides-iterator",
+  "f-string-docstring",
+  "abstract-base-class-without-abstract-method",
+  "duplicate-try-block-exception",
+  "star-arg-unpacking-after-keyword-arg",
+  "empty-method-without-abstract-decorator",
+  "mutable-contextvar-default",
+  "COM",
+  "unnecessary-generator-dict",
+  "unnecessary-list-comprehension-set",
+  "unnecessary-list-comprehension-dict",
+  "unnecessary-collection-call",
+  "unnecessary-literal-within-list-call",
+  "unnecessary-list-call",
+  "unnecessary-double-cast-or-process",
+  "unnecessary-comprehension",
+  "unnecessary-map",
+  "unnecessary-literal-within-dict-call",
+  "unnecessary-comprehension-in-call",
+  "unnecessary-dict-comprehension-for-iterable",
+  "DTZ",
+  "EXE",
+  "single-line-implicit-string-concatenation",
+  "multi-line-implicit-string-concatenation",
+  "explicit-string-concatenation",
+  "PIE",
+  "pass-statement-stub-body",
+  "non-empty-stub-body",
+  "typed-argument-default-in-stub",
+  "pass-in-class-body",
+  "ellipsis-in-non-empty-class-body",
+  "duplicate-union-member",
+  "complex-assignment-in-stub",
+  "custom-type-var-for-self",
+  "quoted-annotation-in-stub",
+  "docstring-in-stub",
+  "collections-named-tuple",
+  "type-alias-without-annotation",
+  "unnecessary-literal-union",
+  "legacy-type-comment",
+  "non-self-return-type",
+  "bad-exit-annotation",
+  "redundant-numeric-union",
+  "snake-case-type-alias",
+  "unnecessary-type-union",
+  "redundant-none-literal",
+  "duplicate-literal-member",
+  "pep484-style-positional-only-parameter",
+  "bad-quotes-multiline-string",
+  "bad-quotes-docstring",
+  "unnecessary-paren-on-raise-exception",
+  "unnecessary-return-none",
+  "superfluous-else-return",
+  "superfluous-else-raise",
+  "superfluous-else-continue",
+  "superfluous-else-break",
+  "duplicate-isinstance-call",
+  "collapsible-if",
+  "needless-bool",
+  "return-in-try-except-finally",
+  "if-else-block-instead-of-if-exp",
+  "compare-with-tuple",
+  "reimplemented-builtin",
+  "if-with-same-arms",
+  "open-file-with-context-handler",
+  "negate-equal-op",
+  "negate-not-equal-op",
+  "if-expr-with-true-false",
+  "if-expr-with-false-true",
+  "if-expr-with-twisted-arms",
+  "yoda-conditions",
+  "if-else-block-instead-of-dict-get",
+  "dict-get-with-none-default",
+  "relative-imports",
+  "TC",
+  "FLY",
+  "I",
+  "complex-structure",
+  "N",
+  "PERF",
+  "E",
+  "W",
+  "docstring-starts-with-this",
+  "undocumented-param",
+  "empty-docstring",
+  "F",
+  "PGH",
+  "compare-to-empty-string",
+  "UP",
+  "FURB",
+  "RUF",
+  "TRY",
+]
+ignore = [
+  "missing-trailing-comma",
+  "blanket-type-ignore",
+  "ambiguous-unicode-character-string",
+  "ambiguous-unicode-character-docstring",
+  "ambiguous-unicode-character-comment",
+  "asyncio-dangling-task",
+  "mutable-class-default",
+  "non-empty-init-module",
+  "error-instead-of-exception",
+  "raise-vanilla-args",
+  "raise-within-try"
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/model/*.py" = ["typing-only-standard-library-import"]
+"src/common/socketio/server.py" = ["missing-type-function-argument"]
+"src/common/exception/exception_handler.py" = [
+  "missing-return-type-private-function",
+  "unused-async"
+]
+
+[tool.ruff.lint.flake8-pytest-style]
+parametrize-names-type = "list"
+parametrize-values-row-type = "list"
+parametrize-values-type = "list"
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = [
+  "pydantic.BaseModel",
+  "sqlalchemy.orm.DeclarativeBase"
+]
+
+[tool.ruff.lint.flake8-unused-arguments]
+ignore-variadic-names = true
+
+[tool.ruff.lint.isort]
+case-sensitive = true
+lines-between-types = 1
+order-by-type = true
+
+[tool.ruff.lint.pylint]
+allow-dunder-method-names = ["__tablename__", "__table_args__"]
+
+[tool.ruff.format]
+docstring-code-format = true
+quote-style = "single"
