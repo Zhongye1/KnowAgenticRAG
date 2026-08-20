@@ -1,8 +1,7 @@
 import dataclasses
-
 from enum import Enum
 
-from backend.common.i18n import t
+from backend.src.common.i18n import t
 
 
 class CustomCodeBase(Enum):
@@ -23,15 +22,15 @@ class CustomCodeBase(Enum):
 class CustomResponseCode(CustomCodeBase):
     """自定义响应状态码"""
 
-    HTTP_200 = (200, 'response.success')
-    HTTP_400 = (400, 'response.error')
-    HTTP_500 = (500, '服务器内部错误')
+    HTTP_200 = (200, "response.success")
+    HTTP_400 = (400, "response.error")
+    HTTP_500 = (500, "服务器内部错误")
 
 
 class CustomErrorCode(CustomCodeBase):
     """自定义错误状态码"""
 
-    CAPTCHA_ERROR = (40001, 'error.captcha.error')
+    CAPTCHA_ERROR = (40001, "error.captcha.error")
 
 
 @dataclasses.dataclass
@@ -49,10 +48,8 @@ class StandardResponseCode:
 
     """
     HTTP codes
-    See HTTP Status Code Registry:
     https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
-
-    And RFC 2324 - https://tools.ietf.org/html/rfc2324
+    RFC 2324 - https://tools.ietf.org/html/rfc2324
     """
     HTTP_100 = 100  # CONTINUE: 继续
     HTTP_101 = 101  # SWITCHING_PROTOCOLS: 协议切换
