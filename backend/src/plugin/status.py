@@ -7,7 +7,7 @@ from fastapi import Request
 from backend.src.common.enums import StatusType
 from backend.src.common.exception import errors
 from backend.src.common.log import log
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.database.redis import redis_client
 from backend.src.plugin.errors import PluginInjectError
 

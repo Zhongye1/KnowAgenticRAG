@@ -9,7 +9,7 @@ import rtoml
 from backend.src.common.dataclasses import PluginEntry
 from backend.src.common.enums import PluginLevelType, StatusType
 from backend.src.common.log import log
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.core.path_conf import PLUGIN_DIR
 from backend.src.database.redis import RedisCli
 from backend.src.plugin.errors import PluginConfigError, PluginInjectError

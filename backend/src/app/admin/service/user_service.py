@@ -22,7 +22,7 @@ from backend.src.common.exception import errors
 from backend.src.common.pagination import paging_data
 from backend.src.common.response.response_code import CustomErrorCode
 from backend.src.common.security.jwt import get_token, jwt_decode
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.database.redis import redis_client
 from backend.src.utils.serializers import select_join_serialize
 

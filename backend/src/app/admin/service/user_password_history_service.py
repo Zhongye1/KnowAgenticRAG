@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.src.app.admin.crud.crud_user_password_history import user_password_history_dao
 from backend.src.app.admin.schema.user_password_history import CreateUserPasswordHistoryParam
 from backend.src.common.exception import errors
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.database.redis import redis_client
 from backend.src.utils.dynamic_config import load_user_security_config
 from backend.src.utils.timezone import timezone

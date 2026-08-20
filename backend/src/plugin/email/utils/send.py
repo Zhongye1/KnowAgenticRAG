@@ -7,7 +7,7 @@ from jinja2 import Template
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.common.log import log
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.core.path_conf import PLUGIN_DIR
 from backend.src.plugin.email.utils.dynamic_config import load_email_config
 from backend.src.utils.timezone import timezone

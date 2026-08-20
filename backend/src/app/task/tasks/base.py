@@ -6,7 +6,7 @@ from celery import Task
 from sqlalchemy.exc import SQLAlchemyError
 
 from backend.src.common.socketio.actions import task_notification
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 
 
 class TaskBase(Task):

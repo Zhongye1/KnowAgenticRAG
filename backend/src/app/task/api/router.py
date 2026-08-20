@@ -3,7 +3,7 @@ from fastapi import APIRouter
 from backend.src.app.task.api.v1.control import router as task_control_router
 from backend.src.app.task.api.v1.result import router as task_result_router
 from backend.src.app.task.api.v1.scheduler import router as task_scheduler_router
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 
 v1 = APIRouter(prefix=settings.FASTAPI_API_V1_PATH, tags=['任务'])
 

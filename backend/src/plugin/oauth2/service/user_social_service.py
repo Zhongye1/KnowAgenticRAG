@@ -4,7 +4,7 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.common.exception import errors
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.database.redis import redis_client
 from backend.src.plugin.oauth2.crud.crud_user_social import user_social_dao
 from backend.src.plugin.oauth2.enums import UserSocialAuthType, UserSocialType

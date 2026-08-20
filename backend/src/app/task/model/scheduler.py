@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.src.common.exception import errors
 from backend.src.common.model import Base, TimeZone, UniversalText, id_key
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.database.redis import redis_client
 from backend.src.utils.timezone import timezone
 

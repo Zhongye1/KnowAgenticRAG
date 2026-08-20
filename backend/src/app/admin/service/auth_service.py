@@ -24,7 +24,7 @@ from backend.src.common.security.jwt import (
     get_token,
     jwt_decode,
 )
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.database.db import uuid4_str
 from backend.src.database.redis import redis_client
 from backend.src.utils.dynamic_config import load_login_config

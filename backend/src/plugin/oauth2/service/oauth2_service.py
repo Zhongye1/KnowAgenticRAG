@@ -15,7 +15,7 @@ from backend.src.common.enums import LoginLogStatusType
 from backend.src.common.exception import errors
 from backend.src.common.i18n import t
 from backend.src.common.security import jwt
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.database.redis import redis_client
 from backend.src.plugin.oauth2.crud.crud_user_social import user_social_dao
 from backend.src.plugin.oauth2.enums import UserSocialAuthType, UserSocialType

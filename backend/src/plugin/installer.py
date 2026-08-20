@@ -13,7 +13,7 @@ from starlette.concurrency import run_in_threadpool
 
 from backend.src.common.exception import errors
 from backend.src.common.log import log
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.core.path_conf import ENV_FILE_PATH, PLUGIN_DIR
 from backend.src.database.redis import redis_client
 from backend.src.plugin.requirements import install_requirements_async

@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from backend.src.app.{{ app_name }}.api.{{ api_version }}.{{ filename }} import router as {{ table_name }}_router
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 
 v1 = APIRouter(prefix=settings.FASTAPI_API_V1_PATH{% if tag %}, tags=['{{ tag }}']{% endif %})
 

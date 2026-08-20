@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.plugin.code_generator.api.v1.business import router as business_router
 from backend.src.plugin.code_generator.api.v1.column import router as column_router
 from backend.src.plugin.code_generator.api.v1.gen import router as gen_router

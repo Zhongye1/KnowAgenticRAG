@@ -4,7 +4,7 @@ from backend.src.common.context import ctx
 from backend.src.common.enums import MethodType, StatusType
 from backend.src.common.exception import errors
 from backend.src.common.security.jwt import DependsJwtAuth
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 
 
 async def rbac_verify(request: Request, _token: str = DependsJwtAuth) -> None:  # ruff:ignore[complex-structure]

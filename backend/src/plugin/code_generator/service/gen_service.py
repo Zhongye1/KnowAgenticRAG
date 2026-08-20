@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
 from backend.src.common.exception import errors
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.core.path_conf import BASE_PATH
 from backend.src.plugin.code_generator.crud.crud_business import gen_business_dao
 from backend.src.plugin.code_generator.crud.crud_column import gen_column_dao

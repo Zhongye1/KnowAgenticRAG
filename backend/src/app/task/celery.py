@@ -10,7 +10,7 @@ from opentelemetry.instrumentation.celery import CeleryInstrumentor
 from backend.src.app.task.tasks.beat import get_local_beat_schedule
 from backend.src.common.enums import DataBaseType
 from backend.src.common.observability.otel import init_resource, init_tracer
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.core.path_conf import BASE_PATH
 
 _celery_otel_initialized = False

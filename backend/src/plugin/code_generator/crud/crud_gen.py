@@ -4,7 +4,7 @@ from sqlalchemy import RowMapping, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.common.enums import DataBaseType
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 
 
 class CRUDGen:

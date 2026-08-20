@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.src.common.cache.decorator import cache_invalidate, cached
 from backend.src.common.exception import errors
 from backend.src.common.pagination import paging_data
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.plugin.dict.crud.crud_dict_data import dict_data_dao
 from backend.src.plugin.dict.crud.crud_dict_type import dict_type_dao
 from backend.src.plugin.dict.model import DictData

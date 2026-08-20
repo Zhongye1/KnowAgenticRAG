@@ -10,7 +10,7 @@ from starlette.concurrency import run_in_threadpool
 
 from backend.src.common.enums import PluginType, StatusType
 from backend.src.common.exception import errors
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.core.path_conf import PLUGIN_DIR
 from backend.src.database.redis import redis_client
 from backend.src.plugin.core import get_required_plugins

@@ -9,7 +9,7 @@ from pyrate_limiter import Duration, Rate
 from starlette.responses import RedirectResponse
 
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.database.db import CurrentSessionTransaction
 from backend.src.database.redis import redis_client
 from backend.src.plugin.oauth2.enums import UserSocialAuthType, UserSocialType

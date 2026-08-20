@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.app.admin.crud.crud_user_password_history import user_password_history_dao
 from backend.src.common.exception import errors
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.utils.dynamic_config import load_user_security_config
 from backend.src.utils.pattern_validate import is_has_letter, is_has_number, is_has_special_char
 

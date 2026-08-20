@@ -1,7 +1,7 @@
 from functools import lru_cache
 
 from backend.src.common.enums import DataBaseType
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.plugin.code_generator.enums import GenMySQLColumnType, GenPostgreSQLColumnType
 
 

@@ -8,7 +8,7 @@ from sqlalchemy_crud_plus.types import Model
 from backend.src.common.context import ctx
 from backend.src.common.enums import RoleDataRuleExpressionType, RoleDataRuleOperatorType
 from backend.src.common.exception import errors
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.utils.dynamic_import import get_all_models
 from backend.src.utils.timezone import timezone
 

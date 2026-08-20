@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.plugin.oauth2.api.v1.github import router as github_router
 from backend.src.plugin.oauth2.api.v1.google import router as google_router
 from backend.src.plugin.oauth2.api.v1.user_social import router as user_social_router

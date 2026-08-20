@@ -11,7 +11,7 @@ from packaging.requirements import Requirement
 from packaging.utils import canonicalize_name
 from starlette.concurrency import run_in_threadpool
 
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.core.path_conf import PLUGIN_DIR
 from backend.src.plugin.core import get_plugins
 from backend.src.plugin.errors import PluginInstallError

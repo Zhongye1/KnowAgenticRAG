@@ -4,7 +4,7 @@ from jinja2 import Environment, FileSystemLoader, Template, select_autoescape
 from pydantic.alias_generators import to_pascal
 
 from backend.src.common.enums import PrimaryKeyType
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.plugin.code_generator.model import GenBusiness, GenColumn
 from backend.src.plugin.code_generator.path_conf import JINJA2_TEMPLATE_DIR
 from backend.src.plugin.code_generator.utils.type_conversion import sql_type_to_sqlalchemy_name

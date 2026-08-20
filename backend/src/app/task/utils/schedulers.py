@@ -20,7 +20,7 @@ from backend.src.app.task.model.scheduler import TaskScheduler
 from backend.src.app.task.schema.scheduler import CreateTaskSchedulerParam
 from backend.src.app.task.utils.tzcrontab import TzAwareCrontab, crontab_verify
 from backend.src.common.exception import errors
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.database.db import async_db_session
 from backend.src.database.redis import redis_client
 from backend.src.utils.async_helper import run_await

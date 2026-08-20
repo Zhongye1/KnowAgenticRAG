@@ -7,7 +7,7 @@ from backend.src.common.response.response_schema import ResponseModel, ResponseS
 from backend.src.common.security.jwt import DependsJwtAuth
 from backend.src.common.security.permission import RequestPermission
 from backend.src.common.security.rbac import DependsRBAC
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.database.db import CurrentSession, CurrentSessionTransaction
 from backend.src.plugin.code_generator.schema.gen import ImportParam
 from backend.src.plugin.code_generator.service.gen_service import gen_service

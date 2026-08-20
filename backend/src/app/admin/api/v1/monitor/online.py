@@ -8,7 +8,7 @@ from backend.src.app.admin.schema.token import GetTokenDetail
 from backend.src.common.enums import StatusType
 from backend.src.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsSuperUser, jwt_decode, revoke_token
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.database.redis import redis_client
 
 router = APIRouter()

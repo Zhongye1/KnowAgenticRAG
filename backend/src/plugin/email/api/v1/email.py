@@ -7,7 +7,7 @@ from fastapi import APIRouter, Body
 from backend.src.common.context import ctx
 from backend.src.common.response.response_schema import ResponseModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.database.db import CurrentSession
 from backend.src.database.redis import redis_client
 from backend.src.plugin.email.utils.send import send_email

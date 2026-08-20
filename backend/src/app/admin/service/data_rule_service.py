@@ -17,7 +17,7 @@ from backend.src.app.admin.utils.cache import user_cache_manager
 from backend.src.common.exception import errors
 from backend.src.common.pagination import paging_data
 from backend.src.common.security.permission import get_data_permission_models
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 
 
 class DataRuleService:

@@ -10,6 +10,8 @@ requires-python = ">=3.12"
 dependencies = [
     "aiosmtplib>=5.1.2",
     "asyncio>=4.0.0",
+    "asyncmy>=0.2.14",
+    "asyncpg>=0.31.0",
     "bcrypt>=5.0.0",
     "cachebox>=6.2.5",
     "celery>=5.6.3",

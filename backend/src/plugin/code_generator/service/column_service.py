@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.common.enums import DataBaseType
 from backend.src.common.exception import errors
-from backend.src.core.conf import settings
+from backend.src.core.config import settings
 from backend.src.plugin.code_generator.crud.crud_business import gen_business_dao
 from backend.src.plugin.code_generator.crud.crud_column import gen_column_dao
 from backend.src.plugin.code_generator.enums import GenMySQLColumnType, GenPostgreSQLColumnType
