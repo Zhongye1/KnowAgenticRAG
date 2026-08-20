@@ -30,7 +30,7 @@ export default defineConfig({
             {
                 text: "开始",
                 items: [
-                    { text: "快速上手", link: "/开始/" },
+                    { text: "本地启动", link: "/开始/" },
                     { text: "项目功能", link: "/开始/项目功能说明" },
                     { text: "系统架构", link: "/开始/系统架构说明" },
                 ],
