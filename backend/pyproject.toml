@@ -8,10 +8,28 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "asyncio>=4.0.0",
+    "fastapi-pagination>=0.15.16",
     "fastapi[standard]>=0.141.1",
+    "msgspec>=0.21.1",
+    "opentelemetry-exporter-otlp>=1.44.0",
+    "opentelemetry-instrumentation-asyncio>=0.65b0",
+    "opentelemetry-instrumentation-fastapi>=0.65b0",
+    "opentelemetry-instrumentation-httpx>=0.65b0",
+    "opentelemetry-instrumentation-logging>=0.65b0",
+    "opentelemetry-instrumentation-openai>=0.62.3",
+    "opentelemetry-instrumentation-redis>=0.65b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.65b0",
+    "prometheus-client>=0.26.0",
+    "py-ip2region>=3.0.4",
+    "pyrate-limiter>=4.4.0",
+    "python-jose>=3.5.0",
+    "redis>=8.1.0",
     "rtoml>=0.13.0",
     "ruff>=0.16.3",
     "sqlalchemy>=2.0.52",
+    "starlette-context>=0.5.1",
+    "user-agents>=2.2.0",
 ]
 
 [project.scripts]
