@@ -3,13 +3,13 @@ from typing import Any
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.admin.crud.crud_menu import menu_dao
-from backend.app.admin.model import Menu
-from backend.app.admin.schema.menu import CreateMenuParam, UpdateMenuParam
-from backend.app.admin.utils.cache import user_cache_manager
-from backend.common.enums import StatusType
-from backend.common.exception import errors
-from backend.utils.build_tree import get_tree_data, get_vben5_tree_data
+from backend.src.app.admin.crud.crud_menu import menu_dao
+from backend.src.app.admin.model import Menu
+from backend.src.app.admin.schema.menu import CreateMenuParam, UpdateMenuParam
+from backend.src.app.admin.utils.cache import user_cache_manager
+from backend.src.common.enums import StatusType
+from backend.src.common.exception import errors
+from backend.src.utils.build_tree import get_tree_data, get_vben5_tree_data
 
 
 class MenuService:

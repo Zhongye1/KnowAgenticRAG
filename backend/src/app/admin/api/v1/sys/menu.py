@@ -2,13 +2,13 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Path, Query, Request
 
-from backend.app.admin.schema.menu import CreateMenuParam, GetMenuDetail, GetMenuTree, UpdateMenuParam
-from backend.app.admin.service.menu_service import menu_service
-from backend.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
-from backend.common.security.jwt import DependsJwtAuth
-from backend.common.security.permission import RequestPermission
-from backend.common.security.rbac import DependsRBAC
-from backend.database.db import CurrentSession, CurrentSessionTransaction
+from backend.src.app.admin.schema.menu import CreateMenuParam, GetMenuDetail, GetMenuTree, UpdateMenuParam
+from backend.src.app.admin.service.menu_service import menu_service
+from backend.src.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
+from backend.src.common.security.jwt import DependsJwtAuth
+from backend.src.common.security.permission import RequestPermission
+from backend.src.common.security.rbac import DependsRBAC
+from backend.src.database.db import CurrentSession, CurrentSessionTransaction
 
 router = APIRouter()
 

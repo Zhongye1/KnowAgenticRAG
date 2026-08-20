@@ -2,11 +2,11 @@ from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.admin.crud.crud_user_password_history import user_password_history_dao
-from backend.common.exception import errors
-from backend.core.conf import settings
-from backend.utils.dynamic_config import load_user_security_config
-from backend.utils.pattern_validate import is_has_letter, is_has_number, is_has_special_char
+from backend.src.app.admin.crud.crud_user_password_history import user_password_history_dao
+from backend.src.common.exception import errors
+from backend.src.core.conf import settings
+from backend.src.utils.dynamic_config import load_user_security_config
+from backend.src.utils.pattern_validate import is_has_letter, is_has_number, is_has_special_char
 
 password_hash = PasswordHash((BcryptHasher(),))
 

@@ -4,11 +4,11 @@ from fastapi import APIRouter, File, Path, UploadFile
 from fastapi.params import Query
 from starlette.responses import StreamingResponse
 
-from backend.app.admin.service.plugin_service import plugin_service
-from backend.common.enums import PluginType
-from backend.common.response.response_code import CustomResponse
-from backend.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
-from backend.common.security.jwt import DependsSuperUser
+from backend.src.app.admin.service.plugin_service import plugin_service
+from backend.src.common.enums import PluginType
+from backend.src.common.response.response_code import CustomResponse
+from backend.src.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
+from backend.src.common.security.jwt import DependsSuperUser
 
 router = APIRouter()
 

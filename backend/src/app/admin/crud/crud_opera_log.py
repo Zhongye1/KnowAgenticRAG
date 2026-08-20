@@ -3,8 +3,8 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_crud_plus import CRUDPlus
 
-from backend.app.admin.model import OperaLog
-from backend.app.admin.schema.opera_log import CreateOperaLogParam
+from backend.src.app.admin.model import OperaLog
+from backend.src.app.admin.schema.opera_log import CreateOperaLogParam
 
 
 class CRUDOperaLogDao(CRUDPlus[OperaLog]):

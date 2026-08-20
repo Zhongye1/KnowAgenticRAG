@@ -2,22 +2,22 @@ from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends, Path, Query, Request
 
-from backend.app.admin.schema.role import GetRoleDetail
-from backend.app.admin.schema.user import (
+from backend.src.app.admin.schema.role import GetRoleDetail
+from backend.src.app.admin.schema.user import (
     AddUserParam,
     GetCurrentUserInfoWithRelationDetail,
     GetUserInfoWithRelationDetail,
     ResetPasswordParam,
     UpdateUserParam,
 )
-from backend.app.admin.service.user_service import user_service
-from backend.common.enums import UserPermissionType
-from backend.common.pagination import DependsPagination, PageData
-from backend.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
-from backend.common.security.jwt import DependsJwtAuth, DependsSuperUser
-from backend.common.security.permission import RequestPermission
-from backend.common.security.rbac import DependsRBAC
-from backend.database.db import CurrentSession, CurrentSessionTransaction
+from backend.src.app.admin.service.user_service import user_service
+from backend.src.common.enums import UserPermissionType
+from backend.src.common.pagination import DependsPagination, PageData
+from backend.src.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
+from backend.src.common.security.jwt import DependsJwtAuth, DependsSuperUser
+from backend.src.common.security.permission import RequestPermission
+from backend.src.common.security.rbac import DependsRBAC
+from backend.src.database.db import CurrentSession, CurrentSessionTransaction
 
 router = APIRouter()
 

@@ -2,9 +2,9 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.admin.crud.crud_opera_log import opera_log_dao
-from backend.app.admin.schema.opera_log import CreateOperaLogParam, DeleteOperaLogParam
-from backend.common.pagination import paging_data
+from backend.src.app.admin.crud.crud_opera_log import opera_log_dao
+from backend.src.app.admin.schema.opera_log import CreateOperaLogParam, DeleteOperaLogParam
+from backend.src.common.pagination import paging_data
 
 
 class OperaLogService:

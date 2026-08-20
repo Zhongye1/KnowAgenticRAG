@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import ConfigDict, Field
 
-from backend.common.schema import SchemaBase
+from backend.src.common.schema import SchemaBase
 
 
 class LoginLogSchemaBase(SchemaBase):

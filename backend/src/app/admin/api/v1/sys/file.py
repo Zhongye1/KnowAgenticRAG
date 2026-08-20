@@ -2,11 +2,11 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, UploadFile
 
-from backend.common.dataclasses import UploadUrl
-from backend.common.response.response_schema import ResponseSchemaModel, response_base
-from backend.common.security.permission import RequestPermission
-from backend.common.security.rbac import DependsRBAC
-from backend.utils.file_ops import upload_file, upload_file_verify
+from backend.src.common.dataclasses import UploadUrl
+from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
+from backend.src.common.security.permission import RequestPermission
+from backend.src.common.security.rbac import DependsRBAC
+from backend.src.utils.file_ops import upload_file, upload_file_verify
 
 router = APIRouter()
 

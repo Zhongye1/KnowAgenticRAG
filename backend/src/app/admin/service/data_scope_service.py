@@ -3,18 +3,18 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.admin.crud.crud_data_rule import data_rule_dao
-from backend.app.admin.crud.crud_data_scope import data_scope_dao
-from backend.app.admin.model import DataScope
-from backend.app.admin.schema.data_scope import (
+from backend.src.app.admin.crud.crud_data_rule import data_rule_dao
+from backend.src.app.admin.crud.crud_data_scope import data_scope_dao
+from backend.src.app.admin.model import DataScope
+from backend.src.app.admin.schema.data_scope import (
     CreateDataScopeParam,
     DeleteDataScopeParam,
     UpdateDataScopeParam,
     UpdateDataScopeRuleParam,
 )
-from backend.app.admin.utils.cache import user_cache_manager
-from backend.common.exception import errors
-from backend.common.pagination import paging_data
+from backend.src.app.admin.utils.cache import user_cache_manager
+from backend.src.common.exception import errors
+from backend.src.common.pagination import paging_data
 
 
 class DataScopeService:

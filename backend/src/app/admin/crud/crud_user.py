@@ -7,7 +7,7 @@ from sqlalchemy import Select, and_, delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_crud_plus import CRUDPlus, JoinConfig
 
-from backend.app.admin.model import (
+from backend.src.app.admin.model import (
     DataRule,
     DataScope,
     Dept,
@@ -19,18 +19,18 @@ from backend.app.admin.model import (
     role_menu,
     user_role,
 )
-from backend.app.admin.schema.user import (
+from backend.src.app.admin.schema.user import (
     AddOAuth2UserParam,
     AddUserParam,
     AddUserRoleParam,
     UpdateUserParam,
 )
-from backend.app.admin.utils.password_security import get_hash_password
-from backend.common.enums import StatusType
-from backend.common.exception import errors
-from backend.plugin.core import check_plugin_installed
-from backend.utils.serializers import select_join_serialize
-from backend.utils.timezone import timezone
+from backend.src.app.admin.utils.password_security import get_hash_password
+from backend.src.common.enums import StatusType
+from backend.src.common.exception import errors
+from backend.src.plugin.core import check_plugin_installed
+from backend.src.utils.serializers import select_join_serialize
+from backend.src.utils.timezone import timezone
 
 
 class CRUDUser(CRUDPlus[User]):
@@ -325,7 +325,7 @@ class CRUDUser(CRUDPlus[User]):
         """
         if check_plugin_installed('oauth2'):
             try:
-                from backend.plugin.oauth2.crud.crud_user_social import user_social_dao
+                from backend.src.plugin.oauth2.crud.crud_user_social import user_social_dao
 
                 await user_social_dao.delete_by_user_id(db, user_id)
             except ImportError:

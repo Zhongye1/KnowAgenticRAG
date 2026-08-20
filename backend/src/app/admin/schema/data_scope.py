@@ -2,9 +2,9 @@ from datetime import datetime
 
 from pydantic import ConfigDict, Field
 
-from backend.app.admin.schema.data_rule import GetDataRuleDetail
-from backend.common.enums import StatusType
-from backend.common.schema import SchemaBase
+from backend.src.app.admin.schema.data_rule import GetDataRuleDetail
+from backend.src.common.enums import StatusType
+from backend.src.common.schema import SchemaBase
 
 
 class DataScopeBase(SchemaBase):

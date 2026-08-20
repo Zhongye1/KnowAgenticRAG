@@ -4,12 +4,12 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
 
-from backend.app.admin.schema.token import GetTokenDetail
-from backend.common.enums import StatusType
-from backend.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
-from backend.common.security.jwt import DependsSuperUser, jwt_decode, revoke_token
-from backend.core.conf import settings
-from backend.database.redis import redis_client
+from backend.src.app.admin.schema.token import GetTokenDetail
+from backend.src.common.enums import StatusType
+from backend.src.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
+from backend.src.common.security.jwt import DependsSuperUser, jwt_decode, revoke_token
+from backend.src.core.conf import settings
+from backend.src.database.redis import redis_client
 
 router = APIRouter()
 

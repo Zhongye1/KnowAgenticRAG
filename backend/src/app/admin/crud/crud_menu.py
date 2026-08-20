@@ -4,9 +4,9 @@ from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_crud_plus import CRUDPlus
 
-from backend.app.admin.model import Menu, role_menu
-from backend.app.admin.schema.menu import CreateMenuParam, UpdateMenuParam
-from backend.utils.timezone import timezone
+from backend.src.app.admin.model import Menu, role_menu
+from backend.src.app.admin.schema.menu import CreateMenuParam, UpdateMenuParam
+from backend.src.utils.timezone import timezone
 
 
 class CRUDMenu(CRUDPlus[Menu]):

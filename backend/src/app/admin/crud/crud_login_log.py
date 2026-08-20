@@ -3,8 +3,8 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_crud_plus import CRUDPlus
 
-from backend.app.admin.model import LoginLog
-from backend.app.admin.schema.login_log import CreateLoginLogParam
+from backend.src.app.admin.model import LoginLog
+from backend.src.app.admin.schema.login_log import CreateLoginLogParam
 
 
 class CRUDLoginLog(CRUDPlus[LoginLog]):

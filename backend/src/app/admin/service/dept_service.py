@@ -3,11 +3,11 @@ from typing import Any
 from sqlalchemy import ColumnElement
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.admin.crud.crud_dept import dept_dao
-from backend.app.admin.model import Dept
-from backend.app.admin.schema.dept import CreateDeptParam, UpdateDeptParam
-from backend.common.exception import errors
-from backend.utils.build_tree import get_tree_data
+from backend.src.app.admin.crud.crud_dept import dept_dao
+from backend.src.app.admin.model import Dept
+from backend.src.app.admin.schema.dept import CreateDeptParam, UpdateDeptParam
+from backend.src.common.exception import errors
+from backend.src.utils.build_tree import get_tree_data
 
 
 class DeptService:

@@ -4,9 +4,9 @@ from sqlalchemy import Select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_crud_plus import CRUDPlus
 
-from backend.app.admin.model import DataRule
-from backend.app.admin.schema.data_rule import CreateDataRuleParam, UpdateDataRuleParam
-from backend.utils.timezone import timezone
+from backend.src.app.admin.model import DataRule
+from backend.src.app.admin.schema.data_rule import CreateDataRuleParam, UpdateDataRuleParam
+from backend.src.utils.timezone import timezone
 
 
 class CRUDDataRule(CRUDPlus[DataRule]):

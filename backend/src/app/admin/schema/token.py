@@ -2,9 +2,9 @@ from datetime import datetime
 
 from pydantic import Field
 
-from backend.app.admin.schema.user import GetUserInfoDetail
-from backend.common.enums import StatusType
-from backend.common.schema import SchemaBase
+from backend.src.app.admin.schema.user import GetUserInfoDetail
+from backend.src.common.enums import StatusType
+from backend.src.common.schema import SchemaBase
 
 
 class GetSwaggerToken(SchemaBase):

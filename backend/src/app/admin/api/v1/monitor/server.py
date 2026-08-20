@@ -11,7 +11,7 @@ import psutil
 from fastapi import APIRouter
 from starlette.concurrency import run_in_threadpool
 
-from backend.app.admin.schema.monitor import (
+from backend.src.app.admin.schema.monitor import (
     CpuInfo,
     DiskInfo,
     MemInfo,
@@ -19,10 +19,10 @@ from backend.app.admin.schema.monitor import (
     ServiceInfo,
     SysInfo,
 )
-from backend.common.response.response_schema import ResponseSchemaModel, response_base
-from backend.common.security.jwt import DependsSuperUser
-from backend.utils.format import fmt_bytes, fmt_seconds
-from backend.utils.timezone import timezone
+from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
+from backend.src.common.security.jwt import DependsSuperUser
+from backend.src.utils.format import fmt_bytes, fmt_seconds
+from backend.src.utils.timezone import timezone
 
 router = APIRouter()
 

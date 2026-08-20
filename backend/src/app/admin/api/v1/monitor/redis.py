@@ -1,10 +1,10 @@
 from fastapi import APIRouter
 
-from backend.app.admin.schema.monitor import RedisCommandStat, RedisMonitorInfo, RedisServerInfo
-from backend.common.response.response_schema import ResponseSchemaModel, response_base
-from backend.common.security.jwt import DependsJwtAuth
-from backend.database.redis import redis_client
-from backend.utils.format import fmt_seconds
+from backend.src.app.admin.schema.monitor import RedisCommandStat, RedisMonitorInfo, RedisServerInfo
+from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
+from backend.src.common.security.jwt import DependsJwtAuth
+from backend.src.database.redis import redis_client
+from backend.src.utils.format import fmt_seconds
 
 router = APIRouter()
 

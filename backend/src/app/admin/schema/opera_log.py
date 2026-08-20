@@ -3,8 +3,8 @@ from typing import Any
 
 from pydantic import ConfigDict, Field
 
-from backend.common.enums import StatusType
-from backend.common.schema import SchemaBase
+from backend.src.common.enums import StatusType
+from backend.src.common.schema import SchemaBase
 
 
 class OperaLogSchemaBase(SchemaBase):

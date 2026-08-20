@@ -8,15 +8,15 @@ import anyio
 from fastapi import UploadFile
 from starlette.concurrency import run_in_threadpool
 
-from backend.common.enums import PluginType, StatusType
-from backend.common.exception import errors
-from backend.core.conf import settings
-from backend.core.path_conf import PLUGIN_DIR
-from backend.database.redis import redis_client
-from backend.plugin.core import get_required_plugins
-from backend.plugin.installer import install_git_plugin, install_zip_plugin, remove_plugin, zip_plugin
-from backend.plugin.requirements import uninstall_requirements_async
-from backend.utils.timezone import timezone
+from backend.src.common.enums import PluginType, StatusType
+from backend.src.common.exception import errors
+from backend.src.core.conf import settings
+from backend.src.core.path_conf import PLUGIN_DIR
+from backend.src.database.redis import redis_client
+from backend.src.plugin.core import get_required_plugins
+from backend.src.plugin.installer import install_git_plugin, install_zip_plugin, remove_plugin, zip_plugin
+from backend.src.plugin.requirements import uninstall_requirements_async
+from backend.src.utils.timezone import timezone
 
 
 class PluginService:

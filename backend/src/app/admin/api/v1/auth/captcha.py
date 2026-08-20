@@ -5,13 +5,13 @@ from fastapi import APIRouter, Depends
 from pyrate_limiter import Duration, Rate
 from starlette.concurrency import run_in_threadpool
 
-from backend.app.admin.schema.captcha import GetCaptchaDetail
-from backend.common.response.response_schema import ResponseSchemaModel, response_base
-from backend.core.conf import settings
-from backend.database.db import CurrentSession
-from backend.database.redis import redis_client
-from backend.utils.dynamic_config import load_login_config
-from backend.utils.limiter import RateLimiter
+from backend.src.app.admin.schema.captcha import GetCaptchaDetail
+from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
+from backend.src.core.conf import settings
+from backend.src.database.db import CurrentSession
+from backend.src.database.redis import redis_client
+from backend.src.utils.dynamic_config import load_login_config
+from backend.src.utils.limiter import RateLimiter
 
 router = APIRouter()
 

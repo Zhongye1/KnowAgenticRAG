@@ -3,21 +3,21 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.admin.crud.crud_data_scope import data_scope_dao
-from backend.app.admin.crud.crud_menu import menu_dao
-from backend.app.admin.crud.crud_role import role_dao
-from backend.app.admin.model import Role
-from backend.app.admin.schema.role import (
+from backend.src.app.admin.crud.crud_data_scope import data_scope_dao
+from backend.src.app.admin.crud.crud_menu import menu_dao
+from backend.src.app.admin.crud.crud_role import role_dao
+from backend.src.app.admin.model import Role
+from backend.src.app.admin.schema.role import (
     CreateRoleParam,
     DeleteRoleParam,
     UpdateRoleMenuParam,
     UpdateRoleParam,
     UpdateRoleScopeParam,
 )
-from backend.app.admin.utils.cache import user_cache_manager
-from backend.common.exception import errors
-from backend.common.pagination import paging_data
-from backend.utils.build_tree import get_tree_data
+from backend.src.app.admin.utils.cache import user_cache_manager
+from backend.src.common.exception import errors
+from backend.src.common.pagination import paging_data
+from backend.src.utils.build_tree import get_tree_data
 
 
 class RoleService:

@@ -4,13 +4,13 @@ from datetime import datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.admin.crud.crud_user_password_history import user_password_history_dao
-from backend.app.admin.schema.user_password_history import CreateUserPasswordHistoryParam
-from backend.common.exception import errors
-from backend.core.conf import settings
-from backend.database.redis import redis_client
-from backend.utils.dynamic_config import load_user_security_config
-from backend.utils.timezone import timezone
+from backend.src.app.admin.crud.crud_user_password_history import user_password_history_dao
+from backend.src.app.admin.schema.user_password_history import CreateUserPasswordHistoryParam
+from backend.src.common.exception import errors
+from backend.src.core.conf import settings
+from backend.src.database.redis import redis_client
+from backend.src.utils.dynamic_config import load_user_security_config
+from backend.src.utils.timezone import timezone
 
 
 class UserPasswordHistoryService:

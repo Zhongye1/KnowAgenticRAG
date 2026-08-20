@@ -3,8 +3,8 @@ from collections.abc import Sequence
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_crud_plus import CRUDPlus
 
-from backend.app.admin.model.user_password_history import UserPasswordHistory
-from backend.app.admin.schema.user_password_history import CreateUserPasswordHistoryParam
+from backend.src.app.admin.model.user_password_history import UserPasswordHistory
+from backend.src.app.admin.schema.user_password_history import CreateUserPasswordHistoryParam
 
 
 class CRUDUserPasswordHistory(CRUDPlus[UserPasswordHistory]):

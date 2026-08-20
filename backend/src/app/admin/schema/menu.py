@@ -2,8 +2,8 @@ from datetime import datetime
 
 from pydantic import ConfigDict, Field
 
-from backend.common.enums import MenuType, StatusType
-from backend.common.schema import SchemaBase
+from backend.src.common.enums import MenuType, StatusType
+from backend.src.common.schema import SchemaBase
 
 
 class MenuSchemaBase(SchemaBase):

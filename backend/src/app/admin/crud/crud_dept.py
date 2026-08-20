@@ -5,10 +5,10 @@ from sqlalchemy import ColumnElement, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_crud_plus import CRUDPlus, JoinConfig
 
-from backend.app.admin.model import Dept, User
-from backend.app.admin.schema.dept import CreateDeptParam, UpdateDeptParam
-from backend.utils.serializers import select_join_serialize
-from backend.utils.timezone import timezone
+from backend.src.app.admin.model import Dept, User
+from backend.src.app.admin.schema.dept import CreateDeptParam, UpdateDeptParam
+from backend.src.utils.serializers import select_join_serialize
+from backend.src.utils.timezone import timezone
 
 
 class CRUDDept(CRUDPlus[Dept]):

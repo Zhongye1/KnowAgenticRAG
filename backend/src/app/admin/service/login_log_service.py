@@ -3,12 +3,12 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.admin.crud.crud_login_log import login_log_dao
-from backend.app.admin.schema.login_log import CreateLoginLogParam, DeleteLoginLogParam
-from backend.common.context import ctx
-from backend.common.log import log
-from backend.common.pagination import paging_data
-from backend.database.db import async_db_session
+from backend.src.app.admin.crud.crud_login_log import login_log_dao
+from backend.src.app.admin.schema.login_log import CreateLoginLogParam, DeleteLoginLogParam
+from backend.src.common.context import ctx
+from backend.src.common.log import log
+from backend.src.common.pagination import paging_data
+from backend.src.database.db import async_db_session
 
 
 class LoginLogService:

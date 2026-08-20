@@ -3,32 +3,32 @@ from fastapi.security import HTTPBasicCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask, BackgroundTasks
 
-from backend.app.admin.crud.crud_menu import menu_dao
-from backend.app.admin.crud.crud_user import user_dao
-from backend.app.admin.model import User
-from backend.app.admin.schema.token import GetLoginToken, GetNewToken
-from backend.app.admin.schema.user import AuthLoginParam
-from backend.app.admin.service.login_log_service import login_log_service
-from backend.app.admin.service.user_password_history_service import password_security_service
-from backend.app.admin.utils.password_security import password_verify
-from backend.common.context import ctx
-from backend.common.enums import LoginLogStatusType, StatusType
-from backend.common.exception import errors
-from backend.common.i18n import t
-from backend.common.log import log
-from backend.common.response.response_code import CustomErrorCode
-from backend.common.security.jwt import (
+from backend.src.app.admin.crud.crud_menu import menu_dao
+from backend.src.app.admin.crud.crud_user import user_dao
+from backend.src.app.admin.model import User
+from backend.src.app.admin.schema.token import GetLoginToken, GetNewToken
+from backend.src.app.admin.schema.user import AuthLoginParam
+from backend.src.app.admin.service.login_log_service import login_log_service
+from backend.src.app.admin.service.user_password_history_service import password_security_service
+from backend.src.app.admin.utils.password_security import password_verify
+from backend.src.common.context import ctx
+from backend.src.common.enums import LoginLogStatusType, StatusType
+from backend.src.common.exception import errors
+from backend.src.common.i18n import t
+from backend.src.common.log import log
+from backend.src.common.response.response_code import CustomErrorCode
+from backend.src.common.security.jwt import (
     create_access_token,
     create_new_token,
     create_refresh_token,
     get_token,
     jwt_decode,
 )
-from backend.core.conf import settings
-from backend.database.db import uuid4_str
-from backend.database.redis import redis_client
-from backend.utils.dynamic_config import load_login_config
-from backend.utils.timezone import timezone
+from backend.src.core.conf import settings
+from backend.src.database.db import uuid4_str
+from backend.src.database.redis import redis_client
+from backend.src.utils.dynamic_config import load_login_config
+from backend.src.utils.timezone import timezone
 
 
 class AuthService:

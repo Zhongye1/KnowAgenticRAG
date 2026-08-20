@@ -5,15 +5,15 @@ from sqlalchemy import Select, and_, delete, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_crud_plus import CRUDPlus, JoinConfig
 
-from backend.app.admin.model import DataRule, DataScope, data_scope_rule
-from backend.app.admin.schema.data_scope import (
+from backend.src.app.admin.model import DataRule, DataScope, data_scope_rule
+from backend.src.app.admin.schema.data_scope import (
     CreateDataScopeParam,
     CreateDataScopeRuleParam,
     UpdateDataScopeParam,
     UpdateDataScopeRuleParam,
 )
-from backend.utils.serializers import select_join_serialize
-from backend.utils.timezone import timezone
+from backend.src.utils.serializers import select_join_serialize
+from backend.src.utils.timezone import timezone
 
 
 class CRUDDataScope(CRUDPlus[DataScope]):

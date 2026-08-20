@@ -5,8 +5,8 @@ from sqlalchemy import Select, and_, delete, insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_crud_plus import CRUDPlus, JoinConfig
 
-from backend.app.admin.model import DataScope, Menu, Role, role_data_scope, role_menu
-from backend.app.admin.schema.role import (
+from backend.src.app.admin.model import DataScope, Menu, Role, role_data_scope, role_menu
+from backend.src.app.admin.schema.role import (
     CreateRoleMenuParam,
     CreateRoleParam,
     CreateRoleScopeParam,
@@ -14,8 +14,8 @@ from backend.app.admin.schema.role import (
     UpdateRoleParam,
     UpdateRoleScopeParam,
 )
-from backend.utils.serializers import select_join_serialize
-from backend.utils.timezone import timezone
+from backend.src.utils.serializers import select_join_serialize
+from backend.src.utils.timezone import timezone
 
 
 class CRUDRole(CRUDPlus[Role]):

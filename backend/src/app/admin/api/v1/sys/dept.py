@@ -3,14 +3,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy import ColumnElement
 
-from backend.app.admin.model import Dept
-from backend.app.admin.schema.dept import CreateDeptParam, GetDeptDetail, GetDeptTree, UpdateDeptParam
-from backend.app.admin.service.dept_service import dept_service
-from backend.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
-from backend.common.security.jwt import DependsJwtAuth
-from backend.common.security.permission import DataPermissionFilter, RequestPermission
-from backend.common.security.rbac import DependsRBAC
-from backend.database.db import CurrentSession, CurrentSessionTransaction
+from backend.src.app.admin.model import Dept
+from backend.src.app.admin.schema.dept import CreateDeptParam, GetDeptDetail, GetDeptTree, UpdateDeptParam
+from backend.src.app.admin.service.dept_service import dept_service
+from backend.src.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
+from backend.src.common.security.jwt import DependsJwtAuth
+from backend.src.common.security.permission import DataPermissionFilter, RequestPermission
+from backend.src.common.security.rbac import DependsRBAC
+from backend.src.database.db import CurrentSession, CurrentSessionTransaction
 
 router = APIRouter()
 

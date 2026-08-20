@@ -4,10 +4,10 @@ from typing import Annotated, Any
 from pydantic import ConfigDict, Field, HttpUrl, PlainSerializer, model_validator
 from typing_extensions import Self
 
-from backend.app.admin.schema.dept import GetDeptDetail
-from backend.app.admin.schema.role import GetRoleWithRelationDetail
-from backend.common.enums import StatusType
-from backend.common.schema import CustomEmailStr, CustomPhoneNumber, SchemaBase, ser_string
+from backend.src.app.admin.schema.dept import GetDeptDetail
+from backend.src.app.admin.schema.role import GetRoleWithRelationDetail
+from backend.src.common.enums import StatusType
+from backend.src.common.schema import CustomEmailStr, CustomPhoneNumber, SchemaBase, ser_string
 
 
 class AuthSchemaBase(SchemaBase):

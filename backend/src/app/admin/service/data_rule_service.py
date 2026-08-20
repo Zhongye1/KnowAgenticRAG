@@ -4,20 +4,20 @@ from typing import Any
 from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.admin.crud.crud_data_rule import data_rule_dao
-from backend.app.admin.model import DataRule
-from backend.app.admin.schema.data_rule import (
+from backend.src.app.admin.crud.crud_data_rule import data_rule_dao
+from backend.src.app.admin.model import DataRule
+from backend.src.app.admin.schema.data_rule import (
     CreateDataRuleParam,
     DeleteDataRuleParam,
     GetDataRuleColumnDetail,
     GetDataRuleTemplateVariableDetail,
     UpdateDataRuleParam,
 )
-from backend.app.admin.utils.cache import user_cache_manager
-from backend.common.exception import errors
-from backend.common.pagination import paging_data
-from backend.common.security.permission import get_data_permission_models
-from backend.core.conf import settings
+from backend.src.app.admin.utils.cache import user_cache_manager
+from backend.src.common.exception import errors
+from backend.src.common.pagination import paging_data
+from backend.src.common.security.permission import get_data_permission_models
+from backend.src.core.conf import settings
 
 
 class DataRuleService:

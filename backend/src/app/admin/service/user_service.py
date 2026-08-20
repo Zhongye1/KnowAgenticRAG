@@ -4,27 +4,27 @@ from typing import Any
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.admin.crud.crud_dept import dept_dao
-from backend.app.admin.crud.crud_role import role_dao
-from backend.app.admin.crud.crud_user import user_dao
-from backend.app.admin.model import Role, User
-from backend.app.admin.schema.user import (
+from backend.src.app.admin.crud.crud_dept import dept_dao
+from backend.src.app.admin.crud.crud_role import role_dao
+from backend.src.app.admin.crud.crud_user import user_dao
+from backend.src.app.admin.model import Role, User
+from backend.src.app.admin.schema.user import (
     AddUserParam,
     ResetPasswordParam,
     UpdateUserParam,
 )
-from backend.app.admin.schema.user_password_history import CreateUserPasswordHistoryParam
-from backend.app.admin.service.user_password_history_service import password_security_service
-from backend.app.admin.utils.password_security import password_verify, validate_new_password
-from backend.common.context import ctx
-from backend.common.enums import UserPermissionType
-from backend.common.exception import errors
-from backend.common.pagination import paging_data
-from backend.common.response.response_code import CustomErrorCode
-from backend.common.security.jwt import get_token, jwt_decode
-from backend.core.conf import settings
-from backend.database.redis import redis_client
-from backend.utils.serializers import select_join_serialize
+from backend.src.app.admin.schema.user_password_history import CreateUserPasswordHistoryParam
+from backend.src.app.admin.service.user_password_history_service import password_security_service
+from backend.src.app.admin.utils.password_security import password_verify, validate_new_password
+from backend.src.common.context import ctx
+from backend.src.common.enums import UserPermissionType
+from backend.src.common.exception import errors
+from backend.src.common.pagination import paging_data
+from backend.src.common.response.response_code import CustomErrorCode
+from backend.src.common.security.jwt import get_token, jwt_decode
+from backend.src.core.conf import settings
+from backend.src.database.redis import redis_client
+from backend.src.utils.serializers import select_join_serialize
 
 
 class UserService:
