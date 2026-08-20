@@ -12,7 +12,7 @@ RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debi
 
 COPY . /ragf
 
-WORKDIR /ragf/backend
+WORKDIR /ragf
 
 # Configure uv environment
 ENV UV_COMPILE_BYTECODE=1 \
@@ -43,6 +43,8 @@ RUN sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debi
 COPY --from=builder /ragf /ragf
 
 COPY --from=builder /usr/local /usr/local
+
+ENV PYTHONPATH=/ragf
 
 COPY deploy/backend/supervisor/supervisord.conf /etc/supervisor/supervisord.conf
 

@@ -248,96 +248,94 @@ services:
     networks:
       - ragf_network
 
-# TODO SRE建设
+  ragf_loki:
+    image: grafana/loki:latest
+    restart: always
+    ports:
+      - "${DOCKER_MAP_LOKI_PORT:-3100}:3100"
+    container_name: ragf_loki
+    volumes:
+      - ragf_loki_data:/tmp/loki
+    networks:
+      - ragf_network
+    command: -config.file=/etc/loki/local-config.yaml
 
-#  ragf_loki:
-#    image: grafana/loki:latest
-#    restart: always
-#    ports:
-#      - "${DOCKER_MAP_LOKI_PORT:-3100}:3100"
-#    container_name: ragf_loki
-#    volumes:
-#      - ragf_loki_data:/tmp/loki
-#    networks:
-#      - ragf_network
-#    command: -config.file=/etc/loki/local-config.yaml
-#
-#  ragf_prometheus:
-#    image: prom/prometheus:latest
-#    restart: always
-#    ports:
-#      - "${DOCKER_MAP_PROMETHEUS_PORT:-9090}:9090"
-#    container_name: ragf_prometheus
-#    depends_on:
-#      - ragf_loki
-#    volumes:
-#      - ./deploy/backend/grafana/ragf_prometheus.yml:/workspace/ragf_prometheus.yml
-#      - ragf_prometheus_data:/prometheus
-#    networks:
-#      - ragf_network
-#    command:
-#      - --web.enable-remote-write-receiver
-#      - --enable-feature=exemplar-storage
-#      - --config.file=/workspace/ragf_prometheus.yml
-#
-#  ragf_alloy:
-#    image: grafana/alloy:latest
-#    restart: always
-#    ports:
-#      - "${DOCKER_MAP_ALLOY_GRPC_PORT:-4317}:4317"
-#      - "${DOCKER_MAP_ALLOY_HTTP_PORT:-4318}:4318"
-#      - "${DOCKER_MAP_ALLOY_UI_PORT:-12345}:12345"
-#    container_name: ragf_alloy
-#    depends_on:
-#      - ragf_loki
-#      - ragf_prometheus
-#      - ragf_tempo
-#      - ragf_server
-#      - ragf_celery_exporter
-#    volumes:
-#      - ./deploy/backend/grafana/ragf_config.alloy:/etc/alloy/ragf_config.alloy
-#    networks:
-#      - ragf_network
-#    command:
-#      - run
-#      - --server.http.listen-addr=0.0.0.0:12345
-#      - /etc/alloy/ragf_config.alloy
-#
-#  ragf_tempo:
-#    image: grafana/tempo:latest
-#    restart: always
-#    ports:
-#      - "${DOCKER_MAP_TEMPO_PORT:-3200}:3200"
-#    expose:
-#      - 4317
-#      - 4318
-#    container_name: ragf_tempo
-#    depends_on:
-#      - ragf_loki
-#      - ragf_prometheus
-#    volumes:
-#      - ./deploy/backend/grafana/ragf_tempo.yml:/etc/tempo/ragf_tempo.yml
-#      - ragf_tempo_data:/tmp
-#    networks:
-#      - ragf_network
-#    command:
-#      - --config.file=/etc/tempo/ragf_tempo.yml
-#
-#  ragf_grafana:
-#    image: grafana/grafana:latest
-#    restart: always
-#    ports:
-#      - "${DOCKER_MAP_GRAFANA_PORT:-3000}:3000"
-#    container_name: ragf_grafana
-#    depends_on:
-#      - ragf_loki
-#      - ragf_prometheus
-#      - ragf_tempo
-#    volumes:
-#      - ./deploy/backend/grafana/ragf_grafana.ini:/etc/grafana/grafana.ini
-#      - ./deploy/backend/grafana/dashboards/ragf_celery.json:/etc/grafana/dashboards/ragf_celery.json
-#      - ./deploy/backend/grafana/dashboards/ragf_server.json:/etc/grafana/dashboards/ragf_server.json
-#      - ./deploy/backend/grafana/ragf_dashboards.yml:/etc/grafana/provisioning/dashboards/ragf_dashboards.yml
-#      - ./deploy/backend/grafana/ragf_datasource.yml:/etc/grafana/provisioning/datasources/ragf_datasource.yml
-#    networks:
-#      - ragf_network
+  ragf_prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    ports:
+      - "${DOCKER_MAP_PROMETHEUS_PORT:-9090}:9090"
+    container_name: ragf_prometheus
+    depends_on:
+      - ragf_loki
+    volumes:
+      - ./deploy/backend/grafana/ragf_prometheus.yml:/workspace/ragf_prometheus.yml
+      - ragf_prometheus_data:/prometheus
+    networks:
+      - ragf_network
+    command:
+      - --web.enable-remote-write-receiver
+      - --enable-feature=exemplar-storage
+      - --config.file=/workspace/ragf_prometheus.yml
+
+  ragf_alloy:
+    image: grafana/alloy:latest
+    restart: always
+    ports:
+      - "${DOCKER_MAP_ALLOY_GRPC_PORT:-4317}:4317"
+      - "${DOCKER_MAP_ALLOY_HTTP_PORT:-4318}:4318"
+      - "${DOCKER_MAP_ALLOY_UI_PORT:-12345}:12345"
+    container_name: ragf_alloy
+    depends_on:
+      - ragf_loki
+      - ragf_prometheus
+      - ragf_tempo
+      - ragf_server
+      - ragf_celery_exporter
+    volumes:
+      - ./deploy/backend/grafana/ragf_config.alloy:/etc/alloy/ragf_config.alloy
+    networks:
+      - ragf_network
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/ragf_config.alloy
+
+  ragf_tempo:
+    image: grafana/tempo:latest
+    restart: always
+    ports:
+      - "${DOCKER_MAP_TEMPO_PORT:-3200}:3200"
+    expose:
+      - 4317
+      - 4318
+    container_name: ragf_tempo
+    depends_on:
+      - ragf_loki
+      - ragf_prometheus
+    volumes:
+      - ./deploy/backend/grafana/ragf_tempo.yml:/etc/tempo/ragf_tempo.yml
+      - ragf_tempo_data:/tmp
+    networks:
+      - ragf_network
+    command:
+      - --config.file=/etc/tempo/ragf_tempo.yml
+
+  ragf_grafana:
+    image: grafana/grafana:latest
+    restart: always
+    ports:
+      - "${DOCKER_MAP_GRAFANA_PORT:-3000}:3000"
+    container_name: ragf_grafana
+    depends_on:
+      - ragf_loki
+      - ragf_prometheus
+      - ragf_tempo
+    volumes:
+      - ./deploy/backend/grafana/ragf_grafana.ini:/etc/grafana/grafana.ini
+      - ./deploy/backend/grafana/dashboards/ragf_celery.json:/etc/grafana/dashboards/ragf_celery.json
+      - ./deploy/backend/grafana/dashboards/ragf_server.json:/etc/grafana/dashboards/ragf_server.json
+      - ./deploy/backend/grafana/ragf_dashboards.yml:/etc/grafana/provisioning/dashboards/ragf_dashboards.yml
+      - ./deploy/backend/grafana/ragf_datasource.yml:/etc/grafana/provisioning/datasources/ragf_datasource.yml
+    networks:
+      - ragf_network
