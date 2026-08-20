@@ -52,3 +52,17 @@ class DataBaseType(StrEnum):
 
     mysql = "mysql"
     postgresql = "postgresql"
+
+
+class BuildTreeType(StrEnum):
+    """构建树形结构类型"""
+
+    traversal = "traversal"
+    recursive = "recursive"
+
+
+class PrimaryKeyType(StrEnum):
+    """主键类型"""
+
+    autoincrement = "autoincrement"
+    snowflake = "snowflake"
