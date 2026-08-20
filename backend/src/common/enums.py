@@ -2,7 +2,7 @@ from enum import Enum
 from enum import IntEnum as SourceIntEnum
 from typing import Any, TypeVar
 
-T = TypeVar("T", bound=Enum)
+T = TypeVar('T', bound=Enum)
 
 
 class _EnumBase:
@@ -65,12 +65,12 @@ class RoleDataRuleExpressionType(IntEnum):
 class MethodType(StrEnum):
     """HTTP 请求方法"""
 
-    GET = "GET"
-    POST = "POST"
-    PUT = "PUT"
-    DELETE = "DELETE"
-    PATCH = "PATCH"
-    OPTIONS = "OPTIONS"
+    GET = 'GET'
+    POST = 'POST'
+    PUT = 'PUT'
+    DELETE = 'DELETE'
+    PATCH = 'PATCH'
+    OPTIONS = 'OPTIONS'
 
 
 class LoginLogStatusType(IntEnum):
@@ -83,8 +83,8 @@ class LoginLogStatusType(IntEnum):
 class BuildTreeType(StrEnum):
     """构建树形结构类型"""
 
-    traversal = "traversal"
-    recursive = "recursive"
+    traversal = 'traversal'
+    recursive = 'recursive'
 
 
 class OperaLogCipherType(IntEnum):
@@ -106,46 +106,46 @@ class StatusType(IntEnum):
 class FileType(StrEnum):
     """文件类型"""
 
-    image = "image"
-    video = "video"
+    image = 'image'
+    video = 'video'
 
 
 class PluginLevelType(StrEnum):
     """插件级别类型"""
 
-    app = "app"
-    capability = "capability"
-    extend = "extend"
+    app = 'app'
+    capability = 'capability'
+    extend = 'extend'
 
 
 class PluginType(StrEnum):
     """插件类型"""
 
-    zip = "zip"
-    git = "git"
+    zip = 'zip'
+    git = 'git'
 
 
 class UserPermissionType(StrEnum):
     """用户权限类型"""
 
-    superuser = "superuser"
-    staff = "staff"
-    status = "status"
-    multi_login = "multi_login"
+    superuser = 'superuser'
+    staff = 'staff'
+    status = 'status'
+    multi_login = 'multi_login'
 
 
 class DataBaseType(StrEnum):
     """数据库类型"""
 
-    mysql = "mysql"
-    postgresql = "postgresql"
+    mysql = 'mysql'
+    postgresql = 'postgresql'
 
 
 class PrimaryKeyType(StrEnum):
     """主键类型"""
 
-    autoincrement = "autoincrement"
-    snowflake = "snowflake"
+    autoincrement = 'autoincrement'
+    snowflake = 'snowflake'
 
 
 class LifespanStage(IntEnum):

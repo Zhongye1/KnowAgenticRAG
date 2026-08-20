@@ -1,5 +1,6 @@
 import asyncio
 import time
+
 from asyncio import Queue
 from collections.abc import Awaitable, Callable
 from typing import TypeVar
@@ -11,12 +12,10 @@ from backend.src.common.observability.prometheus.queue import (
     observe_queue_size,
 )
 
-T = TypeVar("T")
+T = TypeVar('T')
 
 
-async def batch_dequeue(
-    queue: Queue[T], max_items: int, timeout: float, *, queue_name: str = "default"
-) -> list[T]:
+async def batch_dequeue[T](queue: Queue[T], max_items: int, timeout: float, *, queue_name: str = 'default') -> list[T]:
     """
     从异步队列中获取多个项目
 
@@ -41,7 +40,7 @@ async def batch_dequeue(
         pass
     except Exception as e:
         inc_queue_exception(queue_name=queue_name)
-        log.error(f"队列批量获取失败: {e}")
+        log.error(f'队列批量获取失败: {e}')
     finally:
         observe_batch_dequeue_cost(start, queue_name=queue_name)
         observe_queue_size(queue, queue_name=queue_name)
@@ -49,15 +48,15 @@ async def batch_dequeue(
     return items
 
 
-async def batch_consume(
+async def batch_consume[T](
     queue: Queue[T],
     max_items: int,
     timeout: float,
     handler: Callable[..., Awaitable[None]],
     *,
-    queue_name: str = "default",
-    error_message: str = "队列批量处理失败",
-    item_name: str = "数据",
+    queue_name: str = 'default',
+    error_message: str = '队列批量处理失败',
+    item_name: str = '数据',
 ) -> None:
     """
     持续批量消费队列
@@ -72,32 +71,24 @@ async def batch_consume(
     :return:
     """
     while True:
-        items = await batch_dequeue(
-            queue, max_items=max_items, timeout=timeout, queue_name=queue_name
-        )
+        items = await batch_dequeue(queue, max_items=max_items, timeout=timeout, queue_name=queue_name)
         if not items:
             continue
 
         try:
             await handler(items)
         except Exception as e:
-            log.error(f"{error_message}，丢失 {len(items)} 条{item_name}: {e}")
+            log.error(f'{error_message}，丢失 {len(items)} 条{item_name}: {e}')
         finally:
             for _ in items:
                 queue.task_done()
                 observe_queue_size(queue, queue_name=queue_name)
 
 
-from asyncio import Queue
-from collections.abc import Awaitable, Callable
-from typing import TypeVar
-
-T = TypeVar("T")
+T = TypeVar('T')
 
 
-async def batch_dequeue(
-    queue: Queue[T], max_items: int, timeout: float, *, queue_name: str = "default"
-) -> list[T]:
+async def batch_dequeue[T](queue: Queue[T], max_items: int, timeout: float, *, queue_name: str = 'default') -> list[T]:
     """
     从异步队列中获取多个项目
 
@@ -122,7 +113,7 @@ async def batch_dequeue(
         pass
     except Exception as e:
         inc_queue_exception(queue_name=queue_name)
-        log.error(f"队列批量获取失败: {e}")
+        log.error(f'队列批量获取失败: {e}')
     finally:
         observe_batch_dequeue_cost(start, queue_name=queue_name)
         observe_queue_size(queue, queue_name=queue_name)
@@ -130,15 +121,15 @@ async def batch_dequeue(
     return items
 
 
-async def batch_consume(
+async def batch_consume[T](
     queue: Queue[T],
     max_items: int,
     timeout: float,
     handler: Callable[..., Awaitable[None]],
     *,
-    queue_name: str = "default",
-    error_message: str = "队列批量处理失败",
-    item_name: str = "数据",
+    queue_name: str = 'default',
+    error_message: str = '队列批量处理失败',
+    item_name: str = '数据',
 ) -> None:
     """
     持续批量消费队列
@@ -153,16 +144,14 @@ async def batch_consume(
     :return:
     """
     while True:
-        items = await batch_dequeue(
-            queue, max_items=max_items, timeout=timeout, queue_name=queue_name
-        )
+        items = await batch_dequeue(queue, max_items=max_items, timeout=timeout, queue_name=queue_name)
         if not items:
             continue
 
         try:
             await handler(items)
         except Exception as e:
-            log.error(f"{error_message}，丢失 {len(items)} 条{item_name}: {e}")
+            log.error(f'{error_message}，丢失 {len(items)} 条{item_name}: {e}')
         finally:
             for _ in items:
                 queue.task_done()

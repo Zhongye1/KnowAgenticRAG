@@ -28,7 +28,7 @@ id_key = Annotated[
         index=True,
         default=snowflake.generate,
         sort_order=-999,
-        comment="主键 ID",
+        comment='主键 ID',
     ),
 ]
 
@@ -72,10 +72,8 @@ class TimeZone(TypeDecorator[datetime]):
 class UserMixin(MappedAsDataclass):
     """用户 Mixin 数据类"""
 
-    created_by: Mapped[int] = mapped_column(sort_order=998, comment="创建者")
-    updated_by: Mapped[int | None] = mapped_column(
-        init=False, default=None, sort_order=998, comment="修改者"
-    )
+    created_by: Mapped[int] = mapped_column(sort_order=998, comment='创建者')
+    updated_by: Mapped[int | None] = mapped_column(init=False, default=None, sort_order=998, comment='修改者')
 
 
 class DateTimeMixin(MappedAsDataclass):
@@ -86,14 +84,14 @@ class DateTimeMixin(MappedAsDataclass):
         init=False,
         default_factory=timezone.now,
         sort_order=999,
-        comment="创建时间",
+        comment='创建时间',
     )
     updated_time: Mapped[datetime | None] = mapped_column(
         TimeZone,
         init=False,
         onupdate=timezone.now,
         sort_order=999,
-        comment="更新时间",
+        comment='更新时间',
     )
 
 
@@ -104,16 +102,16 @@ class LogicalDeleteMixin(MappedAsDataclass):
         BigInteger,
         init=False,
         default=0,
-        server_default="0",
+        server_default='0',
         sort_order=999,
-        comment="是否已删除（0：否；id：是）",
+        comment='是否已删除（0：否；id：是）',
     )
     deleted_time: Mapped[datetime | None] = mapped_column(
         TimeZone,
         init=False,
         default=None,
         sort_order=999,
-        comment="删除时间",
+        comment='删除时间',
     )
 
 
@@ -136,7 +134,7 @@ class MappedBase(AsyncAttrs, DeclarativeBase):
     @declared_attr.directive
     def __table_args__(self) -> dict:
         """表配置"""
-        return {"comment": self.__doc__ or ""}
+        return {'comment': self.__doc__ or ''}
 
 
 class DataClassBase(MappedAsDataclass, MappedBase):

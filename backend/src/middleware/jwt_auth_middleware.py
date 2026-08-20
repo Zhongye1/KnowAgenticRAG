@@ -42,9 +42,7 @@ class JwtAuthMiddleware(AuthenticationBackend):
     """JWT 认证中间件"""
 
     @staticmethod
-    def auth_exception_handler(
-        conn: HTTPConnection, exc: AuthenticationError
-    ) -> Response:
+    def auth_exception_handler(conn: HTTPConnection, exc: AuthenticationError) -> Response:
         """
         覆盖内部认证错误处理
 
@@ -52,7 +50,7 @@ class JwtAuthMiddleware(AuthenticationBackend):
         :param exc: 认证错误对象
         :return:
         """
-        content = {"code": exc.code, "msg": exc.msg, "data": None}
+        content = {'code': exc.code, 'msg': exc.msg, 'data': None}
         ctx.__request_authentication_exception__ = content
         return MsgSpecJSONResponse(content=content, status_code=exc.code)
 
@@ -64,7 +62,7 @@ class JwtAuthMiddleware(AuthenticationBackend):
         :param request: FastAPI 请求对象
         :return:
         """
-        authorization = request.headers.get("Authorization")
+        authorization = request.headers.get('Authorization')
         if not authorization:
             return None
 
@@ -76,14 +74,12 @@ class JwtAuthMiddleware(AuthenticationBackend):
                 return None
 
         scheme, token = get_authorization_scheme_param(authorization)
-        if scheme.lower() != "bearer":
+        if scheme.lower() != 'bearer':
             return None
 
         return token
 
-    async def authenticate(
-        self, request: Request
-    ) -> tuple[AuthCredentials, GetUserInfoWithRelationDetail] | None:
+    async def authenticate(self, request: Request) -> tuple[AuthCredentials, GetUserInfoWithRelationDetail] | None:
         """
         认证请求
 
@@ -98,18 +94,16 @@ class JwtAuthMiddleware(AuthenticationBackend):
             user = await jwt_authentication(token)
         except TokenError as exc:
             if settings.TOKEN_REQUEST_UNDERLYING_SECURITY:
-                raise AuthenticationError(
-                    code=exc.code, msg=exc.detail, headers=exc.headers
-                )
+                raise AuthenticationError(code=exc.code, msg=exc.detail, headers=exc.headers)
             ctx.__request_jwt_authentication_exception__ = exc
             return None
         except Exception as e:
-            log.exception(f"JWT 授权异常：{e}")
+            log.exception(f'JWT 授权异常：{e}')
             raise AuthenticationError(
-                code=getattr(e, "code", 500),
-                msg=getattr(e, "msg", "Internal Server Error"),
+                code=getattr(e, 'code', 500),
+                msg=getattr(e, 'msg', 'Internal Server Error'),
             )
 
         # TODO 注意这个返回使用非标准模式，所以在认证通过时，将丢失某些标准特性
         # 标准返回模式看：https://www.starlette.io/authentication/
-        return AuthCredentials(["authenticated"]), user
+        return AuthCredentials(['authenticated']), user

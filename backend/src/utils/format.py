@@ -5,18 +5,18 @@ def fmt_seconds(seconds: int) -> str:
     minutes, _ = divmod(rem, 60)
     parts = []
     if days:
-        parts.append(f"{days} days")
+        parts.append(f'{days} days')
     if hours:
-        parts.append(f"{hours} hours")
+        parts.append(f'{hours} hours')
     if minutes:
-        parts.append(f"{minutes} minutes")
-    return " ".join(parts) if parts else "0 seconds"
+        parts.append(f'{minutes} minutes')
+    return ' '.join(parts) if parts else '0 seconds'
 
 
 def fmt_bytes(size: float) -> str:
     s, factor = size, 1024
-    for unit in ["", "K", "M", "G", "T", "P", "E", "Z"]:
+    for unit in ['', 'K', 'M', 'G', 'T', 'P', 'E', 'Z']:
         if abs(s) < factor:
-            return f"{s:.2f} {unit}B"
+            return f'{s:.2f} {unit}B'
         s /= factor
-    return f"{s:.2f} YB"
+    return f'{s:.2f} YB'

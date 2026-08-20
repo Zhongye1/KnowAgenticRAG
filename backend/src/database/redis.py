@@ -53,13 +53,13 @@ class RedisCli(Redis):
         try:
             await self.ping()
         except TimeoutError:
-            log.error("Redis 服务器连接超时")
+            log.error('Redis 服务器连接超时')
             sys.exit()
         except AuthenticationError:
-            log.error("Redis 服务器连接认证失败")
+            log.error('Redis 服务器连接认证失败')
             sys.exit()
         except Exception as e:
-            log.error("Redis 服务器连接异常 {}", e)
+            log.error('Redis 服务器连接异常 {}', e)
             sys.exit()
 
     async def delete_by_prefix(
@@ -88,7 +88,7 @@ class RedisCli(Redis):
         if key_prefix not in exclude_set and await self.exists(key_prefix):
             batch_keys.append(key_prefix)
 
-        async for key in self.scan_iter(match=f"{key_prefix}:*"):
+        async for key in self.scan_iter(match=f'{key_prefix}:*'):
             if key not in exclude_set:
                 batch_keys.append(key)
 
@@ -107,9 +107,7 @@ class RedisCli(Redis):
         :param count: 每次扫描批次的数量，值越大扫描速度越快，但会占用更多服务器资源
         :return:
         """
-        return [
-            key async for key in self.scan_iter(match=f"{key_prefix}:*", count=count)
-        ]
+        return [key async for key in self.scan_iter(match=f'{key_prefix}:*', count=count)]
 
 
 # 创建 redis 客户端单例

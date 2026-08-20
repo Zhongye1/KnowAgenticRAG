@@ -30,7 +30,7 @@ def is_phone(number: str) -> re.Match[str]:
     :param number: 待检查的手机号码
     :return:
     """
-    phone_pattern = r"^1[3-9]\d{9}$"
+    phone_pattern = r'^1[3-9]\d{9}$'
     return match_string(phone_pattern, number)
 
 
@@ -42,8 +42,8 @@ def is_git_url(url: str) -> re.Match[str]:
     :return:
     """
     git_pattern = (
-        r"^(?P<scheme>https?)://(?P<host>[^/]*)(?P<path>(?:/[^/]*)*/)"
-        r"(?P<repo>[^/]+?)(?:\.git)?$"
+        r'^(?P<scheme>https?)://(?P<host>[^/]*)(?P<path>(?:/[^/]*)*/)'
+        r'(?P<repo>[^/]+?)(?:\.git)?$'
     )
     return match_string(git_pattern, url)
 
@@ -55,7 +55,7 @@ def is_has_number(value: str) -> re.Match[str]:
     :param value: 待检查的值
     :return:
     """
-    number_pattern = r"\d"
+    number_pattern = r'\d'
     return search_string(number_pattern, value)
 
 
@@ -66,7 +66,7 @@ def is_has_letter(value: str) -> re.Match[str]:
     :param value: 待检查的值
     :return:
     """
-    letter_pattern = r"[a-zA-Z]"
+    letter_pattern = r'[a-zA-Z]'
     return search_string(letter_pattern, value)
 
 
@@ -88,5 +88,5 @@ def is_english_identifier(value: str) -> re.Match[str]:
     :param value: 待检查的值
     :return:
     """
-    identifier_pattern = r"^[a-zA-Z][a-zA-Z_]*$"
+    identifier_pattern = r'^[a-zA-Z][a-zA-Z_]*$'
     return match_string(identifier_pattern, value)

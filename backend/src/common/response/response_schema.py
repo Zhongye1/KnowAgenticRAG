@@ -1,4 +1,4 @@
-from typing import Any, Generic, TypeVar, overload
+from typing import Any, TypeVar, overload
 
 from fastapi import Response
 from pydantic import BaseModel, Field
@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from backend.src.common.response.response_code import CustomResponse, CustomResponseCode
 from backend.src.utils.serializers import MsgSpecJSONResponse
 
-SchemaT = TypeVar("SchemaT")
+SchemaT = TypeVar('SchemaT')
 
 
 class ResponseModel(BaseModel):
@@ -31,12 +31,12 @@ class ResponseModel(BaseModel):
             return ResponseModel(code=res.code, msg=res.msg, data={'test': 'test'})
     """
 
-    code: int = Field(CustomResponseCode.HTTP_200.code, description="返回状态码")
-    msg: str = Field(CustomResponseCode.HTTP_200.msg, description="返回信息")
-    data: Any | None = Field(None, description="返回数据")
+    code: int = Field(CustomResponseCode.HTTP_200.code, description='返回状态码')
+    msg: str = Field(CustomResponseCode.HTTP_200.msg, description='返回信息')
+    data: Any | None = Field(None, description='返回数据')
 
 
-class ResponseSchemaModel(ResponseModel, Generic[SchemaT]):
+class ResponseSchemaModel[SchemaT](ResponseModel):
     """
     包含返回数据 schema 的通用型统一返回模型
 
@@ -160,7 +160,7 @@ class ResponseBase:
         :param data: 返回数据
         :return:
         """
-        return MsgSpecJSONResponse({"code": res.code, "msg": res.msg, "data": data})
+        return MsgSpecJSONResponse({'code': res.code, 'msg': res.msg, 'data': data})
 
 
 response_base: ResponseBase = ResponseBase()

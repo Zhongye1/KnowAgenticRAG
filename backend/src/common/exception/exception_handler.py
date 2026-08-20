@@ -47,46 +47,36 @@ async def _validation_exception_handler(exc: RequestValidationError | Validation
     errors = []
     for error in exc.errors():
         # 非 en-US 语言下，使用自定义错误信息
-        if i18n.current_language != "en-US":
-            custom_message = t(f"pydantic.{error['type']}")
+        if i18n.current_language != 'en-US':
+            custom_message = t(f'pydantic.{error["type"]}')
             if custom_message:
-                error_ctx = error.get("ctx")
+                error_ctx = error.get('ctx')
                 if not error_ctx:
-                    error["msg"] = custom_message
+                    error['msg'] = custom_message
                 else:
-                    e = error_ctx.get("error")
+                    e = error_ctx.get('error')
                     if e:
-                        error["msg"] = custom_message.format(**error_ctx)
-                        error["ctx"]["error"] = (
-                            e.__str__().replace("'", '"')
-                            if isinstance(e, Exception)
-                            else None
-                        )
+                        error['msg'] = custom_message.format(**error_ctx)
+                        error['ctx']['error'] = e.__str__().replace("'", '"') if isinstance(e, Exception) else None
         errors.append(error)
     error = errors[0]
-    if error.get("type") == "json_invalid":
-        message = "json解析失败"
+    if error.get('type') == 'json_invalid':
+        message = 'json解析失败'
     else:
-        error_input = error.get("input")
-        field = str(error.get("loc")[-1])
-        error_msg = error.get("msg")
-        message = (
-            f"{field} {error_msg}，输入：{error_input}"
-            if settings.ENVIRONMENT == "dev"
-            else error_msg
-        )
-    msg = f"请求参数非法: {message}"
-    data = {"errors": errors} if settings.ENVIRONMENT == "dev" else None
+        error_input = error.get('input')
+        field = str(error.get('loc')[-1])
+        error_msg = error.get('msg')
+        message = f'{field} {error_msg}，输入：{error_input}' if settings.ENVIRONMENT == 'dev' else error_msg
+    msg = f'请求参数非法: {message}'
+    data = {'errors': errors} if settings.ENVIRONMENT == 'dev' else None
     content = {
-        "code": StandardResponseCode.HTTP_422,
-        "msg": msg,
-        "data": data,
+        'code': StandardResponseCode.HTTP_422,
+        'msg': msg,
+        'data': data,
     }
     ctx.__request_validation_exception__ = content  # 用于在中间件中获取异常信息
     content.update(trace_id=get_request_trace_id())
-    return MsgSpecJSONResponse(
-        status_code=StandardResponseCode.HTTP_422, content=content
-    )
+    return MsgSpecJSONResponse(status_code=StandardResponseCode.HTTP_422, content=content)
 
 
 def register_exception(app: FastAPI) -> None:  # ruff:ignore[complex-structure]
@@ -99,11 +89,11 @@ def register_exception(app: FastAPI) -> None:  # ruff:ignore[complex-structure]
         :param exc: HTTP 异常
         :return:
         """
-        if settings.ENVIRONMENT == "dev":
+        if settings.ENVIRONMENT == 'dev':
             content = {
-                "code": exc.status_code,
-                "msg": exc.detail,
-                "data": None,
+                'code': exc.status_code,
+                'msg': exc.detail,
+                'data': None,
             }
         else:
             res = response_base.fail(res=CustomResponseCode.HTTP_400)
@@ -117,9 +107,7 @@ def register_exception(app: FastAPI) -> None:  # ruff:ignore[complex-structure]
         )
 
     @app.exception_handler(RequestValidationError)
-    async def fastapi_validation_exception_handler(
-        request: Request, exc: RequestValidationError
-    ):
+    async def fastapi_validation_exception_handler(request: Request, exc: RequestValidationError):
         """
         FastAPI 数据验证异常处理
 
@@ -130,9 +118,7 @@ def register_exception(app: FastAPI) -> None:  # ruff:ignore[complex-structure]
         return await _validation_exception_handler(exc)
 
     @app.exception_handler(ValidationError)
-    async def pydantic_validation_exception_handler(
-        request: Request, exc: ValidationError
-    ):
+    async def pydantic_validation_exception_handler(request: Request, exc: ValidationError):
         """
         Pydantic 数据验证异常处理
 
@@ -151,11 +137,11 @@ def register_exception(app: FastAPI) -> None:  # ruff:ignore[complex-structure]
         :param exc: 断言错误
         :return:
         """
-        if settings.ENVIRONMENT == "dev":
+        if settings.ENVIRONMENT == 'dev':
             content = {
-                "code": StandardResponseCode.HTTP_500,
-                "msg": str("".join(exc.args) if exc.args else exc.__doc__),
-                "data": None,
+                'code': StandardResponseCode.HTTP_500,
+                'msg': str(''.join(exc.args) if exc.args else exc.__doc__),
+                'data': None,
             }
         else:
             res = response_base.fail(res=CustomResponseCode.HTTP_500)
@@ -177,9 +163,9 @@ def register_exception(app: FastAPI) -> None:  # ruff:ignore[complex-structure]
         :return:
         """
         content = {
-            "code": exc.code,
-            "msg": str(exc.msg),
-            "data": exc.data or None,
+            'code': exc.code,
+            'msg': str(exc.msg),
+            'data': exc.data or None,
         }
         ctx.__request_custom_exception__ = content
         content.update(trace_id=get_request_trace_id())
@@ -198,11 +184,11 @@ def register_exception(app: FastAPI) -> None:  # ruff:ignore[complex-structure]
         :param exc: 未知异常
         :return:
         """
-        if settings.ENVIRONMENT == "dev":
+        if settings.ENVIRONMENT == 'dev':
             content = {
-                "code": StandardResponseCode.HTTP_500,
-                "msg": str(exc),
-                "data": None,
+                'code': StandardResponseCode.HTTP_500,
+                'msg': str(exc),
+                'data': None,
             }
         else:
             res = response_base.fail(res=CustomResponseCode.HTTP_500)
@@ -217,9 +203,7 @@ def register_exception(app: FastAPI) -> None:  # ruff:ignore[complex-structure]
     if settings.MIDDLEWARE_CORS:
 
         @app.exception_handler(StandardResponseCode.HTTP_500)
-        async def cors_custom_code_500_exception_handler(
-            request: Request, exc: BaseExceptionError | Exception
-        ):
+        async def cors_custom_code_500_exception_handler(request: Request, exc: BaseExceptionError | Exception):
             """
             跨域自定义 500 异常处理
 
@@ -229,16 +213,16 @@ def register_exception(app: FastAPI) -> None:  # ruff:ignore[complex-structure]
             """
             if isinstance(exc, BaseExceptionError):
                 content = {
-                    "code": exc.code,
-                    "msg": exc.msg,
-                    "data": exc.data,
+                    'code': exc.code,
+                    'msg': exc.msg,
+                    'data': exc.data,
                 }
             else:
-                if settings.ENVIRONMENT == "dev":
+                if settings.ENVIRONMENT == 'dev':
                     content = {
-                        "code": StandardResponseCode.HTTP_500,
-                        "msg": str(exc),
-                        "data": None,
+                        'code': StandardResponseCode.HTTP_500,
+                        'msg': str(exc),
+                        'data': None,
                     }
                 else:
                     res = response_base.fail(res=CustomResponseCode.HTTP_500)
@@ -249,31 +233,25 @@ def register_exception(app: FastAPI) -> None:  # ruff:ignore[complex-structure]
                 ctx.__request_unknown_exception__ = content
             content.update(trace_id=get_request_trace_id())
             response = MsgSpecJSONResponse(
-                status_code=exc.code
-                if isinstance(exc, BaseExceptionError)
-                else StandardResponseCode.HTTP_500,
+                status_code=exc.code if isinstance(exc, BaseExceptionError) else StandardResponseCode.HTTP_500,
                 content=content,
-                background=exc.background
-                if isinstance(exc, BaseExceptionError)
-                else None,
+                background=exc.background if isinstance(exc, BaseExceptionError) else None,
             )
-            origin = request.headers.get("origin")
+            origin = request.headers.get('origin')
             if origin:
                 cors = CORSMiddleware(
                     app=app,
                     allow_origins=settings.CORS_ALLOWED_ORIGINS,
                     allow_credentials=True,
-                    allow_methods=["*"],
-                    allow_headers=["*"],
+                    allow_methods=['*'],
+                    allow_headers=['*'],
                     expose_headers=settings.CORS_EXPOSE_HEADERS,
                 )
                 response.headers.update(cors.simple_headers)
-                has_cookie = "cookie" in request.headers
+                has_cookie = 'cookie' in request.headers
                 if cors.allow_all_origins and has_cookie:
-                    response.headers["Access-Control-Allow-Origin"] = origin
-                elif not cors.allow_all_origins and cors.is_allowed_origin(
-                    origin=origin
-                ):
-                    response.headers["Access-Control-Allow-Origin"] = origin
-                    response.headers.add_vary_header("Origin")
+                    response.headers['Access-Control-Allow-Origin'] = origin
+                elif not cors.allow_all_origins and cors.is_allowed_origin(origin=origin):
+                    response.headers['Access-Control-Allow-Origin'] = origin
+                    response.headers.add_vary_header('Origin')
             return response

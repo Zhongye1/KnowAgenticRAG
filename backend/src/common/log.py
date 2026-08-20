@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import sys
+
 from typing import Any
 
 from loguru import logger
@@ -33,9 +34,7 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(
-            level, record.getMessage()
-        )
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
 def default_formatter(record: dict) -> str:
@@ -47,17 +46,13 @@ def default_formatter(record: dict) -> str:
     """
     # 重写 sqlalchemy echo 输出
     # https://github.com/sqlalchemy/sqlalchemy/discussions/12791
-    record_name = record["name"] or ""
-    if record_name.startswith("sqlalchemy"):
-        record["message"] = re.sub(r"\s+", " ", record["message"]).strip()
+    record_name = record['name'] or ''
+    if record_name.startswith('sqlalchemy'):
+        record['message'] = re.sub(r'\s+', ' ', record['message']).strip()
 
-    base_format = (
-        settings.LOG_FORMAT
-        if settings.LOG_FORMAT.endswith("\n")
-        else f"{settings.LOG_FORMAT}\n"
-    )
-    if record.get("exception") is not None:
-        base_format += "{exception}\n"
+    base_format = settings.LOG_FORMAT if settings.LOG_FORMAT.endswith('\n') else f'{settings.LOG_FORMAT}\n'
+    if record.get('exception') is not None:
+        base_format += '{exception}\n'
 
     return base_format
 
@@ -70,7 +65,7 @@ def request_id_filter(record: dict) -> bool:
     :return:
     """
     rid = get_request_trace_id()
-    record["request_id"] = rid[: settings.TRACE_ID_LOG_LENGTH]
+    record['request_id'] = rid[: settings.TRACE_ID_LOG_LENGTH]
     return True
 
 
@@ -91,7 +86,7 @@ def setup_logging() -> None:
         logging.getLogger(name).handlers = []
 
         # 配置日志传播规则
-        if "uvicorn.access" in name or "watchfiles.main" in name:
+        if 'uvicorn.access' in name or 'watchfiles.main' in name:
             logging.getLogger(name).propagate = False
         else:
             logging.getLogger(name).propagate = True
@@ -106,10 +101,10 @@ def setup_logging() -> None:
     logger.configure(
         handlers=[  # type: ignore[arg-type]
             {
-                "sink": sys.stdout,
-                "level": settings.LOG_STD_LEVEL,
-                "format": default_formatter,
-                "filter": lambda record: request_id_filter(record),
+                'sink': sys.stdout,
+                'level': settings.LOG_STD_LEVEL,
+                'format': default_formatter,
+                'filter': lambda record: request_id_filter(record),
             }
         ]
     )
@@ -127,28 +122,26 @@ def set_custom_logfile() -> None:
     # 日志压缩回调
     def compression(filepath: str) -> str:
         filename = filepath.split(os.sep)[-1]
-        original_filename = filename.split(".")[0]
-        if "-" in original_filename:
-            return str(LOG_DIR / f"{original_filename}.log")
-        return str(
-            LOG_DIR / f"{original_filename}_{timezone.now().strftime('%Y-%m-%d')}.log"
-        )
+        original_filename = filename.split('.')[0]
+        if '-' in original_filename:
+            return str(LOG_DIR / f'{original_filename}.log')
+        return str(LOG_DIR / f'{original_filename}_{timezone.now().strftime("%Y-%m-%d")}.log')
 
     # 日志文件通用配置
     # https://loguru.readthedocs.io/en/stable/api/logger.html#loguru._logger.Logger.add
     log_config: dict[str, Any] = {
-        "format": default_formatter,
-        "enqueue": True,
-        "rotation": "00:00",
-        "retention": "7 days",
-        "compression": lambda filepath: os.rename(filepath, compression(filepath)),
+        'format': default_formatter,
+        'enqueue': True,
+        'rotation': '00:00',
+        'retention': '7 days',
+        'compression': lambda filepath: os.rename(filepath, compression(filepath)),
     }
 
     # 标准输出文件
     logger.add(
         str(log_access_file),
         level=settings.LOG_FILE_ACCESS_LEVEL,
-        filter=lambda record: record["level"].no <= 25,
+        filter=lambda record: record['level'].no <= 25,
         backtrace=False,
         diagnose=False,
         **log_config,
@@ -158,7 +151,7 @@ def set_custom_logfile() -> None:
     logger.add(
         str(log_error_file),
         level=settings.LOG_FILE_ERROR_LEVEL,
-        filter=lambda record: record["level"].no >= 30,
+        filter=lambda record: record['level'].no >= 30,
         backtrace=True,
         diagnose=True,
         **log_config,

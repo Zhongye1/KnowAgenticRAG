@@ -36,9 +36,9 @@ def init_resource(service_name: str) -> Resource:
 
     return Resource(
         attributes={
-            "service.name": service_name,
-            "service.version": __version__,
-            "deployment.environment": settings.ENVIRONMENT,
+            'service.name': service_name,
+            'service.version': __version__,
+            'deployment.environment': settings.ENVIRONMENT,
         },
     )
 
@@ -51,9 +51,7 @@ def init_tracer(resource: Resource) -> None:
     :return:
     """
     provider = TracerProvider(resource=resource)
-    exporter = OTLPSpanExporter(
-        endpoint=settings.GRAFANA_OTLP_GRPC_ENDPOINT, insecure=True
-    )
+    exporter = OTLPSpanExporter(endpoint=settings.GRAFANA_OTLP_GRPC_ENDPOINT, insecure=True)
     processor = BatchSpanProcessor(span_exporter=exporter)
 
     provider.add_span_processor(processor)
@@ -67,9 +65,7 @@ def init_metrics(resource: Resource) -> None:
     :param resource: 遥测资源
     :return:
     """
-    exporter = OTLPMetricExporter(
-        endpoint=settings.GRAFANA_OTLP_GRPC_ENDPOINT, insecure=True
-    )
+    exporter = OTLPMetricExporter(endpoint=settings.GRAFANA_OTLP_GRPC_ENDPOINT, insecure=True)
     reader = PeriodicExportingMetricReader(exporter=exporter)
     provider = MeterProvider(resource=resource, metric_readers=[reader])
 
@@ -84,9 +80,7 @@ def init_logging(resource: Resource) -> None:
     :return:
     """
     provider = LoggerProvider(resource=resource)
-    exporter = OTLPLogExporter(
-        endpoint=settings.GRAFANA_OTLP_GRPC_ENDPOINT, insecure=True
-    )
+    exporter = OTLPLogExporter(endpoint=settings.GRAFANA_OTLP_GRPC_ENDPOINT, insecure=True)
     processor = BatchLogRecordProcessor(exporter=exporter)
 
     provider.add_log_record_processor(processor)
@@ -121,9 +115,7 @@ def init_otel(app: FastAPI) -> None:
     HTTPXClientInstrumentor().instrument()
     # 禁止自动将 OTel handler 安装到 stdlib root logger，
     # 避免与上面注册的 LoggingHandler（loguru sink）重复推送。
-    LoggingInstrumentor().instrument(
-        set_logging_format=True, enable_log_auto_instrumentation=False
-    )
+    LoggingInstrumentor().instrument(set_logging_format=True, enable_log_auto_instrumentation=False)
     RedisInstrumentor.instrument_client(client=redis_client)  # type: ignore
     for engine in get_database_engines().values():
         SQLAlchemyInstrumentor().instrument(engine=engine.sync_engine)

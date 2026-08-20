@@ -31,7 +31,7 @@ class AESCipher:
         :return:
         """
         if not isinstance(plaintext, bytes):
-            plaintext = str(plaintext).encode("utf-8")
+            plaintext = str(plaintext).encode('utf-8')
         iv = os.urandom(16)
         cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv), backend=backend)
         encryptor = cipher.encryptor()
@@ -47,9 +47,7 @@ class AESCipher:
         :param ciphertext: 解密前的密文，bytes 或 16 进制字符串
         :return:
         """
-        ciphertext = (
-            ciphertext if isinstance(ciphertext, bytes) else bytes.fromhex(ciphertext)
-        )
+        ciphertext = ciphertext if isinstance(ciphertext, bytes) else bytes.fromhex(ciphertext)
         iv = ciphertext[:16]
         ciphertext = ciphertext[16:]
         cipher = Cipher(algorithms.AES(self.key), modes.CBC(iv), backend=backend)
@@ -57,7 +55,7 @@ class AESCipher:
         unpadder = padding.PKCS7(cipher.algorithm.block_size).unpadder()  # type: ignore
         padded_plaintext = decryptor.update(ciphertext) + decryptor.finalize()
         plaintext = unpadder.update(padded_plaintext) + unpadder.finalize()
-        return plaintext.decode("utf-8")
+        return plaintext.decode('utf-8')
 
 
 class Md5Cipher:
@@ -73,7 +71,7 @@ class Md5Cipher:
         """
         md5 = hashlib.md5()
         if not isinstance(plaintext, bytes):
-            plaintext = str(plaintext).encode("utf-8")
+            plaintext = str(plaintext).encode('utf-8')
         md5.update(plaintext)
         return md5.hexdigest()
 
@@ -101,7 +99,7 @@ class ItsDCipher:
         try:
             ciphertext = serializer.dumps(plaintext)
         except Exception as e:
-            log.error(f"ItsDangerous encrypt failed: {e}")
+            log.error(f'ItsDangerous encrypt failed: {e}')
             ciphertext = Md5Cipher.encrypt(plaintext)
         return ciphertext
 
@@ -116,6 +114,6 @@ class ItsDCipher:
         try:
             plaintext = serializer.loads(ciphertext)
         except Exception as e:
-            log.error(f"ItsDangerous decrypt failed: {e}")
+            log.error(f'ItsDangerous decrypt failed: {e}')
             plaintext = ciphertext
         return plaintext

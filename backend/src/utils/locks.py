@@ -12,7 +12,7 @@ from backend.src.database.redis import redis_client
 async def acquire_distributed_reload_lock() -> AsyncGenerator[None, Any]:
     """获取分布式热重载锁"""
     lock = redis_client.lock(
-        "fba:reload_lock",
+        'fba:reload_lock',
         timeout=300,  # 锁持有超时：5 分钟
         blocking_timeout=60,  # 获取锁等待超时：60 秒
     )

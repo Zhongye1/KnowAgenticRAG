@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 from inspect import isawaitable
 from math import ceil
-from typing import TypeAlias, TypeVar
+from typing import TypeVar
 
 from fastapi import Request, Response
 from fastapi_pagination.utils import is_async_callable
@@ -20,14 +20,9 @@ from backend.src.core.config import settings
 from backend.src.database.redis import redis_client
 from backend.src.utils.request_parse import get_request_ip
 
-IdentifierCallable: TypeAlias = (
-    Callable[[Request], str] | Callable[[Request], Awaitable[str]]
-)
-CallbackCallable: TypeAlias = (
-    Callable[[Request, Response, int], None]
-    | Callable[[Request, Response, int], Awaitable[None]]
-)
-T = TypeVar("T")
+type IdentifierCallable = Callable[[Request], str] | Callable[[Request], Awaitable[str]]
+type CallbackCallable = Callable[[Request, Response, int], None] | Callable[[Request, Response, int], Awaitable[None]]
+T = TypeVar('T')
 
 REQUEST_LIMITER_BUCKET_CACHE_MAX_SIZE = 4096
 REQUEST_LIMITER_BUCKET_CACHE_BUFFER_MS = 10_000
@@ -41,7 +36,7 @@ class RedisBucketState:
     last_seen: int
 
 
-async def _maybe_await(value: T | Awaitable[T]) -> T:
+async def _maybe_await[T](value: T | Awaitable[T]) -> T:
     """
     兼容同步值和异步值
 
@@ -89,12 +84,9 @@ class RedisBucketFactory(BucketFactory):
         :return:
         """
         self.rates = rates
-        self.bucket_key = f"{bucket_key}:{self._rate_key(rates)}"
+        self.bucket_key = f'{bucket_key}:{self._rate_key(rates)}'
         self.max_cache_size = max(1, max_cache_size)
-        self.cache_ttl = (
-            max(rate.interval for rate in rates)
-            + REQUEST_LIMITER_BUCKET_CACHE_BUFFER_MS
-        )
+        self.cache_ttl = max(rate.interval for rate in rates) + REQUEST_LIMITER_BUCKET_CACHE_BUFFER_MS
         self.lock = Lock()
         self.buckets: OrderedDict[str, RedisBucketState] = OrderedDict()
 
@@ -161,9 +153,7 @@ class RedisBucketFactory(BucketFactory):
             bucket_key, state = next(iter(self.buckets.items()))
             await self._dispose(bucket_key, state, now, cleanup=False)
 
-    async def _dispose(
-        self, bucket_key: str, state: RedisBucketState, now: int, *, cleanup: bool
-    ) -> None:
+    async def _dispose(self, bucket_key: str, state: RedisBucketState, now: int, *, cleanup: bool) -> None:
         """
         移除本地 bucket 并按需清理 Redis 过期数据
 
@@ -188,7 +178,7 @@ class RedisBucketFactory(BucketFactory):
         :return:
         """
         digest = sha256(name.encode()).hexdigest()
-        return f"{self.bucket_key}:{digest}"
+        return f'{self.bucket_key}:{digest}'
 
     @staticmethod
     def _rate_key(rates: list[Rate]) -> str:
@@ -198,10 +188,7 @@ class RedisBucketFactory(BucketFactory):
         :param rates: pyrate_limiter Rate 对象列表
         :return:
         """
-        value = ":".join(
-            f"{rate.limit}:{rate.interval}"
-            for rate in sorted(rates, key=lambda rate: rate.interval)
-        )
+        value = ':'.join(f'{rate.limit}:{rate.interval}' for rate in sorted(rates, key=lambda rate: rate.interval))
         return sha256(value.encode()).hexdigest()
 
 
@@ -213,7 +200,7 @@ def default_identifier(request: Request) -> str:
     :return:
     """
     ip = get_request_ip(request)
-    return f"{ip}:{request.scope['path']}"
+    return f'{ip}:{request.scope["path"]}'
 
 
 def default_callback(request: Request, response: Response, retry_after: int) -> None:
@@ -227,8 +214,8 @@ def default_callback(request: Request, response: Response, retry_after: int) -> 
     """
     raise errors.HTTPError(
         code=StandardResponseCode.HTTP_429,
-        msg="请求过于频繁，请稍后重试",
-        headers={"Retry-After": str(retry_after)},
+        msg='请求过于频繁，请稍后重试',
+        headers={'Retry-After': str(retry_after)},
     )
 
 
@@ -254,9 +241,7 @@ class RateLimiter:
         :return:
         """
         if limiter is None and not rates and bucket is None:
-            raise errors.ServerError(
-                msg="至少需要传入一个 Rate、bucket 或 limiter 实例"
-            )
+            raise errors.ServerError(msg='至少需要传入一个 Rate、bucket 或 limiter 实例')
         self.rates = list(rates)
         self.identifier = identifier
         self.bucket = bucket
@@ -276,7 +261,7 @@ class RateLimiter:
             if self.bucket is None:
                 self.bucket_factory = RedisBucketFactory(
                     rates=self.rates,
-                    bucket_key=f"{settings.REQUEST_LIMITER_REDIS_PREFIX}",
+                    bucket_key=f'{settings.REQUEST_LIMITER_REDIS_PREFIX}',
                 )
                 self.limiter = Limiter(self.bucket_factory)
             else:
@@ -303,9 +288,7 @@ class RateLimiter:
         :return:
         """
         if self.bucket_factory is not None:
-            failing_rate = (
-                await self.bucket_factory.get_bucket(identifier)
-            ).failing_rate
+            failing_rate = (await self.bucket_factory.get_bucket(identifier)).failing_rate
         elif self.bucket is not None:
             failing_rate = self.bucket.failing_rate
         else:

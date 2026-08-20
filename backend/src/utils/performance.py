@@ -30,10 +30,10 @@ def timer(func) -> Callable:  # ruff:ignore[missing-type-function-argument]
     def _log_time(func, elapsed: float) -> None:  # ruff:ignore[missing-type-function-argument]
         # 智能选择单位（秒、毫秒、微秒、纳秒）
         if elapsed >= 1:
-            unit, factor = "s", 1
+            unit, factor = 's', 1
         else:
-            unit, factor = "ms", 1e3
+            unit, factor = 'ms', 1e3
 
-        log.info(f"{func.__module__}.{func.__name__} | {elapsed * factor:.3f} {unit}")
+        log.info(f'{func.__module__}.{func.__name__} | {elapsed * factor:.3f} {unit}')
 
     return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper

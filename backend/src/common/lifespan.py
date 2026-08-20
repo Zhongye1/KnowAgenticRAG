@@ -10,9 +10,7 @@ from fastapi import FastAPI
 
 from backend.src.common.enums import LifespanStage
 
-type LifespanFunc = Callable[
-    [FastAPI], AbstractAsyncContextManager[dict[str, Any] | None]
-]
+type LifespanFunc = Callable[[FastAPI], AbstractAsyncContextManager[dict[str, Any] | None]]
 
 
 class LifespanManager:
@@ -29,9 +27,7 @@ class LifespanManager:
     def register(self, func: LifespanFunc) -> LifespanFunc: ...
 
     @overload
-    def register(
-        self, *, stage: LifespanStage
-    ) -> Callable[[LifespanFunc], LifespanFunc]: ...
+    def register(self, *, stage: LifespanStage) -> Callable[[LifespanFunc], LifespanFunc]: ...
 
     def register(
         self,

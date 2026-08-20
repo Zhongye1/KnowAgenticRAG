@@ -22,9 +22,7 @@ from backend.src.utils.trace_id import get_request_trace_id
 class AccessMiddleware(BaseHTTPMiddleware):
     """访问日志中间件"""
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:  # ruff:ignore[complex-structure]
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """
         处理请求并记录访问日志
 
@@ -41,14 +39,10 @@ class AccessMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         method = request.method
 
-        if method != "OPTIONS":
-            log.debug(
-                f"--> 请求开始[{path if not request.url.query else request.url.path + '?' + request.url.query}]"
-            )
+        if method != 'OPTIONS':
+            log.debug(f'--> 请求开始[{path if not request.url.query else request.url.path + "?" + request.url.query}]')
 
-        should_record_metrics = settings.GRAFANA_METRICS_ENABLE and path.startswith(
-            settings.FASTAPI_API_V1_PATH
-        )
+        should_record_metrics = settings.GRAFANA_METRICS_ENABLE and path.startswith(settings.FASTAPI_API_V1_PATH)
         if should_record_metrics:
             inc_fastapi_request_in_progress(method=method, path=path)
             inc_fastapi_request(method=method, path=path)
@@ -58,9 +52,7 @@ class AccessMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             elapsed = round((time.perf_counter() - perf_time) * 1000, 3)
             if should_record_metrics:
-                inc_fastapi_exception(
-                    method=method, path=path, exception_type=type(e).__name__
-                )
+                inc_fastapi_exception(method=method, path=path, exception_type=type(e).__name__)
                 observe_fastapi_request_cost_time(
                     method=method,
                     path=path,
@@ -70,7 +62,7 @@ class AccessMiddleware(BaseHTTPMiddleware):
                 inc_fastapi_response(
                     method=method,
                     path=path,
-                    status_code=getattr(e, "code", StandardResponseCode.HTTP_500),
+                    status_code=getattr(e, 'code', StandardResponseCode.HTTP_500),
                 )
             raise
         else:
@@ -79,22 +71,20 @@ class AccessMiddleware(BaseHTTPMiddleware):
                 exception_type = None
                 exception_code = None
                 for exception_key, current_exception_type in {
-                    "__request_authentication_exception__": "AuthenticationError",
-                    "__request_http_exception__": "HTTPException",
-                    "__request_validation_exception__": "RequestValidationError",
-                    "__request_assertion_error__": "AssertionError",
-                    "__request_custom_exception__": "BaseExceptionError",
-                    "__request_unknown_exception__": "Exception",
+                    '__request_authentication_exception__': 'AuthenticationError',
+                    '__request_http_exception__': 'HTTPException',
+                    '__request_validation_exception__': 'RequestValidationError',
+                    '__request_assertion_error__': 'AssertionError',
+                    '__request_custom_exception__': 'BaseExceptionError',
+                    '__request_unknown_exception__': 'Exception',
                 }.items():
                     exception = ctx.get(exception_key)
                     if exception:
                         exception_type = current_exception_type
-                        exception_code = exception.get("code")
+                        exception_code = exception.get('code')
                         break
                 if exception_type is not None:
-                    inc_fastapi_exception(
-                        method=method, path=path, exception_type=exception_type
-                    )
+                    inc_fastapi_exception(method=method, path=path, exception_type=exception_type)
                 observe_fastapi_request_cost_time(
                     method=method,
                     path=path,

@@ -1,9 +1,11 @@
 import glob
 import json
+
 from pathlib import Path
 from typing import Any
 
 import yaml
+
 from starlette_context.errors import ContextDoesNotExistError
 
 from backend.src.common.context import ctx
@@ -34,9 +36,9 @@ class I18n:
     def load_locales(self) -> None:
         """加载语言文本"""
         patterns = [
-            LOCALE_DIR / "*.json",
-            LOCALE_DIR / "*.yaml",
-            LOCALE_DIR / "*.yml",
+            LOCALE_DIR / '*.json',
+            LOCALE_DIR / '*.yaml',
+            LOCALE_DIR / '*.yml',
         ]
 
         lang_files = []
@@ -45,18 +47,16 @@ class I18n:
             lang_files.extend(glob.glob(str(pattern)))
 
         for lang_file in lang_files:
-            with open(lang_file, encoding="utf-8") as f:
+            with open(lang_file, encoding='utf-8') as f:
                 lang = Path(lang_file).stem
                 file_type = Path(lang_file).suffix[1:]
                 match file_type:
-                    case "json":
+                    case 'json':
                         self.locales[lang] = json.loads(f.read())
-                    case "yaml" | "yml":
+                    case 'yaml' | 'yml':
                         self.locales[lang] = yaml.safe_load(f.read())
 
-    def t(
-        self, key: str, default: Any | None = None, **kwargs
-    ) -> dict[str, Any] | str | None | Any:
+    def t(self, key: str, default: Any | None = None, **kwargs) -> dict[str, Any] | str | Any | None:
         """
         翻译函数
 
@@ -65,12 +65,12 @@ class I18n:
         :param kwargs: 目标文本中的变量参数
         :return:
         """
-        keys = key.split(".")
+        keys = key.split('.')
 
         try:
             translation = self.locales[self.current_language]
         except KeyError:
-            keys = ["error", "language_not_found"]
+            keys = ['error', 'language_not_found']
             translation = self.locales[settings.I18N_DEFAULT_LANGUAGE]
 
         for k in keys:
@@ -78,7 +78,7 @@ class I18n:
                 translation = translation[k]
             else:
                 # Pydantic 兼容
-                translation = None if keys[0] == "pydantic" else key
+                translation = None if keys[0] == 'pydantic' else key
                 break
 
         if translation and kwargs:

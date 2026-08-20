@@ -15,8 +15,8 @@ async def demo_site(request: Request) -> None:  # ruff:ignore[unused-async]
     path = request.url.path
     if (
         settings.DEMO_MODE
-        and method != "GET"
-        and method != "OPTIONS"
+        and method != 'GET'
+        and method != 'OPTIONS'
         and (method, path) not in settings.DEMO_MODE_EXCLUDE
     ):
-        raise errors.ForbiddenError(msg="演示环境下禁止执行此操作")
+        raise errors.ForbiddenError(msg='演示环境下禁止执行此操作')

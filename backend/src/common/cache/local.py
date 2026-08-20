@@ -36,9 +36,7 @@ class LocalCacheManager:
         """清空缓存"""
         self.hot_cache.clear()
 
-    def delete_by_prefix(
-        self, key_prefix: str, exclude_keys: str | list[str] | None = None
-    ) -> None:
+    def delete_by_prefix(self, key_prefix: str, exclude_keys: str | list[str] | None = None) -> None:
         """
         删除指定前缀的缓存
 
@@ -54,9 +52,7 @@ class LocalCacheManager:
             else set()
         )
         for key in list(self.hot_cache.keys()):
-            if (
-                key == key_prefix or key.startswith(f"{key_prefix}:")
-            ) and key not in exclude_set:
+            if (key == key_prefix or key.startswith(f'{key_prefix}:')) and key not in exclude_set:
                 try:
                     del self.hot_cache[key]
                 except KeyError:

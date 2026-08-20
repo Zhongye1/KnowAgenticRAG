@@ -1,22 +1,21 @@
 import zoneinfo
+
 from datetime import UTC, datetime
 from typing import Final
 
 from backend.src.core.config import settings
 
 # 基于 wikipedia：https://en.wikipedia.org/wiki/List_of_tz_database_time_zones#List
-_UTC_IDENTIFIERS: Final = frozenset(
-    {
-        "Etc/UCT",
-        "Etc/Universal",
-        "Etc/UTC",
-        "Etc/Zulu",
-        "UCT",
-        "Universal",
-        "UTC",
-        "Zulu",
-    }
-)
+_UTC_IDENTIFIERS: Final = frozenset({
+    'Etc/UCT',
+    'Etc/Universal',
+    'Etc/UTC',
+    'Etc/Zulu',
+    'UCT',
+    'Universal',
+    'UTC',
+    'Zulu',
+})
 
 
 class TimeZone:
@@ -44,9 +43,7 @@ class TimeZone:
         """
         return t.astimezone(self.tz_info)
 
-    def from_str(
-        self, t_str: str, format_str: str = settings.DATETIME_FORMAT
-    ) -> datetime:
+    def from_str(self, t_str: str, format_str: str = settings.DATETIME_FORMAT) -> datetime:
         """
         将时间字符串转换为当前时区的 datetime 对象
 

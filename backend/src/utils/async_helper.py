@@ -7,7 +7,7 @@ from collections.abc import Awaitable, Callable, Coroutine
 from functools import wraps
 from typing import Any, TypeVar
 
-T = TypeVar("T")
+T = TypeVar('T')
 
 
 class _TaskRunner:
@@ -28,7 +28,7 @@ class _TaskRunner:
                 self.__thread.join()
             self.__loop = None
             self.__thread = None
-            name = f"TaskRunner-{threading.get_ident()}"
+            name = f'TaskRunner-{threading.get_ident()}'
             _runner_map.pop(name, None)
 
     def _target(self) -> None:
@@ -41,12 +41,10 @@ class _TaskRunner:
     def run(self, coro: Awaitable[T]) -> T:
         """在后台事件循环上运行协程并返回其结果"""
         with self.__lock:
-            name = f"TaskRunner-{threading.get_ident()}"
+            name = f'TaskRunner-{threading.get_ident()}'
             if self.__loop is None:
                 self.__loop = asyncio.new_event_loop()
-                self.__thread = threading.Thread(
-                    target=self._target, daemon=True, name=name
-                )
+                self.__thread = threading.Thread(target=self._target, daemon=True, name=name)
                 self.__thread.start()
             future = asyncio.run_coroutine_threadsafe(coro, self.__loop)
             return future.result()
@@ -55,21 +53,19 @@ class _TaskRunner:
 _runner_map = weakref.WeakValueDictionary()
 
 
-def run_await(
-    coro: Callable[..., Awaitable[T]] | Callable[..., Coroutine[Any, Any, T]]
-) -> Callable[..., T]:
+def run_await[T](coro: Callable[..., Awaitable[T]] | Callable[..., Coroutine[Any, Any, T]]) -> Callable[..., T]:
     """将协程包装在函数中，直到它执行完为止"""
 
     @wraps(coro)
     def wrapped(*args, **kwargs):  # ruff:ignore[missing-return-type-private-function]
         inner = coro(*args, **kwargs)
         if not asyncio.iscoroutine(inner) and not asyncio.isfuture(inner):
-            raise TypeError(f"Expected coroutine or future, got {type(inner)}")
+            raise TypeError(f'Expected coroutine or future, got {type(inner)}')
 
         try:
             # 如果事件循环正在运行，则使用任务调用
             asyncio.get_running_loop()
-            name = f"TaskRunner-{threading.get_ident()}"
+            name = f'TaskRunner-{threading.get_ident()}'
             if name not in _runner_map:
                 _runner_map[name] = _TaskRunner()
             return _runner_map[name].run(inner)

@@ -14,20 +14,20 @@ def get_current_language(request: Request) -> str | None:
     :param request: FastAPI 请求对象
     :return:
     """
-    accept_language = request.headers.get("Accept-Language", "")
+    accept_language = request.headers.get('Accept-Language', '')
     if not accept_language:
         return settings.I18N_DEFAULT_LANGUAGE
 
-    languages = [lang.split(";")[0] for lang in accept_language.split(",")]
+    languages = [lang.split(';')[0] for lang in accept_language.split(',')]
     lang = languages[0].lower().strip()
 
     # 语言映射
     lang_mapping = {
-        "zh": "zh-CN",
-        "zh-cn": "zh-CN",
-        "zh-hans": "zh-CN",
-        "en": "en-US",
-        "en-us": "en-US",
+        'zh': 'zh-CN',
+        'zh-cn': 'zh-CN',
+        'zh-hans': 'zh-CN',
+        'en': 'en-US',
+        'en-us': 'en-US',
     }
 
     return lang_mapping.get(lang, lang)

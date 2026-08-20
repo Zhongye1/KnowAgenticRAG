@@ -22,12 +22,10 @@ class CachePubSubManager:
         :return:
         """
         try:
-            message = json.dumps(
-                {"cache_key": cache_key, "delete_by_prefix": delete_by_prefix}
-            )
+            message = json.dumps({'cache_key': cache_key, 'delete_by_prefix': delete_by_prefix})
             await redis_client.publish(settings.CACHE_PUBSUB_CHANNEL, message)
         except Exception as e:
-            log.warning(f"[CachePubSub] 发布通知失败: {e}")
+            log.warning(f'[CachePubSub] 发布通知失败: {e}')
 
     @staticmethod
     async def subscribe_and_listen() -> None:  # ruff:ignore[complex-structure]
@@ -48,29 +46,29 @@ class CachePubSubManager:
                 reconnect_attempts = 0
 
                 async for message in pubsub.listen():
-                    if message["type"] == "message":
+                    if message['type'] == 'message':
                         try:
-                            data = json.loads(message["data"])
-                            cache_key = data["cache_key"]
-                            if not data["delete_by_prefix"]:
+                            data = json.loads(message['data'])
+                            cache_key = data['cache_key']
+                            if not data['delete_by_prefix']:
                                 local_cache_manager.delete(cache_key)
                             else:
                                 local_cache_manager.delete_by_prefix(cache_key)
                         except json.JSONDecodeError as e:
-                            log.warning(f"[CachePubSub] 消息格式错误 {e}")
+                            log.warning(f'[CachePubSub] 消息格式错误 {e}')
                         except Exception as e:
-                            log.error(f"[CachePubSub] 处理通知失败: {e}")
+                            log.error(f'[CachePubSub] 处理通知失败: {e}')
 
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 reconnect_attempts += 1
                 log.error(
-                    f"[CachePubSub] 订阅异常 ({reconnect_attempts}/{settings.CACHE_PUBSUB_MAX_RECONNECT_ATTEMPTS}): {e}"
+                    f'[CachePubSub] 订阅异常 ({reconnect_attempts}/{settings.CACHE_PUBSUB_MAX_RECONNECT_ATTEMPTS}): {e}'
                 )
 
                 if reconnect_attempts >= settings.CACHE_PUBSUB_MAX_RECONNECT_ATTEMPTS:
-                    log.error("[CachePubSub] 达到最大重连次数，停止订阅")
+                    log.error('[CachePubSub] 达到最大重连次数，停止订阅')
                     break
 
                 await asyncio.sleep(settings.CACHE_PUBSUB_RECONNECT_DELAY)

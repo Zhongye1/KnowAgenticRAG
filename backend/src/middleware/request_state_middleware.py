@@ -8,9 +8,7 @@ from backend.src.utils.request_parse import parse_ip_info, parse_user_agent_info
 class StateMiddleware(BaseHTTPMiddleware):
     """请求状态中间件"""
 
-    async def dispatch(
-        self, request: Request, call_next: RequestResponseEndpoint
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """
         处理请求并设置请求状态信息
 

@@ -9,7 +9,7 @@ from backend.src.utils.serializers import select_list_serialize
 
 def str_to_bool(value: str) -> bool:
     """将字符串转换为布尔值"""
-    return value == "true"
+    return value == 'true'
 
 
 async def load_config(
@@ -27,27 +27,23 @@ async def load_config(
     :param status_key: 状态键
     :return:
     """
-    if not check_plugin_installed("config"):
+    if not check_plugin_installed('config'):
         return
 
     try:
         from backend.src.plugin.config.enums import ConfigType
         from backend.src.plugin.config.service.config_service import config_service
     except ImportError as e:
-        raise ImportError("参数配置插件用法导入失败，请联系系统管理员") from e
+        raise ImportError('参数配置插件用法导入失败，请联系系统管理员') from e
 
     config_type = getattr(ConfigType, config_type_attr)
     dynamic_config = await config_service.get_all(db=db, type=config_type)
     if not dynamic_config:
         return
 
-    config_list = (
-        select_list_serialize(dynamic_config)
-        if hasattr(dynamic_config[0], "__table__")
-        else dynamic_config
-    )
-    configs = {dc["key"]: dc["value"] for dc in config_list}
-    if configs.get(status_key, "1") == "0":
+    config_list = select_list_serialize(dynamic_config) if hasattr(dynamic_config[0], '__table__') else dynamic_config
+    configs = {dc['key']: dc['value'] for dc in config_list}
+    if configs.get(status_key, '1') == '0':
         return
 
     for config_key, converter in mapping.items():
@@ -63,16 +59,16 @@ async def load_user_security_config(db: AsyncSession) -> None:
     :return:
     """
     mapping = {
-        "USER_LOCK_THRESHOLD": int,
-        "USER_LOCK_SECONDS": int,
-        "USER_PASSWORD_EXPIRY_DAYS": int,
-        "USER_PASSWORD_REMINDER_DAYS": int,
-        "USER_PASSWORD_HISTORY_CHECK_COUNT": int,
-        "USER_PASSWORD_MIN_LENGTH": int,
-        "USER_PASSWORD_MAX_LENGTH": int,
-        "USER_PASSWORD_REQUIRE_SPECIAL_CHAR": str_to_bool,
+        'USER_LOCK_THRESHOLD': int,
+        'USER_LOCK_SECONDS': int,
+        'USER_PASSWORD_EXPIRY_DAYS': int,
+        'USER_PASSWORD_REMINDER_DAYS': int,
+        'USER_PASSWORD_HISTORY_CHECK_COUNT': int,
+        'USER_PASSWORD_MIN_LENGTH': int,
+        'USER_PASSWORD_MAX_LENGTH': int,
+        'USER_PASSWORD_REQUIRE_SPECIAL_CHAR': str_to_bool,
     }
-    await load_config(db, "user_security", mapping, "USER_SECURITY_CONFIG_STATUS")
+    await load_config(db, 'user_security', mapping, 'USER_SECURITY_CONFIG_STATUS')
 
 
 async def load_login_config(db: AsyncSession) -> None:
@@ -83,6 +79,6 @@ async def load_login_config(db: AsyncSession) -> None:
     :return:
     """
     mapping = {
-        "LOGIN_CAPTCHA_ENABLED": str_to_bool,
+        'LOGIN_CAPTCHA_ENABLED': str_to_bool,
     }
-    await load_config(db, "login", mapping, "LOGIN_CONFIG_STATUS")
+    await load_config(db, 'login', mapping, 'LOGIN_CONFIG_STATUS')

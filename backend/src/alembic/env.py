@@ -3,15 +3,15 @@ import os
 
 from logging.config import fileConfig
 
-from alembic import context
-from sqlalchemy import pool
-from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import async_engine_from_config
-
 from backend.src.common.model import MappedBase
 from backend.src.core import path_conf
 from backend.src.core.path_conf import BASE_PATH
 from backend.src.database.db import get_database_url
+from sqlalchemy import pool
+from sqlalchemy.engine import Connection
+from sqlalchemy.ext.asyncio import async_engine_from_config
+
+from alembic import context
 
 if not os.path.exists(path_conf.ALEMBIC_VERSION_DIR):
     os.makedirs(path_conf.ALEMBIC_VERSION_DIR)
@@ -34,8 +34,8 @@ target_metadata = MappedBase.metadata
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
 config.set_main_option(
-    "sqlalchemy.url",
-    get_database_url().render_as_string(hide_password=False).replace("%", "%%"),
+    'sqlalchemy.url',
+    get_database_url().render_as_string(hide_password=False).replace('%', '%%'),
 )
 
 
@@ -51,12 +51,12 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = config.get_main_option('sqlalchemy.url')
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
+        dialect_opts={'paramstyle': 'named'},
         compare_type=True,
         compare_server_default=True,
         transaction_per_migration=True,
@@ -73,7 +73,7 @@ def do_run_migrations(connection: Connection) -> None:
             script = directives[0]
             if script.upgrade_ops.is_empty():
                 directives[:] = []
-                print("\nNo changes in model detected")
+                print('\nNo changes in model detected')
 
     context.configure(
         connection=connection,
@@ -96,7 +96,7 @@ async def run_async_migrations() -> None:
 
     connectable = async_engine_from_config(
         config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+        prefix='sqlalchemy.',
         poolclass=pool.NullPool,
     )
 

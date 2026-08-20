@@ -1,4 +1,5 @@
 import functools
+
 from collections.abc import Awaitable, Callable, Sequence
 from inspect import isawaitable
 from typing import Any, ParamSpec, TypeVar
@@ -17,8 +18,8 @@ from backend.src.utils.serializers import (
     select_list_serialize,
 )
 
-P = ParamSpec("P")
-T = TypeVar("T")
+P = ParamSpec('P')
+T = TypeVar('T')
 _MISSING = object()
 
 
@@ -31,37 +32,33 @@ async def _build_cache_key(
 ) -> str:
     """构建缓存 Key"""
     if key:
-        if "." in key:
-            param, field = key.split(".", 1)
+        if '.' in key:
+            param, field = key.split('.', 1)
             value = kwargs.get(param, _MISSING)
             if value is _MISSING:
                 raise errors.ServerError(msg=f'缓存键构建失败，参数 "{param}" 不存在')
 
             if isinstance(value, list):
-                raise errors.ServerError(
-                    msg="缓存键构建失败：不支持从列表中提取字段，请使用 key_builder 处理列表参数"
-                )
+                raise errors.ServerError(msg='缓存键构建失败：不支持从列表中提取字段，请使用 key_builder 处理列表参数')
 
             if hasattr(value, field):
                 value = getattr(value, field)
             elif isinstance(value, dict) and field in value:
                 value = value[field]
             else:
-                raise errors.ServerError(
-                    msg=f'缓存键构建失败，对象中不存在字段 "{field}"'
-                )
+                raise errors.ServerError(msg=f'缓存键构建失败，对象中不存在字段 "{field}"')
         else:
             value = kwargs.get(key, _MISSING)
             if value is _MISSING:
                 raise errors.ServerError(msg=f'缓存键构建失败，参数 "{key}" 不存在')
 
-        return f"{namespace}:{value if value is not None else 'none'}"
+        return f'{namespace}:{value if value is not None else "none"}'
 
     if key_builder:
         value = key_builder(*args, **kwargs)
         if isawaitable(value):
             value = await value
-        return f"{namespace}:{value}"
+        return f'{namespace}:{value}'
 
     return namespace
 
@@ -74,7 +71,7 @@ def _serialize_result(result: Any) -> bytes:
     :return:
     """
     # SQLAlchemy 查询表
-    if hasattr(result, "__table__"):
+    if hasattr(result, '__table__'):
         return json.encode(select_columns_serialize(result))
 
     # SQLAlchemy 查询列表
@@ -82,7 +79,7 @@ def _serialize_result(result: Any) -> bytes:
         isinstance(result, Sequence)
         and not isinstance(result, (str, bytes))
         and len(result) > 0
-        and hasattr(result[0], "__table__")
+        and hasattr(result[0], '__table__')
     ):
         return json.encode(select_list_serialize(result))
 
@@ -107,7 +104,7 @@ def user_key_builder() -> str:
     """基于当前用户 ID 生成缓存 Key"""
     user_id = ctx.user_id
     if user_id is None:
-        raise errors.ServerError(msg="用户缓存键构建失败")
+        raise errors.ServerError(msg='用户缓存键构建失败')
     return str(user_id)
 
 
@@ -126,14 +123,12 @@ def cached(  # ruff:ignore[complex-structure]
     :return:
     """
     if key is not None and key_builder is not None:
-        raise errors.ServerError(msg="缓存 key 和 key_builder 不能同时使用")
+        raise errors.ServerError(msg='缓存 key 和 key_builder 不能同时使用')
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:  # ruff:ignore[complex-structure]
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            cache_key = await _build_cache_key(
-                namespace, key, key_builder, *args, **kwargs
-            )
+            cache_key = await _build_cache_key(namespace, key, key_builder, *args, **kwargs)
 
             # L1: 本地缓存
             if settings.CACHE_LOCAL_ENABLED:
@@ -151,7 +146,7 @@ def cached(  # ruff:ignore[complex-structure]
                         local_cache_manager.set(cache_key, result)
                     return result
             except Exception as e:
-                log.warning(f"[Cache] GET error: {e}")
+                log.warning(f'[Cache] GET error: {e}')
 
             # 缓存未命中
             result = await func(*args, **kwargs)
@@ -167,13 +162,11 @@ def cached(  # ruff:ignore[complex-structure]
 
                     # 回填 L2
                     if settings.CACHE_REDIS_TTL:
-                        await redis_client.set(
-                            cache_key, serialized_result, ex=settings.CACHE_REDIS_TTL
-                        )
+                        await redis_client.set(cache_key, serialized_result, ex=settings.CACHE_REDIS_TTL)
                     else:
                         await redis_client.set(cache_key, serialized_result)
                 except Exception as e:
-                    log.warning(f"[Cache] SET error: {e}")
+                    log.warning(f'[Cache] SET error: {e}')
 
             return result
 
@@ -199,7 +192,7 @@ def cache_invalidate(  # ruff:ignore[complex-structure]
     :return:
     """
     if key is not None and key_builder is not None:
-        raise errors.ServerError(msg="缓存 key 和 key_builder 不能同时使用")
+        raise errors.ServerError(msg='缓存 key 和 key_builder 不能同时使用')
 
     def decorator(func: Callable[P, T]) -> Callable[P, T]:
         @functools.wraps(func)
@@ -211,9 +204,7 @@ def cache_invalidate(  # ruff:ignore[complex-structure]
             invalidate_error = None
 
             try:
-                invalidate_key = await _build_cache_key(
-                    namespace, key, key_builder, *args, **kwargs
-                )
+                invalidate_key = await _build_cache_key(namespace, key, key_builder, *args, **kwargs)
 
                 # L1 缓存失效
                 if settings.CACHE_LOCAL_ENABLED:
@@ -225,13 +216,9 @@ def cache_invalidate(  # ruff:ignore[complex-structure]
                 # 广播失效消息（通知其他节点清除本地缓存）
                 if settings.CACHE_LOCAL_ENABLED:
                     if invalidate_key == namespace:
-                        await cache_pubsub_manager.publish_invalidation(
-                            invalidate_key, delete_by_prefix=True
-                        )
+                        await cache_pubsub_manager.publish_invalidation(invalidate_key, delete_by_prefix=True)
                     else:
-                        await cache_pubsub_manager.publish_invalidation(
-                            invalidate_key, delete_by_prefix=False
-                        )
+                        await cache_pubsub_manager.publish_invalidation(invalidate_key, delete_by_prefix=False)
 
                 # L2 缓存失效
                 if invalidate_key == namespace:
@@ -240,16 +227,14 @@ def cache_invalidate(  # ruff:ignore[complex-structure]
                     await redis_client.delete(invalidate_key)
 
             except Exception as e:
-                log.error(f"[Cache] INVALIDATE error: {e}")
+                log.error(f'[Cache] INVALIDATE error: {e}')
                 invalidate_error = e
             else:
                 invalidate_success = True
 
             # 原子性检查
             if atomic and not invalidate_success:
-                raise errors.ServerError(
-                    msg="缓存失效失败，数据可能不一致", data=invalidate_error
-                )
+                raise errors.ServerError(msg='缓存失效失败，数据可能不一致', data=invalidate_error)
 
             return result
 

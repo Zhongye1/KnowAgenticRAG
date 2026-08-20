@@ -1,7 +1,7 @@
 from collections import defaultdict, namedtuple
 from collections.abc import Sequence
 from decimal import Decimal
-from typing import Any, TypeAlias, TypeVar
+from typing import Any, TypeVar
 
 from fastapi.encoders import decimal_encoder
 from msgspec import json
@@ -11,9 +11,9 @@ from starlette.responses import JSONResponse
 
 from backend.src.common.log import log
 
-RowData: TypeAlias = Row[Any] | RowMapping | Any
+type RowData = Row[Any] | RowMapping | Any
 
-R = TypeVar("R", bound=RowData)
+R = TypeVar('R', bound=RowData)
 
 
 class MsgSpecJSONResponse(JSONResponse):
@@ -26,7 +26,7 @@ class MsgSpecJSONResponse(JSONResponse):
         return json.encode(content)
 
 
-def select_columns_serialize(row: R) -> dict[str, Any]:
+def select_columns_serialize[R: RowData](row: R) -> dict[str, Any]:
     """
     序列化 SQLAlchemy 查询表的列，不包含关联列
 
@@ -42,7 +42,7 @@ def select_columns_serialize(row: R) -> dict[str, Any]:
     return result
 
 
-def select_list_serialize(row: Sequence[R]) -> list[dict[str, Any]]:
+def select_list_serialize[R: RowData](row: Sequence[R]) -> list[dict[str, Any]]:
     """
     序列化 SQLAlchemy 查询列表
 
@@ -52,7 +52,7 @@ def select_list_serialize(row: Sequence[R]) -> list[dict[str, Any]]:
     return [select_columns_serialize(item) for item in row]
 
 
-def select_as_dict(row: R, *, use_alias: bool = False) -> dict[str, Any]:
+def select_as_dict[R: RowData](row: R, *, use_alias: bool = False) -> dict[str, Any]:
     """
     将 SQLAlchemy 查询结果转换为字典，可以包含关联数据
 
@@ -62,8 +62,8 @@ def select_as_dict(row: R, *, use_alias: bool = False) -> dict[str, Any]:
     """
     if not use_alias:
         result = row.__dict__
-        if "_sa_instance_state" in result:
-            del result["_sa_instance_state"]
+        if '_sa_instance_state' in result:
+            del result['_sa_instance_state']
     else:
         result = {}
         mapper = class_mapper(row.__class__)  # type: ignore
@@ -75,18 +75,12 @@ def select_as_dict(row: R, *, use_alias: bool = False) -> dict[str, Any]:
     return result
 
 
-def select_join_serialize(  # ruff:ignore[complex-structure]
+def select_join_serialize[R: RowData](  # ruff:ignore[complex-structure]
     row: R | Sequence[R],
     relationships: list[str] | None = None,
     *,
     return_as_dict: bool = False,
-) -> (
-    dict[str, Any]
-    | list[dict[str, Any]]
-    | tuple[Any, ...]
-    | list[tuple[Any, ...]]
-    | None
-):
+) -> dict[str, Any] | list[dict[str, Any]] | tuple[Any, ...] | list[tuple[Any, ...]] | None:
     """
     将 SQLAlchemy 连接查询结果序列化为字典或 namedtuple
 
@@ -110,21 +104,17 @@ def select_join_serialize(  # ruff:ignore[complex-structure]
     :param return_as_dict: True 返回字典，False 返回 namedtuple
     :return:
     """
-    list_relationship_types = {"o2m", "m2m"}
-    all_relationship_types = {"o2m", "m2o", "o2o", "m2m"}
+    list_relationship_types = {'o2m', 'm2m'}
+    all_relationship_types = {'o2m', 'm2o', 'o2o', 'm2m'}
 
     def get_obj_id(target_obj: Any) -> int | str:
-        return getattr(target_obj, "id", None) or id(target_obj)
+        return getattr(target_obj, 'id', None) or id(target_obj)
 
     def extract_row_elements(row_data: Any) -> tuple:
-        return row_data if hasattr(row_data, "__getitem__") else (row_data,)
+        return row_data if hasattr(row_data, '__getitem__') else (row_data,)
 
-    def get_relationship_key(
-        model: str, relationship_type: str, custom_field: str | None
-    ) -> str:
-        return custom_field or (
-            model if relationship_type not in list_relationship_types else f"{model}s"
-        )
+    def get_relationship_key(model: str, relationship_type: str, custom_field: str | None) -> str:
+        return custom_field or (model if relationship_type not in list_relationship_types else f'{model}s')
 
     def parse_relationships(relationship_list: list[str]) -> tuple[dict, dict, dict]:
         if not relationship_list:
@@ -135,22 +125,20 @@ def select_join_serialize(  # ruff:ignore[complex-structure]
         customs = {}
 
         for rel_str in relationship_list:
-            parts = rel_str.split(":", 1)
+            parts = rel_str.split(':', 1)
             rel_part = parts[0].strip()
             custom_name = parts[1].strip() if len(parts) > 1 else None
 
-            info = rel_part.split("-")
+            info = rel_part.split('-')
             if len(info) != 3:
-                log.warning(
-                    f'Invalid relationship: "{rel_str}", expected "source-type-target[:custom]"'
-                )
+                log.warning(f'Invalid relationship: "{rel_str}", expected "source-type-target[:custom]"')
                 continue
 
             src, parsed_type, dst = (x.lower() for x in info)
             if parsed_type not in all_relationship_types:
                 log.warning(
                     f'Invalid relationship type: "{parsed_type}" in "{rel_str}", '
-                    f"must be one of: {', '.join(all_relationship_types)}"
+                    f'must be one of: {", ".join(all_relationship_types)}'
                 )
                 continue
 
@@ -166,15 +154,14 @@ def select_join_serialize(  # ruff:ignore[complex-structure]
         return [
             prop.key
             for prop in mapper.iterate_properties
-            if isinstance(prop, (ColumnProperty, SynonymProperty))
-            and hasattr(model_obj, prop.key)
+            if isinstance(prop, (ColumnProperty, SynonymProperty)) and hasattr(model_obj, prop.key)
         ]
 
     def dedupe_objects(obj_list: list[Any]) -> list[Any]:
         seen = set()
         unique = []
         for item in obj_list:
-            item_id = getattr(item, "id", None)
+            item_id = getattr(item, 'id', None)
             if item_id is not None and item_id not in seen:
                 seen.add(item_id)
                 unique.append(item)
@@ -206,9 +193,7 @@ def select_join_serialize(  # ruff:ignore[complex-structure]
     primary_columns = get_model_columns(primary_obj)
 
     # 关系解析
-    relation_graph, reverse_relation, custom_names = parse_relationships(
-        relationships or []
-    )
+    relation_graph, reverse_relation, custom_names = parse_relationships(relationships or [])
     has_relationships = bool(relation_graph)
 
     # 预处理模型信息
@@ -260,15 +245,11 @@ def select_join_serialize(  # ruff:ignore[complex-structure]
             field_list = model_columns.copy()
             if has_relationships:
                 for target, target_rtype in relation_graph.get(model_name, {}).items():
-                    nt_key = get_relationship_key(
-                        target, target_rtype, custom_names.get((model_name, target))
-                    )
+                    nt_key = get_relationship_key(target, target_rtype, custom_names.get((model_name, target)))
                     field_list.append(nt_key)
                 field_list = list(dict.fromkeys(field_list))
 
-            namedtuple_cache[model_name] = namedtuple(
-                model_name.capitalize(), field_list
-            )  # ruff:ignore[collections-named-tuple]
+            namedtuple_cache[model_name] = namedtuple(model_name.capitalize(), field_list)
 
     # 嵌套关系层级结构（一次性构建）
     hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
@@ -292,9 +273,7 @@ def select_join_serialize(  # ruff:ignore[complex-structure]
                     parent_type = reverse_relation[rel_type_name]
                     parent_idx = cls_idx.get(parent_type)
                     parent = (
-                        row_elements[parent_idx]
-                        if parent_idx is not None and parent_idx < len(row_elements)
-                        else None
+                        row_elements[parent_idx] if parent_idx is not None and parent_idx < len(row_elements) else None
                     )
                 elif rel_type_name in relation_graph.get(m_type_name, {}):
                     parent = row_elements[0]
@@ -304,7 +283,7 @@ def select_join_serialize(  # ruff:ignore[complex-structure]
                 if parent is None:
                     continue
 
-                parent_pk = getattr(parent, "id", None)
+                parent_pk = getattr(parent, 'id', None)
                 if parent_pk is not None:
                     hierarchy[main_id][rel_type_name][parent_pk].append(rel_obj)
 
@@ -320,23 +299,16 @@ def select_join_serialize(  # ruff:ignore[complex-structure]
             child_columns = model_info.get(cls_type, [])
 
             count = len(unique_children)
-            field_key = cls_type if count <= 1 else f"{cls_type}s"
+            field_key = cls_type if count <= 1 else f'{cls_type}s'
 
             if count == 0:
                 result[field_key] = []
             elif count == 1:
-                obj_data = {
-                    col: getattr(unique_children[0], col, None) for col in child_columns
-                }
-                result[field_key] = (
-                    obj_data if return_as_dict else build_namedtuple(cls_type, obj_data)
-                )
+                obj_data = {col: getattr(unique_children[0], col, None) for col in child_columns}
+                result[field_key] = obj_data if return_as_dict else build_namedtuple(cls_type, obj_data)
             else:
                 if return_as_dict:
-                    result[field_key] = [
-                        {col: getattr(c, col, None) for col in child_columns}
-                        for c in unique_children
-                    ]
+                    result[field_key] = [{col: getattr(c, col, None) for col in child_columns} for c in unique_children]
                 else:
                     result[field_key] = [
                         build_namedtuple(
@@ -350,9 +322,7 @@ def select_join_serialize(  # ruff:ignore[complex-structure]
 
     def build_nested(target_id: int, target_obj: Any) -> dict[str, Any]:
         result = {col: getattr(target_obj, col, None) for col in primary_columns}
-        current_hierarchy = hierarchy.get(
-            target_id, defaultdict(lambda: defaultdict(list))
-        )
+        current_hierarchy = hierarchy.get(target_id, defaultdict(lambda: defaultdict(list)))
 
         def recursive_build(cls_name: str, pk: int) -> list:
             nested_dict = current_hierarchy.get(cls_name)
@@ -364,38 +334,28 @@ def select_join_serialize(  # ruff:ignore[complex-structure]
 
             output = []
             for item in objs:
-                item_data = {
-                    col: getattr(item, col, None) for col in model_info[cls_name]
-                }
+                item_data = {col: getattr(item, col, None) for col in model_info[cls_name]}
 
                 for sub_type, sub_rel_type in relation_graph.get(cls_name, {}).items():
-                    sub_pk = getattr(item, "id", None)
+                    sub_pk = getattr(item, 'id', None)
                     if sub_pk is None:
                         continue
 
                     sub_list = recursive_build(sub_type, sub_pk)
-                    sub_key = get_relationship_key(
-                        sub_type, sub_rel_type, custom_names.get((cls_name, sub_type))
-                    )
+                    sub_key = get_relationship_key(sub_type, sub_rel_type, custom_names.get((cls_name, sub_type)))
 
                     if sub_rel_type not in list_relationship_types:
                         item_data[sub_key] = sub_list[0] if sub_list else None
                     else:
                         item_data[sub_key] = sub_list
 
-                output.append(
-                    item_data
-                    if return_as_dict
-                    else build_namedtuple(cls_name, item_data)
-                )
+                output.append(item_data if return_as_dict else build_namedtuple(cls_name, item_data))
 
             return output
 
         for top_type, top_rtype in relation_graph.get(primary_obj_name, {}).items():
             instances = recursive_build(top_type, target_id)
-            top_key = get_relationship_key(
-                top_type, top_rtype, custom_names.get((primary_obj_name, top_type))
-            )
+            top_key = get_relationship_key(top_type, top_rtype, custom_names.get((primary_obj_name, top_type)))
 
             if top_rtype not in list_relationship_types:
                 result[top_key] = instances[0] if instances else None
@@ -421,14 +381,10 @@ def select_join_serialize(  # ruff:ignore[complex-structure]
 
         processed_ids.add(main_id)
 
-        result_data = (
-            build_nested(main_id, main_obj)
-            if has_relationships
-            else build_flat(main_id, main_obj)
-        )
+        result_data = build_nested(main_id, main_obj) if has_relationships else build_flat(main_id, main_obj)
 
         if not return_as_dict:
-            result_type = namedtuple("Result", result_data.keys())  # ruff:ignore[collections-named-tuple]
+            result_type = namedtuple('Result', result_data.keys())  # ruff:ignore[collections-named-tuple]
             final_results.append(result_type(**result_data))
         else:
             final_results.append(result_data)
