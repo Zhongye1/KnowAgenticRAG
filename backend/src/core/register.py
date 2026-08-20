@@ -21,32 +21,33 @@ import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
-from common import socketio
-from common.cache.pubsub import cache_pubsub_manager
-from common.exception.exception_handler import register_exception
-from common.log import set_custom_logfile, setup_logging
-from common.observability.otel import init_otel
-from common.response.response_code import StandardResponseCode
-from database.db import create_tables, dispose_database
-from database.redis import redis_client
+import socketio
+from backend.src.common.cache.pubsub import cache_pubsub_manager
+from backend.src.common.exception.exception_handler import register_exception
+from backend.src.common.log import set_custom_logfile, setup_logging
+from backend.src.common.observability.otel import init_otel
+from backend.src.common.response.response_code import StandardResponseCode
+from backend.src.database.db import create_tables, dispose_database
+from backend.src.database.redis import redis_client
 from fastapi import FastAPI
 from fastapi.params import Depends
 from fastapi_pagination import add_pagination
-from middleware.access_middleware import AccessMiddleware
-from middleware.i18n_middleware import I18nMiddleware
-from middleware.jwt_auth_middleware import JwtAuthMiddleware
-from plugin.hooks import init_plugin_otel_hooks, register_plugin_hooks
-from plugin.router import build_final_router
+from backend.src.middleware.access_middleware import AccessMiddleware
+from backend.src.middleware.i18n_middleware import I18nMiddleware
+from backend.src.middleware.jwt_auth_middleware import JwtAuthMiddleware
+from backend.src.plugin.hooks import init_plugin_otel_hooks, register_plugin_hooks
+from backend.src.plugin.router import build_final_router
 from prometheus_client import make_asgi_app
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from starlette.staticfiles import StaticFiles
 from starlette_context.middleware import ContextMiddleware
 from starlette_context.plugins import RequestIdPlugin
-from utils.demo_mode import demo_site
-from utils.openapi import ensure_unique_route_names, simplify_operation_ids
-from utils.trace_id import OtelTraceIdPlugin
+from backend.src.utils.demo_mode import demo_site
+from backend.src.utils.openapi import ensure_unique_route_names, simplify_operation_ids
+from backend.src.utils.trace_id import OtelTraceIdPlugin
 
+from backend import __version__
 from backend.src.common.lifespan import lifespan_manager
 from backend.src.core.config import settings
 from backend.src.core.path_conf import STATIC_DIR, UPLOAD_DIR
@@ -109,7 +110,7 @@ def register_app() -> FastAPI:
 
     app = FastAPI(
         title=settings.FASTAPI_TITLE,
-        version=settings.FASTAPI_VERSION,
+        version=__version__,
         description=settings.FASTAPI_DESCRIPTION,
         docs_url=settings.FASTAPI_DOCS_URL,
         redoc_url=settings.FASTAPI_REDOC_URL,
