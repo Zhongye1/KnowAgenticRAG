@@ -60,6 +60,14 @@ export default defineConfig({
                         link: "/工程治理/前后端联调",
                     },
                     {
+                        text: "环境变量",
+                        link: "/工程治理/环境变量",
+                    },
+                    {
+                        text: "配置清单",
+                        link: "/工程治理/配置清单",
+                    },
+                    {
                         text: "构建与部署",
                         link: "/工程治理/构建与部署",
                     },
