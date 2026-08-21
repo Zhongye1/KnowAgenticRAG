@@ -141,7 +141,7 @@ class Settings(BaseSettings):
     COOKIE_REFRESH_TOKEN_EXPIRE_SECONDS: int = 60 * 60 * 24 * 7  # 7 天
 
     # 数据权限
-    DATA_PERMISSION_MODEL_EXCLUDE: list[str] = [  # 排除允许进行数据过滤的 SQLA 模型
+    DATA_PERMISSION_MODEL_EXCLUDE: list[str] = [  # 排除允许进行数据过滤的 SQLA 模型(db).md
         'DataScope',
         'DataRule',
         'sys_role_data_scope',
