@@ -72,6 +72,10 @@ export default defineConfig({
                         link: "/工程治理/数据库层设计",
                     },
                     {
+                        text: "认证授权设计",
+                        link: "/工程治理/认证授权设计",
+                    },
+                    {
                         text: "构建与部署",
                         link: "/工程治理/构建与部署",
                     },
