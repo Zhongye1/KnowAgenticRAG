@@ -76,6 +76,10 @@ export default defineConfig({
                         link: "/工程治理/认证授权设计",
                     },
                     {
+                        text: "消息队列设计",
+                        link: "/工程治理/消息队列设计",
+                    },
+                    {
                         text: "构建与部署",
                         link: "/工程治理/构建与部署",
                     },
