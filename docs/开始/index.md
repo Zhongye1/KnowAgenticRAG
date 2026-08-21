@@ -128,7 +128,7 @@ task dev
 
 | 项目 | 初始化方式 | 说明 |
 | --- | --- | --- |
-| 数据库表 | 自动 | 后端启动时自动 `create_all` 建表，无需手动迁移（Alembic 迁移目录暂为空） |
+| 数据库表 | 自动 | 后端启动时自动 `create_all` 建表，无需手动迁移（Alembic 迁移为占位，未上线不生成脚本） |
 | Redis | 自动 | 后端启动时自动初始化连接与状态 |
 | 消息队列 | 手动 | Celery broker 为 Redis（db 1），结果写入 PostgreSQL；需另开终端 `task worker` |
 | 定时任务 | 手动 | 需另开终端 `task beat`（调度器：DatabaseScheduler） |
