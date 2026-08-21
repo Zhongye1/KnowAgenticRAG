@@ -1,4 +1,5 @@
-import shutil
+import os
+import sys
 
 from functools import cache
 from re import Pattern
@@ -351,8 +352,15 @@ class Settings(BaseSettings):
 @cache
 def get_settings() -> Settings:
     """获取全局配置单例"""
-    if not ENV_FILE_PATH.exists():
-        shutil.copy(ENV_EXAMPLE_FILE_PATH, ENV_FILE_PATH)
+    # 缺少 .env 时不再静默复制，提示创建；已通过环境变量注入关键配置（容器/CI）则继续
+    if not ENV_FILE_PATH.exists() and not os.environ.get('DATABASE_HOST'):
+        print(
+            f'[ERROR] 缺少环境配置文件: {ENV_FILE_PATH}\n'
+            f'        请先创建：cp {ENV_EXAMPLE_FILE_PATH} {ENV_FILE_PATH}\n'
+            f'        或通过环境变量注入 DATABASE_HOST / REDIS_HOST 等配置后重试',
+            file=sys.stderr,
+        )
+        sys.exit(1)
     return Settings()
 
 

@@ -28,6 +28,7 @@ tasks:
   deps-up:
     desc: 启动 Docker 依赖并等待健康（PostgreSQL / Redis / RabbitMQ）
     cmds:
+      - sh -c '[ -f .env ] || { echo "缺少根 .env，请先创建：cp .env.example .env（填写 POSTGRES_*/RABBITMQ_* 等）"; exit 1; }'
       - docker compose up -d --wait {{.DEPS_SERVICES}}
 
   deps-down:
@@ -78,7 +79,13 @@ tasks:
   docker-build:
     desc: 构建 Docker 镜像（默认 ragf_server 与全部 Celery 服务）
     cmds:
+      - sh -c '[ -f .env ] || { echo "缺少根 .env，请先创建：cp .env.example .env（填写 POSTGRES_*/RABBITMQ_* 等）"; exit 1; }'
       - docker compose build {{.DOCKER_SERVICES | default "ragf_server ragf_celery_worker ragf_celery_beat ragf_celery_flower"}}
+
+  env:check:
+    desc: 校验各层 env 账号字段一致性
+    cmds:
+      - backend/.venv/bin/python backend/scripts/env_check.py
 
   install:
     desc: 安装全部依赖（后端 + 前端）

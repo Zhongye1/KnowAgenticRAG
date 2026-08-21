@@ -20,18 +20,27 @@ tasks:
     desc: 启动后端开发服务器（热重载，端口 8000）
     dir: '..'
     cmds:
+      - task: env-check
       - '{{.VENV_PY}} -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload'
 
   run:
     desc: 通过 run.py 启动后端（IDE 调试友好）
     dir: '..'
     cmds:
+      - task: env-check
       - '{{.VENV_PY}} backend/run.py'
+
+  env-check:
+    internal: true
+    desc: 检查 backend/src/.env 是否存在
+    cmds:
+      - sh -c '[ -f src/.env ] || { echo "缺少 backend/src/.env，请先创建：cp src/.env.example src/.env"; exit 1; }'
 
   init-db:
     desc: 初始化数据库与 Redis（建表 + 连通性检查，幂等）
     dir: '..'
     cmds:
+      - task: env-check
       - '{{.VENV_PY}} -c "import asyncio; from backend.src.database.db import create_tables; asyncio.run(create_tables())"'
       - '{{.VENV_PY}} -c "import asyncio; from backend.src.database.redis import redis_client; asyncio.run(redis_client.init())"'
 
@@ -39,12 +48,14 @@ tasks:
     desc: 启动 Celery Worker（消息队列消费者）
     dir: '..'
     cmds:
+      - task: env-check
       - '{{.VENV_PY}} -m celery -A backend.src.app.task.celery:celery_app worker --loglevel=INFO'
 
   beat:
     desc: 启动 Celery Beat（定时任务调度器）
     dir: '..'
     cmds:
+      - task: env-check
       - '{{.VENV_PY}} -m celery -A backend.src.app.task.celery:celery_app beat --loglevel=INFO'
 
   db-init:
