@@ -58,6 +58,7 @@ export default defineConfig({
                         text: "开发规范",
                         items: [
                             { text: "业务模块开发规范", link: "/工程治理/业务模块开发规范" },
+                            { text: "代码生成方案", link: "/工程治理/代码生成方案" },
                         ],
                     },
                     {
