@@ -48,6 +48,8 @@ from backend.src.common.response.response_code import StandardResponseCode
 from backend.src.core.config import settings
 from backend.src.core.path_conf import STATIC_DIR, UPLOAD_DIR
 from backend.src.database.db import create_tables, dispose_database
+from backend.src.database.milvus import milvus_client
+from backend.src.database.minio import minio_client
 from backend.src.database.redis import redis_client
 from backend.src.middleware.access_middleware import AccessMiddleware
 from backend.src.middleware.i18n_middleware import I18nMiddleware
@@ -78,6 +80,12 @@ async def register_init(app: FastAPI) -> AsyncGenerator[None, None]:
     # 初始化 redis
     await redis_client.init()
 
+    # 初始化向量数据库 milvus
+    await milvus_client.init()
+
+    # 初始化对象存储 minio
+    await minio_client.init()
+
     # 初始化 snowflake 节点
     await snowflake.init()
 
@@ -106,6 +114,12 @@ async def register_init(app: FastAPI) -> AsyncGenerator[None, None]:
 
         # 关闭 redis 连接
         await redis_client.aclose()
+
+        # 释放 milvus 连接
+        await milvus_client.close()
+
+        # 释放 minio 连接
+        await minio_client.close()
 
         # 释放数据库连接池
         await dispose_database()

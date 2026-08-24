@@ -19,6 +19,12 @@ volumes:
     name: ragf_static_upload
   ragf_rabbitmq:
     name: ragf_rabbitmq
+  ragf_minio_data:
+    name: ragf_minio_data
+  ragf_etcd_data:
+    name: ragf_etcd_data
+  ragf_milvus_data:
+    name: ragf_milvus_data
   ragf_loki_data:
     name: ragf_loki_data
   ragf_prometheus_data:
@@ -45,6 +51,10 @@ services:
       ragf_redis:
         condition: service_healthy
       ragf_rabbitmq:
+        condition: service_healthy
+      ragf_minio:
+        condition: service_healthy
+      ragf_milvus:
         condition: service_healthy
     volumes:
       - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
@@ -167,6 +177,83 @@ services:
     networks:
       - ragf_network
 
+  ragf_minio:
+    image: minio/minio:latest
+    ports:
+      - "${DOCKER_MAP_MINIO_API_PORT:-9000}:9000"
+      - "${DOCKER_MAP_MINIO_CONSOLE_PORT:-9001}:9001"
+    container_name: ragf_minio
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin123}
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    command: server /data --console-address ":9001"
+    volumes:
+      - ragf_minio_data:/data
+    networks:
+      ragf_network:
+        # MinIO 会校验 HTTP Host 头，下划线主机名会被拒绝（invalid hostname），
+        # 因此 Milvus 与后端应用统一通过不带下划线的别名访问
+        aliases:
+          - ragf-minio
+
+  # Milvus standalone 的元数据后端
+  ragf_etcd:
+    image: quay.io/coreos/etcd:v3.5.18
+    container_name: ragf_etcd
+    restart: always
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+    command:
+      - etcd
+      - -advertise-client-urls=http://ragf_etcd:2379
+      - -listen-client-urls=http://0.0.0.0:2379
+      - --data-dir=/etcd
+    volumes:
+      - ragf_etcd_data:/etcd
+    networks:
+      - ragf_network
+
+  # Milvus standalone（对象存储复用 ragf_minio，通过 MINIO_ADDRESS 指向）
+  ragf_milvus:
+    image: milvusdb/milvus:v2.5.12
+    ports:
+      - "${DOCKER_MAP_MILVUS_PORT:-19530}:19530"
+      - "${DOCKER_MAP_MILVUS_METRICS_PORT:-9091}:9091"
+    container_name: ragf_milvus
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - ETCD_ENDPOINTS=ragf_etcd:2379
+      - COMMON_STORAGETYPE=remote
+      - MINIO_ADDRESS=ragf-minio:9000
+      - MINIO_ACCESSKEYID=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRETACCESSKEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+    command: ["milvus", "run", "standalone"]
+    depends_on:
+      ragf_minio:
+        condition: service_healthy
+      ragf_etcd:
+        condition: service_started
+    volumes:
+      - ragf_milvus_data:/var/lib/milvus
+    networks:
+      - ragf_network
+
   ragf_celery_worker:
     build:
       context: .
@@ -181,6 +268,10 @@ services:
       - TZ=Asia/Shanghai
     depends_on:
       ragf_rabbitmq:
+        condition: service_healthy
+      ragf_minio:
+        condition: service_healthy
+      ragf_milvus:
         condition: service_healthy
     volumes:
       - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
@@ -201,6 +292,10 @@ services:
       - TZ=Asia/Shanghai
     depends_on:
       ragf_rabbitmq:
+        condition: service_healthy
+      ragf_minio:
+        condition: service_healthy
+      ragf_milvus:
         condition: service_healthy
       ragf_celery_worker:
         condition: service_started

@@ -296,6 +296,31 @@ class Settings(BaseSettings):
     CELERY_TASK_MAX_RETRIES: int = 5
 
     ##################################################
+    # [ App ] rag
+    ##################################################
+    # .env Milvus
+    MILVUS_HOST: str = 'localhost'
+    MILVUS_PORT: int = 19530
+    MILVUS_USER: str = 'root'
+    MILVUS_PASSWORD: str = 'Milvus'
+
+    # Milvus 基础配置
+    MILVUS_TIMEOUT: int = 10
+    MILVUS_DATABASE_NAME: str = 'default'
+
+    # .env MinIO
+    MINIO_HOST: str = 'localhost'
+    MINIO_PORT: int = 9000
+    MINIO_ACCESS_KEY: str
+    MINIO_SECRET_KEY: str
+
+    # MinIO 基础配置
+    MINIO_SECURE: bool = False
+    MINIO_BUCKET: str = 'ragf'
+    MINIO_ATTACHMENT_BUCKET: str = 'ragf-attachments'
+    MINIO_CONSOLE_PORT: int = 9001
+
+    ##################################################
     # [ Plugin ] oauth2
     ##################################################
     # .env

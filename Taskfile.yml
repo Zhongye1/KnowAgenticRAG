@@ -15,7 +15,7 @@ includes:
 
 vars:
   # Docker 依赖服务（本地开发：依赖跑容器，代码跑宿主机）
-  DEPS_SERVICES: ragf_postgres ragf_redis ragf_rabbitmq
+  DEPS_SERVICES: ragf_postgres ragf_redis ragf_rabbitmq ragf_minio ragf_milvus
 
 tasks:
   dev:
@@ -24,6 +24,13 @@ tasks:
       - task: deps-up
       - task: backend:dev
       - task: frontend:dev
+
+  dev:stop:
+    desc: 停止本地开发环境（结束前后端进程 + 停止 Docker 依赖）
+    cmds:
+      - sh -c 'pkill -f "[u]vicorn backend.main:app" 2>/dev/null && echo "后端已停止" || echo "后端未在运行"'
+      - sh -c 'pkill -f "[v]ite" 2>/dev/null && echo "前端已停止" || echo "前端未在运行"'
+      - task: deps-down
 
   deps-up:
     desc: 启动 Docker 依赖并等待健康（PostgreSQL / Redis / RabbitMQ）
