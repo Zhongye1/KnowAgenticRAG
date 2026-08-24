@@ -1,13 +1,4 @@
-
-
-
-
-
-
-
-
-
-根据 [Eagle-RAG 官方 API 文档](https://zhiweio.github.io/EagleRAG/api/)，以下是完整的 REST API 端点列表，按功能模块分类整理：
+完整的 REST API 端点列表，按功能模块分类整理：
 
 ---
 
