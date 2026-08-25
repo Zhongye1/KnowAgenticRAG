@@ -54,6 +54,7 @@ dependencies = [
     "starlette-context>=0.5.1",
     "user-agents>=2.2.0",
     "opentelemetry-instrumentation-celery>=0.65b0",
+    "sse-starlette>=3.4.8",
 ]
 
 [build-system]
