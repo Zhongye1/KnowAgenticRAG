@@ -2,6 +2,8 @@
 
 # RAG-F · 智能知识管理平台
 
+（注：当前项目正在准备进行重构，见分支 refactor/ORCA https://github.com/Zhongye1/KnowledgeRAG-OGAS/compare/refactor/ORCA 其他相关问题请联系作者 ）
+
 **基于检索增强生成（RAG）的私有知识库问答系统**
 
 [![Vue3](https://img.shields.io/badge/Vue-3.x-42b883?logo=vue.js)](https://vuejs.org/)
