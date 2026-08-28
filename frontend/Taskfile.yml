@@ -2,18 +2,53 @@ version: '3'
 
 # 前端开发任务（本 Taskfile 位于 frontend/ 目录）
 #
-# 注意：前端工程尚未迁移，以下任务为预留占位。
-# 迁移完成后按实际技术栈（如 npm/pnpm/yarn）补充脚本。
+# 代码质量工具链已迁移到 oxc：
+#   - lint：oxlint（配置见 .oxlintrc.json，替换原 ESLint）
+#   - format：prettier（保留，oxfmt 仍实验性）
+# 包管理器使用 pnpm（见 pnpm-lock.yaml / pnpm-workspace.yaml）。
 
 tasks:
   install:
-    desc: 安装前端依赖（预留）
+    desc: 安装前端依赖
     cmds:
-      - echo "前端工程未迁移，跳过安装"
-    silent: true
+      - pnpm install
 
   dev:
-    desc: 启动前端开发服务器（预留）
+    desc: 启动前端开发服务器（Vite）
     cmds:
-      - echo "前端工程未迁移，跳过启动"
-    silent: true
+      - pnpm dev
+
+  lint:
+    desc: oxlint 代码检查
+    cmds:
+      - pnpm lint
+
+  lint:fix:
+    desc: oxlint 代码检查并自动修复
+    cmds:
+      - pnpm lint:fix
+
+  format:
+    desc: prettier 格式化（写入）
+    cmds:
+      - pnpm format
+
+  format:check:
+    desc: prettier 格式化检查（CI 用）
+    cmds:
+      - pnpm format:check
+
+  type-check:
+    desc: tsc 类型检查（不输出产物）
+    cmds:
+      - pnpm check-types
+
+  test:
+    desc: 运行单元测试（vitest）
+    cmds:
+      - pnpm test
+
+  build:
+    desc: 类型检查并构建生产包
+    cmds:
+      - pnpm build
