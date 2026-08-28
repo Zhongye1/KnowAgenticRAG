@@ -3,7 +3,7 @@ import { defineConfig } from "vitepress";
 // https://vitepress.dev/reference/site-config
 export default defineConfig({
     title: "KnowledgeRAG",
-    description: "系统文档",
+    description: "KnowledgeRAG 知识管理系统文档",
 
     // 部署到 GitHub Pages 的子路径
     base: "/KnowledgeRAG-GZHU/",
@@ -23,6 +23,9 @@ export default defineConfig({
             { text: "首页", link: "/" },
             { text: "开始", link: "/开始/" },
             { text: "工程治理", link: "/工程治理/" },
+            { text: "知识库设计", link: "/知识库设计/知识库设计概览" },
+            { text: "RAG核心", link: "/RAG_core/00_RAG核心的设计总览" },
+            { text: "设计文档", link: "/specs/01-开发顺序" },
             { text: "API", link: "/api/api" },
         ],
 
@@ -67,6 +70,28 @@ export default defineConfig({
                             { text: "构建与部署", link: "/工程治理/构建与部署" },
                         ],
                     },
+                ],
+            },
+            {
+                text: "知识库设计",
+                items: [
+                    { text: "知识库设计概览", link: "/知识库设计/知识库设计概览" },
+                ],
+            },
+            {
+                text: "RAG核心",
+                items: [
+                    { text: "RAG核心的设计总览", link: "/RAG_core/00_RAG核心的设计总览" },
+                    { text: "文档解析（Document Parsing）", link: "/RAG_core/01_文档解析（Document Parsing）" },
+                ],
+            },
+            {
+                text: "设计文档（Spec）",
+                items: [
+                    { text: "开发顺序", link: "/specs/01-开发顺序" },
+                    { text: "任务队列", link: "/specs/0x00/任务队列" },
+                    { text: "Agentic RAG 系统设计", link: "/specs/2026-08-21-agentic-rag-系统设计" },
+                    { text: "RAG API 设计与落地路线", link: "/specs/2026-08-25-rag-api设计与落地路线" },
                 ],
             },
             {
