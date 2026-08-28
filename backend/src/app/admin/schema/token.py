@@ -7,14 +7,6 @@ from backend.src.common.enums import StatusType
 from backend.src.common.schema import SchemaBase
 
 
-class GetSwaggerToken(SchemaBase):
-    """Swagger 认证令牌"""
-
-    access_token: str = Field(description='访问令牌')
-    token_type: str = Field('Bearer', description='令牌类型')
-    user: GetUserInfoDetail = Field(description='用户信息')
-
-
 class AccessTokenBase(SchemaBase):
     """访问令牌基础模型"""
 

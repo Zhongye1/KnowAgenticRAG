@@ -23,6 +23,7 @@ from backend.src.app.admin.schema.user import (
     AddOAuth2UserParam,
     AddUserParam,
     AddUserRoleParam,
+    RegisterUserParam,
     UpdateUserParam,
 )
 from backend.src.app.admin.utils.password_security import get_hash_password
@@ -151,6 +152,32 @@ class CRUDUser(CRUDPlus[User]):
             user_role_data = [AddUserRoleParam(user_id=new_user.id, role_id=role.id).model_dump() for role in roles]
             user_role_stmt = insert(user_role)
             await db.execute(user_role_stmt, user_role_data)
+
+    async def add_by_register(self, db: AsyncSession, obj: RegisterUserParam) -> None:
+        """
+        注册用户
+
+        :param db: 数据库会话
+        :param obj: 注册用户参数
+        :return:
+        """
+        salt = bcrypt.gensalt()
+        dict_obj = obj.model_dump()
+        dict_obj.update({'salt': salt, 'password': get_hash_password(obj.password, salt), 'is_staff': False})
+        new_user = self.model(**dict_obj)
+        db.add(new_user)
+        await db.flush()
+
+        role_stmt = select(Role).where(Role.status == StatusType.enable, Role.deleted == 0)
+        result = await db.execute(role_stmt)
+        role = result.scalars().first()
+        if role is None:
+            raise errors.NotFoundError(msg='未找到可用角色，请联系系统管理员')
+
+        user_role_stmt = insert(user_role).values(
+            AddUserRoleParam(user_id=new_user.id, role_id=role.id).model_dump()
+        )
+        await db.execute(user_role_stmt)
 
     async def add_by_oauth2(self, db: AsyncSession, obj: AddOAuth2UserParam) -> None:
         """

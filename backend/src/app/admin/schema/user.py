@@ -33,6 +33,13 @@ class AddUserParam(AuthSchemaBase):
     roles: list[int] = Field(description='角色 ID 列表')
 
 
+class RegisterUserParam(AuthSchemaBase):
+    """用户注册参数"""
+
+    nickname: str | None = Field(None, description='昵称')
+    email: CustomEmailStr | None = Field(None, description='邮箱')
+
+
 class AddUserRoleParam(SchemaBase):
     """添加用户角色"""
 

@@ -1,17 +1,16 @@
-from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
-from fastapi.security import HTTPBasicCredentials
 from pyrate_limiter import Duration, Rate
 from starlette.background import BackgroundTasks
 
-from backend.src.app.admin.schema.token import (
-    GetLoginToken,
-    GetNewToken,
-    GetSwaggerToken,
+from backend.src.app.admin.schema.token import GetLoginToken, GetNewToken
+from backend.src.app.admin.schema.user import (
+    AuthLoginParam,
+    GetUserInfoWithRelationDetail,
+    RegisterUserParam,
 )
-from backend.src.app.admin.schema.user import AuthLoginParam
 from backend.src.app.admin.service.auth_service import auth_service
+from backend.src.app.admin.service.user_service import user_service
 from backend.src.common.response.response_schema import (
     ResponseModel,
     ResponseSchemaModel,
@@ -24,16 +23,13 @@ from backend.src.utils.limiter import RateLimiter
 router = APIRouter()
 
 
-@router.post(
-    '/login/swagger',
-    summary='swagger 调试专用',
-    description='用于快捷获取 token 进行 swagger 认证',
-)
-async def login_swagger(
-    db: CurrentSessionTransaction, obj: Annotated[HTTPBasicCredentials, Depends()]
-) -> GetSwaggerToken:
-    token, user = await auth_service.swagger_login(db=db, obj=obj)
-    return GetSwaggerToken(access_token=token, user=user)  # type: ignore
+@router.post('/register', summary='用户注册')
+async def register(
+    db: CurrentSessionTransaction, obj: RegisterUserParam
+) -> ResponseSchemaModel[GetUserInfoWithRelationDetail]:
+    await auth_service.register(db=db, obj=obj)
+    data = await user_service.get_userinfo(db=db, username=obj.username)
+    return response_base.success(data=data)
 
 
 @router.post(

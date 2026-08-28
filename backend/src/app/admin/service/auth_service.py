@@ -1,5 +1,4 @@
 from fastapi import Request, Response
-from fastapi.security import HTTPBasicCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask, BackgroundTasks
 
@@ -7,7 +6,7 @@ from backend.src.app.admin.crud.crud_menu import menu_dao
 from backend.src.app.admin.crud.crud_user import user_dao
 from backend.src.app.admin.model import User
 from backend.src.app.admin.schema.token import GetLoginToken, GetNewToken
-from backend.src.app.admin.schema.user import AuthLoginParam
+from backend.src.app.admin.schema.user import AuthLoginParam, RegisterUserParam
 from backend.src.app.admin.service.login_log_service import login_log_service
 from backend.src.app.admin.service.user_password_history_service import password_security_service
 from backend.src.app.admin.utils.password_security import password_verify
@@ -62,23 +61,20 @@ class AuthService:
 
         return user, days_remaining
 
-    async def swagger_login(self, *, db: AsyncSession, obj: HTTPBasicCredentials) -> tuple[str, User]:
+    @staticmethod
+    async def register(*, db: AsyncSession, obj: RegisterUserParam) -> None:
         """
-        Swagger 文档登录
+        用户注册
 
         :param db: 数据库会话
-        :param obj: 登录凭证
+        :param obj: 注册参数
         :return:
         """
-        user, _ = await self.user_verify(db, obj.username, obj.password)
-        await user_dao.update_login_time(db, obj.username)
-        access_token_data = await create_access_token(
-            user.id,
-            multi_login=user.is_multi_login,
-            # extra info
-            swagger=True,
-        )
-        return access_token_data.access_token, user
+        if await user_dao.get_by_username(db, obj.username):
+            raise errors.ConflictError(msg='用户名已注册')
+        if obj.email and await user_dao.check_email(db, obj.email):
+            raise errors.ConflictError(msg='邮箱已被绑定')
+        await user_dao.add_by_register(db, obj)
 
     async def login(
         self,
