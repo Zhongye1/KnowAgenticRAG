@@ -37,15 +37,6 @@ export interface AuthLoginParam {
   captcha?: string | null;
 }
 
-export interface CpuInfo {
-  physical_num: number;
-  logical_num: number;
-  max_freq: number;
-  min_freq: number;
-  current_freq: number;
-  usage: number;
-}
-
 export interface CreateConfigParam {
   name: string;
   type?: string | null;
@@ -93,33 +84,6 @@ export interface CreateDictTypeParam {
   name: string;
   code: string;
   remark?: string | null;
-}
-
-export interface CreateGenBusinessParam {
-  app_name: string;
-  table_name: string;
-  doc_comment: string;
-  table_comment?: string | null;
-  class_name?: string | null;
-  schema_name?: string | null;
-  filename?: string | null;
-  datetime_mixin?: boolean;
-  api_version?: string;
-  tag?: string | null;
-  gen_path?: string | null;
-  remark?: string | null;
-}
-
-export interface CreateGenColumnParam {
-  name: string;
-  comment?: string | null;
-  type: string;
-  default?: string | null;
-  sort: number;
-  length: number;
-  is_pk?: boolean;
-  is_nullable?: boolean;
-  gen_business_id: number;
 }
 
 export interface CreateMenuParam {
@@ -206,16 +170,6 @@ export interface DeleteRoleParam {
 
 export interface DeleteTaskResultParam {
   pks: number[];
-}
-
-export interface DiskInfo {
-  dir: string;
-  device: string;
-  type: string;
-  total: string;
-  used: string;
-  free: string;
-  usage: string;
 }
 
 export interface GetCaptchaDetail {
@@ -349,38 +303,6 @@ export interface GetDictTypeDetail {
   updated_time?: string | null;
 }
 
-export interface GetGenBusinessDetail {
-  app_name: string;
-  table_name: string;
-  doc_comment: string;
-  table_comment?: string | null;
-  class_name?: string | null;
-  schema_name?: string | null;
-  filename?: string | null;
-  datetime_mixin?: boolean;
-  api_version?: string;
-  tag?: string | null;
-  gen_path?: string | null;
-  remark?: string | null;
-  id: number;
-  created_time: string;
-  updated_time?: string | null;
-}
-
-export interface GetGenColumnDetail {
-  name: string;
-  comment?: string | null;
-  type: string;
-  default?: string | null;
-  sort: number;
-  length: number;
-  is_pk?: boolean;
-  is_nullable?: boolean;
-  gen_business_id: number;
-  id: number;
-  pd_type: string;
-}
-
 export interface GetLoginLogDetail {
   user_uuid: string;
   username: string;
@@ -510,12 +432,6 @@ export interface GetRoleWithRelationDetail {
   scopes?: (GetDataScopeWithRelationDetail | null)[];
 }
 
-export interface GetSwaggerToken {
-  access_token: string;
-  token_type?: string;
-  user: GetUserInfoDetail;
-}
-
 export interface GetTaskResultDetail {
   task_id: string;
   status: string;
@@ -610,20 +526,7 @@ export interface HTTPValidationError {
   detail?: ValidationError[];
 }
 
-export interface ImportParam {
-  app: string;
-  table_schema: string;
-  table_name: string;
-}
-
 export type JsonValue = unknown;
-
-export interface MemInfo {
-  total: number;
-  used: number;
-  free: number;
-  usage: number;
-}
 
 export type MenuType = 0 | 1 | 2 | 3 | 4;
 
@@ -631,34 +534,11 @@ export type NoticeType = 0 | 1;
 
 export type PeriodType = 'days' | 'hours' | 'minutes' | 'seconds' | 'microseconds';
 
-export type PluginType = 'zip' | 'git';
-
-export interface RedisCommandStat {
-  name: string;
-  value: string;
-}
-
-export interface RedisMonitorInfo {
-  info: RedisServerInfo;
-  stats: RedisCommandStat[];
-}
-
-export interface RedisServerInfo {
-  redis_version: string;
-  redis_mode: string;
-  role: string;
-  tcp_port: string;
-  uptime: string;
-  connected_clients: string;
-  blocked_clients: string;
-  used_memory_human: string;
-  used_memory_rss_human: string;
-  maxmemory_human: string;
-  mem_fragmentation_ratio: string;
-  instantaneous_ops_per_sec: string;
-  total_commands_processed: string;
-  rejected_connections: string;
-  keys_num: string;
+export interface RegisterUserParam {
+  username: string;
+  password: string;
+  nickname?: string | null;
+  email?: string | null;
 }
 
 export interface ResetPasswordParam {
@@ -671,34 +551,7 @@ export type RoleDataRuleExpressionType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 export type RoleDataRuleOperatorType = 0 | 1;
 
-export interface ServerMonitorInfo {
-  cpu: CpuInfo;
-  mem: MemInfo;
-  sys: SysInfo;
-  disk: DiskInfo[];
-  service: ServiceInfo;
-}
-
-export interface ServiceInfo {
-  name: string;
-  version: string;
-  home: string;
-  startup: string;
-  elapsed: string;
-  cpu_usage: string;
-  mem_vms: string;
-  mem_rss: string;
-  mem_free: string;
-}
-
 export type StatusType = 0 | 1;
-
-export interface SysInfo {
-  name: string;
-  os: string;
-  ip: string;
-  arch: string;
-}
 
 export interface TaskRegisteredDetail {
   name: string;
@@ -768,33 +621,6 @@ export interface UpdateDictTypeParam {
   name: string;
   code: string;
   remark?: string | null;
-}
-
-export interface UpdateGenBusinessParam {
-  app_name: string;
-  table_name: string;
-  doc_comment: string;
-  table_comment?: string | null;
-  class_name?: string | null;
-  schema_name?: string | null;
-  filename?: string | null;
-  datetime_mixin?: boolean;
-  api_version?: string;
-  tag?: string | null;
-  gen_path?: string | null;
-  remark?: string | null;
-}
-
-export interface UpdateGenColumnParam {
-  name: string;
-  comment?: string | null;
-  type: string;
-  default?: string | null;
-  sort: number;
-  length: number;
-  is_pk?: boolean;
-  is_nullable?: boolean;
-  gen_business_id: number;
 }
 
 export interface UpdateMenuParam {

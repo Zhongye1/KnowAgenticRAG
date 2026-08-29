@@ -6,7 +6,7 @@
  *   node scripts/generate-api.mjs [--spec <path|url>] [--out <dir>] [--api-prefix <prefix>]
  *
  * 默认:
- *   --spec        ../docs/api/openapi.json   （仓库根目录下后端导出的 OpenAPI 文档）
+ *   --spec        http://127.0.0.1:8000/openapi   （后端 FastAPI 导出的 OpenAPI 文档）
  *   --out         src/generated              （生成产物目录）
  *   --api-prefix  /api/v1                    （后端 API 版本前缀）
  *
@@ -33,7 +33,7 @@ const HEADER = `/**
 
 function parseArgs(argv) {
   const args = {
-    spec: path.join(ROOT, '..', 'docs', 'api', 'openapi.json'),
+    spec: 'http://127.0.0.1:8000/openapi',
     out: path.join(ROOT, 'src', 'generated'),
     apiPrefix: '/api/v1',
   };
