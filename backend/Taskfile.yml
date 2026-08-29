@@ -85,6 +85,12 @@ tasks:
     cmds:
       - ruff format .
 
+  typecheck:
+    desc: 类型检查（pyright，Pylance 同源引擎）
+    dir: '..'
+    cmds:
+      - '{{.TASKFILE_DIR}}/.venv/bin/pyright --project pyrightconfig.json'
+
   build:
     desc: 构建 Python 安装包（wheel + sdist，输出到 backend/dist）
     cmds:
