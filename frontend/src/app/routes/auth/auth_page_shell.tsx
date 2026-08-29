@@ -1,11 +1,11 @@
-import { AuthLayout } from '@/components/layouts/auth-layout';
+import { Auth_layout } from '@/components/layouts/auth_layout';
 import { LoginCard } from '@/features/auth/components/login-card';
 
 const AuthPageShell = () => {
   return (
-    <AuthLayout title="登录">
+    <Auth_layout title="登录">
       <LoginCard />
-    </AuthLayout>
+    </Auth_layout>
   );
 };
 

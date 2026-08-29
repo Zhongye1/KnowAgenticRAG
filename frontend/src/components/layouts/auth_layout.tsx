@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
-import { Head } from '@/components/seo';
+import { LoginHeader } from '@/features/auth/components/login-header';
 import { paths } from '@/config/paths';
 import { useUser } from '@/lib/auth';
 
@@ -11,7 +11,7 @@ type LayoutProps = {
   title: string;
 };
 
-export const AuthLayout = ({ children, title }: LayoutProps) => {
+export const Auth_layout = ({ children, title }: LayoutProps) => {
   const user = useUser();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get('redirectTo');
@@ -28,7 +28,7 @@ export const AuthLayout = ({ children, title }: LayoutProps) => {
 
   return (
     <>
-      <Head title={title} />
+      <LoginHeader></LoginHeader>
       <div className="flex min-h-screen flex-col justify-center bg-gray-50 py-12 sm:px-6 lg:px-8">
         <h2 className="mt-3 text-center text-3xl font-extrabold text-gray-900">
           {title}

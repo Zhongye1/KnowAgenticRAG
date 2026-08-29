@@ -33,11 +33,6 @@ export const createAppRouter = (queryClient: QueryClient) =>
         import('./routes/auth/auth_page_shell').then(convert(queryClient)),
     },
     {
-      path: paths.auth.register.path,
-      lazy: () =>
-        import('./routes/auth/register').then(convert(queryClient)),
-    },
-    {
       path: paths.app.root.path,
       element: (
         <ProtectedRoute>
