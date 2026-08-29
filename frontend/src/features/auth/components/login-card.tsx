@@ -59,18 +59,18 @@ export function LoginCard() {
   };
 
   return (
-    <div className="w-[400px] rounded-2xl bg-white shadow-lg ring-1 ring-gray-100">
+    <div className="w-[400px] rounded-large bg-color-bg-2 shadow-3-center ring-1 ring-color-border-1">
       {/* 登录 / 注册切换 */}
-      <div className="flex border-b border-gray-100 px-4 pt-3">
+      <div className="flex border-b border-color-border-1 px-4 pt-3">
         {MODES.map(({ key, label }) => (
           <button
             key={key}
             type="button"
             onClick={() => setMode(key)}
-            className={`flex items-center gap-1.5 rounded-t-lg px-4 py-2.5 text-sm transition ${
+            className={`flex items-center gap-1.5 rounded-t-large px-4 py-2.5 text-sm transition ${
               mode === key
-                ? 'border-b-2 border-blue-500 font-medium text-gray-900'
-                : 'text-gray-500 hover:text-gray-700'
+                ? 'border-b-2 border-primary-6 font-medium text-color-text-1'
+                : 'text-color-text-3 hover:text-color-text-2'
             }`}
           >
             {label}
@@ -86,16 +86,16 @@ export function LoginCard() {
       ) : (
         <>
           {/* 登录方式 Tab 栏 */}
-          <div className="flex border-b border-gray-100 px-4">
+          <div className="flex border-b border-color-border-1 px-4">
             {TABS.map(({ key, label, icon }) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => setMethod(key)}
-                className={`flex items-center gap-1.5 rounded-t-lg px-4 py-2.5 text-sm transition ${
+                className={`flex items-center gap-1.5 rounded-t-large px-4 py-2.5 text-sm transition ${
                   method === key
-                    ? 'border-b-2 border-blue-500 font-medium text-gray-900'
-                    : 'text-gray-500 hover:text-gray-700'
+                    ? 'border-b-2 border-primary-6 font-medium text-color-text-1'
+                    : 'text-color-text-3 hover:text-color-text-2'
                 }`}
               >
                 {icon}
@@ -124,19 +124,22 @@ export function LoginCard() {
       )}
 
       {/* 底栏 */}
-      <div className="flex items-center justify-center gap-6 border-t border-gray-50 py-4 text-xs text-gray-500">
+      <div className="flex items-center justify-center gap-6 border-t border-color-border-1 py-4 text-xs text-color-text-3">
         {mode === 'login' && (
           <label className="flex cursor-pointer select-none items-center gap-1.5">
             <input
               type="checkbox"
               checked={autoLogin}
               onChange={(e) => setAutoLogin(e.target.checked)}
-              className="h-3.5 w-3.5 accent-blue-500"
+              className="h-3.5 w-3.5 accent-primary-6"
             />
             下次自动登录
           </label>
         )}
-        <a href="/help" className="flex items-center gap-1 hover:text-gray-700">
+        <a
+          href="/help"
+          className="flex items-center gap-1 hover:text-color-text-2"
+        >
           <IconInfoCircle className="h-3.5 w-3.5" /> 帮助
         </a>
       </div>

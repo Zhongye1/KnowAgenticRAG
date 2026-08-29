@@ -17,7 +17,7 @@ export const Danger: Story = {
     icon: 'danger',
     title: 'Confirmation',
     body: 'Hello World',
-    confirmButton: <Button className="bg-red-500">Confirm</Button>,
+    confirmButton: <Button className="bg-danger-6">Confirm</Button>,
     triggerButton: <Button>Open</Button>,
   },
 };

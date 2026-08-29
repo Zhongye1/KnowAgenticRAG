@@ -12,6 +12,7 @@
     "prepare": "husky",
     "lint": "oxlint src",
     "lint:fix": "oxlint src --fix",
+    "check:tokens": "node scripts/check-design-tokens.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check-types": "tsc --project tsconfig.json --pretty --noEmit",

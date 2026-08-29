@@ -1,10 +1,7 @@
 import { CheckCircle2, Loader2, RefreshCw } from 'lucide-react';
 
 import { BackendNotImplementedError } from '../api/auth';
-import {
-  useQrLogin,
-  type QrConfirmedToken,
-} from '../hooks/use-qr-login';
+import { useQrLogin, type QrConfirmedToken } from '../hooks/use-qr-login';
 
 interface QrLoginPanelProps {
   onConfirmed: (token: QrConfirmedToken) => void;
@@ -28,23 +25,21 @@ export function QrLoginPanel({
   return (
     <div className="flex flex-col items-center gap-4 py-6">
       {/* 二维码区：固定尺寸，状态浮层盖在上面 */}
-      <div className="relative h-[180px] w-[180px] overflow-hidden rounded-lg border border-gray-100 p-3">
+      <div className="relative h-[180px] w-[180px] overflow-hidden rounded-large border border-color-border-1 p-3">
         {qrImage && (
           <img src={qrImage} alt="登录二维码" className="h-full w-full" />
         )}
 
         {/* 过期/加载/错误浮层 */}
-        {(phase === 'expired' ||
-          phase === 'loading' ||
-          phase === 'error') && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/95 text-sm text-gray-600">
+        {(phase === 'expired' || phase === 'loading' || phase === 'error') && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-color-bg-2/95 text-sm text-color-text-2">
             {phase === 'loading' && (
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <Loader2 className="h-6 w-6 animate-spin text-color-text-4" />
             )}
             {phase === 'error' && notImplemented && (
               <>
                 <span>扫码登录功能开发中，敬请期待</span>
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-color-text-4">
                   当前后端尚未提供扫码接口
                 </span>
               </>
@@ -55,7 +50,7 @@ export function QrLoginPanel({
                 <button
                   type="button"
                   onClick={refresh}
-                  className="flex items-center gap-1.5 rounded-full bg-blue-500 px-4 py-1.5 text-white transition hover:bg-blue-600"
+                  className="flex items-center gap-1.5 rounded-circle bg-primary-6 px-4 py-1.5 text-color-white transition hover:bg-primary-5"
                 >
                   <RefreshCw className="h-3.5 w-3.5" /> 点击刷新
                 </button>
@@ -67,7 +62,7 @@ export function QrLoginPanel({
                 <button
                   type="button"
                   onClick={refresh}
-                  className="flex items-center gap-1.5 rounded-full bg-blue-500 px-4 py-1.5 text-white transition hover:bg-blue-600"
+                  className="flex items-center gap-1.5 rounded-circle bg-primary-6 px-4 py-1.5 text-color-white transition hover:bg-primary-5"
                 >
                   <RefreshCw className="h-3.5 w-3.5" /> 点击刷新
                 </button>
@@ -78,15 +73,17 @@ export function QrLoginPanel({
 
         {/* 已扫描，等待确认 */}
         {phase === 'scanned' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/95 text-sm text-gray-700">
-            <CheckCircle2 className="h-8 w-8 text-green-500" />
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-color-bg-2/95 text-sm text-color-text-2">
+            <CheckCircle2 className="h-8 w-8 text-success-6" />
             <span>扫描成功</span>
-            <span className="text-xs text-gray-400">请在手机上确认登录</span>
+            <span className="text-xs text-color-text-4">
+              请在手机上确认登录
+            </span>
           </div>
         )}
       </div>
 
-      <p className="text-center text-sm leading-6 text-gray-600">
+      <p className="text-center text-sm leading-6 text-color-text-2">
         使用「{appName}」App 扫一扫
         <br />
         需下载 {minVersion} 版本

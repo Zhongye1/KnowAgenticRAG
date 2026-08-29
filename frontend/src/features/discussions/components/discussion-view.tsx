@@ -37,9 +37,9 @@ export const DiscussionView = ({ discussionId }: { discussionId: string }) => {
           <UpdateDiscussion discussionId={discussionId} />
         </div>
         <div>
-          <div className="overflow-hidden bg-white shadow sm:rounded-lg">
+          <div className="overflow-hidden bg-color-bg-2 shadow-2-center sm:rounded-large">
             <div className="px-4 py-5 sm:px-6">
-              <div className="mt-1 max-w-2xl text-sm text-gray-500">
+              <div className="mt-1 max-w-2xl text-sm text-color-text-3">
                 <MDPreview value={discussion.body} />
               </div>
             </div>

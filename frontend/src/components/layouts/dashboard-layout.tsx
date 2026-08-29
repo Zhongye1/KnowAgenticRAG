@@ -27,9 +27,12 @@ type SideNavigationItem = {
 
 const Logo = () => {
   return (
-    <Link className="flex items-center text-white" to={paths.home.getHref()}>
+    <Link
+      className="flex items-center text-color-white"
+      to={paths.home.getHref()}
+    >
       <img className="h-8 w-auto" src={logo} alt="Workflow" />
-      <span className="text-sm font-semibold text-white">
+      <span className="text-sm font-semibold text-color-white">
         Bulletproof React
       </span>
     </Link>
@@ -70,7 +73,7 @@ const Progress = () => {
 
   return (
     <div
-      className="fixed left-0 top-0 h-1 bg-blue-500 transition-all duration-200 ease-in-out"
+      className="fixed left-0 top-0 h-1 bg-primary-6 transition-all duration-200 ease-in-out"
       style={{ width: `${progress}%` }}
     ></div>
   );
@@ -94,7 +97,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40">
-      <aside className="fixed inset-y-0 left-0 z-10 hidden w-60 flex-col border-r bg-black sm:flex">
+      <aside className="fixed inset-y-0 left-0 z-10 hidden w-60 flex-col border-r border-color-white/10 bg-color-black sm:flex">
         <nav className="flex flex-col items-center gap-4 px-2 py-4">
           <div className="flex h-16 shrink-0 items-center px-4">
             <Logo />
@@ -106,15 +109,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               end={item.name !== 'Discussions'}
               className={({ isActive }) =>
                 cn(
-                  'text-gray-300 hover:bg-gray-700 hover:text-white',
+                  'text-color-white/80 hover:bg-color-white/10 hover:text-color-white',
                   'group flex flex-1 w-full items-center rounded-md p-2 text-base font-medium',
-                  isActive && 'bg-gray-900 text-white',
+                  isActive && 'bg-color-white/20 text-color-white',
                 )
               }
             >
               <item.icon
                 className={cn(
-                  'text-gray-400 group-hover:text-gray-300',
+                  'text-color-white/60 group-hover:text-color-white/80',
                   'mr-4 size-6 shrink-0',
                 )}
                 aria-hidden="true"
@@ -136,7 +139,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             </DrawerTrigger>
             <DrawerContent
               side="left"
-              className="bg-black pt-10 text-white sm:max-w-60"
+              className="bg-color-black pt-10 text-color-white sm:max-w-60"
             >
               <nav className="grid gap-6 text-lg font-medium">
                 <div className="flex h-16 shrink-0 items-center px-4">
@@ -149,15 +152,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                     end
                     className={({ isActive }) =>
                       cn(
-                        'text-gray-300 hover:bg-gray-700 hover:text-white',
+                        'text-color-white/80 hover:bg-color-white/10 hover:text-color-white',
                         'group flex flex-1 w-full items-center rounded-md p-2 text-base font-medium',
-                        isActive && 'bg-gray-900 text-white',
+                        isActive && 'bg-color-white/20 text-color-white',
                       )
                     }
                   >
                     <item.icon
                       className={cn(
-                        'text-gray-400 group-hover:text-gray-300',
+                        'text-color-white/60 group-hover:text-color-white/80',
                         'mr-4 size-6 shrink-0',
                       )}
                       aria-hidden="true"
@@ -182,13 +185,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 onClick={() => navigate(paths.app.profile.getHref())}
-                className={cn('block px-4 py-2 text-sm text-gray-700')}
+                className={cn('block px-4 py-2 text-sm text-color-text-2')}
               >
                 Your Profile
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                className={cn('block px-4 py-2 text-sm text-gray-700 w-full')}
+                className={cn(
+                  'block px-4 py-2 text-sm text-color-text-2 w-full',
+                )}
                 onClick={() => logout.mutate({})}
               >
                 Sign Out

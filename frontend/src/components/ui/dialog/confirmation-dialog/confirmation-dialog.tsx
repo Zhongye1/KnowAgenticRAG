@@ -59,10 +59,13 @@ export const ConfirmationDialog = ({
           <DialogTitle className="flex items-center gap-2">
             {' '}
             {icon === 'danger' && (
-              <CircleAlert className="size-6 text-red-600" aria-hidden="true" />
+              <CircleAlert
+                className="size-6 text-danger-6"
+                aria-hidden="true"
+              />
             )}
             {icon === 'info' && (
-              <Info className="size-6 text-blue-600" aria-hidden="true" />
+              <Info className="size-6 text-primary-6" aria-hidden="true" />
             )}
             {title}
           </DialogTitle>

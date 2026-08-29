@@ -21,15 +21,15 @@ const LandingRoute = () => {
   return (
     <>
       <Head description="Welcome to bulletproof react" />
-      <div className="flex h-screen items-center bg-white">
+      <div className="flex h-screen items-center bg-color-bg-1">
         <div className="mx-auto max-w-7xl px-4 py-12 text-center sm:px-6 lg:px-8 lg:py-16">
-          <h2 className="text-3xl font-extrabold tracking-tight text-gray-900 sm:text-4xl">
+          <h2 className="text-3xl font-extrabold tracking-tight text-color-text-1 sm:text-4xl">
             <span className="block">Bulletproof React</span>
           </h2>
           <img src={logo} alt="react" />
           <p>Showcasing Best Practices For Building React Applications</p>
           <div className="mt-8 flex justify-center">
-            <div className="inline-flex rounded-md shadow">
+            <div className="inline-flex rounded-medium shadow-2-center">
               <Button
                 onClick={handleStart}
                 icon={
