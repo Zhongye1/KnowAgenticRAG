@@ -8,139 +8,115 @@ import {
   authenticate,
   hash,
   requireAuth,
+  sanitizeUser,
   AUTH_COOKIE,
   networkDelay,
 } from '../utils';
 
 type RegisterBody = {
-  firstName: string;
-  lastName: string;
-  email: string;
+  username: string;
   password: string;
-  teamId?: string;
-  teamName?: string;
+  nickname?: string;
+  email?: string;
 };
 
 type LoginBody = {
-  email: string;
+  username: string;
   password: string;
+  uuid?: string;
+  captcha?: string;
 };
 
+// 与真实后端保持一致：响应统一包 { code, msg, data }
 export const authHandlers = [
-  http.post(`${env.API_URL}/auth/register`, async ({ request }) => {
+  http.post(`${env.API_URL}/api/v1/auth/register`, async ({ request }) => {
     await networkDelay();
     try {
-      const userObject = (await request.json()) as RegisterBody;
+      const body = (await request.json()) as RegisterBody;
 
       const existingUser = db.user.findFirst({
         where: {
-          email: {
-            equals: userObject.email,
+          username: {
+            equals: body.username,
           },
         },
       });
 
       if (existingUser) {
         return HttpResponse.json(
-          { message: 'The user already exists' },
+          { code: 400, msg: '用户名已存在', data: null },
           { status: 400 },
         );
       }
 
-      let teamId;
-      let role;
-
-      if (!userObject.teamId) {
-        const team = db.team.create({
-          name: userObject.teamName ?? `${userObject.firstName} Team`,
-        });
-        await persistDb('team');
-        teamId = team.id;
-        role = 'ADMIN';
-      } else {
-        const existingTeam = db.team.findFirst({
-          where: {
-            id: {
-              equals: userObject.teamId,
-            },
-          },
-        });
-
-        if (!existingTeam) {
-          return HttpResponse.json(
-            {
-              message: 'The team you are trying to join does not exist!',
-            },
-            { status: 400 },
-          );
-        }
-        teamId = userObject.teamId;
-        role = 'USER';
-      }
-
-      db.user.create({
-        ...userObject,
-        role,
-        password: hash(userObject.password),
-        teamId,
+      const user = db.user.create({
+        username: body.username,
+        nickname: body.nickname ?? body.username,
+        email: body.email ?? '',
+        password: hash(body.password),
+        firstName: body.username,
+        lastName: '',
+        role: 'USER',
+        teamId: '',
+        bio: '',
       });
 
       await persistDb('user');
 
-      const result = authenticate({
-        email: userObject.email,
-        password: userObject.password,
-      });
-
-      // todo: remove once tests in Github Actions are fixed
-      Cookies.set(AUTH_COOKIE, result.jwt, { path: '/' });
-
-      return HttpResponse.json(result, {
-        headers: {
-          // with a real API servier, the token cookie should also be Secure and HttpOnly
-          'Set-Cookie': `${AUTH_COOKIE}=${result.jwt}; Path=/;`,
-        },
-      });
+      // 真实后端注册不发 token（见 docs/工程治理/auth-flow.md），只返回用户信息
+      return HttpResponse.json({ data: sanitizeUser(user) });
     } catch (error: any) {
       return HttpResponse.json(
-        { message: error?.message || 'Server Error' },
+        { code: 500, msg: error?.message || 'Server Error', data: null },
         { status: 500 },
       );
     }
   }),
 
-  http.post(`${env.API_URL}/auth/login`, async ({ request }) => {
+  http.post(`${env.API_URL}/api/v1/auth/login`, async ({ request }) => {
     await networkDelay();
 
     try {
-      const credentials = (await request.json()) as LoginBody;
-      const result = authenticate(credentials);
+      const body = (await request.json()) as LoginBody;
+      const result = authenticate(body);
 
       // todo: remove once tests in Github Actions are fixed
-      Cookies.set(AUTH_COOKIE, result.jwt, { path: '/' });
+      Cookies.set(AUTH_COOKIE, result.access_token, { path: '/' });
 
-      return HttpResponse.json(result, {
-        headers: {
-          // with a real API servier, the token cookie should also be Secure and HttpOnly
-          'Set-Cookie': `${AUTH_COOKIE}=${result.jwt}; Path=/;`,
+      return HttpResponse.json(
+        {
+          data: {
+            access_token: result.access_token,
+            access_token_expire_time: new Date(
+              Date.now() + 60 * 60 * 1000,
+            ).toISOString(),
+            session_uuid: 'mock-session',
+            user: result.user,
+          },
         },
-      });
+        {
+          headers: {
+            // with a real API server, the refresh token cookie should be Secure and HttpOnly
+            'Set-Cookie': `${AUTH_COOKIE}=${result.access_token}; Path=/;`,
+          },
+        },
+      );
     } catch (error: any) {
       return HttpResponse.json(
-        { message: error?.message || 'Server Error' },
-        { status: 500 },
+        { code: 401, msg: error?.message || '用户名或密码错误', data: null },
+        { status: 401 },
       );
     }
   }),
 
-  http.post(`${env.API_URL}/auth/logout`, async () => {
+  http.post(`${env.API_URL}/api/v1/auth/logout`, async () => {
     await networkDelay();
 
     // todo: remove once tests in Github Actions are fixed
     Cookies.remove(AUTH_COOKIE);
 
     return HttpResponse.json(
-      { message: 'Logged out' },
+      { data: null },
       {
         headers: {
           'Set-Cookie': `${AUTH_COOKIE}=; Path=/;`,
@@ -149,16 +125,30 @@ export const authHandlers = [
     );
   }),
 
-  http.get(`${env.API_URL}/auth/me`, async ({ cookies }) => {
+  http.get(`${env.API_URL}/api/v1/auth/captcha`, async () => {
+    await networkDelay();
+
+    // 默认关闭验证码，登录表单里不显示验证码输入框
+    return HttpResponse.json({
+      data: {
+        is_enabled: false,
+        expire_seconds: 60,
+        uuid: 'mock-captcha-uuid',
+        image: '',
+      },
+    });
+  }),
+
+  http.get(`${env.API_URL}/api/v1/sys/users/me`, async ({ request }) => {
     await networkDelay();
 
     try {
-      const { user } = requireAuth(cookies);
+      const { user } = requireAuth(request.headers.get('Authorization'));
       return HttpResponse.json({ data: user });
     } catch (error: any) {
       return HttpResponse.json(
-        { message: error?.message || 'Server Error' },
-        { status: 500 },
+        { code: 401, msg: error?.message || 'Unauthorized', data: null },
+        { status: 401 },
       );
     }
   }),

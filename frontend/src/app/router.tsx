@@ -28,12 +28,14 @@ export const createAppRouter = (queryClient: QueryClient) =>
       lazy: () => import('./routes/landing').then(convert(queryClient)),
     },
     {
-      path: paths.auth.register.path,
-      lazy: () => import('./routes/auth/register').then(convert(queryClient)),
+      path: paths.auth.login.path,
+      lazy: () =>
+        import('./routes/auth/auth_page_shell').then(convert(queryClient)),
     },
     {
-      path: paths.auth.login.path,
-      lazy: () => import('./routes/auth/login').then(convert(queryClient)),
+      path: paths.auth.register.path,
+      lazy: () =>
+        import('./routes/auth/register').then(convert(queryClient)),
     },
     {
       path: paths.app.root.path,
@@ -44,13 +46,6 @@ export const createAppRouter = (queryClient: QueryClient) =>
       ),
       ErrorBoundary: AppRootErrorBoundary,
       children: [
-        // {
-        //   path: paths.app.discussions.path,
-        //   lazy: () =>
-        //     import('./routes/app/discussions/discussions').then(
-        //       convert(queryClient),
-        //     ),
-        // },
         {
           path: paths.app.users.path,
           lazy: () => import('./routes/app/users').then(convert(queryClient)),

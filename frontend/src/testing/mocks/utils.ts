@@ -51,16 +51,16 @@ export const sanitizeUser = <O extends object>(user: O) =>
   omit<O>(user, ['password', 'iat']);
 
 export function authenticate({
-  email,
+  username,
   password,
 }: {
-  email: string;
+  username: string;
   password: string;
 }) {
   const user = db.user.findFirst({
     where: {
-      email: {
-        equals: email,
+      username: {
+        equals: username,
       },
     },
   });
@@ -68,7 +68,7 @@ export function authenticate({
   if (user?.password === hash(password)) {
     const sanitizedUser = sanitizeUser(user);
     const encodedToken = encode(sanitizedUser);
-    return { user: sanitizedUser, jwt: encodedToken };
+    return { user: sanitizedUser, access_token: encodedToken };
   }
 
   const error = new Error('Invalid username or password');
@@ -77,9 +77,25 @@ export function authenticate({
 
 export const AUTH_COOKIE = `bulletproof_react_app_token`;
 
-export function requireAuth(cookies: Record<string, string>) {
+export function requireAuth(
+  authorizationOrCookies?: string | Record<string, string> | null,
+  cookies?: Record<string, string>,
+) {
   try {
-    const encodedToken = cookies[AUTH_COOKIE] || Cookies.get(AUTH_COOKIE);
+    // 兼容两种调用：新调用传 Authorization 头，旧调用传 request cookies
+    const authorization =
+      typeof authorizationOrCookies === 'string'
+        ? authorizationOrCookies
+        : null;
+    const cookieStore =
+      typeof authorizationOrCookies === 'object'
+        ? authorizationOrCookies
+        : cookies;
+    const bearer = authorization?.startsWith('Bearer ')
+      ? authorization.slice('Bearer '.length)
+      : null;
+    const encodedToken =
+      bearer || cookieStore?.[AUTH_COOKIE] || Cookies.get(AUTH_COOKIE);
     if (!encodedToken) {
       return { error: 'Unauthorized', user: null };
     }

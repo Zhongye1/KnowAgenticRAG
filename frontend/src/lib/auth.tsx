@@ -3,73 +3,64 @@ import { Navigate, useLocation } from 'react-router';
 import { z } from 'zod';
 
 import { paths } from '@/config/paths';
-import { AuthResponse, User } from '@/types/api';
+import { login } from '@/generated/auth/login';
+import { logout } from '@/generated/auth/logout';
+import { register } from '@/generated/auth/register';
+import { getCurrentUser } from '@/generated/sys-users/get-current-user';
+import type { User } from '@/types/api';
 
-import { api } from './api-client';
+import { setAccessToken } from './api-client';
 
-// api call definitions for auth (types, schemas, requests):
-// these are not part of features as this is a module shared across features
-
-const getUser = async (): Promise<User> => {
-  const response = await api.get('/auth/me');
-
-  return response.data;
-};
-
-const logout = (): Promise<void> => {
-  return api.post('/auth/logout');
-};
+// 认证接口统一走 OpenAPI 生成封装（src/generated/auth、src/generated/sys-users）。
+// 后端响应形如 { code, msg, data }，生成代码已用 .then(res => res.data) 解包。
 
 export const loginInputSchema = z.object({
-  email: z.string().min(1, 'Required').email('Invalid email'),
-  password: z.string().min(5, 'Required'),
+  username: z.string().min(1, '请输入用户名'),
+  password: z.string().min(1, '请输入密码'),
 });
 
-export type LoginInput = z.infer<typeof loginInputSchema>;
-const loginWithEmailAndPassword = (data: LoginInput): Promise<AuthResponse> => {
-  return api.post('/auth/login', data);
+export type LoginInput = z.infer<typeof loginInputSchema> & {
+  uuid?: string;
+  captcha?: string;
 };
 
-export const registerInputSchema = z
-  .object({
-    email: z.string().min(1, 'Required'),
-    firstName: z.string().min(1, 'Required'),
-    lastName: z.string().min(1, 'Required'),
-    password: z.string().min(5, 'Required'),
-  })
-  .and(
-    z
-      .object({
-        teamId: z.string().min(1, 'Required'),
-        teamName: z.null().default(null),
-      })
-      .or(
-        z.object({
-          teamName: z.string().min(1, 'Required'),
-          teamId: z.null().default(null),
-        }),
-      ),
-  );
+export const registerInputSchema = z.object({
+  username: z.string().min(1, '请输入用户名'),
+  password: z.string().min(6, '密码至少 6 位'),
+  nickname: z.string().optional(),
+  email: z
+    .string()
+    .optional()
+    .refine((v) => !v || z.string().email().safeParse(v).success, {
+      message: '邮箱格式不正确',
+    }),
+});
 
 export type RegisterInput = z.infer<typeof registerInputSchema>;
 
-const registerWithEmailAndPassword = (
-  data: RegisterInput,
-): Promise<AuthResponse> => {
-  return api.post('/auth/register', data);
-};
-
 const authConfig = {
-  userFn: getUser,
+  userFn: async () => {
+    const user = await getCurrentUser();
+    // 后端用户结构与 demo 脚手架不同（username/nickname vs firstName/lastName），
+    // 消费端（dashboard/profile 等）仍按旧结构取字段，先做兼容转换。
+    return user as unknown as User;
+  },
   loginFn: async (data: LoginInput) => {
-    const response = await loginWithEmailAndPassword(data);
-    return response.user;
+    const res = await login(data);
+    // access_token 由前端保存，后续请求经 api-client 注入 Authorization: Bearer
+    setAccessToken(res.access_token);
+    return res.user as unknown as User;
   },
   registerFn: async (data: RegisterInput) => {
-    const response = await registerWithEmailAndPassword(data);
-    return response.user;
+    // 当前后端注册只落库、不发 token（见 docs/工程治理/auth-flow.md），
+    // 不置登录态，注册成功后由表单引导去登录页。
+    await register(data);
+    return null as unknown as User;
   },
-  logoutFn: logout,
+  logoutFn: async () => {
+    await logout();
+    setAccessToken(null);
+  },
 };
 
 export const { useUser, useLogin, useLogout, useRegister, AuthLoader } =

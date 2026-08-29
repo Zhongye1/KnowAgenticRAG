@@ -4,9 +4,39 @@ import { useNotifications } from '@/components/ui/notifications';
 import { env } from '@/config/env';
 import { paths } from '@/config/paths';
 
+const ACCESS_TOKEN_KEY = 'access_token';
+
+export const getAccessToken = () => {
+  try {
+    return typeof window !== 'undefined'
+      ? window.localStorage.getItem(ACCESS_TOKEN_KEY)
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+export const setAccessToken = (token: string | null) => {
+  try {
+    if (typeof window === 'undefined') return;
+    if (token) {
+      window.localStorage.setItem(ACCESS_TOKEN_KEY, token);
+    } else {
+      window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+    }
+  } catch {
+    // ignore storage failures (e.g. private mode)
+  }
+};
+
 function authRequestInterceptor(config: InternalAxiosRequestConfig) {
   if (config.headers) {
     config.headers.Accept = 'application/json';
+
+    const token = getAccessToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
 
   config.withCredentials = true;
@@ -23,7 +53,10 @@ api.interceptors.response.use(
     return response.data;
   },
   (error) => {
-    const message = error.response?.data?.message || error.message;
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.msg ||
+      error.message;
     useNotifications.getState().addNotification({
       type: 'error',
       title: 'Error',
@@ -31,10 +64,17 @@ api.interceptors.response.use(
     });
 
     if (error.response?.status === 401) {
-      const searchParams = new URLSearchParams();
-      const redirectTo =
-        searchParams.get('redirectTo') || window.location.pathname;
-      window.location.href = paths.auth.login.getHref(redirectTo);
+      // 已在登录页时不再跳转，避免 userFn 401 造成死循环
+      const alreadyOnLogin =
+        typeof window !== 'undefined' &&
+        window.location.pathname.startsWith(paths.auth.login.path);
+
+      if (!alreadyOnLogin && !import.meta.env.TEST) {
+        const searchParams = new URLSearchParams();
+        const redirectTo =
+          searchParams.get('redirectTo') || window.location.pathname;
+        window.location.href = paths.auth.login.getHref(redirectTo);
+      }
     }
 
     return Promise.reject(error);

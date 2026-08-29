@@ -4,6 +4,7 @@ import { nanoid } from 'nanoid';
 const models = {
   user: {
     id: primaryKey(nanoid),
+    username: String,
     firstName: String,
     lastName: String,
     email: String,

@@ -8,6 +8,7 @@ import Cookies from 'js-cookie';
 import { RouterProvider, createMemoryRouter } from 'react-router';
 
 import { AppProvider } from '@/app/provider';
+import { setAccessToken } from '@/lib/api-client';
 
 import {
   createDiscussion as generateDiscussion,
@@ -30,7 +31,8 @@ export const createDiscussion = async (discussionProperties?: any) => {
 
 export const loginAsUser = async (user: any) => {
   const authUser = await authenticate(user);
-  Cookies.set(AUTH_COOKIE, authUser.jwt);
+  Cookies.set(AUTH_COOKIE, authUser.access_token);
+  setAccessToken(authUser.access_token);
   return authUser;
 };
 

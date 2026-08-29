@@ -10,6 +10,8 @@ import {
 
 const generateUser = () => ({
   id: randUuid() + Math.random(),
+  username: randUserName({ withAccents: false }),
+  nickname: randUserName({ withAccents: false }),
   firstName: randUserName({ withAccents: false }),
   lastName: randUserName({ withAccents: false }),
   email: randEmail(),
