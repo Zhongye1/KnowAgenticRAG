@@ -9,11 +9,11 @@ const NAV_LINKS = [
   { label: '作者主页', href: 'https://github.com/Zhongye1' },
 ] as const;
 
-export function LoginHeader() {
+export function LoginPageHeader() {
   return (
     <header
       aria-label="顶部导航"
-      className="flex h-14 items-center justify-between border-b border-color-border-1 bg-color-bg-2 px-6"
+      className="flex h-[80px] items-center justify-between border-b border-color-border-1 bg-color-bg-2 px-6"
     >
       {/* 左：Logo */}
       <a href="/" className="flex items-center gap-2 text-lg font-black">

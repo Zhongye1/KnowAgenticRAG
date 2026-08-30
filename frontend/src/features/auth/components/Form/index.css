@@ -1,0 +1,487 @@
+
+
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: #1a1a2e;
+    overflow: hidden;
+    height: 100vh;
+}
+
+#root {
+    height: 100vh;
+}
+
+#login-page {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 100vh;
+}
+
+.left-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: linear-gradient(135deg, #d4d0dc 0%, #c8c4d0 50%, #bbb7c5 100%);
+    padding: 40px 48px;
+    overflow: hidden;
+}
+
+.left-panel .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    color: #fff;
+    z-index: 10;
+    position: relative;
+}
+
+.left-panel .logo svg {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    padding: 4px;
+    border-radius: 6px;
+}
+
+.characters-wrapper {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    height: 420px;
+}
+
+.left-panel .footer-links {
+    display: flex;
+    gap: 28px;
+    font-size: 13px;
+    color: rgba(80, 70, 90, 0.7);
+    z-index: 10;
+    position: relative;
+}
+
+.left-panel .footer-links a {
+    color: inherit;
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.left-panel .footer-links a:hover {
+    color: #333;
+}
+
+.left-panel::after {
+    content: "";
+    position: absolute;
+    top: 20%;
+    right: 15%;
+    width: 260px;
+    height: 260px;
+    background: rgba(180, 170, 200, 0.25);
+    border-radius: 50%;
+    filter: blur(80px);
+}
+
+.left-panel::before {
+    content: "";
+    position: absolute;
+    bottom: 15%;
+    left: 10%;
+    width: 350px;
+    height: 350px;
+    background: rgba(200, 195, 210, 0.2);
+    border-radius: 50%;
+    filter: blur(100px);
+}
+
+.right-panel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fff;
+    padding: 40px;
+}
+
+.form-container {
+    width: 100%;
+    max-width: 400px;
+}
+
+.sparkle-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 24px;
+}
+
+.sparkle-icon svg {
+    width: 32px;
+    height: 32px;
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 36px;
+}
+
+.form-header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a2e;
+    letter-spacing: -0.5px;
+    margin-bottom: 6px;
+}
+
+.form-header p {
+    font-size: 14px;
+    color: #888;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 8px;
+}
+
+.form-group .input-wrapper {
+    position: relative;
+}
+
+.form-group input {
+    width: 100%;
+    height: 48px;
+    border: none;
+    border-bottom: 1.5px solid #e0e0e0;
+    padding: 0 40px 0 0;
+    font-size: 15px;
+    font-family: inherit;
+    color: #1a1a2e;
+    background: transparent;
+    outline: none;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+    border-bottom-color: #5b21b6;
+}
+
+.form-group input::placeholder {
+    color: #ccc;
+}
+
+.form-group input[type="password"]:not(:placeholder-shown) {
+    letter-spacing: 2px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #666;
+    padding: 6px;
+    transition: color 0.2s;
+}
+
+.toggle-password:hover {
+    color: #333;
+}
+
+.form-options {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+}
+
+.remember-me {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #555;
+    cursor: pointer;
+}
+
+.remember-me input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #5b21b6;
+    cursor: pointer;
+}
+
+.forgot-link {
+    font-size: 13px;
+    color: #5b21b6;
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+
+.forgot-link:hover {
+    opacity: 0.8;
+}
+
+.btn-login,
+.btn-google {
+    position: relative;
+    width: 100%;
+    height: 50px;
+    border-radius: 25px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.1s;
+}
+
+.btn-login {
+    border: 1.5px solid #1a1a2e;
+    background: #1a1a2e;
+    color: #fff;
+    margin-bottom: 14px;
+}
+
+.btn-login:hover {
+    background: #5b21b6;
+    border-color: #5b21b6;
+}
+
+.btn-google {
+    border: 1.5px solid #e0e0e0;
+    background: #f5f5f5;
+    color: #333;
+}
+
+.btn-google:hover {
+    background: #ebebeb;
+    border-color: #d0d0d0;
+}
+
+.btn-login .btn-text,
+.btn-google .btn-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.google-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.signup-link {
+    text-align: center;
+    font-size: 13px;
+    color: #888;
+    margin-top: 32px;
+}
+
+.signup-link a {
+    color: #1a1a2e;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.signup-link a:hover {
+    text-decoration: underline;
+}
+
+.characters-scene {
+    position: relative;
+    width: 480px;
+    height: 360px;
+    overflow: visible;
+}
+
+.character {
+    position: absolute;
+    bottom: 0;
+    transition: all 0.7s ease-in-out;
+    transform-origin: bottom center;
+}
+
+.char-purple {
+    left: 60px;
+    width: 170px;
+    height: 370px;
+    background: #6c3ff5;
+    border-radius: 10px 10px 0 0;
+    z-index: 1;
+}
+
+.char-black {
+    left: 220px;
+    width: 115px;
+    height: 290px;
+    background: #2d2d2d;
+    border-radius: 8px 8px 0 0;
+    z-index: 2;
+}
+
+.char-orange {
+    left: 0;
+    width: 230px;
+    height: 190px;
+    background: #ff9b6b;
+    border-radius: 115px 115px 0 0;
+    z-index: 3;
+}
+
+.char-yellow {
+    left: 290px;
+    width: 135px;
+    height: 215px;
+    background: #e8d754;
+    border-radius: 68px 68px 0 0;
+    z-index: 4;
+}
+
+.eyes {
+    position: absolute;
+    display: flex;
+    transition: all 0.7s ease-in-out;
+}
+
+.eyeball {
+    border-radius: 50%;
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: height 0.15s ease;
+    overflow: hidden;
+}
+
+.pupil {
+    border-radius: 50%;
+    background: #2d2d2d;
+    transition: transform 0.1s ease-out;
+}
+
+.bare-pupil {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #2d2d2d;
+    transition: transform 0.7s ease-in-out;
+}
+
+.yellow-mouth {
+    position: absolute;
+    width: 50px;
+    height: 4px;
+    background: #2d2d2d;
+    border-radius: 2px;
+    transition: all 0.7s ease-in-out;
+}
+
+@keyframes shakeHead {
+    0%,
+    100% {
+        translate: 0 0;
+    }
+    10% {
+        translate: -9px 0;
+    }
+    20% {
+        translate: 7px 0;
+    }
+    30% {
+        translate: -6px 0;
+    }
+    40% {
+        translate: 5px 0;
+    }
+    50% {
+        translate: -4px 0;
+    }
+    60% {
+        translate: 3px 0;
+    }
+    70% {
+        translate: -2px 0;
+    }
+    80% {
+        translate: 1px 0;
+    }
+    90% {
+        translate: -0.5px 0;
+    }
+}
+
+.eyes.shake-head,
+.yellow-mouth.shake-head,
+.orange-mouth.shake-head {
+    animation: shakeHead 0.8s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+.orange-mouth {
+    position: absolute;
+    width: 28px;
+    height: 14px;
+    border: 3px solid #2d2d2d;
+    border-top: none;
+    border-radius: 0 0 14px 14px;
+    opacity: 0;
+    transition: all 0.7s ease-in-out;
+}
+
+.orange-mouth.visible {
+    opacity: 1;
+}
+
+.error-msg {
+    display: none;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: #dc2626;
+    background: rgba(220, 38, 38, 0.08);
+    border: 1px solid rgba(220, 38, 38, 0.2);
+    border-radius: 10px;
+    margin-bottom: 16px;
+}
+
+.error-msg.show {
+    display: block;
+}
+
+.form-group input.error {
+    border-bottom-color: #dc2626;
+}
+
+.form-group label.error-label {
+    color: #dc2626;
+}
+
+@media (max-width: 900px) {
+    #login-page {
+        grid-template-columns: 1fr;
+    }
+
+    .left-panel {
+        display: none;
+    }
+}

@@ -1,11 +1,32 @@
-import { Auth_layout } from '@/components/layouts/auth_layout';
-import { LoginCard } from '@/features/auth/components/login-card';
+import { useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
+
+import { paths } from '@/config/paths';
+import { LoginPageHeader } from '@/features/auth/components/login-page-header';
+import { Loginpagecontent } from '@/features/auth/components/login-page-content';
+import { useUser } from '@/lib/auth';
 
 const AuthPageShell = () => {
+  const user = useUser();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirectTo');
+
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user.data) {
+      navigate(redirectTo ? redirectTo : paths.app.dashboard.getHref(), {
+        replace: true,
+      });
+    }
+  }, [user.data, navigate, redirectTo]);
+
   return (
-    <Auth_layout title="登录">
-      <LoginCard />
-    </Auth_layout>
+    <>
+      <div className="overflow-hidden h-100vh "></div>
+      <LoginPageHeader />
+      <Loginpagecontent />
+    </>
   );
 };
 
