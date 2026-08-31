@@ -106,6 +106,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
             <NavLink
               key={item.name}
               to={item.to}
+              viewTransition
               end={item.name !== 'Discussions'}
               className={({ isActive }) =>
                 cn(
@@ -149,6 +150,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <NavLink
                     key={item.name}
                     to={item.to}
+                    viewTransition
                     end
                     className={({ isActive }) =>
                       cn(

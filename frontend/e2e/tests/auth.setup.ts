@@ -7,7 +7,7 @@ setup('authenticate', async ({ page }) => {
   const user = createUser();
 
   await page.goto('/');
-  await page.getByRole('button', { name: 'Get started' }).click();
+  await page.getByRole('link', { name: '在线演示' }).click();
   await page.waitForURL('/auth/login');
 
   // go to registration:
@@ -36,7 +36,7 @@ setup('authenticate', async ({ page }) => {
   // log out:
   await page.getByRole('button', { name: 'Open user menu' }).click();
   await page.getByRole('menuitem', { name: 'Sign Out' }).click();
-  await page.waitForURL('/auth/login?redirectTo=%2Fapp');
+  await page.waitForURL('/auth/login');
 
   // log in again:
   await page.getByLabel('用户名').click();

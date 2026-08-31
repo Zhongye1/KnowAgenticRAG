@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router';
+import { Link } from 'react-router';
 
 import heroImg from '@/assets/home/hero-ragflow.png';
 import { paths } from '@/config/paths';
@@ -7,16 +7,7 @@ import { useUser } from '@/lib/auth';
 import { GITHUB } from '../content';
 
 export const HomeHero = () => {
-  const navigate = useNavigate();
   const user = useUser();
-
-  const handleEnter = () => {
-    if (user.data) {
-      navigate(paths.app.dashboard.getHref());
-    } else {
-      navigate(paths.auth.login.getHref(paths.app.root.path));
-    }
-  };
 
   return (
     <section className="yx-hero">
@@ -38,13 +29,17 @@ export const HomeHero = () => {
             让每一次回答都有来源、可追溯、可交付。
           </p>
           <div className="yx-hero__actions">
-            <button
-              type="button"
+            <Link
+              to={
+                user.data
+                  ? paths.app.dashboard.getHref()
+                  : paths.auth.login.getHref(paths.app.root.path)
+              }
+              viewTransition
               className="yx-btn yx-btn--primary"
-              onClick={handleEnter}
             >
               在线演示
-            </button>
+            </Link>
             <a
               className="yx-btn yx-btn--ghost"
               href={GITHUB}

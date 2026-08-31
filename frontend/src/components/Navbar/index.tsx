@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router';
 
 import { DayNightSwitcher } from '@/components/ui/DayNightSwitcher';
 
@@ -13,14 +14,18 @@ const NAV_LINKS = [
 
 export function NavBar() {
   return (
-    <header
+    <div
       aria-label="顶部导航"
       className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-color-border-2 px-6 backdrop-blur-sm"
     >
       {/* Logo */}
-      <a href="/" className="flex items-center gap-2 text-lg font-black">
+      <Link
+        to="/"
+        viewTransition
+        className="flex items-center gap-2 text-lg font-black"
+      >
         RAGF
-      </a>
+      </Link>
 
       {/* 链接组与主题切换 */}
       <div className="flex items-center gap-6">
@@ -28,7 +33,10 @@ export function NavBar() {
           {NAV_LINKS.map(({ label, href }, i) => (
             <React.Fragment key={label}>
               {i > 0 && (
-                <span aria-hidden className="mx-4 h-3.5 w-px bg-color-border-2" />
+                <span
+                  aria-hidden
+                  className="mx-4 h-3.5 w-px bg-color-border-2"
+                />
               )}
               <a
                 href={href || undefined}
@@ -53,6 +61,6 @@ export function NavBar() {
         </nav>
         <DayNightSwitcher />
       </div>
-    </header>
+    </div>
   );
 }

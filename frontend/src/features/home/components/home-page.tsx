@@ -17,6 +17,7 @@ import {
   HomeTechStack,
 } from './home-sections';
 import { NavBar } from '@/components/Navbar';
+import { PageTransition } from '@/components/ui/page-transition';
 
 export const HomePage = () => (
   <>
@@ -26,19 +27,21 @@ export const HomePage = () => (
     />
     <div className="yx-home">
       <NavBar />
-      <HomeHero />
-      <HomeStats />
-      <HomeCapabilities />
-      <HomeEngine />
-      <HomeProviders />
-      <HomeHowItWorks />
-      <HomeShots />
-      <HomeEnterprise />
-      <HomeCases />
-      <HomeTechStack />
-      <HomeQuickStart />
-      <HomeCommunity />
-      <HomeCta />
+      <PageTransition>
+        <HomeHero />
+        <HomeStats />
+        <HomeCapabilities />
+        <HomeEngine />
+        <HomeProviders />
+        <HomeHowItWorks />
+        <HomeShots />
+        <HomeEnterprise />
+        <HomeCases />
+        <HomeTechStack />
+        <HomeQuickStart />
+        <HomeCommunity />
+        <HomeCta />
+      </PageTransition>
     </div>
   </>
 );

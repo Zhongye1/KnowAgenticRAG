@@ -96,27 +96,87 @@ code {
  * 新旧快照的层级，让 DayNightSwitcher 的 clip-path 圆形过渡可见：
  *   - 亮色模式下 new 在上层（切到亮色时 new 从点击处扩散）
  *   - 暗色模式下 old 在上层（切到暗色时 old 向点击处收缩）
+ * 页面跳转转场同样复用 root 快照，因此本组样式必须限定在
+ * html.theme-transitioning 内，避免与页面转场动画相互覆盖。
  * 参考：vuejs/vitepress 的 appearanceTransition、antfu.me
  * ========================================================================== */
 
+html.theme-transitioning::view-transition-old(root),
+html.theme-transitioning::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html.theme-transitioning::view-transition-old(root) {
+  z-index: 1;
+}
+
+html.theme-transitioning::view-transition-new(root) {
+  z-index: 9999;
+}
+
+html.theme-transitioning.dark::view-transition-old(root) {
+  z-index: 9999;
+}
+
+html.theme-transitioning.dark::view-transition-new(root) {
+  z-index: 1;
+}
+
+/* ============================================================================
+ * 页面跳转 View Transition（配合 react-router 的 Link viewTransition）
+ * ----------------------------------------------------------------------------
+ * 只有页面内容（.page-transition，view-transition-name: page-content）参与
+ * 滑动 / 淡出动画；NavBar、侧边栏等常驻元素留在 root 快照中保持静止。
+ * 主题切换期间（html.theme-transitioning）临时把页面内容并入 root 快照，
+ * 让圆形扩散覆盖整个页面。不支持的浏览器由 react-router 自动降级。
+ * ========================================================================== */
+
+.page-transition {
+  view-transition-name: page-content;
+}
+
+html.theme-transitioning .page-transition {
+  view-transition-name: none;
+}
+
+::view-transition-old(page-content),
+::view-transition-new(page-content) {
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(page-content) {
+  animation: vt-page-out 0.25s ease both;
+}
+
+::view-transition-new(page-content) {
+  animation: vt-page-in 0.3s ease both;
+}
+
+/* 常驻元素（NavBar / 侧边栏 / 背景）不播放转场动画 */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
 
-::view-transition-old(root) {
-  z-index: 1;
+@keyframes vt-page-out {
+  to {
+    opacity: 0;
+    transform: translateX(-24px);
+  }
 }
 
-::view-transition-new(root) {
-  z-index: 9999;
+@keyframes vt-page-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
 }
 
-.dark::view-transition-old(root) {
-  z-index: 9999;
-}
-
-.dark::view-transition-new(root) {
-  z-index: 1;
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(page-content),
+  ::view-transition-new(page-content) {
+    animation: none;
+  }
 }

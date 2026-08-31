@@ -9,7 +9,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  @apply bg-color-bg-1;
   padding: 40px;
 }
 

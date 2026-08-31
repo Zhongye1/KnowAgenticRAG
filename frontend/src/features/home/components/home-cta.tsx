@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router';
+import { Link } from 'react-router';
 
 import { paths } from '@/config/paths';
 import { useUser } from '@/lib/auth';
@@ -7,16 +7,7 @@ import { GITHUB } from '../content';
 import { Reveal } from './reveal';
 
 export const HomeCta = () => {
-  const navigate = useNavigate();
   const user = useUser();
-
-  const handleEnter = () => {
-    if (user.data) {
-      navigate(paths.app.dashboard.getHref());
-    } else {
-      navigate(paths.auth.login.getHref(paths.app.root.path));
-    }
-  };
 
   return (
     <section className="yx-cta">
@@ -24,9 +15,17 @@ export const HomeCta = () => {
         <h2>把知识接入真正能执行的智能体</h2>
         <p>从快速开始到完整部署，按需启用解析、检索、知识图谱与权限能力。</p>
         <div className="yx-hero__actions yx-cta__actions">
-          <button type="button" className="yx-btn yx-btn--primary" onClick={handleEnter}>
+          <Link
+            to={
+              user.data
+                ? paths.app.dashboard.getHref()
+                : paths.auth.login.getHref(paths.app.root.path)
+            }
+            viewTransition
+            className="yx-btn yx-btn--primary"
+          >
             {user.data ? '进入工作台' : '登录 / 注册'}
-          </button>
+          </Link>
           <a
             className="yx-btn yx-btn--ghost"
             href={GITHUB}

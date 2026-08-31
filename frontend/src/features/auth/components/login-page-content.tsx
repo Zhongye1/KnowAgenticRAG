@@ -1,5 +1,9 @@
+import { ArrowLeft } from 'lucide-react';
+
 import DriftWall from '@/features/auth/components/DriftWall/DriftWall';
 import AuthFormPanel from '@/features/auth/components/Form/AuthFormPanel';
+import { Link } from '@/components/ui/link';
+import { paths } from '@/config/paths';
 
 /**
  * 登录卡片。
@@ -55,15 +59,22 @@ export function Loginpagecontent() {
 
   return (
     <>
-      <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-color-black">
+      <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-color-fill-1">
         {/* 右: 表单 */}
-        <div className="flex-[4] flex items-center justify-center bg-color-bg-2">
-          <div className="auth-panel p-12 flex flex-col justify-center w-full h-full bg-color-bg-1">
+        <div className="flex-[4] flex items-center justify-center">
+          <div className="auth-panel relative p-12 flex flex-col justify-center w-full h-full ">
+            <Link
+              to={paths.home.getHref()}
+              className="absolute left-6 top-6 inline-flex items-center gap-1.5 text-sm text-color-text-2 transition-colors hover:text-primary-6"
+            >
+              <ArrowLeft className="size-4" />
+              返回首页
+            </Link>
             <AuthFormPanel></AuthFormPanel>
           </div>
         </div>
         {/* DriftWall */}
-        <div className="flex-[6] overflow-hidden relative min-w-0 bg-color-bg-1">
+        <div className="flex-[6] overflow-hidden relative min-w-0 ">
           <div className="absolute inset-0 ">
             <DriftWall
               items={items}

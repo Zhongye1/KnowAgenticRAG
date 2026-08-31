@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { paths } from '@/config/paths';
-import { LoginPageHeader } from '@/features/auth/components/login-page-header';
+import { NavBar } from '@/components/Navbar';
 import { Loginpagecontent } from '@/features/auth/components/login-page-content';
 import { useUser } from '@/lib/auth';
 
@@ -24,7 +24,7 @@ const AuthPageShell = () => {
   return (
     <>
       <div className="overflow-hidden h-100vh "></div>
-      <LoginPageHeader />
+      <NavBar />
       <Loginpagecontent />
     </>
   );

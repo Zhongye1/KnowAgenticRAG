@@ -86,10 +86,18 @@ export function DayNightSwitcher({ className }: DayNightSwitcherProps) {
       Math.max(y, window.innerHeight - y),
     );
 
+    // 标记主题切换进行中：让 root 快照的圆形过渡样式（见 index.css）
+    // 只在主题切换期间生效，页面跳转转场复用同一组 root 快照
+    document.documentElement.classList.add('theme-transitioning');
+
     const transition = document.startViewTransition(() => {
       flushSync(() => setTheme(next));
       applyTheme(next);
     });
+
+    const endThemeTransition = () =>
+      document.documentElement.classList.remove('theme-transitioning');
+    transition.finished.then(endThemeTransition, endThemeTransition);
 
     transition.ready.then(() => {
       const clipPath = [
