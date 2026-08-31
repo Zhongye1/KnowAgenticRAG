@@ -15,8 +15,9 @@ sequenceDiagram
 
     rect rgb(235,245,255)
     note over C,RD: 注册 POST /auth/register
-    C->>R: POST /auth/register {username, password, email?}
+    C->>R: POST /auth/register {username, password, email?, uuid?, captcha?}
     R->>S: register(db, obj)  [CurrentSessionTransaction]
+    S->>RD: GET {LOGIN_CAPTCHA_REDIS_PREFIX}:uuid  (开验证码时)
     S->>D: get_by_username(username)
     D->>DB: SELECT sys_user WHERE username AND deleted=0
     DB-->>D: 用户 / 空

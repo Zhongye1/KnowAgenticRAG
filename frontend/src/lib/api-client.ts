@@ -6,6 +6,13 @@ import { paths } from '@/config/paths';
 
 const ACCESS_TOKEN_KEY = 'access_token';
 
+declare module 'axios' {
+  export interface AxiosRequestConfig {
+    // 跳过全局 401 错误提示与跳转，用于"可选鉴权"请求（如 /me 用户探测）
+    skipAuthErrorHandling?: boolean;
+  }
+}
+
 export const getAccessToken = () => {
   try {
     return typeof window !== 'undefined'
@@ -53,6 +60,10 @@ api.interceptors.response.use(
     return response.data;
   },
   (error) => {
+    if (error.config?.skipAuthErrorHandling) {
+      return Promise.reject(error);
+    }
+
     const message =
       error.response?.data?.message ||
       error.response?.data?.msg ||

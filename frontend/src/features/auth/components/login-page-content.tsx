@@ -21,25 +21,7 @@ export function Loginpagecontent() {
       href: 'https://example.com/one',
     },
     {
-      image:
-        'https://xerrors.oss-cn-shanghai.aliyuncs.com/github/image-20260605205221908.png',
-      title: 'Pup',
-      href: 'https://example.com/two',
-    },
-    {
       image: 'https://pica.zhimg.com/v2-7bbc59155421adef9344ea8319ff616c_r.jpg',
-      title: 'Falls',
-      href: 'https://example.com/three',
-    },
-    {
-      image:
-        'https://github.com/nageoffer/ragent/raw/main/assets/rag-misconceptions-v2.png',
-      title: 'Falls',
-      href: 'https://example.com/three',
-    },
-    {
-      image:
-        'https://www.runoob.com/wp-content/uploads/2025/03/mcp-runoob-12xv.jpeg',
       title: 'Falls',
       href: 'https://example.com/three',
     },

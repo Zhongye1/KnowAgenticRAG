@@ -13,7 +13,8 @@ test('should register new user and call onSuccess cb which should navigate the u
   await userEvent.type(screen.getByLabelText(/用户名/i), newUser.username);
   await userEvent.type(screen.getByLabelText(/昵称/i), newUser.nickname);
   await userEvent.type(screen.getByLabelText(/邮箱/i), newUser.email);
-  await userEvent.type(screen.getByLabelText(/密码/i), newUser.password);
+  await userEvent.type(screen.getByLabelText('密码'), newUser.password);
+  await userEvent.type(screen.getByLabelText('确认密码'), newUser.password);
 
   await userEvent.click(screen.getByRole('button', { name: /注册/i }));
 

@@ -36,7 +36,7 @@
 }
 
 .form-group {
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 
 .form-group label {
@@ -44,7 +44,7 @@
   font-size: 13px;
   font-weight: 500;
   @apply text-color-text-1;
-  margin-bottom: 8px;
+  margin-bottom: 2px;
 }
 
 .form-group .input-wrapper {
@@ -99,7 +99,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 24px;
 }
 
 .remember-me {
@@ -119,6 +118,11 @@
 }
 
 .forgot-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
   font-size: 13px;
   @apply text-primary-6;
   text-decoration: none;
@@ -147,7 +151,7 @@
 .btn-login {
   border: 1.5px solid;
   @apply border-primary-6 bg-primary-6 text-color-white;
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .btn-login:hover {
@@ -179,7 +183,6 @@
   text-align: center;
   font-size: 13px;
   @apply text-color-text-3;
-  margin-top: 32px;
 }
 
 .signup-link a {
@@ -211,4 +214,106 @@
 
 .form-group label.error-label {
   @apply text-danger-6;
+}
+
+/* ============================================================================
+ * 登录/注册切换 Tab、验证码、成功提示、链接按钮
+ * ========================================================================== */
+
+.form-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-bottom: 8px;
+}
+
+.form-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 2px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  @apply text-color-text-3;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.form-tab:hover {
+  @apply text-color-text-1;
+}
+
+.form-tab.active {
+  @apply text-primary-6 border-primary-6;
+}
+
+.captcha-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.captcha-row .form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.captcha-img-wrap {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.captcha-img {
+  display: block;
+  width: 120px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid;
+  @apply border-color-border-2;
+  transition: opacity 0.2s;
+}
+
+.captcha-img:hover {
+  opacity: 0.85;
+}
+
+.success-msg {
+  display: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  @apply border border-success-2 bg-success-1 text-success-6;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.success-msg.show {
+  display: block;
+}
+
+.btn-login:disabled,
+.btn-google:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  @apply text-color-text-1;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
 }

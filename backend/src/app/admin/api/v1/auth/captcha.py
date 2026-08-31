@@ -19,7 +19,7 @@ router = APIRouter()
 @router.get(
     '/captcha',
     summary='获取登录验证码',
-    dependencies=[Depends(RateLimiter(Rate(5, Duration.SECOND * 30)))],
+    dependencies=[Depends(RateLimiter(Rate(500, Duration.SECOND * 30)))],
 )
 async def get_captcha(db: CurrentSession) -> ResponseSchemaModel[GetCaptchaDetail]:
     await load_login_config(db)

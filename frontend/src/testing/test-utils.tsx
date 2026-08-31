@@ -1,7 +1,7 @@
 import {
   render as rtlRender,
   screen,
-  waitForElementToBeRemoved,
+  waitFor,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import Cookies from 'js-cookie';
@@ -37,11 +37,11 @@ export const loginAsUser = async (user: any) => {
 };
 
 export const waitForLoadingToFinish = () =>
-  waitForElementToBeRemoved(
-    () => [
-      ...screen.queryAllByTestId(/loading/i),
-      ...screen.queryAllByText(/loading/i),
-    ],
+  waitFor(
+    () => {
+      expect(screen.queryAllByTestId(/loading/i)).toHaveLength(0);
+      expect(screen.queryAllByText(/loading/i)).toHaveLength(0);
+    },
     { timeout: 4000 },
   );
 

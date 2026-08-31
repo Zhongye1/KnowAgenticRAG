@@ -34,6 +34,31 @@ class AuthService:
     """认证服务类"""
 
     @staticmethod
+    async def verify_captcha(
+        *, db: AsyncSession, uuid: str | None, captcha: str | None
+    ) -> None:
+        """
+        校验图形验证码（登录/注册共用）
+
+        :param db: 数据库会话
+        :param uuid: 验证码 UUID
+        :param captcha: 用户输入的验证码
+        :return:
+        """
+        await load_login_config(db)
+        if not settings.LOGIN_CAPTCHA_ENABLED:
+            return
+        if not uuid or not captcha:
+            raise errors.RequestError(msg=t('error.captcha.invalid'))
+        key = f'{settings.LOGIN_CAPTCHA_REDIS_PREFIX}:{uuid}'
+        captcha_code = await redis_client.get(key)
+        if not captcha_code:
+            raise errors.RequestError(msg=t('error.captcha.expired'))
+        if captcha_code.lower() != captcha.lower():
+            raise errors.CustomError(error=CustomErrorCode.CAPTCHA_ERROR)
+        await redis_client.delete(key)
+
+    @staticmethod
     async def user_verify(db: AsyncSession, username: str, password: str) -> tuple[User, int | None]:
         """
         验证用户名和密码
@@ -70,6 +95,7 @@ class AuthService:
         :param obj: 注册参数
         :return:
         """
+        await AuthService.verify_captcha(db=db, uuid=obj.uuid, captcha=obj.captcha)
         if await user_dao.get_by_username(db, obj.username):
             raise errors.ConflictError(msg='用户名已注册')
         if obj.email and await user_dao.check_email(db, obj.email):
@@ -95,16 +121,7 @@ class AuthService:
         """
         user = None
         try:
-            await load_login_config(db)
-            if settings.LOGIN_CAPTCHA_ENABLED:
-                if not obj.uuid or not obj.captcha:
-                    raise errors.RequestError(msg=t('error.captcha.invalid'))
-                captcha_code = await redis_client.get(f'{settings.LOGIN_CAPTCHA_REDIS_PREFIX}:{obj.uuid}')
-                if not captcha_code:
-                    raise errors.RequestError(msg=t('error.captcha.expired'))
-                if captcha_code.lower() != obj.captcha.lower():
-                    raise errors.CustomError(error=CustomErrorCode.CAPTCHA_ERROR)
-                await redis_client.delete(f'{settings.LOGIN_CAPTCHA_REDIS_PREFIX}:{obj.uuid}')
+            await self.verify_captcha(db=db, uuid=obj.uuid, captcha=obj.captcha)
 
             user, days_remaining = await self.user_verify(db, obj.username, obj.password)
             await user_dao.update_login_time(db, obj.username)
