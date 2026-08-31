@@ -88,3 +88,35 @@ code {
   font-family:
     source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
+
+/* ============================================================================
+ * 主题切换 View Transition（配合 DayNightSwitcher）
+ * ----------------------------------------------------------------------------
+ * 关闭 root 视图过渡的默认淡入淡出与 plus-lighter 混合，再通过 z-index 控制
+ * 新旧快照的层级，让 DayNightSwitcher 的 clip-path 圆形过渡可见：
+ *   - 亮色模式下 new 在上层（切到亮色时 new 从点击处扩散）
+ *   - 暗色模式下 old 在上层（切到暗色时 old 向点击处收缩）
+ * 参考：vuejs/vitepress 的 appearanceTransition、antfu.me
+ * ========================================================================== */
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-old(root) {
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  z-index: 9999;
+}
+
+.dark::view-transition-old(root) {
+  z-index: 9999;
+}
+
+.dark::view-transition-new(root) {
+  z-index: 1;
+}

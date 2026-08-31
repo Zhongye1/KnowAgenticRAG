@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { DayNightSwitcher } from '@/components/ui/DayNightSwitcher';
+
 const NAV_LINKS = [
   {
     label: 'Github',
@@ -20,34 +22,37 @@ export function NavBar() {
         RAGF
       </a>
 
-      {/* 链接组 */}
-      <nav className="flex items-center">
-        {NAV_LINKS.map(({ label, href }, i) => (
-          <React.Fragment key={label}>
-            {i > 0 && (
-              <span aria-hidden className="mx-4 h-3.5 w-px bg-color-border-2" />
-            )}
-            <a
-              href={href || undefined}
-              rel={href ? 'noopener noreferrer' : undefined}
-              aria-disabled={!href}
-              onClick={(e) => {
-                if (!href) e.preventDefault();
-              }}
-              className="
-                relative text-sm text-color-text-2 transition-colors duration-300
-                hover:text-primary-6
-                after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full
-                after:origin-left after:scale-x-0 after:bg-current after:transition-transform
-                after:duration-300 hover:after:scale-x-100
-                aria-disabled:pointer-events-none aria-disabled:text-color-text-4
-              "
-            >
-              {label}
-            </a>
-          </React.Fragment>
-        ))}
-      </nav>
+      {/* 链接组与主题切换 */}
+      <div className="flex items-center gap-6">
+        <nav className="flex items-center">
+          {NAV_LINKS.map(({ label, href }, i) => (
+            <React.Fragment key={label}>
+              {i > 0 && (
+                <span aria-hidden className="mx-4 h-3.5 w-px bg-color-border-2" />
+              )}
+              <a
+                href={href || undefined}
+                rel={href ? 'noopener noreferrer' : undefined}
+                aria-disabled={!href}
+                onClick={(e) => {
+                  if (!href) e.preventDefault();
+                }}
+                className="
+                  relative text-sm text-color-text-2 transition-colors duration-300
+                  hover:text-primary-6
+                  after:absolute after:bottom-0 after:left-0 after:h-[2px] after:w-full
+                  after:origin-left after:scale-x-0 after:bg-current after:transition-transform
+                  after:duration-300 hover:after:scale-x-100
+                  aria-disabled:pointer-events-none aria-disabled:text-color-text-4
+                "
+              >
+                {label}
+              </a>
+            </React.Fragment>
+          ))}
+        </nav>
+        <DayNightSwitcher />
+      </div>
     </header>
   );
 }
