@@ -18,7 +18,7 @@ export default defineConfig({
     inspector({
       enabled: ISDEV,
       toggleButtonVisibility: 'always', // always默认展示切换icon；never不展示icon（使用快捷键唤醒）
-      launchEditor: 'idea',
+      launchEditor: 'code',
     }),
   ],
   resolve: {
@@ -28,10 +28,10 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3000,
+    port: 5000,
   },
   preview: {
-    port: 3000,
+    port: 5000,
   },
   test: {
     globals: true,
