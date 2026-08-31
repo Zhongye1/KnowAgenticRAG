@@ -2,7 +2,8 @@
  * DayNightSwitcher 插画样式
  * ----------------------------------------------------------------------------
  * 本文件为 DayNightSwitcher 组件的独立插画调色板（天空 / 太阳 / 云 / 星星），
- * 属于 design-token 校验脚本的豁免范围（src/styles/**）。
+ * 属于 design-token 校验脚本的插画豁免列表
+ * （scripts/check-design-tokens.mjs 的 CSS_DECORATIVE_EXEMPT）。
  * 组件逻辑见 src/components/ui/DayNightSwitcher/index.tsx。
  * ========================================================================== */
 

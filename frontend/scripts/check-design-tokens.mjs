@@ -20,6 +20,13 @@ const SRC = join(ROOT, 'src');
 const IGNORED_DIRS = new Set(['generated', 'testing', 'node_modules', 'dist']);
 const TOKEN_CSS_DIR = join(SRC, 'styles');
 
+// 装饰 / 插画类 CSS：自带完整的亮暗两套配色（天空、光效、深色展示墙等），
+// 不属于主题语义色，豁免硬编码颜色校验。
+const CSS_DECORATIVE_EXEMPT = new Set([
+  'components/ui/DayNightSwitcher/day-night-switcher.css',
+  'features/auth/components/DriftWall/DriftWall.css',
+]);
+
 const HEX_RE = /#[0-9a-fA-F]{3,8}\b/;
 const RGB_RE = /\b(rgba?|hsla?)\(/i;
 
@@ -73,7 +80,11 @@ function walk(dir) {
 
     if (full.endsWith('.ts') || full.endsWith('.tsx')) {
       checkCode(relative(process.cwd(), full), readFileSync(full, 'utf8'));
-    } else if (full.endsWith('.css') && !full.startsWith(TOKEN_CSS_DIR + sep)) {
+    } else if (
+      full.endsWith('.css') &&
+      !full.startsWith(TOKEN_CSS_DIR + sep) &&
+      !CSS_DECORATIVE_EXEMPT.has(rel)
+    ) {
       checkCode(relative(process.cwd(), full), readFileSync(full, 'utf8'));
     }
   }

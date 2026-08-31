@@ -16,7 +16,7 @@ export type DeleteSessionParams = {
 
 export const deleteSession = (params: DeleteSessionParams): Promise<unknown> => {
   const { pk, session_uuid } = params;
-  return api.delete(`/api/v1/monitors/sessions/${pk}`, { { params: { session_uuid } } }).then((res) => res.data);
+  return api.delete(`/api/v1/monitors/sessions/${pk}`, { params: { session_uuid } }).then((res) => res.data);
 };
 
 type UseDeleteSessionOptions = {

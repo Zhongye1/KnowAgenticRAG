@@ -86,9 +86,9 @@ const DriftWall = ({
   pauseOnHover = false,
   lift = 64,
   fade = 0.6,
-  dim = 0.55,
+  dim = 1,
   grayscale = false,
-  overlayColor = '#060010',
+  overlayColor = 'black',
   className = '',
   style,
 }: DriftWallProps) => {
@@ -376,7 +376,10 @@ const DriftWall = ({
       role="group"
       aria-label="Drifting wall of tiles"
     >
-      <div ref={planeRef} className="drift-wall__plane">
+      <div
+        ref={planeRef}
+        className="drift-wall__plane"
+      >
         {columnItems.map((col, c) => {
           const meta = columnMeta[c];
           const copies = Array.from({ length: meta.copies });

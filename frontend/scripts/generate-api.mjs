@@ -419,7 +419,13 @@ function generateOperationModule(op, { parseTypeName, referencedTypes }) {
     out.push(`  const { ${destructured.join(', ')} } = params;`);
     out.push(`  return api.get(${urlExpr}${queryPart ? `, ${queryPart}` : ''}).then((res) => res.data);`);
   } else if (method === 'delete') {
-    const configParts = [body ? 'data' : null, queryPart].filter(Boolean);
+    // axios delete 的 config 直接内联对象键：data / params，避免多包一层花括号
+    const configParts = [
+      body ? 'data' : null,
+      queryParams.length > 0
+        ? `params: { ${queryParams.map((p) => p.name).join(', ')} }`
+        : null,
+    ].filter(Boolean);
     out.push(`export const ${fnName} = (params: ${paramType}): Promise<${returnType}> => {`);
     out.push(`  const { ${destructured.join(', ')} } = params;`);
     out.push(`  return api.delete(${urlExpr}${configParts.length ? `, { ${configParts.join(', ')} }` : ''}).then((res) => res.data);`);

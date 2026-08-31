@@ -55,38 +55,32 @@ export function Loginpagecontent() {
 
   return (
     <>
-      <div className="flex h-[calc(100vh-80px)] w-full overflow-hidden bg-color-black">
+      <div className="flex h-[calc(100vh-64px)] w-full overflow-hidden bg-color-black">
         {/* 右: 表单 */}
-        <div className="flex-[4] flex items-center justify-center bg-color-bg-2 p-2">
-          <div className="auth-panel p-12 flex flex-col justify-center w-full h-full">
+        <div className="flex-[4] flex items-center justify-center bg-color-bg-2">
+          <div className="auth-panel p-12 flex flex-col justify-center w-full h-full bg-color-bg-1">
             <AuthFormPanel></AuthFormPanel>
           </div>
         </div>
         {/* DriftWall */}
-        <div className="flex-[6] overflow-hidden relative min-w-0">
-          <div className="absolute inset-0">
+        <div className="flex-[6] overflow-hidden relative min-w-0 bg-color-bg-1">
+          <div className="absolute inset-0 ">
             <DriftWall
               items={items}
-              columns={4}
+              columns={3}
               tileWidth={200}
               tileHeight={132}
               gap={28}
-              tilt={16}
-              turn={-14}
+              tilt={26}
+              turn={-10}
               perspective={1200}
               depth={120}
               speed={42}
               direction="up"
-              variance={0.45}
-              parallax={0.6}
               lift={64}
-              fade={0.6}
-              dim={1}
               radius={14}
-              overlayColor="#898989"
-              roll={0}
-              pauseOnHover={false}
-              grayscale={false}
+              dim={1}
+              overlayColor="#8d878718"
             />
           </div>
         </div>

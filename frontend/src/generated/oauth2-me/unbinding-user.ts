@@ -16,7 +16,7 @@ export type UnbindingUserParams = {
 
 export const unbindingUser = (params: UnbindingUserParams): Promise<unknown> => {
   const { source } = params;
-  return api.delete(`/api/v1/oauth2/me/unbinding`, { { params: { source } } }).then((res) => res.data);
+  return api.delete(`/api/v1/oauth2/me/unbinding`, { params: { source } }).then((res) => res.data);
 };
 
 type UseUnbindingUserOptions = {
