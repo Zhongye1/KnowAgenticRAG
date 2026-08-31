@@ -6,6 +6,7 @@ import { env } from '@/config/env';
 import { db, persistDb } from '../db';
 import {
   authenticate,
+  encode,
   hash,
   requireAuth,
   sanitizeUser,
@@ -51,7 +52,7 @@ export const authHandlers = [
 
       const user = db.user.create({
         username: body.username,
-        nickname: body.nickname ?? body.username,
+        // nickname: body.nickname ?? body.username,
         email: body.email ?? '',
         password: hash(body.password),
         firstName: body.username,
@@ -120,6 +121,38 @@ export const authHandlers = [
       {
         headers: {
           'Set-Cookie': `${AUTH_COOKIE}=; Path=/;`,
+        },
+      },
+    );
+  }),
+
+  http.post(`${env.API_URL}/api/v1/auth/refresh`, async ({ cookies }) => {
+    await networkDelay();
+
+    const { user } = requireAuth(cookies);
+    if (!user) {
+      return HttpResponse.json(
+        { code: 401, msg: 'Unauthorized', data: null },
+        { status: 401 },
+      );
+    }
+
+    const access_token = encode(user);
+    Cookies.set(AUTH_COOKIE, access_token, { path: '/' });
+
+    return HttpResponse.json(
+      {
+        data: {
+          access_token,
+          access_token_expire_time: new Date(
+            Date.now() + 60 * 60 * 1000,
+          ).toISOString(),
+          session_uuid: 'mock-session',
+        },
+      },
+      {
+        headers: {
+          'Set-Cookie': `${AUTH_COOKIE}=${access_token}; Path=/;`,
         },
       },
     );
