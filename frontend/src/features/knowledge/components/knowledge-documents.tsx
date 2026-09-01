@@ -14,6 +14,7 @@ import {
   useUploadDocument,
 } from '../api/documents';
 import type { DocumentItem } from '../api/types';
+import { DocumentActions } from './document-actions';
 
 type KnowledgeDocumentRow = DocumentItem & BaseEntity;
 
@@ -156,13 +157,16 @@ export function KnowledgeDocuments({ kbName }: KnowledgeDocumentsProps) {
               field: 'document_id',
               Cell({ entry }) {
                 return (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDownload(entry.document_id)}
-                  >
-                    下载
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDownload(entry.document_id)}
+                    >
+                      下载
+                    </Button>
+                    <DocumentActions kbName={kbName} doc={entry} />
+                  </div>
                 );
               },
             },
