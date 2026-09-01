@@ -10,13 +10,18 @@ import {
 type KnowledgeToolbarProps = {
   searchPlaceholder: string;
   typeOptions: readonly string[];
+  value?: string;
+  onChange?: (value: string) => void;
 };
 
 export function KnowledgeToolbar({
   searchPlaceholder,
   typeOptions,
+  value,
+  onChange,
 }: KnowledgeToolbarProps) {
-  const [keyword, setKeyword] = useState('');
+  const [innerKeyword, setInnerKeyword] = useState('');
+  const keyword = value ?? innerKeyword;
   const [type, setType] = useState(typeOptions[0] ?? '全部');
 
   return (
@@ -25,7 +30,11 @@ export function KnowledgeToolbar({
         <MagnifyingGlass className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={keyword}
-          onChange={(event) => setKeyword(event.target.value)}
+          onChange={(event) => {
+            const next = event.target.value;
+            setInnerKeyword(next);
+            onChange?.(next);
+          }}
           placeholder={searchPlaceholder}
           className="pl-8"
         />

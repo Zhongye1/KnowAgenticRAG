@@ -18,7 +18,16 @@ import {
 } from '@/components/ui/native-select';
 import { useNotifications } from '@/components/ui/notifications';
 
+import { useCreateKnowledgeBase } from '../api/knowledge-bases';
+
 const KNOWLEDGE_BASE_TYPES = ['通用', '文档', '代码', '多媒体'] as const;
+
+const slugify = (value: string) =>
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
 
 export function CreateKnowledgeBase() {
   const [open, setOpen] = useState(false);
@@ -26,18 +35,31 @@ export function CreateKnowledgeBase() {
   const [type, setType] = useState<string>(KNOWLEDGE_BASE_TYPES[0]);
   const [description, setDescription] = useState('');
   const { addNotification } = useNotifications();
+  const createMutation = useCreateKnowledgeBase({
+    mutationConfig: {
+      onSuccess: (data) => {
+        addNotification({
+          type: 'success',
+          title: '知识库创建成功',
+          message: data.data.display_name,
+        });
+        setOpen(false);
+        setName('');
+        setDescription('');
+      },
+    },
+  });
+
+  const kbName = slugify(name);
 
   const handleSubmit = () => {
-    // TODO: 接入知识库创建接口
-    addNotification({
-      type: 'success',
-      title: '知识库创建成功',
-      message: name,
+    createMutation.mutate({
+      kb_name: kbName,
+      display_name: name.trim(),
+      description,
+      theme: 'blue',
+      icon: 'database',
     });
-    setOpen(false);
-    setName('');
-    setType(KNOWLEDGE_BASE_TYPES[0]);
-    setDescription('');
   };
 
   return (
@@ -62,6 +84,11 @@ export function CreateKnowledgeBase() {
             onChange={(event) => setName(event.target.value)}
             placeholder="例如：产品文档"
           />
+          {kbName && (
+            <p className="text-xs text-color-text-2">
+              知识库标识：<span className="font-mono">{kbName}</span>
+            </p>
+          )}
           <div className="flex flex-col gap-1">
             <Label>类型</Label>
             <NativeSelect
@@ -84,7 +111,11 @@ export function CreateKnowledgeBase() {
           />
         </div>
         <DrawerFooter>
-          <Button size="sm" disabled={!name.trim()} onClick={handleSubmit}>
+          <Button
+            size="sm"
+            disabled={createMutation.isPending || !name.trim() || !kbName}
+            onClick={handleSubmit}
+          >
             创建
           </Button>
         </DrawerFooter>
