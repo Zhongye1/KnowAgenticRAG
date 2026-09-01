@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router';
 
-import { DashboardLayout } from '@/components/layouts';
+// import { DashboardLayout } from '@/components/layouts';
 import { PageTransition } from '@/components/ui/page-transition';
 
 export const ErrorBoundary = () => {
@@ -9,11 +9,11 @@ export const ErrorBoundary = () => {
 
 const AppRoot = () => {
   return (
-    <DashboardLayout>
-      <PageTransition>
-        <Outlet />
-      </PageTransition>
-    </DashboardLayout>
+    // <DashboardLayout>
+    <PageTransition>
+      <Outlet />
+    </PageTransition>
+    // </DashboardLayout>
   );
 };
 
