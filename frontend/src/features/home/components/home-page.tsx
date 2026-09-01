@@ -16,7 +16,7 @@ import {
   HomeStats,
   HomeTechStack,
 } from './home-sections';
-import { NavBar } from '@/components/Navbar';
+import { NavBar } from '@/components/Navbars/nav-intro-headbar';
 import { PageTransition } from '@/components/ui/page-transition';
 
 export const HomePage = () => (

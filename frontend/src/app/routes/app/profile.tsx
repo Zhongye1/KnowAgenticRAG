@@ -1,11 +1,11 @@
 import { ContentLayout } from '@/components/layouts';
-import { UpdateProfile } from '@/features/users/components/update-profile';
 import { useUser } from '@/lib/auth';
 
 type EntryProps = {
   label: string;
   value: string;
 };
+
 const Entry = ({ label, value }: EntryProps) => (
   <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 sm:py-5">
     <dt className="text-sm font-medium text-color-text-3">{label}</dt>
@@ -28,7 +28,6 @@ const ProfileRoute = () => {
             <h3 className="text-lg font-medium leading-6 text-color-text-1">
               User Information
             </h3>
-            <UpdateProfile />
           </div>
           <p className="mt-1 max-w-2xl text-sm text-color-text-3">
             Personal details of the user.

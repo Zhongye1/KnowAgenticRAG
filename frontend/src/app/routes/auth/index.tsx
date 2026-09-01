@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 
 import { paths } from '@/config/paths';
-import { NavBar } from '@/components/Navbar';
+import { NavBar } from '@/components/Navbars/nav-intro-headbar';
 import { PageTransition } from '@/components/ui/page-transition';
 import { Loginpagecontent } from '@/features/auth/components/login-page-content';
 import { useUser } from '@/lib/auth';

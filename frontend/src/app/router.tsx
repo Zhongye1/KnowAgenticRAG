@@ -29,8 +29,7 @@ export const createAppRouter = (queryClient: QueryClient) =>
     },
     {
       path: paths.auth.login.path,
-      lazy: () =>
-        import('./routes/auth').then(convert(queryClient)),
+      lazy: () => import('./routes/auth').then(convert(queryClient)),
     },
     {
       path: paths.app.root.path,
@@ -43,16 +42,19 @@ export const createAppRouter = (queryClient: QueryClient) =>
       children: [
         {
           path: paths.app.users.path,
+          handle: { title: 'Users' },
           lazy: () => import('./routes/app/users').then(convert(queryClient)),
         },
         {
           path: paths.app.profile.path,
+          handle: { title: 'Profile' },
           lazy: () => import('./routes/app/profile').then(convert(queryClient)),
         },
         {
           path: paths.app.dashboard.path,
+          handle: { title: 'Dashboard' },
           lazy: () =>
-            import('./routes/app/dashboard').then(convert(queryClient)),
+            import('./routes/app/dashboard/page').then(convert(queryClient)),
         },
       ],
     },
