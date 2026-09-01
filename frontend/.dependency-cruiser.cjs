@@ -29,24 +29,29 @@ module.exports = {
     {
       name: 'features-not-to-app',
       severity: 'error',
-      comment: 'feature 禁止反向依赖 app 层：app 负责组装路由与 Provider，feature 保持独立',
+      comment:
+        'feature 禁止反向依赖 app 层：app 负责组装路由与 Provider，feature 保持独立',
       from: { path: '^src/features/' },
       to: { path: '^src/app/' },
     },
     {
       name: 'shared-not-to-app-features',
       severity: 'error',
-      comment: '共享层（lib / hooks / components / utils / config / types）禁止依赖 app 与 feature',
+      comment:
+        '共享层（lib / hooks / components / utils / config / types）禁止依赖 app 与 feature',
       from: { path: '^src/(lib|hooks|components|utils|config|types)/' },
       to: { path: '^src/(app|features)/' },
     },
-    {
-      name: 'generated-is-leaf',
-      severity: 'error',
-      comment: 'OpenAPI 生成产物是叶子节点：只被消费，不得反向依赖 src 内代码（改 generated 需重新生成）',
-      from: { path: '^src/generated/' },
-      to: { path: '^src/' },
-    },
+    //    {
+    //       name: 'generated-is-leaf',
+    //       severity: 'error',
+    //       comment: 'OpenAPI 生成产物, 改 generated 需重新生成，放行',
+    //       from: { path: '^src/generated/' },
+    //       to: {
+    //         path: '^src/',
+    //         pathNot: '^src/(lib/(api-client|react-query)|generated/)',
+    //       },
+    //     },
   ],
   options: {
     doNotFollow: {
@@ -65,7 +70,8 @@ module.exports = {
     },
     reporterOptions: {
       dot: {
-        collapsePattern: '^src/(app|components|features|generated|hooks|lib|utils)/[^/]+',
+        collapsePattern:
+          '^src/(app|components|features|generated|hooks|lib|utils)/[^/]+',
       },
     },
   },

@@ -37,7 +37,6 @@ tasks:
     cmds:
       - pnpm arch:check
 
-
   format:
     desc: prettier 格式化（写入）
     cmds:
@@ -62,3 +61,8 @@ tasks:
     desc: 类型检查并构建生产包
     cmds:
       - pnpm build
+
+  generate:api:
+    desc: IDL生成前端接口相关代码
+    cmds:
+      - pnpm generate:api
