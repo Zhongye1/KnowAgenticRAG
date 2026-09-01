@@ -9,7 +9,7 @@ import {
   Sparkles,
   UserRound,
 } from 'lucide-react';
-import { useLocation } from 'react-router';
+import { Link, useLocation } from 'react-router';
 
 import { paths } from '@/config/paths';
 import { useLogout, useUser } from '@/lib/auth';
@@ -53,6 +53,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const user = useUser();
   const logout = useLogout();
 
+  const isActive = (url: string) =>
+    pathname === url || pathname.startsWith(`${url}/`);
+
   const userName = user.data
     ? `${user.data.firstName} ${user.data.lastName}`.trim()
     : '';
@@ -63,7 +66,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
-              <a href={paths.app.dashboard.getHref()}>
+              <Link to={paths.app.dashboard.getHref()}>
                 <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                   <Sparkles className="size-4" />
                 </div>
@@ -71,7 +74,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   <span className="truncate font-semibold">RAGF</span>
                   <span className="truncate text-xs">Knowledge RAG</span>
                 </div>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
@@ -83,13 +86,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
                   asChild
-                  isActive={pathname === item.url}
+                  isActive={isActive(item.url)}
                   tooltip={item.title}
                 >
-                  <a href={item.url}>
+                  <Link to={item.url}>
                     <item.icon />
                     <span>{item.title}</span>
-                  </a>
+                  </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             ))}
