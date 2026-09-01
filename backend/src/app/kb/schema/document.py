@@ -22,3 +22,12 @@ class DocumentItem(SchemaBase):
     chunk_count: int = Field(description='文本块数')
     created_time: datetime = Field(description='创建时间')
     updated_time: datetime | None = Field(None, description='更新时间')
+
+
+class DocumentUpdateParam(SchemaBase):
+    """文档元数据更新参数（全部可选）"""
+
+    name: str | None = Field(None, max_length=255, description='文档名称')
+    source_type: str | None = Field(None, max_length=64, description='来源类型')
+    pipeline: str | None = Field(None, max_length=64, description='摄取管道')
+    status: str | None = Field(None, max_length=32, description='状态')

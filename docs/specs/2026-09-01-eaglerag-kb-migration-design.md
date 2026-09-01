@@ -143,3 +143,13 @@ frontend/src/features/knowledge/
 - `GET /documents/{document_id}/download` 返回对象存储预签名 URL。
 - 级联删除 KB 时，先按 `dedup.object_key` 清理对象（尽力而为），再删登记行。
 - 与 RAG 摄取解耦：仅落盘 + 登记，不做解析/嵌入；摄取层接入后按 `object_key` 取文件。
+
+## 12. 文档增删改查
+
+- `PATCH /documents/{document_id}`：更新元数据（name/source_type/pipeline/status）。
+- `PUT /documents/{document_id}/file`：替换文件（重新上传 OSS，刷新 sha256/object_key，
+  去重排除自身，状态回到 pending，旧对象删除）。
+- `DELETE /documents/{document_id}`：单篇级联删除（Milvus 按 `kb_name + document_id` 删向量、
+  OSS 对象、keywords/dedup/登记行）。
+- 摄入链取数：`documents.source_uri` 即 OSS object_key，直接 `get_object_bytes` 读取；
+  Milvus 集合为动态字段，摄取写入 `document_id` 即可支持按文档删向量。

@@ -171,3 +171,26 @@ def delete_vectors_by_kb(
         logger.warning('delete 失败 coll=%s kb=%s: %s', collection, kb_name, exc)
         return 0
     return count
+
+
+def delete_vectors_by_document(
+    collection: str,
+    kb_name: str,
+    document_id: str,
+    *,
+    plugin_namespace: str | None = None,
+) -> int:
+    """按 kb_name + document_id 删除文档的向量（动态字段，摄取层需写入 document_id）。"""
+    client = _client(plugin_namespace)
+    if not client.has_collection(collection):
+        return 0
+    expr = f'kb_name == "{kb_name}" and document_id == "{document_id}"'
+    try:
+        rows = client.query(collection, filter=expr, output_fields=['count(*)'])
+        count = int(rows[0].get('count(*)', 0)) if rows else 0
+        if count:
+            client.delete(collection, filter=expr)
+    except Exception as exc:
+        logger.warning('按文档删除失败 coll=%s doc=%s: %s', collection, document_id, exc)
+        return 0
+    return count

@@ -7,7 +7,7 @@ from fastapi import APIRouter, File, Form, Path, Query, UploadFile
 from backend.src.app.kb.crud import document_dao
 from backend.src.app.kb.deps import CurrentNamespace
 from backend.src.app.kb.model import Document
-from backend.src.app.kb.schema.document import DocumentItem
+from backend.src.app.kb.schema.document import DocumentItem, DocumentUpdateParam
 from backend.src.app.kb.service.document_service import document_service
 from backend.src.common.exception import errors
 from backend.src.common.pagination import DependsPagination, PageData, paging_data
@@ -75,6 +75,38 @@ async def get_document_download(
 ) -> ResponseSchemaModel[dict[str, str]]:
     url = await document_service.get_download_url(db=db, document_id=document_id)
     return response_base.success(data={'url': url})
+
+
+@router.put('/{document_id}/file', summary='替换文档文件（重新上传 OSS）', dependencies=[DependsJwtAuth])
+async def replace_document_file(
+    db: CurrentSessionTransaction,
+    current_namespace: CurrentNamespace,
+    document_id: Annotated[str, Path(description='文档 ID')],
+    file: Annotated[UploadFile, File(description='新的文档文件')],
+) -> ResponseSchemaModel[DocumentItem]:
+    doc = await document_service.replace_file(db=db, document_id=document_id, file=file)
+    return response_base.success(data=DocumentItem.model_validate(_doc_to_dict(doc)))
+
+
+@router.patch('/{document_id}', summary='更新文档元数据', dependencies=[DependsJwtAuth])
+async def update_document(
+    db: CurrentSessionTransaction,
+    current_namespace: CurrentNamespace,
+    document_id: Annotated[str, Path(description='文档 ID')],
+    obj: DocumentUpdateParam,
+) -> ResponseSchemaModel[DocumentItem]:
+    doc = await document_service.update(db=db, document_id=document_id, obj=obj)
+    return response_base.success(data=DocumentItem.model_validate(_doc_to_dict(doc)))
+
+
+@router.delete('/{document_id}', summary='删除文档（级联清理向量/OSS/登记）', dependencies=[DependsJwtAuth])
+async def delete_document(
+    db: CurrentSessionTransaction,
+    current_namespace: CurrentNamespace,
+    document_id: Annotated[str, Path(description='文档 ID')],
+) -> ResponseSchemaModel[dict[str, int]]:
+    counts = await document_service.delete(db=db, document_id=document_id)
+    return response_base.success(data=counts)
 
 
 @router.get('/{document_id}', summary='文档详情', dependencies=[DependsJwtAuth])

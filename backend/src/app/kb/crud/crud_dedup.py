@@ -90,6 +90,21 @@ class CRUDDedup(TenantScopedCrud[DocumentDedup]):
         await db.flush()
         return result_rowcount(result)
 
+    async def delete_by_document(
+        self,
+        db: AsyncSession,
+        document_id: str,
+        *,
+        plugin_namespace: str | None = None,
+    ) -> int:
+        """按文档删除去重记录（限定域）。"""
+        ns = instance_namespace(plugin_namespace)
+        result = await db.execute(
+            delete(DocumentDedup).where(DocumentDedup.document_id == document_id, DocumentDedup.plugin_namespace == ns)
+        )
+        await db.flush()
+        return result_rowcount(result)
+
     async def list_object_keys_by_kb(
         self,
         db: AsyncSession,

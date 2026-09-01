@@ -107,6 +107,23 @@ class CRUDDocument(TenantScopedCrud[Document]):
         await db.flush()
         return result_rowcount(result)
 
+    async def delete(
+        self,
+        db: AsyncSession,
+        document_id: str,
+        *,
+        kb_name: str | None = None,
+        plugin_namespace: str | None = None,
+    ) -> int:
+        """删除单篇文档登记行（限定域，可选限定知识库）。"""
+        ns = instance_namespace(plugin_namespace)
+        stmt = delete(Document).where(Document.document_id == document_id, Document.plugin_namespace == ns)
+        if kb_name:
+            stmt = stmt.where(Document.kb_name == kb_name)
+        result = await db.execute(stmt)
+        await db.flush()
+        return result_rowcount(result)
+
     async def format_distribution(
         self,
         db: AsyncSession,

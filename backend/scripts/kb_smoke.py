@@ -74,6 +74,46 @@ async def main() -> None:
         assert resp.status_code == 200 and resp.json()['data']['url'], resp.text
         print('download url: ok')
 
+        # 文档重命名（PATCH 元数据）
+        resp = await client.patch(
+            f'/documents/{doc["document_id"]}',
+            json={'name': 'renamed.txt'},
+        )
+        assert resp.status_code == 200 and resp.json()['data']['name'] == 'renamed.txt', resp.text
+        print('document rename: ok')
+
+        # 替换文件（PUT /file，重新上传 OSS + 刷新指纹）
+        resp = await client.put(
+            f'/documents/{doc["document_id"]}/file',
+            files={'file': ('new.txt', b'new content kb smoke', 'text/plain')},
+        )
+        assert resp.status_code == 200, resp.text
+        new_doc = resp.json()['data']
+        assert new_doc['sha256'] != doc['sha256'], resp.text
+        assert new_doc['status'] == 'pending' and new_doc['source_uri'].endswith('/new.txt'), resp.text
+        print('document replace file: ok')
+
+        # 删除单篇文档（级联：向量/OSS/登记行）
+        resp = await client.delete(f'/documents/{doc["document_id"]}')
+        assert resp.status_code == 200, resp.text
+        counts = resp.json()['data']
+        assert counts['objects'] == 1 and counts['documents'] == 1, resp.text
+        print('document delete counts:', counts)
+
+        resp = await client.get(f'/documents/{doc["document_id"]}')
+        assert resp.status_code == 404, resp.text
+        print('after-doc-delete detail 404: ok')
+
+        # 级联删除前再上传一个文档，验证对象存储随库删除清理
+        resp = await client.post(
+            '/documents',
+            data={'kb_name': 'smoke_test', 'source_type': 'file'},
+            files={'file': ('final.txt', b'final kb smoke', 'text/plain')},
+        )
+        assert resp.status_code == 200, resp.text
+        final_doc = resp.json()['data']
+        print('upload final doc:', final_doc['source_uri'])
+
         # 写入一条测试向量（模拟 RAG 层写入，验证 kb_name 标量过滤与级联删除）
         from backend.src.database.milvus_kb_ops import base_collection_names, count_entities_by_kb
 
@@ -138,7 +178,7 @@ async def main() -> None:
         from minio.error import S3Error
 
         try:
-            minio_client.stat_object(settings.MINIO_KB_BUCKET, doc['source_uri'])
+            minio_client.stat_object(settings.MINIO_KB_BUCKET, final_doc['source_uri'])
             raise AssertionError('对象应已随级联删除清理')
         except S3Error:
             print('object cleaned after delete: ok')

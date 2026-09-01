@@ -88,5 +88,22 @@ class CRUDKeyword(TenantScopedCrud[DocumentKeyword]):
         await db.flush()
         return result_rowcount(result)
 
+    async def delete_by_document(
+        self,
+        db: AsyncSession,
+        document_id: str,
+        *,
+        plugin_namespace: str | None = None,
+    ) -> int:
+        """按文档删除关键词目录。"""
+        ns = instance_namespace(plugin_namespace)
+        result = await db.execute(
+            delete(DocumentKeyword).where(
+                DocumentKeyword.document_id == document_id, DocumentKeyword.plugin_namespace == ns
+            )
+        )
+        await db.flush()
+        return result_rowcount(result)
+
 
 keyword_dao = CRUDKeyword(DocumentKeyword)
