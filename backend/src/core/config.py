@@ -332,6 +332,7 @@ class Settings(BaseSettings):
     MINIO_SECURE: bool = False
     MINIO_BUCKET: str = 'ragf'
     MINIO_ATTACHMENT_BUCKET: str = 'ragf-attachments'
+    MINIO_KB_BUCKET: str = 'ragf-kb'
     MINIO_CONSOLE_PORT: int = 9001
 
     ##################################################

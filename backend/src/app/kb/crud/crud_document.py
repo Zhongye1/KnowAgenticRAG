@@ -11,6 +11,36 @@ from backend.src.app.kb.service.namespace import instance_namespace
 class CRUDDocument(TenantScopedCrud[Document]):
     """文档元数据数据库操作。"""
 
+    async def create(
+        self,
+        db: AsyncSession,
+        *,
+        document_id: str,
+        kb_name: str,
+        name: str,
+        source_type: str = 'file',
+        source_uri: str | None = None,
+        pipeline: str = '',
+        status: str = 'pending',
+        sha256: str | None = None,
+        plugin_namespace: str | None = None,
+    ) -> Document:
+        """登记文档元数据（默认 pending，等待摄取层接管）。"""
+        obj = Document(
+            document_id=document_id,
+            kb_name=kb_name,
+            plugin_namespace=instance_namespace(plugin_namespace),
+            name=name,
+            source_type=source_type,
+            source_uri=source_uri,
+            pipeline=pipeline,
+            status=status,
+            sha256=sha256,
+        )
+        db.add(obj)
+        await db.flush()
+        return obj
+
     async def get(
         self,
         db: AsyncSession,

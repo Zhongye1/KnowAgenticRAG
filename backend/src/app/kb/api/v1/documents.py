@@ -2,17 +2,18 @@
 
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, File, Form, Path, Query, UploadFile
 
 from backend.src.app.kb.crud import document_dao
 from backend.src.app.kb.deps import CurrentNamespace
 from backend.src.app.kb.model import Document
 from backend.src.app.kb.schema.document import DocumentItem
+from backend.src.app.kb.service.document_service import document_service
 from backend.src.common.exception import errors
 from backend.src.common.pagination import DependsPagination, PageData, paging_data
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
-from backend.src.database.db import CurrentSession
+from backend.src.database.db import CurrentSession, CurrentSessionTransaction
 
 router = APIRouter()
 
@@ -34,6 +35,18 @@ def _doc_to_dict(doc: Document) -> dict:
     }
 
 
+@router.post('', summary='上传文档（存入对象存储）', dependencies=[DependsJwtAuth])
+async def upload_document(
+    db: CurrentSessionTransaction,
+    current_namespace: CurrentNamespace,
+    file: Annotated[UploadFile, File(description='文档文件')],
+    kb_name: Annotated[str, Form(description='知识库标识')],
+    source_type: Annotated[str, Form(description='来源类型')] = 'file',
+) -> ResponseSchemaModel[DocumentItem]:
+    doc = await document_service.upload(db=db, kb_name=kb_name, file=file, source_type=source_type)
+    return response_base.success(data=DocumentItem.model_validate(_doc_to_dict(doc)))
+
+
 @router.get('', summary='文档列表', dependencies=[DependsJwtAuth, DependsPagination])
 async def get_documents(
     db: CurrentSession,
@@ -52,6 +65,16 @@ async def get_documents(
     data = await paging_data(db, stmt)
     data['items'] = [DocumentItem.model_validate(_doc_to_dict(item)) for item in data['items']]
     return cast('ResponseSchemaModel[PageData[DocumentItem]]', response_base.success(data=data))
+
+
+@router.get('/{document_id}/download', summary='文档下载链接（对象存储预签名 URL）', dependencies=[DependsJwtAuth])
+async def get_document_download(
+    db: CurrentSession,
+    current_namespace: CurrentNamespace,
+    document_id: Annotated[str, Path(description='文档 ID')],
+) -> ResponseSchemaModel[dict[str, str]]:
+    url = await document_service.get_download_url(db=db, document_id=document_id)
+    return response_base.success(data={'url': url})
 
 
 @router.get('/{document_id}', summary='文档详情', dependencies=[DependsJwtAuth])

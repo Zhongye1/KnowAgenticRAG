@@ -19,7 +19,11 @@ class MinioCli(Minio):
         secret_key: str = settings.MINIO_SECRET_KEY,
         *,
         secure: bool = settings.MINIO_SECURE,
-        buckets: tuple[str, ...] = (settings.MINIO_BUCKET, settings.MINIO_ATTACHMENT_BUCKET),
+        buckets: tuple[str, ...] = (
+            settings.MINIO_BUCKET,
+            settings.MINIO_ATTACHMENT_BUCKET,
+            settings.MINIO_KB_BUCKET,
+        ),
     ) -> None:
         """
         初始化 MinIO 客户端

@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.src.app.kb.crud import dedup_dao, document_dao, keyword_dao, knowledge_base_dao
 from backend.src.app.kb.model import KnowledgeBase
 from backend.src.app.kb.schema.knowledge_base import KBCreateParam, KBUpdateParam
+from backend.src.app.kb.service.document_storage import delete_document_object
 from backend.src.app.kb.service.kb_stats_service import KnowledgeBaseStatsService
 from backend.src.app.kb.service.namespace import instance_namespace
 from backend.src.common.exception import errors
@@ -80,10 +81,21 @@ class KnowledgeBaseService:
         if kb is None:
             raise errors.NotFoundError(msg='知识库不存在')
 
-        counts: dict[str, int] = {'milvus_text': 0, 'milvus_visual': 0, 'documents': 0, 'dedup': 0, 'keywords': 0}
+        counts: dict[str, int] = {
+            'milvus_text': 0,
+            'milvus_visual': 0,
+            'documents': 0,
+            'dedup': 0,
+            'keywords': 0,
+            'objects': 0,
+        }
         text_coll, visual_coll = base_collection_names()
         counts['milvus_text'] = delete_vectors_by_kb(text_coll, kb_name, plugin_namespace=ns)
         counts['milvus_visual'] = delete_vectors_by_kb(visual_coll, kb_name, plugin_namespace=ns)
+        object_keys = await dedup_dao.list_object_keys_by_kb(db, kb_name, plugin_namespace=ns)
+        counts['objects'] = len(object_keys)
+        for object_key in object_keys:
+            await delete_document_object(object_key)
         counts['documents'] = await document_dao.delete_by_kb(db, kb_name, plugin_namespace=ns)
         counts['dedup'] = await dedup_dao.delete_by_kb(db, kb_name, plugin_namespace=ns)
         counts['keywords'] = await keyword_dao.delete_by_kb(db, kb_name, plugin_namespace=ns)

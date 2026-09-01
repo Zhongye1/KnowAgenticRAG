@@ -6,7 +6,7 @@
 
 import hashlib
 
-from sqlalchemy import delete, insert
+from sqlalchemy import delete, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -89,6 +89,21 @@ class CRUDDedup(TenantScopedCrud[DocumentDedup]):
         )
         await db.flush()
         return result_rowcount(result)
+
+    async def list_object_keys_by_kb(
+        self,
+        db: AsyncSession,
+        kb_name: str,
+        *,
+        plugin_namespace: str | None = None,
+    ) -> list[str]:
+        """按知识库列出已存储对象的 object_key（供级联删除清理对象存储）。"""
+        ns = instance_namespace(plugin_namespace)
+        stmt = select(DocumentDedup.object_key).where(
+            DocumentDedup.kb_name == kb_name, DocumentDedup.plugin_namespace == ns
+        )
+        rows = await db.execute(stmt)
+        return [row[0] for row in rows.all() if row[0]]
 
 
 dedup_dao = CRUDDedup(DocumentDedup)
