@@ -32,6 +32,11 @@ tasks:
     desc: 设计 Token 使用规范校验（禁止硬编码颜色 / 默认调色板类）
     cmds:
       - pnpm check:tokens
+  arch:check:
+    desc: 架构契约校验（dependency-cruiser：分层 / feature 边界）
+    cmds:
+      - pnpm arch:check
+
 
   format:
     desc: prettier 格式化（写入）

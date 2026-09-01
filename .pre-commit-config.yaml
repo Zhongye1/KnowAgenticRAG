@@ -37,3 +37,21 @@ repos:
           - '-o'
           - 'requirements.txt'
           - '--no-hashes'
+
+  # 架构契约：import-linter（后端分层/模块独立性）+ dependency-cruiser（前端分层/feature 边界）
+  # 违规即非零退出，阻断提交；有意豁免须在 backend/pyproject.toml [tool.importlinter] 或
+  # frontend/.dependency-cruiser.cjs 中显式声明，不得直接改配置绕过。
+  - repo: local
+    hooks:
+      - id: architecture-backend
+        name: 'architecture: import-linter（backend 分层/独立性契约）'
+        entry: bash -c 'cd backend && ./.venv/bin/import-linter lint'
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: architecture-frontend
+        name: 'architecture: dependency-cruiser（frontend 分层/feature 边界契约）'
+        entry: bash -c 'cd frontend && ./node_modules/.bin/depcruise "src/**/*.{ts,tsx}" --config .dependency-cruiser.cjs'
+        language: system
+        pass_filenames: false
+        always_run: true

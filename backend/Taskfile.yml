@@ -70,6 +70,11 @@ tasks:
           echo '初始化数据已存在（或表未创建，请先 task dev），跳过'
         fi
 
+  arch:check:
+    desc: 架构契约校验（import-linter：分层 / 模块独立性）
+    cmds:
+      - '{{.TASKFILE_DIR}}/.venv/bin/import-linter lint'
+
   lint:
     desc: 代码检查
     cmds:
