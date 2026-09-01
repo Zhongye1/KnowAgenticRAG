@@ -24,7 +24,6 @@
     "generate:api:check": "node scripts/generate-api.mjs --out /tmp/generated-api-check"
   },
   "dependencies": {
-    "@arco-design/web-react": "^2.66.16",
     "@hookform/resolvers": "^3.3.4",
     "@ngneat/falso": "^7.2.0",
     "@radix-ui/react-dialog": "^1.1.23",

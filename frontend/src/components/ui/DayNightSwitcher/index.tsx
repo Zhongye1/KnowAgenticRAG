@@ -31,9 +31,6 @@ function getInitialTheme(): Theme {
 
 function applyTheme(theme: Theme) {
   document.body.setAttribute('data-theme', theme);
-  // Arco Design 文档规定的暗黑模式挂载方式：body[arco-theme='dark']
-  // 见 https://arco.design/react/docs/dark
-  document.body.toggleAttribute('arco-theme', theme === 'dark');
   document.documentElement.classList.toggle('dark', theme === 'dark');
 }
 

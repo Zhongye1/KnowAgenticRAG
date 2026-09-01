@@ -201,8 +201,7 @@ blue-xxx 等）。
 }
 
 /* Dark 主题 */
-.dark,
-body[arco-theme='dark'] {
+.dark {
   --primary-1: 0 13 77;
   --primary-2: 4 27 121;
   --primary-3: 14 50 166;
