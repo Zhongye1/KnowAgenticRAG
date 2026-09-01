@@ -15,6 +15,7 @@ def _param(
     theme: str = 'blue',
     icon: str = 'database',
     pdf_text_page_ratio: float = 0.2,
+    embedding_model: str = 'bge-m3',
 ) -> KBCreateParam:
     """构造完整参数（显式传全部可选字段，兼容无 pydantic 插件的类型检查）。"""
     return KBCreateParam(
@@ -24,6 +25,7 @@ def _param(
         theme=theme,
         icon=icon,
         pdf_text_page_ratio=pdf_text_page_ratio,
+        embedding_model=embedding_model,
     )
 
 

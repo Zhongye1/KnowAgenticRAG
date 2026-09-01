@@ -18,6 +18,7 @@ class KBCreateParam(SchemaBase):
     theme: str = Field('blue', max_length=32, description='主题色')
     icon: str = Field('database', max_length=32, description='图标')
     pdf_text_page_ratio: float = Field(0.2, ge=0.0, le=1.0, description='PDF 文本页比例阈值')
+    embedding_model: str = Field('bge-m3', max_length=64, description='嵌入模型（换模型=重建 KB）')
 
 
 class KBUpdateParam(SchemaBase):
@@ -28,6 +29,7 @@ class KBUpdateParam(SchemaBase):
     theme: str | None = Field(None, max_length=32, description='主题色')
     icon: str | None = Field(None, max_length=32, description='图标')
     pdf_text_page_ratio: float | None = Field(None, ge=0.0, le=1.0, description='PDF 文本页比例阈值')
+    embedding_model: str | None = Field(None, max_length=64, description='嵌入模型')
 
 
 class KBItem(SchemaBase):
@@ -40,6 +42,7 @@ class KBItem(SchemaBase):
     theme: str = Field(description='主题色')
     icon: str = Field(description='图标')
     pdf_text_page_ratio: float = Field(description='PDF 文本页比例阈值')
+    embedding_model: str = Field(description='嵌入模型')
     collections_used: list[str] = Field(default_factory=list, description='已写入的集合目录')
     documents: int = Field(0, description='文档数')
     text_vectors: int = Field(0, description='文本向量数')

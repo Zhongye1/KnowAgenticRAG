@@ -29,6 +29,9 @@ class KnowledgeBase(MappedBase):
     theme: Mapped[str] = mapped_column(Text, default='blue', comment='主题色')
     icon: Mapped[str] = mapped_column(Text, default='database', comment='图标')
     pdf_text_page_ratio: Mapped[float] = mapped_column(Float, default=0.2, comment='PDF 文本页比例阈值')
+    embedding_model: Mapped[str] = mapped_column(
+        Text, default='bge-m3', comment='嵌入模型（换模型=重建 KB，为 Phase 2 留迁移通道）'
+    )
     collections_used: Mapped[list[Any]] = mapped_column(JSON, default=list, comment='已写入的集合目录')
     created_time: Mapped[datetime] = mapped_column(TimeZone, default=timezone.now, comment='创建时间')
     updated_time: Mapped[datetime] = mapped_column(

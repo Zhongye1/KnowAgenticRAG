@@ -36,6 +36,7 @@ class Document(MappedBase):
     )
     sha256: Mapped[str | None] = mapped_column(Text, nullable=True, comment='文件指纹')
     chunk_count: Mapped[int] = mapped_column(BigInteger, default=0, comment='文本块数')
+    active_version: Mapped[int] = mapped_column(BigInteger, default=1, comment='当前版本（Phase 2 版本化占位，默认 1）')
     created_time: Mapped[datetime] = mapped_column(TimeZone, default=timezone.now, comment='创建时间')
     updated_time: Mapped[datetime] = mapped_column(
         TimeZone, default=timezone.now, onupdate=timezone.now, comment='更新时间'

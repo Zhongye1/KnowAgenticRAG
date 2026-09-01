@@ -51,6 +51,7 @@ class KnowledgeBaseService:
             'theme': kb.theme,
             'icon': kb.icon,
             'pdf_text_page_ratio': kb.pdf_text_page_ratio,
+            'embedding_model': kb.embedding_model,
             'collections_used': kb.collections_used,
             'created_time': kb.created_time,
             'updated_time': kb.updated_time,

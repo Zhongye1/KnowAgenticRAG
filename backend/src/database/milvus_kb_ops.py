@@ -2,6 +2,10 @@
 
 域内共享基础集合（ragf_text / ragf_visual），知识库之间通过 ``kb_name``
 标量过滤隔离。所有查询/删除都必须携带 ``kb_name``，由本模块统一注入。
+
+**动态字段约定（Phase 1 预埋，摄取层写入）**：集合开启 ``enable_dynamic_field``，
+摄取写入向量时必须携带 ``document_id`` 与 ``document_version_id``（版本化占位，
+Phase 2 前恒为 1），否则按文档删除向量 / 版本切换将无法工作。
 """
 
 from __future__ import annotations
@@ -20,6 +24,7 @@ __all__ = [
     'base_collection_names',
     'count_all_entities',
     'count_entities_by_kb',
+    'delete_vectors_by_document',
     'delete_vectors_by_kb',
     'ensure_base_collections',
     'list_present_collections',
@@ -44,7 +49,7 @@ def _collection_schema(name: str, dim: int) -> CollectionSchema:
     ]
     return CollectionSchema(
         fields=fields,
-        description=f'{name}（kb_name 标量过滤）',
+        description=f'{name}（kb_name 标量过滤；摄取须写 document_id/document_version_id）',
         enable_dynamic_field=True,
     )
 
