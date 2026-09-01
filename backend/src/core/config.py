@@ -310,6 +310,18 @@ class Settings(BaseSettings):
     MILVUS_TIMEOUT: int = 10
     MILVUS_DATABASE_NAME: str = 'default'
 
+    # 多租户知识库（EagleRAG 设计迁移）
+    PLUGIN_NAMESPACE: str = 'core'
+    KB_NAME: str = 'default'
+    ALLOW_NAMESPACE_OVERRIDE: bool = False
+
+    # Milvus 集合与向量维度
+    MILVUS_TEXT_COLLECTION: str = 'ragf_text'
+    MILVUS_VISUAL_COLLECTION: str = 'ragf_visual'
+    MILVUS_TEXT_VECTOR_DIM: int = 1536
+    MILVUS_VISUAL_VECTOR_DIM: int = 2048
+    MILVUS_AUTO_CREATE_DB: bool = True
+
     # .env MinIO
     MINIO_HOST: str = 'localhost'
     MINIO_PORT: int = 9000
@@ -383,7 +395,7 @@ def get_settings() -> Settings:
             file=sys.stderr,
         )
         sys.exit(1)
-    return Settings()
+    return Settings()  # type: ignore[reportCallIssue]
 
 
 # 创建全局配置实例

@@ -83,6 +83,14 @@ async def register_init(app: FastAPI) -> AsyncGenerator[None, None]:
     # 初始化向量数据库 milvus
     await milvus_client.init()
 
+    # 初始化多租户 Milvus 连接池（按域绑定 Database）与基础集合
+    from backend.src.database.milvus_kb_ops import ensure_base_collections
+    from backend.src.database.milvus_pool import get_milvus_pool
+
+    milvus_pool = get_milvus_pool()
+    milvus_pool.ensure_database()
+    ensure_base_collections()
+
     # 初始化对象存储 minio
     await minio_client.init()
 
@@ -117,6 +125,9 @@ async def register_init(app: FastAPI) -> AsyncGenerator[None, None]:
 
         # 释放 milvus 连接
         await milvus_client.close()
+
+        # 清空多租户 Milvus 连接池引用
+        milvus_pool.close_all()
 
         # 释放 minio 连接
         await minio_client.close()
