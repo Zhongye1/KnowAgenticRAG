@@ -4,7 +4,7 @@ from typing import Annotated
 
 from fastapi import Depends, Header
 
-from backend.src.app.kb.service.namespace import resolve_namespace
+from backend.src.app.kb.utils.namespace import resolve_namespace
 
 __all__ = ['CurrentNamespace', 'get_current_tenant']
 

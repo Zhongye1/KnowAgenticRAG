@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.app.kb.crud.base import TenantScopedCrud, result_rowcount
 from backend.src.app.kb.model import Document
-from backend.src.app.kb.service.namespace import instance_namespace
+from backend.src.app.kb.utils.namespace import instance_namespace
 
 
 class CRUDDocument(TenantScopedCrud[Document]):

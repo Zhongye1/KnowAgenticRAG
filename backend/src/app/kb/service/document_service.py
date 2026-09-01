@@ -15,7 +15,7 @@ from backend.src.app.kb.service.document_storage import (
     kb_object_key,
     upload_document_bytes,
 )
-from backend.src.app.kb.service.namespace import instance_namespace
+from backend.src.app.kb.utils.namespace import instance_namespace
 from backend.src.common.exception import errors
 from backend.src.common.log import log
 from backend.src.database.milvus_kb_ops import base_collection_names, delete_vectors_by_document

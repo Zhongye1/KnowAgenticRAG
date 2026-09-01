@@ -2,7 +2,7 @@
 
 import pytest
 
-from backend.src.app.kb.service.namespace import resolve_namespace
+from backend.src.app.kb.utils.namespace import resolve_namespace
 from backend.src.common.exception import errors
 from backend.src.core.config import settings
 

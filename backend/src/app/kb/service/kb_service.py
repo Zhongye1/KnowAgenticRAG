@@ -9,7 +9,7 @@ from backend.src.app.kb.model import KnowledgeBase
 from backend.src.app.kb.schema.knowledge_base import KBCreateParam, KBUpdateParam
 from backend.src.app.kb.service.document_storage import delete_document_object
 from backend.src.app.kb.service.kb_stats_service import KnowledgeBaseStatsService
-from backend.src.app.kb.service.namespace import instance_namespace
+from backend.src.app.kb.utils.namespace import instance_namespace
 from backend.src.common.exception import errors
 from backend.src.common.pagination import paging_data
 from backend.src.database.milvus_kb_ops import base_collection_names, delete_vectors_by_kb

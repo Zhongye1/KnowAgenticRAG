@@ -3,7 +3,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.app.kb.crud import document_dao, knowledge_base_dao
-from backend.src.app.kb.service.namespace import instance_namespace
+from backend.src.app.kb.utils.namespace import instance_namespace
 from backend.src.database.milvus_kb_ops import (
     base_collection_names,
     count_all_entities,

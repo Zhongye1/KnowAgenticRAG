@@ -10,7 +10,7 @@ from sqlalchemy import CursorResult, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_crud_plus import CRUDPlus
 
-from backend.src.app.kb.service.namespace import instance_namespace
+from backend.src.app.kb.utils.namespace import instance_namespace
 
 __all__ = ['TenantScopedCrud', 'result_rowcount']
 

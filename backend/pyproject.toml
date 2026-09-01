@@ -103,6 +103,7 @@ path = "__init__.py"
 
 [dependency-groups]
 dev = [
+    "import-linter>=2.1",
     "pyright>=1.1.411",
     "pytest>=9.1.1",
     "task>=0.1.0",
@@ -300,3 +301,36 @@ allow-dunder-method-names = ["__tablename__", "__table_args__"]
 [tool.ruff.format]
 docstring-code-format = true
 quote-style = "single"
+
+[tool.importlinter]
+root_packages = ["backend"]
+
+[[tool.importlinter.contracts]]
+name = "kb 模块分层：api → service → crud → model → utils（上层可依赖下层，反之禁止）"
+type = "layers"
+containers = ["backend.src.app.kb"]
+layers = [
+    "api",
+    "service",
+    "crud",
+    "model",
+    "utils",
+]
+
+[[tool.importlinter.contracts]]
+name = "admin / kb / task 三个业务模块互不依赖（有意依赖需显式豁免）"
+type = "independence"
+modules = [
+    "backend.src.app.admin",
+    "backend.src.app.kb",
+    "backend.src.app.task",
+]
+ignore_imports = [
+    # db_log 任务消费 admin 日志服务：有意为之，后续可反转依赖方向
+    "backend.src.app.task.tasks.db_log.** -> backend.src.app.admin.**",
+    # common.security（JWT/权限）读取 admin 用户/角色数据：跨模块公共层，属已知债务，
+    # 后续应将用户查询下沉为独立 auth 模块或端口，届时删除本条豁免
+    "backend.src.common.security.** -> backend.src.app.admin.**",
+    # 测试模块豁免：测试可自由组合被测模块
+    "backend.src.app.*.tests.** -> backend.src.app.**",
+]
