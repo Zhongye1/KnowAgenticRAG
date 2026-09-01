@@ -1,6 +1,6 @@
 import { QueryClient, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 
 import { paths } from '@/config/paths';
@@ -79,6 +79,42 @@ export const createAppRouter = (queryClient: QueryClient) =>
           handle: { title: '知识库/技能' },
           lazy: () =>
             import('./routes/app/knowledge/page').then(convert(queryClient)),
+          children: [
+            {
+              index: true,
+              element: (
+                <Navigate to={paths.app.knowledge.kg.getHref()} replace />
+              ),
+            },
+            {
+              path: paths.app.knowledge.kg.path,
+              handle: { title: '知识库' },
+              lazy: () =>
+                import('./routes/app/knowledge/kg').then(convert(queryClient)),
+            },
+            {
+              path: paths.app.knowledge.skills.path,
+              handle: { title: '技能' },
+              lazy: () =>
+                import('./routes/app/knowledge/skills').then(
+                  convert(queryClient),
+                ),
+            },
+            {
+              path: paths.app.knowledge.tools.path,
+              handle: { title: '工具' },
+              lazy: () =>
+                import('./routes/app/knowledge/tools').then(
+                  convert(queryClient),
+                ),
+            },
+            {
+              path: paths.app.knowledge.mcp.path,
+              handle: { title: 'MCP' },
+              lazy: () =>
+                import('./routes/app/knowledge/mcp').then(convert(queryClient)),
+            },
+          ],
         },
         {
           path: paths.app.overview.path,

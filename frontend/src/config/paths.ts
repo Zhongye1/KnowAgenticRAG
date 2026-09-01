@@ -36,6 +36,22 @@ export const paths = {
     knowledge: {
       path: 'knowledge',
       getHref: () => '/app/knowledge',
+      kg: {
+        path: 'kg',
+        getHref: () => '/app/knowledge/kg',
+      },
+      skills: {
+        path: 'skills',
+        getHref: () => '/app/knowledge/skills',
+      },
+      tools: {
+        path: 'tools',
+        getHref: () => '/app/knowledge/tools',
+      },
+      mcp: {
+        path: 'mcp',
+        getHref: () => '/app/knowledge/mcp',
+      },
     },
     overview: {
       path: 'overview',

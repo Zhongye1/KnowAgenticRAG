@@ -4,7 +4,7 @@ import {
   GithubLogo,
   Question,
 } from '@phosphor-icons/react';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Link, useMatches } from 'react-router';
 
 import { paths } from '@/config/paths';
@@ -159,13 +159,20 @@ function HelpDrawer() {
   );
 }
 
+type BreadcrumbCrumb = { title: string; href: string };
+
 export function AppHeadbar() {
   const matches = useMatches();
-  const last = matches[matches.length - 1];
-  const title = (last?.handle as { title?: string } | undefined)?.title;
+
+  const crumbs = matches
+    .map((match) => ({
+      title: (match.handle as { title?: string } | undefined)?.title,
+      href: match.pathname,
+    }))
+    .filter((crumb): crumb is BreadcrumbCrumb => Boolean(crumb.title));
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+    <header className="flex h-12 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
       <div className="flex items-center gap-2 px-4">
         <SidebarTrigger className="-ml-1" />
         <Separator
@@ -179,14 +186,25 @@ export function AppHeadbar() {
                 <Link to={paths.app.dashboard.getHref()}>Home</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
-            {title ? (
-              <>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{title}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </>
-            ) : null}
+            {crumbs.map((crumb, index) => {
+              const isLast = index === crumbs.length - 1;
+              return (
+                <Fragment key={crumb.href}>
+                  <BreadcrumbSeparator className="hidden md:block" />
+                  <BreadcrumbItem
+                    className={isLast ? undefined : 'hidden md:block'}
+                  >
+                    {isLast ? (
+                      <BreadcrumbPage>{crumb.title}</BreadcrumbPage>
+                    ) : (
+                      <BreadcrumbLink asChild>
+                        <Link to={crumb.href}>{crumb.title}</Link>
+                      </BreadcrumbLink>
+                    )}
+                  </BreadcrumbItem>
+                </Fragment>
+              );
+            })}
           </BreadcrumbList>
         </Breadcrumb>
       </div>
