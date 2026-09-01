@@ -16,7 +16,7 @@ export function NavBar() {
   return (
     <div
       aria-label="顶部导航"
-      className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-color-border-2 px-6 backdrop-blur-sm"
+      className="sticky top-0 z-50 flex h-16 items-center justify-between border-b border-color-border-2 px-6"
     >
       {/* Logo */}
       <Link
