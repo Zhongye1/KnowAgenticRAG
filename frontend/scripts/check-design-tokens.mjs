@@ -26,16 +26,19 @@ const CSS_DECORATIVE_EXEMPT = new Set([
   'components/ui/DayNightSwitcher/day-night-switcher.css',
   'features/auth/components/DriftWall/DriftWall.css',
 ]);
+// 主题基座文件（shadcn 语义色、@theme 映射）允许硬编码基础颜色值
+const CSS_THEME_EXEMPT = new Set(['index.css']);
 
 const HEX_RE = /#[0-9a-fA-F]{3,8}\b/;
-const RGB_RE = /\b(rgba?|hsla?)\(/i;
+// 允许 rgb(var(--x)) / hsl(var(--x)) 这类 Token 引用，禁止硬编码颜色值
+const RGB_RE = /\b(rgba?|hsla?)\(\s*(?!var\()/i;
 
 const PALETTE_PREFIXES =
   'bg|text|border|ring|accent|fill|stroke|divide|placeholder|decoration|caret|outline|from|to|via|shadow';
 const PALETTE_NAMES =
   'gray|slate|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|white|black';
 const PALETTE_CLASS_RE = new RegExp(
-  `\\b(?:${PALETTE_PREFIXES})-(${PALETTE_NAMES})(?=\\b|[/-]|["'\`\\s])`,
+  `(?<![\\w-])\\b(?:${PALETTE_PREFIXES})-(${PALETTE_NAMES})(?=\\b|[/-]|["'\`\\s])`,
 );
 
 const issues = [];
@@ -83,7 +86,8 @@ function walk(dir) {
     } else if (
       full.endsWith('.css') &&
       !full.startsWith(TOKEN_CSS_DIR + sep) &&
-      !CSS_DECORATIVE_EXEMPT.has(rel)
+      !CSS_DECORATIVE_EXEMPT.has(rel) &&
+      !CSS_THEME_EXEMPT.has(rel)
     ) {
       checkCode(relative(process.cwd(), full), readFileSync(full, 'utf8'));
     }

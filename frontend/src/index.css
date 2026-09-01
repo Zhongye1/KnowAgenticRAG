@@ -1,112 +1,328 @@
+@import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/jetbrains-mono';
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================================
+ * 设计 Token → Tailwind v4 主题
+ * ----------------------------------------------------------------------------
+ * - 颜色 Token 定义于 src/styles/tokens.css（:root 亮色 / .dark 暗色），
+ *   此处通过 @theme inline 映射为工具类，随主题动态切换。
+ * - 颜色 Token 存 RGB 三元组（如 --primary-6: 22 93 255），通过 var() 引用，
+ *   透明度修饰符（bg-primary-6/50）由 v4 的 color-mix 自动处理。
+ * - 原 tailwind.config.cjs 已删除，主题配置全部内联于此。
+ * ========================================================================== */
+
+@theme inline {
+  /* shadcn 语义色（index.css :root / .dark 定义，值已用 hsl 颜色函数包裹） */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Arco 语义色（tokens.css） */
+  --color-primary-1: rgb(var(--primary-1));
+  --color-primary-2: rgb(var(--primary-2));
+  --color-primary-3: rgb(var(--primary-3));
+  --color-primary-4: rgb(var(--primary-4));
+  --color-primary-5: rgb(var(--primary-5));
+  --color-primary-6: rgb(var(--primary-6));
+  --color-primary-7: rgb(var(--primary-7));
+  --color-success-1: rgb(var(--success-1));
+  --color-success-2: rgb(var(--success-2));
+  --color-success-3: rgb(var(--success-3));
+  --color-success-4: rgb(var(--success-4));
+  --color-success-5: rgb(var(--success-5));
+  --color-success-6: rgb(var(--success-6));
+  --color-success-7: rgb(var(--success-7));
+  --color-warning-1: rgb(var(--warning-1));
+  --color-warning-2: rgb(var(--warning-2));
+  --color-warning-3: rgb(var(--warning-3));
+  --color-warning-4: rgb(var(--warning-4));
+  --color-warning-5: rgb(var(--warning-5));
+  --color-warning-6: rgb(var(--warning-6));
+  --color-warning-7: rgb(var(--warning-7));
+  --color-danger-1: rgb(var(--danger-1));
+  --color-danger-2: rgb(var(--danger-2));
+  --color-danger-3: rgb(var(--danger-3));
+  --color-danger-4: rgb(var(--danger-4));
+  --color-danger-5: rgb(var(--danger-5));
+  --color-danger-6: rgb(var(--danger-6));
+  --color-danger-7: rgb(var(--danger-7));
+  --color-link-1: rgb(var(--link-1));
+  --color-link-2: rgb(var(--link-2));
+  --color-link-3: rgb(var(--link-3));
+  --color-link-4: rgb(var(--link-4));
+  --color-link-5: rgb(var(--link-5));
+  --color-link-6: rgb(var(--link-6));
+  --color-link-7: rgb(var(--link-7));
+  --color-data-1: rgb(var(--data-1));
+  --color-data-2: rgb(var(--data-2));
+  --color-data-3: rgb(var(--data-3));
+  --color-data-4: rgb(var(--data-4));
+  --color-data-5: rgb(var(--data-5));
+  --color-data-6: rgb(var(--data-6));
+  --color-data-7: rgb(var(--data-7));
+  --color-data-8: rgb(var(--data-8));
+  --color-data-9: rgb(var(--data-9));
+  --color-data-10: rgb(var(--data-10));
+  --color-data-11: rgb(var(--data-11));
+  --color-data-12: rgb(var(--data-12));
+  --color-data-13: rgb(var(--data-13));
+  --color-data-14: rgb(var(--data-14));
+  --color-data-15: rgb(var(--data-15));
+  --color-data-16: rgb(var(--data-16));
+  --color-data-17: rgb(var(--data-17));
+  --color-data-18: rgb(var(--data-18));
+  --color-data-19: rgb(var(--data-19));
+  --color-data-20: rgb(var(--data-20));
+  --color-color-bg-1: rgb(var(--color-bg-1));
+  --color-color-bg-2: rgb(var(--color-bg-2));
+  --color-color-bg-3: rgb(var(--color-bg-3));
+  --color-color-bg-4: rgb(var(--color-bg-4));
+  --color-color-bg-5: rgb(var(--color-bg-5));
+  --color-color-bg-white: rgb(var(--color-bg-white));
+  --color-color-border-1: rgb(var(--color-border-1));
+  --color-color-border-2: rgb(var(--color-border-2));
+  --color-color-border-3: rgb(var(--color-border-3));
+  --color-color-border-4: rgb(var(--color-border-4));
+  --color-color-fill-1: rgb(var(--color-fill-1));
+  --color-color-fill-2: rgb(var(--color-fill-2));
+  --color-color-fill-3: rgb(var(--color-fill-3));
+  --color-color-fill-4: rgb(var(--color-fill-4));
+  --color-color-text-1: rgb(var(--color-text-1));
+  --color-color-text-2: rgb(var(--color-text-2));
+  --color-color-text-3: rgb(var(--color-text-3));
+  --color-color-text-4: rgb(var(--color-text-4));
+  --color-color-white: rgb(var(--color-white));
+  --color-color-black: rgb(var(--color-black));
+
+  /* 阴影（tokens.css 同名运行时变量，inline 引用避免循环定义） */
+  --shadow-special: var(--shadow-special);
+  --shadow-1-center: var(--shadow-1-center);
+  --shadow-2-center: var(--shadow-2-center);
+  --shadow-3-center: var(--shadow-3-center);
+}
+
+@theme {
+  /* 字体 */
+  --font-sans:
+    'Inter var', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-mono:
+    'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, 'Liberation Mono', 'Courier New', monospace;
+  --font-heading: var(--font-mono);
+
+  /* 字号 */
+  --text-body-3: var(--font-size-body-3);
+  --text-body-2: var(--font-size-body-2);
+  --text-body-1: var(--font-size-body-1);
+  --text-caption: var(--font-size-caption);
+  --text-title-1: var(--font-size-title-1);
+  --text-title-2: var(--font-size-title-2);
+  --text-title-3: var(--font-size-title-3);
+  --text-display-1: var(--font-size-display-1);
+  --text-display-2: var(--font-size-display-2);
+  --text-display-3: var(--font-size-display-3);
+
+  /* 字重 */
+  --font-weight-weight-100: var(--font-weight-100);
+  --font-weight-weight-200: var(--font-weight-200);
+  --font-weight-weight-300: var(--font-weight-300);
+  --font-weight-weight-400: var(--font-weight-400);
+  --font-weight-weight-500: var(--font-weight-500);
+  --font-weight-weight-600: var(--font-weight-600);
+  --font-weight-weight-700: var(--font-weight-700);
+  --font-weight-weight-800: var(--font-weight-800);
+  --font-weight-weight-900: var(--font-weight-900);
+
+  /* 尺寸 */
+  --spacing-size-1: var(--size-1);
+  --spacing-size-2: var(--size-2);
+  --spacing-size-3: var(--size-3);
+  --spacing-size-4: var(--size-4);
+  --spacing-size-5: var(--size-5);
+  --spacing-size-6: var(--size-6);
+  --spacing-size-7: var(--size-7);
+  --spacing-size-8: var(--size-8);
+  --spacing-size-9: var(--size-9);
+  --spacing-size-10: var(--size-10);
+  --spacing-size-11: var(--size-11);
+  --spacing-size-12: var(--size-12);
+  --spacing-size-13: var(--size-13);
+  --spacing-size-14: var(--size-14);
+  --spacing-size-15: var(--size-15);
+  --spacing-size-16: var(--size-16);
+  --spacing-size-17: var(--size-17);
+  --spacing-size-18: var(--size-18);
+  --spacing-size-19: var(--size-19);
+  --spacing-size-20: var(--size-20);
+  --spacing-size-21: var(--size-21);
+  --spacing-size-22: var(--size-22);
+  --spacing-size-23: var(--size-23);
+  --spacing-size-24: var(--size-24);
+  --spacing-size-25: var(--size-25);
+  --spacing-size-26: var(--size-26);
+  --spacing-size-27: var(--size-27);
+  --spacing-size-28: var(--size-28);
+  --spacing-size-29: var(--size-29);
+  --spacing-size-30: var(--size-30);
+  --spacing-size-31: var(--size-31);
+  --spacing-size-32: var(--size-32);
+  --spacing-size-33: var(--size-33);
+  --spacing-size-34: var(--size-34);
+  --spacing-size-35: var(--size-35);
+  --spacing-size-36: var(--size-36);
+  --spacing-size-37: var(--size-37);
+  --spacing-size-38: var(--size-38);
+  --spacing-size-39: var(--size-39);
+  --spacing-size-40: var(--size-40);
+  --spacing-size-41: var(--size-41);
+  --spacing-size-42: var(--size-42);
+  --spacing-size-43: var(--size-43);
+  --spacing-size-44: var(--size-44);
+  --spacing-size-45: var(--size-45);
+  --spacing-size-46: var(--size-46);
+  --spacing-size-47: var(--size-47);
+  --spacing-size-48: var(--size-48);
+  --spacing-size-49: var(--size-49);
+  --spacing-size-50: var(--size-50);
+
+  /* 圆角 */
+  --radius-sm: var(--border-radius-small);
+  --radius-md: var(--border-radius-medium);
+  --radius-lg: var(--border-radius-large);
+  --radius-small: var(--border-radius-small);
+  --radius-medium: var(--border-radius-medium);
+  --radius-large: var(--border-radius-large);
+  --radius-circle: var(--border-radius-circle);
+
+  /* 边框宽度 */
+  --border-width-1: var(--border-1);
+  --border-width-3: var(--border-3);
+}
+
+/* 容器（原 tailwind.config.cjs theme.container） */
+@utility container {
+  margin-inline: auto;
+  padding-inline: 2rem;
+  @media (width >= 640px) {
+    max-width: 640px;
+  }
+  @media (width >= 768px) {
+    max-width: 768px;
+  }
+  @media (width >= 1024px) {
+    max-width: 1024px;
+  }
+  @media (width >= 1280px) {
+    max-width: 1280px;
+  }
+  @media (width >= 1400px) {
+    max-width: 1400px;
+  }
+}
+
+:root {
+  --background: hsl(0 0% 100%);
+  --foreground: hsl(222.2 84% 4.9%);
+  --card: hsl(0 0% 100%);
+  --card-foreground: hsl(222.2 84% 4.9%);
+  --popover: hsl(0 0% 100%);
+  --popover-foreground: hsl(222.2 84% 4.9%);
+  --primary: hsl(222.2 47.4% 11.2%);
+  --primary-foreground: hsl(210 40% 98%);
+  --secondary: hsl(210 40% 96.1%);
+  --secondary-foreground: hsl(222.2 47.4% 11.2%);
+  --muted: hsl(210 40% 96.1%);
+  --muted-foreground: hsl(215.4 16.3% 46.9%);
+  --accent: hsl(210 40% 96.1%);
+  --accent-foreground: hsl(222.2 47.4% 11.2%);
+  --destructive: hsl(0 84.2% 60.2%);
+  --destructive-foreground: hsl(210 40% 98%);
+  --border: hsl(214.3 31.8% 91.4%);
+  --input: hsl(214.3 31.8% 91.4%);
+  --ring: hsl(222.2 84% 4.9%);
+  --radius: 0.5rem;
+  --chart-1: hsl(221.2 83.2% 53.3%);
+  --chart-2: hsl(212 95% 68%);
+  --chart-3: hsl(216 92% 60%);
+  --chart-4: hsl(210 98% 78%);
+  --chart-5: hsl(212 97% 87%);
+  --sidebar: hsl(210 40% 98%);
+  --sidebar-foreground: hsl(222.2 84% 4.9%);
+  --sidebar-primary: hsl(222.2 47.4% 11.2%);
+  --sidebar-primary-foreground: hsl(210 40% 98%);
+  --sidebar-accent: hsl(210 40% 96.1%);
+  --sidebar-accent-foreground: hsl(222.2 47.4% 11.2%);
+  --sidebar-border: hsl(214.3 31.8% 91.4%);
+  --sidebar-ring: hsl(222.2 84% 4.9%);
+}
+
+.dark {
+  --background: hsl(222.2 84% 4.9%);
+  --foreground: hsl(210 40% 98%);
+  --card: hsl(222.2 84% 4.9%);
+  --card-foreground: hsl(210 40% 98%);
+  --popover: hsl(222.2 84% 4.9%);
+  --popover-foreground: hsl(210 40% 98%);
+  --primary: hsl(210 40% 98%);
+  --primary-foreground: hsl(222.2 47.4% 11.2%);
+  --secondary: hsl(217.2 32.6% 17.5%);
+  --secondary-foreground: hsl(210 40% 98%);
+  --muted: hsl(217.2 32.6% 17.5%);
+  --muted-foreground: hsl(215 20.2% 65.1%);
+  --accent: hsl(217.2 32.6% 17.5%);
+  --accent-foreground: hsl(210 40% 98%);
+  --destructive: hsl(0 62.8% 30.6%);
+  --destructive-foreground: hsl(210 40% 98%);
+  --border: hsl(217.2 32.6% 17.5%);
+  --input: hsl(217.2 32.6% 17.5%);
+  --ring: hsl(212.7 26.8% 83.9%);
+  --chart-1: hsl(221.2 83.2% 53.3%);
+  --chart-2: hsl(212 95% 68%);
+  --chart-3: hsl(216 92% 60%);
+  --chart-4: hsl(210 98% 78%);
+  --chart-5: hsl(212 97% 87%);
+  --sidebar: hsl(222.2 84% 4.9%);
+  --sidebar-foreground: hsl(210 40% 98%);
+  --sidebar-primary: hsl(210 40% 98%);
+  --sidebar-primary-foreground: hsl(222.2 47.4% 11.2%);
+  --sidebar-accent: hsl(217.2 32.6% 17.5%);
+  --sidebar-accent-foreground: hsl(210 40% 98%);
+  --sidebar-border: hsl(217.2 32.6% 17.5%);
+  --sidebar-ring: hsl(212.7 26.8% 83.9%);
+}
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
-
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
-
-    --radius: 0.5rem;
-
-    --chart-1: 221.2 83.2% 53.3%;
-
-    --chart-2: 212 95% 68%;
-
-    --chart-3: 216 92% 60%;
-
-    --chart-4: 210 98% 78%;
-
-    --chart-5: 212 97% 87%;
-
-    --sidebar: 210 40% 98%;
-
-    --sidebar-foreground: 222.2 84% 4.9%;
-
-    --sidebar-primary: 222.2 47.4% 11.2%;
-
-    --sidebar-primary-foreground: 210 40% 98%;
-
-    --sidebar-accent: 210 40% 96.1%;
-
-    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
-
-    --sidebar-border: 214.3 31.8% 91.4%;
-
-    --sidebar-ring: 222.2 84% 4.9%;
-  }
-
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --chart-1: 221.2 83.2% 53.3%;
-    --chart-2: 212 95% 68%;
-    --chart-3: 216 92% 60%;
-    --chart-4: 210 98% 78%;
-    --chart-5: 212 97% 87%;
-    --sidebar: 222.2 84% 4.9%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 210 40% 98%;
-    --sidebar-primary-foreground: 222.2 47.4% 11.2%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 212.7 26.8% 83.9%;
-  }
-
   .theme {
     --font-heading: var(--font-mono);
     --font-mono: 'JetBrains Mono Variable', monospace;
@@ -125,16 +341,6 @@
   }
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
 body {
   margin: 0;
   font-family:
@@ -149,19 +355,56 @@ code {
     source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
-/* ============================================================================
- * 主题切换 View Transition（配合 DayNightSwitcher）
- * ----------------------------------------------------------------------------
- * 关闭 root 视图过渡的默认淡入淡出与 plus-lighter 混合，再通过 z-index 控制
- * 新旧快照的层级，让 DayNightSwitcher 的 clip-path 圆形过渡可见：
- *   - 亮色模式下 new 在上层（切到亮色时 new 从点击处扩散）
- *   - 暗色模式下 old 在上层（切到暗色时 old 向点击处收缩）
- * 页面跳转转场同样复用 root 快照，因此本组样式必须限定在
- * html.theme-transitioning 内，避免与页面转场动画相互覆盖。
- * 参考：vuejs/vitepress 的 appearanceTransition、antfu.me
- * ========================================================================== */
-
-html.theme-transitioning::view-transition-old(root),
+*
+  主题切换
+  View
+  Transition（配合
+  DayNightSwitcher）
+  *
+  ----------------------------------------------------------------------------
+  *
+  关闭
+  root
+  视图过渡的默认淡入淡出与
+  plus-lighter
+  混合，再通过
+  z-index
+  控制
+  *
+  新旧快照的层级，让
+  DayNightSwitcher
+  的
+  clip-path
+  圆形过渡可见：
+  *
+  -
+  亮色模式下
+  new
+  在上层（切到亮色时
+  new
+  从点击处扩散）
+  *
+  -
+  暗色模式下
+  old
+  在上层（切到暗色时
+  old
+  向点击处收缩）
+  *
+  页面跳转转场同样复用
+  root
+  快照，因此本组样式必须限定在
+  *
+  html.theme-transitioning
+  内，避免与页面转场动画相互覆盖。
+  *
+  参考：vuejs/vitepress
+  的
+  appearanceTransition、antfu.me
+  *
+  ==========================================================================
+  */
+  html.theme-transitioning::view-transition-old(root),
 html.theme-transitioning::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
