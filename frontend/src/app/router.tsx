@@ -56,6 +56,36 @@ export const createAppRouter = (queryClient: QueryClient) =>
           lazy: () =>
             import('./routes/app/dashboard/page').then(convert(queryClient)),
         },
+        {
+          path: paths.app.chat.path,
+          handle: { title: '新建对话' },
+          lazy: () =>
+            import('./routes/app/chat/page').then(convert(queryClient)),
+        },
+        {
+          path: paths.app.agents.path,
+          handle: { title: '智能体' },
+          lazy: () =>
+            import('./routes/app/agents/page').then(convert(queryClient)),
+        },
+        {
+          path: paths.app.space.path,
+          handle: { title: '个人空间' },
+          lazy: () =>
+            import('./routes/app/space/page').then(convert(queryClient)),
+        },
+        {
+          path: paths.app.knowledge.path,
+          handle: { title: '知识库/技能' },
+          lazy: () =>
+            import('./routes/app/knowledge/page').then(convert(queryClient)),
+        },
+        {
+          path: paths.app.overview.path,
+          handle: { title: '数据总览' },
+          lazy: () =>
+            import('./routes/app/overview/page').then(convert(queryClient)),
+        },
       ],
     },
     {

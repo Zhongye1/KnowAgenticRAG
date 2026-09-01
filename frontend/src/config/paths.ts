@@ -21,6 +21,26 @@ export const paths = {
       path: '',
       getHref: () => '/app',
     },
+    chat: {
+      path: 'chat',
+      getHref: () => '/app/chat',
+    },
+    agents: {
+      path: 'agents',
+      getHref: () => '/app/agents',
+    },
+    space: {
+      path: 'space',
+      getHref: () => '/app/space',
+    },
+    knowledge: {
+      path: 'knowledge',
+      getHref: () => '/app/knowledge',
+    },
+    overview: {
+      path: 'overview',
+      getHref: () => '/app/overview',
+    },
     discussions: {
       path: 'discussions',
       getHref: () => '/app/discussions',
