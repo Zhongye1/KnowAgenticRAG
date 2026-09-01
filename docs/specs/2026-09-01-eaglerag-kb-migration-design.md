@@ -133,3 +133,13 @@ frontend/src/features/knowledge/
 - 后端：`ruff check` / `ruff format` / `mypy`，单元测试覆盖 namespace 守卫、KB CRUD、去重。
 - 前端：`tsc --noEmit` / `oxlint`。
 - 冒烟：创建 KB → 列表/详情/统计 → 级联删除。
+
+## 11. 对象存储接入（MinIO）
+
+- 文档文件存 `MINIO_KB_BUCKET`（`ragf-kb`，lifespan 随 `minio_client.init()` 建桶，首次上传懒兜底）。
+- 对象键约定 `kb/{plugin_namespace}/{kb_name}/{document_id}/{filename}`：前缀即租户域 + 知识库隔离。
+- `POST /documents`（multipart）上传 → SHA-256 去重（同库重复 409）→ 对象入库 → `documents` 登记
+  （`status=pending`、`source_uri=object_key`）→ `document_dedup` 落 `object_key`。
+- `GET /documents/{document_id}/download` 返回对象存储预签名 URL。
+- 级联删除 KB 时，先按 `dedup.object_key` 清理对象（尽力而为），再删登记行。
+- 与 RAG 摄取解耦：仅落盘 + 登记，不做解析/嵌入；摄取层接入后按 `object_key` 取文件。

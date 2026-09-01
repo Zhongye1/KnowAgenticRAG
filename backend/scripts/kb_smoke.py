@@ -49,6 +49,31 @@ async def main() -> None:
         assert resp.status_code == 200, resp.text
         print('create:', resp.json()['data']['kb_name'], resp.json()['data']['display_name'])
 
+        # 上传文档（对象存储 + 元数据登记）
+        resp = await client.post(
+            '/documents',
+            data={'kb_name': 'smoke_test', 'source_type': 'file'},
+            files={'file': ('hello.txt', b'hello kb smoke', 'text/plain')},
+        )
+        assert resp.status_code == 200, resp.text
+        doc = resp.json()['data']
+        assert doc['status'] == 'pending' and doc['source_uri'], resp.text
+        print('upload doc:', doc['document_id'], doc['source_uri'])
+
+        # 同内容重复上传 → 409（去重）
+        resp = await client.post(
+            '/documents',
+            data={'kb_name': 'smoke_test', 'source_type': 'file'},
+            files={'file': ('hello2.txt', b'hello kb smoke', 'text/plain')},
+        )
+        assert resp.status_code == 409, resp.text
+        print('duplicate upload 409: ok')
+
+        # 下载链接（对象存储预签名 URL）
+        resp = await client.get(f'/documents/{doc["document_id"]}/download')
+        assert resp.status_code == 200 and resp.json()['data']['url'], resp.text
+        print('download url: ok')
+
         # 写入一条测试向量（模拟 RAG 层写入，验证 kb_name 标量过滤与级联删除）
         from backend.src.database.milvus_kb_ops import base_collection_names, count_entities_by_kb
 
@@ -107,6 +132,16 @@ async def main() -> None:
         resp = await client.get('/knowledge_bases/smoke_test')
         assert resp.status_code == 404, resp.text
         print('after-delete detail 404: ok')
+
+        # 级联删除后对象存储中的文件应已清理
+        from backend.src.database.minio import minio_client
+        from minio.error import S3Error
+
+        try:
+            minio_client.stat_object(settings.MINIO_KB_BUCKET, doc['source_uri'])
+            raise AssertionError('对象应已随级联删除清理')
+        except S3Error:
+            print('object cleaned after delete: ok')
 
     # Milvus 集合与索引
     client = pool.get()
