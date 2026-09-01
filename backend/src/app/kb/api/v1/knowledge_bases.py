@@ -27,7 +27,7 @@ from backend.src.database.db import CurrentSession, CurrentSessionTransaction
 router = APIRouter()
 
 
-@router.get('/knowledge_bases', summary='知识库列表', dependencies=[DependsJwtAuth, DependsPagination])
+@router.get('', summary='知识库列表', dependencies=[DependsJwtAuth, DependsPagination])
 async def get_knowledge_bases(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
@@ -39,7 +39,7 @@ async def get_knowledge_bases(
     return cast('ResponseSchemaModel[PageData[KBItem]]', response_base.success(data=data))
 
 
-@router.get('/knowledge_bases/overview', summary='跨知识库聚合', dependencies=[DependsJwtAuth])
+@router.get('/overview', summary='跨知识库聚合', dependencies=[DependsJwtAuth])
 async def get_knowledge_bases_overview(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
@@ -48,7 +48,7 @@ async def get_knowledge_bases_overview(
     return response_base.success(data=KBOverview.model_validate(data))
 
 
-@router.post('/knowledge_bases', summary='创建知识库', dependencies=[DependsJwtAuth])
+@router.post('', summary='创建知识库', dependencies=[DependsJwtAuth])
 async def create_knowledge_base(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
@@ -59,7 +59,7 @@ async def create_knowledge_base(
     return response_base.success(data=KBDetail.model_validate(detail))
 
 
-@router.get('/knowledge_bases/{kb_name}', summary='知识库详情', dependencies=[DependsJwtAuth])
+@router.get('/{kb_name}', summary='知识库详情', dependencies=[DependsJwtAuth])
 async def get_knowledge_base(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
@@ -69,7 +69,7 @@ async def get_knowledge_base(
     return response_base.success(data=KBDetail.model_validate(data))
 
 
-@router.patch('/knowledge_bases/{kb_name}', summary='更新知识库', dependencies=[DependsJwtAuth])
+@router.patch('/{kb_name}', summary='更新知识库', dependencies=[DependsJwtAuth])
 async def update_knowledge_base(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
@@ -81,7 +81,7 @@ async def update_knowledge_base(
     return response_base.success(data=KBDetail.model_validate(detail))
 
 
-@router.delete('/knowledge_bases/{kb_name}', summary='级联删除知识库', dependencies=[DependsJwtAuth])
+@router.delete('/{kb_name}', summary='级联删除知识库', dependencies=[DependsJwtAuth])
 async def delete_knowledge_base(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
@@ -91,7 +91,7 @@ async def delete_knowledge_base(
     return response_base.success(data=KBDeleteResponse(deleted=True, counts=counts))
 
 
-@router.post('/knowledge_bases/{kb_name}/rebuild', summary='重建索引', dependencies=[DependsJwtAuth])
+@router.post('/{kb_name}/rebuild', summary='重建索引', dependencies=[DependsJwtAuth])
 async def rebuild_knowledge_base(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
@@ -102,7 +102,7 @@ async def rebuild_knowledge_base(
 
 
 @router.get(
-    '/knowledge_bases/{kb_name}/format-distribution',
+    '/{kb_name}/format-distribution',
     summary='文件类型分布',
     dependencies=[DependsJwtAuth],
 )
@@ -117,7 +117,7 @@ async def get_knowledge_base_format_distribution(
 
 
 @router.get(
-    '/knowledge_bases/{kb_name}/ingestion-volume',
+    '/{kb_name}/ingestion-volume',
     summary='摄入时间序列',
     dependencies=[DependsJwtAuth],
 )
@@ -133,7 +133,7 @@ async def get_knowledge_base_ingestion_volume(
 
 
 @router.get(
-    '/knowledge_bases/{kb_name}/collections',
+    '/{kb_name}/collections',
     summary='集合统计',
     dependencies=[DependsJwtAuth],
 )
@@ -147,7 +147,7 @@ async def get_knowledge_base_collections(
     return response_base.success(data=[KBCollectionsItem.model_validate(item) for item in data])
 
 
-@router.get('/knowledge_bases/{kb_name}/facets', summary='分面统计', dependencies=[DependsJwtAuth])
+@router.get('/{kb_name}/facets', summary='分面统计', dependencies=[DependsJwtAuth])
 async def get_knowledge_base_facets(
     db: CurrentSession,
     current_namespace: CurrentNamespace,

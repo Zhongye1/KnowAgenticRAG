@@ -34,7 +34,7 @@ def _doc_to_dict(doc: Document) -> dict:
     }
 
 
-@router.get('/documents', summary='文档列表', dependencies=[DependsJwtAuth, DependsPagination])
+@router.get('', summary='文档列表', dependencies=[DependsJwtAuth, DependsPagination])
 async def get_documents(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
@@ -54,7 +54,7 @@ async def get_documents(
     return cast('ResponseSchemaModel[PageData[DocumentItem]]', response_base.success(data=data))
 
 
-@router.get('/documents/{document_id}', summary='文档详情', dependencies=[DependsJwtAuth])
+@router.get('/{document_id}', summary='文档详情', dependencies=[DependsJwtAuth])
 async def get_document(
     db: CurrentSession,
     current_namespace: CurrentNamespace,

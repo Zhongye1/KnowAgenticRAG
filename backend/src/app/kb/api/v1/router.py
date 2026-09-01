@@ -7,6 +7,6 @@ from backend.src.core.config import settings
 
 v1 = APIRouter(prefix=settings.FASTAPI_API_V1_PATH)
 
-v1.include_router(knowledge_bases_router)
-v1.include_router(documents_router)
-v1.include_router(tags_router)
+v1.include_router(knowledge_bases_router, prefix='/knowledge_bases', tags=['知识库'])
+v1.include_router(documents_router, prefix='/documents', tags=['知识库文档'])
+v1.include_router(tags_router, prefix='/tags', tags=['知识库标签'])

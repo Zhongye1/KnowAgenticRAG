@@ -70,8 +70,7 @@ def ensure_base_collections(plugin_namespace: str | None = None) -> None:
 def _ensure_vector_index(client: MilvusClient, collection: str) -> None:
     """确保 vector 字段有 AUTOINDEX（Milvus 加载集合的前置条件）。"""
     try:
-        existing = {str(index.get('field_name')) for index in client.list_indexes(collection)}
-        if 'vector' in existing:
+        if 'idx_vector' in _existing_index_names(client, collection):
             return
         params = IndexParams()
         params.add_index(field_name='vector', index_type='AUTOINDEX', metric_type='COSINE', index_name='idx_vector')
@@ -83,8 +82,7 @@ def _ensure_vector_index(client: MilvusClient, collection: str) -> None:
 def _ensure_kb_index(client: MilvusClient, collection: str) -> None:
     """确保 kb_name 动态字段倒排索引存在（集合已存在但缺索引时补建）。"""
     try:
-        existing = {str(index.get('field_name')) for index in client.list_indexes(collection)}
-        if 'kb_name' in existing:
+        if 'idx_kb_name' in _existing_index_names(client, collection):
             return
         params = IndexParams()
         params.add_index(
@@ -96,6 +94,15 @@ def _ensure_kb_index(client: MilvusClient, collection: str) -> None:
         client.create_index(collection_name=collection, index_params=params)
     except Exception as exc:
         logger.warning('创建 kb_name 倒排索引失败 coll=%s: %s', collection, exc)
+
+
+def _existing_index_names(client: MilvusClient, collection: str) -> set[str]:
+    """返回集合现有索引名集合（兼容 pymilvus 返回字符串列表或 dict 列表两种形态）。"""
+    indexes = client.list_indexes(collection)
+    return {
+        str(index.get('index_name') or index.get('field_name')) if isinstance(index, dict) else str(index)
+        for index in indexes
+    }
 
 
 def list_present_collections(*, plugin_namespace: str | None = None) -> list[str]:

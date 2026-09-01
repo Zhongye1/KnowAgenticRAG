@@ -14,7 +14,7 @@ from backend.src.database.db import CurrentSession
 router = APIRouter()
 
 
-@router.get('/tags', summary='标签目录', dependencies=[DependsJwtAuth])
+@router.get('', summary='标签目录', dependencies=[DependsJwtAuth])
 async def get_tags(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
