@@ -172,6 +172,28 @@ export interface DeleteTaskResultParam {
   pks: number[];
 }
 
+export interface DocumentItem {
+  document_id: string;
+  kb_name: string;
+  plugin_namespace: string;
+  name: string;
+  source_type: string;
+  source_uri?: string | null;
+  pipeline: string;
+  status: string;
+  sha256?: string | null;
+  chunk_count: number;
+  created_time: string;
+  updated_time?: string | null;
+}
+
+export interface DocumentUpdateParam {
+  name?: string | null;
+  source_type?: string | null;
+  pipeline?: string | null;
+  status?: string | null;
+}
+
 export interface GetCaptchaDetail {
   is_enabled: boolean;
   expire_seconds: number;
@@ -528,6 +550,92 @@ export interface HTTPValidationError {
 
 export type JsonValue = unknown;
 
+export interface KBCollectionsItem {
+  collection: string;
+  count: number;
+}
+
+export interface KBCreateParam {
+  kb_name: string;
+  display_name: string;
+  description?: string;
+  theme?: string;
+  icon?: string;
+  pdf_text_page_ratio?: number;
+  embedding_model?: string;
+}
+
+export interface KBDeleteResponse {
+  deleted: boolean;
+  counts?: Record<string, number>;
+}
+
+export interface KBDetail {
+  kb_name: string;
+  plugin_namespace: string;
+  display_name: string;
+  description: string;
+  theme: string;
+  icon: string;
+  pdf_text_page_ratio: number;
+  embedding_model: string;
+  collections_used?: string[];
+  documents?: number;
+  text_vectors?: number;
+  visual_vectors?: number;
+  created_time: string;
+  updated_time?: string | null;
+}
+
+export interface KBFacetItem {
+  field: string;
+  value: string;
+  count: number;
+}
+
+export interface KBFormatDistributionItem {
+  source_type: string;
+  count: number;
+}
+
+export interface KBIngestionVolumeItem {
+  date: string;
+  count: number;
+}
+
+export interface KBItem {
+  kb_name: string;
+  plugin_namespace: string;
+  display_name: string;
+  description: string;
+  theme: string;
+  icon: string;
+  pdf_text_page_ratio: number;
+  embedding_model: string;
+  collections_used?: string[];
+  documents?: number;
+  text_vectors?: number;
+  visual_vectors?: number;
+  created_time: string;
+  updated_time?: string | null;
+}
+
+export interface KBOverview {
+  total_kbs: number;
+  total_documents: number;
+  total_text_vectors: number;
+  total_visual_vectors: number;
+}
+
+export interface KBUpdateParam {
+  display_name?: string | null;
+  description?: string | null;
+  theme?: string | null;
+  icon?: string | null;
+  pdf_text_page_ratio?: number | null;
+  embedding_model?: string | null;
+}
+
 export type MenuType = 0 | 1 | 2 | 3 | 4;
 
 export type NoticeType = 0 | 1;
@@ -539,6 +647,8 @@ export interface RegisterUserParam {
   password: string;
   nickname?: string | null;
   email?: string | null;
+  uuid?: string | null;
+  captcha?: string | null;
 }
 
 export interface ResetPasswordParam {
@@ -552,6 +662,13 @@ export type RoleDataRuleExpressionType = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type RoleDataRuleOperatorType = 0 | 1;
 
 export type StatusType = 0 | 1;
+
+export interface TagItem {
+  keyword: string;
+  document_count: number;
+  kb_names?: string[];
+  node_count: number;
+}
 
 export interface TaskRegisteredDetail {
   name: string;
