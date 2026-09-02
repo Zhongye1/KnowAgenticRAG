@@ -257,8 +257,7 @@ function collectOperations(spec, apiPrefix, { unwrapResponse, mapSchema }) {
           if (schema.$ref) schema = spec.components?.schemas?.[schema.$ref.split('/').pop()] || {};
           const required = new Set(schema.required || []);
           multipart = Object.entries(schema.properties || {})
-            .map(([name, prop]) => ({ name, required: required.has(name), type: mapSchema(prop) }))
-            .filter((f) => f.type.includes('File'));
+            .map(([name, prop]) => ({ name, required: required.has(name), type: mapSchema(prop) }));
         }
       }
 
