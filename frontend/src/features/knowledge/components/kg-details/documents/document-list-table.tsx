@@ -18,9 +18,6 @@ export type DocumentRow = DocumentItem & BaseEntity
 
 type DocumentListTableProps = {
   rows: DocumentRow[]
-  totalPages: number
-  currentPage: number
-  rootUrl: string
   selectedIds: ReadonlySet<string>
   onToggleSelect: (documentId: string) => void
   onTogglePage: (documentIds: string[]) => void
@@ -35,9 +32,6 @@ const CHECKBOX_CLASS =
 
 export function DocumentListTable({
   rows,
-  totalPages,
-  currentPage,
-  rootUrl,
   selectedIds,
   onToggleSelect,
   onTogglePage,
@@ -188,11 +182,6 @@ export function DocumentListTable({
           },
         },
       ]}
-      pagination={{
-        totalPages,
-        currentPage,
-        rootUrl,
-      }}
     />
   )
 }

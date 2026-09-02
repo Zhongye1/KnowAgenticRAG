@@ -1,18 +1,18 @@
-import type { KBFacetItem } from '@/generated/types'
-import { cn } from '@/lib/utils'
+import type { KBFacetItem } from '@/generated/types';
+import { cn } from '@/lib/utils';
 
-import { getSourceTypeLabel } from '../../../utils/file-utils'
-import { documentStatusMeta } from '../../../utils/document-policy'
+import { getSourceTypeLabel } from '../../../utils/file-utils';
+import { documentStatusMeta } from '../../../utils/document-policy';
 
 type DocumentFacetsProps = {
-  facets?: KBFacetItem[]
-  sourceType?: string | null
-  status?: string | null
-  total: number
-  onToggleSourceType: (value: string) => void
-  onToggleStatus: (value: string) => void
-  onReset: () => void
-}
+  facets?: KBFacetItem[];
+  sourceType?: string | null;
+  status?: string | null;
+  total: number;
+  onToggleSourceType: (value: string) => void;
+  onToggleStatus: (value: string) => void;
+  onReset: () => void;
+};
 
 const filterClassName = (active: boolean) =>
   cn(
@@ -20,12 +20,10 @@ const filterClassName = (active: boolean) =>
     active
       ? 'bg-primary-6/10 font-medium text-primary-6'
       : 'text-color-text-2 hover:bg-muted hover:text-color-text-1',
-  )
+  );
 
 function FacetCount({ count }: { count: number }) {
-  return (
-    <span className="tabular-nums text-muted-foreground">{count}</span>
-  )
+  return <span className="tabular-nums text-muted-foreground">{count}</span>;
 }
 
 export function DocumentFacets({
@@ -37,13 +35,13 @@ export function DocumentFacets({
   onToggleStatus,
   onReset,
 }: DocumentFacetsProps) {
-  const sourceTypeFacets = facets.filter((f) => f.field === 'source_type')
-  const statusFacets = facets.filter((f) => f.field === 'status')
-  const pipelineFacets = facets.filter((f) => f.field === 'pipeline')
-  const hasFilter = Boolean(sourceType || status)
+  const sourceTypeFacets = facets.filter((f) => f.field === 'source_type');
+  const statusFacets = facets.filter((f) => f.field === 'status');
+  const pipelineFacets = facets.filter((f) => f.field === 'pipeline');
+  const hasFilter = Boolean(sourceType || status);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pt-2">
       <button
         type="button"
         onClick={onReset}
@@ -93,8 +91,8 @@ export function DocumentFacets({
                   <span
                     className={cn(
                       'size-1.5 shrink-0 rounded-full',
-                      documentStatusMeta(facet.value).className
-                        .split(/\s+/)
+                      documentStatusMeta(facet.value)
+                        .className.split(/\s+/)
                         .find((token) => token.startsWith('text-')) ??
                         'text-muted-foreground',
                     )}
@@ -130,5 +128,5 @@ export function DocumentFacets({
         </div>
       ) : null}
     </div>
-  )
+  );
 }

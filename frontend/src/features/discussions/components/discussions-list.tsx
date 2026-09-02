@@ -35,7 +35,6 @@ export const DiscussionsList = ({
   }
 
   const discussions = discussionsQuery.data?.data;
-  const meta = discussionsQuery.data?.meta;
 
   if (!discussions) return null;
 
@@ -80,13 +79,6 @@ export const DiscussionsList = ({
           },
         },
       ]}
-      pagination={
-        meta && {
-          totalPages: meta.totalPages,
-          currentPage: meta.page,
-          rootUrl: '',
-        }
-      }
     />
   );
 };

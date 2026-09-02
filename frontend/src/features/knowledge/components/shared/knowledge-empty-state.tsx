@@ -14,7 +14,7 @@ export function KnowledgeEmptyState({
   children,
 }: KnowledgeEmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-large border border-dashed border-color-border-2 bg-color-bg-1 px-6 py-16 text-center">
+    <div className="w-full h-full flex flex-col items-center justify-center rounded-large border border-dashed border-color-border-2 bg-color-bg-1 px-6 py-8 text-center">
       {icon ? (
         <div className="mb-4 flex size-12 items-center justify-center rounded-large bg-primary-6/10 text-primary-6">
           {icon}
