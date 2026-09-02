@@ -2,7 +2,16 @@ import { TrashSimple } from '@phosphor-icons/react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { ConfirmationDialog } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useNotifications } from '@/components/ui/notifications';
 
 import { useDeleteKnowledgeBase } from '../api/knowledge-bases';
@@ -16,12 +25,12 @@ export function DeleteKnowledgeBase({
   kbName,
   displayName,
 }: DeleteKnowledgeBaseProps) {
-  const [isDone, setIsDone] = useState(false);
+  const [open, setOpen] = useState(false);
   const { addNotification } = useNotifications();
   const deleteMutation = useDeleteKnowledgeBase({
     mutationConfig: {
       onSuccess: () => {
-        setIsDone(true);
+        setOpen(false);
         addNotification({
           type: 'success',
           title: '知识库已删除',
@@ -32,33 +41,40 @@ export function DeleteKnowledgeBase({
   });
 
   return (
-    <ConfirmationDialog
-      icon="danger"
-      title="删除知识库"
-      body="该操作会彻底清空知识库（向量、文档登记、去重记录），且不可恢复。确定删除吗？"
-      isDone={isDone}
-      cancelButtonText="取消"
-      triggerButton={
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
         <Button
           variant="ghost"
           size="icon-sm"
           aria-label={`删除知识库 ${displayName || kbName}`}
           title="删除知识库"
-          onClick={() => setIsDone(false)}
         >
           <TrashSimple />
         </Button>
-      }
-      confirmButton={
-        <Button
-          disabled={deleteMutation.isPending}
-          type="button"
-          variant="destructive"
-          onClick={() => deleteMutation.mutate({ kb_name: kbName })}
-        >
-          确认删除
-        </Button>
-      }
-    />
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>删除知识库</DialogTitle>
+          <DialogDescription>
+            该操作会彻底清空知识库（向量、文档登记、去重记录），且不可恢复。确定删除吗？
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline" size="sm">
+              取消
+            </Button>
+          </DialogClose>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={deleteMutation.isPending}
+            onClick={() => deleteMutation.mutate({ kb_name: kbName })}
+          >
+            {deleteMutation.isPending ? '删除中…' : '确认删除'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

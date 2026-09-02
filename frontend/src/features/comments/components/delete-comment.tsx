@@ -1,7 +1,17 @@
 import { Trash } from 'lucide-react';
+import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import { ConfirmationDialog } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { useNotifications } from '@/components/ui/notifications';
 
 import { useDeleteComment } from '../api/delete-comment';
@@ -12,11 +22,13 @@ type DeleteCommentProps = {
 };
 
 export const DeleteComment = ({ id, discussionId }: DeleteCommentProps) => {
+  const [open, setOpen] = useState(false);
   const { addNotification } = useNotifications();
   const deleteCommentMutation = useDeleteComment({
     discussionId,
     mutationConfig: {
       onSuccess: () => {
+        setOpen(false);
         addNotification({
           type: 'success',
           title: 'Comment Deleted',
@@ -26,30 +38,36 @@ export const DeleteComment = ({ id, discussionId }: DeleteCommentProps) => {
   });
 
   return (
-    <ConfirmationDialog
-      isDone={deleteCommentMutation.isSuccess}
-      icon="danger"
-      title="Delete Comment"
-      body="Are you sure you want to delete this comment?"
-      triggerButton={
-        <Button
-          variant="destructive"
-          size="sm"
-          icon={<Trash className="size-4" />}
-        >
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="destructive" size="sm">
+          <Trash className="size-4" />
           Delete Comment
         </Button>
-      }
-      confirmButton={
-        <Button
-          isLoading={deleteCommentMutation.isPending}
-          type="button"
-          variant="destructive"
-          onClick={() => deleteCommentMutation.mutate({ commentId: id })}
-        >
-          Delete Comment
-        </Button>
-      }
-    />
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Comment</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete this comment?
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button variant="outline" size="sm">
+              Cancel
+            </Button>
+          </DialogClose>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={deleteCommentMutation.isPending}
+            onClick={() => deleteCommentMutation.mutate({ commentId: id })}
+          >
+            Delete Comment
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
