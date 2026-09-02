@@ -13,6 +13,14 @@ import {
   getKnowledgeBasesOverviewQueryOptions,
   useGetKnowledgeBasesOverview,
 } from '@/generated/knowledge_bases/get-knowledge-bases-overview';
+import {
+  getKnowledgeBaseFacetsQueryOptions,
+  useGetKnowledgeBaseFacets,
+} from '@/generated/knowledge_bases/get-knowledge-base-facets';
+import {
+  getKnowledgeBaseFormatDistributionQueryOptions,
+  useGetKnowledgeBaseFormatDistribution,
+} from '@/generated/knowledge_bases/get-knowledge-base-format-distribution';
 import { updateKnowledgeBase } from '@/generated/knowledge_bases/update-knowledge-base';
 import { MutationConfig, QueryConfig } from '@/lib/react-query';
 
@@ -53,6 +61,38 @@ export const useKnowledgeBaseOverview = ({
   queryConfig?: QueryConfig<typeof getKnowledgeBasesOverviewQueryOptions>;
 } = {}) => {
   return useGetKnowledgeBasesOverview({ queryConfig });
+};
+
+/** 文档分面统计（source_type / pipeline / status），供分类浏览侧栏使用。 */
+export const useKnowledgeBaseFacets = (
+  kbName: string | null,
+  {
+    queryConfig,
+  }: {
+    queryConfig?: QueryConfig<typeof getKnowledgeBaseFacetsQueryOptions>;
+  } = {},
+) => {
+  return useGetKnowledgeBaseFacets({
+    params: { kb_name: kbName ?? '' },
+    queryConfig: { enabled: Boolean(kbName), ...queryConfig },
+  });
+};
+
+/** 文件来源类型分布（source_type 计数），供概览条展示。 */
+export const useKnowledgeBaseFormatDistribution = (
+  kbName: string | null,
+  {
+    queryConfig,
+  }: {
+    queryConfig?: QueryConfig<
+      typeof getKnowledgeBaseFormatDistributionQueryOptions
+    >;
+  } = {},
+) => {
+  return useGetKnowledgeBaseFormatDistribution({
+    params: { kb_name: kbName ?? '' },
+    queryConfig: { enabled: Boolean(kbName), ...queryConfig },
+  });
 };
 
 type UseCreateKnowledgeBaseOptions = {

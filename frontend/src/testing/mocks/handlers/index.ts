@@ -9,6 +9,7 @@ import { commentsHandlers } from './comments';
 import { discussionsHandlers } from './discussions';
 import { teamsHandlers } from './teams';
 import { usersHandlers } from './users';
+import { knowledgeHandlers } from './knowledge';
 
 export const handlers = [
   ...authHandlers,
@@ -16,6 +17,7 @@ export const handlers = [
   ...discussionsHandlers,
   ...teamsHandlers,
   ...usersHandlers,
+  ...knowledgeHandlers,
   http.get(`${env.API_URL}/healthcheck`, async () => {
     await networkDelay();
     return HttpResponse.json({ ok: true });

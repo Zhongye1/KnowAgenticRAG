@@ -119,7 +119,7 @@ const TableCaption = React.forwardRef<
 TableCaption.displayName = 'TableCaption';
 
 export type TableColumn<Entry> = {
-  title: string;
+  title: React.ReactNode;
   field: keyof Entry;
   Cell?({ entry }: { entry: Entry }): React.ReactElement;
 };
@@ -156,15 +156,15 @@ export const Table = <Entry extends BaseEntity>({
         <TableHeader>
           <TableRow>
             {columns.map((column, index) => (
-              <TableHead key={column.title + index}>{column.title}</TableHead>
+              <TableHead key={index}>{column.title}</TableHead>
             ))}
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((entry, entryIndex) => (
             <TableRow key={entry?.id || entryIndex}>
-              {columns.map(({ Cell, field, title }, columnIndex) => (
-                <TableCell key={title + columnIndex}>
+              {columns.map(({ Cell, field }, columnIndex) => (
+                <TableCell key={columnIndex}>
                   {Cell ? <Cell entry={entry} /> : `${entry[field]}`}
                 </TableCell>
               ))}
