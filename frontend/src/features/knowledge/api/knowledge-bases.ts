@@ -1,87 +1,58 @@
-import {
-  queryOptions,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { api } from '@/lib/api-client';
+import { createKnowledgeBase } from '@/generated/knowledge_bases/create-knowledge-base';
+import { deleteKnowledgeBase } from '@/generated/knowledge_bases/delete-knowledge-base';
+import {
+  getKnowledgeBases,
+  getKnowledgeBasesQueryOptions,
+  type GetKnowledgeBasesParams,
+  useGetKnowledgeBases,
+} from '@/generated/knowledge_bases/get-knowledge-bases';
+import {
+  getKnowledgeBasesOverview,
+  getKnowledgeBasesOverviewQueryOptions,
+  useGetKnowledgeBasesOverview,
+} from '@/generated/knowledge_bases/get-knowledge-bases-overview';
+import { updateKnowledgeBase } from '@/generated/knowledge_bases/update-knowledge-base';
 import { MutationConfig, QueryConfig } from '@/lib/react-query';
 
-import {
-  CreateKnowledgeBaseDTO,
-  KnowledgeBase,
-  KnowledgeBaseOverview,
-  PageResult,
-} from './types';
+/**
+ * 知识库 API 层：请求路径、入参与出参类型均来自 OpenAPI 生成的 IDL
+ * （src/generated/knowledge_bases/*），此处只补充 React Query 侧的
+ * 查询默认参数与写操作后的缓存失效。
+ */
 
-export type ListKnowledgeBasesParams = {
-  query?: string;
-  sort?: 'recent' | 'name';
-};
+// 管理页以网格展示全部知识库，一页取满后端允许上限即可，暂不做分页控件
+const KNOWLEDGE_BASES_PAGE_SIZE = 200;
 
-export const getKnowledgeBases = (
-  params?: ListKnowledgeBasesParams,
-): Promise<{
-  data: PageResult<KnowledgeBase>;
-}> => {
-  return api.get('/knowledge_bases', { params });
-};
-
-export const getKnowledgeBasesQueryOptions = (
-  params?: ListKnowledgeBasesParams,
-) => {
-  return queryOptions({
-    queryKey: ['knowledge-bases', params],
-    queryFn: () => getKnowledgeBases(params),
-  });
-};
-
-type UseKnowledgeBasesOptions = {
-  params?: ListKnowledgeBasesParams;
-  queryConfig?: QueryConfig<typeof getKnowledgeBasesQueryOptions>;
-};
+export type ListKnowledgeBasesParams = Pick<
+  GetKnowledgeBasesParams,
+  'query' | 'sort'
+>;
 
 export const useKnowledgeBases = ({
   params,
   queryConfig,
-}: UseKnowledgeBasesOptions = {}) => {
-  return useQuery({
-    ...getKnowledgeBasesQueryOptions(params),
-    ...queryConfig,
+}: {
+  params?: ListKnowledgeBasesParams;
+  queryConfig?: QueryConfig<typeof getKnowledgeBasesQueryOptions>;
+} = {}) => {
+  return useGetKnowledgeBases({
+    params: {
+      query: params?.query,
+      sort: params?.sort,
+      size: KNOWLEDGE_BASES_PAGE_SIZE,
+    },
+    queryConfig,
   });
-};
-
-export const getKnowledgeBaseOverview = (): Promise<{
-  data: KnowledgeBaseOverview;
-}> => {
-  return api.get('/knowledge_bases/overview');
-};
-
-export const getKnowledgeBaseOverviewQueryOptions = () => {
-  return queryOptions({
-    queryKey: ['knowledge-bases-overview'],
-    queryFn: getKnowledgeBaseOverview,
-  });
-};
-
-type UseKnowledgeBaseOverviewOptions = {
-  queryConfig?: QueryConfig<typeof getKnowledgeBaseOverviewQueryOptions>;
 };
 
 export const useKnowledgeBaseOverview = ({
   queryConfig,
-}: UseKnowledgeBaseOverviewOptions = {}) => {
-  return useQuery({
-    ...getKnowledgeBaseOverviewQueryOptions(),
-    ...queryConfig,
-  });
-};
-
-export const createKnowledgeBase = (
-  payload: CreateKnowledgeBaseDTO,
-): Promise<{ data: KnowledgeBase }> => {
-  return api.post('/knowledge_bases', payload);
+}: {
+  queryConfig?: QueryConfig<typeof getKnowledgeBasesOverviewQueryOptions>;
+} = {}) => {
+  return useGetKnowledgeBasesOverview({ queryConfig });
 };
 
 type UseCreateKnowledgeBaseOptions = {
@@ -95,21 +66,33 @@ export const useCreateKnowledgeBase = ({
   const { onSuccess, ...restConfig } = mutationConfig || {};
 
   return useMutation({
+    mutationFn: createKnowledgeBase,
     onSuccess: (...args) => {
-      queryClient.invalidateQueries({
-        queryKey: ['knowledge-bases'],
-      });
+      queryClient.invalidateQueries({ queryKey: ['knowledge_bases'] });
       onSuccess?.(...args);
     },
     ...restConfig,
-    mutationFn: createKnowledgeBase,
   });
 };
 
-export const deleteKnowledgeBase = (
-  kbName: string,
-): Promise<{ data: { deleted: boolean } }> => {
-  return api.delete(`/knowledge_bases/${kbName}`);
+type UseUpdateKnowledgeBaseOptions = {
+  mutationConfig?: MutationConfig<typeof updateKnowledgeBase>;
+};
+
+export const useUpdateKnowledgeBase = ({
+  mutationConfig,
+}: UseUpdateKnowledgeBaseOptions = {}) => {
+  const queryClient = useQueryClient();
+  const { onSuccess, ...restConfig } = mutationConfig || {};
+
+  return useMutation({
+    mutationFn: updateKnowledgeBase,
+    onSuccess: (...args) => {
+      queryClient.invalidateQueries({ queryKey: ['knowledge_bases'] });
+      onSuccess?.(...args);
+    },
+    ...restConfig,
+  });
 };
 
 type UseDeleteKnowledgeBaseOptions = {
@@ -123,13 +106,13 @@ export const useDeleteKnowledgeBase = ({
   const { onSuccess, ...restConfig } = mutationConfig || {};
 
   return useMutation({
+    mutationFn: deleteKnowledgeBase,
     onSuccess: (...args) => {
-      queryClient.invalidateQueries({
-        queryKey: ['knowledge-bases'],
-      });
+      queryClient.invalidateQueries({ queryKey: ['knowledge_bases'] });
       onSuccess?.(...args);
     },
     ...restConfig,
-    mutationFn: deleteKnowledgeBase,
   });
 };
+
+export { getKnowledgeBases, getKnowledgeBasesOverview };

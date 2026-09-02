@@ -1,5 +1,5 @@
 import { PencilSimple, TrashSimple, UploadSimple } from '@phosphor-icons/react';
-import { useRef, useState } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -39,7 +39,7 @@ export function DocumentActions({ kbName, doc }: DocumentActionsProps) {
         addNotification({
           type: 'success',
           title: '文档已重命名',
-          message: data.data.name,
+          message: data.name,
         });
         setRenameOpen(false);
       },
@@ -52,7 +52,7 @@ export function DocumentActions({ kbName, doc }: DocumentActionsProps) {
         addNotification({
           type: 'success',
           title: '文件已替换',
-          message: data.data.name,
+          message: data.name,
         });
       },
       onError: () => {
@@ -77,10 +77,14 @@ export function DocumentActions({ kbName, doc }: DocumentActionsProps) {
     },
   });
 
-  const handleReplaceFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleReplaceFile = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      replaceMutation.mutate({ kbName, documentId: doc.document_id, file });
+      replaceMutation.mutate({
+        kbName,
+        documentId: doc.document_id,
+        file,
+      });
     }
     event.target.value = '';
   };
@@ -91,7 +95,11 @@ export function DocumentActions({ kbName, doc }: DocumentActionsProps) {
       setRenameOpen(false);
       return;
     }
-    renameMutation.mutate({ kbName, documentId: doc.document_id, name: trimmed });
+    renameMutation.mutate({
+      kbName,
+      documentId: doc.document_id,
+      name: trimmed,
+    });
   };
 
   return (
@@ -153,7 +161,12 @@ export function DocumentActions({ kbName, doc }: DocumentActionsProps) {
         size="sm"
         title="删除文档"
         disabled={deleteMutation.isPending}
-        onClick={() => deleteMutation.mutate({ kbName, documentId: doc.document_id })}
+        onClick={() =>
+          deleteMutation.mutate({
+            kbName,
+            documentId: doc.document_id,
+          })
+        }
       >
         <TrashSimple className="size-4" />
       </Button>

@@ -11,16 +11,10 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from '@/components/ui/drawer';
-import { Input, Label, Textarea } from '@/components/ui/form';
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from '@/components/ui/native-select';
 import { useNotifications } from '@/components/ui/notifications';
 
 import { useCreateKnowledgeBase } from '../api/knowledge-bases';
-
-const KNOWLEDGE_BASE_TYPES = ['通用', '文档', '代码', '多媒体'] as const;
+import { KnowledgeBaseFormFields } from './knowledge-base-form-fields';
 
 const slugify = (value: string) =>
   value
@@ -32,8 +26,8 @@ const slugify = (value: string) =>
 export function CreateKnowledgeBase() {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
-  const [type, setType] = useState<string>(KNOWLEDGE_BASE_TYPES[0]);
   const [description, setDescription] = useState('');
+  const [theme, setTheme] = useState('blue');
   const { addNotification } = useNotifications();
   const createMutation = useCreateKnowledgeBase({
     mutationConfig: {
@@ -41,11 +35,12 @@ export function CreateKnowledgeBase() {
         addNotification({
           type: 'success',
           title: '知识库创建成功',
-          message: data.data.display_name,
+          message: data.display_name,
         });
         setOpen(false);
         setName('');
         setDescription('');
+        setTheme('blue');
       },
     },
   });
@@ -53,11 +48,12 @@ export function CreateKnowledgeBase() {
   const kbName = slugify(name);
 
   const handleSubmit = () => {
+    if (!name.trim() || !kbName) return;
     createMutation.mutate({
       kb_name: kbName,
       display_name: name.trim(),
-      description,
-      theme: 'blue',
+      description: description.trim(),
+      theme,
       icon: 'database',
     });
   };
@@ -78,36 +74,14 @@ export function CreateKnowledgeBase() {
           </DrawerDescription>
         </DrawerHeader>
         <div className="flex flex-col gap-4 px-4 pb-4">
-          <Input
-            label="名称"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="例如：产品文档"
-          />
-          {kbName && (
-            <p className="text-xs text-color-text-2">
-              知识库标识：<span className="font-mono">{kbName}</span>
-            </p>
-          )}
-          <div className="flex flex-col gap-1">
-            <Label>类型</Label>
-            <NativeSelect
-              value={type}
-              onChange={(event) => setType(event.target.value)}
-              className="w-full"
-            >
-              {KNOWLEDGE_BASE_TYPES.map((option) => (
-                <NativeSelectOption key={option} value={option}>
-                  {option}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </div>
-          <Textarea
-            label="描述"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-            placeholder="简单描述这个知识库的用途（可选）"
+          <KnowledgeBaseFormFields
+            displayName={name}
+            onDisplayNameChange={setName}
+            description={description}
+            onDescriptionChange={setDescription}
+            theme={theme}
+            onThemeChange={setTheme}
+            kbNamePreview={kbName}
           />
         </div>
         <DrawerFooter>

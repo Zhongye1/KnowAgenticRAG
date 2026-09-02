@@ -12,12 +12,16 @@ import { DocumentItem } from '../types';
 /** 上传文档（存入对象存储） */
 export type UploadDocumentParams = {
   file: File;
+  kb_name: string;
+  source_type?: string | null;
 };
 
 export const uploadDocument = (params: UploadDocumentParams): Promise<DocumentItem> => {
-  const { file } = params;
+  const { file, kb_name, source_type } = params;
   const formData = new FormData();
   formData.append('file', file);
+  formData.append('kb_name', kb_name);
+  if (source_type) formData.append('source_type', source_type);
   return api.post(`/api/v1/documents`, formData).then((res) => res.data);
 };
 

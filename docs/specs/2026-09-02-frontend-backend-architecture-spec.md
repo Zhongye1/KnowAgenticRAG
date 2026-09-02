@@ -286,8 +286,8 @@ Tempo（链路）→ Grafana 大盘。
 - 版本化：`document_version_id` 动态字段已预埋，具体版本化流程待摄取管线完成后实现
   （见 `docs/specs/2026-09-02-document-versioning-spec.md`）。
 - Socket.IO：服务端已注册，前端未接入（依赖列表无 socket.io-client）。
-- 前端 API 契约：`features/knowledge/api` 目前为手写 axios 层；`src/generated/` 由 OpenAPI 生成，
-  但 kb 接口尚未纳入生成管线。
+- 前端 API 契约：kb/documents 已纳入 OpenAPI 生成管线（`src/generated/knowledge_bases/`、
+  `src/generated/documents/`），`features/knowledge/api` 作为薄封装转发生成产物并统一做缓存失效。
 - 占位页面：chat / agents / space / knowledge( skills·tools·mcp ) 等路由存在，对应后端能力待建设。
 - 架构债务：`common.security`（JWT/权限）直接依赖 admin 用户/角色模型，导致所有业务模块经公共层
   间接依赖 admin；已在 §8.1 显式豁免，后续应下沉为独立 auth 模块后移除。
