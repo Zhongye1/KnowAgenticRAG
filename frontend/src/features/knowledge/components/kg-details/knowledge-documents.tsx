@@ -2,12 +2,11 @@ import {
   ArrowLeft,
   ArrowsClockwise,
   Files,
-  MagnifyingGlass,
   TrashSimple,
   UploadSimple,
 } from '@phosphor-icons/react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 
 import { Button } from '@/components/ui/button';
@@ -20,13 +19,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/form';
 import {
   NativeSelect,
   NativeSelectOption,
 } from '@/components/ui/native-select';
 import { useNotifications } from '@/components/ui/notifications';
 import { Spinner } from '@/components/ui/spinner';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn } from '@/lib/utils';
 
 import {
@@ -39,6 +38,7 @@ import {
 import { useKnowledgeBaseFacets } from '../../api/knowledge-bases';
 import type { DocumentItem, KnowledgeBase } from '../../api/types';
 import { KnowledgeEmptyState } from '../shared/knowledge-empty-state';
+import { KnowledgeSearchInput } from '../shared/knowledge-search-input';
 import {
   DOCUMENT_STATUSES,
   DOCUMENT_STATUS_META,
@@ -69,7 +69,8 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
 
   const page = Math.max(1, Number(searchParams.get('page')) || 1);
   const [keyword, setKeyword] = useState('');
-  const [query, setQuery] = useState('');
+  const query = useDebouncedValue(keyword.trim(), 300);
+  const previousQueryRef = useRef(query);
   const [sourceType, setSourceType] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [pageSize, setPageSize] = useState(DOCUMENTS_PAGE_SIZE);
@@ -81,11 +82,11 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
 
-  const clearPage = () => {
+  const clearPage = useCallback(() => {
     if (searchParams.get('page')) {
       setSearchParams({}, { replace: true });
     }
-  };
+  }, [searchParams, setSearchParams]);
 
   const handlePageChange = (nextPage: number) => {
     setSearchParams(nextPage > 1 ? { page: String(nextPage) } : {});
@@ -96,15 +97,13 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
     setSearchParams({}, { replace: true });
   };
 
-  // 搜索词 300ms 防抖
+  // 防抖搜索词生效后回到第一页
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setQuery(keyword.trim());
-      if (keyword.trim() !== query) clearPage();
-    }, 300);
-    return () => window.clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [keyword]);
+    if (query !== previousQueryRef.current) {
+      previousQueryRef.current = query;
+      clearPage();
+    }
+  }, [query, clearPage]);
 
   // 切换知识库时重置分页与选中
   useEffect(() => {
@@ -276,18 +275,12 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
         {/* 筛选与批量操作 */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-0 flex-1 sm:max-w-64">
-            <MagnifyingGlass
-              className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <Input
-              value={keyword}
-              placeholder="搜索文档名称或 ID"
-              className="pl-8"
-              onChange={(event) => setKeyword(event.target.value)}
-            />
-          </div>
+          <KnowledgeSearchInput
+            value={keyword}
+            onValueChange={setKeyword}
+            placeholder="搜索文档名称或 ID"
+            aria-label="搜索文档"
+          />
 
           <NativeSelect
             aria-label="按来源类型筛选"
@@ -387,7 +380,6 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
                   variant="outline"
                   onClick={() => {
                     setKeyword('');
-                    setQuery('');
                     setSourceType(null);
                     setStatus(null);
                     clearPage();

@@ -110,8 +110,8 @@ export function DocumentListPagination({
               onClick={goTo(currentPage - 1)}
               aria-disabled={!canGoPrev}
               className={cn(
-                'h-9 px-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground',
-                !canGoPrev && 'pointer-events-none opacity-40',
+                'h-9 px-2.5 text-sm text-color-text-2 hover:bg-color-fill-2 hover:text-color-text-1 dark:hover:bg-color-fill-2',
+                !canGoPrev && 'pointer-events-none text-color-text-4',
               )}
             />
           </PaginationItem>
@@ -120,7 +120,7 @@ export function DocumentListPagination({
           {pages.map((page, index) => (
             <PaginationItem key={`${page}-${index}`}>
               {page === '...' ? (
-                <PaginationEllipsis className="h-9 w-9 p-0 text-sm text-muted-foreground" />
+                <PaginationEllipsis className="h-9 w-9 p-0 text-sm text-color-text-4" />
               ) : (
                 <PaginationLink
                   href={`?page=${page}`}
@@ -129,8 +129,8 @@ export function DocumentListPagination({
                   className={cn(
                     'h-9 w-9 p-0 text-sm transition-colors',
                     page === currentPage
-                      ? 'border border-border bg-background font-medium text-foreground shadow-sm'
-                      : 'font-normal text-muted-foreground hover:bg-accent hover:text-foreground',
+                      ? 'border border-primary-6 bg-primary-6 font-medium text-color-white hover:bg-primary-6 hover:text-color-white dark:border-primary-6 dark:bg-primary-6 dark:hover:bg-primary-6'
+                      : 'font-normal text-color-text-2 hover:bg-color-fill-2 hover:text-color-text-1 dark:hover:bg-color-fill-2',
                   )}
                 >
                   {page}
@@ -146,8 +146,8 @@ export function DocumentListPagination({
               onClick={goTo(currentPage + 1)}
               aria-disabled={!canGoNext}
               className={cn(
-                'h-9 px-2.5 text-sm text-muted-foreground hover:bg-accent hover:text-foreground',
-                !canGoNext && 'pointer-events-none opacity-40',
+                'h-9 px-2.5 text-sm text-color-text-2 hover:bg-color-fill-2 hover:text-color-text-1 dark:hover:bg-color-fill-2',
+                !canGoNext && 'pointer-events-none text-color-text-4',
               )}
             />
           </PaginationItem>

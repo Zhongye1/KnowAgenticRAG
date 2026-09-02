@@ -1,11 +1,11 @@
-import { MagnifyingGlass } from '@phosphor-icons/react';
 import { useState } from 'react';
 
-import { Input } from '@/components/ui/input';
 import {
   NativeSelect,
   NativeSelectOption,
 } from '@/components/ui/native-select';
+
+import { KnowledgeSearchInput } from './knowledge-search-input';
 
 export type KnowledgeBaseSort = 'recent' | 'name';
 
@@ -56,17 +56,12 @@ export function KnowledgeToolbar({
 
   return (
     <div className="flex items-center gap-3">
-      {/* 去掉 w-full，改为固定/自适应宽度，避免撑开 */}
-      <div className="relative max-w-xs flex-1">
-        <MagnifyingGlass className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={keyword}
-          onChange={(event) => handleKeywordChange(event.target.value)}
-          placeholder={searchPlaceholder}
-          aria-label="搜索知识库"
-          className="pl-8"
-        />
-      </div>
+      <KnowledgeSearchInput
+        value={keyword}
+        onValueChange={handleKeywordChange}
+        placeholder={searchPlaceholder}
+        aria-label="搜索知识库"
+      />
 
       <NativeSelect
         value={currentSort}

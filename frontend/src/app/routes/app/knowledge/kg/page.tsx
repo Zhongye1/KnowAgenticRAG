@@ -1,7 +1,8 @@
 import { BookOpen } from '@phosphor-icons/react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 import { Spinner } from '@/components/ui/spinner';
+import { useDebouncedValue } from '@/hooks/use-debounced-value';
 
 import {
   useKnowledgeBaseOverview,
@@ -18,13 +19,8 @@ import {
 
 export default function KnowledgeBaseRoute() {
   const [keyword, setKeyword] = useState('');
-  const [query, setQuery] = useState('');
   const [sort, setSort] = useState<KnowledgeBaseSort>('recent');
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setQuery(keyword.trim()), 300);
-    return () => window.clearTimeout(timer);
-  }, [keyword]);
+  const query = useDebouncedValue(keyword.trim(), 300);
 
   const kbsQuery = useKnowledgeBases({
     params: { query: query || undefined, sort },
