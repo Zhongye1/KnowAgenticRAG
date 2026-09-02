@@ -6,7 +6,7 @@ import {
   type Icon,
 } from '@phosphor-icons/react';
 
-import type { KnowledgeBaseOverview } from '../api/types';
+import type { KnowledgeBaseOverview } from '../../api/types';
 
 type KnowledgeOverviewProps = {
   data: KnowledgeBaseOverview;

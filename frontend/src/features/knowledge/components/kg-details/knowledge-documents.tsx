@@ -14,8 +14,8 @@ import {
   getDocumentDownloadUrl,
   useDocuments,
   useUploadDocument,
-} from '../api/documents';
-import type { DocumentItem, KnowledgeBase } from '../api/types';
+} from '../../api/documents';
+import type { DocumentItem, KnowledgeBase } from '../../api/types';
 import { DocumentActions } from './document-actions';
 
 type KnowledgeDocumentRow = DocumentItem & BaseEntity;

@@ -13,7 +13,7 @@ import {
 } from '@/components/ui/drawer';
 import { useNotifications } from '@/components/ui/notifications';
 
-import { useCreateKnowledgeBase } from '../api/knowledge-bases';
+import { useCreateKnowledgeBase } from '../../api/knowledge-bases';
 import { KnowledgeBaseFormFields } from './knowledge-base-form-fields';
 
 const slugify = (value: string) =>

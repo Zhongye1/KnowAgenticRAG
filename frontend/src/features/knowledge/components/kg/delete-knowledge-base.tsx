@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dialog';
 import { useNotifications } from '@/components/ui/notifications';
 
-import { useDeleteKnowledgeBase } from '../api/knowledge-bases';
+import { useDeleteKnowledgeBase } from '../../api/knowledge-bases';
 
 type DeleteKnowledgeBaseProps = {
   kbName: string;

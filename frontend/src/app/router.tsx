@@ -93,7 +93,7 @@ export const createAppRouter = (queryClient: QueryClient) =>
                 {
                   index: true,
                   lazy: () =>
-                    import('./routes/app/knowledge/kg').then(
+                    import('./routes/app/knowledge/kg/page').then(
                       convert(queryClient),
                     ),
                 },
@@ -101,7 +101,7 @@ export const createAppRouter = (queryClient: QueryClient) =>
                   path: paths.app.knowledge.kg.detail.path,
                   handle: { title: '知识库文档' },
                   lazy: () =>
-                    import('./routes/app/knowledge/kg-detail').then(
+                    import('./routes/app/knowledge/kg/[kbName]/page').then(
                       convert(queryClient),
                     ),
                 },
@@ -111,7 +111,7 @@ export const createAppRouter = (queryClient: QueryClient) =>
               path: paths.app.knowledge.skills.path,
               handle: { title: '技能' },
               lazy: () =>
-                import('./routes/app/knowledge/skills').then(
+                import('./routes/app/knowledge/skills/page').then(
                   convert(queryClient),
                 ),
             },
@@ -119,7 +119,7 @@ export const createAppRouter = (queryClient: QueryClient) =>
               path: paths.app.knowledge.tools.path,
               handle: { title: '工具' },
               lazy: () =>
-                import('./routes/app/knowledge/tools').then(
+                import('./routes/app/knowledge/tools/page').then(
                   convert(queryClient),
                 ),
             },
@@ -127,7 +127,9 @@ export const createAppRouter = (queryClient: QueryClient) =>
               path: paths.app.knowledge.mcp.path,
               handle: { title: 'MCP' },
               lazy: () =>
-                import('./routes/app/knowledge/mcp').then(convert(queryClient)),
+                import('./routes/app/knowledge/mcp/page').then(
+                  convert(queryClient),
+                ),
             },
           ],
         },

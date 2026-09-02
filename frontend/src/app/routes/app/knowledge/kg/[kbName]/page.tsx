@@ -4,8 +4,8 @@ import { useNavigate, useParams } from 'react-router';
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
 import { paths } from '@/config/paths';
-import { KnowledgeDocuments } from '@/features/knowledge/components/knowledge-documents';
-import { KnowledgeEmptyState } from '@/features/knowledge/components/knowledge-empty-state';
+import { KnowledgeDocuments } from '@/features/knowledge/components/kg-details/knowledge-documents';
+import { KnowledgeEmptyState } from '@/features/knowledge/components/shared/knowledge-empty-state';
 import { useGetKnowledgeBase } from '@/generated/knowledge_bases/get-knowledge-base';
 
 export default function KnowledgeBaseDetailRoute() {

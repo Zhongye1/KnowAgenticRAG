@@ -19,8 +19,8 @@ import {
   useDeleteDocument,
   useReplaceDocumentFile,
   useUpdateDocument,
-} from '../api/documents';
-import type { DocumentItem } from '../api/types';
+} from '../../api/documents';
+import type { DocumentItem } from '../../api/types';
 
 type DocumentActionsProps = {
   kbName: string;

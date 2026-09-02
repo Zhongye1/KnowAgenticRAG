@@ -7,14 +7,14 @@ import {
   useKnowledgeBaseOverview,
   useKnowledgeBases,
 } from '@/features/knowledge/api/knowledge-bases';
-import { CreateKnowledgeBase } from '@/features/knowledge/components/create-knowledge-base';
-import { KnowledgeEmptyState } from '@/features/knowledge/components/knowledge-empty-state';
-import { KnowledgeList } from '@/features/knowledge/components/knowledge-list';
-import { KnowledgeOverview } from '@/features/knowledge/components/knowledge-overview';
+import { CreateKnowledgeBase } from '@/features/knowledge/components/kg/create-knowledge-base';
+import { KnowledgeList } from '@/features/knowledge/components/kg/knowledge-list';
+import { KnowledgeOverview } from '@/features/knowledge/components/kg/knowledge-overview';
+import { KnowledgeEmptyState } from '@/features/knowledge/components/shared/knowledge-empty-state';
 import {
   KnowledgeToolbar,
   type KnowledgeBaseSort,
-} from '@/features/knowledge/components/knowledge-toolbar';
+} from '@/features/knowledge/components/shared/knowledge-toolbar';
 
 export default function KnowledgeBaseRoute() {
   const [keyword, setKeyword] = useState('');

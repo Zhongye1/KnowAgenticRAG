@@ -1,7 +1,7 @@
 import { Wrench } from '@phosphor-icons/react';
 
-import { KnowledgeEmptyState } from '@/features/knowledge/components/knowledge-empty-state';
-import { KnowledgeToolbar } from '@/features/knowledge/components/knowledge-toolbar';
+import { KnowledgeEmptyState } from '@/features/knowledge/components/shared/knowledge-empty-state';
+import { KnowledgeToolbar } from '@/features/knowledge/components/shared/knowledge-toolbar';
 
 export default function ToolsRoute() {
   return (

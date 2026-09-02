@@ -31,7 +31,7 @@ import { useNotifications } from '@/components/ui/notifications';
 import { paths } from '@/config/paths';
 import { cn } from '@/lib/utils';
 
-import type { KnowledgeBase } from '../api/types';
+import type { KnowledgeBase } from '../../api/types';
 import { DeleteKnowledgeBase } from './delete-knowledge-base';
 import { getKnowledgeIcon, getKnowledgeThemeAccent } from './knowledge-theme';
 import { UpdateKnowledgeBase } from './update-knowledge-base';

@@ -11,8 +11,8 @@ import {
 } from '@/components/ui/drawer';
 import { useNotifications } from '@/components/ui/notifications';
 
-import { useUpdateKnowledgeBase } from '../api/knowledge-bases';
-import type { KnowledgeBase } from '../api/types';
+import { useUpdateKnowledgeBase } from '../../api/knowledge-bases';
+import type { KnowledgeBase } from '../../api/types';
 import { KnowledgeBaseFormFields } from './knowledge-base-form-fields';
 import { isKnowledgeTheme } from './knowledge-theme';
 
