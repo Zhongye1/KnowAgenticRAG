@@ -39,6 +39,11 @@ export const paths = {
       kg: {
         path: 'kg',
         getHref: () => '/app/knowledge/kg',
+        detail: {
+          path: ':kbName',
+          getHref: (kbName: string) =>
+            `/app/knowledge/kg/${encodeURIComponent(kbName)}`,
+        },
       },
       skills: {
         path: 'skills',

@@ -35,7 +35,7 @@ export function KnowledgeToolbar({
   onChange,
   sort,
   onSortChange,
-  total,
+  // total,
 }: KnowledgeToolbarProps) {
   const [innerKeyword, setInnerKeyword] = useState('');
   const [innerSort, setInnerSort] = useState<KnowledgeBaseSort>('recent');
@@ -55,8 +55,9 @@ export function KnowledgeToolbar({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="relative w-full max-w-xs">
+    <div className="flex items-center gap-3">
+      {/* 去掉 w-full，改为固定/自适应宽度，避免撑开 */}
+      <div className="relative max-w-xs flex-1">
         <MagnifyingGlass className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           value={keyword}
@@ -66,6 +67,7 @@ export function KnowledgeToolbar({
           className="pl-8"
         />
       </div>
+
       <NativeSelect
         value={currentSort}
         onChange={(event) => handleSortChange(event.target.value)}
@@ -77,11 +79,12 @@ export function KnowledgeToolbar({
           </NativeSelectOption>
         ))}
       </NativeSelect>
+      {/* 
       {typeof total === 'number' ? (
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
           共 {total} 个知识库
         </span>
-      ) : null}
+      ) : null} */}
     </div>
   );
 }

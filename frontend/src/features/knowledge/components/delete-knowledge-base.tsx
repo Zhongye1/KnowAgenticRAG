@@ -1,6 +1,3 @@
-import { TrashSimple } from '@phosphor-icons/react';
-import { useState } from 'react';
-
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -10,7 +7,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import { useNotifications } from '@/components/ui/notifications';
 
@@ -19,18 +15,21 @@ import { useDeleteKnowledgeBase } from '../api/knowledge-bases';
 type DeleteKnowledgeBaseProps = {
   kbName: string;
   displayName?: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 };
 
 export function DeleteKnowledgeBase({
   kbName,
   displayName,
+  open,
+  onOpenChange,
 }: DeleteKnowledgeBaseProps) {
-  const [open, setOpen] = useState(false);
   const { addNotification } = useNotifications();
   const deleteMutation = useDeleteKnowledgeBase({
     mutationConfig: {
       onSuccess: () => {
-        setOpen(false);
+        onOpenChange(false);
         addNotification({
           type: 'success',
           title: '知识库已删除',
@@ -41,17 +40,7 @@ export function DeleteKnowledgeBase({
   });
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`删除知识库 ${displayName || kbName}`}
-          title="删除知识库"
-        >
-          <TrashSimple />
-        </Button>
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>删除知识库</DialogTitle>

@@ -45,10 +45,14 @@ export function KnowledgeBaseFormFields({
         <p className="text-xs text-muted-foreground">
           知识库标识：<span className="font-mono">{kbNamePreview}</span>
         </p>
-      ) : null}
+      ) : (
+        <p className="text-xs" aria-hidden="true">
+          &nbsp;
+        </p>
+      )}
       <div className="flex flex-col gap-1.5">
         <Label>主题色</Label>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 pt-2">
           {KNOWLEDGE_THEME_OPTIONS.map((option) => {
             const accent = getKnowledgeThemeAccent(option.value);
             const active = theme === option.value;
@@ -61,7 +65,7 @@ export function KnowledgeBaseFormFields({
                 title={option.label}
                 onClick={() => onThemeChange(option.value)}
                 className={cn(
-                  'size-6 cursor-pointer rounded-full transition-all',
+                  'size-4 cursor-pointer rounded-full transition-all',
                   accent.swatch,
                   active
                     ? cn(

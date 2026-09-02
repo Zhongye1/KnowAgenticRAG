@@ -1,4 +1,3 @@
-import { PencilSimple } from '@phosphor-icons/react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,6 @@ import {
   DrawerFooter,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
 } from '@/components/ui/drawer';
 import { useNotifications } from '@/components/ui/notifications';
 
@@ -20,15 +18,21 @@ import { isKnowledgeTheme } from './knowledge-theme';
 
 type UpdateKnowledgeBaseProps = {
   kb: KnowledgeBase;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 };
 
-export function UpdateKnowledgeBase({ kb }: UpdateKnowledgeBaseProps) {
-  const [open, setOpen] = useState(false);
+export function UpdateKnowledgeBase({
+  kb,
+  open,
+  onOpenChange,
+}: UpdateKnowledgeBaseProps) {
   const [displayName, setDisplayName] = useState(kb.display_name);
   const [description, setDescription] = useState(kb.description);
   const [theme, setTheme] = useState<string>(
     isKnowledgeTheme(kb.theme) ? kb.theme : 'blue',
   );
+  const [prevOpen, setPrevOpen] = useState(open);
   const { addNotification } = useNotifications();
   const updateMutation = useUpdateKnowledgeBase({
     mutationConfig: {
@@ -38,19 +42,19 @@ export function UpdateKnowledgeBase({ kb }: UpdateKnowledgeBaseProps) {
           title: '知识库已更新',
           message: data.display_name,
         });
-        setOpen(false);
+        onOpenChange(false);
       },
     },
   });
 
-  const handleOpenChange = (next: boolean) => {
-    setOpen(next);
-    if (next) {
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
       setDisplayName(kb.display_name);
       setDescription(kb.description);
       setTheme(isKnowledgeTheme(kb.theme) ? kb.theme : 'blue');
     }
-  };
+  }
 
   const handleSave = () => {
     const trimmedName = displayName.trim();
@@ -66,17 +70,7 @@ export function UpdateKnowledgeBase({ kb }: UpdateKnowledgeBaseProps) {
   };
 
   return (
-    <Drawer direction="right" open={open} onOpenChange={handleOpenChange}>
-      <DrawerTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`编辑知识库 ${kb.display_name}`}
-          title="编辑知识库"
-        >
-          <PencilSimple />
-        </Button>
-      </DrawerTrigger>
+    <Drawer direction="right" open={open} onOpenChange={onOpenChange}>
       <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>编辑知识库</DrawerTitle>

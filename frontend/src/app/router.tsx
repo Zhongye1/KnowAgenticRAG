@@ -89,8 +89,23 @@ export const createAppRouter = (queryClient: QueryClient) =>
             {
               path: paths.app.knowledge.kg.path,
               handle: { title: '知识库' },
-              lazy: () =>
-                import('./routes/app/knowledge/kg').then(convert(queryClient)),
+              children: [
+                {
+                  index: true,
+                  lazy: () =>
+                    import('./routes/app/knowledge/kg').then(
+                      convert(queryClient),
+                    ),
+                },
+                {
+                  path: paths.app.knowledge.kg.detail.path,
+                  handle: { title: '知识库文档' },
+                  lazy: () =>
+                    import('./routes/app/knowledge/kg-detail').then(
+                      convert(queryClient),
+                    ),
+                },
+              ],
             },
             {
               path: paths.app.knowledge.skills.path,

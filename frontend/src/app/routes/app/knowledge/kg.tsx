@@ -8,7 +8,6 @@ import {
   useKnowledgeBases,
 } from '@/features/knowledge/api/knowledge-bases';
 import { CreateKnowledgeBase } from '@/features/knowledge/components/create-knowledge-base';
-import { KnowledgeDocuments } from '@/features/knowledge/components/knowledge-documents';
 import { KnowledgeEmptyState } from '@/features/knowledge/components/knowledge-empty-state';
 import { KnowledgeList } from '@/features/knowledge/components/knowledge-list';
 import { KnowledgeOverview } from '@/features/knowledge/components/knowledge-overview';
@@ -21,7 +20,6 @@ export default function KnowledgeBaseRoute() {
   const [keyword, setKeyword] = useState('');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<KnowledgeBaseSort>('recent');
-  const [selectedKbName, setSelectedKbName] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => setQuery(keyword.trim()), 300);
@@ -36,16 +34,6 @@ export default function KnowledgeBaseRoute() {
   const items = kbsQuery.data?.items ?? [];
   const total = kbsQuery.data?.total ?? items.length;
 
-  const handleKeywordChange = (value: string) => {
-    setKeyword(value);
-    setSelectedKbName(null);
-  };
-
-  const handleSortChange = (value: KnowledgeBaseSort) => {
-    setSort(value);
-    setSelectedKbName(null);
-  };
-
   if (kbsQuery.isLoading) {
     return (
       <div className="flex h-48 w-full items-center justify-center">
@@ -54,8 +42,6 @@ export default function KnowledgeBaseRoute() {
     );
   }
 
-  const selectedKb = items.find((kb) => kb.kb_name === selectedKbName) ?? null;
-
   if (items.length === 0) {
     const searching = Boolean(query);
     return (
@@ -63,9 +49,9 @@ export default function KnowledgeBaseRoute() {
         <KnowledgeToolbar
           searchPlaceholder="搜索知识库"
           value={keyword}
-          onChange={handleKeywordChange}
+          onChange={setKeyword}
           sort={sort}
-          onSortChange={handleSortChange}
+          onSortChange={setSort}
           total={total}
         />
         <KnowledgeEmptyState
@@ -89,24 +75,15 @@ export default function KnowledgeBaseRoute() {
         <KnowledgeToolbar
           searchPlaceholder="搜索知识库"
           value={keyword}
-          onChange={handleKeywordChange}
+          onChange={setKeyword}
           sort={sort}
-          onSortChange={handleSortChange}
+          onSortChange={setSort}
           total={total}
         />
         <CreateKnowledgeBase />
       </div>
       {overviewQuery.data && <KnowledgeOverview data={overviewQuery.data} />}
-      <KnowledgeList
-        items={items}
-        isLoading={kbsQuery.isLoading}
-        selectedKbName={selectedKbName}
-        onSelect={setSelectedKbName}
-      />
-      <KnowledgeDocuments
-        kb={selectedKb}
-        onClose={() => setSelectedKbName(null)}
-      />
+      <KnowledgeList items={items} isLoading={kbsQuery.isLoading} />
     </div>
   );
 }

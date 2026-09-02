@@ -1,4 +1,4 @@
-import { UploadSimple, XIcon } from '@phosphor-icons/react';
+import { ArrowLeft, UploadSimple } from '@phosphor-icons/react';
 import dayjs from 'dayjs';
 import { useMemo, useRef, type ChangeEvent } from 'react';
 
@@ -21,8 +21,9 @@ import { DocumentActions } from './document-actions';
 type KnowledgeDocumentRow = DocumentItem & BaseEntity;
 
 type KnowledgeDocumentsProps = {
-  kb: KnowledgeBase | null;
-  onClose: () => void;
+  kb: KnowledgeBase;
+  /** 可选：文档详情页的返回入口（列表页内联面板不再使用） */
+  onBack?: () => void;
 };
 
 const STATUS_STYLES: Record<string, string> = {
@@ -34,10 +35,10 @@ const STATUS_STYLES: Record<string, string> = {
   failed: 'bg-danger-6/10 text-danger-6',
 };
 
-export function KnowledgeDocuments({ kb, onClose }: KnowledgeDocumentsProps) {
+export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { addNotification } = useNotifications();
-  const documentsQuery = useDocuments(kb?.kb_name ?? null);
+  const documentsQuery = useDocuments(kb.kb_name);
   const uploadMutation = useUploadDocument({
     mutationConfig: {
       onSuccess: (data) => {
@@ -67,8 +68,6 @@ export function KnowledgeDocuments({ kb, onClose }: KnowledgeDocumentsProps) {
     [documentsQuery.data],
   );
 
-  if (!kb) return null;
-
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -95,8 +94,20 @@ export function KnowledgeDocuments({ kb, onClose }: KnowledgeDocumentsProps) {
   return (
     <Card size="sm" data-slot="knowledge-documents-panel">
       <CardHeader className="flex-row items-center justify-between gap-3">
-        <div className="min-w-0">
-          <CardTitle className="truncate">
+        <div className="flex min-w-0 items-center gap-2">
+          {onBack ? (
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="返回知识库列表"
+              title="返回知识库列表"
+              className="shrink-0"
+              onClick={onBack}
+            >
+              <ArrowLeft />
+            </Button>
+          ) : null}
+          <CardTitle className="min-w-0 truncate">
             {kb.display_name}
             <span className="ml-2 font-mono text-xs font-normal text-muted-foreground">
               {kb.kb_name}
@@ -117,15 +128,6 @@ export function KnowledgeDocuments({ kb, onClose }: KnowledgeDocumentsProps) {
           >
             <UploadSimple className="size-4" />
             {uploadMutation.isPending ? '上传中…' : '上传文档'}
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="收起文档面板"
-            title="收起文档面板"
-            onClick={onClose}
-          >
-            <XIcon />
           </Button>
         </div>
       </CardHeader>
