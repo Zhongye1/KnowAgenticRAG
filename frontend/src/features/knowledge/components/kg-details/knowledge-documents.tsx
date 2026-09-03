@@ -19,11 +19,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  NativeSelect,
-  NativeSelectOption,
-} from '@/components/ui/native-select';
 import { useNotifications } from '@/components/ui/notifications';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Spinner } from '@/components/ui/spinner';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { cn } from '@/lib/utils';
@@ -282,39 +285,45 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
             aria-label="搜索文档"
           />
 
-          <NativeSelect
-            aria-label="按来源类型筛选"
+          <Select
             value={sourceType ?? 'all'}
-            onChange={(event) => {
-              const value = event.target.value;
+            onValueChange={(value) => {
               setSourceType(value === 'all' ? null : value);
               clearPage();
             }}
           >
-            <NativeSelectOption value="all">全部来源</NativeSelectOption>
-            {sourceTypeOptions.map((value) => (
-              <NativeSelectOption key={value} value={value}>
-                {value}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+            <SelectTrigger aria-label="按来源类型筛选">
+              <SelectValue placeholder="按来源类型筛选" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部来源</SelectItem>
+              {sourceTypeOptions.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {value}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          <NativeSelect
-            aria-label="按状态筛选"
+          <Select
             value={status ?? 'all'}
-            onChange={(event) => {
-              const value = event.target.value;
+            onValueChange={(value) => {
               setStatus(value === 'all' ? null : value);
               clearPage();
             }}
           >
-            <NativeSelectOption value="all">全部状态</NativeSelectOption>
-            {DOCUMENT_STATUSES.map((value) => (
-              <NativeSelectOption key={value} value={value}>
-                {DOCUMENT_STATUS_META[value].label}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+            <SelectTrigger aria-label="按状态筛选">
+              <SelectValue placeholder="按状态筛选" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">全部状态</SelectItem>
+              {DOCUMENT_STATUSES.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {DOCUMENT_STATUS_META[value].label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           <span className="ml-auto text-xs text-muted-foreground tabular-nums">
             共 {total} 个文档

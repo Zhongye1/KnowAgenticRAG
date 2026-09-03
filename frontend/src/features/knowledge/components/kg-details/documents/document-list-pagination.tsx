@@ -1,9 +1,12 @@
 import type { MouseEvent } from 'react';
 
 import {
-  NativeSelect,
-  NativeSelectOption,
-} from '@/components/ui/native-select';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   Pagination,
   PaginationContent,
@@ -78,25 +81,28 @@ export function DocumentListPagination({
   return (
     <div className="flex items-center gap-2 py-1 pr-1.5 pl-3">
       {/* Page Size Selector */}
-      <label
-        htmlFor="documents-page-size"
-        className="text-xs whitespace-nowrap text-muted-foreground"
-      >
+      <span className="text-xs whitespace-nowrap text-muted-foreground">
         每页条数
-      </label>
-      <NativeSelect
-        id="documents-page-size"
-        size="sm"
+      </span>
+      <Select
         value={String(pageSize)}
-        className="[&_select]:rounded-small [&_select]:border-transparent [&_select]:bg-transparent"
-        onChange={(event) => onPageSizeChange(Number(event.target.value))}
+        onValueChange={(value) => onPageSizeChange(Number(value))}
       >
-        {pageSizeOptions.map((option) => (
-          <NativeSelectOption key={option} value={String(option)}>
-            {option}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
+        <SelectTrigger
+          size="sm"
+          aria-label="每页条数"
+          className="rounded-small border-transparent bg-transparent"
+        >
+          <SelectValue placeholder="每页条数" />
+        </SelectTrigger>
+        <SelectContent>
+          {pageSizeOptions.map((option) => (
+            <SelectItem key={option} value={String(option)}>
+              {option}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       <div className="mx-1 h-4 w-px bg-border" aria-hidden="true" />
 

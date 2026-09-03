@@ -1,9 +1,12 @@
 import { useState } from 'react';
 
 import {
-  NativeSelect,
-  NativeSelectOption,
-} from '@/components/ui/native-select';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 import { KnowledgeSearchInput } from './knowledge-search-input';
 
@@ -63,17 +66,18 @@ export function KnowledgeToolbar({
         aria-label="搜索知识库"
       />
 
-      <NativeSelect
-        value={currentSort}
-        onChange={(event) => handleSortChange(event.target.value)}
-        aria-label="排序方式"
-      >
-        {SORT_OPTIONS.map((option) => (
-          <NativeSelectOption key={option.value} value={option.value}>
-            {option.label}
-          </NativeSelectOption>
-        ))}
-      </NativeSelect>
+      <Select value={currentSort} onValueChange={handleSortChange}>
+        <SelectTrigger aria-label="排序方式">
+          <SelectValue placeholder="排序方式" />
+        </SelectTrigger>
+        <SelectContent>
+          {SORT_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {/* 
       {typeof total === 'number' ? (
         <span className="text-xs text-muted-foreground whitespace-nowrap">
