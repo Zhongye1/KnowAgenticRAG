@@ -12,7 +12,7 @@ import { DeleteDataScopeParam } from '../types';
 /** 批量删除数据范围 */
 
 export const deleteDataScopes = (data: DeleteDataScopeParam): Promise<unknown> => {
-  return api.delete(`/api/v1/sys/data-scopes`, data).then((res) => res.data);
+  return api.delete(`/api/v1/sys/data-scopes`, { data }).then((res) => res.data);
 };
 
 type UseDeleteDataScopesOptions = {

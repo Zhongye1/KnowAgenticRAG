@@ -12,7 +12,7 @@ import { DeleteTaskResultParam } from '../types';
 /** 批量删除任务结果 */
 
 export const deleteTaskResult = (data: DeleteTaskResultParam): Promise<unknown> => {
-  return api.delete(`/api/v1/task-results`, data).then((res) => res.data);
+  return api.delete(`/api/v1/task-results`, { data }).then((res) => res.data);
 };
 
 type UseDeleteTaskResultOptions = {

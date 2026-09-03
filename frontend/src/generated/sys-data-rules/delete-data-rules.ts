@@ -12,7 +12,7 @@ import { DeleteDataRuleParam } from '../types';
 /** 批量删除数据规则 */
 
 export const deleteDataRules = (data: DeleteDataRuleParam): Promise<unknown> => {
-  return api.delete(`/api/v1/sys/data-rules`, data).then((res) => res.data);
+  return api.delete(`/api/v1/sys/data-rules`, { data }).then((res) => res.data);
 };
 
 type UseDeleteDataRulesOptions = {

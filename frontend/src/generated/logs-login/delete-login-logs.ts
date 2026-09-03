@@ -12,7 +12,7 @@ import { DeleteLoginLogParam } from '../types';
 /** 批量删除登录日志 */
 
 export const deleteLoginLogs = (data: DeleteLoginLogParam): Promise<unknown> => {
-  return api.delete(`/api/v1/logs/login`, data).then((res) => res.data);
+  return api.delete(`/api/v1/logs/login`, { data }).then((res) => res.data);
 };
 
 type UseDeleteLoginLogsOptions = {

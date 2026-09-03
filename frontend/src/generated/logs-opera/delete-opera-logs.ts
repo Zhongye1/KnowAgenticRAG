@@ -12,7 +12,7 @@ import { DeleteOperaLogParam } from '../types';
 /** 批量删除操作日志 */
 
 export const deleteOperaLogs = (data: DeleteOperaLogParam): Promise<unknown> => {
-  return api.delete(`/api/v1/logs/opera`, data).then((res) => res.data);
+  return api.delete(`/api/v1/logs/opera`, { data }).then((res) => res.data);
 };
 
 type UseDeleteOperaLogsOptions = {

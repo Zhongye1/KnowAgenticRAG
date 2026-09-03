@@ -12,7 +12,7 @@ import { DeleteDictDataParam } from '../types';
 /** 批量删除字典数据 */
 
 export const deleteDictDatas = (data: DeleteDictDataParam): Promise<unknown> => {
-  return api.delete(`/api/v1/sys/dict-datas`, data).then((res) => res.data);
+  return api.delete(`/api/v1/sys/dict-datas`, { data }).then((res) => res.data);
 };
 
 type UseDeleteDictDatasOptions = {

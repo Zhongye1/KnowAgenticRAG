@@ -12,7 +12,7 @@ import { DeleteDictTypeParam } from '../types';
 /** 批量删除字典类型 */
 
 export const deleteDictTypes = (data: DeleteDictTypeParam): Promise<unknown> => {
-  return api.delete(`/api/v1/sys/dict-types`, data).then((res) => res.data);
+  return api.delete(`/api/v1/sys/dict-types`, { data }).then((res) => res.data);
 };
 
 type UseDeleteDictTypesOptions = {

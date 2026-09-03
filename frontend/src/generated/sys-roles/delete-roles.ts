@@ -12,7 +12,7 @@ import { DeleteRoleParam } from '../types';
 /** 批量删除角色 */
 
 export const deleteRoles = (data: DeleteRoleParam): Promise<unknown> => {
-  return api.delete(`/api/v1/sys/roles`, data).then((res) => res.data);
+  return api.delete(`/api/v1/sys/roles`, { data }).then((res) => res.data);
 };
 
 type UseDeleteRolesOptions = {

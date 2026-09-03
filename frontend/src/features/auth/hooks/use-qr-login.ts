@@ -38,17 +38,17 @@ export function useQrLogin(
   const [qrImage, setQrImage] = useState('');
   const [error, setError] = useState<unknown>(null);
   const uuidRef = useRef<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval>>();
-  const expireTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const expireTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const stopPolling = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = undefined;
+    timerRef.current = null;
   }, []);
 
   const clearExpireTimer = useCallback(() => {
     if (expireTimerRef.current) clearTimeout(expireTimerRef.current);
-    expireTimerRef.current = undefined;
+    expireTimerRef.current = null;
   }, []);
 
   const refresh = useCallback(async () => {

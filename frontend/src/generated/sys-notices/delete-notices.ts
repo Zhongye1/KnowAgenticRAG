@@ -12,7 +12,7 @@ import { DeleteNoticeParam } from '../types';
 /** 批量删除通知公告 */
 
 export const deleteNotices = (data: DeleteNoticeParam): Promise<unknown> => {
-  return api.delete(`/api/v1/sys/notices`, data).then((res) => res.data);
+  return api.delete(`/api/v1/sys/notices`, { data }).then((res) => res.data);
 };
 
 type UseDeleteNoticesOptions = {

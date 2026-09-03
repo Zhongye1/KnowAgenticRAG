@@ -412,7 +412,12 @@ function generateOperationModule(op, { parseTypeName, referencedTypes }) {
   } else if (bodyOnly) {
     const bodyType = body.ref ? parseTypeName(body.ref) : `${paramType}Data`;
     out.push(`export const ${fnName} = (data: ${bodyType}): Promise<${returnType}> => {`);
-    out.push(`  return api.${method}(${urlExpr}, data).then((res) => res.data);`);
+    if (method === 'delete') {
+      // axios delete 的第二个参数是 config，body 需要包成 { data }
+      out.push(`  return api.delete(${urlExpr}, { data }).then((res) => res.data);`);
+    } else {
+      out.push(`  return api.${method}(${urlExpr}, data).then((res) => res.data);`);
+    }
   } else if (method === 'get') {
     out.push(`export const ${fnName} = (params: ${paramType}): Promise<${returnType}> => {`);
     out.push(`  const { ${destructured.join(', ')} } = params;`);
