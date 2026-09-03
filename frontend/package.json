@@ -94,6 +94,7 @@
     "jsdom": "^24.0.0",
     "lint-staged": "^15.2.2",
     "msw": "^2.2.14",
+    "oxc-transform-react": "^0.145.0",
     "oxlint": "^1.80.0",
     "pino-http": "^10.1.0",
     "pino-pretty": "^11.1.0",

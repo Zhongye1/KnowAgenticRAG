@@ -39,7 +39,9 @@ function stripFragmentInspector(): PluginOption {
 export default defineConfig({
   base: './',
   plugins: [
-    react(),
+    // 启用 React Compiler(oxc-transform-react 原生实现)。
+    // 编译期自动 memoization,可移除大部分手工 useMemo/memo。
+    react({ compiler: true }),
     inspector({
       enabled: ISDEV,
       toggleButtonVisibility: 'always', // always默认展示切换icon；never不展示icon（使用快捷键唤醒）
