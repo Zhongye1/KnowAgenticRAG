@@ -92,6 +92,13 @@ async def register_init(app: FastAPI) -> AsyncGenerator[None, None]:
     ensure_base_collections()
     ensure_ragf_template_collection()
 
+    # 幂等确保默认 modelscope provider（D11/D16；表已由 create_tables 建好）
+    from backend.src.app.model_provider.service.provider_service import provider_service
+    from backend.src.database.db import async_db_session
+
+    async with async_db_session() as session:
+        await provider_service.ensure_default_modelscope(session)
+
     # 初始化对象存储 minio
     await minio_client.init()
 
