@@ -77,6 +77,11 @@ async def register_init(app: FastAPI) -> AsyncGenerator[None, None]:
     # 创建数据库表
     await create_tables()
 
+    # kb 域演进列补充（knowledge_bases.query_params / documents.ingest_params|error_message）
+    from backend.src.database.ragf_schema_migrations import ensure_ragf_column_migrations
+
+    await ensure_ragf_column_migrations()
+
     # 初始化 redis
     await redis_client.init()
 

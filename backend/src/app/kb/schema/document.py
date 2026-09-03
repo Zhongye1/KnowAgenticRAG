@@ -20,6 +20,9 @@ class DocumentItem(SchemaBase):
     status: str = Field(description='状态')
     sha256: str | None = Field(None, description='文件指纹')
     chunk_count: int = Field(description='文本块数')
+    active_version: int = Field(description='当前版本')
+    ingest_params: dict = Field(default_factory=dict, description='本次摄取参数指纹')
+    error_message: str | None = Field(None, description='最近一次失败原因')
     created_time: datetime = Field(description='创建时间')
     updated_time: datetime | None = Field(None, description='更新时间')
 

@@ -5,7 +5,7 @@ from uuid import uuid4
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.src.app.kb.crud import dedup_dao, document_dao, keyword_dao, knowledge_base_dao
+from backend.src.app.kb.crud import chunk_dao, dedup_dao, document_dao, keyword_dao, knowledge_base_dao
 from backend.src.app.kb.crud.crud_dedup import compute_sha256_bytes
 from backend.src.app.kb.model import Document
 from backend.src.app.kb.schema.document import DocumentUpdateParam
@@ -165,6 +165,7 @@ class DocumentService:
         counts: dict[str, int] = {
             'milvus_text': 0,
             'milvus_visual': 0,
+            'chunks': 0,
             'documents': 0,
             'dedup': 0,
             'keywords': 0,
@@ -173,6 +174,7 @@ class DocumentService:
         text_coll, visual_coll = base_collection_names()
         counts['milvus_text'] = delete_vectors_by_document(text_coll, doc.kb_name, document_id, plugin_namespace=ns)
         counts['milvus_visual'] = delete_vectors_by_document(visual_coll, doc.kb_name, document_id, plugin_namespace=ns)
+        counts['chunks'] = await chunk_dao.delete_by_document(db, document_id, kb_name=doc.kb_name, plugin_namespace=ns)
 
         if doc.source_uri:
             await delete_document_object(doc.source_uri)

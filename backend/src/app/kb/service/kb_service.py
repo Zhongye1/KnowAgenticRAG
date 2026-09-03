@@ -4,7 +4,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.src.app.kb.crud import dedup_dao, document_dao, keyword_dao, knowledge_base_dao
+from backend.src.app.kb.crud import chunk_dao, dedup_dao, document_dao, keyword_dao, knowledge_base_dao
 from backend.src.app.kb.model import KnowledgeBase
 from backend.src.app.kb.schema.knowledge_base import KBCreateParam, KBUpdateParam
 from backend.src.app.kb.service.document_storage import delete_document_object
@@ -52,6 +52,7 @@ class KnowledgeBaseService:
             'icon': kb.icon,
             'pdf_text_page_ratio': kb.pdf_text_page_ratio,
             'embedding_model': kb.embedding_model,
+            'query_params': kb.query_params or {},
             'collections_used': kb.collections_used,
             'created_time': kb.created_time,
             'updated_time': kb.updated_time,
@@ -85,6 +86,7 @@ class KnowledgeBaseService:
         counts: dict[str, int] = {
             'milvus_text': 0,
             'milvus_visual': 0,
+            'chunks': 0,
             'documents': 0,
             'dedup': 0,
             'keywords': 0,
@@ -93,6 +95,7 @@ class KnowledgeBaseService:
         text_coll, visual_coll = base_collection_names()
         counts['milvus_text'] = delete_vectors_by_kb(text_coll, kb_name, plugin_namespace=ns)
         counts['milvus_visual'] = delete_vectors_by_kb(visual_coll, kb_name, plugin_namespace=ns)
+        counts['chunks'] = await chunk_dao.delete_by_kb(db, kb_name, plugin_namespace=ns)
         object_keys = await dedup_dao.list_object_keys_by_kb(db, kb_name, plugin_namespace=ns)
         counts['objects'] = len(object_keys)
         for object_key in object_keys:

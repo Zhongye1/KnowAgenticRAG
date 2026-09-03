@@ -32,6 +32,11 @@ class KnowledgeBase(MappedBase):
     embedding_model: Mapped[str] = mapped_column(
         Text, default='bge-m3', comment='嵌入模型（换模型=重建 KB，为 Phase 2 留迁移通道）'
     )
+    query_params: Mapped[dict] = mapped_column(
+        JSON,
+        default=dict,
+        comment='检索默认参数（D17：search_mode/recall_top_k/final_top_k/similarity_threshold/use_reranker）',
+    )
     collections_used: Mapped[list[Any]] = mapped_column(JSON, default=list, comment='已写入的集合目录')
     created_time: Mapped[datetime] = mapped_column(TimeZone, default=timezone.now, comment='创建时间')
     updated_time: Mapped[datetime] = mapped_column(

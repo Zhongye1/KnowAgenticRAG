@@ -4,7 +4,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 
-from sqlalchemy import BigInteger, Text
+from sqlalchemy import JSON, BigInteger, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.src.common.model import MappedBase, TimeZone
@@ -32,11 +32,15 @@ class Document(MappedBase):
     source_uri: Mapped[str | None] = mapped_column(Text, nullable=True, comment='来源 URI')
     pipeline: Mapped[str] = mapped_column(Text, default='', comment='摄取管道')
     status: Mapped[str] = mapped_column(
-        Text, default='pending', comment='状态（pending/parsing/indexing/ready/failed）'
+        Text, default='pending', comment='状态（pending/parsing/indexing/ready/parsing_failed/indexing_failed/failed）'
     )
     sha256: Mapped[str | None] = mapped_column(Text, nullable=True, comment='文件指纹')
     chunk_count: Mapped[int] = mapped_column(BigInteger, default=0, comment='文本块数')
     active_version: Mapped[int] = mapped_column(BigInteger, default=1, comment='当前版本（Phase 2 版本化占位，默认 1）')
+    ingest_params: Mapped[dict] = mapped_column(
+        JSON, default=dict, comment='本次摄取参数指纹（engine/preset/embedding_model）'
+    )
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True, comment='最近一次失败原因（重试/对账用）')
     created_time: Mapped[datetime] = mapped_column(TimeZone, default=timezone.now, comment='创建时间')
     updated_time: Mapped[datetime] = mapped_column(
         TimeZone, default=timezone.now, onupdate=timezone.now, comment='更新时间'

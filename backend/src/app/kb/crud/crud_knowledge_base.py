@@ -62,6 +62,7 @@ class CRUDKnowledgeBase(TenantScopedCrud[KnowledgeBase]):
             theme=obj.theme,
             icon=obj.icon,
             pdf_text_page_ratio=obj.pdf_text_page_ratio,
+            query_params=obj.query_params or {},
         )
         db.add(kb)
         await db.flush()

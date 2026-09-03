@@ -4,9 +4,10 @@ from typing import Annotated, cast
 
 from fastapi import APIRouter, File, Form, Path, Query, UploadFile
 
-from backend.src.app.kb.crud import document_dao
+from backend.src.app.kb.crud import chunk_dao, document_dao
 from backend.src.app.kb.deps import CurrentNamespace
 from backend.src.app.kb.model import Document
+from backend.src.app.kb.schema.chunk import ChunkItem
 from backend.src.app.kb.schema.document import DocumentItem, DocumentUpdateParam
 from backend.src.app.kb.service.document_service import document_service
 from backend.src.common.exception import errors
@@ -30,9 +31,36 @@ def _doc_to_dict(doc: Document) -> dict:
         'status': doc.status,
         'sha256': doc.sha256,
         'chunk_count': doc.chunk_count,
+        'active_version': doc.active_version,
+        'ingest_params': doc.ingest_params or {},
+        'error_message': doc.error_message,
         'created_time': doc.created_time,
         'updated_time': doc.updated_time,
     }
+
+
+@router.get(
+    '/{document_id}/chunks',
+    summary='文档分块浏览（只读，来源调试/评估）',
+    dependencies=[DependsJwtAuth, DependsPagination],
+)
+async def get_document_chunks(
+    db: CurrentSession,
+    current_namespace: CurrentNamespace,
+    document_id: Annotated[str, Path(description='文档 ID')],
+    version: Annotated[int | None, Query(description='版本（缺省 = 当前 active_version）')] = None,
+) -> ResponseSchemaModel[PageData[ChunkItem]]:
+    doc = await document_dao.get(db, document_id)
+    if doc is None:
+        raise errors.NotFoundError(msg='文档不存在')
+    stmt = await chunk_dao.get_page_select(
+        document_id=document_id,
+        kb_name=doc.kb_name,
+        version_id=version if version is not None else doc.active_version,
+    )
+    data = await paging_data(db, stmt)
+    data['items'] = [ChunkItem.model_validate(item) for item in data['items']]
+    return cast('ResponseSchemaModel[PageData[ChunkItem]]', response_base.success(data=data))
 
 
 @router.post('', summary='上传文档（存入对象存储）', dependencies=[DependsJwtAuth])
