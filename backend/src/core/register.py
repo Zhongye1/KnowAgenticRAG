@@ -84,12 +84,13 @@ async def register_init(app: FastAPI) -> AsyncGenerator[None, None]:
     await milvus_client.init()
 
     # 初始化多租户 Milvus 连接池（按域绑定 Database）与基础集合
-    from backend.src.database.milvus_kb_ops import ensure_base_collections
+    from backend.src.database.milvus_kb_ops import ensure_base_collections, ensure_ragf_template_collection
     from backend.src.database.milvus_pool import get_milvus_pool
 
     milvus_pool = get_milvus_pool()
     milvus_pool.ensure_database()
     ensure_base_collections()
+    ensure_ragf_template_collection()
 
     # 初始化对象存储 minio
     await minio_client.init()

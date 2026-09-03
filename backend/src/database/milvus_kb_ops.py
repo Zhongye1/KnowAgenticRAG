@@ -14,7 +14,7 @@ import logging
 
 from typing import cast
 
-from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient
+from pymilvus import CollectionSchema, DataType, FieldSchema, Function, FunctionType, MilvusClient
 from pymilvus.milvus_client.index import IndexParams
 
 from backend.src.core.config import settings
@@ -27,7 +27,10 @@ __all__ = [
     'delete_vectors_by_document',
     'delete_vectors_by_kb',
     'ensure_base_collections',
+    'ensure_ragf_template_collection',
     'list_present_collections',
+    'ragf_template_collection_name',
+    'ragf_template_collection_ready',
 ]
 
 logger = logging.getLogger(__name__)
@@ -199,3 +202,143 @@ def delete_vectors_by_document(
         logger.warning('按文档删除失败 coll=%s doc=%s: %s', collection, document_id, exc)
         return 0
     return count
+
+
+# ---------------------------------------------------------------------------
+# RAGF 文本模板集合（ragf-design D2-1/D7/D17）
+# 模板名 ragf_text_{dim}（默认 ragf_text_1024）：共享集合 + kb_name 标量过滤；
+# content 开 Milvus 内建中文 analyzer（jieba），BM25 Function 服务端生成
+# content_sparse，插入侧不手工算稀疏向量。
+# ---------------------------------------------------------------------------
+
+_RAGF_SPARSE_INDEX_PARAMS = {'inverted_index_algo': 'DAAT_MAXSCORE'}
+_RAGF_DENSE_INDEX_NAME = 'idx_embedding'
+_RAGF_SPARSE_INDEX_NAME = 'idx_content_sparse'
+
+
+def ragf_template_collection_name(dim: int) -> str:
+    """RAGF 文本模板集合名：{prefix}_{dim}（默认 ragf_text_1024）。"""
+    return f'{settings.RAGF_TEXT_COLLECTION_PREFIX}_{int(dim)}'
+
+
+def _ragf_text_schema(name: str, dim: int) -> CollectionSchema:
+    """RAGF 模板集合 schema：chunk_id 主键 + dense/sparse 双字段 + 显式两轴标量。"""
+    fields = [
+        FieldSchema(name='chunk_id', dtype=DataType.VARCHAR, is_primary=True, max_length=255),
+        FieldSchema(name='embedding', dtype=DataType.FLOAT_VECTOR, dim=dim),
+        FieldSchema(
+            name='content',
+            dtype=DataType.VARCHAR,
+            max_length=65535,
+            enable_analyzer=True,
+            analyzer_params={'type': settings.RAGF_BM25_ANALYZER_TYPE},
+        ),
+        FieldSchema(name='content_sparse', dtype=DataType.SPARSE_FLOAT_VECTOR),
+        FieldSchema(name='kb_name', dtype=DataType.VARCHAR, max_length=64),
+        FieldSchema(name='document_id', dtype=DataType.VARCHAR, max_length=255),
+        FieldSchema(name='version_id', dtype=DataType.INT64),
+        FieldSchema(name='chunk_index', dtype=DataType.INT64),
+    ]
+    bm25_function = Function(
+        name='content_bm25',
+        function_type=FunctionType.BM25,
+        input_field_names=['content'],
+        output_field_names=['content_sparse'],
+    )
+    return CollectionSchema(
+        fields=fields,
+        functions=[bm25_function],
+        description=f'{name}（RAGF 共享集合：kb_name 过滤 + BM25；写入须带 document_id/version_id）',
+        enable_dynamic_field=True,
+    )
+
+
+def _ensure_ragf_indexes(client: MilvusClient, collection: str) -> None:
+    """确保 dense/sparse/标量索引就绪（幂等，缺哪个补哪个）。"""
+    existing = _existing_index_names(client, collection)
+    if _RAGF_DENSE_INDEX_NAME not in existing:
+        params = IndexParams()
+        params.add_index(
+            field_name='embedding',
+            index_type=settings.RAGF_DENSE_INDEX_TYPE,
+            metric_type='COSINE',
+            index_name=_RAGF_DENSE_INDEX_NAME,
+            params={'nlist': settings.RAGF_DENSE_NLIST},
+        )
+        client.create_index(collection_name=collection, index_params=params)
+    if _RAGF_SPARSE_INDEX_NAME not in existing:
+        params = IndexParams()
+        params.add_index(
+            field_name='content_sparse',
+            index_type='SPARSE_INVERTED_INDEX',
+            metric_type='BM25',
+            index_name=_RAGF_SPARSE_INDEX_NAME,
+            params=_RAGF_SPARSE_INDEX_PARAMS,
+        )
+        client.create_index(collection_name=collection, index_params=params)
+    if 'idx_kb_name' not in existing:
+        params = IndexParams()
+        params.add_index(
+            field_name='kb_name',
+            index_type='INVERTED',
+            index_name='idx_kb_name',
+            json_cast_type='varchar',
+        )
+        client.create_index(collection_name=collection, index_params=params)
+    if 'idx_document_id' not in existing:
+        params = IndexParams()
+        params.add_index(
+            field_name='document_id',
+            index_type='INVERTED',
+            index_name='idx_document_id',
+            json_cast_type='varchar',
+        )
+        client.create_index(collection_name=collection, index_params=params)
+
+
+def ragf_template_collection_ready(
+    collection: str,
+    *,
+    plugin_namespace: str | None = None,
+) -> bool:
+    """模板集合是否具备 BM25 schema（宽容探测：字段 + BM25 Function 是否在描述中）。"""
+    client = _client(plugin_namespace)
+    if not client.has_collection(collection):
+        return False
+    try:
+        described = client.describe_collection(collection)
+    except Exception as exc:
+        logger.warning('describe_collection 失败 coll=%s: %s', collection, exc)
+        return False
+    blob = described if isinstance(described, dict) else getattr(described, 'dict', None)
+    if blob is None:
+        return False
+    text = str(blob() if callable(blob) else blob).lower()
+    return 'content_sparse' in text and 'bm25' in text
+
+
+def ensure_ragf_template_collection(
+    *,
+    dim: int | None = None,
+    plugin_namespace: str | None = None,
+) -> str:
+    """确保 RAGF 文本模板集合存在且 schema 完整（缺 BM25 字段/索引时重建），返回集合名。"""
+    dim = settings.RAGF_TEMPLATE_DIM if dim is None else int(dim)
+    name = ragf_template_collection_name(dim)
+    client = _client(plugin_namespace)
+    if not client.has_collection(name):
+        logger.info('创建 RAGF 模板集合 %s dim=%s', name, dim)
+        client.create_collection(collection_name=name, schema=_ragf_text_schema(name, dim))
+        _ensure_ragf_indexes(client, name)
+    elif not ragf_template_collection_ready(name, plugin_namespace=plugin_namespace):
+        logger.warning('RAGF 模板集合 %s 缺少 BM25 字段/索引，重建', name)
+        client.drop_collection(name)
+        client.create_collection(collection_name=name, schema=_ragf_text_schema(name, dim))
+        _ensure_ragf_indexes(client, name)
+    else:
+        _ensure_ragf_indexes(client, name)
+    try:
+        client.load_collection(name)
+    except Exception as exc:
+        logger.warning('加载 RAGF 模板集合失败 coll=%s: %s', name, exc)
+    return name

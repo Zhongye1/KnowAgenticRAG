@@ -31,13 +31,26 @@ def init_celery_tracing(*args, **kwargs) -> None:
 
 
 def find_task_packages() -> list[str]:
+    """收集 Celery 任务包（ragf-design D10）。
+
+    业务任务归属各域 ``app/<域>/tasks/tasks.py``（如 ``app/ingest/tasks/tasks.py``），
+    框架任务保留在 ``app/task/tasks/``（含其子包）。两类都在 ``tasks.py`` 所在目录发现。
+    """
+    app_root = BASE_PATH / 'app'
     packages = []
-    task_dir = BASE_PATH / 'app' / 'task' / 'tasks'
-    for root, _dirs, files in os.walk(task_dir):
-        if 'tasks.py' in files:
+    for root, _dirs, files in os.walk(app_root):
+        if 'tasks.py' not in files:
+            continue
+        rel = os.path.relpath(root, app_root)
+        basename = os.path.basename(root)
+        is_domain_tasks = basename == 'tasks' and os.path.dirname(rel) not in {'', 'task'}
+        is_framework_tasks = rel == os.path.join('task', 'tasks') or rel.startswith(
+            os.path.join('task', 'tasks') + os.path.sep
+        )
+        if is_domain_tasks or is_framework_tasks:
             package = root.replace(str(BASE_PATH.parent) + os.path.sep, '').replace(os.path.sep, '.')
             packages.append(package)
-    return packages
+    return sorted(packages)
 
 
 def init_celery() -> celery.Celery:

@@ -322,6 +322,34 @@ class Settings(BaseSettings):
     MILVUS_VISUAL_VECTOR_DIM: int = 2048
     MILVUS_AUTO_CREATE_DB: bool = True
 
+    # RAGF：Yuxi RAG 移植（ragf-design D2-1/D7/D11/D16/D17）
+    # Milvus 模板集合与索引：模板 = {prefix}_{dim}，默认 ragf_text_1024（共享集合 + kb_name 过滤）
+    RAGF_TEXT_COLLECTION_PREFIX: str = 'ragf_text'
+    RAGF_TEMPLATE_DIM: int = 1024
+    RAGF_DENSE_INDEX_TYPE: str = 'IVF_FLAT'
+    RAGF_DENSE_NLIST: int = 1024
+    RAGF_DENSE_NPROBE: int = 10
+    RAGF_BM25_ANALYZER_TYPE: str = 'chinese'  # Milvus 内建中文（jieba）；等价自定义写法 'jieba'
+
+    # 检索默认值（出厂默认；KB 级 query_params 持久化可覆盖，ragf-design §6.4/D17）
+    RAGF_RETRIEVAL_SEARCH_MODE: Literal['vector', 'hybrid'] = 'hybrid'
+    RAGF_RETRIEVAL_RECALL_TOP_K: int = 20
+    RAGF_RETRIEVAL_FINAL_TOP_K: int = 5
+    RAGF_RETRIEVAL_SIMILARITY_THRESHOLD: float = 0.2
+    RAGF_RETRIEVAL_USE_RERANKER: bool = True
+    RAGF_RETRIEVAL_RRF_K: int = 60
+
+    # 摄取（ragf-design D8/D13）
+    RAGF_OCR_ENGINE: Literal['mineru', 'rapidocr'] = 'mineru'
+    RAGF_MINERU_BASE_URL: str = 'http://localhost:8080'
+    RAGF_INGEST_EXT_INCLUDE: list[str] = ['pdf', 'docx', 'pptx', 'md', 'txt', 'csv', 'png', 'jpg']
+
+    # ModelProvider（ragf-design D11/D16，键读环境变量 MODELSCOPE_ACCESS_TOKEN）
+    MODELSCOPE_API_BASE: str = 'https://api-inference.modelscope.cn/v1/'
+    MODELSCOPE_ACCESS_TOKEN: str | None = None
+    MODEL_PROVIDER_CACHE_REDIS_PREFIX: str = 'fba:cache:model_provider'
+    MODEL_PROVIDER_CACHE_TTL: int = 3600
+
     # .env MinIO
     MINIO_HOST: str = 'localhost'
     MINIO_PORT: int = 9000
