@@ -94,6 +94,22 @@ class CRUDDocument(TenantScopedCrud[Document]):
         """统计域内文档总数。"""
         return await self.count_scoped(db, plugin_namespace=plugin_namespace)
 
+    async def list_ids_by_kb(
+        self,
+        db: AsyncSession,
+        kb_name: str,
+        *,
+        plugin_namespace: str | None = None,
+    ) -> list[str]:
+        """按知识库列出文档 ID（级联删除/rebuild 用）。"""
+        ns = instance_namespace(plugin_namespace)
+        stmt = select(Document.document_id).where(
+            Document.kb_name == kb_name,
+            Document.plugin_namespace == ns,
+        )
+        rows = await db.execute(stmt)
+        return [row[0] for row in rows.all()]
+
     async def delete_by_kb(
         self,
         db: AsyncSession,

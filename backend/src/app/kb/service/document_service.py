@@ -13,12 +13,17 @@ from backend.src.app.kb.service.document_storage import (
     delete_document_object,
     get_document_url,
     kb_object_key,
+    kb_parsed_object_key,
     upload_document_bytes,
 )
 from backend.src.app.kb.utils.namespace import instance_namespace
 from backend.src.common.exception import errors
 from backend.src.common.log import log
-from backend.src.database.milvus_kb_ops import base_collection_names, delete_vectors_by_document
+from backend.src.database.milvus_kb_ops import (
+    base_collection_names,
+    delete_ragf_vectors_by_document,
+    delete_vectors_by_document,
+)
 
 
 class DocumentService:
@@ -165,6 +170,7 @@ class DocumentService:
         counts: dict[str, int] = {
             'milvus_text': 0,
             'milvus_visual': 0,
+            'milvus_text_ragf': 0,
             'chunks': 0,
             'documents': 0,
             'dedup': 0,
@@ -174,8 +180,11 @@ class DocumentService:
         text_coll, visual_coll = base_collection_names()
         counts['milvus_text'] = delete_vectors_by_document(text_coll, doc.kb_name, document_id, plugin_namespace=ns)
         counts['milvus_visual'] = delete_vectors_by_document(visual_coll, doc.kb_name, document_id, plugin_namespace=ns)
+        ragf_deleted = delete_ragf_vectors_by_document(doc.kb_name, document_id, plugin_namespace=ns)
+        counts['milvus_text_ragf'] = sum(ragf_deleted.values())
         counts['chunks'] = await chunk_dao.delete_by_document(db, document_id, kb_name=doc.kb_name, plugin_namespace=ns)
 
+        await delete_document_object(kb_parsed_object_key(ns, doc.kb_name, document_id))
         if doc.source_uri:
             await delete_document_object(doc.source_uri)
             counts['objects'] = 1

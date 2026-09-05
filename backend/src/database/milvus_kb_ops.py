@@ -24,13 +24,17 @@ __all__ = [
     'base_collection_names',
     'count_all_entities',
     'count_entities_by_kb',
+    'delete_ragf_vectors_by_document',
+    'delete_ragf_vectors_by_kb',
     'delete_vectors_by_document',
     'delete_vectors_by_kb',
     'ensure_base_collections',
     'ensure_ragf_template_collection',
+    'insert_ragf_document_vectors',
     'list_present_collections',
     'ragf_template_collection_name',
     'ragf_template_collection_ready',
+    'ragf_template_collections',
 ]
 
 logger = logging.getLogger(__name__)
@@ -342,3 +346,68 @@ def ensure_ragf_template_collection(
     except Exception as exc:
         logger.warning('加载 RAGF 模板集合失败 coll=%s: %s', name, exc)
     return name
+
+
+# ---------------------------------------------------------------------------
+# RAGF 模板集合写/删助手（ragf-design D2-1/D9：共享集合 + kb_name/document_id 过滤）
+# ---------------------------------------------------------------------------
+
+
+def ragf_template_collections(*, plugin_namespace: str | None = None) -> list[str]:
+    """列出实例域内全部 RAGF 文本模板集合（ragf_text_*）。"""
+    prefix = f'{settings.RAGF_TEXT_COLLECTION_PREFIX}_'
+    return sorted(
+        coll for coll in list_present_collections(plugin_namespace=plugin_namespace) if coll.startswith(prefix)
+    )
+
+
+def delete_ragf_vectors_by_document(
+    kb_name: str,
+    document_id: str,
+    *,
+    plugin_namespace: str | None = None,
+) -> dict[str, int]:
+    """跨全部模板集合按 kb_name + document_id 删除文档向量（换维/重建残留兜底）。"""
+    counts: dict[str, int] = {}
+    for collection in ragf_template_collections(plugin_namespace=plugin_namespace):
+        deleted = delete_vectors_by_document(collection, kb_name, document_id, plugin_namespace=plugin_namespace)
+        if deleted:
+            counts[collection] = deleted
+    return counts
+
+
+def delete_ragf_vectors_by_kb(
+    kb_name: str,
+    *,
+    plugin_namespace: str | None = None,
+) -> dict[str, int]:
+    """跨全部模板集合按 kb_name 删除知识库向量。"""
+    counts: dict[str, int] = {}
+    for collection in ragf_template_collections(plugin_namespace=plugin_namespace):
+        deleted = delete_vectors_by_kb(collection, kb_name, plugin_namespace=plugin_namespace)
+        if deleted:
+            counts[collection] = deleted
+    return counts
+
+
+def insert_ragf_document_vectors(
+    *,
+    kb_name: str,
+    document_id: str,
+    dim: int,
+    rows: list[dict],
+    plugin_namespace: str | None = None,
+) -> int:
+    """写入文档分块向量到模板集合（先删该文档旧向量、再插入，全量替换幂等）。
+
+    调用方负责事务边界：本函数只保证 Milvus 侧“先删后插”；PG chunks 写入失败时
+    由服务层调用 ``delete_ragf_vectors_by_document`` 补偿。
+    """
+    collection = ensure_ragf_template_collection(dim=int(dim), plugin_namespace=plugin_namespace)
+    delete_vectors_by_document(collection, kb_name, document_id, plugin_namespace=plugin_namespace)
+    if not rows:
+        return 0
+    client = _client(plugin_namespace)
+    client.insert(collection_name=collection, data=rows)
+    logger.info('插入 RAGF 向量 coll=%s kb=%s doc=%s rows=%s', collection, kb_name, document_id, len(rows))
+    return len(rows)

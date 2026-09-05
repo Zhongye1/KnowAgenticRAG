@@ -121,6 +121,7 @@ class ProviderService:
     # ------------------------------------------------------------------ 运行时解析
     async def get_model_info(self, db: AsyncSession, spec: str) -> ModelInfo | None:
         """缓存优先、DB 回源解析模型 spec（provider_id:model_id）。"""
+        spec = normalize_model_spec(spec)
         if not spec:
             return None
         cached = await self.cache.get_model_info(spec)
@@ -197,9 +198,11 @@ class ProviderService:
             await self.cache.invalidate()
             log.info('[ModelProvider] 已创建默认 modelscope provider')
             return provider
-        missing = [model['id'] for model in defaults['enabled_models'] if model['id'] not in {
-            item.get('id') for item in (provider.enabled_models or []) if isinstance(item, dict)
-        }]
+        missing = [
+            model['id']
+            for model in defaults['enabled_models']
+            if model['id'] not in {item.get('id') for item in (provider.enabled_models or []) if isinstance(item, dict)}
+        ]
         if missing:
             provider.enabled_models = list(provider.enabled_models or []) + [
                 model for model in defaults['enabled_models'] if model['id'] in missing
@@ -209,6 +212,20 @@ class ProviderService:
             await db.commit()
             await self.cache.invalidate()
         return provider
+
+
+LEGACY_EMBEDDING_ALIASES: dict[str, str] = {
+    'bge-m3': 'modelscope:BAAI/bge-m3',
+    'BAAI/bge-m3': 'modelscope:BAAI/bge-m3',
+}
+
+
+def normalize_model_spec(spec: str | None) -> str:
+    """归一模型 spec（ragf-design §5.6）：legacy 裸 id 兼容默认 provider。"""
+    value = (spec or '').strip()
+    if not value:
+        return ''
+    return LEGACY_EMBEDDING_ALIASES.get(value, value)
 
 
 def _validate_capabilities(capabilities: list[Any]) -> list[str]:

@@ -20,7 +20,7 @@ from backend.src.app.kb.schema.knowledge_base import (
 from backend.src.app.kb.service.kb_service import kb_service
 from backend.src.app.kb.service.kb_stats_service import kb_stats_service
 from backend.src.common.pagination import DependsPagination, PageData
-from backend.src.common.response.response_schema import ResponseModel, ResponseSchemaModel, response_base
+from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
 from backend.src.database.db import CurrentSession, CurrentSessionTransaction
 
@@ -89,16 +89,6 @@ async def delete_knowledge_base(
 ) -> ResponseSchemaModel[KBDeleteResponse]:
     counts = await kb_service.delete(db=db, kb_name=kb_name)
     return response_base.success(data=KBDeleteResponse(deleted=True, counts=counts))
-
-
-@router.post('/{kb_name}/rebuild', summary='重建索引', dependencies=[DependsJwtAuth])
-async def rebuild_knowledge_base(
-    db: CurrentSessionTransaction,
-    current_namespace: CurrentNamespace,
-    kb_name: Annotated[str, Path(description='知识库标识')],
-) -> ResponseModel:
-    await kb_service.rebuild(db=db, kb_name=kb_name)
-    return response_base.success()
 
 
 @router.get(

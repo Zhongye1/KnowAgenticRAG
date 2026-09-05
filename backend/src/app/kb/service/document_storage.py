@@ -15,7 +15,14 @@ from backend.src.common.log import log
 from backend.src.core.config import settings
 from backend.src.database.minio import minio_client
 
-__all__ = ['delete_document_object', 'get_document_url', 'kb_object_key', 'upload_document_bytes']
+__all__ = [
+    'delete_document_object',
+    'download_document_bytes',
+    'get_document_url',
+    'kb_object_key',
+    'kb_parsed_object_key',
+    'upload_document_bytes',
+]
 
 _bucket_ready = False
 
@@ -31,6 +38,11 @@ def kb_object_key(plugin_namespace: str, kb_name: str, document_id: str, filenam
     """构造对象键：``kb/{namespace}/{kb_name}/{document_id}/{filename}``。"""
     safe_name = PurePosixPath(filename).name or 'file'
     return f'kb/{plugin_namespace}/{kb_name}/{document_id}/{safe_name}'
+
+
+def kb_parsed_object_key(plugin_namespace: str, kb_name: str, document_id: str) -> str:
+    """解析产物 Markdown 对象键（ragf-design：Markdown 落 MinIO 供对账/再摄取）。"""
+    return f'kb/{plugin_namespace}/{kb_name}/{document_id}/__parsed__.md'
 
 
 async def upload_document_bytes(
@@ -52,6 +64,20 @@ async def upload_document_bytes(
         content_type=content_type,
     )
     return object_key
+
+
+async def download_document_bytes(object_key: str) -> bytes:
+    """读取 KB 桶中的对象字节流（供摄取层解析）。"""
+    response = await asyncio.to_thread(
+        minio_client.get_object,
+        settings.MINIO_KB_BUCKET,
+        object_key,
+    )
+    try:
+        return response.read()
+    finally:
+        response.close()
+        response.release_conn()
 
 
 async def delete_document_object(object_key: str) -> None:
