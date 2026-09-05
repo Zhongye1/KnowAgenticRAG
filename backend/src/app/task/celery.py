@@ -70,6 +70,14 @@ def init_celery() -> celery.Celery:
     if DataBaseType.mysql == settings.DATABASE_TYPE:
         result_backend = result_backend.replace('postgresql+psycopg', 'mysql+pymysql')
 
+    # RAGF（ragf-design §10/M8）：ingest.* 可单独分配队列（演进期拆分演练）。
+    # 默认沿用默认队列（celery），单 worker 拓扑与既有行为不变；显式设置
+    # RAGF_CELERY_INGEST_QUEUE 后任务入独立队列，由 -Q ingest 的
+    # ragf_celery_ingest_worker（compose profile ragf-ingest）消费。
+    task_routes: dict[str, dict[str, str]] | None = None
+    if settings.RAGF_CELERY_INGEST_QUEUE:
+        task_routes = {'ingest.*': {'queue': settings.RAGF_CELERY_INGEST_QUEUE}}
+
     # https://docs.celeryq.dev/en/stable/userguide/configuration.html
     app = celery.Celery(
         'fba_celery',
@@ -77,6 +85,7 @@ def init_celery() -> celery.Celery:
         broker_connection_retry_on_startup=True,
         result_backend=result_backend,
         result_extended=True,
+        task_routes=task_routes,
         database_engine_options={'echo': settings.DATABASE_ECHO},
         # result_expires=0,
         # beat_sync_every=1,

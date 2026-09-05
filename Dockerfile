@@ -68,6 +68,15 @@ RUN mkdir -p /var/log/ragf
 
 CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
+# === Celery Ingest Worker image（ragf-design §10/M8：-Q ingest 独立消费 ingest.*） ===
+FROM base_server AS ragf_celery_ingest_worker
+
+COPY deploy/backend/supervisor/ragf_celery_ingest_worker.conf /etc/supervisor/conf.d/
+
+RUN mkdir -p /var/log/ragf
+
+CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
 # === Celery Beat image ===
 FROM base_server AS ragf_celery_beat
 

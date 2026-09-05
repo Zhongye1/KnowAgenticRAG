@@ -279,6 +279,33 @@ services:
     networks:
       - ragf_network
 
+  # RAGF M8 拆分演练（ragf-design §10）：ingest.* 独立 worker，profile 显式启用。
+  # 用法：.env.server 设置 RAGF_CELERY_INGEST_QUEUE=ingest 后执行
+  #   docker compose --profile ragf-ingest up -d
+  ragf_celery_ingest_worker:
+    profiles: ["ragf-ingest"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SERVER_TYPE=ragf_celery_ingest_worker
+    image: ragf_celery_ingest_worker:latest
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      ragf_rabbitmq:
+        condition: service_healthy
+      ragf_minio:
+        condition: service_healthy
+      ragf_milvus:
+        condition: service_healthy
+    volumes:
+      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
+      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
+    networks:
+      - ragf_network
+
   ragf_celery_beat:
     build:
       context: .

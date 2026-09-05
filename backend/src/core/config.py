@@ -297,6 +297,11 @@ class Settings(BaseSettings):
     CELERY_REDIS_PREFIX: str = 'fba:celery'
     CELERY_TASK_MAX_RETRIES: int = 5
 
+    # RAGF：ingest.* 队列路由（ragf-design §10/M8）——默认 None 沿用默认队列（celery，
+    # 单 worker 拓扑不变）；显式设队列名（如 ingest）后 ingest.* 任务入该队列，需配套
+    # 独立 worker（-Q ingest，compose profile ragf-ingest）消费，否则任务滞留。
+    RAGF_CELERY_INGEST_QUEUE: str | None = None
+
     ##################################################
     # [ App ] rag
     ##################################################
