@@ -32,7 +32,11 @@ from backend.src.app.model_provider.service.provider_service import normalize_mo
 from backend.src.common.exception import errors
 from backend.src.common.log import log
 from backend.src.core.config import settings
-from backend.src.database.milvus_kb_ops import delete_ragf_vectors_by_document, insert_ragf_document_vectors
+from backend.src.database.milvus_kb_ops import (
+    count_ragf_vectors_by_document,
+    delete_ragf_vectors_by_document,
+    insert_ragf_document_vectors,
+)
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -193,6 +197,84 @@ class IngestService:
         await db.flush()
         log.info('文档摄取完成 doc={} kb={} chunks={}', document_id, kb_name, len(meta_rows))
         return {'document_id': document_id, 'status': 'ready', 'chunk_count': len(meta_rows)}
+
+    @staticmethod
+    async def reconcile_scan(
+        db: AsyncSession,
+        *,
+        kb_name: str | None = None,
+        plugin_namespace: str | None = None,
+        max_discrepancies: int = 20,
+    ) -> dict[str, Any]:
+        """对账扫描（ragf-design §14.7/M7）：ready 文档三方一致校验。
+
+        比较 ``documents.chunk_count``（声明）与 PG ``chunks`` 计数、Milvus 模板
+        集合向量计数；不一致项进入异常清单（含原因）。只读扫描、不派发任务 ——
+        beat 任务消费清单重新投递 ``ingest.process_document``（幂等全量替换）。
+        """
+        ns = instance_namespace(plugin_namespace)
+        kbs = (
+            [await knowledge_base_dao.get(db, kb_name, plugin_namespace=ns)]
+            if kb_name
+            else await knowledge_base_dao.list_all(db, plugin_namespace=ns)
+        )
+        kbs = [kb for kb in kbs if kb is not None]
+        checked = 0
+        truncated = False
+        anomalies: list[dict[str, Any]] = []
+        for kb in kbs:
+            stmt = await document_dao.get_select(kb_name=kb.kb_name, plugin_namespace=ns, status='ready')
+            documents = list((await db.execute(stmt)).scalars().all())
+            for doc in documents:
+                if len(anomalies) >= max_discrepancies:
+                    truncated = True
+                    break
+                checked += 1
+                pg_count = await ChunkService.count_by_document(
+                    db,
+                    doc.document_id,
+                    kb_name=kb.kb_name,
+                    plugin_namespace=ns,
+                )
+                vector_count = await asyncio.to_thread(
+                    count_ragf_vectors_by_document,
+                    kb.kb_name,
+                    doc.document_id,
+                    plugin_namespace=ns,
+                )
+                declared = int(doc.chunk_count or 0)
+                if declared == pg_count == vector_count:
+                    continue
+                reasons = []
+                if declared != pg_count:
+                    reasons.append('declared_chunk_count != pg_chunks')
+                if pg_count != vector_count:
+                    reasons.append('pg_chunks != milvus_vectors')
+                anomalies.append({
+                    'document_id': doc.document_id,
+                    'kb_name': doc.kb_name,
+                    'plugin_namespace': ns,
+                    'declared_chunk_count': declared,
+                    'pg_chunk_count': pg_count,
+                    'vector_count': vector_count,
+                    'reasons': reasons,
+                })
+                log.warning(
+                    '摄取对账异常 doc={} kb={} declared={} pg={} milvus={}',
+                    doc.document_id,
+                    doc.kb_name,
+                    declared,
+                    pg_count,
+                    vector_count,
+                )
+        return {
+            'plugin_namespace': ns,
+            'kb_count': len(kbs),
+            'checked': checked,
+            'anomaly_count': len(anomalies),
+            'truncated': truncated,
+            'anomalies': anomalies,
+        }
 
     @staticmethod
     async def mark_failed(

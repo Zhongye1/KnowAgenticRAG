@@ -25,6 +25,7 @@ __all__ = [
     'base_collection_names',
     'count_all_entities',
     'count_entities_by_kb',
+    'count_ragf_vectors_by_document',
     'delete_ragf_vectors_by_document',
     'delete_ragf_vectors_by_kb',
     'delete_vectors_by_document',
@@ -385,6 +386,28 @@ def ragf_template_collections(*, plugin_namespace: str | None = None) -> list[st
     return sorted(
         coll for coll in list_present_collections(plugin_namespace=plugin_namespace) if coll.startswith(prefix)
     )
+
+
+def count_ragf_vectors_by_document(
+    kb_name: str,
+    document_id: str,
+    *,
+    plugin_namespace: str | None = None,
+) -> int:
+    """跨全部 RAGF 模板集合统计文档向量数（对账/评估用，§14.7）。"""
+    expr = f'kb_name == "{kb_name}" and document_id == "{document_id}"'
+    total = 0
+    for collection in ragf_template_collections(plugin_namespace=plugin_namespace):
+        client = _client(plugin_namespace)
+        if not client.has_collection(collection):
+            continue
+        try:
+            rows = client.query(collection, filter=expr, output_fields=['count(*)'])
+            if rows:
+                total += int(rows[0].get('count(*)', 0))
+        except Exception as exc:
+            logger.warning('按文档计数失败 coll=%s kb=%s doc=%s: %s', collection, kb_name, document_id, exc)
+    return total
 
 
 def search_ragf_kb(

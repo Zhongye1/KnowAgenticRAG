@@ -9,6 +9,10 @@ def get_local_beat_schedule() -> dict[str, dict[str, Any]]:
     """获取本地 Celery beat 任务配置"""
     # 参考：https://docs.celeryq.dev/en/stable/userguide/periodic-tasks.html
     return {
+        'RAGF 摄取一致性对账': {
+            'task': 'ingest.reconcile',
+            'schedule': TzAwareCrontab('30', '*'),
+        },
         '测试同步任务': {
             'task': 'task_demo',
             'schedule': schedule(30),

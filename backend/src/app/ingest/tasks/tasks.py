@@ -17,7 +17,7 @@ from backend.src.common.exception import errors
 from backend.src.common.log import log
 from backend.src.database.db import async_db_session
 
-__all__ = ['process_document_task']
+__all__ = ['process_document_task', 'reconcile_scan_task']
 
 _INGEST_METER = otel_metrics.get_meter('backend.ragf')
 _INGEST_RESULTS = _INGEST_METER.create_counter(
@@ -67,6 +67,54 @@ async def process_document_task(
         await _mark_failed(document_id, kb_name, plugin_namespace, 'failed', f'{type(exc).__name__}: {exc}')
         _record_ingest_result('failed')
         return {'document_id': document_id, 'status': 'failed', 'error': str(exc)}
+
+
+@celery_app.task(name='ingest.reconcile')
+async def reconcile_scan_task(
+    kb_name: str | None = None,
+    plugin_namespace: str | None = None,
+    max_discrepancies: int = 50,
+) -> dict[str, Any]:
+    """摄取一致性对账（ragf-design §14.7/M7，celery beat 周期触发）。
+
+    只读扫描 ``ready`` 文档三方计数（声明 chunk_count / PG chunks / Milvus
+    向量），异常项重新投递 ``ingest.process_document``（幂等全量替换，§5.4）。
+    队列不是事实源 —— PG 始终是唯一 Owner。
+    """
+    report: dict[str, Any] = {}
+    try:
+        async with async_db_session.begin() as db:
+            report = await IngestService.reconcile_scan(
+                db,
+                kb_name=kb_name,
+                plugin_namespace=plugin_namespace,
+                max_discrepancies=max_discrepancies,
+            )
+    except Exception as exc:
+        log.error('摄取对账扫描异常: {}', exc)
+        return {'error': f'{type(exc).__name__}: {exc}', 'checked': 0, 'anomaly_count': 0, 'redispatched': 0}
+    redispatch = 0
+    for anomaly in report.get('anomalies') or []:
+        try:
+            celery_app.send_task(
+                'ingest.process_document',
+                kwargs={
+                    'document_id': anomaly['document_id'],
+                    'kb_name': anomaly['kb_name'],
+                    'plugin_namespace': anomaly['plugin_namespace'],
+                },
+            )
+            redispatch += 1
+        except Exception as exc:
+            log.error('对账重派失败 doc={} kb={}: {}', anomaly['document_id'], anomaly['kb_name'], exc)
+    log.info(
+        '摄取对账完成 kb_count={} checked={} anomalies={} redispatched={}',
+        report.get('kb_count', 0),
+        report.get('checked', 0),
+        report.get('anomaly_count', 0),
+        redispatch,
+    )
+    return {**report, 'redispatched': redispatch}
 
 
 async def _mark_failed(
