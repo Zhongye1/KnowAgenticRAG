@@ -352,6 +352,12 @@ class Settings(BaseSettings):
     RAGF_CHAT_TIMEOUT_SECONDS: float = 120.0
     RAGF_CHAT_DEFAULT_TEMPERATURE: float = 0.3
 
+    # RAGF：MCP 工具面（agent-layer spec D22/D31-D33/M10）
+    # PAT 经桥接进程 env 注入（Codex stdio 桥 / Claude Code 未上 Keycloak 前）；空 = 未启用 PAT 通道
+    RAGF_MCP_PAT: str = ''
+    # PAT 通道默认授权（读面工具集）；JWT 直通无 scp claim 时同此默认
+    RAGF_MCP_DEFAULT_SCOPES: str = 'rag:kb:list,rag:kb:search,rag:kb:read,rag:kb:chat'
+
     # 摄取（ragf-design D8/D13）
     RAGF_OCR_ENGINE: Literal['mineru', 'rapidocr'] = 'mineru'
     # MinerU 精准解析 API（公网 mineru.net v4，D8：不自建 OCR 容器）。

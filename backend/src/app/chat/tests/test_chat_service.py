@@ -82,6 +82,12 @@ class FakeChatModel:
         yield ChatStreamEvent(finish_reason='stop')
         yield ChatStreamEvent(usage={'prompt_tokens': 10, 'completion_tokens': 4, 'total_tokens': 14})
 
+    async def achat(self, messages: list[dict[str, Any]], **kwargs: Any) -> tuple[str, dict[str, Any]]:
+        self.kwargs = {'messages': messages, **kwargs}
+        if self.exc is not None:
+            raise self.exc
+        return '版本差异如下', {'prompt_tokens': 10, 'completion_tokens': 4, 'total_tokens': 14}
+
 
 class FakeGateway:
     """模型解析替身：记录 spec 并返回 FakeChatModel。"""
@@ -225,3 +231,46 @@ def test_default_temperature_from_settings(monkeypatch: pytest.MonkeyPatch) -> N
     _run(service, model='acme:qwen-max')
 
     assert model.kwargs['temperature'] == pytest.approx(0.2)
+
+
+def test_acomplete_empty_result_without_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    """非流式（MCP 批次面）：无命中短路不调模型，reason=empty_result。"""
+    monkeypatch.setattr(settings, 'RAGF_CHAT_MODEL_SPEC', '')
+    retrieval = FakeRetrieval()
+    gateway = FakeGateway()
+    service = ChatService(retrieval=retrieval, chat_gateway=gateway)
+
+    result = asyncio.run(
+        service.acomplete(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            param=ChatParam.model_validate({'query_text': '版本差异'}),
+        )
+    )
+
+    assert result['reason'] == 'empty_result'
+    assert result['hit_count'] == 0
+    assert result['answer'] == EMPTY_RESULT_MESSAGE
+    assert gateway.specs == []
+
+
+def test_acomplete_aggregates_answer_and_usage() -> None:
+    """非流式：命中 → achat 聚合答案/引用/用量。"""
+    retrieval = FakeRetrieval(output=_search_output([_hit(1)]))
+    model = FakeChatModel()
+    service = ChatService(retrieval=retrieval, chat_gateway=FakeGateway(model=model))
+
+    result = asyncio.run(
+        service.acomplete(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            param=ChatParam.model_validate({'query_text': '版本差异', 'model': 'acme:qwen-max'}),
+        )
+    )
+
+    assert result['reason'] == 'complete'
+    assert result['answer'] == '版本差异如下'
+    assert result['hit_count'] == 1
+    assert result['citations'][0]['n'] == 1
+    assert result['usage'] == {'prompt_tokens': 10, 'completion_tokens': 4, 'total_tokens': 14}
+    assert model.kwargs['messages'][0]['role'] == 'system'
