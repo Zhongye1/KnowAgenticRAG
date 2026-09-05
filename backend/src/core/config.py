@@ -357,6 +357,11 @@ class Settings(BaseSettings):
     RAGF_MCP_PAT: str = ''
     # PAT 通道默认授权（读面工具集）；JWT 直通无 scp claim 时同此默认
     RAGF_MCP_DEFAULT_SCOPES: str = 'rag:kb:list,rag:kb:search,rag:kb:read,rag:kb:chat'
+    # MCP 调用审计落库开关（tools/call 写 mcp_call_log；落库失败不阻断响应）
+    RAGF_MCP_LOG_ENABLED: bool = True
+    # MCP /mcp 端点限流（按 租户+sub 计，依赖 Redis；RateLimiter 见 utils/limiter.py）
+    RAGF_MCP_RATE_LIMIT_ENABLED: bool = True
+    RAGF_MCP_RATE_LIMIT_PER_MINUTE: int = 120
 
     # 摄取（ragf-design D8/D13）
     RAGF_OCR_ENGINE: Literal['mineru', 'rapidocr'] = 'mineru'
