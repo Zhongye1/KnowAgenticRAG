@@ -72,7 +72,7 @@ class ModelProviderDetail(SchemaBase):
     embedding_base_url: str | None = None
     rerank_base_url: str | None = None
     api_key_env: str | None = None
-    api_key_set: bool = Field(description='是否已配置 api_key（不回显原文）')
+    api_key_set: bool = Field(description='是否可用凭据：api_key / api_key_env / modelscope 默认 env（不回显原文）')
     capabilities: list[str] = Field(default_factory=list)
     enabled_models: list[dict[str, Any]] = Field(default_factory=list)
     headers_json: dict[str, Any] = Field(default_factory=dict)

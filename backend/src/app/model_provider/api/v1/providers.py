@@ -29,7 +29,7 @@ def _detail(provider: ModelProvider) -> ModelProviderDetail:
         embedding_base_url=provider.embedding_base_url,
         rerank_base_url=provider.rerank_base_url,
         api_key_env=provider.api_key_env,
-        api_key_set=bool(provider.api_key or (provider.api_key_env and provider.api_key_env)),
+        api_key_set=provider_service.api_key_available(provider),
         capabilities=list(provider.capabilities or []),
         enabled_models=list(provider.enabled_models or []),
         headers_json=dict(provider.headers_json or {}),

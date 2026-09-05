@@ -8,6 +8,7 @@ provider 增改删走“先提交 PG、后失效缓存”（service 层保证顺
 from __future__ import annotations
 
 import json
+import os
 
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
@@ -75,14 +76,18 @@ class ModelInfo:
 
 
 def resolve_provider_api_key(provider: ModelProvider) -> str | None:
-    """解析 provider 的 API Key：直接配置 > api_key_env 环境变量 > modelscope 默认环境变量。"""
+    """解析 provider 的 API Key：直接配置 > api_key_env 环境变量 > modelscope 默认环境变量。
+
+    空字符串视同未配置（env 占位符场景不产生空凭据）：api_key_env 对应环境变量未设/为空时，
+    modelscope 类型继续回退服务端默认 ``MODELSCOPE_ACCESS_TOKEN``（settings，D11）。
+    """
     if provider.api_key:
         return provider.api_key
     if provider.api_key_env:
-        import os
-
-        return os.getenv(provider.api_key_env)
-    if provider.provider_type == 'modelscope':
+        value = os.getenv(provider.api_key_env)
+        if value:
+            return value
+    if provider.provider_type == 'modelscope' and settings.MODELSCOPE_ACCESS_TOKEN:
         return settings.MODELSCOPE_ACCESS_TOKEN
     return None
 

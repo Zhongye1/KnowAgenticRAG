@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.src.app.model_provider.cache import ModelInfo, build_model_info
+from backend.src.app.model_provider.cache import ModelInfo, build_model_info, resolve_provider_api_key
 from backend.src.app.model_provider.model.provider import ModelProvider
 from backend.src.app.model_provider.providers.embed import ensure_embeddings_url
 from backend.src.app.model_provider.providers.rerank import (
@@ -27,6 +27,7 @@ from backend.src.app.model_provider.service.provider_service import (
     normalize_model_spec,
 )
 from backend.src.common.exception import errors
+from backend.src.core.config import settings
 
 
 def _provider(**overrides: object) -> ModelProvider:
@@ -76,6 +77,34 @@ def test_resolve_provider_api_key_fallback_env(monkeypatch: pytest.MonkeyPatch) 
     provider = _provider()
     info = build_model_info(provider, {'id': 'BAAI/bge-m3', 'type': 'embedding'})
     assert info is not None and info.api_key == 'sk-fallback'
+
+
+def test_resolve_provider_api_key_direct_wins(monkeypatch: pytest.MonkeyPatch) -> None:
+    """直配 api_key 优先于 api_key_env 与 modelscope 默认 env。"""
+    monkeypatch.setenv('MODELSCOPE_ACCESS_TOKEN', 'sk-env')
+    provider = _provider(api_key='sk-direct')
+    assert resolve_provider_api_key(provider) == 'sk-direct'
+
+
+def test_resolve_provider_api_key_modelscope_env_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """无 api_key/api_key_env → modelscope provider 回退 settings（服务端 env 默认通道）。"""
+    monkeypatch.setattr(settings, 'MODELSCOPE_ACCESS_TOKEN', 'sk-server-default')
+    provider = _provider(api_key_env=None)
+    assert resolve_provider_api_key(provider) == 'sk-server-default'
+
+
+def test_resolve_provider_api_key_env_empty_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
+    """api_key_env 对应环境变量为空串 → 视同未配置，modelscope 回退服务端默认（空值不产生假凭据）。"""
+    monkeypatch.setenv('MODELSCOPE_ACCESS_TOKEN', '')
+    monkeypatch.setattr(settings, 'MODELSCOPE_ACCESS_TOKEN', 'sk-server-default')
+    provider = _provider()
+    assert resolve_provider_api_key(provider) == 'sk-server-default'
+
+
+def test_resolve_provider_api_key_non_modelscope_without_key() -> None:
+    """非 modelscope 且无任何凭据来源 → None（不误用默认通道）。"""
+    provider = _provider(provider_type='openai', base_url='https://api.example.com', api_key_env=None)
+    assert resolve_provider_api_key(provider) is None
 
 
 def test_build_model_info_skips_invalid() -> None:

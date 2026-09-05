@@ -12,6 +12,7 @@ from backend.src.app.model_provider.cache import (
     ModelInfo,
     build_model_info,
     model_cache,
+    resolve_provider_api_key,
 )
 from backend.src.app.model_provider.crud.provider_crud import provider_dao
 from backend.src.app.model_provider.model.provider import (
@@ -41,6 +42,11 @@ class ProviderService:
 
     def __init__(self, cache: ModelCache | None = None) -> None:
         self.cache = cache or model_cache
+
+    @staticmethod
+    def api_key_available(provider: ModelProvider) -> bool:
+        """是否解析到可用凭据：直配 api_key / api_key_env / modelscope 默认 env（不回显原文）。"""
+        return bool(resolve_provider_api_key(provider))
 
     # ------------------------------------------------------------------ 校验
     @staticmethod
