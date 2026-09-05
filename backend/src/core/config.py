@@ -338,6 +338,7 @@ class Settings(BaseSettings):
     RAGF_RETRIEVAL_SIMILARITY_THRESHOLD: float = 0.2
     RAGF_RETRIEVAL_USE_RERANKER: bool = True
     RAGF_RETRIEVAL_RRF_K: int = 60
+    RAGF_RETRIEVAL_RERANK_SPEC: str = 'modelscope:BAAI/bge-reranker-v2-m3'  # D16：默认精排模型 spec（provider:model）
 
     # 摄取（ragf-design D8/D13）
     RAGF_OCR_ENGINE: Literal['mineru', 'rapidocr'] = 'mineru'

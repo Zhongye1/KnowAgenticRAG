@@ -15,6 +15,7 @@ import logging
 from typing import cast
 
 from pymilvus import CollectionSchema, DataType, FieldSchema, Function, FunctionType, MilvusClient
+from pymilvus.client.abstract import AnnSearchRequest, RRFRanker
 from pymilvus.milvus_client.index import IndexParams
 
 from backend.src.core.config import settings
@@ -35,6 +36,7 @@ __all__ = [
     'ragf_template_collection_name',
     'ragf_template_collection_ready',
     'ragf_template_collections',
+    'search_ragf_kb',
 ]
 
 logger = logging.getLogger(__name__)
@@ -218,6 +220,30 @@ def delete_vectors_by_document(
 _RAGF_SPARSE_INDEX_PARAMS = {'inverted_index_algo': 'DAAT_MAXSCORE'}
 _RAGF_DENSE_INDEX_NAME = 'idx_embedding'
 _RAGF_SPARSE_INDEX_NAME = 'idx_content_sparse'
+_RAGF_SEARCH_OUTPUT_FIELDS = ['content', 'chunk_id', 'document_id', 'version_id', 'chunk_index']
+
+
+def _and_expr(*parts: str | None) -> str | None:
+    """按 AND 组合过滤表达式（kb_name 必带由调用方决定是否传入）。"""
+    present = [part.strip() for part in parts if part and part.strip()]
+    if not present:
+        return None
+    if len(present) == 1:
+        return present[0]
+    return ' and '.join(f'({part})' for part in present)
+
+
+def _normalize_ragf_hit(hit: dict) -> dict:
+    """MilvusClient 检索命中 → 统一结构（chunk_id/content/两轴/分数）。"""
+    entity = hit.get('entity') or {}
+    return {
+        'chunk_id': str(entity.get('chunk_id') or hit.get('id') or ''),
+        'content': str(entity.get('content') or ''),
+        'document_id': str(entity.get('document_id') or ''),
+        'version_id': int(entity.get('version_id') or 1),
+        'chunk_index': int(entity.get('chunk_index') or 0),
+        'score': float(hit.get('distance') or 0.0),
+    }
 
 
 def ragf_template_collection_name(dim: int) -> str:
@@ -359,6 +385,81 @@ def ragf_template_collections(*, plugin_namespace: str | None = None) -> list[st
     return sorted(
         coll for coll in list_present_collections(plugin_namespace=plugin_namespace) if coll.startswith(prefix)
     )
+
+
+def search_ragf_kb(
+    *,
+    kb_name: str,
+    dim: int,
+    query_text: str,
+    search_mode: str = 'hybrid',
+    query_embedding: list[float] | None = None,
+    recall_top_k: int = 20,
+    rrf_k: int = 60,
+    nprobe: int = 10,
+    expr: str | None = None,
+    plugin_namespace: str | None = None,
+) -> list[dict]:
+    """RAGF 模板集合检索（ragf-design §5.7/§A.3，纯服务端召回）。
+
+    - ``vector``：dense 路（COSINE + nprobe），返回 top-``recall_top_k``；
+    - ``hybrid``：dense + sparse（BM25）双路，服务端 ``RRFRanker(k)`` 融合取
+      top-``recall_top_k``（两路 limit 均 = recall_top_k，防 RRF 尾段截断）。
+
+    过滤表达式统一由本模块注入（调用方只传 kb_name 之外的可选子句）；COSINE
+    阈值过滤属检索服务层语义（vector 模式），不在此处执行。
+    """
+    if search_mode not in {'vector', 'hybrid'}:
+        raise ValueError(f'search_mode 必须是 vector/hybrid: {search_mode}')
+    if search_mode == 'vector' and not query_embedding:
+        raise ValueError('vector 检索必须提供 query_embedding')
+    collection = ensure_ragf_template_collection(dim=int(dim), plugin_namespace=plugin_namespace)
+    filter_expr = _and_expr(_kb_expr(kb_name), expr)
+    limit = max(int(recall_top_k), 1)
+    client = _client(plugin_namespace)
+
+    if search_mode == 'vector':
+        results = client.search(
+            collection_name=collection,
+            data=[query_embedding],
+            anns_field='embedding',
+            filter=filter_expr or '',
+            limit=limit,
+            output_fields=_RAGF_SEARCH_OUTPUT_FIELDS,
+            search_params={'metric_type': 'COSINE', 'params': {'nprobe': int(nprobe)}},
+        )
+    else:
+        dense_req = AnnSearchRequest(
+            data=[query_embedding or []],
+            anns_field='embedding',
+            param={'metric_type': 'COSINE', 'params': {'nprobe': int(nprobe)}},
+            limit=limit,
+            expr=filter_expr,
+        )
+        sparse_req = AnnSearchRequest(
+            data=[query_text],
+            anns_field='content_sparse',
+            param={'metric_type': 'BM25', 'params': {}},
+            limit=limit,
+            expr=filter_expr,
+        )
+        results = client.hybrid_search(
+            collection_name=collection,
+            reqs=[dense_req, sparse_req],
+            ranker=RRFRanker(k=int(rrf_k)),
+            limit=limit,
+            output_fields=_RAGF_SEARCH_OUTPUT_FIELDS,
+        )
+    rows = results[0] if results else []
+    logger.info(
+        'RAGF 检索 coll=%s kb=%s mode=%s limit=%s hits=%s',
+        collection,
+        kb_name,
+        search_mode,
+        limit,
+        len(rows),
+    )
+    return [_normalize_ragf_hit(hit) for hit in rows]
 
 
 def delete_ragf_vectors_by_document(

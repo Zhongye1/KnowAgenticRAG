@@ -110,6 +110,25 @@ class CRUDDocument(TenantScopedCrud[Document]):
         rows = await db.execute(stmt)
         return [row[0] for row in rows.all()]
 
+    async def list_by_ids(
+        self,
+        db: AsyncSession,
+        document_ids: list[str],
+        *,
+        kb_name: str | None = None,
+        plugin_namespace: str | None = None,
+    ) -> list[Document]:
+        """按文档 ID 批量读取（来源补全用，限定域，可选限定知识库）。"""
+        ids = [str(item) for item in document_ids if item]
+        if not ids:
+            return []
+        ns = instance_namespace(plugin_namespace)
+        stmt = select(Document).where(Document.document_id.in_(ids), Document.plugin_namespace == ns)
+        if kb_name:
+            stmt = stmt.where(Document.kb_name == kb_name)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
     async def delete_by_kb(
         self,
         db: AsyncSession,

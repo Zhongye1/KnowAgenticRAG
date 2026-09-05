@@ -88,6 +88,25 @@ class CRUDChunk(TenantScopedCrud[Chunk]):
         result = await db.execute(stmt)
         return list(result.scalars().all())
 
+    async def list_by_ids(
+        self,
+        db: AsyncSession,
+        chunk_ids: list[str],
+        *,
+        kb_name: str | None = None,
+        plugin_namespace: str | None = None,
+    ) -> list[Chunk]:
+        """按 chunk_id 批量读取（来源补全/评估用，限定域，可选限定知识库）。"""
+        ids = [str(item) for item in chunk_ids if item]
+        if not ids:
+            return []
+        ns = instance_namespace(plugin_namespace)
+        stmt = select(Chunk).where(Chunk.chunk_id.in_(ids), Chunk.plugin_namespace == ns)
+        if kb_name:
+            stmt = stmt.where(Chunk.kb_name == kb_name)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
     async def delete_by_document(
         self,
         db: AsyncSession,

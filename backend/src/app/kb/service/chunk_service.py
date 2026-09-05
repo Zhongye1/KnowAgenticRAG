@@ -30,17 +30,15 @@ class ChunkService:
             if not content or not str(content).strip():
                 continue
             idx = int(chunk.get('chunk_index') if chunk.get('chunk_index') is not None else chunk_index)
-            rows.append(
-                {
-                    'chunk_id': f'{document_id}:{version_id}:{idx}',
-                    'content': str(content),
-                    'chunk_index': idx,
-                    'token_count': chunk.get('token_count'),
-                    'char_pos_start': chunk.get('char_pos_start'),
-                    'char_pos_end': chunk.get('char_pos_end'),
-                    'meta': chunk.get('meta') or {},
-                }
-            )
+            rows.append({
+                'chunk_id': f'{document_id}:{version_id}:{idx}',
+                'content': str(content),
+                'chunk_index': idx,
+                'token_count': chunk.get('token_count'),
+                'char_pos_start': chunk.get('char_pos_start'),
+                'char_pos_end': chunk.get('char_pos_end'),
+                'meta': chunk.get('meta') or {},
+            })
         return await chunk_dao.replace_by_document(
             db,
             document_id=document_id,
@@ -64,6 +62,22 @@ class ChunkService:
             document_id,
             kb_name=kb_name,
             version_id=version_id,
+            plugin_namespace=plugin_namespace,
+        )
+
+    @staticmethod
+    async def list_by_ids(
+        db: AsyncSession,
+        chunk_ids: list[str],
+        *,
+        kb_name: str | None = None,
+        plugin_namespace: str | None = None,
+    ) -> list[Chunk]:
+        """按 chunk_id 批量读取（retrieval 来源补全只读契约，D9）。"""
+        return await chunk_dao.list_by_ids(
+            db,
+            chunk_ids,
+            kb_name=kb_name,
             plugin_namespace=plugin_namespace,
         )
 
