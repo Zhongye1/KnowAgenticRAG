@@ -18,7 +18,12 @@ from backend.src.app.ingest.chunking.presets import (
     CHUNK_ENGINE_VERSION,
     normalize_chunk_preset_id,
 )
-from backend.src.app.ingest.parser.factory import DIRECT_TEXT_EXTENSIONS, OCR_EXTENSIONS, parse_document
+from backend.src.app.ingest.parser.factory import (
+    DIRECT_TEXT_EXTENSIONS,
+    OCR_EXTENSIONS,
+    OFFICE_TEXT_EXTENSIONS,
+    parse_document,
+)
 from backend.src.app.kb.crud import document_dao, knowledge_base_dao
 from backend.src.app.kb.service.chunk_service import ChunkService
 from backend.src.app.kb.service.document_storage import (
@@ -338,6 +343,8 @@ def _resolve_engine_extension(filename: str) -> str:
     ext = os.path.splitext(filename or '')[1].lower()
     if ext in DIRECT_TEXT_EXTENSIONS:
         return 'direct_text'
+    if ext in OFFICE_TEXT_EXTENSIONS:
+        return 'office_text'
     if ext in OCR_EXTENSIONS:
         return settings.RAGF_OCR_ENGINE or 'mineru'
     return 'unsupported'

@@ -2,8 +2,9 @@
 
 路由规则（首发子集）：
 - ``.md/.txt/.csv`` → 直读（不经 OCR）；
+- ``.docx/.pptx`` → Office 文本直读（python-docx/python-pptx，D13）；
 - ``.pdf/.png/.jpg/.jpeg`` → OCR 引擎（settings ``RAGF_OCR_ENGINE`` 或 params 覆盖）；
-- 其余格式（docx/pptx 等）依赖后续批次引擎，返回 ProcessorUnavailableError。
+- 其余格式返回 ProcessorUnavailableError。
 解析失败抛 DocumentParseError/ProcessorUnavailableError，由摄取服务映射状态。
 """
 
@@ -19,6 +20,7 @@ from backend.src.common.log import log
 from backend.src.core.config import settings
 
 DIRECT_TEXT_EXTENSIONS = frozenset({'.md', '.txt', '.csv'})
+OFFICE_TEXT_EXTENSIONS = frozenset({'.docx', '.pptx'})
 OCR_EXTENSIONS = frozenset({'.pdf', '.png', '.jpg', '.jpeg'})
 
 _PROCESSOR_CACHE: dict[str, BaseDocumentProcessor] = {}
@@ -56,12 +58,14 @@ class DocumentProcessorFactory:
         ext = _extension_of(filename)
         if ext in DIRECT_TEXT_EXTENSIONS:
             engine_id = 'direct_text'
+        elif ext in OFFICE_TEXT_EXTENSIONS:
+            engine_id = 'office_text'
         elif ext in OCR_EXTENSIONS:
             engine_id = str(params.get('ocr_engine') or settings.RAGF_OCR_ENGINE or '').strip()
         else:
             raise ProcessorUnavailableError(
-                f'暂不支持的文件格式: {ext or "(无扩展名)"}；首发支持 {sorted(DIRECT_TEXT_EXTENSIONS | OCR_EXTENSIONS)}'
-                '（docx/pptx 等依赖 docling 引擎，后续批次接入）',
+                f'暂不支持的文件格式: {ext or "(无扩展名)"}；首发支持 '
+                f'{sorted(DIRECT_TEXT_EXTENSIONS | OFFICE_TEXT_EXTENSIONS | OCR_EXTENSIONS)}',
                 service_name='factory',
                 error_code='unsupported_file_type',
             )

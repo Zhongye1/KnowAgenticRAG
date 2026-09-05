@@ -43,9 +43,46 @@ def test_parse_csv_passthrough() -> None:
 
 
 def test_parse_unsupported_format_raises() -> None:
-    """docx 等未接入引擎格式：明确 unavailable 错误（D13 子集外拒绝）。"""
+    """xlsx 等未接入引擎格式：明确 unavailable 错误（D13 子集外拒绝）。"""
     with pytest.raises(ProcessorUnavailableError):
-        _run(parse_document(b'x', 'demo.docx', {}))
+        _run(parse_document(b'x', 'demo.xlsx', {}))
+
+
+def test_parse_docx_office_text() -> None:
+    """docx 直读：标题转 Markdown 井号、表格转管线行。"""
+    import io
+
+    from docx import Document as DocxDocument
+
+    document = DocxDocument()
+    document.add_heading('一期标题', level=1)
+    document.add_paragraph('正文段落。')
+    table = document.add_table(rows=1, cols=2)
+    table.cell(0, 0).text = '甲'
+    table.cell(0, 1).text = '乙'
+    buffer = io.BytesIO()
+    document.save(buffer)
+    markdown = _run(parse_document(buffer.getvalue(), 'demo.docx', {}))
+    assert '# 一期标题' in markdown
+    assert '正文段落。' in markdown
+    assert '| 甲 | 乙 |' in markdown
+
+
+def test_parse_pptx_office_text() -> None:
+    """pptx 直读：形状文本按 slide 顺序抽取。"""
+    import io
+
+    from pptx import Presentation as PptxPresentation
+    from pptx.util import Inches
+
+    presentation = PptxPresentation()
+    slide = presentation.slides.add_slide(presentation.slide_layouts[6])  # blank
+    textbox = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(1))
+    textbox.text = '幻灯片要点'
+    buffer = io.BytesIO()
+    presentation.save(buffer)
+    markdown = _run(parse_document(buffer.getvalue(), 'demo.pptx', {}))
+    assert '幻灯片要点' in markdown
 
 
 def test_parse_unknown_engine_raises() -> None:
@@ -58,4 +95,5 @@ def test_registry_engines() -> None:
     """注册表含首发引擎（direct_text 常驻；mineru 为 OCR 默认）。"""
     engines = DocumentProcessorFactory.get_available_processors()
     assert 'direct_text' in engines
+    assert 'office_text' in engines
     assert 'mineru' in engines
