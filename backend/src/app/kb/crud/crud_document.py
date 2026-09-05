@@ -1,10 +1,13 @@
 """文档元数据 CRUD（只读登记，不含摄取）。"""
 
+from datetime import datetime
+from typing import Any
+
 from sqlalchemy import Select, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.app.kb.crud.base import TenantScopedCrud, result_rowcount
-from backend.src.app.kb.model import Document
+from backend.src.app.kb.model import Document, DocumentKeyword
 from backend.src.app.kb.utils.namespace import instance_namespace
 
 
@@ -79,6 +82,74 @@ class CRUDDocument(TenantScopedCrud[Document]):
             stmt = stmt.where(Document.status == status)
         stmt = stmt.order_by(Document.created_time.desc())
         return stmt
+
+    async def resolve_searchable_document_ids(
+        self,
+        db: AsyncSession,
+        *,
+        kb_name: str,
+        plugin_namespace: str | None = None,
+        file_name: str | None = None,
+        keyword: str | None = None,
+        tag: str | None = None,
+        updated_after: datetime | None = None,
+        updated_before: datetime | None = None,
+        file_type: str | None = None,
+        path_prefix: str | None = None,
+    ) -> list[str] | None:
+        """文档级过滤 → document_id 集（M11/D26：keyword/tag/updated/file_type/path_prefix + file_name）。
+
+        无条件返回 None（不过滤）；有条件但命中为空返回 []（检索方短路为空结果）。
+        租户作用域与 kb_name 过滤强制注入；keyword/tag 经 ``document_keywords`` 目录解析。
+        """
+        ns = instance_namespace(plugin_namespace)
+        conditions: list[Any] = [Document.plugin_namespace == ns, Document.kb_name == kb_name]
+
+        file_name = (file_name or '').strip() or None
+        if file_name:
+            conditions.append(Document.name.ilike(f'%{file_name}%'))
+
+        keyword = (keyword or '').strip() or None
+        if keyword:
+            conditions.append(DocumentKeyword.document_id.in_(
+                select(DocumentKeyword.document_id).where(
+                    DocumentKeyword.plugin_namespace == ns,
+                    DocumentKeyword.kb_name == kb_name,
+                    DocumentKeyword.keyword.ilike(f'%{keyword}%'),
+                )
+            ))
+
+        tag = (tag or '').strip() or None
+        if tag:
+            conditions.append(DocumentKeyword.document_id.in_(
+                select(DocumentKeyword.document_id).where(
+                    DocumentKeyword.plugin_namespace == ns,
+                    DocumentKeyword.kb_name == kb_name,
+                    DocumentKeyword.keyword == tag,
+                )
+            ))
+
+        if updated_after is not None:
+            conditions.append(Document.updated_time >= updated_after)
+        if updated_before is not None:
+            conditions.append(Document.updated_time <= updated_before)
+
+        ext = ((file_type or '').strip().lstrip('.').lower()) or None
+        if ext:
+            conditions.append(Document.name.ilike(f'%.{ext}'))
+
+        prefix = (path_prefix or '').strip() or None
+        if prefix:
+            conditions.append(
+                or_(Document.source_uri.startswith(prefix), Document.name.startswith(prefix))
+            )
+
+        if len(conditions) == 2:
+            return None
+
+        stmt = select(Document.document_id).where(*conditions).distinct()
+        rows = await db.execute(stmt)
+        return [row[0] for row in rows.all()]
 
     async def count_by_kb(
         self,
