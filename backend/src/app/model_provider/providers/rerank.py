@@ -41,13 +41,14 @@ class BaseReranker(ABC):
         self,
         *,
         model: str,
-        base_url: str,
+        base_url: str = '',
         api_key: str,
         headers: dict[str, str] | None = None,
         batch_size: int = RERANK_BATCH_SIZE,
         max_length: int = RERANK_MAX_LENGTH,
     ) -> None:
         self.model = model
+        self.base_url = base_url
         self.api_key = api_key
         self.batch_size = max(1, batch_size)
         self.max_length = max_length
