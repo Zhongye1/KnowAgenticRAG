@@ -4,4 +4,5 @@ from backend.src.app.ingest.parser.processors import (
     direct_text,  # ruff: ignore[unused-import]
     mineru_http,  # ruff: ignore[unused-import]
     office_text,  # ruff: ignore[unused-import]
+    rapid_ocr,  # ruff: ignore[unused-import]
 )

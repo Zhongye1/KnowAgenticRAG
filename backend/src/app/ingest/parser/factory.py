@@ -53,22 +53,40 @@ class DocumentProcessorFactory:
 
     @classmethod
     async def parse_document(cls, data: bytes, filename: str, params: dict[str, Any] | None = None) -> str:
-        """按扩展名路由解析，返回 Markdown 字符串。"""
+        """按扩展名路由解析，返回 Markdown 字符串（单引擎，无兜底）。"""
         params = dict(params or {})
-        ext = _extension_of(filename)
-        if ext in DIRECT_TEXT_EXTENSIONS:
-            engine_id = 'direct_text'
-        elif ext in OFFICE_TEXT_EXTENSIONS:
-            engine_id = 'office_text'
-        elif ext in OCR_EXTENSIONS:
-            engine_id = str(params.get('ocr_engine') or settings.RAGF_OCR_ENGINE or '').strip()
-        else:
-            raise ProcessorUnavailableError(
-                f'暂不支持的文件格式: {ext or "(无扩展名)"}；首发支持 '
-                f'{sorted(DIRECT_TEXT_EXTENSIONS | OFFICE_TEXT_EXTENSIONS | OCR_EXTENSIONS)}',
-                service_name='factory',
-                error_code='unsupported_file_type',
-            )
+        engine_id = _route_engine(filename, params)
+        return await cls._parse_with_engine(data, filename, params, engine_id)
+
+    @classmethod
+    async def parse_document_with_fallback(
+        cls,
+        data: bytes,
+        filename: str,
+        params: dict[str, Any] | None = None,
+        fallback_engines: tuple[str, ...] = ('rapid_ocr',),
+    ) -> tuple[str, str]:
+        """按扩展名路由解析；主引擎失败时按 fallback_engines 依次兜底（M4）。
+
+        OCR 场景语义：MinerU-HTTP 容器不可用/解析失败 → 本地 RapidOCR 兜底，
+        返回 ``(markdown, 实际引擎)`` 供摄取侧记录降级。直读/office 无兜底。
+        """
+        params = dict(params or {})
+        engine_id = _route_engine(filename, params)
+        fallbacks = [engine for engine in fallback_engines if engine != engine_id]
+        while True:
+            try:
+                markdown = await cls._parse_with_engine(data, filename, params, engine_id)
+            except (ProcessorUnavailableError, DocumentParseError):
+                if not fallbacks:
+                    raise
+                log.warning('解析引擎 {} 失败（{}），降级重试 -> {}', filename, engine_id, fallbacks[0])
+                engine_id = fallbacks.pop(0)
+            else:
+                return markdown, engine_id
+
+    @classmethod
+    async def _parse_with_engine(cls, data: bytes, filename: str, params: dict[str, Any], engine_id: str) -> str:
         processor = cls.get_processor(engine_id)
         try:
             return await processor.parse_bytes(data, filename, params)
@@ -101,9 +119,45 @@ def _extension_of(filename: str) -> str:
     return os.path.splitext(filename or '')[1].lower()
 
 
+def _route_engine(filename: str, params: dict[str, Any]) -> str:
+    """按扩展名 + 参数路由引擎 id（直读/office/OCR/子集外拒绝）。"""
+    ext = _extension_of(filename)
+    if ext in DIRECT_TEXT_EXTENSIONS:
+        return 'direct_text'
+    if ext in OFFICE_TEXT_EXTENSIONS:
+        return 'office_text'
+    if ext in OCR_EXTENSIONS:
+        engine = str(params.get('ocr_engine') or settings.RAGF_OCR_ENGINE or '').strip()
+        if engine:
+            return engine
+        raise ProcessorUnavailableError(
+            '未配置 OCR 引擎（settings.RAGF_OCR_ENGINE 或 params.ocr_engine）',
+            service_name='factory',
+            error_code='ocr_engine_unset',
+        )
+    raise ProcessorUnavailableError(
+        f'暂不支持的文件格式: {ext or "(无扩展名)"}；首发支持 '
+        f'{sorted(DIRECT_TEXT_EXTENSIONS | OFFICE_TEXT_EXTENSIONS | OCR_EXTENSIONS)}',
+        service_name='factory',
+        error_code='unsupported_file_type',
+    )
+
+
 async def parse_document(data: bytes, filename: str, params: dict[str, Any] | None = None) -> str:
     """模块级便捷入口。"""
     return await DocumentProcessorFactory.parse_document(data, filename, params)
 
 
-__all__ = ['DocumentProcessorFactory', 'parse_document']
+async def parse_document_with_fallback(
+    data: bytes,
+    filename: str,
+    params: dict[str, Any] | None = None,
+    fallback_engines: tuple[str, ...] = ('rapid_ocr',),
+) -> tuple[str, str]:
+    """模块级便捷入口（OCR 引擎失败自动降级，M4）。"""
+    return await DocumentProcessorFactory.parse_document_with_fallback(
+        data, filename, params, fallback_engines=fallback_engines
+    )
+
+
+__all__ = ['DocumentProcessorFactory', 'parse_document', 'parse_document_with_fallback']

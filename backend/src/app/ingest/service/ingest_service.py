@@ -9,6 +9,7 @@ chunks 经 kb 域公开契约写入（D9），本域不持有 chunk 表结构。
 from __future__ import annotations
 
 import asyncio
+import os
 
 from typing import TYPE_CHECKING, Any
 
@@ -23,6 +24,7 @@ from backend.src.app.ingest.parser.factory import (
     OCR_EXTENSIONS,
     OFFICE_TEXT_EXTENSIONS,
     parse_document,
+    parse_document_with_fallback,
 )
 from backend.src.app.kb.crud import document_dao, knowledge_base_dao
 from backend.src.app.kb.service.chunk_service import ChunkService
@@ -93,10 +95,15 @@ class IngestService:
         filename = doc.name or 'file'
         object_key = doc.source_uri or kb_object_key(ns, kb_name, document_id, filename)
 
-        # ① 解析：对象 → Markdown（引擎失败 → parsing_failed）
+        # ① 解析：对象 → Markdown（引擎失败 → parsing_failed；OCR 引擎按 M4
+        #    MinerU-HTTP → RapidOCR 兜底，实际引擎回写指纹便于重摄取复现）
         try:
             data = await download_document_bytes(object_key)
-            markdown = await parse_document(data, filename, processing)
+            if os.path.splitext(filename)[1].lower() in OCR_EXTENSIONS:
+                markdown, ocr_engine_used = await parse_document_with_fallback(data, filename, processing)
+                processing['ocr_engine'] = ocr_engine_used
+            else:
+                markdown = await parse_document(data, filename, processing)
         except IngestStepError:
             raise
         except Exception as exc:
@@ -338,8 +345,6 @@ def _map_chunk_records(records: list[dict[str, Any]], *, preset: str) -> list[di
 
 
 def _resolve_engine_extension(filename: str) -> str:
-    import os
-
     ext = os.path.splitext(filename or '')[1].lower()
     if ext in DIRECT_TEXT_EXTENSIONS:
         return 'direct_text'

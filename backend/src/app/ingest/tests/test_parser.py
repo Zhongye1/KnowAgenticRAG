@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from backend.src.app.ingest.parser import DocumentProcessorFactory, parse_document
-from backend.src.app.ingest.parser.base import ProcessorUnavailableError
+from backend.src.app.ingest.parser.base import DocumentParseError, ProcessorUnavailableError
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable
@@ -85,6 +85,83 @@ def test_parse_pptx_office_text() -> None:
     assert '幻灯片要点' in markdown
 
 
+def _cjk_font_path() -> str | None:
+    """查找可渲染中文的系统字体（缺失则跳过真实 OCR 用例）。"""
+    import glob
+
+    for pattern in (
+        '/usr/share/fonts/**/wqy-zenhei.ttc',
+        '/usr/share/fonts/**/*CJK*.ttc',
+        '/usr/share/fonts/**/*CJK*.otf',
+        '/usr/share/fonts/**/Noto*.ttc',
+    ):
+        hits = glob.glob(pattern, recursive=True)
+        if hits:
+            return hits[0]
+    return None
+
+
+def test_parse_png_via_rapid_ocr() -> None:
+    """rapid_ocr 真实 OCR：中文 PNG 应识别出文本（无 CJK 字体/依赖则跳过）。"""
+    import io
+
+    from PIL import Image, ImageDraw, ImageFont
+
+    font_path = _cjk_font_path()
+    if font_path is None:
+        pytest.skip('无中文字体，跳过真实 OCR 用例')
+    try:
+        import rapidocr  # ruff: ignore[unused-import]
+    except ImportError:
+        pytest.skip('rapidocr 未安装')
+
+    image = Image.new('RGB', (420, 80), 'white')
+    ImageDraw.Draw(image).text((10, 20), 'RAG混合检索测试', font=ImageFont.truetype(font_path, 32), fill='black')
+    buffer = io.BytesIO()
+    image.save(buffer, format='PNG')
+    markdown = _run(parse_document(buffer.getvalue(), 'demo.png', {'ocr_engine': 'rapid_ocr'}))
+    assert '检索' in markdown and 'RAG' in markdown
+
+
+def test_parse_document_fallback_to_rapid_ocr(monkeypatch: pytest.MonkeyPatch) -> None:
+    """OCR 主引擎失败 → 自动降级 rapid_ocr（M4 兜底，记录实际引擎）。"""
+    from backend.src.app.ingest.parser import DocumentProcessorFactory
+    from backend.src.app.ingest.parser.registry import PROCESSORS
+
+    class FailingMineru:
+        service_name = 'mineru'
+
+        async def parse_bytes(self, data: bytes, filename: str, params: dict | None = None) -> str:
+            raise DocumentParseError('容器不可达', service_name='mineru', error_code='parse_error')
+
+        async def check_health(self) -> dict:
+            return {}
+
+    class WorkingRapid:
+        service_name = 'rapid_ocr'
+
+        async def parse_bytes(self, data: bytes, filename: str, params: dict | None = None) -> str:
+            return '兜底内容'
+
+        async def check_health(self) -> dict:
+            return {}
+
+    def fake_get(engine_id: str, **kwargs: object) -> object:
+        if engine_id == 'mineru':
+            return FailingMineru()
+        if engine_id == 'rapid_ocr':
+            return WorkingRapid()
+        raise ProcessorUnavailableError(f'未注册: {engine_id}')
+
+    monkeypatch.setattr(DocumentProcessorFactory, 'get_processor', staticmethod(fake_get))  # type: ignore[method-assign]
+    assert 'mineru' in PROCESSORS and 'rapid_ocr' in PROCESSORS
+    markdown, engine = _run(
+        DocumentProcessorFactory.parse_document_with_fallback(b'pdf-bytes', 'demo.pdf', {'ocr_engine': 'mineru'})
+    )
+    assert markdown == '兜底内容'
+    assert engine == 'rapid_ocr'
+
+
 def test_parse_unknown_engine_raises() -> None:
     """settings/params 指定未注册 OCR 引擎：明确错误。"""
     with pytest.raises(ProcessorUnavailableError):
@@ -97,3 +174,4 @@ def test_registry_engines() -> None:
     assert 'direct_text' in engines
     assert 'office_text' in engines
     assert 'mineru' in engines
+    assert 'rapid_ocr' in engines
