@@ -1,9 +1,11 @@
-"""模型客户端工厂（Yuxi models/embed.py + rerank.py select_* 移植，ragf-design D11/D16/D17）。"""
+"""模型客户端工厂（Yuxi models/embed.py + rerank.py + chat.py select_* 移植，ragf-design D11/D16/D17/D18）。"""
 
 from backend.src.app.model_provider.cache import ModelInfo
+from backend.src.app.model_provider.providers.chat import OpenAICompatibleChatModel
 from backend.src.app.model_provider.providers.embed import OpenAICompatibleEmbedding
 from backend.src.app.model_provider.providers.rerank import BaseReranker, DashscopeReranker, OpenAIReranker
 from backend.src.common.exception import errors
+from backend.src.core.config import settings
 
 
 def select_embedding_model(info: ModelInfo) -> OpenAICompatibleEmbedding:
@@ -17,6 +19,19 @@ def select_embedding_model(info: ModelInfo) -> OpenAICompatibleEmbedding:
         dimension=info.dimension,
         batch_size=info.batch_size,
         headers=info.headers,
+    )
+
+
+def select_chat_model(info: ModelInfo) -> OpenAICompatibleChatModel:
+    """按 ModelInfo 构建 Chat 客户端（D18：模型 type 必须是 chat）。"""
+    if info.model_type != 'chat':
+        raise errors.RequestError(msg=f'模型 {info.spec} 不是 chat 模型（type={info.model_type}）')
+    return OpenAICompatibleChatModel(
+        model=info.model_id,
+        base_url=info.base_url,
+        api_key=info.api_key,
+        headers=info.headers,
+        timeout=settings.RAGF_CHAT_TIMEOUT_SECONDS,
     )
 
 

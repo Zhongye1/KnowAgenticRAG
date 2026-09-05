@@ -345,6 +345,13 @@ class Settings(BaseSettings):
     RAGF_RETRIEVAL_RRF_K: int = 60
     RAGF_RETRIEVAL_RERANK_SPEC: str = 'modelscope:BAAI/bge-reranker-v2-m3'  # D16：默认精排模型 spec（provider:model）
 
+    # RAGF：chat 门面（ragf-design D18/M9）
+    RAGF_CHAT_MODEL_SPEC: str = ''  # 默认 chat 模型 spec（provider:model）；空 = 请求必须显式 model
+    RAGF_CHAT_HISTORY_ROUNDS: int = 10
+    RAGF_CONTEXT_MAX_TOKENS: int = 4096
+    RAGF_CHAT_TIMEOUT_SECONDS: float = 120.0
+    RAGF_CHAT_DEFAULT_TEMPERATURE: float = 0.3
+
     # 摄取（ragf-design D8/D13）
     RAGF_OCR_ENGINE: Literal['mineru', 'rapidocr'] = 'mineru'
     # MinerU 精准解析 API（公网 mineru.net v4，D8：不自建 OCR 容器）。

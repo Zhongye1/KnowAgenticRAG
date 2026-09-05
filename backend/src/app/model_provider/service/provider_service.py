@@ -21,7 +21,11 @@ from backend.src.app.model_provider.model.provider import (
     VALID_PROVIDER_TYPES,
     ModelProvider,
 )
-from backend.src.app.model_provider.service.model_factory import get_reranker, select_embedding_model
+from backend.src.app.model_provider.service.model_factory import (
+    get_reranker,
+    select_chat_model,
+    select_embedding_model,
+)
 from backend.src.common.exception import errors
 from backend.src.common.log import log
 from backend.src.core.config import settings
@@ -29,6 +33,7 @@ from backend.src.core.config import settings
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from backend.src.app.model_provider.providers.chat import OpenAICompatibleChatModel
     from backend.src.app.model_provider.providers.embed import OpenAICompatibleEmbedding
     from backend.src.app.model_provider.providers.rerank import BaseReranker
     from backend.src.app.model_provider.schema.provider import (
@@ -156,8 +161,15 @@ class ProviderService:
             raise errors.NotFoundError(msg=f'未找到模型 spec: {spec}（请检查 model_providers 配置）')
         return get_reranker(info)
 
+    async def get_chat_model(self, db: AsyncSession, spec: str) -> OpenAICompatibleChatModel:
+        """按 spec 返回 Chat 客户端（D18：供 chat 门面使用）。"""
+        info = await self.get_model_info(db, spec)
+        if info is None:
+            raise errors.NotFoundError(msg=f'未找到模型 spec: {spec}（请检查 model_providers 配置）')
+        return select_chat_model(info)
+
     async def test_connectivity(self, db: AsyncSession, spec: str) -> dict[str, Any]:
-        """连通性测试（embedding/rerank；chat 二期支持）。"""
+        """连通性测试（embedding/rerank/chat，D18 起 chat 纳入）。"""
         info = await self.get_model_info(db, spec)
         if info is None:
             raise errors.NotFoundError(msg=f'未找到模型 spec: {spec}')
@@ -168,10 +180,13 @@ class ProviderService:
             if info.model_type == 'rerank':
                 ok, message = await get_reranker(info).test_connection()
                 return {'spec': spec, 'status': 'available' if ok else 'unavailable', 'message': message}
+            if info.model_type == 'chat':
+                ok, message = await select_chat_model(info).test_connection()
+                return {'spec': spec, 'status': 'available' if ok else 'unavailable', 'message': message}
         except Exception as exc:
             log.warning(f'测试模型连通性失败 {spec}: {exc}')
             return {'spec': spec, 'status': 'error', 'message': str(exc)}
-        return {'spec': spec, 'status': 'error', 'message': 'chat 模型连通性测试属二期'}
+        return {'spec': spec, 'status': 'error', 'message': '不支持的模型类型'}
 
     # ------------------------------------------------------------------ 缓存
     async def rebuild_cache(self, db: AsyncSession) -> int:

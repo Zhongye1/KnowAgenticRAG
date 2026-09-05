@@ -202,9 +202,7 @@ def test_get_reranker_protocol_dispatch(monkeypatch: pytest.MonkeyPatch) -> None
         provider_type='dashscope',
         api_key_env='DASHSCOPE_API_KEY',
         base_url='https://dashscope.aliyuncs.com/api/v1/services/rerank',
-        enabled_models=[
-            {'id': 'gte-rerank', 'type': 'rerank', 'extra': {'rerank_protocol': 'dashscope'}}
-        ],
+        enabled_models=[{'id': 'gte-rerank', 'type': 'rerank', 'extra': {'rerank_protocol': 'dashscope'}}],
     )
     dash_info = build_model_info(dash_provider, dash_provider.enabled_models[0])
     assert dash_info is not None

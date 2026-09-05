@@ -323,7 +323,7 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "业务域互不依赖：admin / kb / task / ingest / retrieval / model_provider（有意依赖需显式豁免）"
+name = "业务域互不依赖：admin / kb / task / ingest / retrieval / model_provider / chat（有意依赖需显式豁免）"
 type = "independence"
 modules = [
     "backend.src.app.admin",
@@ -332,6 +332,7 @@ modules = [
     "backend.src.app.ingest",
     "backend.src.app.retrieval",
     "backend.src.app.model_provider",
+    "backend.src.app.chat",
 ]
 ignore_imports = [
     # db_log 任务消费 admin 日志服务：有意为之，后续可反转依赖方向
@@ -346,6 +347,10 @@ ignore_imports = [
     # retrieval 经 kb 只读契约补全来源、经 model_provider 取 embedding/rerank
     "backend.src.app.retrieval.** -> backend.src.app.kb.**",
     "backend.src.app.retrieval.** -> backend.src.app.model_provider.**",
+    # chat 门面编排检索（复用 retrieval 服务）+ model_provider chat 模型（D18/M9）
+    "backend.src.app.chat.** -> backend.src.app.retrieval.**",
+    "backend.src.app.chat.** -> backend.src.app.model_provider.**",
+    "backend.src.app.chat.** -> backend.src.app.kb.**",
     # ingest 域内任务/上传端点经 app/task celery_app 派发（D10：任务代码域内归属，
     # 发送仍走框架 celery 实例）
     "backend.src.app.ingest.** -> backend.src.app.task.**",
@@ -373,3 +378,11 @@ layers = [
     "model",
 ]
 
+[[tool.importlinter.contracts]]
+name = "chat 模块分层：api → service（上层可依赖下层，反之禁止）"
+type = "layers"
+containers = ["backend.src.app.chat"]
+layers = [
+    "api",
+    "service",
+]
