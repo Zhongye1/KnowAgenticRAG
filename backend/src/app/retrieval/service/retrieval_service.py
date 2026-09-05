@@ -15,6 +15,9 @@ import time
 
 from typing import TYPE_CHECKING, Any
 
+from opentelemetry import metrics as otel_metrics
+from opentelemetry import trace as otel_trace
+
 from backend.src.app.kb.crud import document_dao, knowledge_base_dao
 from backend.src.app.kb.service.chunk_service import ChunkService
 from backend.src.app.kb.utils.namespace import instance_namespace
@@ -34,6 +37,20 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from backend.src.app.retrieval.service.ports import ChunkSourcePort
+
+_TRACER = otel_trace.get_tracer('backend.ragf')
+_METER = otel_metrics.get_meter('backend.ragf')
+# ragf-design §14.13：指标只在域门面/外部依赖边界打点，不侵入纯函数
+_RETRIEVAL_REQUESTS = _METER.create_counter(
+    'ragf.retrieval.requests', unit='1', description='同步检索请求数（result=ok/degraded/error）'
+)
+_RETRIEVAL_DURATION = _METER.create_histogram(
+    'ragf.retrieval.duration_seconds', unit='s', description='同步检索耗时（含 embedding/召回/精排）'
+)
+_RERANK_DEGRADED = _METER.create_counter(
+    'ragf.retrieval.rerank_degraded', unit='1', description='精排失败降级为召回序的次数（§A.5）'
+)
+
 
 DEFAULT_EMBEDDING_SPEC = 'modelscope:BAAI/bge-m3'
 DEFAULT_RERANK_SPEC = 'modelscope:BAAI/bge-reranker-v2-m3'
@@ -77,6 +94,39 @@ class RetrievalService:
 
     # ------------------------------------------------------------------ 编排
     async def search(
+        self,
+        db: AsyncSession,
+        *,
+        kb_name: str,
+        query_text: str,
+        param: KBSearchParam | dict[str, Any] | None = None,
+        plugin_namespace: str | None = None,
+    ) -> dict[str, Any]:
+        """同步检索门面入口（§14.13：span + 指标，不承载编排逻辑）。"""
+        started = time.perf_counter()
+        with _TRACER.start_as_current_span('ragf.retrieval.search') as span:
+            span.set_attribute('ragf.kb_name', kb_name)
+            try:
+                data = await self._search(
+                    db,
+                    kb_name=kb_name,
+                    query_text=query_text,
+                    param=param,
+                    plugin_namespace=plugin_namespace,
+                )
+            except Exception:
+                _RETRIEVAL_REQUESTS.add(1, {'result': 'error'})
+                raise
+            span.set_attribute('ragf.mode', data['mode'])
+            span.set_attribute('ragf.recall_count', data['recall_count'])
+            span.set_attribute('ragf.reranked', data['reranked'])
+            span.set_attribute('ragf.degraded', data['degraded'])
+            span.set_attribute('ragf.hit_count', len(data['results']))
+            _RETRIEVAL_REQUESTS.add(1, {'result': 'degraded' if data['degraded'] else 'ok'})
+            _RETRIEVAL_DURATION.record(time.perf_counter() - started)
+            return data
+
+    async def _search(
         self,
         db: AsyncSession,
         *,
@@ -154,6 +204,7 @@ class RetrievalService:
                     await reranker.aclose()
             except Exception as exc:
                 degraded = True
+                _RERANK_DEGRADED.add(1, {'kb_name': kb_name, 'spec': settings.RAGF_RETRIEVAL_RERANK_SPEC})
                 log.warning(
                     '检索精排失败，按召回序降级返回 spec={} kb={} err={}',
                     settings.RAGF_RETRIEVAL_RERANK_SPEC,
