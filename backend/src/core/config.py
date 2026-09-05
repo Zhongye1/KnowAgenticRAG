@@ -347,7 +347,18 @@ class Settings(BaseSettings):
 
     # 摄取（ragf-design D8/D13）
     RAGF_OCR_ENGINE: Literal['mineru', 'rapidocr'] = 'mineru'
-    RAGF_MINERU_BASE_URL: str = 'http://localhost:8080'
+    # MinerU 精准解析 API（公网 mineru.net v4，D8：不自建 OCR 容器）。
+    # token 在 mineru.net“API 管理页面”创建，经 env MINERU_API_TOKEN 配置；
+    # 未配置时引擎抛不可用 → 摄取按 M4 降级 rapid_ocr。
+    MINERU_API_TOKEN: str | None = None
+    RAGF_MINERU_API_BASE: str = 'https://mineru.net'
+    RAGF_MINERU_MODEL_VERSION: Literal['pipeline', 'vlm', 'MinerU-HTML'] = 'vlm'
+    RAGF_MINERU_IS_OCR: bool = True
+    RAGF_MINERU_ENABLE_FORMULA: bool = True
+    RAGF_MINERU_ENABLE_TABLE: bool = True
+    RAGF_MINERU_LANGUAGE: str = 'ch'
+    RAGF_MINERU_POLL_INTERVAL_SECONDS: float = 3.0
+    RAGF_MINERU_TIMEOUT_SECONDS: float = 900.0
     RAGF_INGEST_EXT_INCLUDE: list[str] = ['pdf', 'docx', 'pptx', 'md', 'txt', 'csv', 'png', 'jpg']
 
     # ModelProvider（ragf-design D11/D16，键读环境变量 MODELSCOPE_ACCESS_TOKEN）
