@@ -318,12 +318,15 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "admin / kb / task 三个业务模块互不依赖（有意依赖需显式豁免）"
+name = "业务域互不依赖：admin / kb / task / ingest / retrieval / model_provider（有意依赖需显式豁免）"
 type = "independence"
 modules = [
     "backend.src.app.admin",
     "backend.src.app.kb",
     "backend.src.app.task",
+    "backend.src.app.ingest",
+    "backend.src.app.retrieval",
+    "backend.src.app.model_provider",
 ]
 ignore_imports = [
     # db_log 任务消费 admin 日志服务：有意为之，后续可反转依赖方向
@@ -331,6 +334,37 @@ ignore_imports = [
     # common.security（JWT/权限）读取 admin 用户/角色数据：跨模块公共层，属已知债务，
     # 后续应将用户查询下沉为独立 auth 模块或端口，届时删除本条豁免
     "backend.src.common.security.** -> backend.src.app.admin.**",
+    # ragf-design §4：域间依赖方向固定为“下游域 → 上游基础域”
+    # ingest 消费 kb 文档登记/分块只读契约（D9）与 model_provider 模型客户端
+    "backend.src.app.ingest.** -> backend.src.app.kb.**",
+    "backend.src.app.ingest.** -> backend.src.app.model_provider.**",
+    # retrieval 经 kb 只读契约补全来源、经 model_provider 取 embedding/rerank
+    "backend.src.app.retrieval.** -> backend.src.app.kb.**",
+    "backend.src.app.retrieval.** -> backend.src.app.model_provider.**",
+    # ingest 域内任务/上传端点经 app/task celery_app 派发（D10：任务代码域内归属，
+    # 发送仍走框架 celery 实例）
+    "backend.src.app.ingest.** -> backend.src.app.task.**",
     # 测试模块豁免：测试可自由组合被测模块
     "backend.src.app.*.tests.** -> backend.src.app.**",
 ]
+
+[[tool.importlinter.contracts]]
+name = "retrieval 模块分层：api → service（上层可依赖下层，反之禁止）"
+type = "layers"
+containers = ["backend.src.app.retrieval"]
+layers = [
+    "api",
+    "service",
+]
+
+[[tool.importlinter.contracts]]
+name = "model_provider 模块分层：api → service → crud → model（上层可依赖下层，反之禁止）"
+type = "layers"
+containers = ["backend.src.app.model_provider"]
+layers = [
+    "api",
+    "service",
+    "crud",
+    "model",
+]
+
