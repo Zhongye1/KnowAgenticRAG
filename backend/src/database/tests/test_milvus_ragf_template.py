@@ -1,8 +1,9 @@
 """RAGF 模板集合集成冒烟（ragf-design §5.2/§5.4/§14.7，需真实 Milvus）。
 
-覆盖：模板集合创建与 schema 就绪（BM25 字段/索引）、共享集合 + ``kb_name``
-过滤写入、跨 kb 检索不可见、按文档删除与对账计数。Milvus 不可达时跳过
-（CI 无基础设施时静默），本机 docker compose 环境应真实执行。
+覆盖：模板集合创建与 schema 就绪（BM25 字段/索引）、既有集合升级护栏
+（非空 legacy 拒绝静默重建、空 legacy 自动重建、就绪集合幂等不丢数据）、
+共享集合 + ``kb_name`` 过滤写入、跨 kb 检索不可见、按文档删除与对账计数。
+Milvus 不可达时跳过（CI 无基础设施时静默），本机 docker compose 环境应真实执行。
 """
 
 from __future__ import annotations
@@ -14,6 +15,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from pymilvus import CollectionSchema, DataType, FieldSchema, MilvusClient
+from pymilvus.milvus_client.index import IndexParams
+
 from backend.src.database.milvus_kb_ops import (
     count_ragf_vectors_by_document,
     delete_ragf_vectors_by_document,
@@ -23,12 +27,15 @@ from backend.src.database.milvus_kb_ops import (
     ragf_template_collection_ready,
     search_ragf_kb,
 )
+from backend.src.database.milvus_pool import get_milvus_pool
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
 DIM = 1024
 VISIBLE_TIMEOUT = 20.0
+LEGACY_DIM = 9001
+LEGACY_EMPTY_DIM = 9002
 
 
 def _dim_vector(seed: float) -> list[float]:
@@ -59,6 +66,55 @@ def _milvus_available() -> bool:
         return False
     else:
         return True
+
+
+def _legacy_collection(client: MilvusClient, dim: int) -> str:
+    """按旧版 schema 建集合（id/vector + 动态字段，无 BM25 Function），模拟升级前残留。"""
+    name = ragf_template_collection_name(dim)
+    if client.has_collection(name):
+        client.drop_collection(name)
+    schema = CollectionSchema(
+        fields=[
+            FieldSchema(name='id', dtype=DataType.VARCHAR, is_primary=True, max_length=128),
+            FieldSchema(name='vector', dtype=DataType.FLOAT_VECTOR, dim=dim),
+        ],
+        description=f'{name}（旧版：无 BM25）',
+        enable_dynamic_field=True,
+    )
+    client.create_collection(collection_name=name, schema=schema)
+    return name
+
+
+def _add_vector_index(client: MilvusClient, collection: str) -> None:
+    params = IndexParams()
+    params.add_index(field_name='vector', index_type='AUTOINDEX', metric_type='COSINE', index_name='idx_vector')
+    client.create_index(collection_name=collection, index_params=params)
+
+
+def _loaded_count(client: MilvusClient, collection: str) -> int:
+    client.flush(collection_name=collection)
+    client.load_collection(collection)
+    try:
+        rows = client.query(collection, filter='', output_fields=['count(*)'])
+        return int(rows[0].get('count(*)', 0)) if rows else 0
+    finally:
+        client.release_collection(collection)
+
+
+def _drop_if_present(client: MilvusClient, collection: str) -> None:
+    try:
+        client.release_collection(collection)
+    except Exception:
+        pass
+    if client.has_collection(collection):
+        client.drop_collection(collection)
+
+
+@pytest.fixture()
+def client() -> MilvusClient:
+    if not _milvus_available():
+        pytest.skip('Milvus 不可达，跳过模板集合集成冒烟')
+    return get_milvus_pool().get()
 
 
 @pytest.fixture()
@@ -107,9 +163,11 @@ def test_insert_filter_count_delete(collection: str) -> None:
         assert insert_ragf_document_vectors(kb_name=kb_b, document_id=doc_b1, dim=DIM, rows=rows_b) == 1
 
         assert _wait_until(
-            lambda: count_ragf_vectors_by_document(kb_a, doc_a1) == 2
-            and count_ragf_vectors_by_document(kb_a, doc_a2) == 1
-            and count_ragf_vectors_by_document(kb_b, doc_b1) == 1
+            lambda: (
+                count_ragf_vectors_by_document(kb_a, doc_a1) == 2
+                and count_ragf_vectors_by_document(kb_a, doc_a2) == 1
+                and count_ragf_vectors_by_document(kb_b, doc_b1) == 1
+            )
         ), '写入后应在封存窗口内可被过滤查询命中'
 
         hits_a = search_ragf_kb(
@@ -137,10 +195,70 @@ def test_insert_filter_count_delete(collection: str) -> None:
         deleted = delete_ragf_vectors_by_document(kb_a, doc_a1)
         assert sum(deleted.values()) == 2
         assert _wait_until(
-            lambda: count_ragf_vectors_by_document(kb_a, doc_a1) == 0
-            and count_ragf_vectors_by_document(kb_a, doc_a2) == 1
+            lambda: (
+                count_ragf_vectors_by_document(kb_a, doc_a1) == 0 and count_ragf_vectors_by_document(kb_a, doc_a2) == 1
+            )
         ), '按文档删除后计数应归零'
     finally:
         delete_ragf_vectors_by_document(kb_a, doc_a1)
         delete_ragf_vectors_by_document(kb_a, doc_a2)
         delete_ragf_vectors_by_document(kb_b, doc_b1)
+
+
+def test_ensure_rebuild_refuses_nonempty_legacy(client: MilvusClient) -> None:
+    """升级护栏：非空 legacy（无 BM25）集合拒绝静默重建，数据必须保留。"""
+    dim = LEGACY_DIM
+    name = _legacy_collection(client, dim)
+    try:
+        rows = [
+            {
+                'id': f'legacy-{i}',
+                'vector': [0.5] * dim,
+                'kb_name': 'kb_legacy',
+                'document_id': f'legacy-doc-{i}',
+                'content': f'旧版集合分块 {i}（无 BM25 Function）',
+                'version_id': 1,
+                'chunk_index': i,
+            }
+            for i in range(3)
+        ]
+        client.insert(collection_name=name, data=rows)
+        _add_vector_index(client, name)
+        assert ragf_template_collection_ready(name) is False
+        assert _loaded_count(client, name) == 3
+        with pytest.raises(RuntimeError, match='拒绝自动重建'):
+            ensure_ragf_template_collection(dim=dim)
+        assert ragf_template_collection_ready(name) is False, '拒绝重建后 schema 不应被改动'
+        assert _loaded_count(client, name) == 3, '拒绝重建后数据必须原样保留'
+    finally:
+        _drop_if_present(client, name)
+
+
+def test_ensure_rebuilds_empty_legacy(client: MilvusClient) -> None:
+    """升级护栏：可证明为空的 legacy 集合自动按新 schema 重建。"""
+    dim = LEGACY_EMPTY_DIM
+    name = _legacy_collection(client, dim)
+    try:
+        _add_vector_index(client, name)
+        assert ragf_template_collection_ready(name) is False
+        assert ensure_ragf_template_collection(dim=dim) == name
+        assert ragf_template_collection_ready(name) is True
+        assert ragf_template_collection_ready(name, dim=dim) is True
+    finally:
+        _drop_if_present(client, name)
+
+
+def test_ensure_ready_collection_idempotent_preserves_rows(collection: str) -> None:
+    """升级护栏：就绪集合重复 ensure 幂等，已写入向量不得被清空。"""
+    kb = _test_kb()
+    doc = f'{kb}-doc'
+    rows = _doc_rows(doc, 2)
+    for row in rows:
+        row['kb_name'] = kb
+    try:
+        assert insert_ragf_document_vectors(kb_name=kb, document_id=doc, dim=DIM, rows=rows) == 2
+        assert _wait_until(lambda: count_ragf_vectors_by_document(kb, doc) == 2), '写入后应可被对账计数命中'
+        assert ensure_ragf_template_collection(dim=DIM) == collection
+        assert count_ragf_vectors_by_document(kb, doc) == 2, '就绪集合重复 ensure 不得丢数据'
+    finally:
+        delete_ragf_vectors_by_document(kb, doc)

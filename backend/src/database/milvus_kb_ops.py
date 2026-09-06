@@ -223,6 +223,19 @@ _RAGF_DENSE_INDEX_NAME = 'idx_embedding'
 _RAGF_SPARSE_INDEX_NAME = 'idx_content_sparse'
 _RAGF_SEARCH_OUTPUT_FIELDS = ['content', 'chunk_id', 'document_id', 'version_id', 'chunk_index']
 
+# 模板集合 schema 指纹（升级护栏：严格匹配字段名/类型 + BM25 Function + embedding dim）
+_RAGF_TEMPLATE_FIELD_TYPES = {
+    'chunk_id': DataType.VARCHAR,
+    'embedding': DataType.FLOAT_VECTOR,
+    'content': DataType.VARCHAR,
+    'content_sparse': DataType.SPARSE_FLOAT_VECTOR,
+    'kb_name': DataType.VARCHAR,
+    'document_id': DataType.VARCHAR,
+    'version_id': DataType.INT64,
+    'chunk_index': DataType.INT64,
+}
+_RAGF_TEMPLATE_EMBEDDING_FIELD = 'embedding'
+
 
 def _and_expr(*parts: str | None) -> str | None:
     """按 AND 组合过滤表达式（kb_name 必带由调用方决定是否传入）。"""
@@ -330,9 +343,10 @@ def _ensure_ragf_indexes(client: MilvusClient, collection: str) -> None:
 def ragf_template_collection_ready(
     collection: str,
     *,
+    dim: int | None = None,
     plugin_namespace: str | None = None,
 ) -> bool:
-    """模板集合是否具备 BM25 schema（宽容探测：字段 + BM25 Function 是否在描述中）。"""
+    """模板集合是否具备当前 RAGF schema（严格指纹：字段名/类型 + BM25 Function + 可选 dim）。"""
     client = _client(plugin_namespace)
     if not client.has_collection(collection):
         return False
@@ -344,8 +358,64 @@ def ragf_template_collection_ready(
     blob = described if isinstance(described, dict) else getattr(described, 'dict', None)
     if blob is None:
         return False
-    text = str(blob() if callable(blob) else blob).lower()
-    return 'content_sparse' in text and 'bm25' in text
+    desc = cast('dict', blob() if callable(blob) else blob)
+    return _ragf_fields_match(desc.get('fields', []), dim=dim) and _ragf_has_bm25_function(desc.get('functions'))
+
+
+def _ragf_fields_match(desc_fields: list, *, dim: int | None) -> bool:
+    """字段指纹：模板全部字段存在且类型一致，embedding dim（提供时）一致。"""
+    fields = {str(f.get('name')): f for f in desc_fields if isinstance(f, dict)}
+    for name, dtype in _RAGF_TEMPLATE_FIELD_TYPES.items():
+        field = fields.get(name)
+        if field is None or field.get('type') != int(dtype):
+            return False
+    if dim is None:
+        return True
+    params = fields.get(_RAGF_TEMPLATE_EMBEDDING_FIELD, {}).get('params') or {}
+    return int(params.get('dim') or 0) == int(dim)
+
+
+def _ragf_has_bm25_function(desc_functions: list | None) -> bool:
+    """Function 指纹：存在 content → content_sparse 的 BM25 Function。"""
+    for function in desc_functions or []:
+        if isinstance(function, dict):
+            ftype = function.get('function_type', function.get('type'))
+            inputs = function.get('input_field_names')
+            outputs = function.get('output_field_names')
+        else:
+            ftype = getattr(function, 'function_type', getattr(function, 'type', None))
+            inputs = getattr(function, 'input_field_names', None)
+            outputs = getattr(function, 'output_field_names', None)
+        if ftype is None:
+            continue
+        if int(ftype) == int(FunctionType.BM25) and 'content' in str(inputs) and 'content_sparse' in str(outputs):
+            return True
+    return False
+
+
+def _ragf_collection_row_count(client: MilvusClient, collection: str) -> int | None:
+    """已加载集合的实体数（先封存段再统计）；无法完成时返回 None（不猜测为空，禁止静默重建）。"""
+    try:
+        client.flush(collection_name=collection)
+    except Exception as exc:
+        logger.warning('封存段失败（无法判定是否为空）coll=%s: %s', collection, exc)
+        return None
+    try:
+        client.load_collection(collection)
+    except Exception as exc:
+        logger.warning('加载集合失败（无法判定是否为空）coll=%s: %s', collection, exc)
+        return None
+    try:
+        rows = client.query(collection, filter='', output_fields=['count(*)'])
+        return int(rows[0].get('count(*)', 0)) if rows else 0
+    except Exception as exc:
+        logger.warning('统计集合行数失败 coll=%s: %s', collection, exc)
+        return None
+    finally:
+        try:
+            client.release_collection(collection)
+        except Exception:
+            pass
 
 
 def ensure_ragf_template_collection(
@@ -353,7 +423,11 @@ def ensure_ragf_template_collection(
     dim: int | None = None,
     plugin_namespace: str | None = None,
 ) -> str:
-    """确保 RAGF 文本模板集合存在且 schema 完整（缺 BM25 字段/索引时重建），返回集合名。"""
+    """确保 RAGF 文本模板集合存在且 schema 完整（缺 BM25 字段/索引时重建），返回集合名。
+
+    升级护栏：既有集合 schema 不匹配时仅当“可证明为空”才自动重建；
+    非空或无法判定（如未建索引无法加载）一律拒绝重建，防止启动期静默丢数据。
+    """
     dim = settings.RAGF_TEMPLATE_DIM if dim is None else int(dim)
     name = ragf_template_collection_name(dim)
     client = _client(plugin_namespace)
@@ -361,8 +435,20 @@ def ensure_ragf_template_collection(
         logger.info('创建 RAGF 模板集合 %s dim=%s', name, dim)
         client.create_collection(collection_name=name, schema=_ragf_text_schema(name, dim))
         _ensure_ragf_indexes(client, name)
-    elif not ragf_template_collection_ready(name, plugin_namespace=plugin_namespace):
-        logger.warning('RAGF 模板集合 %s 缺少 BM25 字段/索引，重建', name)
+    elif not ragf_template_collection_ready(name, dim=dim, plugin_namespace=plugin_namespace):
+        row_count = _ragf_collection_row_count(client, name)
+        if row_count:
+            raise RuntimeError(
+                f'RAGF 模板集合 {name} schema 与当前代码不匹配且非空（{row_count} 行）。'
+                f'为避免静默丢数据，拒绝自动重建：请先导出或按当前 schema 重新摄取该集合数据，'
+                '或确认可丢弃后人工 drop_collection 再重启（启动期将按新 schema 自动重建）。'
+            )
+        if row_count is None:
+            raise RuntimeError(
+                f'RAGF 模板集合 {name} schema 与当前代码不匹配，且无法判定是否为空（未建索引/加载失败）。'
+                '为避免误删数据，拒绝自动重建：请人工确认后可 drop_collection 或补建索引后重启。'
+            )
+        logger.warning('RAGF 模板集合 %s 为空且 schema 不匹配，按新 schema 重建', name)
         client.drop_collection(name)
         client.create_collection(collection_name=name, schema=_ragf_text_schema(name, dim))
         _ensure_ragf_indexes(client, name)
