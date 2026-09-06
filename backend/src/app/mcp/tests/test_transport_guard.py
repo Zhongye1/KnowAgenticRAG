@@ -15,12 +15,14 @@ import json
 
 from types import SimpleNamespace
 from typing import Any
+from uuid import uuid4
 
 import pytest
 
 from jose import jwt as jose_jwt
 from starlette.requests import Request
 
+from backend.src.app.mcp import auth as mcp_auth
 from backend.src.app.mcp.api import router as mcp_router
 from backend.src.app.mcp.auth import authenticate_bearer
 from backend.src.app.mcp.schemas import READ_SCOPES
@@ -29,6 +31,24 @@ from backend.src.middleware.jwt_auth_middleware import JwtAuthMiddleware
 
 READ_SCOPE_LIST = 'rag:kb:list'
 FULL_SCOPES = sorted(READ_SCOPES)
+
+
+class _StubRedis:
+    """会话键替身：仅实现 authenticate_bearer 用到的 get。"""
+
+    def __init__(self) -> None:
+        self.keys: dict[str, str] = {}
+
+    async def get(self, key: str) -> str | None:
+        return self.keys.get(key)
+
+
+@pytest.fixture(autouse=True)
+def stub_redis(monkeypatch: pytest.MonkeyPatch) -> _StubRedis:
+    """JWT 会话存活校验的 Redis 替身（autouse：所有端点用例共享同一会话表）。"""
+    stub = _StubRedis()
+    monkeypatch.setattr(mcp_auth, 'redis_client', stub)
+    return stub
 
 
 @pytest.fixture(autouse=True)
@@ -40,13 +60,26 @@ def _mcp_guard_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, 'RAGF_MCP_LOG_ENABLED', False)
 
 
-def _scp_token(scp: str) -> str:
-    """用 fba HS256 签发密钥本地签发 scp 受限 JWT（D31-A 同信任域直通）。"""
-    return jose_jwt.encode(
-        {'sub': 'u1', 'tenant': 'core', 'scp': scp},
-        settings.TOKEN_SECRET_KEY,
-        algorithm=settings.TOKEN_ALGORITHM,
-    )
+def _scp_token(scp: str, *, session: bool = True, tenant: str = 'core') -> str:
+    """用 fba HS256 签发密钥本地签发 scp 受限 JWT（D31-A 同信任域直通）。
+
+    默认携带 session_uuid 并注册 access 会话键（fba 登录语义）；session=False
+    可构造"无会话"凭证用于负向用例。
+    """
+    payload: dict[str, Any] = {'sub': 'u1', 'scp': scp}
+    if tenant:
+        payload['tenant'] = tenant
+    if session:
+        session_uuid = str(uuid4())
+        payload['session_uuid'] = session_uuid
+        _register_session('u1', session_uuid)
+    return jose_jwt.encode(payload, settings.TOKEN_SECRET_KEY, algorithm=settings.TOKEN_ALGORITHM)
+
+
+def _register_session(sub: str, session_uuid: str, *, prefix: str | None = None) -> None:
+    key_prefix = prefix if prefix is not None else settings.TOKEN_REDIS_PREFIX
+    stub: _StubRedis = mcp_auth.redis_client  # type: ignore[assignment]
+    stub.keys[f'{key_prefix}:{sub}:{session_uuid}'] = 'token'
 
 
 def _bearer(token: str) -> dict[str, str]:
@@ -147,11 +180,41 @@ def test_pat_ping_succeeds() -> None:
 
 
 def test_fba_jwt_ping_succeeds() -> None:
-    """自家 host 用户 JWT 直通（D31-A：同信任域，本地 HS256 校验）。"""
+    """自家 host 用户 JWT 直通（D31-A：同信任域，本地 HS256 校验 + 会话存活）。"""
     token = _scp_token(','.join(FULL_SCOPES))
     resp = _post(_jsonrpc('ping'), headers=_bearer(token))
     assert resp.status_code == 200
     assert _body_of(resp)['result'] == {}
+
+
+def test_jwt_without_live_session_401() -> None:
+    """会话存活校验：无会话键的 JWT（如伪造/未登录签发）→ 401。"""
+    token = _scp_token(','.join(FULL_SCOPES), session=False)
+    resp = _post(_jsonrpc('ping'), headers=_bearer(token))
+    assert resp.status_code == 401
+    assert _body_of(resp)['error']['data']['code'] == 'UNAUTHORIZED'
+
+
+def test_refresh_token_cannot_call_mcp() -> None:
+    """token 混用防线：refresh token（会话键仅在 REFRESH 前缀）打 MCP → 401。"""
+    session_uuid = str(uuid4())
+    _register_session('u1', session_uuid, prefix=settings.TOKEN_REFRESH_REDIS_PREFIX)
+    refresh_token = jose_jwt.encode(
+        {'sub': 'u1', 'session_uuid': session_uuid},
+        settings.TOKEN_SECRET_KEY,
+        algorithm=settings.TOKEN_ALGORITHM,
+    )
+    resp = _post(_jsonrpc('ping'), headers=_bearer(refresh_token))
+    assert resp.status_code == 401
+
+
+def test_revoked_session_immediately_401(stub_redis: _StubRedis) -> None:
+    """撤销即时生效：logout 删除会话键后，同 JWT 立即 401。"""
+    token = _scp_token(','.join(FULL_SCOPES))
+    assert _post(_jsonrpc('ping'), headers=_bearer(token)).status_code == 200
+    stub_redis.keys.clear()
+    resp = _post(_jsonrpc('ping'), headers=_bearer(token))
+    assert resp.status_code == 401
 
 
 def test_tools_list_filtered_by_scp() -> None:
@@ -181,7 +244,7 @@ def test_tools_list_full_scopes_shows_all() -> None:
 def test_tools_catalog_filtered_by_scp() -> None:
     """GET /mcp/tools 与 tools/list 同源过滤（catalog handler 直接校验）。"""
     token = _scp_token(READ_SCOPE_LIST)
-    user = authenticate_bearer(token, 'core')
+    user = asyncio.run(authenticate_bearer(token, 'core'))
     assert user is not None
 
     async def _catalog() -> Any:

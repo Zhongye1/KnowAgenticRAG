@@ -56,7 +56,11 @@ def test_acquire_slot_allows_until_budget(monkeypatch: pytest.MonkeyPatch) -> No
 
 def test_endpoint_returns_jsonrpc_429_when_rate_limited(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(mcp_router, '_get_mcp_limiter', lambda: BurstLimiter(budget=0, retry_after=7))
-    monkeypatch.setattr(mcp_router, '_require_user', lambda request, *, req_id, sse: _ctx())
+
+    async def _ctx_user(request: Any, *, req_id: int, sse: bool) -> Any:  # ruff: ignore[unused-async]  # 对齐 async _require_user 契约
+        return _ctx()
+
+    monkeypatch.setattr(mcp_router, '_require_user', _ctx_user)
     request = FakeRequest(body=json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': 'ping'}).encode())
     resp = asyncio.run(mcp_router.mcp_jsonrpc_endpoint(request, db=None))  # type: ignore[arg-type]
     payload = json.loads(bytes(resp.body))

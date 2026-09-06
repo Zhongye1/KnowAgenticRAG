@@ -208,8 +208,8 @@ async def mcp_jsonrpc_endpoint(request: Request, db: CurrentSession) -> Response
     if body.get('jsonrpc') != '2.0':
         return _respond(_rpc_error(req_id, code=-32600, message='Invalid Request'), sse=sse, status_code=400)
 
-    # 多凭证归一（D31-D33）：JWT 直通 / PAT；失败 401 + WWW-Authenticate
-    auth = _require_user(request, req_id=req_id, sse=sse)
+    # 多凭证归一（D31-D33）：JWT 直通（含会话存活校验）/ PAT；失败 401 + WWW-Authenticate
+    auth = await _require_user(request, req_id=req_id, sse=sse)
     if isinstance(auth, Response):
         return auth
     retry_after = await _acquire_mcp_slot(request, auth)
@@ -230,7 +230,7 @@ async def mcp_jsonrpc_endpoint(request: Request, db: CurrentSession) -> Response
     return await _dispatch(db, method=str(body.get('method') or ''), params=params, user=auth, req_id=req_id, sse=sse)
 
 
-def _require_user(request: Request, *, req_id: Any, sse: bool) -> UserContext | Response:
+async def _require_user(request: Request, *, req_id: Any, sse: bool) -> UserContext | Response:
     """Authorization → UserContext；失败返回 JSON-RPC 错误响应（401/403）。"""
     try:
         ns = resolve_namespace(request.headers.get('X-Plugin-Namespace'))
@@ -246,7 +246,7 @@ def _require_user(request: Request, *, req_id: Any, sse: bool) -> UserContext | 
             status_code=403,
         )
     _scheme, token = get_authorization_scheme_param(request.headers.get('Authorization') or '')
-    user = authenticate_bearer(token, ns) if token else None
+    user = await authenticate_bearer(token, ns) if token else None
     if user is None:
         return _respond(
             _rpc_error(

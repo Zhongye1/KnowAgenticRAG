@@ -1,13 +1,22 @@
 """MCP 多凭证鉴权归一（agent-layer spec §5.5/D22/D31-D33）。
 
-三类凭证收敛在中间件：自家 host 走 fba 签发 JWT 直通（HS256 本地校验，aud
-同域放宽、不引入新 IdP，D31-A）；Codex PAT 经桥接进程 env 注入（服务端与
-``RAGF_MCP_PAT`` 常量时间比对）；Claude Code OAuth 2.1 待 Keycloak DCR 就绪后
-作为 IdP 通道接入（示例中的 RS256/JWKS 仅供参考，不是实现要求）。
+三类凭证收敛在中间件：自家 host 走 fba 签发 JWT 直通（HS256 本地校验 + Redis
+会话存活校验，aud 同域放宽、不引入新 IdP，D31-A）；Codex PAT 经桥接进程 env
+注入（服务端与 ``RAGF_MCP_PAT`` 常量时间比对，免会话）；Claude Code OAuth 2.1
+待 Keycloak DCR 就绪后作为 IdP 通道接入。
 
 归一产物为 ``UserContext(sub/tenant/scp)``；``scp`` 优先取 JWT ``scp`` claim，
 缺省回退 ``RAGF_MCP_DEFAULT_SCOPES``（读面工具集）——权限点映射既有 RBAC，
 不发明第二套权限模型。
+
+安全语义：
+- JWT 会话存活校验与 fba ``jwt_authentication`` 同源键（``TOKEN_REDIS_PREFIX``）：
+  logout / 踢人 / 改密即时失效；refresh token 落在 ``TOKEN_REFRESH_REDIS_PREFIX``
+  前缀，查 access 键即可区分——refresh token 不可用作 MCP 凭证（防 token 混用，
+  access TTL 不再是唯一边界）。
+- JWT ``tenant`` claim 只做一致性交叉校验：与请求租户不一致 → 拒绝；租户以
+  服务端解析的 ``X-Plugin-Namespace`` 为准（防 claim 覆盖穿越）。
+- Redis 异常 fail-closed（返回 None → 401），与 fba 平台自身对 Redis 的依赖一致。
 """
 
 from __future__ import annotations
@@ -22,7 +31,9 @@ from jose import JWTError, jwt
 from backend.src.app.kb.deps import get_current_tenant
 from backend.src.app.mcp.schemas import READ_SCOPES, UserContext
 from backend.src.common.exception import errors
+from backend.src.common.log import log
 from backend.src.core.config import settings
+from backend.src.database.redis import redis_client
 
 __all__ = [
     'McpUserContext',
@@ -51,16 +62,32 @@ def normalize_scopes(value: Any) -> frozenset[str]:
 
 
 def _jwt_user_context(claims: dict[str, Any], tenant: str) -> UserContext | None:
+    """JWT claims → UserContext（sub 为原始用户 ID，供 scope 构建/owner 匹配）。
+
+    ``tenant`` claim 仅做一致性交叉校验：与请求租户（服务端解析）不一致 → 拒绝。
+    """
     sub = str(claims.get('sub') or '').strip()
     if not sub:
         return None
     claimed = str(claims.get('tenant') or '').strip()
+    if claimed and claimed != tenant:
+        return None
     scp = normalize_scopes(claims.get('scp')) or default_scopes()
-    return UserContext(sub=f'user:{sub}', tenant=claimed or tenant, scp=scp)
+    return UserContext(sub=sub, tenant=tenant, scp=scp)
 
 
-def authenticate_bearer(token: str, tenant: str) -> UserContext | None:
-    """Bearer token → UserContext；PAT 优先，其次 fba JWT 直通（HS256 白名单）。"""
+async def _session_alive(user_id: str, session_uuid: str) -> bool:
+    """fba 会话键存在性（与 ``jwt_authentication`` 同源键；异常 fail-closed）。"""
+    key = f'{settings.TOKEN_REDIS_PREFIX}:{user_id}:{session_uuid}'
+    try:
+        return bool(await redis_client.get(key))
+    except Exception as exc:
+        log.warning('MCP 会话校验 Redis 异常（fail-closed）user={}: {}', user_id, exc)
+        return False
+
+
+async def authenticate_bearer(token: str, tenant: str) -> UserContext | None:
+    """Bearer token → UserContext；PAT 免会话，JWT 需会话存活（撤销即时生效）。"""
     pat = str(settings.RAGF_MCP_PAT or '')
     if pat and hmac.compare_digest(token, pat):
         return UserContext(sub='pat', tenant=tenant, scp=default_scopes())
@@ -73,7 +100,13 @@ def authenticate_bearer(token: str, tenant: str) -> UserContext | None:
         )
     except JWTError:
         return None
-    return _jwt_user_context(claims, tenant)
+    ctx = _jwt_user_context(claims, tenant)
+    if ctx is None:
+        return None
+    session_uuid = str(claims.get('session_uuid') or '').strip()
+    if not session_uuid or not await _session_alive(ctx.sub, session_uuid):
+        return None
+    return ctx
 
 
 def require_perms(ctx: UserContext, required: frozenset[str]) -> None:
@@ -87,7 +120,7 @@ def filter_tools(ctx: UserContext, tools: list[dict[str, Any]]) -> list[dict[str
     return [item for item in tools if ctx.has_perms(frozenset(item.get('required_permissions') or []))]
 
 
-def _mcp_user_context(
+async def _mcp_user_context(
     authorization: Annotated[str | None, Header(alias='Authorization')],
     tenant: Annotated[str, Depends(get_current_tenant)],
 ) -> UserContext:
@@ -97,7 +130,7 @@ def _mcp_user_context(
     scheme, _, token = authorization.partition(' ')
     if scheme.lower() != 'bearer' or not token.strip():
         raise errors.TokenError(msg='Authorization 必须是 Bearer 凭证')
-    ctx = authenticate_bearer(token.strip(), tenant)
+    ctx = await authenticate_bearer(token.strip(), tenant)
     if ctx is None:
         raise errors.TokenError(msg='凭证无效（fba JWT 或 RAGF_MCP_PAT）')
     return ctx
