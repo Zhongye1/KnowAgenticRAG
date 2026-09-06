@@ -7,6 +7,8 @@ fba 统一 JSON 包装（``EventSourceResponse`` 直出）。语义错误与上�
 
 from __future__ import annotations
 
+import json
+
 from typing import TYPE_CHECKING, Annotated, Any
 
 from fastapi import APIRouter, Path
@@ -43,6 +45,7 @@ async def chat_knowledge_base(
         async for event, data in chat_service.astream(
             db, kb_name=kb_name, param=obj, plugin_namespace=current_namespace
         ):
-            yield {'event': event, 'data': data}
+            # D25/§6：data 行必须是 JSON（sse-starlette 对 dict 走 str()，需先序列化）
+            yield {'event': event, 'data': json.dumps(data, ensure_ascii=False)}
 
     return EventSourceResponse(_events(), headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
