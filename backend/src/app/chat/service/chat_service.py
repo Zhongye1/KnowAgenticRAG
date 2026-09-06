@@ -63,6 +63,7 @@ _SEARCH_PARAM_KEYS = frozenset({
     'similarity_threshold',
     'use_reranker',
     'file_name',
+    'filters',
 })
 
 
@@ -116,6 +117,7 @@ class PreparedChat:
     temperature: float | None = None
     max_tokens: int | None = None
     model_error: tuple[str, str] | None = None
+    kb_names: list[str] | None = None
 
 
 class _ProviderChatGateway:
@@ -208,6 +210,47 @@ class ChatService:
             'usage': _usage_payload(usage),
         }
 
+    async def acomplete_multi(
+        self,
+        db: AsyncSession,
+        *,
+        kb_names: list[str],
+        param: ChatParam,
+        plugin_namespace: str | None = None,
+    ) -> dict[str, Any]:
+        """非流式多 KB 问答（M11/D27：跨库检索 + 引用汇总一次生成）。"""
+        prepared = await self._prepare(
+            db,
+            kb_name=None,
+            kb_names=kb_names,
+            param=param,
+            plugin_namespace=plugin_namespace,
+        )
+        payload: dict[str, Any] = {
+            'kb_name': prepared.kb_name,
+            'kb_names': prepared.kb_names or list(kb_names),
+            'mode': prepared.mode,
+            'model_spec': '',
+            'hit_count': prepared.hit_count,
+            'citations': prepared.citations,
+            'answer': EMPTY_RESULT_MESSAGE if prepared.hit_count == 0 else '',
+            'reason': 'empty_result' if prepared.hit_count == 0 else 'complete',
+            'usage': _usage_payload(None),
+        }
+        if prepared.hit_count == 0:
+            return payload
+        if prepared.model_error is not None:
+            raise errors.RequestError(msg=f'{prepared.model_error[1]}（code={prepared.model_error[0]}）')
+        content, usage = await prepared.chat_model.achat(  # type: ignore[union-attr]
+            prepared.messages or [],
+            temperature=prepared.temperature,
+            max_tokens=prepared.max_tokens,
+        )
+        payload['model_spec'] = prepared.model_spec
+        payload['answer'] = content
+        payload['usage'] = _usage_payload(usage)
+        return payload
+
     async def _events(
         self,
         db: AsyncSession,
@@ -291,23 +334,43 @@ class ChatService:
         self,
         db: AsyncSession,
         *,
-        kb_name: str,
+        kb_name: str | None,
+        kb_names: list[str] | None = None,
         param: ChatParam,
         plugin_namespace: str | None,
     ) -> PreparedChat:
         """检索 + 引用裁剪 + 消息组装 + chat 模型解析（模型解析失败不进异常面）。"""
-        data = await self._retrieval.search(
-            db,
-            kb_name=kb_name,
-            query_text=param.query_text,
-            param=to_search_param(param),
-            plugin_namespace=plugin_namespace,
-        )
+        effective = kb_names or ([kb_name] if kb_name else None)
+        if effective is None:
+            raise errors.RequestError(msg='必须提供 kb_name 或 kb_names')
+        if len(effective) == 1:
+            data = await self._retrieval.search(
+                db,
+                kb_name=effective[0],
+                query_text=param.query_text,
+                param=to_search_param(param),
+                plugin_namespace=plugin_namespace,
+            )
+        else:
+            data = await self._retrieval.search_multi(
+                db,
+                kb_names=effective,
+                query_text=param.query_text,
+                param=to_search_param(param),
+                plugin_namespace=plugin_namespace,
+            )
+        kb_label = str(effective[0]) if effective else (kb_name or '')
         mode = str(data.get('mode') or 'hybrid')
         hits = list(data.get('results') or [])
-        citations = build_citations(kb_name, hits)
+        citations = build_citations(kb_label, hits)
         if not citations:
-            return PreparedChat(kb_name=kb_name, mode=mode, hit_count=0, citations=[])
+            return PreparedChat(
+                kb_name=kb_label,
+                kb_names=list(effective),
+                mode=mode,
+                hit_count=0,
+                citations=[],
+            )
 
         kept, _dropped = truncate_citations(citations, int(settings.RAGF_CONTEXT_MAX_TOKENS))
         context_text = build_context_text(kept)
@@ -324,7 +387,8 @@ class ChatService:
         spec = normalize_model_spec(param.model or str(settings.RAGF_CHAT_MODEL_SPEC or ''))
         if not spec:
             return PreparedChat(
-                kb_name=kb_name,
+                kb_name=kb_label,
+                kb_names=list(effective),
                 mode=mode,
                 hit_count=len(hits),
                 citations=kept,
@@ -337,7 +401,8 @@ class ChatService:
             chat_model = await self._chat_gateway.get(db, spec)
         except errors.NotFoundError as exc:
             return PreparedChat(
-                kb_name=kb_name,
+                kb_name=kb_label,
+                kb_names=list(effective),
                 mode=mode,
                 hit_count=len(hits),
                 citations=kept,
@@ -347,7 +412,8 @@ class ChatService:
             )
         except errors.RequestError as exc:
             return PreparedChat(
-                kb_name=kb_name,
+                kb_name=kb_label,
+                kb_names=list(effective),
                 mode=mode,
                 hit_count=len(hits),
                 citations=kept,
@@ -358,7 +424,8 @@ class ChatService:
         except Exception as exc:
             log.warning('chat 模型装配失败 spec={} err={}', spec, exc)
             return PreparedChat(
-                kb_name=kb_name,
+                kb_name=kb_label,
+                kb_names=list(effective),
                 mode=mode,
                 hit_count=len(hits),
                 citations=kept,
@@ -368,7 +435,8 @@ class ChatService:
             )
 
         return PreparedChat(
-            kb_name=kb_name,
+            kb_name=kb_label,
+            kb_names=list(effective),
             mode=mode,
             hit_count=len(hits),
             citations=kept,

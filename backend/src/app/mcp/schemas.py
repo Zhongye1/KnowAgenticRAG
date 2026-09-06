@@ -11,6 +11,9 @@ from typing import Literal
 
 from pydantic import ConfigDict, Field
 
+from backend.src.app.retrieval.schema.search_result import (
+    RetrievalFilters,  # ruff: ignore[typing-only-first-party-import]  # pydantic 需运行时解析字段前向引用
+)
 from backend.src.common.schema import SchemaBase
 
 __all__ = [
@@ -57,23 +60,24 @@ class ListArgs(SchemaBase):
 
 
 class SearchArgs(SchemaBase):
-    """search_knowledge：单 KB 同步混合检索（M10；多 KB/filters 属 M11）。"""
+    """search_knowledge：同步混合检索（M11/D27：跨 KB 聚合 + 结构化过滤）。"""
 
     model_config = ConfigDict(extra='forbid')
 
-    kb_name: str = Field(min_length=1, max_length=100, description='知识库标识')
+    kb_names: list[str] = Field(min_length=1, max_length=20, description='知识库标识列表（跨 KB 聚合，逐库归属校验）')
     query_text: str = Field(min_length=1, max_length=2000, description='检索文本')
     top_k: int | None = Field(None, ge=1, le=50, description='最终返回条数覆盖')
     use_reranker: bool | None = Field(None, description='是否精排覆盖')
     file_name: str | None = Field(None, max_length=255, description='文件名关键词过滤')
+    filters: RetrievalFilters | None = Field(None, description='结构化过滤（M11/D26）')
 
 
 class AnswerArgs(SchemaBase):
-    """answer_with_citations：检索 + LLM 带引用汇总（等价 Yuxi query_kb）。"""
+    """answer_with_citations：跨 KB 检索 + LLM 带引用汇总（等价 Yuxi query_kb）。"""
 
     model_config = ConfigDict(extra='forbid')
 
-    kb_name: str = Field(min_length=1, max_length=100, description='知识库标识')
+    kb_names: list[str] = Field(min_length=1, max_length=20, description='知识库标识列表（跨 KB 聚合，逐库归属校验）')
     query_text: str = Field(min_length=1, max_length=2000, description='用户问题')
     model: str | None = Field(None, description='chat 模型 spec；缺省 RAGF_CHAT_MODEL_SPEC')
     history: list[dict[str, str]] = Field(
@@ -81,6 +85,10 @@ class AnswerArgs(SchemaBase):
     )
     temperature: float | None = Field(None, ge=0.0, le=2.0, description='采样温度')
     max_tokens: int | None = Field(None, ge=1, le=32768, description='单轮最大生成 token')
+    top_k: int | None = Field(None, ge=1, le=50, description='最终返回条数覆盖')
+    use_reranker: bool | None = Field(None, description='是否精排覆盖')
+    file_name: str | None = Field(None, max_length=255, description='文件名关键词过滤')
+    filters: RetrievalFilters | None = Field(None, description='结构化过滤（M11/D26）')
 
 
 class ReadChunksArgs(SchemaBase):

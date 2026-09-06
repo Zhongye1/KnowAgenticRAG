@@ -113,18 +113,33 @@ class FakeRetrieval:
         param: Any = None,
         plugin_namespace: str | None = None,
     ) -> dict[str, Any]:
+        return await self.search_multi(
+            db, kb_names=[kb_name], query_text=query_text, param=param, plugin_namespace=plugin_namespace
+        )
+
+    async def search_multi(
+        self,
+        db: Any,
+        *,
+        kb_names: list[str],
+        query_text: str,
+        param: Any = None,
+        plugin_namespace: str | None = None,
+    ) -> dict[str, Any]:
         return {
-            'kb_name': kb_name,
+            'kb_name': kb_names[0],
+            'kb_names': list(kb_names),
             'mode': 'hybrid',
             'recall_count': 1,
             'reranked': True,
             'degraded': False,
             'duration_ms': 3,
+            'hit_count': 1,
             'results': [
                 {
                     'chunk_id': 'doc-a:1:0',
                     'document_id': 'doc-a',
-                    'kb_name': kb_name,
+                    'kb_name': kb_names[0],
                     'version_id': 1,
                     'chunk_index': 0,
                     'content': '版本差异说明',
@@ -138,8 +153,15 @@ class FakeChat:
     async def acomplete(
         self, db: Any, *, kb_name: str, param: Any, plugin_namespace: str | None = None
     ) -> dict[str, Any]:
+        return await self.acomplete_multi(db, kb_names=[kb_name], param=param, plugin_namespace=plugin_namespace)
+
+    async def acomplete_multi(
+        self, db: Any, *, kb_names: list[str], param: Any, plugin_namespace: str | None = None
+    ) -> dict[str, Any]:
+        kb_name = kb_names[0]
         return {
             'kb_name': kb_name,
+            'kb_names': list(kb_names),
             'mode': 'hybrid',
             'model_spec': 'acme:qwen-max',
             'hit_count': 1,
@@ -154,6 +176,9 @@ class FakeChat:
 
 class RaisingChat:
     async def acomplete(self, db: Any, **kwargs: Any) -> dict[str, Any]:
+        raise errors.RequestError(msg='chat 模型未配置或不可用')
+
+    async def acomplete_multi(self, db: Any, **kwargs: Any) -> dict[str, Any]:
         raise errors.RequestError(msg='chat 模型未配置或不可用')
 
 
@@ -204,7 +229,7 @@ def test_permission_denied_on_missing_scp() -> None:
 
 
 def test_search_knowledge_hits() -> None:
-    result = _run('search_knowledge', {'kb_name': 'dev', 'query_text': '版本差异'})
+    result = _run('search_knowledge', {'kb_names': ['dev'], 'query_text': '版本差异'})
     assert result['hit_count'] == 1
     assert result['hits'][0]['chunk_id'] == 'doc-a:1:0'
     assert result['mode'] == 'hybrid'
@@ -212,12 +237,12 @@ def test_search_knowledge_hits() -> None:
 
 def test_search_knowledge_kb_not_found() -> None:
     with pytest.raises(ToolError) as exc_info:
-        _run('search_knowledge', {'kb_name': 'missing', 'query_text': 'x'})
+        _run('search_knowledge', {'kb_names': ['missing'], 'query_text': 'x'})
     assert exc_info.value.code == 'KB_NOT_FOUND'
 
 
 def test_answer_with_citations_aggregates() -> None:
-    result = _run('answer_with_citations', {'kb_name': 'dev', 'query_text': '版本差异'})
+    result = _run('answer_with_citations', {'kb_names': ['dev'], 'query_text': '版本差异'})
     assert result['answer'].startswith('根据知识库')
     assert result['citations'][0]['document_id'] == 'doc-a'
     assert result['usage']['total_tokens'] == 8
@@ -226,7 +251,7 @@ def test_answer_with_citations_aggregates() -> None:
 def test_answer_with_citations_model_not_configured() -> None:
     toolkit = _toolkit(chat=RaisingChat())
     with pytest.raises(ToolError) as exc_info:
-        _run_with(toolkit, 'answer_with_citations', {'kb_name': 'dev', 'query_text': 'x'})
+        _run_with(toolkit, 'answer_with_citations', {'kb_names': ['dev'], 'query_text': 'x'})
     assert exc_info.value.code == 'MODEL_NOT_CONFIGURED'
 
 
@@ -259,7 +284,7 @@ def test_unknown_tool() -> None:
 
 def test_invalid_params_validation_error() -> None:
     with pytest.raises(ToolError) as exc_info:
-        _run('search_knowledge', {'kb_name': 'dev', 'query_text': 'x', 'top_k': 0})
+        _run('search_knowledge', {'kb_names': ['dev'], 'query_text': 'x', 'top_k': 0})
     assert exc_info.value.code == 'INVALID_REQUEST'
 
 

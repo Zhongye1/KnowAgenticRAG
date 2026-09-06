@@ -193,7 +193,8 @@ class McpToolkit:
         self, db: AsyncSession, *, user: UserContext, raw_args: dict[str, Any]
     ) -> dict[str, Any]:
         args = SearchArgs.model_validate(raw_args)
-        await self._ensure_kb(db, user=user, kb_name=args.kb_name)
+        for kb_name in args.kb_names:
+            await self._ensure_kb(db, user=user, kb_name=kb_name)
         request: dict[str, Any] = {'query_text': args.query_text}
         if args.top_k is not None:
             request['final_top_k'] = args.top_k
@@ -201,15 +202,18 @@ class McpToolkit:
             request['use_reranker'] = args.use_reranker
         if args.file_name is not None:
             request['file_name'] = args.file_name
-        data = await self._retrieval.search(
+        if args.filters is not None:
+            request['filters'] = args.filters.model_dump(exclude_none=True)
+        data = await self._retrieval.search_multi(
             db,
-            kb_name=args.kb_name,
+            kb_names=args.kb_names,
             query_text=args.query_text,
             param=request,
             plugin_namespace=user.tenant,
         )
         return {
-            'kb_name': data.get('kb_name'),
+            'kb_names': list(data.get('kb_names') or args.kb_names),
+            'kb_name': data.get('kb_name') or args.kb_names[0],
             'mode': data.get('mode'),
             'hit_count': len(data.get('results') or []),
             'hits': list(data.get('results') or []),
@@ -219,8 +223,29 @@ class McpToolkit:
         self, db: AsyncSession, *, user: UserContext, raw_args: dict[str, Any]
     ) -> dict[str, Any]:
         args = AnswerArgs.model_validate(raw_args)
-        await self._ensure_kb(db, user=user, kb_name=args.kb_name)
+        for kb_name in args.kb_names:
+            await self._ensure_kb(db, user=user, kb_name=kb_name)
+        param = ChatParam.model_validate(self._answer_payload(args))
+        try:
+            return await self._chat.acomplete_multi(
+                db, kb_names=args.kb_names, param=param, plugin_namespace=user.tenant
+            )
+        except errors.RequestError as exc:
+            # acomplete_multi 中 RequestError 仅来自模型未配置（KB 已前置校验）
+            raise ToolError(code='MODEL_NOT_CONFIGURED', msg=exc.msg or 'chat 模型未配置') from exc
+
+    @staticmethod
+    def _answer_payload(args: AnswerArgs) -> dict[str, Any]:
+        """AnswerArgs → ChatParam 载荷（检索覆盖键 + chat 键）。"""
         payload: dict[str, Any] = {'query_text': args.query_text}
+        if args.top_k is not None:
+            payload['final_top_k'] = args.top_k
+        if args.use_reranker is not None:
+            payload['use_reranker'] = args.use_reranker
+        if args.file_name is not None:
+            payload['file_name'] = args.file_name
+        if args.filters is not None:
+            payload['filters'] = args.filters
         if args.model is not None:
             payload['model'] = args.model
         if args.history:
@@ -229,12 +254,7 @@ class McpToolkit:
             payload['temperature'] = args.temperature
         if args.max_tokens is not None:
             payload['max_tokens'] = args.max_tokens
-        param = ChatParam.model_validate(payload)
-        try:
-            return await self._chat.acomplete(db, kb_name=args.kb_name, param=param, plugin_namespace=user.tenant)
-        except errors.RequestError as exc:
-            # acomplete 中 RequestError 仅来自模型未配置（KB 已前置校验）
-            raise ToolError(code='MODEL_NOT_CONFIGURED', msg=exc.msg or 'chat 模型未配置') from exc
+        return payload
 
     async def read_document_chunks(
         self, db: AsyncSession, *, user: UserContext, raw_args: dict[str, Any]

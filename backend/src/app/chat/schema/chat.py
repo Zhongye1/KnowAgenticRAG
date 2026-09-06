@@ -6,6 +6,9 @@ from typing import Literal
 
 from pydantic import ConfigDict, Field
 
+from backend.src.app.retrieval.schema.search_result import (
+    RetrievalFilters,  # ruff: ignore[typing-only-first-party-import]  # pydantic 需运行时解析字段前向引用
+)
 from backend.src.common.schema import SchemaBase
 
 ChatRole = Literal['user', 'assistant', 'system']
@@ -34,6 +37,7 @@ class ChatParam(SchemaBase):
     similarity_threshold: float | None = Field(None, ge=0.0, le=1.0, description='vector 模式余弦阈值覆盖')
     use_reranker: bool | None = Field(None, description='是否精排覆盖')
     file_name: str | None = Field(None, max_length=255, description='可选文件名关键词过滤覆盖')
+    filters: RetrievalFilters | None = Field(None, description='结构化过滤覆盖（M11/D26：与 file_name 合并）')
 
 
 class CitationItem(SchemaBase):
