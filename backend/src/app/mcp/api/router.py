@@ -18,6 +18,8 @@ from typing import TYPE_CHECKING, Any
 
 from fastapi import APIRouter, Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
+from opentelemetry import metrics as otel_metrics
+from opentelemetry import trace as otel_trace
 from pyrate_limiter import Rate
 
 from backend import __version__
@@ -43,6 +45,16 @@ DEFAULT_PROTOCOL_VERSION = '2025-03-26'
 # MCP HTTP 端点基路径（D20：默认 /mcp，可配置；全局 JWT 中间件按此前缀白名单放行）
 MCP_HTTP_PATH = str(settings.RAGF_MCP_HTTP_PATH or '/mcp').strip().rstrip('/') or '/mcp'
 _SSE_HEADERS = {'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
+
+_TRACER = otel_trace.get_tracer('backend.ragf')
+_METER = otel_metrics.get_meter('backend.ragf')
+# agent-layer spec §5.4：MCP 调用数/失败率 + 耗时（按 工具×结果码 维度；不落 sub/kb 等 PII）
+_MCP_CALLS = _METER.create_counter(
+    'ragf.mcp.calls', unit='1', description='MCP tools/call 调用数（code=SUCCESS/稳定工具码/INTERNAL）'
+)
+_MCP_CALL_DURATION = _METER.create_histogram(
+    'ragf.mcp.call_duration_seconds', unit='s', description='MCP tools/call 单次调用耗时'
+)
 
 
 def _tool_public(specs: list[Any]) -> list[dict[str, Any]]:
@@ -294,62 +306,73 @@ async def _call_tool(
     raw_arguments = params.get('arguments')
     arguments: dict[str, Any] = raw_arguments if isinstance(raw_arguments, dict) else {}
     started = time.perf_counter()
-    try:
-        result = await mcp_toolkit.call(db, user=user, tool_name=tool_name, args=arguments)
-    except ToolError as exc:
+    with _TRACER.start_as_current_span('ragf.mcp.tool_call') as span:
+        span.set_attribute('ragf.mcp.tool', tool_name)
+        try:
+            result = await mcp_toolkit.call(db, user=user, tool_name=tool_name, args=arguments)
+        except ToolError as exc:
+            _record_mcp_call(tool_name, code=exc.code, started=started)
+            await _write_call_log(
+                db,
+                user=user,
+                tool_name=tool_name,
+                args=arguments,
+                code=exc.code,
+                msg=exc.msg,
+                started=started,
+            )
+            return _respond(
+                _rpc_error(
+                    req_id,
+                    code=-32000,
+                    message='Tool execution failed',
+                    data={'code': exc.code, 'msg': exc.msg},
+                ),
+                sse=sse,
+            )
+        except Exception as exc:
+            log.warning('mcp tools/call 未处理异常 tool={} err={}', tool_name, exc)
+            _record_mcp_call(tool_name, code='INTERNAL', started=started)
+            await _write_call_log(
+                db,
+                user=user,
+                tool_name=tool_name,
+                args=arguments,
+                code='INTERNAL',
+                msg=str(exc),
+                started=started,
+            )
+            return _respond(
+                _rpc_error(req_id, code=-32603, message='Internal error', data={'code': 'INTERNAL', 'msg': str(exc)}),
+                sse=sse,
+            )
+        _record_mcp_call(tool_name, code='SUCCESS', started=started)
         await _write_call_log(
             db,
             user=user,
             tool_name=tool_name,
             args=arguments,
-            code=exc.code,
-            msg=exc.msg,
+            code='SUCCESS',
             started=started,
+            total_tokens=_usage_total(result),
         )
         return _respond(
-            _rpc_error(
+            _rpc_result(
                 req_id,
-                code=-32000,
-                message='Tool execution failed',
-                data={'code': exc.code, 'msg': exc.msg},
+                {
+                    'content': [{'type': 'text', 'text': json.dumps(result, ensure_ascii=False)}],
+                    'structuredContent': result,
+                    'isError': False,
+                },
             ),
             sse=sse,
         )
-    except Exception as exc:
-        log.warning('mcp tools/call 未处理异常 tool={} err={}', tool_name, exc)
-        await _write_call_log(
-            db,
-            user=user,
-            tool_name=tool_name,
-            args=arguments,
-            code='INTERNAL',
-            msg=str(exc),
-            started=started,
-        )
-        return _respond(
-            _rpc_error(req_id, code=-32603, message='Internal error', data={'code': 'INTERNAL', 'msg': str(exc)}),
-            sse=sse,
-        )
-    await _write_call_log(
-        db,
-        user=user,
-        tool_name=tool_name,
-        args=arguments,
-        code='SUCCESS',
-        started=started,
-        total_tokens=_usage_total(result),
-    )
-    return _respond(
-        _rpc_result(
-            req_id,
-            {
-                'content': [{'type': 'text', 'text': json.dumps(result, ensure_ascii=False)}],
-                'structuredContent': result,
-                'isError': False,
-            },
-        ),
-        sse=sse,
-    )
+
+
+def _record_mcp_call(tool_name: str, *, code: str, started: float) -> None:
+    """tools/call 指标打点：调用数 + 耗时（按 工具×结果码；失败率可由 code 聚合）。"""
+    _MCP_CALLS.add(1, {'tool': tool_name, 'code': code})
+    _MCP_CALL_DURATION.record(time.perf_counter() - started, {'tool': tool_name, 'code': code})
 
 
 @router.get(MCP_HTTP_PATH, summary='MCP GET 会话端点（MVP 未实现）')

@@ -260,6 +260,7 @@ class McpToolkit:
         self, db: AsyncSession, *, user: UserContext, raw_args: dict[str, Any]
     ) -> dict[str, Any]:
         args = ReadChunksArgs.model_validate(raw_args)
+        await self._ensure_kb(db, user=user, kb_name=args.kb_name)
         doc = await self._doc_dao.get(db, args.document_id, kb_name=args.kb_name, plugin_namespace=user.tenant)
         if doc is None:
             raise ToolError(code='DOCUMENT_NOT_FOUND', msg=f'文档不存在: {args.document_id}')
@@ -292,6 +293,7 @@ class McpToolkit:
 
     async def get_document(self, db: AsyncSession, *, user: UserContext, raw_args: dict[str, Any]) -> dict[str, Any]:
         args = GetDocumentArgs.model_validate(raw_args)
+        await self._ensure_kb(db, user=user, kb_name=args.kb_name)
         doc = await self._doc_dao.get(db, args.document_id, kb_name=args.kb_name, plugin_namespace=user.tenant)
         if doc is None:
             raise ToolError(code='DOCUMENT_NOT_FOUND', msg=f'文档不存在: {args.document_id}')

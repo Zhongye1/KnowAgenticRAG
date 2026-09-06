@@ -17,8 +17,8 @@ from backend.src.app.mcp.service import TOOLS_BY_NAME, McpToolkit, ToolError
 from backend.src.common.exception import errors
 
 
-def _ctx(*, scopes: frozenset[str] | None = None) -> UserContext:
-    return UserContext(sub='user:1', tenant='core', scp=scopes or READ_SCOPES)
+def _ctx(*, scopes: frozenset[str] | None = None, tenant: str = 'core') -> UserContext:
+    return UserContext(sub='user:1', tenant=tenant, scp=scopes or READ_SCOPES)
 
 
 class FakeKb:
@@ -50,13 +50,18 @@ class FakeDoc:
 
 
 class FakeKbDao:
-    def __init__(self, kbs: list[FakeKb]) -> None:
+    def __init__(self, kbs: list[FakeKb], *, namespace: str = 'core') -> None:
+        self.namespace = namespace
         self.kbs = {kb.kb_name: kb for kb in kbs}
 
     async def list_all(self, db: Any, *, plugin_namespace: str | None = None) -> list[FakeKb]:
+        if (plugin_namespace or self.namespace) != self.namespace:
+            return []
         return list(self.kbs.values())
 
     async def get(self, db: Any, kb_name: str, *, plugin_namespace: str | None = None) -> FakeKb | None:
+        if (plugin_namespace or self.namespace) != self.namespace:
+            return None
         return self.kbs.get(kb_name)
 
 
@@ -238,6 +243,28 @@ def test_search_knowledge_hits() -> None:
 def test_search_knowledge_kb_not_found() -> None:
     with pytest.raises(ToolError) as exc_info:
         _run('search_knowledge', {'kb_names': ['missing'], 'query_text': 'x'})
+    assert exc_info.value.code == 'KB_NOT_FOUND'
+
+
+def test_cross_tenant_kb_invisible_on_search() -> None:
+    """工具版 IDOR（D33）：他租户 KB 对本租户不可见 → KB_NOT_FOUND，不泄漏内容。"""
+    user = _ctx(tenant='acme')
+    with pytest.raises(ToolError) as exc_info:
+        _run('search_knowledge', {'kb_names': ['dev'], 'query_text': '版本差异'}, user=user)
+    assert exc_info.value.code == 'KB_NOT_FOUND'
+
+
+def test_cross_tenant_kb_invisible_on_get_document() -> None:
+    user = _ctx(tenant='acme')
+    with pytest.raises(ToolError) as exc_info:
+        _run('get_document', {'kb_name': 'dev', 'document_id': 'doc-a'}, user=user)
+    assert exc_info.value.code == 'KB_NOT_FOUND'
+
+
+def test_cross_tenant_kb_invisible_on_read_chunks() -> None:
+    user = _ctx(tenant='acme')
+    with pytest.raises(ToolError) as exc_info:
+        _run('read_document_chunks', {'kb_name': 'dev', 'document_id': 'doc-a'}, user=user)
     assert exc_info.value.code == 'KB_NOT_FOUND'
 
 
