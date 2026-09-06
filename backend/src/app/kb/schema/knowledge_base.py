@@ -8,9 +8,13 @@ from pydantic import Field, field_validator
 from backend.src.common.schema import SchemaBase
 
 KB_NAME_PATTERN = r'^[a-z0-9_]+$'
-QUERY_PARAM_WHITELIST = frozenset(
-    {'search_mode', 'recall_top_k', 'final_top_k', 'similarity_threshold', 'use_reranker'}
-)
+QUERY_PARAM_WHITELIST = frozenset({
+    'search_mode',
+    'recall_top_k',
+    'final_top_k',
+    'similarity_threshold',
+    'use_reranker',
+})
 
 
 def _validate_query_params(value: dict | None) -> dict | None:

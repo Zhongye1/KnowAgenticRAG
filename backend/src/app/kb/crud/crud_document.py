@@ -111,23 +111,29 @@ class CRUDDocument(TenantScopedCrud[Document]):
 
         keyword = (keyword or '').strip() or None
         if keyword:
-            conditions.append(DocumentKeyword.document_id.in_(
-                select(DocumentKeyword.document_id).where(
+            conditions.append(
+                select(DocumentKeyword.document_id)
+                .where(
                     DocumentKeyword.plugin_namespace == ns,
                     DocumentKeyword.kb_name == kb_name,
+                    DocumentKeyword.document_id == Document.document_id,
                     DocumentKeyword.keyword.ilike(f'%{keyword}%'),
                 )
-            ))
+                .exists()
+            )
 
         tag = (tag or '').strip() or None
         if tag:
-            conditions.append(DocumentKeyword.document_id.in_(
-                select(DocumentKeyword.document_id).where(
+            conditions.append(
+                select(DocumentKeyword.document_id)
+                .where(
                     DocumentKeyword.plugin_namespace == ns,
                     DocumentKeyword.kb_name == kb_name,
+                    DocumentKeyword.document_id == Document.document_id,
                     DocumentKeyword.keyword == tag,
                 )
-            ))
+                .exists()
+            )
 
         if updated_after is not None:
             conditions.append(Document.updated_time >= updated_after)
@@ -140,9 +146,7 @@ class CRUDDocument(TenantScopedCrud[Document]):
 
         prefix = (path_prefix or '').strip() or None
         if prefix:
-            conditions.append(
-                or_(Document.source_uri.startswith(prefix), Document.name.startswith(prefix))
-            )
+            conditions.append(or_(Document.source_uri.startswith(prefix), Document.name.startswith(prefix)))
 
         if len(conditions) == 2:
             return None
