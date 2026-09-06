@@ -26,6 +26,7 @@ from backend.src.database.milvus_kb_ops import (
     ragf_template_collection_name,
     ragf_template_collection_ready,
     search_ragf_kb,
+    update_ragf_document_acl,
 )
 from backend.src.database.milvus_pool import get_milvus_pool
 
@@ -267,6 +268,53 @@ def test_acl_scoped_recall_filters_unauthorized_groups(collection: str) -> None:
     finally:
         delete_ragf_vectors_by_document(kb, doc_x)
         delete_ragf_vectors_by_document(kb, doc_y)
+
+
+def test_acl_propagation_upsert_changes_visibility(collection: str) -> None:
+    """ACL 变更传播（agent-layer spec §8.2）：按主键 upsert 标量，向量/内容不变。
+
+    doc 以 dept_b 组可见 → 传播改为 public → dept_a 用户表达式即可命中；
+    命中内容必须原样保留（content 不因传播丢失/破坏 BM25）。
+    """
+    kb = _test_kb()
+    doc = f'{kb}-doc-acl'
+    rows = _doc_rows(doc, 2, groups=['dept_b'])
+    for row in rows:
+        row['kb_name'] = kb
+    dept_a_expr = (
+        'namespace == "core" and '
+        '(visibility == "public" or owner_id == "u" or array_contains_any(groups, ["dept_a"]))'
+    )
+    try:
+        assert insert_ragf_document_vectors(kb_name=kb, document_id=doc, dim=DIM, rows=rows) == 2
+        assert _wait_until(lambda: count_ragf_vectors_by_document(kb, doc) == 2)
+
+        # 传播前：dept_a 表达式不可见
+        assert search_ragf_kb(
+            kb_name=kb, dim=DIM, query_text='知识库测试', search_mode='vector',
+            query_embedding=_dim_vector(0.15), recall_top_k=10, expr=dept_a_expr,
+        ) == []
+
+        # 传播：restricted+dept_b → public
+        updated = update_ragf_document_acl(kb, doc, visibility='public', owner_id=None, groups=None)
+        assert updated == 2
+        assert _wait_until(
+            lambda: bool(
+                search_ragf_kb(
+                    kb_name=kb, dim=DIM, query_text='知识库测试', search_mode='vector',
+                    query_embedding=_dim_vector(0.15), recall_top_k=10, expr=dept_a_expr,
+                )
+            )
+        ), '传播为 public 后 dept_a 表达式应可命中'
+
+        hits = search_ragf_kb(
+            kb_name=kb, dim=DIM, query_text='知识库测试', search_mode='hybrid',
+            query_embedding=_dim_vector(0.15), recall_top_k=10, expr=dept_a_expr,
+        )
+        assert {hit['document_id'] for hit in hits} == {doc}
+        assert all('知识库测试分块' in hit['content'] for hit in hits), '传播后内容必须原样保留'
+    finally:
+        delete_ragf_vectors_by_document(kb, doc)
 
 
 def test_ensure_rebuild_refuses_nonempty_legacy(client: MilvusClient) -> None:

@@ -4,7 +4,15 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.src.app.kb.crud import chunk_dao, dedup_dao, document_dao, keyword_dao, knowledge_base_dao
+from backend.src.app.kb.crud import (
+    chunk_dao,
+    dedup_dao,
+    doc_acl_dao,
+    document_dao,
+    kb_acl_dao,
+    keyword_dao,
+    knowledge_base_dao,
+)
 from backend.src.app.kb.model import KnowledgeBase
 from backend.src.app.kb.schema.knowledge_base import KBCreateParam, KBUpdateParam
 from backend.src.app.kb.service.document_storage import delete_document_object, kb_parsed_object_key
@@ -95,6 +103,8 @@ class KnowledgeBaseService:
             'documents': 0,
             'dedup': 0,
             'keywords': 0,
+            'kb_acl': 0,
+            'doc_acl': 0,
             'objects': 0,
         }
         text_coll, visual_coll = base_collection_names()
@@ -112,6 +122,8 @@ class KnowledgeBaseService:
         counts['documents'] = await document_dao.delete_by_kb(db, kb_name, plugin_namespace=ns)
         counts['dedup'] = await dedup_dao.delete_by_kb(db, kb_name, plugin_namespace=ns)
         counts['keywords'] = await keyword_dao.delete_by_kb(db, kb_name, plugin_namespace=ns)
+        counts['kb_acl'] = await kb_acl_dao.delete_by_kb(db, kb_name=kb_name, plugin_namespace=ns)
+        counts['doc_acl'] = await doc_acl_dao.delete_by_kb(db, kb_name=kb_name, plugin_namespace=ns)
         await knowledge_base_dao.delete(db, kb_name, plugin_namespace=ns)
         return counts
 

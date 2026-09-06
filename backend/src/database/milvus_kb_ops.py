@@ -38,6 +38,7 @@ __all__ = [
     'ragf_template_collection_ready',
     'ragf_template_collections',
     'search_ragf_kb',
+    'update_ragf_document_acl',
 ]
 
 logger = logging.getLogger(__name__)
@@ -666,3 +667,72 @@ def insert_ragf_document_vectors(
     client.insert(collection_name=collection, data=rows)
     logger.info('插入 RAGF 向量 coll=%s kb=%s doc=%s rows=%s', collection, kb_name, document_id, len(rows))
     return len(rows)
+
+
+def update_ragf_document_acl(
+    kb_name: str,
+    document_id: str,
+    *,
+    visibility: str | None = None,
+    owner_id: str | None = None,
+    groups: list[str] | None = None,
+    plugin_namespace: str | None = None,
+) -> int:
+    """按主键 upsert 文档 ACL 标量字段（agent-layer spec §8.2 变更传播）。
+
+    embedding/content 从 Milvus 现值原样回读（无需重嵌入；content 缺失会破坏
+    BM25 Function 的稀疏重建）；None 语义 = 该字段保持不变。返回更新行数。
+    """
+    updated = 0
+    for collection in ragf_template_collections(plugin_namespace=plugin_namespace):
+        client = _client(plugin_namespace)
+        if not client.has_collection(collection):
+            continue
+        expr = f'kb_name == "{kb_name}" and document_id == "{document_id}"'
+        try:
+            rows = client.query(
+                collection,
+                filter=expr,
+                output_fields=[
+                    'chunk_id',
+                    'embedding',
+                    'content',
+                    'version_id',
+                    'chunk_index',
+                    # ACL 字段一并回读：未显式给值的字段按现值保留
+                    'namespace',
+                    'visibility',
+                    'owner_id',
+                    'groups',
+                ],
+            )
+        except Exception as exc:
+            logger.warning('ACL 传播查询失败 coll=%s kb=%s doc=%s: %s', collection, kb_name, document_id, exc)
+            continue
+        if not rows:
+            continue
+        new_rows = [
+            {
+                'chunk_id': str(row.get('chunk_id') or ''),
+                'embedding': row.get('embedding'),
+                'content': str(row.get('content') or ''),
+                'kb_name': kb_name,
+                'document_id': document_id,
+                'version_id': int(row.get('version_id') or 1),
+                'chunk_index': int(row.get('chunk_index') or 0),
+                'namespace': str(row.get('namespace') or plugin_namespace or ''),
+                'visibility': visibility if visibility is not None else str(row.get('visibility') or 'restricted'),
+                'owner_id': owner_id if owner_id is not None else str(row.get('owner_id') or ''),
+                'groups': groups if groups is not None else list(row.get('groups') or []),
+            }
+            for row in rows
+        ]
+        try:
+            client.upsert(collection_name=collection, data=new_rows)
+        except Exception as exc:
+            logger.warning('ACL 传播 upsert 失败 coll=%s kb=%s doc=%s: %s', collection, kb_name, document_id, exc)
+            continue
+        updated += len(new_rows)
+    if updated:
+        logger.info('ACL 变更传播 coll_upsert=%s kb=%s doc=%s', updated, kb_name, document_id)
+    return updated

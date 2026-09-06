@@ -131,6 +131,19 @@ class CRUDDocAcl(TenantScopedCrud[DocAcl]):
         await db.flush()
         return getattr(result, 'rowcount', 0) or 0
 
+    async def delete_by_kb(
+        self,
+        db: AsyncSession,
+        *,
+        kb_name: str,
+        plugin_namespace: str | None = None,
+    ) -> int:
+        """删除 KB 下全部文档 ACL 行（KB 删除时联动清理）。"""
+        ns = instance_namespace(plugin_namespace)
+        result = await db.execute(delete(DocAcl).where(DocAcl.plugin_namespace == ns, DocAcl.kb_name == kb_name))
+        await db.flush()
+        return getattr(result, 'rowcount', 0) or 0
+
 
 kb_acl_dao = CRUDKbAcl(KbAcl)
 doc_acl_dao = CRUDDocAcl(DocAcl)
