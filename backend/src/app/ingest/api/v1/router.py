@@ -3,7 +3,8 @@
 from pathlib import PurePosixPath
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, Path, UploadFile
+from fastapi import APIRouter, File, Form, HTTPException, Path, Request, UploadFile
+from starlette.authentication import UnauthenticatedUser
 
 from backend.src.app.ingest.schema.ingest import DocumentStatusItem, IngestResultItem, RebuildResultItem
 from backend.src.app.kb.crud import dedup_dao, document_dao, knowledge_base_dao
@@ -48,6 +49,7 @@ def _enqueue_ingest(document_id: str, kb_name: str, plugin_namespace: str) -> No
     summary='上传并触发摄取（幂等去重 409；force=1 强制重摄取）',
 )
 async def ingest_document(
+    request: Request,
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
     kb_name: Annotated[str, Path(description='知识库标识', pattern=r'^[a-z0-9_]+$')],
@@ -62,6 +64,10 @@ async def ingest_document(
         raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
     filename = (file.filename or '').strip() or 'file'
     _ensure_supported_format(filename)
+
+    # 上传者身份（入库打标：owner_id + 默认 restricted + 上传者部门组，§8.1）
+    owner_id = None if isinstance(request.user, UnauthenticatedUser) else str(request.user.id)
+    owner_dept_id = None if isinstance(request.user, UnauthenticatedUser) else request.user.dept_id
 
     data = await file.read()
     if not data:
@@ -78,7 +84,9 @@ async def ingest_document(
         if doc is None:
             raise errors.NotFoundError(msg='去重记录指向的文档不存在')
     else:
-        doc = await document_service.upload(db=db, kb_name=kb_name, file=file, source_type='file')
+        doc = await document_service.upload(
+            db=db, kb_name=kb_name, file=file, source_type='file', owner_id=owner_id, owner_dept_id=owner_dept_id
+        )
 
     doc.ingest_params = {
         'chunk_preset_id': chunk_preset_id or (doc.ingest_params or {}).get('chunk_preset_id') or 'general',

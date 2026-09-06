@@ -4,7 +4,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 
-from sqlalchemy import JSON, BigInteger, Text
+from sqlalchemy import JSON, BigInteger, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.src.common.model import MappedBase, TimeZone
@@ -37,6 +37,12 @@ class Document(MappedBase):
     sha256: Mapped[str | None] = mapped_column(Text, nullable=True, comment='文件指纹')
     chunk_count: Mapped[int] = mapped_column(BigInteger, default=0, comment='文本块数')
     active_version: Mapped[int] = mapped_column(BigInteger, default=1, comment='当前版本（Phase 2 版本化占位，默认 1）')
+    visibility: Mapped[str] = mapped_column(
+        String(16), default='restricted', comment='可见性（public/restricted/private）'
+    )
+    owner_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, comment='文档所有者用户ID（private 可见性依据）'
+    )
     ingest_params: Mapped[dict] = mapped_column(
         JSON, default=dict, comment='本次摄取参数指纹（engine/preset/embedding_model）'
     )

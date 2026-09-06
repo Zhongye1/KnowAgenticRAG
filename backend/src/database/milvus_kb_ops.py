@@ -223,7 +223,7 @@ _RAGF_DENSE_INDEX_NAME = 'idx_embedding'
 _RAGF_SPARSE_INDEX_NAME = 'idx_content_sparse'
 _RAGF_SEARCH_OUTPUT_FIELDS = ['content', 'chunk_id', 'document_id', 'version_id', 'chunk_index']
 
-# 模板集合 schema 指纹（升级护栏：严格匹配字段名/类型 + BM25 Function + embedding dim）
+# 模板集合 schema 指纹（升级护栏：严格匹配字段名/类型 + BM25 Function + embedding dim + ACL 字段）
 _RAGF_TEMPLATE_FIELD_TYPES = {
     'chunk_id': DataType.VARCHAR,
     'embedding': DataType.FLOAT_VECTOR,
@@ -233,6 +233,11 @@ _RAGF_TEMPLATE_FIELD_TYPES = {
     'document_id': DataType.VARCHAR,
     'version_id': DataType.INT64,
     'chunk_index': DataType.INT64,
+    # ACL 字段（agent-layer spec：namespace 为分区键，其余检索过滤标量）
+    'namespace': DataType.VARCHAR,
+    'visibility': DataType.VARCHAR,
+    'owner_id': DataType.VARCHAR,
+    'groups': DataType.ARRAY,
 }
 _RAGF_TEMPLATE_EMBEDDING_FIELD = 'embedding'
 
@@ -266,7 +271,11 @@ def ragf_template_collection_name(dim: int) -> str:
 
 
 def _ragf_text_schema(name: str, dim: int) -> CollectionSchema:
-    """RAGF 模板集合 schema：chunk_id 主键 + dense/sparse 双字段 + 显式两轴标量。"""
+    """RAGF 模板集合 schema：chunk_id 主键 + dense/sparse 双字段 + 显式两轴标量 + ACL 字段。
+
+    ACL 字段（namespace/visibility/groups/owner_id）用于检索时权限过滤。
+    DB 是 source-of-truth，Milvus 是镜像（检索时过滤全靠它）。
+    """
     fields = [
         FieldSchema(name='chunk_id', dtype=DataType.VARCHAR, is_primary=True, max_length=255),
         FieldSchema(name='embedding', dtype=DataType.FLOAT_VECTOR, dim=dim),
@@ -282,6 +291,17 @@ def _ragf_text_schema(name: str, dim: int) -> CollectionSchema:
         FieldSchema(name='document_id', dtype=DataType.VARCHAR, max_length=255),
         FieldSchema(name='version_id', dtype=DataType.INT64),
         FieldSchema(name='chunk_index', dtype=DataType.INT64),
+        # ACL 字段（agent-layer spec RAG 数据权限设计；namespace 为分区键做租户剪枝）
+        FieldSchema(name='namespace', dtype=DataType.VARCHAR, max_length=64, is_partition_key=True),  # 租户域
+        FieldSchema(name='visibility', dtype=DataType.VARCHAR, max_length=16),  # public/restricted/private
+        FieldSchema(name='owner_id', dtype=DataType.VARCHAR, max_length=64),  # 文档所有者
+        FieldSchema(
+            name='groups',
+            dtype=DataType.ARRAY,
+            element_type=DataType.VARCHAR,
+            max_length=64,
+            max_capacity=32,
+        ),  # 可见组列表
     ]
     bm25_function = Function(
         name='content_bm25',
@@ -292,7 +312,7 @@ def _ragf_text_schema(name: str, dim: int) -> CollectionSchema:
     return CollectionSchema(
         fields=fields,
         functions=[bm25_function],
-        description=f'{name}（RAGF 共享集合：kb_name 过滤 + BM25；写入须带 document_id/version_id）',
+        description=f'{name}（RAGF 共享集合：kb_name 过滤 + BM25 + ACL；写入须带 document_id/version_id）',
         enable_dynamic_field=True,
     )
 
@@ -336,6 +356,31 @@ def _ensure_ragf_indexes(client: MilvusClient, collection: str) -> None:
             index_type='INVERTED',
             index_name='idx_document_id',
             json_cast_type='varchar',
+        )
+        client.create_index(collection_name=collection, index_params=params)
+    # ACL 标量索引（agent-layer spec §3.2：namespace 为分区键由 Milvus 自管理，不建索引）
+    if 'idx_visibility' not in existing:
+        params = IndexParams()
+        params.add_index(
+            field_name='visibility',
+            index_type='INVERTED',
+            index_name='idx_visibility',
+        )
+        client.create_index(collection_name=collection, index_params=params)
+    if 'idx_owner_id' not in existing:
+        params = IndexParams()
+        params.add_index(
+            field_name='owner_id',
+            index_type='INVERTED',
+            index_name='idx_owner_id',
+        )
+        client.create_index(collection_name=collection, index_params=params)
+    if 'idx_groups' not in existing:
+        params = IndexParams()
+        params.add_index(
+            field_name='groups',
+            index_type='INVERTED',
+            index_name='idx_groups',
         )
         client.create_index(collection_name=collection, index_params=params)
 

@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -74,6 +75,7 @@ def _pg_integration_env() -> Any:
 
     engine = create_async_engine(get_database_url(unittest=True), poolclass=NullPool)
     asyncio.run(_create_all(engine))
+    asyncio.run(_ensure_acl_columns(engine))
     asyncio.run(engine.dispose())
     prev_override = settings.ALLOW_NAMESPACE_OVERRIDE
     settings.ALLOW_NAMESPACE_OVERRIDE = True  # 集成用例需显式跨租户（acme）
@@ -84,6 +86,17 @@ def _pg_integration_env() -> Any:
 async def _create_all(engine: AsyncEngine) -> None:
     async with engine.begin() as conn:
         await conn.run_sync(MappedBase.metadata.create_all)
+
+
+async def _ensure_acl_columns(engine: AsyncEngine) -> None:
+    """既有测试库幂等补 ACL 列（create_all 不改已有表，与 ragf_schema_migrations 对齐）。"""
+    stmts = (
+        "ALTER TABLE documents ADD COLUMN IF NOT EXISTS visibility VARCHAR(16) DEFAULT 'restricted' NOT NULL",
+        'ALTER TABLE documents ADD COLUMN IF NOT EXISTS owner_id VARCHAR(64)',
+    )
+    async with engine.begin() as conn:
+        for stmt in stmts:
+            await conn.execute(text(stmt))
 
 
 async def _seed(session: AsyncSession) -> dict[str, str]:

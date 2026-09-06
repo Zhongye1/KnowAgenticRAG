@@ -26,9 +26,11 @@ class CRUDDocument(TenantScopedCrud[Document]):
         pipeline: str = '',
         status: str = 'pending',
         sha256: str | None = None,
+        visibility: str = 'restricted',
+        owner_id: str | None = None,
         plugin_namespace: str | None = None,
     ) -> Document:
-        """登记文档元数据（默认 pending，等待摄取层接管）。"""
+        """登记文档元数据（默认 pending + restricted，等待摄取层接管）。"""
         obj = Document(
             document_id=document_id,
             kb_name=kb_name,
@@ -39,6 +41,8 @@ class CRUDDocument(TenantScopedCrud[Document]):
             pipeline=pipeline,
             status=status,
             sha256=sha256,
+            visibility=visibility,
+            owner_id=owner_id,
         )
         db.add(obj)
         await db.flush()

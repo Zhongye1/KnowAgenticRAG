@@ -26,7 +26,7 @@ from backend.src.app.ingest.parser.factory import (
     parse_document,
     parse_document_with_fallback,
 )
-from backend.src.app.kb.crud import document_dao, knowledge_base_dao
+from backend.src.app.kb.crud import doc_acl_dao, document_dao, knowledge_base_dao
 from backend.src.app.kb.service.chunk_service import ChunkService
 from backend.src.app.kb.service.document_storage import (
     download_document_bytes,
@@ -153,6 +153,8 @@ class IngestService:
             if embeddings
             else settings.RAGF_TEMPLATE_DIM
         )
+        # ACL 字段镜像（agent-layer spec §3.2：DB 为准、Milvus 为镜像）
+        acl_fields = await _resolve_acl_fields(db, doc=doc, ns=ns)
         vector_rows = [
             {
                 'chunk_id': f'{document_id}:{version_id}:{idx}',
@@ -162,6 +164,7 @@ class IngestService:
                 'document_id': document_id,
                 'version_id': version_id,
                 'chunk_index': idx,
+                **acl_fields,
             }
             for idx, (row, embedding) in enumerate(zip(meta_rows, embeddings, strict=True))
         ]
@@ -305,6 +308,26 @@ class IngestService:
         doc.status = status if status in TERMINAL_FAILED_STATUSES else 'failed'
         doc.error_message = (message or '')[:1000]
         await db.flush()
+
+
+async def _resolve_acl_fields(db: AsyncSession, *, doc: Any, ns: str) -> dict[str, Any]:
+    """解析文档 ACL 字段（镜像到 Milvus 行；DB 为 source-of-truth）。
+
+    visibility/owner_id 取 documents 行（缺省 restricted/None）；groups 取
+    rag_doc_acl 授权组行。legacy 文档（ACL 字段为空）按 restricted 处理，
+    需重新摄取才能进入授权检索范围（backfill 语义）。
+    """
+    visibility = str(getattr(doc, 'visibility', None) or 'restricted')
+    owner_id = getattr(doc, 'owner_id', None) or ''
+    groups = await doc_acl_dao.list_document_groups(
+        db, document_id=str(doc.document_id), kb_name=str(doc.kb_name), plugin_namespace=ns
+    )
+    return {
+        'namespace': ns,
+        'visibility': visibility,
+        'owner_id': owner_id,
+        'groups': groups,
+    }
 
 
 def _resolve_processing_params(doc: Any, request: dict[str, Any] | None) -> dict[str, Any]:

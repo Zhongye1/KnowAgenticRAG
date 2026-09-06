@@ -14,6 +14,7 @@ from backend.src.app.mcp.schemas import (
     UserContext,
 )
 from backend.src.app.mcp.service import TOOLS_BY_NAME, McpToolkit, ToolError
+from backend.src.app.retrieval.service.scope import Scope
 from backend.src.common.exception import errors
 
 
@@ -117,9 +118,10 @@ class FakeRetrieval:
         query_text: str,
         param: Any = None,
         plugin_namespace: str | None = None,
+        scope: Any = None,
     ) -> dict[str, Any]:
         return await self.search_multi(
-            db, kb_names=[kb_name], query_text=query_text, param=param, plugin_namespace=plugin_namespace
+            db, kb_names=[kb_name], query_text=query_text, param=param, plugin_namespace=plugin_namespace, scope=scope
         )
 
     async def search_multi(
@@ -130,6 +132,7 @@ class FakeRetrieval:
         query_text: str,
         param: Any = None,
         plugin_namespace: str | None = None,
+        scope: Any = None,
     ) -> dict[str, Any]:
         return {
             'kb_name': kb_names[0],
@@ -156,12 +159,14 @@ class FakeRetrieval:
 
 class FakeChat:
     async def acomplete(
-        self, db: Any, *, kb_name: str, param: Any, plugin_namespace: str | None = None
+        self, db: Any, *, kb_name: str, param: Any, plugin_namespace: str | None = None, scope: Any = None
     ) -> dict[str, Any]:
-        return await self.acomplete_multi(db, kb_names=[kb_name], param=param, plugin_namespace=plugin_namespace)
+        return await self.acomplete_multi(
+            db, kb_names=[kb_name], param=param, plugin_namespace=plugin_namespace, scope=scope
+        )
 
     async def acomplete_multi(
-        self, db: Any, *, kb_names: list[str], param: Any, plugin_namespace: str | None = None
+        self, db: Any, *, kb_names: list[str], param: Any, plugin_namespace: str | None = None, scope: Any = None
     ) -> dict[str, Any]:
         kb_name = kb_names[0]
         return {
@@ -187,6 +192,11 @@ class RaisingChat:
         raise errors.RequestError(msg='chat 模型未配置或不可用')
 
 
+async def _fake_scope_builder(db: Any, *, user: UserContext, kb_names: list[str] | None = None) -> Any:  # ruff: ignore[unused-async]  # 对齐真实 build_retrieval_scope 的 async 契约
+    """罐头 scope：请求的 kb 全部视为已授权（KB 存在性由 FakeKbDao 负责）。"""
+    return Scope(namespace=user.tenant, user_id=user.sub, groups=[user.sub], allowed_kbs=list(kb_names or []))
+
+
 def _toolkit(**overrides: Any) -> McpToolkit:
     kb = FakeKb('dev', '研发库', '研发知识')
     doc = FakeDoc(document_id='doc-a', kb_name='dev', name='guide.md', active_version=2, chunk_count=10)
@@ -196,6 +206,7 @@ def _toolkit(**overrides: Any) -> McpToolkit:
         'chunk_svc': FakeChunkService(),
         'retrieval': FakeRetrieval(),
         'chat': FakeChat(),
+        'scope_builder': _fake_scope_builder,
     }
     base.update(overrides)
     return McpToolkit(**base)
@@ -252,6 +263,17 @@ def test_cross_tenant_kb_invisible_on_search() -> None:
     with pytest.raises(ToolError) as exc_info:
         _run('search_knowledge', {'kb_names': ['dev'], 'query_text': '版本差异'}, user=user)
     assert exc_info.value.code == 'KB_NOT_FOUND'
+
+
+def test_kb_outside_scope_denied_on_search() -> None:
+    """KB 存在但不在 scope.allowed_kbs → PERMISSION_DENIED（ACL 求交，agent-layer spec §6）。"""
+
+    async def _narrow_scope(db: Any, *, user: UserContext, kb_names: list[str] | None = None) -> Any:  # ruff: ignore[unused-async]  # 对齐真实 build_retrieval_scope 的 async 契约
+        return Scope(namespace=user.tenant, user_id=user.sub, groups=['other-group'], allowed_kbs=[])
+
+    with pytest.raises(ToolError) as exc_info:
+        _run('search_knowledge', {'kb_names': ['dev'], 'query_text': '版本差异'}, scope_builder=_narrow_scope)
+    assert exc_info.value.code == 'PERMISSION_DENIED'
 
 
 def test_cross_tenant_kb_invisible_on_get_document() -> None:
@@ -315,10 +337,12 @@ def test_invalid_params_validation_error() -> None:
     assert exc_info.value.code == 'INVALID_REQUEST'
 
 
-def _run(name: str, args: dict[str, Any] | None = None, *, user: UserContext | None = None) -> dict[str, Any]:
+def _run(
+    name: str, args: dict[str, Any] | None = None, *, user: UserContext | None = None, **toolkit_overrides: Any
+) -> dict[str, Any]:
     import asyncio
 
-    return asyncio.run(_call(_toolkit(), name, args, user=user))
+    return asyncio.run(_call(_toolkit(**toolkit_overrides), name, args, user=user))
 
 
 def _run_with(toolkit: McpToolkit, name: str, args: dict[str, Any] | None = None) -> dict[str, Any]:

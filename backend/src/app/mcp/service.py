@@ -132,12 +132,14 @@ class McpToolkit:
         chunk_svc: Any = None,
         retrieval: Any = None,
         chat: Any = None,
+        scope_builder: Any = None,
     ) -> None:
         self._kb_dao = kb_dao or knowledge_base_dao
         self._doc_dao = doc_dao or document_dao
         self._chunk_svc = chunk_svc or chunk_service
         self._retrieval = retrieval or retrieval_service
         self._chat = chat or chat_service
+        self._scope_builder = scope_builder or self._build_scope
 
     # ------------------------------------------------------------------ 分发
     async def call(
@@ -196,8 +198,12 @@ class McpToolkit:
     ) -> dict[str, Any]:
         args = SearchArgs.model_validate(raw_args)
 
+        # KB 存在性 + 租户归属校验（不存在/跨租户 → KB_NOT_FOUND，不泄漏内容）
+        for kb_name in args.kb_names:
+            await self._ensure_kb(db, user=user, kb_name=kb_name)
+
         # 构建检索范围（scope 构建在服务端，客户端不可传入任何过滤语义）
-        scope = await self._build_scope(db, user=user, kb_names=args.kb_names)
+        scope = await self._scope_builder(db, user=user, kb_names=args.kb_names)
 
         # kb_names 与 scope.allowed_kbs 求交（防 IDOR）
         allowed = set(args.kb_names) & set(scope.allowed_kbs)
@@ -236,8 +242,12 @@ class McpToolkit:
     ) -> dict[str, Any]:
         args = AnswerArgs.model_validate(raw_args)
 
+        # KB 存在性 + 租户归属校验（不存在/跨租户 → KB_NOT_FOUND，不泄漏内容）
+        for kb_name in args.kb_names:
+            await self._ensure_kb(db, user=user, kb_name=kb_name)
+
         # 构建检索范围（scope 构建在服务端，客户端不可传入任何过滤语义）
-        scope = await self._build_scope(db, user=user, kb_names=args.kb_names)
+        scope = await self._scope_builder(db, user=user, kb_names=args.kb_names)
 
         # kb_names 与 scope.allowed_kbs 求交（防 IDOR）
         allowed = set(args.kb_names) & set(scope.allowed_kbs)
@@ -262,7 +272,9 @@ class McpToolkit:
     ) -> Scope:
         """从 MCP UserContext 构建检索范围（scope 构建在服务端）。
 
-        MCP 凭证只有 sub/tenant，dept_id 由 build_retrieval_scope 查 DB 补全。
+        MCP 凭证只有 sub/tenant，dept_id 由 build_retrieval_scope 查 DB 补全；
+        不向 build_retrieval_scope 传 kb_names（HTTPException 403 语义不进工具面），
+        kb_names 与 allowed_kbs 的求交由工具层完成 → PERMISSION_DENIED。
         """
         return await build_retrieval_scope(
             db,
@@ -271,7 +283,6 @@ class McpToolkit:
                 namespace=user.tenant,
             ),
             namespace=user.tenant,
-            kb_names=kb_names,
         )
 
     @staticmethod

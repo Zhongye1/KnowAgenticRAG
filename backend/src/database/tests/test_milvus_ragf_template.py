@@ -44,7 +44,15 @@ def _dim_vector(seed: float) -> list[float]:
     return base
 
 
-def _doc_rows(document_id: str, count: int) -> list[dict]:
+def _doc_rows(
+    document_id: str,
+    count: int,
+    *,
+    namespace: str = 'core',
+    visibility: str = 'restricted',
+    owner_id: str = '',
+    groups: list[str] | None = None,
+) -> list[dict]:
     return [
         {
             'chunk_id': f'{document_id}:1:{idx}',
@@ -54,6 +62,11 @@ def _doc_rows(document_id: str, count: int) -> list[dict]:
             'document_id': document_id,
             'version_id': 1,
             'chunk_index': idx,
+            # ACL 镜像字段（agent-layer spec §3.2）
+            'namespace': namespace,
+            'visibility': visibility,
+            'owner_id': owner_id,
+            'groups': groups or [],
         }
         for idx in range(count)
     ]
@@ -203,6 +216,57 @@ def test_insert_filter_count_delete(collection: str) -> None:
         delete_ragf_vectors_by_document(kb_a, doc_a1)
         delete_ragf_vectors_by_document(kb_a, doc_a2)
         delete_ragf_vectors_by_document(kb_b, doc_b1)
+
+
+def test_acl_scoped_recall_filters_unauthorized_groups(collection: str) -> None:
+    """召回内过滤（agent-layer spec §7）：expr 过滤在召回内部生效，无权组文档不可见。
+
+    同一 kb 内 doc_x（dept_a 组可见）与 doc_y（dept_b 组可见）；
+    以 dept_a 用户的 scope 表达式检索，结果只允许 doc_x。
+    """
+    kb = _test_kb()
+    doc_x = f'{kb}-doc-x'
+    doc_y = f'{kb}-doc-y'
+    scope_expr = (
+        'namespace == "core" and '
+        '(visibility == "public" or owner_id == "user-a" or array_contains_any(groups, ["dept_a"]))'
+    )
+    rows_x = _doc_rows(doc_x, 1, groups=['dept_a'])
+    rows_y = _doc_rows(doc_y, 1, groups=['dept_b'])
+    for row in rows_x + rows_y:
+        row['kb_name'] = kb
+    try:
+        assert insert_ragf_document_vectors(kb_name=kb, document_id=doc_x, dim=DIM, rows=rows_x) == 1
+        assert insert_ragf_document_vectors(kb_name=kb, document_id=doc_y, dim=DIM, rows=rows_y) == 1
+        assert _wait_until(
+            lambda: count_ragf_vectors_by_document(kb, doc_x) == 1 and count_ragf_vectors_by_document(kb, doc_y) == 1
+        ), '写入后应可被过滤查询命中'
+
+        hits = search_ragf_kb(
+            kb_name=kb,
+            dim=DIM,
+            query_text='知识库测试',
+            search_mode='vector',
+            query_embedding=_dim_vector(0.15),
+            recall_top_k=10,
+            expr=scope_expr,
+        )
+        docs = {hit['document_id'] for hit in hits}
+        assert docs == {doc_x}, f'召回内过滤必须排除无权组文档: {docs}'
+
+        hybrid_hits = search_ragf_kb(
+            kb_name=kb,
+            dim=DIM,
+            query_text='知识库测试',
+            search_mode='hybrid',
+            query_embedding=_dim_vector(0.15),
+            recall_top_k=10,
+            expr=scope_expr,
+        )
+        assert {hit['document_id'] for hit in hybrid_hits} == {doc_x}, 'hybrid 两路召回都须带 expr 过滤'
+    finally:
+        delete_ragf_vectors_by_document(kb, doc_x)
+        delete_ragf_vectors_by_document(kb, doc_y)
 
 
 def test_ensure_rebuild_refuses_nonempty_legacy(client: MilvusClient) -> None:

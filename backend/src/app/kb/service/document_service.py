@@ -5,7 +5,7 @@ from uuid import uuid4
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.src.app.kb.crud import chunk_dao, dedup_dao, document_dao, keyword_dao, knowledge_base_dao
+from backend.src.app.kb.crud import chunk_dao, dedup_dao, doc_acl_dao, document_dao, keyword_dao, knowledge_base_dao
 from backend.src.app.kb.crud.crud_dedup import compute_sha256_bytes
 from backend.src.app.kb.model import Document
 from backend.src.app.kb.schema.document import DocumentUpdateParam
@@ -36,8 +36,10 @@ class DocumentService:
         kb_name: str,
         file: UploadFile,
         source_type: str = 'file',
+        owner_id: str | None = None,
+        owner_dept_id: int | None = None,
     ) -> Document:
-        """上传文件到对象存储并登记文档元数据（status=pending，等待摄取层接管）。"""
+        """上传文件到对象存储并登记文档元数据（status=pending；ACL 默认 restricted + 上传者部门）。"""
         kb = await knowledge_base_dao.get(db, kb_name)
         if kb is None:
             raise errors.NotFoundError(msg='知识库不存在')
@@ -68,6 +70,7 @@ class DocumentService:
                 source_type=source_type,
                 source_uri=object_key,
                 sha256=sha256,
+                owner_id=owner_id,
             )
             await dedup_dao.register(
                 db,
@@ -77,6 +80,15 @@ class DocumentService:
                 object_key=object_key,
                 source_name=filename,
             )
+            # 入库打标默认值（agent-layer spec §8.1）：restricted + 上传者直属部门组
+            if owner_id:
+                await doc_acl_dao.replace_document_acl(
+                    db,
+                    document_id=document_id,
+                    kb_name=kb_name,
+                    group_ids=[str(owner_dept_id)] if owner_dept_id else [],
+                    created_by=owner_id,
+                )
         except Exception:
             await delete_document_object(object_key)
             raise
@@ -175,6 +187,7 @@ class DocumentService:
             'documents': 0,
             'dedup': 0,
             'keywords': 0,
+            'doc_acl': 0,
             'objects': 0,
         }
         text_coll, visual_coll = base_collection_names()
@@ -191,6 +204,7 @@ class DocumentService:
 
         counts['keywords'] = await keyword_dao.delete_by_document(db, document_id, plugin_namespace=ns)
         counts['dedup'] = await dedup_dao.delete_by_document(db, document_id, plugin_namespace=ns)
+        counts['doc_acl'] = await doc_acl_dao.delete_by_document(db, document_id=document_id, plugin_namespace=ns)
         counts['documents'] = await document_dao.delete(db, document_id, plugin_namespace=ns)
         return counts
 

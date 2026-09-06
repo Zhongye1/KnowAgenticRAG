@@ -18,6 +18,9 @@ _RAGF_ADD_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ('knowledge_bases', 'query_params', "JSON DEFAULT '{}'::json NOT NULL"),
     ('documents', 'ingest_params', "JSON DEFAULT '{}'::json NOT NULL"),
     ('documents', 'error_message', 'TEXT'),
+    # ACL 列（agent-layer spec RAG 数据权限设计；rag_kb_acl/rag_doc_acl 为新表，create_all 直建）
+    ('documents', 'visibility', "VARCHAR(16) DEFAULT 'restricted' NOT NULL"),
+    ('documents', 'owner_id', 'VARCHAR(64)'),
 )
 
 
