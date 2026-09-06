@@ -13,6 +13,7 @@ from starlette.authentication import UnauthenticatedUser
 
 from backend.src.app.kb.schema.acl import DocAclDetail, DocAclUpdateParam, KBAclDetail, KBAclUpdateParam
 from backend.src.app.kb.service.acl_service import acl_service
+from backend.src.app.kb.utils.permissions import RAG_KB_LIST, RAG_KB_MANAGE, RAG_KB_READ
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
 from backend.src.common.security.permission import RequestPermission
@@ -22,7 +23,9 @@ from backend.src.database.db import CurrentSession, CurrentSessionTransaction
 kb_acl_router = APIRouter(dependencies=[DependsJwtAuth])
 doc_acl_router = APIRouter(dependencies=[DependsJwtAuth])
 
-_MANAGE_ACL = [Depends(RequestPermission('rag:kb:manage')), DependsRBAC]  # 顺序：先鉴权码后 RBAC
+_MANAGE_ACL = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_MANAGE)), DependsRBAC]  # 顺序：先鉴权码后 RBAC
+_KB_ACL_READ = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_LIST)), DependsRBAC]
+_DOC_ACL_READ = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_READ)), DependsRBAC]
 
 
 def _operator_id(request: Request) -> str | None:
@@ -30,7 +33,7 @@ def _operator_id(request: Request) -> str | None:
     return None if isinstance(request.user, UnauthenticatedUser) else str(request.user.id)
 
 
-@kb_acl_router.get('/{kb_name}/acl', summary='查询知识库授权组列表')
+@kb_acl_router.get('/{kb_name}/acl', summary='查询知识库授权组列表', dependencies=_KB_ACL_READ)
 async def get_kb_acl(
     db: CurrentSession,
     kb_name: Annotated[str, Path(description='知识库标识', pattern=r'^[a-z0-9_]+$')],
@@ -52,7 +55,7 @@ async def update_kb_acl(
     return response_base.success(data=KBAclDetail.model_validate(data))
 
 
-@doc_acl_router.get('/{document_id}/acl', summary='查询文档可见性与授权组')
+@doc_acl_router.get('/{document_id}/acl', summary='查询文档可见性与授权组', dependencies=_DOC_ACL_READ)
 async def get_document_acl(
     db: CurrentSession,
     document_id: Annotated[str, Path(description='文档 ID')],

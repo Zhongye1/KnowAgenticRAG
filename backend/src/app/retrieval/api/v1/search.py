@@ -9,16 +9,21 @@ ACL：每轮查询服务端构建 Scope（用户组展开 + KB 级 ACL 求交）
 
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Path
+from fastapi import APIRouter, Depends, Path
 
 from backend.src.app.kb.deps import CurrentNamespace, CurrentScope
+from backend.src.app.kb.utils.permissions import RAG_KB_SEARCH
 from backend.src.app.retrieval.schema.search_result import KBSearchOutput, KBSearchParam
 from backend.src.app.retrieval.service.retrieval_service import retrieval_service
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
+from backend.src.common.security.permission import RequestPermission
+from backend.src.common.security.rbac import DependsRBAC
 from backend.src.database.db import CurrentSession
 
-router = APIRouter(dependencies=[DependsJwtAuth])
+router = APIRouter(
+    dependencies=[DependsJwtAuth, Depends(RequestPermission(RAG_KB_SEARCH)), DependsRBAC]
+)
 
 
 @router.post('/{kb_name}/search', summary='同步检索知识库（vector/hybrid + 可选精排）')

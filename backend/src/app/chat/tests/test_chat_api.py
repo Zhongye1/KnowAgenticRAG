@@ -19,6 +19,7 @@ from backend.src.app.chat.service.chat_service import chat_service
 from backend.src.app.kb.deps import get_retrieval_scope
 from backend.src.app.retrieval.service.scope import Scope
 from backend.src.common.security.jwt import jwt_authentication_verify
+from backend.src.common.security.rbac import rbac_verify
 from backend.src.database.db import get_db
 from backend.src.middleware import request_state_middleware as rsm
 
@@ -34,13 +35,14 @@ def client() -> TestClient:
 
 @pytest.fixture(autouse=True)
 def _noop_auth_db(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    """端点到 handler 前就停：JWT 依赖空转 + scope 罐头 + db 交给既有测试会话覆盖（不触发查询）。"""
+    """端点到 handler 前就停：JWT/RBAC 依赖空转 + scope 罐头 + db 交给既有测试会话覆盖（不触发查询）。"""
     monkeypatch.setitem(app.dependency_overrides, jwt_authentication_verify, lambda: None)
+    monkeypatch.setitem(app.dependency_overrides, rbac_verify, lambda: None)
 
     # scope 依赖罐头（测试无真实用户，不经 ACL/部门树查询）
     dummy_scope = Scope(namespace='core', user_id='test', groups=['test'], allowed_kbs=['dev'])
 
-    def _noop_scope() -> Scope:
+    async def _noop_scope() -> Scope:
         return dummy_scope
 
     app.dependency_overrides[get_retrieval_scope] = _noop_scope

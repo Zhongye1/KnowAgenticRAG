@@ -2,7 +2,7 @@
 
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Path, Query
+from fastapi import APIRouter, Depends, Path, Query
 
 from backend.src.app.kb.deps import CurrentNamespace
 from backend.src.app.kb.schema.knowledge_base import (
@@ -19,15 +19,21 @@ from backend.src.app.kb.schema.knowledge_base import (
 )
 from backend.src.app.kb.service.kb_service import kb_service
 from backend.src.app.kb.service.kb_stats_service import kb_stats_service
+from backend.src.app.kb.utils.permissions import RAG_KB_LIST, RAG_KB_MANAGE
 from backend.src.common.pagination import DependsPagination, PageData
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
+from backend.src.common.security.permission import RequestPermission
+from backend.src.common.security.rbac import DependsRBAC
 from backend.src.database.db import CurrentSession, CurrentSessionTransaction
+
+_PERM_LIST = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_LIST)), DependsRBAC]
+_PERM_MANAGE = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_MANAGE)), DependsRBAC]
 
 router = APIRouter()
 
 
-@router.get('', summary='知识库列表', dependencies=[DependsJwtAuth, DependsPagination])
+@router.get('', summary='知识库列表', dependencies=[*(_PERM_LIST), DependsPagination])
 async def get_knowledge_bases(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
@@ -39,7 +45,7 @@ async def get_knowledge_bases(
     return cast('ResponseSchemaModel[PageData[KBItem]]', response_base.success(data=data))
 
 
-@router.get('/overview', summary='跨知识库聚合', dependencies=[DependsJwtAuth])
+@router.get('/overview', summary='跨知识库聚合', dependencies=_PERM_LIST)
 async def get_knowledge_bases_overview(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
@@ -48,7 +54,7 @@ async def get_knowledge_bases_overview(
     return response_base.success(data=KBOverview.model_validate(data))
 
 
-@router.post('', summary='创建知识库', dependencies=[DependsJwtAuth])
+@router.post('', summary='创建知识库', dependencies=_PERM_MANAGE)
 async def create_knowledge_base(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
@@ -59,7 +65,7 @@ async def create_knowledge_base(
     return response_base.success(data=KBDetail.model_validate(detail))
 
 
-@router.get('/{kb_name}', summary='知识库详情', dependencies=[DependsJwtAuth])
+@router.get('/{kb_name}', summary='知识库详情', dependencies=_PERM_LIST)
 async def get_knowledge_base(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
@@ -69,7 +75,7 @@ async def get_knowledge_base(
     return response_base.success(data=KBDetail.model_validate(data))
 
 
-@router.patch('/{kb_name}', summary='更新知识库', dependencies=[DependsJwtAuth])
+@router.patch('/{kb_name}', summary='更新知识库', dependencies=_PERM_MANAGE)
 async def update_knowledge_base(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
@@ -81,7 +87,7 @@ async def update_knowledge_base(
     return response_base.success(data=KBDetail.model_validate(detail))
 
 
-@router.delete('/{kb_name}', summary='级联删除知识库', dependencies=[DependsJwtAuth])
+@router.delete('/{kb_name}', summary='级联删除知识库', dependencies=_PERM_MANAGE)
 async def delete_knowledge_base(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
@@ -94,7 +100,7 @@ async def delete_knowledge_base(
 @router.get(
     '/{kb_name}/format-distribution',
     summary='文件类型分布',
-    dependencies=[DependsJwtAuth],
+    dependencies=_PERM_LIST,
 )
 async def get_knowledge_base_format_distribution(
     db: CurrentSession,
@@ -109,7 +115,7 @@ async def get_knowledge_base_format_distribution(
 @router.get(
     '/{kb_name}/ingestion-volume',
     summary='摄入时间序列',
-    dependencies=[DependsJwtAuth],
+    dependencies=_PERM_LIST,
 )
 async def get_knowledge_base_ingestion_volume(
     db: CurrentSession,
@@ -125,7 +131,7 @@ async def get_knowledge_base_ingestion_volume(
 @router.get(
     '/{kb_name}/collections',
     summary='集合统计',
-    dependencies=[DependsJwtAuth],
+    dependencies=_PERM_LIST,
 )
 async def get_knowledge_base_collections(
     db: CurrentSession,
@@ -137,7 +143,7 @@ async def get_knowledge_base_collections(
     return response_base.success(data=[KBCollectionsItem.model_validate(item) for item in data])
 
 
-@router.get('/{kb_name}/facets', summary='分面统计', dependencies=[DependsJwtAuth])
+@router.get('/{kb_name}/facets', summary='分面统计', dependencies=_PERM_LIST)
 async def get_knowledge_base_facets(
     db: CurrentSession,
     current_namespace: CurrentNamespace,

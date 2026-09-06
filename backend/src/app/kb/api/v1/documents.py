@@ -2,7 +2,7 @@
 
 from typing import Annotated, cast
 
-from fastapi import APIRouter, File, Form, Path, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Path, Query, UploadFile
 
 from backend.src.app.kb.crud import chunk_dao, document_dao
 from backend.src.app.kb.deps import CurrentNamespace
@@ -10,11 +10,19 @@ from backend.src.app.kb.model import Document
 from backend.src.app.kb.schema.chunk import ChunkItem
 from backend.src.app.kb.schema.document import DocumentItem, DocumentUpdateParam
 from backend.src.app.kb.service.document_service import document_service
+from backend.src.app.kb.utils.permissions import RAG_KB_INGEST, RAG_KB_LIST, RAG_KB_MANAGE, RAG_KB_READ
 from backend.src.common.exception import errors
 from backend.src.common.pagination import DependsPagination, PageData, paging_data
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
+from backend.src.common.security.permission import RequestPermission
+from backend.src.common.security.rbac import DependsRBAC
 from backend.src.database.db import CurrentSession, CurrentSessionTransaction
+
+_PERM_LIST = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_LIST)), DependsRBAC]
+_PERM_READ = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_READ)), DependsRBAC]
+_PERM_INGEST = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_INGEST)), DependsRBAC]
+_PERM_MANAGE = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_MANAGE)), DependsRBAC]
 
 router = APIRouter()
 
@@ -42,7 +50,7 @@ def _doc_to_dict(doc: Document) -> dict:
 @router.get(
     '/{document_id}/chunks',
     summary='文档分块浏览（只读，来源调试/评估）',
-    dependencies=[DependsJwtAuth, DependsPagination],
+    dependencies=[*(_PERM_READ), DependsPagination],
 )
 async def get_document_chunks(
     db: CurrentSession,
@@ -63,7 +71,7 @@ async def get_document_chunks(
     return cast('ResponseSchemaModel[PageData[ChunkItem]]', response_base.success(data=data))
 
 
-@router.post('', summary='上传文档（存入对象存储）', dependencies=[DependsJwtAuth])
+@router.post('', summary='上传文档（存入对象存储）', dependencies=_PERM_INGEST)
 async def upload_document(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
@@ -75,7 +83,7 @@ async def upload_document(
     return response_base.success(data=DocumentItem.model_validate(_doc_to_dict(doc)))
 
 
-@router.get('', summary='文档列表', dependencies=[DependsJwtAuth, DependsPagination])
+@router.get('', summary='文档列表', dependencies=[*(_PERM_LIST), DependsPagination])
 async def get_documents(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
@@ -95,7 +103,7 @@ async def get_documents(
     return cast('ResponseSchemaModel[PageData[DocumentItem]]', response_base.success(data=data))
 
 
-@router.get('/{document_id}/download', summary='文档下载链接（对象存储预签名 URL）', dependencies=[DependsJwtAuth])
+@router.get('/{document_id}/download', summary='文档下载链接（对象存储预签名 URL）', dependencies=_PERM_READ)
 async def get_document_download(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
@@ -105,7 +113,7 @@ async def get_document_download(
     return response_base.success(data={'url': url})
 
 
-@router.put('/{document_id}/file', summary='替换文档文件（重新上传 OSS）', dependencies=[DependsJwtAuth])
+@router.put('/{document_id}/file', summary='替换文档文件（重新上传 OSS）', dependencies=_PERM_INGEST)
 async def replace_document_file(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
@@ -116,7 +124,7 @@ async def replace_document_file(
     return response_base.success(data=DocumentItem.model_validate(_doc_to_dict(doc)))
 
 
-@router.patch('/{document_id}', summary='更新文档元数据', dependencies=[DependsJwtAuth])
+@router.patch('/{document_id}', summary='更新文档元数据', dependencies=_PERM_MANAGE)
 async def update_document(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
@@ -127,7 +135,7 @@ async def update_document(
     return response_base.success(data=DocumentItem.model_validate(_doc_to_dict(doc)))
 
 
-@router.delete('/{document_id}', summary='删除文档（级联清理向量/OSS/登记）', dependencies=[DependsJwtAuth])
+@router.delete('/{document_id}', summary='删除文档（级联清理向量/OSS/登记）', dependencies=_PERM_MANAGE)
 async def delete_document(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
@@ -137,7 +145,7 @@ async def delete_document(
     return response_base.success(data=counts)
 
 
-@router.get('/{document_id}', summary='文档详情', dependencies=[DependsJwtAuth])
+@router.get('/{document_id}', summary='文档详情', dependencies=_PERM_READ)
 async def get_document(
     db: CurrentSession,
     current_namespace: CurrentNamespace,

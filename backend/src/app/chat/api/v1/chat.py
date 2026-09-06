@@ -14,7 +14,7 @@ import json
 
 from typing import TYPE_CHECKING, Annotated, Any
 
-from fastapi import APIRouter, Path
+from fastapi import APIRouter, Depends, Path
 from sse_starlette import EventSourceResponse
 
 from backend.src.app.chat.schema.chat import (
@@ -25,7 +25,10 @@ from backend.src.app.kb.deps import (
     CurrentNamespace,  # ruff: ignore[typing-only-first-party-import]  # FastAPI 依赖别名需运行时解析
     CurrentScope,  # ruff: ignore[typing-only-first-party-import]
 )
+from backend.src.app.kb.utils.permissions import RAG_KB_CHAT
 from backend.src.common.security.jwt import DependsJwtAuth
+from backend.src.common.security.permission import RequestPermission
+from backend.src.common.security.rbac import DependsRBAC
 from backend.src.database.db import (
     CurrentSession,  # ruff: ignore[typing-only-first-party-import]  # FastAPI 依赖别名需运行时解析
 )
@@ -33,7 +36,7 @@ from backend.src.database.db import (
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
 
-router = APIRouter(dependencies=[DependsJwtAuth])
+router = APIRouter(dependencies=[DependsJwtAuth, Depends(RequestPermission(RAG_KB_CHAT)), DependsRBAC])
 
 
 @router.post('/{kb_name}/chat', summary='知识库对话：检索 + chat 模型 SSE 流式回答')

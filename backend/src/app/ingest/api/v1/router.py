@@ -3,7 +3,7 @@
 from pathlib import PurePosixPath
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, Path, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Request, UploadFile
 from starlette.authentication import UnauthenticatedUser
 
 from backend.src.app.ingest.schema.ingest import DocumentStatusItem, IngestResultItem, RebuildResultItem
@@ -11,12 +11,18 @@ from backend.src.app.kb.crud import dedup_dao, document_dao, knowledge_base_dao
 from backend.src.app.kb.crud.crud_dedup import compute_sha256_bytes
 from backend.src.app.kb.deps import CurrentNamespace
 from backend.src.app.kb.service.document_service import document_service
+from backend.src.app.kb.utils.permissions import RAG_KB_INGEST, RAG_KB_LIST
 from backend.src.common.exception import errors
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
+from backend.src.common.security.permission import RequestPermission
+from backend.src.common.security.rbac import DependsRBAC
 from backend.src.database.db import CurrentSessionTransaction
 
 router = APIRouter(dependencies=[DependsJwtAuth])
+
+_PERM_LIST = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_LIST)), DependsRBAC]
+_PERM_INGEST = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_INGEST)), DependsRBAC]
 
 INGEST_EXTENSIONS = frozenset({'.pdf', '.docx', '.pptx', '.md', '.txt', '.csv', '.png', '.jpg'})
 
@@ -47,6 +53,7 @@ def _enqueue_ingest(document_id: str, kb_name: str, plugin_namespace: str) -> No
 @router.post(
     '/{kb_name}/documents/ingest',
     summary='上传并触发摄取（幂等去重 409；force=1 强制重摄取）',
+    dependencies=_PERM_INGEST,
 )
 async def ingest_document(
     request: Request,
@@ -106,7 +113,11 @@ async def ingest_document(
     )
 
 
-@router.get('/{kb_name}/documents/{document_id}/status', summary='文档摄取状态/进度')
+@router.get(
+    '/{kb_name}/documents/{document_id}/status',
+    summary='文档摄取状态/进度',
+    dependencies=_PERM_LIST,
+)
 async def get_document_status(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
@@ -132,7 +143,11 @@ async def get_document_status(
     )
 
 
-@router.post('/{kb_name}/rebuild', summary='KB 级全量重摄取（D12：遍历文档复用 ingest 任务）')
+@router.post(
+    '/{kb_name}/rebuild',
+    summary='KB 级全量重摄取（D12：遍历文档复用 ingest 任务）',
+    dependencies=_PERM_INGEST,
+)
 async def rebuild_knowledge_base(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,

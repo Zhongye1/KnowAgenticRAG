@@ -52,7 +52,15 @@ values
 (47, '文档', 'Document', '/fba/document', 1, 'lucide:book-open-text', 4, '/_core/fallback/iframe.vue', null, 1, 1, 1, 'https://fastapi-practices.github.io/fastapi_best_architecture_docs', null, 46, '2025-06-26 20:29:06', null),
 (48, 'Github', 'Github', '/fba/github', 2, 'ant-design:github-filled', 4, '/_core/fallback/iframe.vue', null, 1, 1, 1, 'https://github.com/fastapi-practices/fastapi-best-architecture', null, 46, '2025-06-26 20:29:06', null),
 (49, 'Apifox', 'Apifox', '/fba/apifox', 3, 'simple-icons:apifox', 3, '/_core/fallback/iframe.vue', null, 1, 1, 1, 'https://apifox.com/apidoc/shared-28a93f02-730b-4f33-bb5e-4dad92058cc0', null, 46, '2025-06-26 20:29:06', null),
-(50, 'page.menu.profile', 'Profile', '/profile', 6, 'ant-design:profile-outlined', 1, '/_core/profile/index', null, 1, 0, 1, '', null, null, '2025-06-26 20:29:06', null);
+(50, 'page.menu.profile', 'Profile', '/profile', 6, 'ant-design:profile-outlined', 1, '/_core/profile/index', null, 1, 0, 1, '', null, null, '2025-06-26 20:29:06', null),
+(51, 'page.menu.rag', 'RAG', '/rag', 7, 'mdi:book-search', 0, null, null, 1, 1, 1, '', null, null, '2025-06-26 20:29:06', null),
+(52, 'page.menu.ragKnowledge', 'RagKnowledge', '/rag/knowledge', 1, 'mdi:database-search', 1, null, null, 1, 1, 1, '', null, 51, '2025-06-26 20:29:06', null),
+(53, '知识库列表', 'RagKbList', null, 0, null, 2, null, 'rag:kb:list', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null),
+(54, '知识检索', 'RagKbSearch', null, 0, null, 2, null, 'rag:kb:search', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null),
+(55, '文档读取', 'RagKbRead', null, 0, null, 2, null, 'rag:kb:read', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null),
+(56, '知识问答', 'RagKbChat', null, 0, null, 2, null, 'rag:kb:chat', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null),
+(57, '文档摄取', 'RagKbIngest', null, 0, null, 2, null, 'rag:kb:ingest', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null),
+(58, '知识库管理', 'RagKbManage', null, 0, null, 2, null, 'rag:kb:manage', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null);
 
 insert into sys_role (id, name, status, is_filter_scopes, remark, created_time, updated_time)
 values (1, '测试', 1, true, null, now(), null);
@@ -62,7 +70,15 @@ values
 (1, 1, 1),
 (2, 1, 2),
 (3, 1, 3),
-(4, 1, 50);
+(4, 1, 50),
+(5, 1, 51),
+(6, 1, 52),
+(7, 1, 53),
+(8, 1, 54),
+(9, 1, 55),
+(10, 1, 56),
+(11, 1, 57),
+(12, 1, 58);
 
 insert into sys_user (id, uuid, username, nickname, password, salt, email, status, is_superuser, is_staff, is_multi_login, avatar, phone, join_time, last_login_time, last_password_changed_time, dept_id, created_time, updated_time)
 values

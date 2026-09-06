@@ -11,6 +11,13 @@ from typing import Literal
 
 from pydantic import ConfigDict, Field
 
+from backend.src.app.kb.utils.permissions import (
+    RAG_KB_CHAT,
+    RAG_KB_LIST,
+    RAG_KB_READ,
+    RAG_KB_READ_SCOPES,
+    RAG_KB_SEARCH,
+)
 from backend.src.app.retrieval.schema.search_result import (
     RetrievalFilters,  # ruff: ignore[typing-only-first-party-import]  # pydantic 需运行时解析字段前向引用
 )
@@ -31,12 +38,13 @@ __all__ = [
     'UserContext',
 ]
 
-PERM_KB_LIST = 'rag:kb:list'
-PERM_KB_SEARCH = 'rag:kb:search'
-PERM_KB_READ = 'rag:kb:read'
-PERM_KB_CHAT = 'rag:kb:chat'
+# D30：MCP 不发明第二套权限模型——权限码单一来源在 kb/utils/permissions.py
+PERM_KB_LIST = RAG_KB_LIST
+PERM_KB_SEARCH = RAG_KB_SEARCH
+PERM_KB_READ = RAG_KB_READ
+PERM_KB_CHAT = RAG_KB_CHAT
 
-READ_SCOPES = frozenset({PERM_KB_LIST, PERM_KB_SEARCH, PERM_KB_READ, PERM_KB_CHAT})
+READ_SCOPES = RAG_KB_READ_SCOPES
 ToolMethod = Literal['initialize', 'ping', 'tools/list', 'tools/call']
 
 
