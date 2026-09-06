@@ -59,6 +59,7 @@ class FakeRetrieval:
         query_text: str,
         param: Any = None,
         plugin_namespace: str | None = None,
+        scope: Any = None,
     ) -> dict[str, Any]:
         self.calls.append({'kb_name': kb_name, 'query_text': query_text, 'param': param, 'ns': plugin_namespace})
         if self.exc is not None:

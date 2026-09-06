@@ -40,6 +40,7 @@ if TYPE_CHECKING:
 
     from backend.src.app.chat.schema.chat import ChatParam
     from backend.src.app.model_provider.providers.chat import OpenAICompatibleChatModel
+    from backend.src.app.retrieval.service.scope import Scope
 
 ChatEvent = tuple[str, dict[str, Any]]
 
@@ -142,6 +143,7 @@ class ChatService:
         kb_name: str,
         param: ChatParam,
         plugin_namespace: str | None = None,
+        scope: Scope | None = None,
     ) -> AsyncIterator[ChatEvent]:
         """SSE 事件序列（meta/citation/delta/usage/done/error；span + 指标）。"""
         started = time.perf_counter()
@@ -151,7 +153,7 @@ class ChatService:
             outcome = 'error'
             try:
                 async for event, data in self._events(
-                    db, kb_name=kb_name, param=param, plugin_namespace=plugin_namespace
+                    db, kb_name=kb_name, param=param, plugin_namespace=plugin_namespace, scope=scope
                 ):
                     if event == 'meta':
                         outcome = 'empty' if int(data.get('hit_count') or 0) == 0 else 'ok'
@@ -217,14 +219,19 @@ class ChatService:
         kb_names: list[str],
         param: ChatParam,
         plugin_namespace: str | None = None,
+        scope: Scope | None = None,
     ) -> dict[str, Any]:
-        """非流式多 KB 问答（M11/D27：跨库检索 + 引用汇总一次生成）。"""
+        """非流式多 KB 问答（M11/D27：跨库检索 + 引用汇总一次生成）。
+
+        scope: 检索范围（ACL 过滤），由 build_retrieval_scope() 构建。
+        """
         prepared = await self._prepare(
             db,
             kb_name=None,
             kb_names=kb_names,
             param=param,
             plugin_namespace=plugin_namespace,
+            scope=scope,
         )
         payload: dict[str, Any] = {
             'kb_name': prepared.kb_name,
@@ -258,10 +265,13 @@ class ChatService:
         kb_name: str,
         param: ChatParam,
         plugin_namespace: str | None,
+        scope: Scope | None = None,
     ) -> AsyncIterator[ChatEvent]:
         """事件序列核心：prepare 后按命中/错误分支产出（无 IO 逃逸，全量守卫）。"""
         try:
-            prepared = await self._prepare(db, kb_name=kb_name, param=param, plugin_namespace=plugin_namespace)
+            prepared = await self._prepare(
+                db, kb_name=kb_name, param=param, plugin_namespace=plugin_namespace, scope=scope,
+            )
         except errors.NotFoundError as exc:
             yield self._error_event('KB_NOT_FOUND', exc.msg or '知识库不存在')
             return
@@ -338,8 +348,12 @@ class ChatService:
         kb_names: list[str] | None = None,
         param: ChatParam,
         plugin_namespace: str | None,
+        scope: Scope | None = None,
     ) -> PreparedChat:
-        """检索 + 引用裁剪 + 消息组装 + chat 模型解析（模型解析失败不进异常面）。"""
+        """检索 + 引用裁剪 + 消息组装 + chat 模型解析（模型解析失败不进异常面）。
+
+        scope: 检索范围（ACL 过滤），由 build_retrieval_scope() 构建。
+        """
         effective = kb_names or ([kb_name] if kb_name else None)
         if effective is None:
             raise errors.RequestError(msg='必须提供 kb_name 或 kb_names')
@@ -350,6 +364,7 @@ class ChatService:
                 query_text=param.query_text,
                 param=to_search_param(param),
                 plugin_namespace=plugin_namespace,
+                scope=scope,
             )
         else:
             data = await self._retrieval.search_multi(
@@ -358,6 +373,7 @@ class ChatService:
                 query_text=param.query_text,
                 param=to_search_param(param),
                 plugin_namespace=plugin_namespace,
+                scope=scope,
             )
         kb_label = str(effective[0]) if effective else (kb_name or '')
         mode = str(data.get('mode') or 'hybrid')

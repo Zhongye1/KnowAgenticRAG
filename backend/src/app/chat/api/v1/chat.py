@@ -3,6 +3,9 @@
 SSE 事件行协议（D25）：meta / citation / delta / usage / done / error；事件行不走
 fba 统一 JSON 包装（``EventSourceResponse`` 直出）。语义错误与上游错误统一以
 ``error`` 事件表达（chat_service.astream 全量守卫），端点不额外包 JSON 错误体。
+
+ACL：每轮查询服务端构建 Scope（用户组展开 + KB 级 ACL 求交），下推到检索召回
+内部过滤（agent-layer spec §4/§5/§9：每轮 query 重新解析，不在会话创建时固化）。
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from backend.src.app.chat.schema.chat import (
 from backend.src.app.chat.service.chat_service import chat_service
 from backend.src.app.kb.deps import (
     CurrentNamespace,  # ruff: ignore[typing-only-first-party-import]  # FastAPI 依赖别名需运行时解析
+    CurrentScope,  # ruff: ignore[typing-only-first-party-import]
 )
 from backend.src.common.security.jwt import DependsJwtAuth
 from backend.src.database.db import (
@@ -36,6 +40,7 @@ router = APIRouter(dependencies=[DependsJwtAuth])
 async def chat_knowledge_base(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
+    scope: CurrentScope,
     kb_name: Annotated[str, Path(description='知识库标识', pattern=r'^[a-z0-9_]+$')],
     obj: ChatParam,
 ) -> EventSourceResponse:
@@ -43,7 +48,7 @@ async def chat_knowledge_base(
 
     async def _events() -> AsyncIterator[dict[str, Any]]:
         async for event, data in chat_service.astream(
-            db, kb_name=kb_name, param=obj, plugin_namespace=current_namespace
+            db, kb_name=kb_name, param=obj, plugin_namespace=current_namespace, scope=scope
         ):
             # D25/§6：data 行必须是 JSON（sse-starlette 对 dict 走 str()，需先序列化）
             yield {'event': event, 'data': json.dumps(data, ensure_ascii=False)}

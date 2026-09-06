@@ -33,6 +33,8 @@ from backend.src.app.mcp.schemas import (
     UserContext,
 )
 from backend.src.app.retrieval.service.retrieval_service import retrieval_service
+from backend.src.app.retrieval.service.scope import Scope, build_retrieval_scope
+from backend.src.app.retrieval.service.scope import UserContext as ScopeUserContext
 from backend.src.common.exception import errors
 from backend.src.common.log import log
 
@@ -193,8 +195,15 @@ class McpToolkit:
         self, db: AsyncSession, *, user: UserContext, raw_args: dict[str, Any]
     ) -> dict[str, Any]:
         args = SearchArgs.model_validate(raw_args)
-        for kb_name in args.kb_names:
-            await self._ensure_kb(db, user=user, kb_name=kb_name)
+
+        # 构建检索范围（scope 构建在服务端，客户端不可传入任何过滤语义）
+        scope = await self._build_scope(db, user=user, kb_names=args.kb_names)
+
+        # kb_names 与 scope.allowed_kbs 求交（防 IDOR）
+        allowed = set(args.kb_names) & set(scope.allowed_kbs)
+        if not allowed:
+            raise ToolError(code='PERMISSION_DENIED', msg='无权访问这些KB')
+
         request: dict[str, Any] = {'query_text': args.query_text}
         if args.top_k is not None:
             request['final_top_k'] = args.top_k
@@ -204,15 +213,18 @@ class McpToolkit:
             request['file_name'] = args.file_name
         if args.filters is not None:
             request['filters'] = args.filters.model_dump(exclude_none=True)
+
+        # 检索（带 scope 过滤）
         data = await self._retrieval.search_multi(
             db,
-            kb_names=args.kb_names,
+            kb_names=list(allowed),
             query_text=args.query_text,
             param=request,
             plugin_namespace=user.tenant,
+            scope=scope,
         )
         return {
-            'kb_names': list(data.get('kb_names') or args.kb_names),
+            'kb_names': list(data.get('kb_names') or allowed),
             'kb_name': data.get('kb_name') or args.kb_names[0],
             'mode': data.get('mode'),
             'hit_count': len(data.get('results') or []),
@@ -223,16 +235,44 @@ class McpToolkit:
         self, db: AsyncSession, *, user: UserContext, raw_args: dict[str, Any]
     ) -> dict[str, Any]:
         args = AnswerArgs.model_validate(raw_args)
-        for kb_name in args.kb_names:
-            await self._ensure_kb(db, user=user, kb_name=kb_name)
+
+        # 构建检索范围（scope 构建在服务端，客户端不可传入任何过滤语义）
+        scope = await self._build_scope(db, user=user, kb_names=args.kb_names)
+
+        # kb_names 与 scope.allowed_kbs 求交（防 IDOR）
+        allowed = set(args.kb_names) & set(scope.allowed_kbs)
+        if not allowed:
+            raise ToolError(code='PERMISSION_DENIED', msg='无权访问这些KB')
+
         param = ChatParam.model_validate(self._answer_payload(args))
         try:
             return await self._chat.acomplete_multi(
-                db, kb_names=args.kb_names, param=param, plugin_namespace=user.tenant
+                db, kb_names=list(allowed), param=param, plugin_namespace=user.tenant, scope=scope
             )
         except errors.RequestError as exc:
             # acomplete_multi 中 RequestError 仅来自模型未配置（KB 已前置校验）
             raise ToolError(code='MODEL_NOT_CONFIGURED', msg=exc.msg or 'chat 模型未配置') from exc
+
+    async def _build_scope(
+        self,
+        db: AsyncSession,
+        *,
+        user: UserContext,
+        kb_names: list[str] | None = None,
+    ) -> Scope:
+        """从 MCP UserContext 构建检索范围（scope 构建在服务端）。
+
+        MCP 凭证只有 sub/tenant，dept_id 由 build_retrieval_scope 查 DB 补全。
+        """
+        return await build_retrieval_scope(
+            db,
+            user=ScopeUserContext(
+                user_id=user.sub,
+                namespace=user.tenant,
+            ),
+            namespace=user.tenant,
+            kb_names=kb_names,
+        )
 
     @staticmethod
     def _answer_payload(args: AnswerArgs) -> dict[str, Any]:

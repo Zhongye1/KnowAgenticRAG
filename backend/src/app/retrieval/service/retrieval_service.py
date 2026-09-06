@@ -34,6 +34,7 @@ from backend.src.app.retrieval.service.filters import (
     filter_active_versions,
 )
 from backend.src.app.retrieval.service.params import merge_search_params, resolve_recall_top_k
+from backend.src.app.retrieval.service.scope import Scope, to_milvus_expr
 from backend.src.app.retrieval.service.strategies import RETRIEVE_STRATEGIES
 from backend.src.common.exception import errors
 from backend.src.common.log import log
@@ -121,11 +122,19 @@ class RetrievalService:
         query_text: str,
         param: KBSearchParam | dict[str, Any] | None = None,
         plugin_namespace: str | None = None,
+        scope: Scope | None = None,
     ) -> dict[str, Any]:
-        """同步检索门面入口（单 KB；§14.13：span + 指标，不承载编排逻辑）。"""
+        """同步检索门面入口（单 KB；§14.13：span + 指标，不承载编排逻辑）。
+
+        scope: 检索范围（ACL 过滤），由 build_retrieval_scope() 构建。
+               如果提供，会在 Milvus 召回时注入权限过滤表达式。
+        """
         started = time.perf_counter()
         with _TRACER.start_as_current_span('ragf.retrieval.search') as span:
             span.set_attribute('ragf.kb_name', kb_name)
+            if scope:
+                span.set_attribute('ragf.scope.user_id', scope.user_id)
+                span.set_attribute('ragf.scope.groups', len(scope.groups))
             try:
                 data = await self._aggregate(
                     db,
@@ -133,6 +142,7 @@ class RetrievalService:
                     query_text=query_text,
                     param=param,
                     plugin_namespace=plugin_namespace,
+                    scope=scope,
                 )
             except Exception:
                 _RETRIEVAL_REQUESTS.add(1, {'result': 'error'})
@@ -154,12 +164,20 @@ class RetrievalService:
         query_text: str,
         param: KBSearchParam | dict[str, Any] | None = None,
         plugin_namespace: str | None = None,
+        scope: Scope | None = None,
     ) -> dict[str, Any]:
-        """多 KB 聚合检索门面（M11/D27：跨库召回 → 合并 → 统一精排/final_top_k）。"""
+        """多 KB 聚合检索门面（M11/D27：跨库召回 → 合并 → 统一精排/final_top_k）。
+
+        scope: 检索范围（ACL 过滤），由 build_retrieval_scope() 构建。
+               如果提供，会在 Milvus 召回时注入权限过滤表达式。
+        """
         started = time.perf_counter()
         label = ','.join(kb_names or [])
         with _TRACER.start_as_current_span('ragf.retrieval.search_multi') as span:
             span.set_attribute('ragf.kb_names', label)
+            if scope:
+                span.set_attribute('ragf.scope.user_id', scope.user_id)
+                span.set_attribute('ragf.scope.groups', len(scope.groups))
             try:
                 data = await self._aggregate(
                     db,
@@ -167,6 +185,7 @@ class RetrievalService:
                     query_text=query_text,
                     param=param,
                     plugin_namespace=plugin_namespace,
+                    scope=scope,
                 )
             except Exception:
                 _RETRIEVAL_REQUESTS.add(1, {'result': 'error'})
@@ -189,6 +208,7 @@ class RetrievalService:
         query_text: str,
         param: KBSearchParam | dict[str, Any] | None = None,
         plugin_namespace: str | None = None,
+        scope: Scope | None = None,
     ) -> dict[str, Any]:
         ns = instance_namespace(plugin_namespace)
         names = self._normalize_kb_names(kb_names)
@@ -197,7 +217,16 @@ class RetrievalService:
             raise errors.RequestError(msg='query_text 不能为空')
 
         # ① KB 归属校验（多 KB 逐库校验：跨 KB 越权不可见，D33/M11）
-        kbs = await self._load_kbs(db, names=names, ns=ns)
+        # 如果有 scope，使用 scope.allowed_kbs 校验；否则使用现有逻辑
+        if scope is not None:
+            # scope 校验：请求的 KB 必须在 allowed_kbs 内
+            denied = set(names) - set(scope.allowed_kbs)
+            if denied:
+                raise errors.ForbiddenError(msg=f'无权访问以下知识库: {sorted(denied)}')
+            kbs = await self._load_kbs(db, names=names, ns=ns)
+        else:
+            kbs = await self._load_kbs(db, names=names, ns=ns)
+
         started = time.perf_counter()
         merged = self._merged_params(kbs[names[0]], param)
         mode = str(merged['search_mode'])
@@ -214,7 +243,7 @@ class RetrievalService:
         # ② embedding（核心能力，失败上抛不伪装成功；按 embedding 模型分组复用）
         embed_groups = await self._load_embeddings(db, kbs=kbs, names=names, query_text=query_text)
 
-        # ③ 文档级过滤解析 + 逐 KB 召回
+        # ③ 文档级过滤解析 + 逐 KB 召回（带 scope 过滤）
         merged_hits = await self._recall_kbs(
             db,
             names=names,
@@ -227,6 +256,7 @@ class RetrievalService:
             version_id=version_id,
             request_data=request_data,
             embed_groups=embed_groups,
+            scope=scope,
         )
 
         # ④ 精排（可选能力，失败降级为召回序，§A.5/§14.9）
@@ -303,13 +333,27 @@ class RetrievalService:
         version_id: int | None,
         request_data: dict[str, Any],
         embed_groups: dict[str, dict[str, Any]],
+        scope: Scope | None = None,
     ) -> list[dict[str, Any]]:
-        """逐 KB 文档过滤解析 + 策略化召回；结果打上 kb_name 归属。"""
+        """逐 KB 文档过滤解析 + 策略化召回；结果打上 kb_name 归属。
+
+        scope: 检索范围（ACL 过滤），用于生成 Milvus 过滤表达式。
+        """
         merged: list[dict[str, Any]] = []
         for kb_name in names:
             doc_ids = await self._resolve_doc_ids(db, kb_name=kb_name, ns=ns, request_data=request_data)
             if doc_ids == []:
                 continue
+
+            # 构建 Milvus 过滤表达式：组合 doc_ids 过滤 + scope 过滤
+            expr = compose_retrieval_expr(doc_ids=doc_ids, version_id=version_id)
+
+            # 如果有 scope，追加 scope 过滤
+            if scope is not None:
+                scope_expr = to_milvus_expr(scope)
+                # 组合：doc_ids 过滤 AND scope 过滤
+                expr = f'({expr}) and ({scope_expr})' if expr else scope_expr
+
             group = next(item for item in embed_groups.values() if kb_name in item['kb_names'])
             ctx: dict[str, Any] = {
                 'kb_name': kb_name,
@@ -318,7 +362,7 @@ class RetrievalService:
                 'dim': group['dim'],
                 'recall_top_k': recall_top_k,
                 'similarity_threshold': threshold,
-                'expr': compose_retrieval_expr(doc_ids=doc_ids, version_id=version_id),
+                'expr': expr,
                 'plugin_namespace': ns,
             }
             strategy = self._strategies.get(mode) or self._strategies['hybrid']
