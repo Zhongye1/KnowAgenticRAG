@@ -357,6 +357,9 @@ class Settings(BaseSettings):
     RAGF_MCP_PAT: str = ''
     # PAT 通道默认授权（读面工具集）；JWT 直通无 scp claim 时同此默认
     RAGF_MCP_DEFAULT_SCOPES: str = 'rag:kb:list,rag:kb:search,rag:kb:read,rag:kb:chat'
+    # MCP HTTP 端点路径（D20：默认 /mcp，可配置；全局 JWT 中间件按此前缀白名单放行，
+    # 由 mcp 端点多凭证鉴权接管）
+    RAGF_MCP_HTTP_PATH: str = '/mcp'
     # MCP 调用审计落库开关（tools/call 写 mcp_call_log；落库失败不阻断响应）
     RAGF_MCP_LOG_ENABLED: bool = True
     # MCP /mcp 端点限流（按 租户+sub 计，依赖 Redis；RateLimiter 见 utils/limiter.py）

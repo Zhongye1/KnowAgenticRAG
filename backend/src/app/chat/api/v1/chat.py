@@ -12,15 +12,20 @@ from typing import TYPE_CHECKING, Annotated, Any
 from fastapi import APIRouter, Path
 from sse_starlette import EventSourceResponse
 
+from backend.src.app.chat.schema.chat import (
+    ChatParam,  # ruff: ignore[typing-only-first-party-import]  # FastAPI 需运行时解析依赖/请求体注解
+)
 from backend.src.app.chat.service.chat_service import chat_service
+from backend.src.app.kb.deps import (
+    CurrentNamespace,  # ruff: ignore[typing-only-first-party-import]  # FastAPI 依赖别名需运行时解析
+)
 from backend.src.common.security.jwt import DependsJwtAuth
+from backend.src.database.db import (
+    CurrentSession,  # ruff: ignore[typing-only-first-party-import]  # FastAPI 依赖别名需运行时解析
+)
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator
-
-    from backend.src.app.chat.schema.chat import ChatParam
-    from backend.src.app.kb.deps import CurrentNamespace
-    from backend.src.database.db import CurrentSession
 
 router = APIRouter(dependencies=[DependsJwtAuth])
 

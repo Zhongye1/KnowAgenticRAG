@@ -52,7 +52,7 @@ class JwtAuthMiddleware(AuthenticationBackend):
         """
         content = {'code': exc.code, 'msg': exc.msg, 'data': None}
         ctx.__request_authentication_exception__ = content
-        return MsgSpecJSONResponse(content=content, status_code=exc.code)
+        return MsgSpecJSONResponse(content=content, status_code=exc.code or 401)
 
     @staticmethod
     def extract_token(request: Request) -> str | None:
@@ -72,6 +72,12 @@ class JwtAuthMiddleware(AuthenticationBackend):
         for pattern in settings.TOKEN_REQUEST_PATH_EXCLUDE_PATTERN:
             if pattern.match(path):
                 return None
+        # MCP 端点白名单（agent-layer spec §10/D20）：/mcp 自带多凭证鉴权（JWT 直通 /
+        # PAT / OAuth，auth.py），全局 JWT 中间件放行，避免 PAT header 被提前 401 拦截
+        # 或统一响应包装改写 JSON-RPC 帧。路径前缀与 mcp 路由同源（RAGF_MCP_HTTP_PATH）。
+        mcp_base = str(getattr(settings, 'RAGF_MCP_HTTP_PATH', '') or '').strip().rstrip('/')
+        if mcp_base and (path == mcp_base or path.startswith(mcp_base + '/')):
+            return None
 
         scheme, token = get_authorization_scheme_param(authorization)
         if scheme.lower() != 'bearer':
@@ -94,7 +100,11 @@ class JwtAuthMiddleware(AuthenticationBackend):
             user = await jwt_authentication(token)
         except TokenError as exc:
             if settings.TOKEN_REQUEST_UNDERLYING_SECURITY:
-                raise AuthenticationError(code=exc.code, msg=exc.detail, headers=exc.headers)
+                raise AuthenticationError(
+                    code=exc.code,
+                    msg=exc.detail,
+                    headers=dict(exc.headers) if exc.headers else None,
+                )
             ctx.__request_jwt_authentication_exception__ = exc
             return None
         except Exception as e:

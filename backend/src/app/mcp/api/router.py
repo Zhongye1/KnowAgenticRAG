@@ -28,16 +28,20 @@ from backend.src.app.mcp.service import TOOL_SPECS, ToolError, mcp_toolkit
 from backend.src.common.exception import errors
 from backend.src.common.log import log
 from backend.src.core.config import settings
+from backend.src.database.db import (
+    CurrentSession,  # ruff: ignore[typing-only-first-party-import]  # FastAPI 依赖别名需运行时解析
+)
 from backend.src.utils.limiter import RateLimiter
 from backend.src.utils.request_parse import get_request_ip
 
 if TYPE_CHECKING:
     from backend.src.app.mcp.schemas import UserContext
-    from backend.src.database.db import CurrentSession
 
 router = APIRouter()
 
 DEFAULT_PROTOCOL_VERSION = '2025-03-26'
+# MCP HTTP 端点基路径（D20：默认 /mcp，可配置；全局 JWT 中间件按此前缀白名单放行）
+MCP_HTTP_PATH = str(settings.RAGF_MCP_HTTP_PATH or '/mcp').strip().rstrip('/') or '/mcp'
 _SSE_HEADERS = {'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'}
 
 
@@ -47,7 +51,7 @@ def _tool_public(specs: list[Any]) -> list[dict[str, Any]]:
             'name': spec.name,
             'description': spec.description,
             'inputSchema': spec.input_schema,
-            'requiredPermissions': sorted(spec.required),
+            'required_permissions': sorted(spec.required),
         }
         for spec in specs
     ]
@@ -170,13 +174,13 @@ async def _write_call_log(
     await record_call_log(db, **fields)
 
 
-@router.get('/mcp/tools', summary='MCP 工具静态目录（JSON Schema，按调用方权限过滤）')
+@router.get(f'{MCP_HTTP_PATH}/tools', summary='MCP 工具静态目录（JSON Schema，按调用方权限过滤）')
 async def mcp_tools_catalog(user: McpUserContext) -> list[dict[str, Any]]:
     """工具目录：tools/list 同源过滤，供管理页/CLI 展示。"""
     return filter_tools(user, _tool_public(TOOL_SPECS))
 
 
-@router.post('/mcp', summary='MCP Streamable HTTP 端点（JSON-RPC 2.0）')
+@router.post(MCP_HTTP_PATH, summary='MCP Streamable HTTP 端点（JSON-RPC 2.0）')
 async def mcp_jsonrpc_endpoint(request: Request, db: CurrentSession) -> Response:
     """JSON-RPC 分发：鉴权归一 → initialize/ping/tools/list/tools/call。"""
     sse = 'text/event-stream' in request.headers.get('accept', '')
@@ -348,7 +352,7 @@ async def _call_tool(
     )
 
 
-@router.get('/mcp', summary='MCP GET 会话端点（MVP 未实现）')
+@router.get(MCP_HTTP_PATH, summary='MCP GET 会话端点（MVP 未实现）')
 async def mcp_get_not_supported(request: Request) -> Response:
     """Streamable HTTP 会话模式留待 mcp SDK 落地；返回可读的 JSON-RPC 错误。"""
     sse = 'text/event-stream' in request.headers.get('accept', '')
