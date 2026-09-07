@@ -47,7 +47,7 @@ const ConversationItem = () => {
         <ThreadListItemPrimitive.Trigger asChild>
           <SidebarMenuButton
             onClick={() => navigate(paths.app.chat.getHref())}
-            className="group-data-[active]/tli:bg-sidebar-accent group-data-[active]/tli:text-sidebar-accent-foreground w-full"
+            className="group-data-[active=true]/tli:bg-sidebar-accent group-data-[active=true]/tli:text-sidebar-accent-foreground w-full"
           >
             <MessageSquare />
             <span className="truncate">
