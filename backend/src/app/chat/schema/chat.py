@@ -13,12 +13,25 @@ from backend.src.common.schema import SchemaBase
 
 ChatRole = Literal['user', 'assistant', 'system']
 
+ThinkingLevel = Literal['off', 'low', 'medium', 'high']
+
+# 随问附件限制：轻量文本注入本轮上下文，不入库不建索引
+MAX_ATTACHMENTS = 4
+ATTACHMENT_CONTENT_MAX_LENGTH = 32_000
+
 
 class ChatMessage(SchemaBase):
     """多轮历史消息（首版无服务端会话，由调用方显式传入）。"""
 
     role: ChatRole = 'user'
     content: str = Field(min_length=1, max_length=20000, description='消息内容')
+
+
+class ChatAttachment(SchemaBase):
+    """随问文本附件（filename + 纯文本内容，仅注入本轮对话上下文）。"""
+
+    filename: str = Field(min_length=1, max_length=255, description='附件文件名')
+    content: str = Field(min_length=1, max_length=ATTACHMENT_CONTENT_MAX_LENGTH, description='文本内容')
 
 
 class ChatParam(SchemaBase):
@@ -28,7 +41,13 @@ class ChatParam(SchemaBase):
 
     query_text: str = Field(min_length=1, max_length=2000, description='用户问题（同时用于混合检索 BM25 原文）')
     model: str | None = Field(None, description='chat 模型 spec（provider_id:model_id）；缺省走 RAGF_CHAT_MODEL_SPEC')
+    thinking_level: ThinkingLevel | None = Field(
+        None, description='思考等级：low/medium/high → reasoning_effort，off → enable_thinking=False（Qwen 系）'
+    )
     history: list[ChatMessage] = Field(default_factory=list, description='多轮历史（近 N 轮由服务端截断）')
+    attachments: list[ChatAttachment] = Field(
+        default_factory=list, max_length=MAX_ATTACHMENTS, description=f'随问文本附件（≤{MAX_ATTACHMENTS} 个）'
+    )
     temperature: float | None = Field(None, ge=0.0, le=2.0, description='采样温度（缺省 settings 默认）')
     max_tokens: int | None = Field(None, ge=1, le=32768, description='单轮最大生成 token')
     search_mode: Literal['vector', 'hybrid'] | None = Field(None, description='检索模式覆盖')

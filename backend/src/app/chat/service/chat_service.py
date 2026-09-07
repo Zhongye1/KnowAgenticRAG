@@ -21,6 +21,7 @@ from opentelemetry import trace as otel_trace
 
 from backend.src.app.chat.service.prompts import (
     EMPTY_RESULT_MESSAGE,
+    build_attachments_text,
     build_context_text,
     build_messages,
     truncate_citations,
@@ -117,6 +118,7 @@ class PreparedChat:
     model_spec: str = ''
     temperature: float | None = None
     max_tokens: int | None = None
+    thinking_level: str | None = None
     model_error: tuple[str, str] | None = None
     kb_names: list[str] | None = None
 
@@ -200,6 +202,7 @@ class ChatService:
             prepared.messages or [],
             temperature=prepared.temperature,
             max_tokens=prepared.max_tokens,
+            thinking_level=prepared.thinking_level,
         )
         return {
             'kb_name': kb_name,
@@ -252,6 +255,7 @@ class ChatService:
             prepared.messages or [],
             temperature=prepared.temperature,
             max_tokens=prepared.max_tokens,
+            thinking_level=prepared.thinking_level,
         )
         payload['model_spec'] = prepared.model_spec
         payload['answer'] = content
@@ -328,6 +332,7 @@ class ChatService:
                 prepared.messages or [],
                 temperature=prepared.temperature,
                 max_tokens=prepared.max_tokens,
+                thinking_level=prepared.thinking_level,
             ):
                 if ev.content:
                     yield ('delta', {'content': ev.content})
@@ -394,6 +399,9 @@ class ChatService:
 
         kept, _dropped = truncate_citations(citations, int(settings.RAGF_CONTEXT_MAX_TOKENS))
         context_text = build_context_text(kept)
+        attachments_text = build_attachments_text(
+            [item.model_dump() for item in param.attachments] if param.attachments else None
+        )
         history = (
             [{'role': str(item.role), 'content': item.content} for item in param.history] if param.history else None
         )
@@ -402,6 +410,7 @@ class ChatService:
             context_text=context_text,
             history=history,
             history_rounds=int(settings.RAGF_CHAT_HISTORY_ROUNDS),
+            attachments_text=attachments_text,
         )
 
         spec = normalize_model_spec(param.model or str(settings.RAGF_CHAT_MODEL_SPEC or ''))
@@ -468,6 +477,7 @@ class ChatService:
             if param.temperature is not None
             else float(settings.RAGF_CHAT_DEFAULT_TEMPERATURE),
             max_tokens=param.max_tokens,
+            thinking_level=param.thinking_level,
         )
 
     @staticmethod

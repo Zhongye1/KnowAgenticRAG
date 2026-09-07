@@ -39,6 +39,9 @@ class ChatStreamEvent:
     usage: dict[str, Any] | None = None
 
 
+_THINKING_EFFORT_LEVELS = frozenset({'low', 'medium', 'high'})
+
+
 def build_chat_payload(
     *,
     model: str,
@@ -46,8 +49,14 @@ def build_chat_payload(
     temperature: float | None = None,
     max_tokens: int | None = None,
     stream: bool = True,
+    thinking_level: str | None = None,
 ) -> dict[str, Any]:
-    """构造 Chat Completions 请求体（stream 开启时请求 usage）。"""
+    """构造 Chat Completions 请求体（stream 开启时请求 usage）。
+
+    thinking_level：low/medium/high 映射为 OpenAI 兼容的 ``reasoning_effort``；
+    off 映射为 Qwen 系（vLLM/DashScope）的 ``chat_template_kwargs.enable_thinking``。
+    服务端不认识的字段由调用方自行评估（严格服务端可能拒绝）。
+    """
     payload: dict[str, Any] = {'model': model, 'messages': messages, 'stream': stream}
     if temperature is not None:
         payload['temperature'] = float(temperature)
@@ -55,6 +64,10 @@ def build_chat_payload(
         payload['max_tokens'] = int(max_tokens)
     if stream:
         payload['stream_options'] = {'include_usage': True}
+    if thinking_level in _THINKING_EFFORT_LEVELS:
+        payload['reasoning_effort'] = thinking_level
+    elif thinking_level == 'off':
+        payload['chat_template_kwargs'] = {'enable_thinking': False}
     return payload
 
 
@@ -119,10 +132,15 @@ class OpenAICompatibleChatModel:
         *,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        thinking_level: str | None = None,
     ) -> AsyncIterator[ChatStreamEvent]:
         """流式对话：逐帧产出内容/usage/finish_reason 事件。"""
         payload = build_chat_payload(
-            model=self.model, messages=messages, temperature=temperature, max_tokens=max_tokens
+            model=self.model,
+            messages=messages,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            thinking_level=thinking_level,
         )
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             async with client.stream('POST', self.url, json=payload, headers=self.headers) as response:
@@ -139,6 +157,7 @@ class OpenAICompatibleChatModel:
         *,
         temperature: float | None = None,
         max_tokens: int | None = None,
+        thinking_level: str | None = None,
     ) -> tuple[str, dict[str, Any]]:
         """非流式对话（连通性测试/单发调用）：返回 (content, usage)。"""
         payload = build_chat_payload(
@@ -147,6 +166,7 @@ class OpenAICompatibleChatModel:
             temperature=temperature,
             max_tokens=max_tokens,
             stream=False,
+            thinking_level=thinking_level,
         )
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             response = await client.post(self.url, json=payload, headers=self.headers)

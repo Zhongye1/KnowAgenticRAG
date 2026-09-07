@@ -44,6 +44,23 @@ def test_build_chat_payload_non_stream_omits_usage_option() -> None:
     assert 'max_tokens' not in payload
 
 
+def test_build_chat_payload_thinking_level() -> None:
+    """low/medium/high 映射 reasoning_effort；off 映射 Qwen enable_thinking；缺省不带字段。"""
+    base = {'model': 'm', 'messages': []}
+    for level in ('low', 'medium', 'high'):
+        payload = build_chat_payload(**base, thinking_level=level)
+        assert payload['reasoning_effort'] == level
+        assert 'chat_template_kwargs' not in payload
+
+    payload = build_chat_payload(**base, thinking_level='off')
+    assert payload['chat_template_kwargs'] == {'enable_thinking': False}
+    assert 'reasoning_effort' not in payload
+
+    payload = build_chat_payload(**base, thinking_level=None)
+    assert 'reasoning_effort' not in payload
+    assert 'chat_template_kwargs' not in payload
+
+
 def test_parse_sse_data_line() -> None:
     kind, data = parse_sse_data_line('data: {"choices": [], "usage": {"total_tokens": 3}}') or (None, {})
     assert kind == 'data'

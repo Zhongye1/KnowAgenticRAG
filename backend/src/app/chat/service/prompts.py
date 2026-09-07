@@ -55,19 +55,32 @@ def build_system_prompt(context_text: str) -> str:
     return f'{SYSTEM_PROMPT}\n\n检索片段：\n{context_text}'
 
 
+def build_attachments_text(attachments: list[dict[str, Any]] | None) -> str:
+    """把随问文本附件组装为用户消息附块（空列表返回空串）。"""
+    if not attachments:
+        return ''
+    blocks = [
+        f'【附件{i}】（文件名：{item.get("filename") or "未命名"}）\n{item.get("content") or ""}'
+        for i, item in enumerate(attachments, start=1)
+    ]
+    return '\n\n'.join(blocks)
+
+
 def build_messages(
     *,
     query_text: str,
     context_text: str,
     history: list[dict[str, str]] | None = None,
     history_rounds: int = 10,
+    attachments_text: str | None = None,
 ) -> list[dict[str, str]]:
-    """组装 LLM 消息：system(含上下文) + 近 N 轮历史 + 当前问题。"""
+    """组装 LLM 消息：system(含上下文) + 近 N 轮历史 + 当前问题（可附随问附件块）。"""
     messages: list[dict[str, str]] = [{'role': 'system', 'content': build_system_prompt(context_text)}]
     for item in (history or [])[-max(1, history_rounds) * 2 :]:
         role = item.get('role')
         content = item.get('content')
         if role in {'user', 'assistant', 'system'} and content:
             messages.append({'role': role, 'content': content})
-    messages.append({'role': 'user', 'content': query_text})
+    user_content = f'{query_text}\n\n{attachments_text}' if attachments_text else query_text
+    messages.append({'role': 'user', 'content': user_content})
     return messages

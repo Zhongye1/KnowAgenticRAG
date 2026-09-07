@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from backend.src.app.chat.service.prompts import (
     EMPTY_RESULT_MESSAGE,
+    build_attachments_text,
     build_context_text,
     build_messages,
     build_system_prompt,
@@ -79,6 +80,24 @@ def test_build_messages_accepts_empty_history() -> None:
     messages = build_messages(query_text='问题', context_text='', history=None)
     assert len(messages) == 2
     assert messages[0]['role'] == 'system'
+
+
+def test_build_messages_with_attachments_text() -> None:
+    """随问附件块拼接到当前问题后；无附件时不追加。"""
+    attachments = [{'filename': 'a.md', 'content': '附件内容'}, {'filename': 'b.txt', 'content': '第二个'}]
+    text = build_attachments_text(attachments)
+    assert '【附件1】（文件名：a.md）' in text
+    assert '附件内容' in text
+    assert '【附件2】' in text
+
+    messages = build_messages(query_text='问题', context_text='', attachments_text=text)
+    assert messages[-1]['content'].startswith('问题')
+    assert '【附件1】' in messages[-1]['content']
+
+    assert not build_attachments_text(None)
+    assert not build_attachments_text([])
+    plain = build_messages(query_text='问题', context_text='')
+    assert plain[-1]['content'] == '问题'
 
 
 def test_empty_result_message_defined() -> None:
