@@ -21,6 +21,7 @@
   "menuColor": "default",
   "menuAccent": "subtle",
   "registries": {
-    "@acme": "https://acme.com/r/{name}.json"
+    "@acme": "https://acme.com/r/{name}.json",
+    "@assistant-ui": "https://r.assistant-ui.com/{name}.json"
   }
 }
