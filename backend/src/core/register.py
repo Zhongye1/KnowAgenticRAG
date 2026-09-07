@@ -109,6 +109,8 @@ async def register_init(app: FastAPI) -> AsyncGenerator[None, None]:
 
     async with async_db_session() as session:
         await provider_service.ensure_default_modelscope(session)
+        # 幂等确保默认 huggingface provider（bge-m3 embedding + bge-reranker-v2-m3 精排走 hf-inference）
+        await provider_service.ensure_default_huggingface(session)
 
     # 初始化对象存储 minio
     await minio_client.init()

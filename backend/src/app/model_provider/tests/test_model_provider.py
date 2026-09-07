@@ -51,10 +51,11 @@ def _provider(**overrides: object) -> ModelProvider:
 
 
 def test_normalize_model_spec_legacy_compat() -> None:
-    """D11/M6：legacy 裸 id → modelscope:BAAI/bge-m3；已带 provider 的 spec 原样保留。"""
-    assert normalize_model_spec('bge-m3') == 'modelscope:BAAI/bge-m3'
-    assert normalize_model_spec('BAAI/bge-m3') == 'modelscope:BAAI/bge-m3'
+    """D11/M6：legacy 裸 id → huggingface:BAAI/bge-m3；已带 provider 的 spec 原样保留。"""
+    assert normalize_model_spec('bge-m3') == 'huggingface:BAAI/bge-m3'
+    assert normalize_model_spec('BAAI/bge-m3') == 'huggingface:BAAI/bge-m3'
     assert normalize_model_spec('modelscope:BAAI/bge-m3') == 'modelscope:BAAI/bge-m3'
+    assert normalize_model_spec('huggingface:BAAI/bge-m3') == 'huggingface:BAAI/bge-m3'
     assert normalize_model_spec('deepseek/deepseek-chat') == 'deepseek/deepseek-chat'
     assert not normalize_model_spec('')
     assert not normalize_model_spec(None)

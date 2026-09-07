@@ -23,7 +23,7 @@ from backend.src.common.model import MappedBase, TimeZone
 from backend.src.utils.timezone import timezone
 
 PROVIDER_ID_PATTERN = re.compile(r'^[a-z0-9][a-z0-9_-]{0,99}$')
-VALID_PROVIDER_TYPES = {'openai', 'modelscope', 'dashscope'}
+VALID_PROVIDER_TYPES = {'openai', 'modelscope', 'dashscope', 'huggingface'}
 VALID_MODEL_TYPES = {'chat', 'embedding', 'rerank'}
 
 

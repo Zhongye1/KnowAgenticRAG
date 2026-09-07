@@ -343,7 +343,7 @@ class Settings(BaseSettings):
     RAGF_RETRIEVAL_SIMILARITY_THRESHOLD: float = 0.2
     RAGF_RETRIEVAL_USE_RERANKER: bool = True
     RAGF_RETRIEVAL_RRF_K: int = 60
-    RAGF_RETRIEVAL_RERANK_SPEC: str = 'modelscope:BAAI/bge-reranker-v2-m3'  # D16：默认精排模型 spec（provider:model）
+    RAGF_RETRIEVAL_RERANK_SPEC: str = 'huggingface:BAAI/bge-reranker-v2-m3'  # D16：默认精排模型 spec（provider:model）
 
     # RAGF：chat 门面（ragf-design D18/M9）
     RAGF_CHAT_MODEL_SPEC: str = ''  # 默认 chat 模型 spec（provider:model）；空 = 请求必须显式 model
@@ -385,6 +385,8 @@ class Settings(BaseSettings):
     # ModelProvider（ragf-design D11/D16，键读环境变量 MODELSCOPE_ACCESS_TOKEN）
     MODELSCOPE_API_BASE: str = 'https://api-inference.modelscope.cn/v1/'
     MODELSCOPE_ACCESS_TOKEN: str | None = None
+    # HuggingFace Inference（hf-inference 路由；键读环境变量 HF_TOKEN）
+    HF_TOKEN: str | None = None
     MODEL_PROVIDER_CACHE_REDIS_PREFIX: str = 'fba:cache:model_provider'
     MODEL_PROVIDER_CACHE_TTL: int = 3600
 
