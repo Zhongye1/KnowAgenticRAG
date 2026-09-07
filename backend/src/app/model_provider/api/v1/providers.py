@@ -1,8 +1,12 @@
-"""模型供应商管理 API（ragf-design D14：登录态即可，admin 角色后续）。"""
+"""模型供应商管理 API（ragf-design D14）。
+
+读操作（列表/详情）仅要求登录态；写操作要求 ``sys:model-provider:*`` 功能权限
+（常量见 ``model_provider/utils/permissions.py``，与 Admin 菜单 seed 同源）。
+"""
 
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Path
+from fastapi import APIRouter, Depends, Path
 
 from backend.src.app.model_provider.model.provider import ModelProvider
 from backend.src.app.model_provider.schema.provider import (
@@ -13,11 +17,22 @@ from backend.src.app.model_provider.schema.provider import (
     ProviderConnectivityResult,
 )
 from backend.src.app.model_provider.service.provider_service import provider_service
+from backend.src.app.model_provider.utils.permissions import (
+    MODEL_PROVIDER_ADD,
+    MODEL_PROVIDER_DEL,
+    MODEL_PROVIDER_EDIT,
+)
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
+from backend.src.common.security.permission import RequestPermission
+from backend.src.common.security.rbac import DependsRBAC
 from backend.src.database.db import CurrentSession
 
 router = APIRouter(dependencies=[DependsJwtAuth])
+
+_PERM_ADD = [Depends(RequestPermission(MODEL_PROVIDER_ADD)), DependsRBAC]
+_PERM_EDIT = [Depends(RequestPermission(MODEL_PROVIDER_EDIT)), DependsRBAC]
+_PERM_DEL = [Depends(RequestPermission(MODEL_PROVIDER_DEL)), DependsRBAC]
 
 
 def _detail(provider: ModelProvider) -> ModelProviderDetail:
@@ -63,7 +78,7 @@ async def get_provider(
     return response_base.success(data=_detail(provider))
 
 
-@router.post('', summary='创建模型供应商')
+@router.post('', summary='创建模型供应商', dependencies=_PERM_ADD)
 async def create_provider(
     db: CurrentSession,
     obj: ModelProviderCreateParam,
@@ -72,7 +87,7 @@ async def create_provider(
     return response_base.success(data=_detail(provider))
 
 
-@router.patch('/{provider_id}', summary='更新模型供应商')
+@router.patch('/{provider_id}', summary='更新模型供应商', dependencies=_PERM_EDIT)
 async def update_provider(
     db: CurrentSession,
     provider_id: Annotated[str, Path(description='供应商标识')],
@@ -82,7 +97,7 @@ async def update_provider(
     return response_base.success(data=_detail(provider))
 
 
-@router.delete('/{provider_id}', summary='删除模型供应商')
+@router.delete('/{provider_id}', summary='删除模型供应商', dependencies=_PERM_DEL)
 async def delete_provider(
     db: CurrentSession,
     provider_id: Annotated[str, Path(description='供应商标识')],
@@ -91,7 +106,7 @@ async def delete_provider(
     return response_base.success()
 
 
-@router.post('/test-connection', summary='模型连通性测试')
+@router.post('/test-connection', summary='模型连通性测试', dependencies=_PERM_EDIT)
 async def test_connection(
     db: CurrentSession,
     obj: ProviderConnectivityParam,

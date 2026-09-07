@@ -60,7 +60,11 @@ values
 (55, '文档读取', 'RagKbRead', null, 0, null, 2, null, 'rag:kb:read', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null),
 (56, '知识问答', 'RagKbChat', null, 0, null, 2, null, 'rag:kb:chat', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null),
 (57, '文档摄取', 'RagKbIngest', null, 0, null, 2, null, 'rag:kb:ingest', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null),
-(58, '知识库管理', 'RagKbManage', null, 0, null, 2, null, 'rag:kb:manage', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null);
+(58, '知识库管理', 'RagKbManage', null, 0, null, 2, null, 'rag:kb:manage', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null),
+(59, 'page.menu.modelProvider', 'ModelProvider', '/system/model-provider', 7, 'lucide:server-cog', 1, null, null, 1, 1, 1, '', null, 4, '2025-06-26 20:29:06', null),
+(60, '新增', 'AddModelProvider', null, 0, null, 2, null, 'sys:model-provider:add', 1, 0, 1, '', null, 59, '2025-06-26 20:29:06', null),
+(61, '修改', 'EditModelProvider', null, 0, null, 2, null, 'sys:model-provider:edit', 1, 0, 1, '', null, 59, '2025-06-26 20:29:06', null),
+(62, '删除', 'DeleteModelProvider', null, 0, null, 2, null, 'sys:model-provider:del', 1, 0, 1, '', null, 59, '2025-06-26 20:29:06', null);
 
 insert into sys_role (id, name, status, is_filter_scopes, remark, created_time, updated_time)
 values (1, '测试', 1, true, null, now(), null);
@@ -78,7 +82,11 @@ values
 (9, 1, 55),
 (10, 1, 56),
 (11, 1, 57),
-(12, 1, 58);
+(12, 1, 58),
+(13, 1, 59),
+(14, 1, 60),
+(15, 1, 61),
+(16, 1, 62);
 
 insert into sys_user (id, uuid, username, nickname, password, salt, email, status, is_superuser, is_staff, is_multi_login, avatar, phone, join_time, last_login_time, last_password_changed_time, dept_id, created_time, updated_time)
 values
