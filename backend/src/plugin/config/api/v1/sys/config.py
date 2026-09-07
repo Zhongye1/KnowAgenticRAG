@@ -66,7 +66,14 @@ async def create_config(db: CurrentSessionTransaction, obj: CreateConfigParam) -
     return response_base.success()
 
 
-@router.put('', summary='批量更新参数配置', dependencies=[Depends(RequestPermission('sys.config.edits')), DependsRBAC])
+@router.put(
+    '',
+    summary='批量更新参数配置',
+    dependencies=[
+        Depends(RequestPermission('sys:config:edit')),
+        DependsRBAC,
+    ],
+)
 async def bulk_update_config(db: CurrentSessionTransaction, objs: list[UpdateConfigsParam]) -> ResponseModel:
     count = await config_service.bulk_update(db=db, objs=objs)
     if count > 0:
