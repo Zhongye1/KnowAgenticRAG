@@ -33,6 +33,8 @@ const NAV_TABS = [
     title: '新建对话',
     url: paths.app.chat.getHref(),
     icon: MessageSquarePlus,
+    // 携带 newThread 意图：由 ChatRuntimeProvider 消费，进入页面即开启新会话
+    linkState: { newThread: true },
   },
   { title: '智能体', url: paths.app.agents.getHref(), icon: Bot },
   { title: '个人空间', url: paths.app.space.getHref(), icon: UserRound },
@@ -89,7 +91,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   isActive={isActive(item.url)}
                   tooltip={item.title}
                 >
-                  <Link to={item.url}>
+                  <Link
+                    to={item.url}
+                    state={'linkState' in item ? item.linkState : undefined}
+                  >
                     <item.icon />
                     <span>{item.title}</span>
                   </Link>

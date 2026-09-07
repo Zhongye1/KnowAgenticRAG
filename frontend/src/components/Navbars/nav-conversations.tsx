@@ -1,60 +1,69 @@
 'use client';
 
-import { MessageSquare } from 'lucide-react';
+import { ThreadListItemPrimitive, ThreadListPrimitive } from '@assistant-ui/react';
+import { MessageSquare, MessageSquarePlus, Trash2 } from 'lucide-react';
+import { useNavigate } from 'react-router';
 
+import { paths } from '@/config/paths';
 import {
   SidebarGroup,
   SidebarGroupLabel,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 
-export type Conversation = {
-  id: string;
-  title: string;
-  updatedAt: string;
-};
-
-// 会话列表接口（GET /conversations）尚未接入，先以占位数据渲染
-const placeholderConversations: Conversation[] = [
-  { id: '1', title: 'RAG 系统架构讨论', updatedAt: '2小时前' },
-  { id: '2', title: '知识库文档上传流程', updatedAt: '昨天' },
-  { id: '3', title: 'Agent 工具编排设计', updatedAt: '3天前' },
-  { id: '4', title: '数据总览指标口径', updatedAt: '上周' },
-];
-
-export function NavConversations({
-  conversations = placeholderConversations,
-}: {
-  conversations?: Conversation[];
-}) {
+/**
+ * 侧边栏"最近对话"：直接消费问答 runtime 的线程列表（会话内存态，刷新后清空）。
+ */
+export function NavConversations() {
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
       <SidebarGroupLabel>最近对话</SidebarGroupLabel>
       <SidebarMenu>
-        {conversations.map((conversation) => (
-          <SidebarMenuItem key={conversation.id}>
-            <SidebarMenuButton asChild tooltip={conversation.title}>
-              <button
-                className="mb-2"
-                type="button"
-                title={conversation.title}
-              >
-                <MessageSquare />
-                <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate font-normal">
-                    {conversation.title}
-                  </span>
-                  <span className="truncate text-xs text-sidebar-foreground/60">
-                    {conversation.updatedAt}
-                  </span>
-                </span>
-              </button>
+        <SidebarMenuItem>
+          <ThreadListPrimitive.New asChild>
+            <SidebarMenuButton tooltip="开启新对话">
+              <MessageSquarePlus />
+              <span>开启新对话</span>
             </SidebarMenuButton>
-          </SidebarMenuItem>
-        ))}
+          </ThreadListPrimitive.New>
+        </SidebarMenuItem>
+        <ThreadListPrimitive.Items>
+          {() => <ConversationItem />}
+        </ThreadListPrimitive.Items>
       </SidebarMenu>
     </SidebarGroup>
   );
 }
+
+const ConversationItem = () => {
+  const navigate = useNavigate();
+
+  return (
+    <SidebarMenuItem>
+      <ThreadListItemPrimitive.Root className="group/tli relative">
+        <ThreadListItemPrimitive.Trigger asChild>
+          <SidebarMenuButton
+            onClick={() => navigate(paths.app.chat.getHref())}
+            className="group-data-[active]/tli:bg-sidebar-accent group-data-[active]/tli:text-sidebar-accent-foreground w-full"
+          >
+            <MessageSquare />
+            <span className="truncate">
+              <ThreadListItemPrimitive.Title fallback="新对话" />
+            </span>
+          </SidebarMenuButton>
+        </ThreadListItemPrimitive.Trigger>
+        <ThreadListItemPrimitive.Delete asChild>
+          <SidebarMenuAction
+            aria-label="删除对话"
+            className="text-muted-foreground hover:text-danger-6 opacity-0 transition-opacity group-hover/tli:opacity-100"
+          >
+            <Trash2 />
+          </SidebarMenuAction>
+        </ThreadListItemPrimitive.Delete>
+      </ThreadListItemPrimitive.Root>
+    </SidebarMenuItem>
+  );
+};

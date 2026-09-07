@@ -46,7 +46,8 @@ const rawApi = Axios.create({
 
 let refreshPromise: Promise<string | null> | null = null;
 
-const refreshAccessToken = (): Promise<string | null> => {
+// 供流式请求（fetch + SSE，不走 axios 拦截器）在 401 时复用单飞刷新
+export const refreshAccessToken = (): Promise<string | null> => {
   if (!refreshPromise) {
     refreshPromise = rawApi
       .post<{ data: { access_token: string } }>('/api/v1/auth/refresh')
