@@ -110,6 +110,7 @@ def to_milvus_expr(scope: Scope) -> str:
 # Scope 构建
 # ---------------------------------------------------------------------------
 
+
 async def build_retrieval_scope(
     db: AsyncSession,
     *,
@@ -178,9 +179,7 @@ async def _resolve_user_dept_id(db: AsyncSession, user_id: str) -> int | None:
         return None
 
 
-async def _expand_user_groups(
-    db: AsyncSession, user_id: str, dept_id: int | None
-) -> list[str]:
+async def _expand_user_groups(db: AsyncSession, user_id: str, dept_id: int | None) -> list[str]:
     """展开用户组（本人 ID + 直属部门 + 祖先部门链）。
 
     组 ID 即 Admin 部门 ID（``sys_dept.id``），RAG ACL 引用同一套 ID。
@@ -227,17 +226,13 @@ async def _resolve_allowed_kbs(
     from backend.src.app.kb.model.acl import KbAcl
 
     # 查询该 namespace 下是否有 ACL 记录
-    acl_count = await db.scalar(
-        select(func.count()).select_from(KbAcl).where(KbAcl.plugin_namespace == namespace)
-    )
+    acl_count = await db.scalar(select(func.count()).select_from(KbAcl).where(KbAcl.plugin_namespace == namespace))
 
     # 无 ACL 记录 → 向后兼容：返回所有 KB
     if acl_count == 0:
         from backend.src.app.kb.model.knowledge_base import KnowledgeBase
 
-        kbs = await db.scalars(
-            select(KnowledgeBase.kb_name).where(KnowledgeBase.plugin_namespace == namespace)
-        )
+        kbs = await db.scalars(select(KnowledgeBase.kb_name).where(KnowledgeBase.plugin_namespace == namespace))
         return list(kbs.all())
 
     # 有 ACL 记录 → 只返回用户组有权限的 KB

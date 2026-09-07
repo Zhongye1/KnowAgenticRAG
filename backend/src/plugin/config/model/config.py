@@ -1,3 +1,5 @@
+from typing import Any, ClassVar
+
 import sqlalchemy as sa
 
 from sqlalchemy.orm import Mapped, mapped_column
@@ -8,8 +10,8 @@ from backend.src.common.model import Base, UniversalText, id_key
 class Config(Base):
     """参数配置表"""
 
-    __tablename__ = 'sys_config'
-    __table_args__ = (
+    __tablename__: ClassVar[str] = 'sys_config'
+    __table_args__: ClassVar[tuple[Any, ...] | dict[str, Any]] = (
         sa.UniqueConstraint('key', 'deleted', name='uk_sys_config_key_deleted'),
         {'comment': '参数配置表'},
     )

@@ -15,7 +15,10 @@ def _register_model_globals() -> None:
     from backend.src.utils.dynamic_import import get_all_models
 
     for model_obj in get_all_models():
-        model_name = model_obj.name if isinstance(model_obj, sa.Table) else model_obj.__name__
+        # 非 Table 的模型类必有 __name__，getattr 与属性访问行为一致，规避静态检查限制
+        model_name = (
+            model_obj.name if isinstance(model_obj, sa.Table) else getattr(model_obj, '__name__')  # ruff:ignore[get-attr-with-constant]
+        )
         if model_name not in globals():
             globals()[model_name] = model_obj
 

@@ -1,6 +1,6 @@
 import functools
 
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable, Coroutine, Sequence
 from inspect import isawaitable
 from typing import Any, ParamSpec, TypeVar
 
@@ -87,7 +87,7 @@ def _serialize_result(result: Any) -> bytes:
     return json.encode(result)
 
 
-def _deserialize_result(value: bytes) -> Any:
+def _deserialize_result(value: bytes | str) -> Any:
     """
     反序列化缓存结果
 
@@ -113,7 +113,7 @@ def cached(  # ruff:ignore[complex-structure]
     *,
     key: str | None = None,
     key_builder: Callable[..., str | Awaitable[str]] | None = None,
-) -> Callable[[Callable[P, T]], Callable[P, T]]:
+) -> Callable[[Callable[P, Coroutine[Any, Any, T]]], Callable[P, Coroutine[Any, Any, T]]]:
     """
     缓存装饰器
 
@@ -125,7 +125,7 @@ def cached(  # ruff:ignore[complex-structure]
     if key is not None and key_builder is not None:
         raise errors.ServerError(msg='缓存 key 和 key_builder 不能同时使用')
 
-    def decorator(func: Callable[P, T]) -> Callable[P, T]:  # ruff:ignore[complex-structure]
+    def decorator(func: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, Coroutine[Any, Any, T]]:  # ruff:ignore[complex-structure]
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             cache_key = await _build_cache_key(namespace, key, key_builder, *args, **kwargs)
@@ -181,7 +181,7 @@ def cache_invalidate(  # ruff:ignore[complex-structure]
     key: str | None = None,
     key_builder: Callable[..., str | Awaitable[str]] | None = None,
     atomic: bool = True,
-) -> Callable[[Callable[P, T]], Callable[P, T]]:
+) -> Callable[[Callable[P, Coroutine[Any, Any, T]]], Callable[P, Coroutine[Any, Any, T]]]:
     """
     缓存失效装饰器
 
@@ -194,7 +194,7 @@ def cache_invalidate(  # ruff:ignore[complex-structure]
     if key is not None and key_builder is not None:
         raise errors.ServerError(msg='缓存 key 和 key_builder 不能同时使用')
 
-    def decorator(func: Callable[P, T]) -> Callable[P, T]:
+    def decorator(func: Callable[P, Coroutine[Any, Any, T]]) -> Callable[P, Coroutine[Any, Any, T]]:
         @functools.wraps(func)
         async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
             result = await func(*args, **kwargs)

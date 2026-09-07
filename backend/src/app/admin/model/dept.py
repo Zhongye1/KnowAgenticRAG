@@ -1,3 +1,5 @@
+from typing import Any, ClassVar
+
 import sqlalchemy as sa
 
 from sqlalchemy.orm import Mapped, mapped_column
@@ -8,8 +10,8 @@ from backend.src.common.model import Base, id_key
 class Dept(Base):
     """部门表"""
 
-    __tablename__ = 'sys_dept'
-    __table_args__ = (
+    __tablename__: ClassVar[str] = 'sys_dept'
+    __table_args__: ClassVar[tuple[Any, ...] | dict[str, Any]] = (
         sa.UniqueConstraint('name', 'deleted', name='uk_sys_dept_name_deleted'),
         {'comment': '部门表'},
     )

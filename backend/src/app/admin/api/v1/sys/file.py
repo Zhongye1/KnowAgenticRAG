@@ -22,4 +22,4 @@ router = APIRouter()
 async def upload_files(file: Annotated[UploadFile, File()]) -> ResponseSchemaModel[UploadUrl]:
     upload_file_verify(file)
     filename = await upload_file(file)
-    return response_base.success(data={'url': f'/static/upload/{filename}'})
+    return response_base.success(data=UploadUrl(url=f'/static/upload/{filename}'))

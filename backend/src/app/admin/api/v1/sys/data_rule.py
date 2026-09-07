@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Path, Query
 
@@ -44,7 +44,7 @@ async def get_data_rule_value_template_variables() -> ResponseSchemaModel[list[G
 @router.get('/all', summary='获取所有数据规则', dependencies=[DependsJwtAuth])
 async def get_all_data_rules(db: CurrentSession) -> ResponseSchemaModel[list[GetDataRuleDetail]]:
     data = await data_rule_service.get_all(db=db)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[list[GetDataRuleDetail]]', response_base.success(data=data))
 
 
 @router.get('/{pk}', summary='获取数据规则详情', dependencies=[DependsJwtAuth])
@@ -53,7 +53,7 @@ async def get_data_rule(
     pk: Annotated[int, Path(description='数据规则 ID')],
 ) -> ResponseSchemaModel[GetDataRuleDetail]:
     data = await data_rule_service.get(db=db, pk=pk)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[GetDataRuleDetail]', response_base.success(data=data))
 
 
 @router.get(
@@ -69,7 +69,7 @@ async def get_data_rules_paginated(
     name: Annotated[str | None, Query(description='规则名称')] = None,
 ) -> ResponseSchemaModel[PageData[GetDataRuleDetail]]:
     page_data = await data_rule_service.get_list(db=db, name=name)
-    return response_base.success(data=page_data)
+    return cast('ResponseSchemaModel[PageData[GetDataRuleDetail]]', response_base.success(data=page_data))
 
 
 @router.post(

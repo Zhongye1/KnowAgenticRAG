@@ -1,7 +1,7 @@
 import re
 
 
-def search_string(pattern: str, text: str) -> re.Match[str]:
+def search_string(pattern: str, text: str) -> re.Match[str] | None:
     """
     全字段正则匹配
 
@@ -12,7 +12,7 @@ def search_string(pattern: str, text: str) -> re.Match[str]:
     return re.search(pattern, text)
 
 
-def match_string(pattern: str, text: str) -> re.Match[str]:
+def match_string(pattern: str, text: str) -> re.Match[str] | None:
     """
     从字段开头正则匹配
 
@@ -23,7 +23,7 @@ def match_string(pattern: str, text: str) -> re.Match[str]:
     return re.match(pattern, text)
 
 
-def is_phone(number: str) -> re.Match[str]:
+def is_phone(number: str) -> re.Match[str] | None:
     """
     检查手机号码格式
 
@@ -34,7 +34,7 @@ def is_phone(number: str) -> re.Match[str]:
     return match_string(phone_pattern, number)
 
 
-def is_git_url(url: str) -> re.Match[str]:
+def is_git_url(url: str) -> re.Match[str] | None:
     """
     检查 git URL 格式（仅允许 HTTP/HTTPS 协议）
 
@@ -48,7 +48,7 @@ def is_git_url(url: str) -> re.Match[str]:
     return match_string(git_pattern, url)
 
 
-def is_has_number(value: str) -> re.Match[str]:
+def is_has_number(value: str) -> re.Match[str] | None:
     """
     检查数字
 
@@ -59,7 +59,7 @@ def is_has_number(value: str) -> re.Match[str]:
     return search_string(number_pattern, value)
 
 
-def is_has_letter(value: str) -> re.Match[str]:
+def is_has_letter(value: str) -> re.Match[str] | None:
     """
     检查字母
 
@@ -70,7 +70,7 @@ def is_has_letter(value: str) -> re.Match[str]:
     return search_string(letter_pattern, value)
 
 
-def is_has_special_char(value: str) -> re.Match[str]:
+def is_has_special_char(value: str) -> re.Match[str] | None:
     """
     检查特殊字符
 
@@ -81,7 +81,7 @@ def is_has_special_char(value: str) -> re.Match[str]:
     return search_string(special_char_pattern, value)
 
 
-def is_english_identifier(value: str) -> re.Match[str]:
+def is_english_identifier(value: str) -> re.Match[str] | None:
     """
     检查英文标识符
 

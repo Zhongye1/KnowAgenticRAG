@@ -80,7 +80,8 @@ class SnowflakeNodeManager:
     async def _register(self, datacenter_id: int, worker_id: int) -> bool:
         key = f'{self.node_redis_prefix}:{datacenter_id}:{worker_id}'
         value = f'pid:{os.getpid()}-ts:{timezone.now().timestamp()}'
-        return await redis_client.set(key, value, nx=True, ex=settings.SNOWFLAKE_NODE_TTL_SECONDS)
+        # nx=True 时仅返回 True（设置成功）或 None（已占用），bool 转换不改变判定结果
+        return bool(await redis_client.set(key, value, nx=True, ex=settings.SNOWFLAKE_NODE_TTL_SECONDS))
 
     async def start_heartbeat(self, datacenter_id: int, worker_id: int) -> None:
         """启动节点心跳"""
@@ -213,11 +214,17 @@ class Snowflake:
 
             self.last_timestamp = timestamp
 
+            # init() 成功后 datacenter_id/worker_id 必非空，此处仅作运行时收窄
+            datacenter_id = self.datacenter_id
+            worker_id = self.worker_id
+            if datacenter_id is None or worker_id is None:
+                raise errors.ServerError(msg='雪花 ID 生成失败，雪花算法未初始化')
+
             # 组合 64 位 ID
             return (
                 ((timestamp - SnowflakeConfig.EPOCH) << SnowflakeConfig.TIMESTAMP_LEFT_SHIFT)
-                | (self.datacenter_id << SnowflakeConfig.DATACENTER_ID_SHIFT)
-                | (self.worker_id << SnowflakeConfig.WORKER_ID_SHIFT)
+                | (datacenter_id << SnowflakeConfig.DATACENTER_ID_SHIFT)
+                | (worker_id << SnowflakeConfig.WORKER_ID_SHIFT)
                 | self.sequence
             )
 

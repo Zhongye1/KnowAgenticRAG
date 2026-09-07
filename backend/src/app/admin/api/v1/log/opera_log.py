@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Query
 
@@ -30,7 +30,7 @@ async def get_opera_logs_paginated(
 ) -> ResponseSchemaModel[PageData[GetOperaLogDetail]]:
     page_data = await opera_log_service.get_list(db=db, username=username, status=status, ip=ip)
 
-    return response_base.success(data=page_data)
+    return cast('ResponseSchemaModel[PageData[GetOperaLogDetail]]', response_base.success(data=page_data))
 
 
 @router.delete(

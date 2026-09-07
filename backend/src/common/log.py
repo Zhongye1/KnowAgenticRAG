@@ -4,7 +4,7 @@ import os
 import re
 import sys
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from loguru import logger
 
@@ -12,6 +12,9 @@ from backend.src.core.config import settings
 from backend.src.core.path_conf import LOG_DIR
 from backend.src.utils.timezone import timezone
 from backend.src.utils.trace_id import get_request_trace_id
+
+if TYPE_CHECKING:
+    from loguru import HandlerConfig, Record
 
 
 class InterceptHandler(logging.Handler):
@@ -37,7 +40,7 @@ class InterceptHandler(logging.Handler):
         logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
 
 
-def default_formatter(record: dict) -> str:
+def default_formatter(record: 'Record') -> str:
     """
     默认日志格式化程序
 
@@ -57,7 +60,7 @@ def default_formatter(record: dict) -> str:
     return base_format
 
 
-def request_id_filter(record: dict) -> bool:
+def request_id_filter(record: 'Record') -> bool:
     """
     请求 ID 过滤器
 
@@ -65,7 +68,8 @@ def request_id_filter(record: dict) -> bool:
     :return:
     """
     rid = get_request_trace_id()
-    record['request_id'] = rid[: settings.TRACE_ID_LOG_LENGTH]
+    # Record 为 TypedDict 不声明 request_id 键，运行时即 dict，可直接注入
+    cast('dict[str, Any]', record)['request_id'] = rid[: settings.TRACE_ID_LOG_LENGTH]
     return True
 
 
@@ -98,16 +102,13 @@ def setup_logging() -> None:
     logger.remove()
 
     # 配置 loguru 处理器
-    logger.configure(
-        handlers=[  # type: ignore[arg-type]
-            {
-                'sink': sys.stdout,
-                'level': settings.LOG_STD_LEVEL,
-                'format': default_formatter,
-                'filter': lambda record: request_id_filter(record),
-            }
-        ]
-    )
+    handler_config: HandlerConfig = {
+        'sink': sys.stdout,
+        'level': settings.LOG_STD_LEVEL,
+        'format': default_formatter,
+        'filter': lambda record: request_id_filter(record),
+    }
+    logger.configure(handlers=[handler_config])
 
 
 def set_custom_logfile() -> None:

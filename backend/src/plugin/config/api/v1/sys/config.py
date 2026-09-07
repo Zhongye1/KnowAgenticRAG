@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Body, Depends, Path, Query
 
@@ -25,7 +25,7 @@ async def get_all_configs(
     type: Annotated[str | None, Query(description='参数配置类型')] = None,
 ) -> ResponseSchemaModel[list[GetConfigDetail]]:
     configs = await config_service.get_all(db=db, type=type)
-    return response_base.success(data=configs)
+    return cast('ResponseSchemaModel[list[GetConfigDetail]]', response_base.success(data=configs))
 
 
 @router.get('/{pk}', summary='获取参数配置详情', dependencies=[DependsJwtAuth])
@@ -33,7 +33,7 @@ async def get_config(
     db: CurrentSession, pk: Annotated[int, Path(description='参数配置 ID')]
 ) -> ResponseSchemaModel[GetConfigDetail]:
     config = await config_service.get(db=db, pk=pk)
-    return response_base.success(data=config)
+    return cast('ResponseSchemaModel[GetConfigDetail]', response_base.success(data=config))
 
 
 @router.get(
@@ -50,7 +50,7 @@ async def get_configs_paginated(
     type: Annotated[str | None, Query(description='参数配置类型')] = None,
 ) -> ResponseSchemaModel[PageData[GetConfigDetail]]:
     page_data = await config_service.get_list(db=db, name=name, type=type)
-    return response_base.success(data=page_data)
+    return cast('ResponseSchemaModel[PageData[GetConfigDetail]]', response_base.success(data=page_data))
 
 
 @router.post(

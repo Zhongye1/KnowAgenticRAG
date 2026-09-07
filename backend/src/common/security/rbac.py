@@ -75,7 +75,8 @@ async def rbac_verify(request: Request, _token: str = DependsJwtAuth) -> None:  
     else:
         # casbin 模式
         try:
-            from backend.src.plugin.casbin_rbac.rbac import casbin_verify
+            # casbin_rbac 为可选插件，运行时按需动态导入，pyright 静态解析不到属预期
+            from backend.src.plugin.casbin_rbac.rbac import casbin_verify  # pyright: ignore[reportMissingImports]
         except ImportError:
             raise errors.ServerError(msg='Casbin RBAC 插件用法导入失败，请联系系统管理员')
 

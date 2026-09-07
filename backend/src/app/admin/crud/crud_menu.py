@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Any, cast
 
 from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,14 +42,15 @@ class CRUDMenu(CRUDPlus[Menu]):
         :param status: 菜单状态
         :return:
         """
-        filters = {'deleted': 0}
+        filters: dict[str, Any] = {'deleted': 0}
 
         if title is not None:
             filters['title__like'] = f'%{title}%'
         if status is not None:
             filters['status'] = status
 
-        return await self.select_models_order(db, 'sort', 'asc', **filters)
+        # 无 join_conditions 时返回的是模型标量结果
+        return cast('Sequence[Menu]', await self.select_models_order(db, 'sort', 'asc', **filters))
 
     async def get_sidebar(self, db: AsyncSession, menu_ids: list[int] | None) -> Sequence[Menu]:
         """
@@ -58,12 +60,13 @@ class CRUDMenu(CRUDPlus[Menu]):
         :param menu_ids: 菜单 ID 列表
         :return:
         """
-        filters = {'type__in': [0, 1, 3, 4], 'deleted': 0}
+        filters: dict[str, Any] = {'type__in': [0, 1, 3, 4], 'deleted': 0}
 
         if menu_ids:
             filters['id__in'] = menu_ids
 
-        return await self.select_models_order(db, 'sort', 'asc', **filters)
+        # 无 join_conditions 时返回的是模型标量结果
+        return cast('Sequence[Menu]', await self.select_models_order(db, 'sort', 'asc', **filters))
 
     async def get_all_by_ids(self, db: AsyncSession, menu_ids: list[int]) -> Sequence[Menu]:
         """

@@ -1,4 +1,4 @@
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, Path, Query, Request
 
@@ -14,7 +14,7 @@ router = APIRouter()
 
 
 @router.get('/sidebar', summary='获取用户菜单侧边栏', description='已适配 vben admin v5', dependencies=[DependsJwtAuth])
-async def get_user_sidebar(db: CurrentSession, request: Request) -> ResponseSchemaModel[list[dict[str, Any] | None]]:
+async def get_user_sidebar(db: CurrentSession, request: Request) -> ResponseSchemaModel[list[dict[str, Any]]]:
     menu = await menu_service.get_sidebar(db=db, request=request)
     return response_base.success(data=menu)
 
@@ -24,7 +24,7 @@ async def get_menu(
     db: CurrentSession, pk: Annotated[int, Path(description='菜单 ID')]
 ) -> ResponseSchemaModel[GetMenuDetail]:
     data = await menu_service.get(db=db, pk=pk)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[GetMenuDetail]', response_base.success(data=data))
 
 
 @router.get('', summary='获取菜单树', dependencies=[DependsJwtAuth])
@@ -34,7 +34,7 @@ async def get_menu_tree(
     status: Annotated[int | None, Query(description='状体')] = None,
 ) -> ResponseSchemaModel[list[GetMenuTree]]:
     menu = await menu_service.get_tree(db=db, title=title, status=status)
-    return response_base.success(data=menu)
+    return cast('ResponseSchemaModel[list[GetMenuTree]]', response_base.success(data=menu))
 
 
 @router.post(

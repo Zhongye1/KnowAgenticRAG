@@ -97,7 +97,7 @@ class CRUDUser(CRUDPlus[User]):
         :param status: 用户状态
         :return:
         """
-        filters = {'deleted': 0}
+        filters: dict[str, Any] = {'deleted': 0}
 
         if dept:
             filters['dept_id'] = dept
@@ -174,9 +174,7 @@ class CRUDUser(CRUDPlus[User]):
         if role is None:
             raise errors.NotFoundError(msg='未找到可用角色，请联系系统管理员')
 
-        user_role_stmt = insert(user_role).values(
-            AddUserRoleParam(user_id=new_user.id, role_id=role.id).model_dump()
-        )
+        user_role_stmt = insert(user_role).values(AddUserRoleParam(user_id=new_user.id, role_id=role.id).model_dump())
         await db.execute(user_role_stmt)
 
     async def add_by_oauth2(self, db: AsyncSession, obj: AddOAuth2UserParam) -> None:
@@ -387,7 +385,7 @@ class CRUDUser(CRUDPlus[User]):
         :param username: 用户名
         :return:
         """
-        filters = {'deleted': 0}
+        filters: dict[str, Any] = {'deleted': 0}
 
         if user_id:
             filters['id'] = user_id

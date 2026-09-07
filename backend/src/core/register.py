@@ -19,9 +19,9 @@ register_app()          # 总装入口
 import asyncio
 import os
 
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 import socketio
 
@@ -63,6 +63,12 @@ from backend.src.utils.openapi import ensure_unique_route_names, simplify_operat
 from backend.src.utils.serializers import MsgSpecJSONResponse
 from backend.src.utils.snowflake import snowflake
 from backend.src.utils.trace_id import OtelTraceIdPlugin
+
+if TYPE_CHECKING:
+    from starlette.authentication import AuthenticationError
+    from starlette.requests import HTTPConnection
+    from starlette.responses import Response
+    from starlette.types import Lifespan
 
 
 @lifespan_manager.register
@@ -160,7 +166,8 @@ def register_app() -> FastAPI:
         redoc_url=settings.FASTAPI_REDOC_URL,
         openapi_url=settings.FASTAPI_OPENAPI_URL,
         default_response_class=MsgSpecJSONResponse,
-        lifespan=lifespan_manager.build(),
+        # LifespanFunc 的 yield 类型为 dict | None，是 FastAPI 无状态/有状态 lifespan 的并集
+        lifespan=cast('Lifespan[FastAPI]', lifespan_manager.build()),
     )
 
     # 注册组件
@@ -221,7 +228,11 @@ def register_middleware(app: FastAPI) -> None:
     app.add_middleware(
         AuthenticationMiddleware,
         backend=JwtAuthMiddleware(),
-        on_error=JwtAuthMiddleware.auth_exception_handler,
+        # 处理器签名使用 jwt_auth_middleware 自定义的 AuthenticationError（starlette 版本的子类）
+        on_error=cast(
+            'Callable[[HTTPConnection, AuthenticationError], Response]',
+            JwtAuthMiddleware.auth_exception_handler,
+        ),
     )
 
     # I18n 中间件
@@ -270,7 +281,7 @@ def register_router(app: FastAPI) -> None:
     :return:
     """
 
-    dependencies = Depends(demo_site()) if settings.DEMO_MODE else None
+    dependencies = [Depends(demo_site)] if settings.DEMO_MODE else None
 
     # API
     router = build_final_router()

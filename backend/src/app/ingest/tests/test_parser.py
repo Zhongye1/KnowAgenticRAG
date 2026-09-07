@@ -16,11 +16,11 @@ from backend.src.app.ingest.parser import DocumentProcessorFactory, parse_docume
 from backend.src.app.ingest.parser.base import DocumentParseError, ProcessorUnavailableError
 
 if TYPE_CHECKING:
-    from collections.abc import Awaitable
+    from collections.abc import Coroutine
     from typing import Any
 
 
-def _run(awaitable: Awaitable[Any]) -> object:
+def _run[T](awaitable: Coroutine[Any, Any, T]) -> T:
     return asyncio.run(awaitable)
 
 

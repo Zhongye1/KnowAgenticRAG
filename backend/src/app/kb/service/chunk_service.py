@@ -29,7 +29,8 @@ class ChunkService:
             content = chunk.get('content')
             if not content or not str(content).strip():
                 continue
-            idx = int(chunk.get('chunk_index') if chunk.get('chunk_index') is not None else chunk_index)
+            chunk_index_value = chunk.get('chunk_index')
+            idx = int(chunk_index_value) if chunk_index_value is not None else chunk_index
             rows.append({
                 'chunk_id': f'{document_id}:{version_id}:{idx}',
                 'content': str(content),

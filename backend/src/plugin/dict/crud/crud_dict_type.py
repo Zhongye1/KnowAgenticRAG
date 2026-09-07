@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import Select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,7 +41,7 @@ class CRUDDictType(CRUDPlus[DictType]):
         :param code: 字典类型编码
         :return:
         """
-        filters = {'deleted': 0}
+        filters: dict[str, Any] = {'deleted': 0}
 
         if name is not None:
             filters['name__like'] = f'%{name}%'

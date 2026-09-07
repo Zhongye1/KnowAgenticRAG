@@ -26,7 +26,7 @@ class MsgSpecJSONResponse(JSONResponse):
         return json.encode(content)
 
 
-def select_columns_serialize[R: RowData](row: R) -> dict[str, Any]:
+def select_columns_serialize(row: RowData) -> dict[str, Any]:
     """
     序列化 SQLAlchemy 查询表的列，不包含关联列
 
@@ -52,7 +52,7 @@ def select_list_serialize[R: RowData](row: Sequence[R]) -> list[dict[str, Any]]:
     return [select_columns_serialize(item) for item in row]
 
 
-def select_as_dict[R: RowData](row: R, *, use_alias: bool = False) -> dict[str, Any]:
+def select_as_dict(row: RowData, *, use_alias: bool = False) -> dict[str, Any]:
     """
     将 SQLAlchemy 查询结果转换为字典，可以包含关联数据
 
@@ -249,7 +249,8 @@ def select_join_serialize[R: RowData](  # ruff:ignore[complex-structure]
                     field_list.append(nt_key)
                 field_list = list(dict.fromkeys(field_list))
 
-            namedtuple_cache[model_name] = namedtuple(model_name.capitalize(), field_list)
+            # 字段名运行时动态生成，typing.NamedTuple 函数式形式要求可静态求值，故保留 collections.namedtuple
+            namedtuple_cache[model_name] = namedtuple(model_name.capitalize(), field_list)  # ruff:ignore[collections-named-tuple]
 
     # 嵌套关系层级结构（一次性构建）
     hierarchy = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
@@ -288,7 +289,7 @@ def select_join_serialize[R: RowData](  # ruff:ignore[complex-structure]
                     hierarchy[main_id][rel_type_name][parent_pk].append(rel_obj)
 
     # 结果构建函数
-    def build_flat(target_id: int, target_obj: Any) -> dict[str, Any]:
+    def build_flat(target_id: int | str, target_obj: Any) -> dict[str, Any]:
         result = {col: getattr(target_obj, col, None) for col in primary_columns}
 
         for cls_type in children_objects[target_id]:
@@ -320,11 +321,11 @@ def select_join_serialize[R: RowData](  # ruff:ignore[complex-structure]
 
         return result
 
-    def build_nested(target_id: int, target_obj: Any) -> dict[str, Any]:
+    def build_nested(target_id: int | str, target_obj: Any) -> dict[str, Any]:
         result = {col: getattr(target_obj, col, None) for col in primary_columns}
         current_hierarchy = hierarchy.get(target_id, defaultdict(lambda: defaultdict(list)))
 
-        def recursive_build(cls_name: str, pk: int) -> list:
+        def recursive_build(cls_name: str, pk: int | str) -> list:
             nested_dict = current_hierarchy.get(cls_name)
             if nested_dict is None:
                 return []

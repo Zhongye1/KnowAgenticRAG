@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Any, Final
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from backend.src.common.enums import PluginLevelType
 from backend.src.core.path_conf import PLUGIN_DIR
@@ -215,8 +215,8 @@ def validate_plugin_config(plugin_name: str, config: dict[str, Any]) -> PluginLe
         plugin_schema.model_validate(config)
     except Exception as e:
         error_msg = str(e)
-        # 格式化 Pydantic 错误信息
-        if hasattr(e, 'errors'):
+        # 格式化 Pydantic 错误信息（校验器抛出的异常均会被 pydantic 包装为 ValidationError）
+        if isinstance(e, ValidationError):
             errors = e.errors()
             error_details = []
             for error in errors:

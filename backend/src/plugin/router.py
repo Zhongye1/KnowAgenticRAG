@@ -21,6 +21,9 @@ def inject_extend_router(plugin: PluginEntry) -> None:
     :param plugin: 插件名称
     :return:
     """
+    # 仅在 plugin.api 非空时由 build_final_router 调用
+    assert plugin.api is not None
+
     plugin_api_path = PLUGIN_DIR / plugin.name / 'api'
     if not os.path.exists(plugin_api_path):
         raise PluginConfigError(f'插件 {plugin.name} 缺少 api 目录，请检查插件文件是否完整')

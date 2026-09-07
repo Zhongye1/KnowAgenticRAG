@@ -1,7 +1,7 @@
 import json
 import uuid
 
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Response
 from fastapi_oauth20 import FastAPIOAuth20, GoogleOAuth20
@@ -46,7 +46,7 @@ async def google_oauth2_callback(  # ruff:ignore[missing-return-type-undocumente
     response: Response,
     background_tasks: BackgroundTasks,
     oauth2: Annotated[
-        FastAPIOAuth20,
+        tuple[dict[str, Any], str | None],
         Depends(FastAPIOAuth20(google_client, redirect_uri=settings.OAUTH2_GOOGLE_REDIRECT_URI)),
     ],
 ):

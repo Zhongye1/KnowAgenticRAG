@@ -282,18 +282,25 @@ def test_acl_propagation_upsert_changes_visibility(collection: str) -> None:
     for row in rows:
         row['kb_name'] = kb
     dept_a_expr = (
-        'namespace == "core" and '
-        '(visibility == "public" or owner_id == "u" or array_contains_any(groups, ["dept_a"]))'
+        'namespace == "core" and (visibility == "public" or owner_id == "u" or array_contains_any(groups, ["dept_a"]))'
     )
     try:
         assert insert_ragf_document_vectors(kb_name=kb, document_id=doc, dim=DIM, rows=rows) == 2
         assert _wait_until(lambda: count_ragf_vectors_by_document(kb, doc) == 2)
 
         # 传播前：dept_a 表达式不可见
-        assert search_ragf_kb(
-            kb_name=kb, dim=DIM, query_text='知识库测试', search_mode='vector',
-            query_embedding=_dim_vector(0.15), recall_top_k=10, expr=dept_a_expr,
-        ) == []
+        assert (
+            search_ragf_kb(
+                kb_name=kb,
+                dim=DIM,
+                query_text='知识库测试',
+                search_mode='vector',
+                query_embedding=_dim_vector(0.15),
+                recall_top_k=10,
+                expr=dept_a_expr,
+            )
+            == []
+        )
 
         # 传播：restricted+dept_b → public
         updated = update_ragf_document_acl(kb, doc, visibility='public', owner_id=None, groups=None)
@@ -301,15 +308,25 @@ def test_acl_propagation_upsert_changes_visibility(collection: str) -> None:
         assert _wait_until(
             lambda: bool(
                 search_ragf_kb(
-                    kb_name=kb, dim=DIM, query_text='知识库测试', search_mode='vector',
-                    query_embedding=_dim_vector(0.15), recall_top_k=10, expr=dept_a_expr,
+                    kb_name=kb,
+                    dim=DIM,
+                    query_text='知识库测试',
+                    search_mode='vector',
+                    query_embedding=_dim_vector(0.15),
+                    recall_top_k=10,
+                    expr=dept_a_expr,
                 )
             )
         ), '传播为 public 后 dept_a 表达式应可命中'
 
         hits = search_ragf_kb(
-            kb_name=kb, dim=DIM, query_text='知识库测试', search_mode='hybrid',
-            query_embedding=_dim_vector(0.15), recall_top_k=10, expr=dept_a_expr,
+            kb_name=kb,
+            dim=DIM,
+            query_text='知识库测试',
+            search_mode='hybrid',
+            query_embedding=_dim_vector(0.15),
+            recall_top_k=10,
+            expr=dept_a_expr,
         )
         assert {hit['document_id'] for hit in hits} == {doc}
         assert all('知识库测试分块' in hit['content'] for hit in hits), '传播后内容必须原样保留'

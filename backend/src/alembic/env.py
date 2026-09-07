@@ -69,7 +69,8 @@ def run_migrations_offline() -> None:
 def do_run_migrations(connection: Connection) -> None:
     def process_revision_directives(context, revision, directives) -> None:  # ruff:ignore[missing-type-function-argument]
         """当迁移无变化时，不生成迁移记录"""
-        if config.cmd_opts.autogenerate:
+        # autogenerate 流程中 cmd_opts 必已由 alembic CLI 设置，判空仅为静态类型收窄
+        if config.cmd_opts is not None and config.cmd_opts.autogenerate:
             script = directives[0]
             if script.upgrade_ops.is_empty():
                 directives[:] = []

@@ -2,7 +2,7 @@ import json
 import os
 
 from functools import lru_cache
-from typing import Any
+from typing import Any, cast
 
 import rtoml
 
@@ -78,7 +78,10 @@ def get_enabled_plugins(plugins: tuple[str, ...] | None = None) -> set[str]:
 
     try:
         for plugin in plugin_names:
-            plugin_info = run_await(current_redis_client.get)(f'{settings.PLUGIN_REDIS_PREFIX}:{plugin}')
+            # Redis 连接开启 decode_responses，缓存值必为字符串
+            plugin_info = cast(
+                'str | None', run_await(current_redis_client.get)(f'{settings.PLUGIN_REDIS_PREFIX}:{plugin}')
+            )
             if get_plugin_enable(plugin_info, StatusType.enable.value) != str(StatusType.enable.value):
                 enabled_plugins.discard(plugin)
     finally:
@@ -127,7 +130,7 @@ def parse_plugin_config() -> tuple[list[PluginEntry], list[PluginEntry]]:
             # 补充插件信息
             plugin_config['plugin']['name'] = plugin
             plugin_cache_key = f'{settings.PLUGIN_REDIS_PREFIX}:{plugin}'
-            plugin_cache_info = run_await(current_redis_client.get)(plugin_cache_key)
+            plugin_cache_info = cast('str | None', run_await(current_redis_client.get)(plugin_cache_key))
             plugin_config['plugin']['enable'] = get_plugin_enable(plugin_cache_info, StatusType.enable.value)
 
             if plugin_type == PluginLevelType.extend:

@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import Select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -40,7 +41,7 @@ class CRUDTaskScheduler(CRUDPlus[TaskScheduler]):
         :param type: 任务调度类型
         :return:
         """
-        filters = {'deleted': 0}
+        filters: dict[str, Any] = {'deleted': 0}
 
         if name is not None:
             filters['name__like'] = f'%{name}%'
@@ -95,7 +96,8 @@ class CRUDTaskScheduler(CRUDPlus[TaskScheduler]):
         :return:
         """
         task_scheduler = await self.get(db, pk)
-        task_scheduler.enabled = status
+        if task_scheduler is not None:
+            task_scheduler.enabled = status
         TaskScheduler.no_changes = False
         return 1
 

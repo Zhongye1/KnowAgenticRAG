@@ -1,3 +1,5 @@
+from typing import Any, ClassVar
+
 import sqlalchemy as sa
 
 from sqlalchemy.orm import Mapped, mapped_column
@@ -8,8 +10,8 @@ from backend.src.common.model import Base, id_key
 class UserSocial(Base):
     """用户社交表（OAuth2）"""
 
-    __tablename__ = 'sys_user_social'
-    __table_args__ = (
+    __tablename__: ClassVar[str] = 'sys_user_social'
+    __table_args__: ClassVar[tuple[Any, ...] | dict[str, Any]] = (
         sa.UniqueConstraint('user_id', 'source', 'deleted', name='uk_sys_user_social_user_id_source_deleted'),
         sa.UniqueConstraint('sid', 'source', 'deleted', name='uk_sys_user_social_sid_source_deleted'),
         {'comment': '用户社交表（OAuth2）'},

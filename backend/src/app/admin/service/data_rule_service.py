@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import Table
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -74,7 +74,8 @@ class DataRuleService:
             raise errors.NotFoundError(msg='数据规则可用模型不存在')
         model_ins = available_models[model]
 
-        table = model_ins if isinstance(model_ins, Table) else model_ins.__table__
+        # 非 Table 时为 ORM 模型类，其 __table__ 即对应表对象
+        table = model_ins if isinstance(model_ins, Table) else cast('Any', model_ins).__table__
         model_columns = [
             GetDataRuleColumnDetail(key=column.key, comment=column.comment)
             for column in table.columns

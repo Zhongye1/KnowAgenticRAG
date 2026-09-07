@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Any, ClassVar
 
 import sqlalchemy as sa
 
@@ -12,8 +13,8 @@ from backend.src.utils.timezone import timezone
 class User(Base):
     """用户表"""
 
-    __tablename__ = 'sys_user'
-    __table_args__ = (
+    __tablename__: ClassVar[str] = 'sys_user'
+    __table_args__: ClassVar[tuple[Any, ...] | dict[str, Any]] = (
         sa.UniqueConstraint('username', 'deleted', name='uk_sys_user_username_deleted'),
         sa.UniqueConstraint('email', 'deleted', name='uk_sys_user_email_deleted'),
         {'comment': '用户表'},

@@ -1,4 +1,5 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from typing import Any, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +16,7 @@ def str_to_bool(value: str) -> bool:
 async def load_config(
     db: AsyncSession,
     config_type_attr: str,
-    mapping: dict[str, Callable[[str], object]],
+    mapping: Mapping[str, Callable[[str], object]],
     status_key: str,
 ) -> None:
     """
@@ -41,7 +42,12 @@ async def load_config(
     if not dynamic_config:
         return
 
-    config_list = select_list_serialize(dynamic_config) if hasattr(dynamic_config[0], '__table__') else dynamic_config
+    # 非 ORM 模型分支当前实现中不会出现（Config 均为 SQLAlchemy 模型），仅作静态类型收窄
+    config_list = (
+        select_list_serialize(dynamic_config)
+        if hasattr(dynamic_config[0], '__table__')
+        else cast('list[dict[str, Any]]', dynamic_config)
+    )
     configs = {dc['key']: dc['value'] for dc in config_list}
     if configs.get(status_key, '1') == '0':
         return

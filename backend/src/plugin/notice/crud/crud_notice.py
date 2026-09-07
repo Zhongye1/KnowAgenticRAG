@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import Select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,7 +23,7 @@ class CRUDNotice(CRUDPlus[Notice]):
         """
         return await self.select_model(db, pk, deleted=0)
 
-    async def get_select(self, title: str, type: int | None, status: int | None) -> Select:
+    async def get_select(self, title: str | None, type: int | None, status: int | None) -> Select:
         """
         获取通知公告列表查询表达式
 
@@ -31,7 +32,7 @@ class CRUDNotice(CRUDPlus[Notice]):
         :param status: 通知公告状态
         :return:
         """
-        filters = {'deleted': 0}
+        filters: dict[str, Any] = {'deleted': 0}
 
         if title is not None:
             filters['title__like'] = f'%{title}%'

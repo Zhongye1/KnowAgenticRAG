@@ -2,7 +2,7 @@ import glob
 import json
 
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import yaml
 
@@ -56,7 +56,7 @@ class I18n:
                     case 'yaml' | 'yml':
                         self.locales[lang] = yaml.safe_load(f.read())
 
-    def t(self, key: str, default: Any | None = None, **kwargs) -> dict[str, Any] | str | Any | None:
+    def t(self, key: str, default: Any | None = None, **kwargs) -> Any:
         """
         翻译函数
 
@@ -82,7 +82,8 @@ class I18n:
                 break
 
         if translation and kwargs:
-            translation = translation.format(**kwargs)
+            # kwargs 仅用于字符串模板插值，翻译值此时必为 str
+            translation = cast('str', translation).format(**kwargs)
 
         return translation or default
 

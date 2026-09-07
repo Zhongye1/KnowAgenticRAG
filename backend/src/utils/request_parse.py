@@ -1,3 +1,5 @@
+from typing import cast
+
 import httpx
 import ip2region.searcher as ip2region_xdb
 import ip2region.util as ip2region_util
@@ -55,7 +57,7 @@ async def get_location_online(ip: str) -> dict | None:
 
 
 # 离线 IP 搜索器（数据将缓存到内存，缓存大小取决于 IP 数据文件大小）
-__c_buffer: bytes = ip2region_util.load_content_from_file(STATIC_DIR / 'ip2region_v4.xdb')
+__c_buffer: bytes = ip2region_util.load_content_from_file(str(STATIC_DIR / 'ip2region_v4.xdb'))
 __xdb_searcher: ip2region_xdb.Searcher = ip2region_xdb.new_with_buffer(ip2region_util.IPv4, __c_buffer)
 
 
@@ -91,7 +93,8 @@ async def parse_ip_info(request: Request) -> IpInfo:
     ip = get_request_ip(request)
     location = await redis_client.get(f'{settings.IP_LOCATION_REDIS_PREFIX}:{ip}')
     if location:
-        country, region, city = location.split('|')
+        # redis 客户端已开启 decode_responses，运行时 location 必为 str
+        country, region, city = cast('str', location).split('|')
         return IpInfo(ip=ip, country=country, region=region, city=city)
 
     location_info = None

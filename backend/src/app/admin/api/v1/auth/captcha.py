@@ -1,5 +1,7 @@
 import uuid
 
+from typing import cast
+
 from fast_captcha import img_captcha
 from fastapi import APIRouter, Depends
 from pyrate_limiter import Duration, Rate
@@ -30,10 +32,11 @@ async def get_captcha(db: CurrentSession) -> ResponseSchemaModel[GetCaptchaDetai
         code,
         ex=settings.LOGIN_CAPTCHA_EXPIRE_SECONDS,
     )
+    # img_captcha 返回类型标注未区分 img_byte 分支，img_byte='base64' 时实际返回 str
     data = GetCaptchaDetail(
         is_enabled=settings.LOGIN_CAPTCHA_ENABLED,
         expire_seconds=settings.LOGIN_CAPTCHA_EXPIRE_SECONDS,
         uuid=captcha_uuid,
-        image=img,
+        image=cast('str', img),
     )
     return response_base.success(data=data)

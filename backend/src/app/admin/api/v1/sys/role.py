@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Path, Query
 
@@ -26,7 +26,7 @@ router = APIRouter()
 @router.get('/all', summary='获取所有角色', dependencies=[DependsJwtAuth])
 async def get_all_roles(db: CurrentSession) -> ResponseSchemaModel[list[GetRoleDetail]]:
     data = await role_service.get_all(db=db)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[list[GetRoleDetail]]', response_base.success(data=data))
 
 
 @router.get('/{pk}/menus', summary='获取角色菜单树', dependencies=[DependsJwtAuth])
@@ -35,7 +35,7 @@ async def get_role_menu_tree(
     pk: Annotated[int, Path(description='角色 ID')],
 ) -> ResponseSchemaModel[list[GetMenuTree] | None]:
     menu = await role_service.get_menu_tree(db=db, pk=pk)
-    return response_base.success(data=menu)
+    return cast('ResponseSchemaModel[list[GetMenuTree] | None]', response_base.success(data=menu))
 
 
 @router.get('/{pk}/scopes', summary='获取角色所有数据范围', dependencies=[DependsJwtAuth])
@@ -51,7 +51,7 @@ async def get_role(
     db: CurrentSession, pk: Annotated[int, Path(description='角色 ID')]
 ) -> ResponseSchemaModel[GetRoleWithRelationDetail]:
     data = await role_service.get(db=db, pk=pk)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[GetRoleWithRelationDetail]', response_base.success(data=data))
 
 
 @router.get(
@@ -68,7 +68,7 @@ async def get_roles_paginated(
     status: Annotated[int | None, Query(description='状态')] = None,
 ) -> ResponseSchemaModel[PageData[GetRoleDetail]]:
     page_data = await role_service.get_list(db=db, name=name, status=status)
-    return response_base.success(data=page_data)
+    return cast('ResponseSchemaModel[PageData[GetRoleDetail]]', response_base.success(data=page_data))
 
 
 @router.post(

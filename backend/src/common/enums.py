@@ -1,6 +1,7 @@
 from enum import Enum
 from enum import IntEnum as SourceIntEnum
-from typing import Any, TypeVar
+from enum import StrEnum as SourceStrEnum
+from typing import Any, TypeVar, cast
 
 T = TypeVar('T', bound=Enum)
 
@@ -11,24 +12,25 @@ class _EnumBase:
     @classmethod
     def get_member_keys(cls) -> list[str]:
         """获取枚举成员名称列表"""
-        return list(cls.__members__.keys())
+        # __members__ 由 Enum 元类提供；_EnumBase 本体未继承 Enum，实际调用方均为枚举子类
+        return list(cast('type[Enum]', cls).__members__.keys())
 
     @classmethod
     def get_member_values(cls) -> list:
         """获取枚举成员值列表"""
-        return [item.value for item in cls.__members__.values()]
+        return [item.value for item in cast('type[Enum]', cls).__members__.values()]
 
     @classmethod
     def get_member_dict(cls) -> dict[str, Any]:
         """获取枚举成员字典"""
-        return {name: item.value for name, item in cls.__members__.items()}
+        return {name: item.value for name, item in cast('type[Enum]', cls).__members__.items()}
 
 
 class IntEnum(_EnumBase, SourceIntEnum):
     """整型枚举基类"""
 
 
-class StrEnum(_EnumBase, str, Enum):
+class StrEnum(_EnumBase, SourceStrEnum):
     """字符串枚举基类"""
 
 

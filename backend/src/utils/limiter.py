@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from hashlib import sha256
 from inspect import isawaitable
 from math import ceil
-from typing import TypeVar
+from typing import TypeVar, cast
 
 from fastapi import Request, Response
 from fastapi_pagination.utils import is_async_callable
@@ -63,7 +63,8 @@ class RedisTimeBucket(RedisBucket):
 
     async def now(self) -> int:
         """获取 Redis 服务端当前时间"""
-        return await _redis_time_ms(self.redis)
+        # RedisTimeBucket 仅以 asyncio Redis 客户端初始化，运行时不会是同步客户端
+        return await _redis_time_ms(cast('Redis', self.redis))
 
 
 class RedisBucketFactory(BucketFactory):
@@ -268,15 +269,19 @@ class RateLimiter:
                 self.limiter = Limiter(self.bucket)
 
         if is_async_callable(self.identifier):
-            identifier = await self.identifier(request)
+            # is_async_callable 非类型守卫，按运行时分支收窄标识符函数类型
+            async_identifier = cast('Callable[[Request], Awaitable[str]]', self.identifier)
+            identifier = await async_identifier(request)
         else:
-            identifier = await run_in_threadpool(self.identifier, request)
+            sync_identifier = cast('Callable[[Request], str]', self.identifier)
+            identifier = await run_in_threadpool(sync_identifier, request)
 
         acquired = await self.limiter.try_acquire_async(identifier, blocking=False)
         if not acquired:
             retry_after = await self._retry_after(identifier)
             if is_async_callable(self.callback):
-                await self.callback(request, response, retry_after)
+                async_callback = cast('Callable[[Request, Response, int], Awaitable[None]]', self.callback)
+                await async_callback(request, response, retry_after)
             else:
                 await run_in_threadpool(self.callback, request, response, retry_after)
 

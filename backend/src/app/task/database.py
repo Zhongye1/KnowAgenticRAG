@@ -111,8 +111,9 @@ class DatabaseBackend(BaseBackend):
         session = self.result_session()
         with session_cleanup(session):
             task = list(session.query(self.task_cls).filter(self.task_cls.task_id == task_id))
-            task = task and task[0]
-            if not task:
+            # 显式判空收窄：原 `task and task[0]` 会让 task 残留 list 类型
+            task = task[0] if task else None
+            if task is None:
                 task = self.task_cls(task_id)
                 task.status = states.PENDING
                 task.result = None

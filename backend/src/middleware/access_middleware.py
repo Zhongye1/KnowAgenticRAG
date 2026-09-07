@@ -22,6 +22,54 @@ from backend.src.utils.trace_id import get_request_trace_id
 class AccessMiddleware(BaseHTTPMiddleware):
     """访问日志中间件"""
 
+    @staticmethod
+    def _record_exception_metrics(method: str, path: str, elapsed: float, exception: Exception) -> None:
+        """记录请求异常指标"""
+        inc_fastapi_exception(method=method, path=path, exception_type=type(exception).__name__)
+        observe_fastapi_request_cost_time(
+            method=method,
+            path=path,
+            elapsed=elapsed,
+            trace_id=get_request_trace_id(),
+        )
+        inc_fastapi_response(
+            method=method,
+            path=path,
+            status_code=getattr(exception, 'code', StandardResponseCode.HTTP_500),
+        )
+
+    @staticmethod
+    def _record_response_metrics(method: str, path: str, elapsed: float, response: Response) -> None:
+        """记录请求响应指标（异常类型取自 exception handler 写入的请求上下文）"""
+        exception_type = None
+        exception_code = None
+        for exception_key, current_exception_type in {
+            '__request_authentication_exception__': 'AuthenticationError',
+            '__request_http_exception__': 'HTTPException',
+            '__request_validation_exception__': 'RequestValidationError',
+            '__request_assertion_error__': 'AssertionError',
+            '__request_custom_exception__': 'BaseExceptionError',
+            '__request_unknown_exception__': 'Exception',
+        }.items():
+            exception = ctx.get(exception_key)
+            if exception:
+                exception_type = current_exception_type
+                exception_code = exception.get('code')
+                break
+        if exception_type is not None:
+            inc_fastapi_exception(method=method, path=path, exception_type=exception_type)
+        observe_fastapi_request_cost_time(
+            method=method,
+            path=path,
+            elapsed=elapsed,
+            trace_id=get_request_trace_id(),
+        )
+        inc_fastapi_response(
+            method=method,
+            path=path,
+            status_code=exception_code or response.status_code,
+        )
+
     async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
         """
         处理请求并记录访问日志
@@ -52,50 +100,12 @@ class AccessMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             elapsed = round((time.perf_counter() - perf_time) * 1000, 3)
             if should_record_metrics:
-                inc_fastapi_exception(method=method, path=path, exception_type=type(e).__name__)
-                observe_fastapi_request_cost_time(
-                    method=method,
-                    path=path,
-                    elapsed=elapsed,
-                    trace_id=get_request_trace_id(),
-                )
-                inc_fastapi_response(
-                    method=method,
-                    path=path,
-                    status_code=getattr(e, 'code', StandardResponseCode.HTTP_500),
-                )
+                self._record_exception_metrics(method=method, path=path, elapsed=elapsed, exception=e)
             raise
         else:
             elapsed = round((time.perf_counter() - perf_time) * 1000, 3)
             if should_record_metrics:
-                exception_type = None
-                exception_code = None
-                for exception_key, current_exception_type in {
-                    '__request_authentication_exception__': 'AuthenticationError',
-                    '__request_http_exception__': 'HTTPException',
-                    '__request_validation_exception__': 'RequestValidationError',
-                    '__request_assertion_error__': 'AssertionError',
-                    '__request_custom_exception__': 'BaseExceptionError',
-                    '__request_unknown_exception__': 'Exception',
-                }.items():
-                    exception = ctx.get(exception_key)
-                    if exception:
-                        exception_type = current_exception_type
-                        exception_code = exception.get('code')
-                        break
-                if exception_type is not None:
-                    inc_fastapi_exception(method=method, path=path, exception_type=exception_type)
-                observe_fastapi_request_cost_time(
-                    method=method,
-                    path=path,
-                    elapsed=elapsed,
-                    trace_id=get_request_trace_id(),
-                )
-                inc_fastapi_response(
-                    method=method,
-                    path=path,
-                    status_code=exception_code or response.status_code,
-                )
+                self._record_response_metrics(method=method, path=path, elapsed=elapsed, response=response)
         finally:
             if should_record_metrics:
                 dec_fastapi_request_in_progress(method=method, path=path)

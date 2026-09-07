@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Path, Query
 
@@ -20,7 +20,7 @@ async def get_task_result(
     pk: Annotated[int, Path(description='任务结果 ID')],
 ) -> ResponseSchemaModel[GetTaskResultDetail]:
     result = await task_result_service.get(db=db, pk=pk)
-    return response_base.success(data=result)
+    return cast('ResponseSchemaModel[GetTaskResultDetail]', response_base.success(data=result))
 
 
 @router.get(
@@ -37,7 +37,7 @@ async def get_task_results_paginated(
     task_id: Annotated[str | None, Query(description='任务 ID')] = None,
 ) -> ResponseSchemaModel[PageData[GetTaskResultDetail]]:
     page_data = await task_result_service.get_list(db=db, name=name, task_id=task_id)
-    return response_base.success(data=page_data)
+    return cast('ResponseSchemaModel[PageData[GetTaskResultDetail]]', response_base.success(data=page_data))
 
 
 @router.delete(

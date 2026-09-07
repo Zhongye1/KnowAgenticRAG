@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Path, Query
 
@@ -24,7 +24,7 @@ router = APIRouter()
 @router.get('/all', summary='获取所有数据范围', dependencies=[DependsJwtAuth])
 async def get_all_data_scope(db: CurrentSession) -> ResponseSchemaModel[list[GetDataScopeDetail]]:
     data = await data_scope_service.get_all(db=db)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[list[GetDataScopeDetail]]', response_base.success(data=data))
 
 
 @router.get('/{pk}', summary='获取数据范围详情', dependencies=[DependsJwtAuth])
@@ -33,7 +33,7 @@ async def get_data_scope(
     pk: Annotated[int, Path(description='数据范围 ID')],
 ) -> ResponseSchemaModel[GetDataScopeDetail]:
     data = await data_scope_service.get(db=db, pk=pk)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[GetDataScopeDetail]', response_base.success(data=data))
 
 
 @router.get('/{pk}/rules', summary='获取数据范围所有规则', dependencies=[DependsJwtAuth])
@@ -42,7 +42,7 @@ async def get_data_scope_rules(
     pk: Annotated[int, Path(description='数据范围 ID')],
 ) -> ResponseSchemaModel[GetDataScopeWithRelationDetail]:
     data = await data_scope_service.get_rules(db=db, pk=pk)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[GetDataScopeWithRelationDetail]', response_base.success(data=data))
 
 
 @router.get(
@@ -59,7 +59,7 @@ async def get_data_scopes_paginated(
     status: Annotated[int | None, Query(description='状态')] = None,
 ) -> ResponseSchemaModel[PageData[GetDataScopeDetail]]:
     page_data = await data_scope_service.get_list(db=db, name=name, status=status)
-    return response_base.success(data=page_data)
+    return cast('ResponseSchemaModel[PageData[GetDataScopeDetail]]', response_base.success(data=page_data))
 
 
 @router.post(

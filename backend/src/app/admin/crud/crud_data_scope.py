@@ -90,7 +90,7 @@ class CRUDDataScope(CRUDPlus[DataScope]):
         :param status: 范围状态
         :return:
         """
-        filters = {'deleted': 0}
+        filters: dict[str, Any] = {'deleted': 0}
 
         if name is not None:
             filters['name__like'] = f'%{name}%'

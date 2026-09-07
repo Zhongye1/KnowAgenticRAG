@@ -10,23 +10,24 @@ from backend.src.app.kb.schema.acl import DocAclUpdateParam, KBAclUpdateParam
 
 
 class TestDocAclUpdateParam:
+    # 注：显式传 None 与省略字段等价（Field 默认值即为 None），规避 pyright 对 pydantic Field 默认值的误判
     def test_visibility_valid(self) -> None:
         for value in ('public', 'restricted', 'private'):
-            assert DocAclUpdateParam(visibility=value).visibility == value
+            assert DocAclUpdateParam(visibility=value, group_ids=None).visibility == value
 
     def test_visibility_none_keeps_unchanged(self) -> None:
-        assert DocAclUpdateParam().visibility is None
+        assert DocAclUpdateParam(visibility=None, group_ids=None).visibility is None
 
     def test_visibility_invalid_rejected(self) -> None:
         with pytest.raises(ValidationError, match='visibility'):
-            DocAclUpdateParam(visibility='internal')
+            DocAclUpdateParam(visibility='internal', group_ids=None)
 
     def test_group_ids_dedup_and_strip(self) -> None:
-        param = DocAclUpdateParam(group_ids=['g1', ' g1 ', 'g2', ''])
+        param = DocAclUpdateParam(visibility=None, group_ids=['g1', ' g1 ', 'g2', ''])
         assert param.group_ids == ['g1', 'g2']
 
     def test_group_ids_none_means_unchanged(self) -> None:
-        assert DocAclUpdateParam().group_ids is None
+        assert DocAclUpdateParam(visibility=None, group_ids=None).group_ids is None
 
 
 class TestKBAclUpdateParam:

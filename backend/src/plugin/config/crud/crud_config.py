@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import Select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,12 +31,13 @@ class CRUDConfig(CRUDPlus[Config]):
         :param type: 参数配置类型
         :return:
         """
-        filters = {'deleted': 0}
+        filters: dict[str, Any] = {'deleted': 0}
 
         if type is not None:
             filters['type'] = type
 
-        return await self.select_models(db, **filters)
+        # **filters 展开时只能匹配到返回 Row | Model 联合类型的重载（同 kb/crud/base.py 的处理）
+        return await self.select_models(db, **filters)  # pyright: ignore[reportReturnType]
 
     async def get_all_by_ids(self, db: AsyncSession, pks: list[int]) -> Sequence[Config]:
         """
@@ -75,7 +77,7 @@ class CRUDConfig(CRUDPlus[Config]):
         :param type: 参数配置类型
         :return:
         """
-        filters = {'deleted': 0}
+        filters: dict[str, Any] = {'deleted': 0}
 
         if name is not None:
             filters['name__like'] = f'%{name}%'
@@ -105,7 +107,7 @@ class CRUDConfig(CRUDPlus[Config]):
         """
         return await self.update_model_by_column(db, obj, id=pk, deleted=0)
 
-    async def bulk_update(self, db: AsyncSession, objs: list[UpdateConfigParam]) -> int:
+    async def bulk_update(self, db: AsyncSession, objs: Sequence[UpdateConfigParam]) -> int:
         """
         批量更新参数配置
 

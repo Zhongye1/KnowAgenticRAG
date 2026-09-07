@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Any
 
 from fastapi import Request
-from sqlalchemy import Alias, ColumnElement, Table, and_, or_
+from sqlalchemy import Alias, ColumnElement, Table, and_, false, or_, true
 from sqlalchemy.orm.util import AliasedClass
 from sqlalchemy_crud_plus.types import Model
 
@@ -69,12 +69,12 @@ def filter_data_permission(  # ruff:ignore[complex-structure]
     """
     # 超级管理员不过滤
     if request.user.is_superuser:
-        return or_(1 == 1)
+        return or_(true())
 
     # 角色未启用数据权限过滤
     for role in request.user.roles:
         if role.status and not role.is_filter_scopes:
-            return or_(1 == 1)
+            return or_(true())
 
     # 获取数据规则
     data_rules: set[DataRule] = set()
@@ -87,7 +87,7 @@ def filter_data_permission(  # ruff:ignore[complex-structure]
 
     # 启用数据权限过滤，但没有已启用的数据权限
     if not data_rules:
-        return or_(1 != 1)
+        return or_(false())
 
     # 目标模型
     target_model_map = (
@@ -118,7 +118,10 @@ def filter_data_permission(  # ruff:ignore[complex-structure]
             target_models = [target_model] if target_model is not None else []
 
         for target_model in target_models:
-            table = target_model if isinstance(target_model, Table) else target_model.__table__
+            # AliasedClass/Alias 的 __table__ 由 SQLAlchemy 运行时提供，用 getattr 规避静态检查限制
+            table = (
+                target_model if isinstance(target_model, Table) else getattr(target_model, '__table__')  # ruff:ignore[get-attr-with-constant]
+            )
             rule_column = column_template_resolvers.get(data_rule.column, data_rule.column)
             if rule_column not in table.columns.keys():
                 continue
@@ -178,7 +181,7 @@ def filter_data_permission(  # ruff:ignore[complex-structure]
     if where_or_list:
         where_list.append(or_(*where_or_list))
 
-    return or_(*where_list) if where_list else or_(1 == 1)
+    return or_(*where_list) if where_list else or_(true())
 
 
 # 此函数是为了简化调用方式，但目前无法正常工作: https://github.com/fastapi/fastapi/discussions/14438

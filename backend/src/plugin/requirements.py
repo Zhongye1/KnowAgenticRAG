@@ -5,6 +5,7 @@ import sys
 from importlib import invalidate_caches
 from importlib.metadata import PackageNotFoundError, distribution
 from pathlib import Path
+from typing import cast
 
 from packaging.markers import default_environment
 from packaging.requirements import Requirement
@@ -39,7 +40,8 @@ def _requirements_installed(requirements_file: Path) -> bool:  # ruff:ignore[com
 
     def requirement_satisfied(requirement: Requirement, active_extras: frozenset[str] = frozenset({''})) -> bool:
         if requirement.marker and not any(
-            requirement.marker.evaluate(environment={**environment, 'extra': extra}) for extra in active_extras
+            requirement.marker.evaluate(environment=cast('dict[str, str]', {**environment, 'extra': extra}))
+            for extra in active_extras
         ):
             return True
 

@@ -78,7 +78,7 @@ class MinerUPublicProcessor(BaseDocumentProcessor):
     display_name: ClassVar[str] = 'MinerU 精准解析 API'
     supported_extensions: ClassVar[list[str]] = ['.pdf', '.png', '.jpg', '.jpeg']
 
-    def __init__(self, api_base: str | None = None, transport: httpx.BaseTransport | None = None) -> None:
+    def __init__(self, api_base: str | None = None, transport: httpx.AsyncBaseTransport | None = None) -> None:
         self.api_base = (api_base or settings.RAGF_MINERU_API_BASE or 'https://mineru.net').rstrip('/')
         self._transport = transport  # 测试注入（生产 None → 默认网络传输）
 
@@ -128,9 +128,8 @@ class MinerUPublicProcessor(BaseDocumentProcessor):
         timeout = float((params or {}).get('timeout_seconds') or settings.RAGF_MINERU_TIMEOUT_SECONDS or 900.0)
         poll_interval = float(settings.RAGF_MINERU_POLL_INTERVAL_SECONDS or 3.0)
         headers = self._auth_headers()
-        transport_kwargs = {'transport': self._transport} if self._transport is not None else {}
 
-        async with httpx.AsyncClient(timeout=MINERU_REQUEST_TIMEOUT_SECONDS, **transport_kwargs) as client:
+        async with httpx.AsyncClient(timeout=MINERU_REQUEST_TIMEOUT_SECONDS, transport=self._transport) as client:
             # ① 申请上传地址（单文件也走批量口，上传后自动触发解析）
             batch_id, upload_url = await self._apply_upload_urls(client, headers, file_name, request_params)
             # ② 上传（预签名，按官方示例不带 Content-Type）
@@ -153,7 +152,7 @@ class MinerUPublicProcessor(BaseDocumentProcessor):
                 service_name=self.service_name,
                 error_code='bad_response',
             )
-        text = await self._download_markdown(full_zip_url, transport_kwargs, file_name)
+        text = await self._download_markdown(full_zip_url, self._transport, file_name)
         log.info('MinerU 解析成功 file={} chars={}', file_name, len(text))
         return text
 
@@ -210,9 +209,11 @@ class MinerUPublicProcessor(BaseDocumentProcessor):
             )
         log.debug('MinerU 文件上传成功 file={} bytes={}', file_name, len(data))
 
-    async def _download_markdown(self, full_zip_url: str, transport_kwargs: dict[str, Any], file_name: str) -> str:
+    async def _download_markdown(
+        self, full_zip_url: str, transport: httpx.AsyncBaseTransport | None, file_name: str
+    ) -> str:
         try:
-            async with httpx.AsyncClient(timeout=MINERU_REQUEST_TIMEOUT_SECONDS, **transport_kwargs) as client:
+            async with httpx.AsyncClient(timeout=MINERU_REQUEST_TIMEOUT_SECONDS, transport=transport) as client:
                 response = await client.get(full_zip_url)
         except httpx.TimeoutException as exc:
             raise DocumentParseError(
@@ -296,9 +297,8 @@ class MinerUPublicProcessor(BaseDocumentProcessor):
                 'message': '未配置 MINERU_API_TOKEN（mineru.net API 管理页面创建）',
                 'details': {'api_base': self.api_base},
             }
-        transport_kwargs = {'transport': self._transport} if self._transport is not None else {}
         try:
-            async with httpx.AsyncClient(timeout=5, **transport_kwargs) as client:
+            async with httpx.AsyncClient(timeout=5, transport=self._transport) as client:
                 response = await client.get(self.api_base)
         except Exception as exc:
             return {'status': 'unavailable', 'message': f'MinerU 公网 API 无法连接: {exc}', 'details': {}}

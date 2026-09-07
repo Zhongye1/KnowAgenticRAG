@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,7 +60,14 @@ class UserService:
         return user.roles
 
     @staticmethod
-    async def get_list(*, db: AsyncSession, dept: int, username: str, phone: str, status: int) -> dict[str, Any]:
+    async def get_list(
+        *,
+        db: AsyncSession,
+        dept: int | None = None,
+        username: str | None = None,
+        phone: str | None = None,
+        status: int | None = None,
+    ) -> dict[str, Any]:
         """
         获取用户列表
 
@@ -210,7 +217,8 @@ class UserService:
         await validate_new_password(db, user.id, password)
         count = await user_dao.reset_password(db, user.id, password)
 
-        history_obj = CreateUserPasswordHistoryParam(user_id=user.id, password=user.password)
+        # 用户密码列声明为 str | None，此处记录的历史密码实际必为 str
+        history_obj = CreateUserPasswordHistoryParam(user_id=user.id, password=cast('str', user.password))
         await password_security_service.save_password_history(db, history_obj)
         await user_dao.update_password_changed_time(db, user.id)
         await redis_client.delete_by_prefix(f'{settings.TOKEN_REDIS_PREFIX}:{user.id}')
@@ -280,7 +288,8 @@ class UserService:
         :param obj: 密码重置参数
         :return:
         """
-        user = await user_dao.get(db, user_id)
+        # user_id 来自当前登录用户上下文，用户必然存在（原实现即未判空，仅收窄类型）
+        user = cast('User', await user_dao.get(db, user_id))
 
         if user.password and not password_verify(obj.old_password, user.password):
             raise errors.RequestError(msg='原密码错误')
@@ -291,7 +300,7 @@ class UserService:
         await validate_new_password(db, user_id, obj.new_password)
         count = await user_dao.reset_password(db, user_id, obj.new_password)
 
-        history_obj = CreateUserPasswordHistoryParam(user_id=user.id, password=user.password)
+        history_obj = CreateUserPasswordHistoryParam(user_id=user.id, password=cast('str', user.password))
         await password_security_service.save_password_history(db, history_obj)
         await user_dao.update_password_changed_time(db, user.id)
         await redis_client.delete_by_prefix(f'{settings.TOKEN_REDIS_PREFIX}:{user_id}')

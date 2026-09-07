@@ -1,5 +1,6 @@
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import Any, cast
 
 from aiosmtplib import SMTP
 from anyio import open_file
@@ -31,9 +32,10 @@ async def render_message(subject: str, from_header: str, content: str | dict, te
     if template:
         async with await open_file(PLUGIN_DIR / 'email' / 'templates' / template, encoding='utf-8') as f:
             html = Template(await f.read(), enable_async=True)
-        mail_body = MIMEText(await html.render_async(**content), 'html', 'utf-8')
+        # 模板渲染时 content 必为映射
+        mail_body = MIMEText(await html.render_async(**cast('dict[str, Any]', content)), 'html', 'utf-8')
     else:
-        mail_body = MIMEText(content, 'plain', 'utf-8')
+        mail_body = MIMEText(cast('str', content), 'plain', 'utf-8')
 
     message.attach(mail_body)
 

@@ -1,6 +1,7 @@
 import math
 
 from datetime import datetime, timedelta
+from typing import cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,7 +32,8 @@ class UserPasswordHistoryService:
         locked_until_str = await redis_client.get(f'{settings.USER_LOCK_REDIS_PREFIX}:{user_id}')
 
         if locked_until_str:
-            locked_until = timezone.from_str(locked_until_str)
+            # RedisCli 默认 decode_responses=True，返回值实为 str
+            locked_until = timezone.from_str(cast('str', locked_until_str))
             now = timezone.now()
             if locked_until > now:
                 remaining_minutes = math.ceil((locked_until - now).total_seconds() / 60)
@@ -73,7 +75,7 @@ class UserPasswordHistoryService:
             raise errors.AuthorizationError(msg='登录失败次数过多，账号已被锁定')
 
     @staticmethod
-    async def check_password_expiry_status(db: AsyncSession, password_changed_time: datetime) -> int | None:
+    async def check_password_expiry_status(db: AsyncSession, password_changed_time: datetime | None) -> int | None:
         """
         检查密码过期状态
 

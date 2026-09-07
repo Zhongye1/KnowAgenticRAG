@@ -46,7 +46,7 @@ class MenuService:
         return menu_tree
 
     @staticmethod
-    async def get_sidebar(*, db: AsyncSession, request: Request) -> list[dict[str, Any] | None]:
+    async def get_sidebar(*, db: AsyncSession, request: Request) -> list[dict[str, Any]]:
         """
         获取用户的菜单侧边栏
 

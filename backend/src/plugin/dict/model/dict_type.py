@@ -1,3 +1,5 @@
+from typing import Any, ClassVar
+
 import sqlalchemy as sa
 
 from sqlalchemy.orm import Mapped, mapped_column
@@ -8,8 +10,8 @@ from backend.src.common.model import Base, UniversalText, id_key
 class DictType(Base):
     """字典类型表"""
 
-    __tablename__ = 'sys_dict_type'
-    __table_args__ = (
+    __tablename__: ClassVar[str] = 'sys_dict_type'
+    __table_args__: ClassVar[tuple[Any, ...] | dict[str, Any]] = (
         sa.UniqueConstraint('code', 'deleted', name='uk_sys_dict_type_code_deleted'),
         {'comment': '字典类型表'},
     )

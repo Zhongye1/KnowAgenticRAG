@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Path, Query
 
@@ -22,7 +22,7 @@ router = APIRouter()
 @router.get('/all', summary='获取所有字典数据', dependencies=[DependsJwtAuth])
 async def get_all_dict_datas(db: CurrentSession) -> ResponseSchemaModel[list[GetDictDataDetail]]:
     data = await dict_data_service.get_all(db=db)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[list[GetDictDataDetail]]', response_base.success(data=data))
 
 
 @router.get('/{pk}', summary='获取字典数据详情', dependencies=[DependsJwtAuth])
@@ -31,7 +31,7 @@ async def get_dict_data(
     pk: Annotated[int, Path(description='字典数据 ID')],
 ) -> ResponseSchemaModel[GetDictDataDetail]:
     data = await dict_data_service.get(db=db, pk=pk)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[GetDictDataDetail]', response_base.success(data=data))
 
 
 @router.get('/type-codes/{code}', summary='获取字典数据列表', dependencies=[DependsJwtAuth])
@@ -40,7 +40,7 @@ async def get_dict_data_by_type_code(
     code: Annotated[str, Path(description='字典类型编码')],
 ) -> ResponseSchemaModel[list[GetDictDataDetail]]:
     data = await dict_data_service.get_by_type_code(db=db, code=code)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[list[GetDictDataDetail]]', response_base.success(data=data))
 
 
 @router.get(
@@ -67,7 +67,7 @@ async def get_dict_datas_paginated(
         status=status,
         type_id=type_id,
     )
-    return response_base.success(data=page_data)
+    return cast('ResponseSchemaModel[PageData[GetDictDataDetail]]', response_base.success(data=page_data))
 
 
 @router.post(

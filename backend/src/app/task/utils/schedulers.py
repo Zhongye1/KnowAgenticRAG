@@ -6,7 +6,7 @@ import math
 
 from datetime import datetime, timedelta
 from multiprocessing.util import Finalize
-from typing import TYPE_CHECKING, Final
+from typing import TYPE_CHECKING, Any, Final, cast
 
 from celery import current_app, schedules
 from celery.beat import ScheduleEntry, Scheduler
@@ -179,7 +179,8 @@ class ModelEntry(ScheduleEntry):
 
     @staticmethod
     async def to_model_schedule(name: str, task: str, schedule: schedules.schedule | TzAwareCrontab) -> TaskScheduler:
-        schedule = schedules.maybe_schedule(schedule)
+        # celery 存根把 maybe_schedule 的返回声明为 float | timedelta | BaseSchedule，实际入参原样返回，需收窄
+        schedule = cast('schedules.schedule | TzAwareCrontab', schedules.maybe_schedule(schedule))
 
         async with async_db_session() as db:
             if isinstance(schedule, schedules.schedule):
@@ -275,7 +276,7 @@ class DatabaseScheduler(Scheduler):
 
     Entry = ModelEntry
 
-    _schedule = None
+    _schedule: dict[str, ModelEntry] | None = None
     _last_update = None
     _initial_read = True
     _heap_invalidated = False
@@ -376,7 +377,8 @@ class DatabaseScheduler(Scheduler):
             run_await(redis_client.set)(f'{settings.CELERY_REDIS_PREFIX}:last_update', timezone.to_str(now))
             return False
 
-        last, ts = self._last_update, timezone.from_str(last_update)
+        # redis 客户端 decode_responses=True，get 返回值必为 str，仅收窄类型
+        last, ts = self._last_update, timezone.from_str(cast('str', last_update))
         try:
             if ts and ts > (last or ts):
                 return True
@@ -424,11 +426,12 @@ class DatabaseScheduler(Scheduler):
             )
 
         # logger.debug(self._schedule)
-        return self._schedule
+        # 首次读取（_initial_read）必然触发同步赋值，_schedule 此时必不为 None
+        return cast('dict[str, ModelEntry]', self._schedule)
 
 
 @beat_init.connect
-def acquire_distributed_beat_lock(sender=None, **kwargs) -> None:  # ruff:ignore[missing-type-function-argument]
+def acquire_distributed_beat_lock(sender: Any = None, **kwargs) -> None:
     """
     尝试在启动时获取锁
 

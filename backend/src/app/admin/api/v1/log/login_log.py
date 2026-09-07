@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Query
 
@@ -30,7 +30,7 @@ async def get_login_logs_paginated(
 ) -> ResponseSchemaModel[PageData[GetLoginLogDetail]]:
     page_data = await login_log_service.get_list(db=db, username=username, status=status, ip=ip)
 
-    return response_base.success(data=page_data)
+    return cast('ResponseSchemaModel[PageData[GetLoginLogDetail]]', response_base.success(data=page_data))
 
 
 @router.delete(

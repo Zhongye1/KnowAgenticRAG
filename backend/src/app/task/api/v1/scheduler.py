@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Path, Query
 
@@ -21,7 +21,7 @@ router = APIRouter()
 @router.get('/all', summary='获取所有任务调度', dependencies=[DependsJwtAuth])
 async def get_all_task_schedulers(db: CurrentSession) -> ResponseSchemaModel[list[GetTaskSchedulerDetail]]:
     schedulers = await task_scheduler_service.get_all(db=db)
-    return response_base.success(data=schedulers)
+    return cast('ResponseSchemaModel[list[GetTaskSchedulerDetail]]', response_base.success(data=schedulers))
 
 
 @router.get('/{pk}', summary='获取任务调度详情', dependencies=[DependsJwtAuth])
@@ -30,7 +30,7 @@ async def get_task_scheduler(
     pk: Annotated[int, Path(description='任务调度 ID')],
 ) -> ResponseSchemaModel[GetTaskSchedulerDetail]:
     task_scheduler = await task_scheduler_service.get(db=db, pk=pk)
-    return response_base.success(data=task_scheduler)
+    return cast('ResponseSchemaModel[GetTaskSchedulerDetail]', response_base.success(data=task_scheduler))
 
 
 @router.get(
@@ -47,7 +47,7 @@ async def get_task_scheduler_paginated(
     type: Annotated[int | None, Query(description='任务调度类型')] = None,
 ) -> ResponseSchemaModel[PageData[GetTaskSchedulerDetail]]:
     page_data = await task_scheduler_service.get_list(db=db, name=name, type=type)
-    return response_base.success(data=page_data)
+    return cast('ResponseSchemaModel[PageData[GetTaskSchedulerDetail]]', response_base.success(data=page_data))
 
 
 @router.post(

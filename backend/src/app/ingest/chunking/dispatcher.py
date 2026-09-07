@@ -82,7 +82,8 @@ def chunk_markdown(
     """按 processing_params（chunk_preset_id / chunk_parser_config）对 Markdown 分块。"""
     params = dict(processing_params or {})
     preset_id = normalize_chunk_preset_id(params.get('chunk_preset_id'))
-    parser_config = params.get('chunk_parser_config') if isinstance(params.get('chunk_parser_config'), dict) else {}
+    raw_parser_config = params.get('chunk_parser_config')
+    parser_config: dict[str, Any] = raw_parser_config if isinstance(raw_parser_config, dict) else {}
 
     text_chunks = _dispatch_markdown_parser(preset_id, filename, markdown_content, parser_config)
     return _build_chunk_records(text_chunks, file_id, filename, markdown_content)

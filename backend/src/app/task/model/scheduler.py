@@ -1,6 +1,7 @@
 import asyncio
 
 from datetime import datetime
+from typing import Any, ClassVar
 
 import sqlalchemy as sa
 
@@ -17,8 +18,9 @@ from backend.src.utils.timezone import timezone
 class TaskScheduler(Base):
     """任务调度表"""
 
-    __tablename__ = 'task_scheduler'
-    __table_args__ = (
+    # 本模型为 MappedAsDataclass，需用 ClassVar 声明避免被当作带默认值的 dataclass 字段
+    __tablename__: ClassVar[str] = 'task_scheduler'
+    __table_args__: ClassVar[tuple[Any, ...] | dict[str, Any]] = (
         sa.UniqueConstraint('name', 'deleted', name='uk_task_scheduler_name_deleted'),
         {'comment': '任务调度表'},
     )

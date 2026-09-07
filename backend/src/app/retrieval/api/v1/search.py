@@ -21,9 +21,7 @@ from backend.src.common.security.permission import RequestPermission
 from backend.src.common.security.rbac import DependsRBAC
 from backend.src.database.db import CurrentSession
 
-router = APIRouter(
-    dependencies=[DependsJwtAuth, Depends(RequestPermission(RAG_KB_SEARCH)), DependsRBAC]
-)
+router = APIRouter(dependencies=[DependsJwtAuth, Depends(RequestPermission(RAG_KB_SEARCH)), DependsRBAC])
 
 
 @router.post('/{kb_name}/search', summary='同步检索知识库（vector/hybrid + 可选精排）')

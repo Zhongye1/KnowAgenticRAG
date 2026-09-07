@@ -1,3 +1,5 @@
+from typing import ClassVar
+
 import sqlalchemy as sa
 
 from sqlalchemy.orm import Mapped, mapped_column
@@ -8,7 +10,7 @@ from backend.src.common.model import Base, UniversalText, id_key
 class Menu(Base):
     """菜单表"""
 
-    __tablename__ = 'sys_menu'
+    __tablename__: ClassVar[str] = 'sys_menu'
 
     id: Mapped[id_key] = mapped_column(init=False)
     title: Mapped[str] = mapped_column(sa.String(64), comment='菜单标题')

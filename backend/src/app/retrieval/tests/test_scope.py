@@ -140,8 +140,9 @@ class TestScopeDataclass:
             groups=[],
             allowed_kbs=[],
         )
+        # 故意赋值，验证 frozen dataclass 运行时抛出 AttributeError
         with pytest.raises(AttributeError):
-            scope.namespace = 'other'
+            scope.namespace = 'other'  # pyright: ignore[reportAttributeAccessIssue]
 
     def test_defaults(self) -> None:
         """Scope 应有默认值。"""
@@ -159,8 +160,9 @@ class TestUserContextDataclass:
     def test_frozen(self) -> None:
         """UserContext 应为不可变对象。"""
         ctx = UserContext(user_id='user1', namespace='core', dept_id=1)
+        # 故意赋值，验证 frozen dataclass 运行时抛出 AttributeError
         with pytest.raises(AttributeError):
-            ctx.user_id = 'other'
+            ctx.user_id = 'other'  # pyright: ignore[reportAttributeAccessIssue]
 
     def test_dept_id_optional(self) -> None:
         """dept_id 应有默认值 None。"""

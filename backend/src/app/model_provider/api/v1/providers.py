@@ -103,7 +103,7 @@ async def delete_provider(
     provider_id: Annotated[str, Path(description='供应商标识')],
 ) -> ResponseSchemaModel[None]:
     await provider_service.delete(db, provider_id)
-    return response_base.success()
+    return cast('ResponseSchemaModel[None]', response_base.success())
 
 
 @router.post('/test-connection', summary='模型连通性测试', dependencies=_PERM_EDIT)

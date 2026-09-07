@@ -270,7 +270,11 @@ class ChatService:
         """事件序列核心：prepare 后按命中/错误分支产出（无 IO 逃逸，全量守卫）。"""
         try:
             prepared = await self._prepare(
-                db, kb_name=kb_name, param=param, plugin_namespace=plugin_namespace, scope=scope,
+                db,
+                kb_name=kb_name,
+                param=param,
+                plugin_namespace=plugin_namespace,
+                scope=scope,
             )
         except errors.NotFoundError as exc:
             yield self._error_event('KB_NOT_FOUND', exc.msg or '知识库不存在')

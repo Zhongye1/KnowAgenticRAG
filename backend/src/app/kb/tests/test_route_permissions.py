@@ -86,9 +86,7 @@ def test_document_routes_require_read_ingest_manage_perm() -> None:
 def test_ingest_routes_require_ingest_perm() -> None:
     from backend.src.app.ingest.api.v1.router import router
 
-    assert RAG_KB_INGEST in _route_perm_codes(
-        _find_route(router, '/{kb_name}/documents/ingest', 'POST')
-    )
+    assert RAG_KB_INGEST in _route_perm_codes(_find_route(router, '/{kb_name}/documents/ingest', 'POST'))
     assert RAG_KB_INGEST in _route_perm_codes(_find_route(router, '/{kb_name}/rebuild', 'POST'))
 
 

@@ -128,7 +128,7 @@ async def _mark_failed(
     try:
         async with async_db_session.begin() as db:
             await IngestService.mark_failed(
-                db,
+                db=db,
                 document_id=document_id,
                 kb_name=kb_name,
                 plugin_namespace=plugin_namespace,

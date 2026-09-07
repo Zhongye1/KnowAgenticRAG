@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import ClassVar
 
 import sqlalchemy as sa
 
@@ -11,7 +12,7 @@ from backend.src.utils.timezone import timezone
 class UserPasswordHistory(DataClassBase):
     """用户密码历史记录表"""
 
-    __tablename__ = 'sys_user_password_history'
+    __tablename__: ClassVar[str] = 'sys_user_password_history'
 
     id: Mapped[id_key] = mapped_column(init=False)
     user_id: Mapped[int] = mapped_column(sa.BigInteger, index=True, comment='用户 ID')

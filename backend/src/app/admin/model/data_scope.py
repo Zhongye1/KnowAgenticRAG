@@ -1,3 +1,5 @@
+from typing import Any, ClassVar
+
 import sqlalchemy as sa
 
 from sqlalchemy.orm import Mapped, mapped_column
@@ -8,8 +10,8 @@ from backend.src.common.model import Base, id_key
 class DataScope(Base):
     """数据范围表"""
 
-    __tablename__ = 'sys_data_scope'
-    __table_args__ = (
+    __tablename__: ClassVar[str] = 'sys_data_scope'
+    __table_args__: ClassVar[tuple[Any, ...] | dict[str, Any]] = (
         sa.UniqueConstraint('name', 'deleted', name='uk_sys_data_scope_name_deleted'),
         {'comment': '数据范围表'},
     )

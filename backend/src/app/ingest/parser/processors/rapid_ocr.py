@@ -127,7 +127,8 @@ class RapidOCRProcessor(BaseDocumentProcessor):
         lines: list[str] = []
         try:
             for page in document:
-                bitmap = page.render(scale=PDF_RENDER_SCALE)
+                # pypdfium2 5.x render 参数无类型注解，pyright 从默认值推断 scale: int；文档标注 float，运行时接受浮点
+                bitmap = page.render(scale=PDF_RENDER_SCALE)  # pyright: ignore[reportArgumentType]
                 image = bitmap.to_pil().convert('RGB')
                 lines.extend(_ocr_image(engine, image))
         finally:

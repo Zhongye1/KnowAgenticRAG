@@ -47,7 +47,7 @@ class UserSocialService:
         if await user_social_dao.get_by_sid(db, sid, source.value):
             raise errors.RequestError(msg=f'该 {source.value} 账号已被其他用户绑定')
 
-        new_user_social = CreateUserSocialParam(sid=sid, source=source.value, user_id=user_id)
+        new_user_social = CreateUserSocialParam(sid=sid, source=source, user_id=user_id)
         await user_social_dao.create(db, new_user_social)
 
     @staticmethod

@@ -4,6 +4,8 @@ import re
 import stat
 import zipfile
 
+from typing import cast
+
 import anyio
 
 from anyio import open_file
@@ -88,7 +90,7 @@ async def install_zip_plugin(file: UploadFile | str) -> str:  # ruff:ignore[comp
                 r'^([a-zA-Z0-9_]+)',
                 file.split(os.sep)[-1].split('.')[0].strip()
                 if isinstance(file, str)
-                else file.filename.split('.')[0].strip(),
+                else cast('str', file.filename).split('.')[0].strip(),
             )
             if not plugin_name_match:
                 raise errors.RequestError(msg='插件压缩包文件名非法')

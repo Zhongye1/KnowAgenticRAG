@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy import ColumnElement, and_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,7 +54,7 @@ class CRUDDept(CRUDPlus[Dept]):
         :param status: 部门状态
         :return:
         """
-        filters = {'deleted': 0}
+        filters: dict[str, Any] = {'deleted': 0}
 
         if name is not None:
             filters['name__like'] = f'%{name}%'
@@ -65,7 +65,8 @@ class CRUDDept(CRUDPlus[Dept]):
         if status is not None:
             filters['status'] = status
 
-        return await self.select_models_order(db, 'sort', 'asc', data_filter, **filters)
+        # 无 join_conditions 时返回的是模型标量结果
+        return cast('Sequence[Dept]', await self.select_models_order(db, 'sort', 'asc', data_filter, **filters))
 
     async def create(self, db: AsyncSession, obj: CreateDeptParam) -> None:
         """

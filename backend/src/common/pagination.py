@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from math import ceil
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 from fastapi import Depends, Query
 from fastapi_pagination import pagination_ctx
@@ -92,7 +92,8 @@ class _CustomPage[T](_PageDetails, AbstractPage[T]):
             page=page,
             size=size,
             total_pages=total_pages,
-            links=links,
+            # create_links 返回的 dict 由 pydantic 在字段校验时转换为 _Links
+            links=cast('_Links', links),
         )
 
 

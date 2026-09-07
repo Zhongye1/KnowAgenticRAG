@@ -64,7 +64,7 @@ class RoleService:
         return await paging_data(db, role_select)
 
     @staticmethod
-    async def get_menu_tree(*, db: AsyncSession, pk: int) -> list[dict[str, Any] | None]:
+    async def get_menu_tree(*, db: AsyncSession, pk: int) -> list[dict[str, Any]]:
         """
         获取角色的菜单树形结构
 

@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Path, Query
 
@@ -24,7 +24,7 @@ async def get_notice(
     db: CurrentSession, pk: Annotated[int, Path(description='通知公告 ID')]
 ) -> ResponseSchemaModel[GetNoticeDetail]:
     notice = await notice_service.get(db=db, pk=pk)
-    return response_base.success(data=notice)
+    return cast('ResponseSchemaModel[GetNoticeDetail]', response_base.success(data=notice))
 
 
 @router.get(
@@ -42,7 +42,7 @@ async def get_notices_paginated(
     status: Annotated[int | None, Query(description='状态')] = None,
 ) -> ResponseSchemaModel[PageData[GetNoticeDetail]]:
     page_data = await notice_service.get_list(db=db, title=title, type=type, status=status)
-    return response_base.success(data=page_data)
+    return cast('ResponseSchemaModel[PageData[GetNoticeDetail]]', response_base.success(data=page_data))
 
 
 @router.post(

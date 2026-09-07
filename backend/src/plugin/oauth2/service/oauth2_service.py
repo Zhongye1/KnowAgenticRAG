@@ -1,6 +1,6 @@
 import json
 
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
 
 from fast_captcha import text_captcha
 from fastapi import BackgroundTasks, Response
@@ -22,6 +22,11 @@ from backend.src.plugin.oauth2.enums import UserSocialAuthType, UserSocialType
 from backend.src.plugin.oauth2.schema.user_social import CreateUserSocialParam
 from backend.src.plugin.oauth2.service.user_social_service import user_social_service
 from backend.src.utils.timezone import timezone
+
+if TYPE_CHECKING:
+    from pydantic import HttpUrl
+
+    from backend.src.common.schema import CustomEmailStr
 
 
 class OAuth2Service:
@@ -57,6 +62,8 @@ class OAuth2Service:
         user_social = await user_social_dao.get_by_sid(db, sid, source.value)
         if user_social:
             sys_user = await user_dao.get(db, user_social.user_id)
+            # 社交账号绑定记录必然关联已存在的系统用户
+            assert sys_user is not None
             # 更新用户头像
             if not sys_user.avatar and avatar is not None:
                 await user_dao.update_avatar(db, sys_user.id, avatar)
@@ -82,15 +89,17 @@ class OAuth2Service:
                     username=username,
                     password=None,
                     nickname=nickname,
-                    email=email,
-                    avatar=avatar,
+                    email=cast('CustomEmailStr | None', email),
+                    avatar=cast('HttpUrl | None', avatar),
                 )
                 await user_dao.add_by_oauth2(db, new_sys_user)
                 await db.flush()
                 sys_user = await user_dao.get_by_username(db, username)
+                # 用户刚创建并 flush，按用户名查询必然命中
+                assert sys_user is not None
 
             # 绑定社交账号
-            new_user_social = CreateUserSocialParam(sid=sid, source=source.value, user_id=sys_user.id)
+            new_user_social = CreateUserSocialParam(sid=sid, source=source, user_id=sys_user.id)
             await user_social_dao.create(db, new_user_social)
 
         # 创建 token
@@ -119,7 +128,7 @@ class OAuth2Service:
             username=sys_user.username,
             login_time=timezone.now(),
             status=LoginLogStatusType.success.value,
-            msg=t('success.login.oauth2_success'),
+            msg=str(t('success.login.oauth2_success')),
         )
         await redis_client.delete(f'{settings.LOGIN_CAPTCHA_REDIS_PREFIX}:{ctx.ip}')
         response.set_cookie(

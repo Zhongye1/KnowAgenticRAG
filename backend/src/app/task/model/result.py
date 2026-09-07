@@ -1,6 +1,9 @@
+from typing import Any, cast
+
 import sqlalchemy as sa
 
 from celery import states
+from sqlalchemy.orm import Mapped
 from sqlalchemy.types import PickleType
 
 from backend.src.common.model import MappedBase, TimeZone
@@ -14,13 +17,13 @@ from backend.src.utils.timezone import timezone
 class Task(MappedBase):
     """Task result/status."""
 
-    __tablename__ = 'task_result'
-    __table_args__ = {'comment': '任务结果表'}
+    __tablename__: str = 'task_result'
+    __table_args__: tuple[Any, ...] | dict[str, Any] = {'comment': '任务结果表'}
 
     id = sa.Column(sa.Integer, sa.Sequence('task_id_sequence'), primary_key=True, autoincrement=True)
-    task_id = sa.Column(sa.String(155), unique=True)
-    status = sa.Column(sa.String(64), default=states.PENDING)
-    result = sa.Column(PickleType, nullable=True)
+    task_id: Mapped[str] = cast('Mapped[str]', sa.Column(sa.String(155), unique=True))
+    status: Mapped[str] = cast('Mapped[str]', sa.Column(sa.String(64), default=states.PENDING))
+    result: Mapped[Any] = cast('Mapped[Any]', sa.Column(PickleType, nullable=True))
     date_done = sa.Column(
         TimeZone,
         default=timezone.now,
@@ -45,17 +48,19 @@ class Task(MappedBase):
         return f'<Task {self.task_id} state: {self.status}>'
 
     @classmethod
-    def configure(cls, schema=None, name=None) -> None:  # ruff:ignore[missing-type-function-argument]
+    def configure(cls, schema: str | None = None, name: str | None = None) -> None:
         cls.__table__.schema = schema
-        cls.id.default.schema = schema
-        cls.__table__.name = name or cls.__tablename__
+        # sa.Column 的 default 声明为 DefaultGenerator | None，实际为 Sequence（基类未声明 schema 属性），需 cast
+        cast('sa.Sequence', cls.id.default).schema = schema
+        # DeclarativeBase 将 __table__ 声明为 FromClause，name 属性仅在 Table 上存在，需 cast
+        cast('sa.Table', cls.__table__).name = name or cls.__tablename__
 
 
 class TaskExtended(Task):
     """For the extend result."""
 
-    __tablename__ = 'task_result'
-    __table_args__ = {'extend_existing': True, 'comment': '任务结果表'}
+    __tablename__: str = 'task_result'
+    __table_args__: tuple[Any, ...] | dict[str, Any] = {'extend_existing': True, 'comment': '任务结果表'}
 
     name = sa.Column(sa.String(155), nullable=True)
     args = sa.Column(sa.LargeBinary, nullable=True)
@@ -80,11 +85,11 @@ class TaskExtended(Task):
 class TaskSet(MappedBase):
     """TaskSet result."""
 
-    __tablename__ = 'task_set_result'
-    __table_args__ = {'comment': '任务集结果表'}
+    __tablename__: str = 'task_set_result'
+    __table_args__: tuple[Any, ...] | dict[str, Any] = {'comment': '任务集结果表'}
 
     id = sa.Column(sa.Integer, sa.Sequence('taskset_id_sequence'), autoincrement=True, primary_key=True)
-    taskset_id = sa.Column(sa.String(155), unique=True)
+    taskset_id: Mapped[str] = cast('Mapped[str]', sa.Column(sa.String(155), unique=True))
     result = sa.Column(PickleType, nullable=True)
     date_done = sa.Column(TimeZone, default=timezone.now, nullable=True)
 
@@ -103,7 +108,9 @@ class TaskSet(MappedBase):
         return f'<TaskSet: {self.taskset_id}>'
 
     @classmethod
-    def configure(cls, schema=None, name=None) -> None:  # ruff:ignore[missing-type-function-argument]
+    def configure(cls, schema: str | None = None, name: str | None = None) -> None:
         cls.__table__.schema = schema
-        cls.id.default.schema = schema
-        cls.__table__.name = name or cls.__tablename__
+        # sa.Column 的 default 声明为 DefaultGenerator | None，实际为 Sequence（基类未声明 schema 属性），需 cast
+        cast('sa.Sequence', cls.id.default).schema = schema
+        # DeclarativeBase 将 __table__ 声明为 FromClause，name 属性仅在 Table 上存在，需 cast
+        cast('sa.Table', cls.__table__).name = name or cls.__tablename__

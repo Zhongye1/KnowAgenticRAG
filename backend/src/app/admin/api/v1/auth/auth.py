@@ -1,3 +1,4 @@
+from typing import cast
 
 from fastapi import APIRouter, Depends, Request, Response
 from pyrate_limiter import Duration, Rate
@@ -29,7 +30,7 @@ async def register(
 ) -> ResponseSchemaModel[GetUserInfoWithRelationDetail]:
     await auth_service.register(db=db, obj=obj)
     data = await user_service.get_userinfo(db=db, username=obj.username)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[GetUserInfoWithRelationDetail]', response_base.success(data=data))
 
 
 @router.post(

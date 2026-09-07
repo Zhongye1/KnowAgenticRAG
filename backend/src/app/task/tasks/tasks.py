@@ -1,4 +1,5 @@
 from time import sleep
+from typing import cast
 
 from anyio import sleep as asleep
 
@@ -23,4 +24,5 @@ async def task_demo_async() -> str:
 async def task_demo_params(hello: str, world: str | None = None) -> str:
     """参数示例任务，模拟传参操作"""
     await asleep(1)
-    return hello + world
+    # world 实际由调用方必传，仅收窄类型，不改变运行时行为
+    return hello + cast('str', world)

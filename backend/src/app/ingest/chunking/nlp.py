@@ -4,6 +4,7 @@ import random
 import re
 
 from dataclasses import dataclass, field
+from typing import cast
 
 BULLET_PATTERN = [
     [
@@ -264,10 +265,11 @@ def make_colon_as_title(sections: list[str] | list[tuple[str, str]]) -> list[str
         return sections
     if isinstance(sections[0], str):
         return sections
+    tuple_sections = cast('list[tuple[str, str]]', sections)
 
     i = 0
-    while i < len(sections):
-        text, _layout = sections[i]
+    while i < len(tuple_sections):
+        text, _layout = tuple_sections[i]
         i += 1
         text = text.split('@')[0].strip()
         if not text or text[-1] not in ':：':
@@ -278,7 +280,7 @@ def make_colon_as_title(sections: list[str] | list[tuple[str, str]]) -> list[str
         if len(arr) < 2 or len(arr[1]) < 32:
             continue
 
-        sections.insert(i - 1, (arr[0][::-1], 'title'))
+        tuple_sections.insert(i - 1, (arr[0][::-1], 'title'))
         i += 1
 
     return sections
@@ -296,10 +298,11 @@ def tree_merge(bull: int, sections: list[str] | list[tuple[str, str]], depth: in
     if not sections or bull < 0:
         return [s if isinstance(s, str) else s[0] for s in sections]
 
+    typed_sections: list[tuple[str, str]]
     if isinstance(sections[0], str):
-        typed_sections: list[tuple[str, str]] = [(s, '') for s in sections]
+        typed_sections = [(s, '') for s in cast('list[str]', sections)]
     else:
-        typed_sections = sections  # type: ignore[assignment]
+        typed_sections = cast('list[tuple[str, str]]', sections)
 
     typed_sections = [
         (t, o)
@@ -348,10 +351,11 @@ def hierarchical_merge(bull: int, sections: list[str] | list[tuple[str, str]], d
     if not sections or bull < 0:
         return []
 
+    typed_sections: list[tuple[str, str]]
     if isinstance(sections[0], str):
-        typed_sections: list[tuple[str, str]] = [(s, '') for s in sections]
+        typed_sections = [(s, '') for s in cast('list[str]', sections)]
     else:
-        typed_sections = sections  # type: ignore[assignment]
+        typed_sections = cast('list[tuple[str, str]]', sections)
 
     typed_sections = [
         (t, o)
@@ -420,12 +424,11 @@ def hierarchical_merge(bull: int, sections: list[str] | list[tuple[str, str]], d
     if not cks:
         return []
 
-    for i in range(len(cks)):
-        cks[i] = [pure_sections[j] for j in reversed(cks[i])]
+    merged_cks: list[list[str]] = [[pure_sections[j] for j in reversed(ck)] for ck in cks]
 
     res: list[list[str]] = [[]]
     num = [0]
-    for ck in cks:
+    for ck in merged_cks:
         if len(ck) == 1:
             n = count_tokens(re.sub(r'@@[0-9]+.*', '', ck[0]))
             if n + num[-1] < 218:

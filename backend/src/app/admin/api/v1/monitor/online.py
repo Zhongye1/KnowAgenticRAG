@@ -1,6 +1,6 @@
 import json
 
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Path, Query
 
@@ -45,7 +45,8 @@ async def get_sessions(
     for token in token_values:
         if not token:
             continue
-        token_payload = jwt_decode(token)
+        # redis 客户端 decode_responses=True，token 运行时必为 str
+        token_payload = jwt_decode(cast('str', token))
         user_id = token_payload.user_id
         session_uuid = token_payload.session_uuid
         token_detail = GetTokenDetail(
@@ -65,9 +66,11 @@ async def get_sessions(
         extra_info_keys.append(f'{settings.TOKEN_EXTRA_INFO_REDIS_PREFIX}:{user_id}:{session_uuid}')
 
     extra_infos = await redis_client.mget(*extra_info_keys) if extra_info_keys else []
-    for token_detail, extra_info in zip(token_details, extra_infos, strict=True):
-        if extra_info:
-            extra_info = json.loads(extra_info)
+    # redis mget 返回类型为 list[bytes | str | None]，decode_responses=True 时实际为 str，json 解析后收窄为 dict
+    extra_info: dict[str, Any] = {}
+    for token_detail, raw_extra_info in zip(token_details, extra_infos, strict=True):
+        if raw_extra_info:
+            extra_info = json.loads(raw_extra_info)
             # 排除 swagger 登录生成的 token
             if extra_info.get('swagger') is None:
                 if username is not None:

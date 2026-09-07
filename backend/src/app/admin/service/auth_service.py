@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING, cast
+
 from fastapi import Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.background import BackgroundTask, BackgroundTasks
@@ -29,14 +31,15 @@ from backend.src.database.redis import redis_client
 from backend.src.utils.dynamic_config import load_login_config
 from backend.src.utils.timezone import timezone
 
+if TYPE_CHECKING:
+    from datetime import datetime
+
 
 class AuthService:
     """认证服务类"""
 
     @staticmethod
-    async def verify_captcha(
-        *, db: AsyncSession, uuid: str | None, captcha: str | None
-    ) -> None:
+    async def verify_captcha(*, db: AsyncSession, uuid: str | None, captcha: str | None) -> None:
         """
         校验图形验证码（登录/注册共用）
 
@@ -49,11 +52,12 @@ class AuthService:
         if not settings.LOGIN_CAPTCHA_ENABLED:
             return
         if not uuid or not captcha:
-            raise errors.RequestError(msg=t('error.captcha.invalid'))
+            # t() 声明返回类型过宽，此处键位实际返回翻译后的字符串
+            raise errors.RequestError(msg=cast('str', t('error.captcha.invalid')))
         key = f'{settings.LOGIN_CAPTCHA_REDIS_PREFIX}:{uuid}'
         captcha_code = await redis_client.get(key)
         if not captcha_code:
-            raise errors.RequestError(msg=t('error.captcha.expired'))
+            raise errors.RequestError(msg=cast('str', t('error.captcha.expired')))
         if captcha_code.lower() != captcha.lower():
             raise errors.CustomError(error=CustomErrorCode.CAPTCHA_ERROR)
         await redis_client.delete(key)
@@ -132,7 +136,8 @@ class AuthService:
                 # extra info
                 username=user.username,
                 nickname=user.nickname,
-                last_login_time=timezone.to_str(user.last_login_time),
+                # update_login_time 后已 refresh，last_login_time 必非 None
+                last_login_time=timezone.to_str(cast('datetime', user.last_login_time)),
                 ip=ctx.ip,
                 os=ctx.os,
                 browser=ctx.browser,
@@ -152,8 +157,11 @@ class AuthService:
             )
         except errors.NotFoundError as e:
             log.error('登陆错误: 用户名不存在')
-            raise errors.NotFoundError(msg=e.msg)
+            # 本流程抛出的 NotFoundError 均携带 str msg
+            raise errors.NotFoundError(msg=cast('str', e.msg))
         except (errors.RequestError, errors.CustomError) as e:
+            # 本流程抛出的 RequestError/CustomError 均携带 str msg
+            msg = cast('str', e.msg)
             if not user:
                 log.error(f'登陆错误: {e.msg}')
             task = BackgroundTask(
@@ -162,9 +170,9 @@ class AuthService:
                 username=obj.username,
                 login_time=timezone.now(),
                 status=LoginLogStatusType.fail.value,
-                msg=e.msg,
+                msg=msg,
             )
-            raise errors.RequestError(code=e.code, msg=e.msg, background=task)
+            raise errors.RequestError(code=e.code, msg=msg, background=task)
         except Exception as e:
             log.error(f'登陆错误: {e}')
             raise
@@ -175,7 +183,7 @@ class AuthService:
                 username=obj.username,
                 login_time=timezone.now(),
                 status=LoginLogStatusType.success.value,
-                msg=t('success.login.success'),
+                msg=cast('str', t('success.login.success')),
             )
             data = GetLoginToken(
                 access_token=access_token_data.access_token,
@@ -244,7 +252,8 @@ class AuthService:
             # extra info
             username=user.username,
             nickname=user.nickname,
-            last_login_time=timezone.to_str(user.last_login_time),
+            # 能刷新令牌说明此前已登录成功，last_login_time 必非 None
+            last_login_time=timezone.to_str(cast('datetime', user.last_login_time)),
             ip=ctx.ip,
             os=ctx.os,
             browser=ctx.browser,

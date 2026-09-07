@@ -1,7 +1,7 @@
 import io
 import json
 
-from typing import Any
+from typing import Any, cast
 
 import anyio
 
@@ -46,7 +46,8 @@ class PluginService:
     @staticmethod
     async def changed() -> str | None:
         """检查插件是否发生变更"""
-        return await redis_client.get(f'{settings.PLUGIN_REDIS_PREFIX}:changed')
+        # RedisCli 默认 decode_responses=True，返回值实为 str | None（同 plugin/status.py 的处理）
+        return cast('str | None', await redis_client.get(f'{settings.PLUGIN_REDIS_PREFIX}:changed'))
 
     @staticmethod
     async def install(*, type: PluginType, file: UploadFile | None = None, repo_url: str | None = None) -> str:

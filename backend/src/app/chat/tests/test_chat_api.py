@@ -42,7 +42,7 @@ def _noop_auth_db(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     # scope 依赖罐头（测试无真实用户，不经 ACL/部门树查询）
     dummy_scope = Scope(namespace='core', user_id='test', groups=['test'], allowed_kbs=['dev'])
 
-    async def _noop_scope() -> Scope:
+    async def _noop_scope() -> Scope:  # ruff: ignore[unused-async]  # 替换 get_retrieval_scope（FastAPI 会 await 依赖）
         return dummy_scope
 
     app.dependency_overrides[get_retrieval_scope] = _noop_scope

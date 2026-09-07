@@ -33,4 +33,5 @@ class TypedContext(TypedContextProtocol, _Context):
         context[name] = value
 
 
-ctx = TypedContext()
+# 属性由 __getattr__/__setattr__ 动态代理到 starlette-context，Protocol 抽象成员无需显式实现
+ctx = TypedContext()  # pyright: ignore[reportAbstractUsage]

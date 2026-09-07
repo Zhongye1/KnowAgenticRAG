@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, Path, Query
 from sqlalchemy import ColumnElement
@@ -20,7 +20,7 @@ async def get_dept(
     db: CurrentSession, pk: Annotated[int, Path(description='部门 ID')]
 ) -> ResponseSchemaModel[GetDeptDetail]:
     data = await dept_service.get(db=db, pk=pk)
-    return response_base.success(data=data)
+    return cast('ResponseSchemaModel[GetDeptDetail]', response_base.success(data=data))
 
 
 @router.get('', summary='获取部门树', dependencies=[DependsJwtAuth])
@@ -35,7 +35,7 @@ async def get_dept_tree(
     dept = await dept_service.get_tree(
         db=db, data_filter=data_filter, name=name, leader=leader, phone=phone, status=status
     )
-    return response_base.success(data=dept)
+    return cast('ResponseSchemaModel[list[GetDeptTree]]', response_base.success(data=dept))
 
 
 @router.post(

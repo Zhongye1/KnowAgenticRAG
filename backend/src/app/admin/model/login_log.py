@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import ClassVar
 
 import sqlalchemy as sa
 
@@ -11,7 +12,7 @@ from backend.src.utils.timezone import timezone
 class LoginLog(DataClassBase):
     """登录日志表"""
 
-    __tablename__ = 'sys_login_log'
+    __tablename__: ClassVar[str] = 'sys_login_log'
 
     id: Mapped[id_key] = mapped_column(init=False)
     user_uuid: Mapped[str] = mapped_column(sa.String(64), comment='用户UUID')
