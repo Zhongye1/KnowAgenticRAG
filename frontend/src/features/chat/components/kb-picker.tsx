@@ -31,8 +31,11 @@ export const KbPicker = () => {
 
   return (
     <Select value={kbName ?? ''} onValueChange={(value) => setKbName(value || null)}>
-      <SelectTrigger className="w-64" aria-label="选择知识库">
-        <LibraryBig className="text-muted-foreground size-4 shrink-0" />
+      <SelectTrigger
+        className="bg-muted/60 hover:bg-muted h-8 w-auto gap-1.5 rounded-full border-none px-2.5 text-xs shadow-none"
+        aria-label="选择知识库"
+      >
+        <LibraryBig className="text-muted-foreground size-3.5 shrink-0" />
         <SelectValue
           placeholder={isLoading ? '加载知识库…' : '选择知识库'}
         />

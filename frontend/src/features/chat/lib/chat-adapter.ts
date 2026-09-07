@@ -61,14 +61,24 @@ async function* openEventStream(
 }
 
 export const chatAdapter: ChatModelAdapter = {
-  async *run({ messages, abortSignal, unstable_assistantMessageId }) {
+  async *run({ messages, abortSignal, context, unstable_assistantMessageId }) {
     const messageId = unstable_assistantMessageId ?? '';
-    const param = buildChatParam(messages);
+
+    // 模型/思考等级来自 ModelContext（ModelSelector 元素注册的 config）
+    const config = context?.config as Record<string, unknown> | undefined;
+    const model = typeof config?.modelName === 'string' && config.modelName ? config.modelName : undefined;
+    const rawEffort = config?.reasoningEffort;
+    const thinkingLevel =
+      typeof rawEffort === 'string' && ['off', 'low', 'medium', 'high'].includes(rawEffort)
+        ? rawEffort
+        : undefined;
+
+    const param = buildChatParam(messages, { model, thinkingLevel });
     if (!param) return;
 
     const kbName = useChatSettingsStore.getState().kbName;
     if (!kbName) {
-      throw new Error('请先在顶部选择要问答的知识库');
+      throw new Error('请先选择要问答的知识库');
     }
 
     const runStore = useChatRunStore.getState();

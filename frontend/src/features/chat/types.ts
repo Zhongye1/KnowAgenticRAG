@@ -35,6 +35,12 @@ export interface ChatUsage {
   total_tokens?: number;
 }
 
+/** 随问文本附件（对齐后端 ChatAttachment：≤4 个、单个 ≤32KB） */
+export interface ChatRequestAttachment {
+  filename: string;
+  content: string;
+}
+
 /** 单轮对话的运行期信息（按 assistant 消息 ID 关联，供 UI 渲染） */
 export interface ChatRunInfo {
   meta?: ChatMeta;

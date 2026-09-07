@@ -23,7 +23,7 @@ export const ChatWelcome = () => {
       <p className="text-muted-foreground mt-2 text-sm">
         {kbName
           ? '基于所选知识库检索并生成带引用来源的回答'
-          : '请先在顶部选择要问答的知识库'}
+          : '请先在下方选择要问答的知识库'}
       </p>
       <div className="mt-6 flex w-full flex-wrap items-center justify-center gap-2">
         {SUGGESTED_QUESTIONS.map((question) => (

@@ -112,6 +112,32 @@ const sseStream = (
 };
 
 export const chatHandlers = [
+  http.get(`${env.API_URL}/api/v1/system/model-providers`, async () => {
+    await networkDelay();
+    return HttpResponse.json(
+      ok([
+        {
+          provider_id: 'mock',
+          display_name: 'Mock AI',
+          capabilities: ['chat', 'embedding'],
+          is_enabled: true,
+          enabled_models: [
+            { id: 'qwen2.5-72b-instruct', type: 'chat', display_name: 'Qwen2.5 72B' },
+            { id: 'deepseek-v3', type: 'chat', display_name: 'DeepSeek V3' },
+            { id: 'bge-m3', type: 'embedding', display_name: 'BGE-M3' },
+          ],
+        },
+        {
+          provider_id: 'disabled',
+          display_name: '停用供应商',
+          capabilities: ['chat'],
+          is_enabled: false,
+          enabled_models: [{ id: 'hidden', type: 'chat' }],
+        },
+      ]),
+    );
+  }),
+
   http.get(`${env.API_URL}/api/v1/knowledge_bases`, async ({ request }) => {
     await networkDelay();
     const url = new URL(request.url);
@@ -137,6 +163,7 @@ export const chatHandlers = [
       const kbName = String(params.kbName ?? 'platform_docs');
       const body = (await request.json().catch(() => ({}))) as {
         query_text?: string;
+        model?: string;
       };
       const query = body.query_text ?? '这个问题';
 
@@ -159,10 +186,12 @@ export const chatHandlers = [
 
       const citations = buildCitations(kbName);
       const answer = buildAnswer(query);
+      // meta.model_spec 回显请求的 model，用于端到端验证模型选择链路
+      const modelSpec = body.model ?? 'mock:default';
       const events: Array<{ event: string; data: unknown; delay?: number }> = [
         {
           event: 'meta',
-          data: { kb_name: kbName, mode: 'hybrid', model_spec: 'mock:qwen2.5-7b', hit_count: 2 },
+          data: { kb_name: kbName, mode: 'hybrid', model_spec: modelSpec, hit_count: 2 },
           delay: 300,
         },
         { event: 'citation', data: { citations }, delay: 80 },

@@ -8,6 +8,7 @@ import {
   ThreadPrimitive,
   useAuiState,
 } from '@assistant-ui/react';
+import { useMessagePartText } from '@assistant-ui/react';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -21,12 +22,19 @@ import {
 } from 'lucide-react';
 import type { FC } from 'react';
 
+import {
+  ComposerAddAttachment,
+  ComposerAttachments,
+  UserMessageAttachments,
+} from '@/components/assistant-ui/elements/attachment.aui';
 import { TooltipIconButton } from '@/components/assistant-ui/elements/tooltip-icon-button';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 import { ChatWelcome } from './chat-welcome';
 import { AnswerMarkdown } from './answer-markdown';
+import { KbPicker } from './kb-picker';
+import { ChatModelSelector } from './model-selector';
 import {
   AssistantMessageMeta,
   MessageSources,
@@ -87,11 +95,15 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
 
           <ThreadPrimitive.ViewportFooter
             className={cn(
-              'bg-background flex flex-col gap-4 overflow-visible pb-4 md:pb-6',
+              'bg-background flex flex-col gap-3 overflow-visible pb-4 md:pb-6',
               !isEmpty && 'sticky bottom-0 mt-auto rounded-t-(--composer-radius)',
             )}
           >
             <ThreadScrollToBottom />
+            <div className="flex items-center gap-1.5">
+              <KbPicker />
+              <ChatModelSelector />
+            </div>
             <Composer autoFocus={autoFocus} />
           </ThreadPrimitive.ViewportFooter>
         </div>
@@ -123,51 +135,57 @@ const ThreadScrollToBottom: FC = () => (
 
 const Composer: FC<{ autoFocus: boolean }> = ({ autoFocus }) => (
   <ComposerPrimitive.Root className="relative flex w-full flex-col">
-    <div
-      data-slot="chat_composer-shell"
-      className="border-border/60 focus-within:border-ring dark:border-muted-foreground/15 dark:focus-within:border-muted-foreground/30 flex w-full cursor-text flex-col gap-2 rounded-(--composer-radius) border bg-card p-2 transition-[border-color]"
-    >
-      <ComposerPrimitive.Input
-        placeholder="输入你的问题，Enter 发送"
-        className="caret-primary placeholder:text-muted-foreground/60 max-h-48 min-h-10 w-full resize-none bg-transparent px-2.5 py-1 text-base leading-6 outline-none"
-        rows={1}
-        autoFocus={autoFocus}
-        enterKeyHint="send"
-        aria-label="消息输入"
-      />
-      <div className="flex items-center justify-end gap-1.5">
-        <AuiIf condition={(s) => !s.thread.isRunning}>
-          <ComposerPrimitive.Send asChild>
-            <TooltipIconButton
-              tooltip="发送"
-              side="bottom"
-              type="button"
-              variant="default"
-              size="icon"
-              className="size-7 rounded-full"
-              aria-label="发送"
-            >
-              <ArrowUpIcon className="size-4" />
-            </TooltipIconButton>
-          </ComposerPrimitive.Send>
-        </AuiIf>
-        <AuiIf condition={(s) => s.thread.isRunning}>
-          <ComposerPrimitive.Cancel asChild>
-            <Button
-              type="button"
-              variant="default"
-              size="icon"
-              className="size-7 rounded-full"
-              aria-label="停止生成"
-            >
-              <SquareIcon className="size-3.5 fill-current" />
-            </Button>
-          </ComposerPrimitive.Cancel>
-        </AuiIf>
+    <ComposerPrimitive.AttachmentDropzone asChild>
+      <div
+        data-slot="chat_composer-shell"
+        className="border-border/60 focus-within:border-ring dark:border-muted-foreground/15 dark:focus-within:border-muted-foreground/30 flex w-full cursor-text flex-col gap-2 rounded-(--composer-radius) border bg-card p-2 transition-[border-color] data-[dragging=true]:border-dashed data-[dragging=true]:bg-accent/30"
+      >
+        <ComposerAttachments />
+        <ComposerPrimitive.Input
+          placeholder="输入你的问题，Enter 发送"
+          className="caret-primary placeholder:text-muted-foreground/60 max-h-48 min-h-10 w-full resize-none bg-transparent px-2.5 py-1 text-base leading-6 outline-none"
+          rows={1}
+          autoFocus={autoFocus}
+          enterKeyHint="send"
+          aria-label="消息输入"
+        />
+        <div className="flex items-center justify-between gap-1.5">
+          <ComposerAddAttachment />
+          <div className="flex items-center gap-1.5">
+            <AuiIf condition={(s) => !s.thread.isRunning}>
+              <ComposerPrimitive.Send asChild>
+                <TooltipIconButton
+                  tooltip="发送"
+                  side="bottom"
+                  type="button"
+                  variant="default"
+                  size="icon"
+                  className="size-7 rounded-full"
+                  aria-label="发送"
+                >
+                  <ArrowUpIcon className="size-4" />
+                </TooltipIconButton>
+              </ComposerPrimitive.Send>
+            </AuiIf>
+            <AuiIf condition={(s) => s.thread.isRunning}>
+              <ComposerPrimitive.Cancel asChild>
+                <Button
+                  type="button"
+                  variant="default"
+                  size="icon"
+                  className="size-7 rounded-full"
+                  aria-label="停止生成"
+                >
+                  <SquareIcon className="size-3.5 fill-current" />
+                </Button>
+              </ComposerPrimitive.Cancel>
+            </AuiIf>
+          </div>
+        </div>
       </div>
-    </div>
+    </ComposerPrimitive.AttachmentDropzone>
     <p className="text-muted-foreground/70 mt-1.5 text-center text-xs">
-      回答由 AI 基于知识库内容生成，请以引用来源为准
+      回答由 AI 基于知识库内容生成，请以引用来源为准；支持拖入轻量文本文件作为附件
     </p>
   </ComposerPrimitive.Root>
 );
@@ -225,15 +243,27 @@ const AssistantActionBar: FC = () => (
   </ActionBarPrimitive.Root>
 );
 
+/** 用户消息文本渲染：剥离随问附件块（附件已由 UserMessageAttachments 以卡片展示） */
+const UserText: FC = () => {
+  const { text } = useMessagePartText();
+  const display = text
+    .replace(/<attachment[\s\S]*?<\/attachment>\n?/g, '')
+    .trim();
+  if (!display) return null;
+  return <div className="break-words whitespace-pre-wrap">{display}</div>;
+};
+
 const UserMessage: FC = () => (
   <MessagePrimitive.Root
     data-slot="chat_user-message-root"
     data-role="user"
     className="fade-in slide-in-from-bottom-1 animate-in grid auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 duration-150 [contain-intrinsic-size:auto_200px] [content-visibility:auto] [&:where(>*)]:col-start-2"
   >
+    <UserMessageAttachments />
+
     <div className="relative col-start-2 min-w-0">
       <div className="bg-muted text-foreground peer rounded-xl px-4 py-2 wrap-break-word empty:hidden">
-        <MessagePrimitive.Parts />
+        <MessagePrimitive.Parts components={{ Text: UserText }} />
       </div>
       <div className="absolute start-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden">
         <UserActionBar />
