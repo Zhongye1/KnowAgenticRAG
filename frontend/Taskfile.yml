@@ -1,0 +1,68 @@
+version: '3'
+
+# 前端开发任务（本 Taskfile 位于 frontend/ 目录）
+#
+# 代码质量工具链已迁移到 oxc：
+#   - lint：oxlint（配置见 .oxlintrc.json，替换原 ESLint）
+#   - format：prettier（保留，oxfmt 仍实验性）
+# 包管理器使用 pnpm（见 pnpm-lock.yaml / pnpm-workspace.yaml）。
+
+tasks:
+  install:
+    desc: 安装前端依赖
+    cmds:
+      - pnpm install
+
+  dev:
+    desc: 启动前端开发服务器（Vite）
+    cmds:
+      - pnpm dev
+
+  lint:
+    desc: oxlint 代码检查
+    cmds:
+      - pnpm lint
+
+  lint:fix:
+    desc: oxlint 代码检查并自动修复
+    cmds:
+      - pnpm lint:fix
+
+  check:tokens:
+    desc: 设计 Token 使用规范校验（禁止硬编码颜色 / 默认调色板类）
+    cmds:
+      - pnpm check:tokens
+  arch:check:
+    desc: 架构契约校验（dependency-cruiser：分层 / feature 边界）
+    cmds:
+      - pnpm arch:check
+
+  format:
+    desc: prettier 格式化（写入）
+    cmds:
+      - pnpm format
+
+  format:check:
+    desc: prettier 格式化检查（CI 用）
+    cmds:
+      - pnpm format:check
+
+  type-check:
+    desc: tsc 类型检查（不输出产物）
+    cmds:
+      - pnpm check-types
+
+  test:
+    desc: 运行单元测试（vitest）
+    cmds:
+      - pnpm test
+
+  build:
+    desc: 类型检查并构建生产包
+    cmds:
+      - pnpm build
+
+  generate:api:
+    desc: IDL生成前端接口相关代码
+    cmds:
+      - pnpm generate:api

@@ -1,0 +1,5 @@
+.env
+.env.*.local
+.pytest_cache/
+.ruff_cache/
+src/log/

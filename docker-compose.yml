@@ -1,296 +1,463 @@
-version: "3.9"
+networks:
+  ragf_network:
+    name: ragf_network
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.10.10.0/24
 
-# ================================================================
-# KnowledgeRAG — 完整容器化编排（上传全链路根治版）
-#
-# 架构三层解耦：
-#   上传接收层（backend）→ Redis Stream 事件总线 → 任务处理层（worker）
-#
-# 核心改进：
-#   1. 新增 redis 服务（Alpine，~10MB）作为 Stream 事件总线
-#   2. 新增 worker 服务（复用 backend 镜像，零额外体积）单独处理向量化
-#   3. backend / worker 资源隔离，处理服务 OOM 不影响上传接口
-#   4. 全部 Alpine 镜像，MySQL/Redis 体积各降低 60%+
-#
-# 启动方式：docker compose up -d
-# 生产部署：docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-# ================================================================
+
+volumes:
+  ragf_postgres:
+    name: ragf_postgres
+  ragf_redis:
+    name: ragf_redis
+  ragf_static:
+    name: ragf_static
+  ragf_static_upload:
+    name: ragf_static_upload
+  ragf_rabbitmq:
+    name: ragf_rabbitmq
+  ragf_minio_data:
+    name: ragf_minio_data
+  ragf_etcd_data:
+    name: ragf_etcd_data
+  ragf_milvus_data:
+    name: ragf_milvus_data
+  ragf_loki_data:
+    name: ragf_loki_data
+  ragf_prometheus_data:
+    name: ragf_prometheus_data
+  ragf_tempo_data:
+    name: ragf_tempo_data
 
 services:
-
-  # ── Redis（Alpine，~10MB）— 事件总线 + 任务状态持久化 ───────────
-  redis:
-    image: redis:7-alpine
-    container_name: ragf-redis
-    restart: unless-stopped
-    command: >
-      redis-server
-      --save 60 1
-      --loglevel warning
-      --maxmemory 128mb
-      --maxmemory-policy allkeys-lru
+  # 后端API
+  ragf_server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ragf_server:latest
     ports:
-      - "6380:6379"    # 宿主机用 6380 避免与本地 Redis 冲突
+      - "${DOCKER_MAP_SERVER_PORT:-8001}:8001"
+    container_name: ragf_server
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      ragf_postgres:
+        condition: service_healthy
+      ragf_redis:
+        condition: service_healthy
+      ragf_rabbitmq:
+        condition: service_healthy
+      ragf_minio:
+        condition: service_healthy
+      ragf_milvus:
+        condition: service_healthy
     volumes:
-      - redis_data:/data
+      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
+      - ragf_static:/ragf/backend/src/static
+      - ragf_static_upload:/ragf/backend/src/static/upload
+      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
+    networks:
+      - ragf_network
+
+  ragf_postgres:
+    image: postgres:16
+    ports:
+      - "${DOCKER_MAP_POSTGRES_PORT:-5432}:5432"
+    container_name: ragf_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      TZ: Asia/Shanghai
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - ragf_postgres:/var/lib/postgresql/data
+    networks:
+      - ragf_network
+
+  ragf_redis:
+    image: redis:latest
+    ports:
+      - "${DOCKER_MAP_REDIS_PORT:-6379}:6379"
+    container_name: ragf_redis
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 3s
-      retries: 5
-      start_period: 10s
-    networks:
-      - ragf-net
-
-  # ── MySQL（Alpine，~50MB）────────────────────────────────────────
-  mysql:
-    image: mysql:8.0
-    container_name: ragf-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-Www028820}
-      MYSQL_DATABASE: ${DB_NAME:-rag_user_db}
-      MYSQL_CHARSET: utf8mb4
-      MYSQL_COLLATION: utf8mb4_unicode_ci
-    ports:
-      - "3307:3306"          # 宿主机用 3307 避免与本地 MySQL 冲突
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./RagBackend/docs/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    deploy:
-      resources:
-        limits:
-          memory: 512m
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD:-Www028820}"]
-      interval: 10s
+      interval: 5s
       timeout: 5s
-      retries: 5
-      start_period: 30s
-    networks:
-      - ragf-net
-
-  # ── Ollama 本地 LLM 服务 ──────────────────────────────────────
-  ollama:
-    image: ollama/ollama:latest
-    container_name: ragf-ollama
-    restart: unless-stopped
-    ports:
-      - "11435:11434"    # 11435 on host -> 11434 in container (avoids conflict with local Ollama)
+      retries: 10
     volumes:
-      - ollama_data:/root/.ollama
-    deploy:
-      resources:
-        limits:
-          memory: 2g      # qwen2:0.5b 约需 600MB，留余量
-    # GPU 加速（有 NVIDIA GPU 时取消注释）
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
+      - ragf_redis:/data
+    networks:
+      - ragf_network
+
+  # 【后端专用】
+  # 如果使用此容器，意味着你只需部署后端 API 服务，不需要前端
+  # 这与下面的 ragf_ui 容器冲突，如果你选择使用 ragf_ui 容器，你应该注释或删除 ragf_nginx 容器脚本
+  ragf_nginx:
+    image: nginx:latest
+    ports:
+      - "${DOCKER_MAP_NGINX_PORT:-8000}:80"
+    container_name: ragf_nginx
+    restart: always
+    depends_on:
+      ragf_server:
+        condition: service_started
+    volumes:
+      - ./deploy/backend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ragf_static:/www/ragf_server/backend/static:ro
+      - ragf_static_upload:/www/ragf_server/backend/static/upload:ro
+    networks:
+      - ragf_network
+
+  #  # 如果服务器内存小于 4GB，CPU 小于四个内核
+  #  # 建议通过前端工程单独构建此容器或在本地进行构建
+  #  ragf_ui:
+  #    build:
+  #      context: /root/fastapi_best_architecture_ui
+  #      dockerfile: Dockerfile
+  #    image: ragf_ui:latest
+  #    ports:
+  #      - "80:80"
+  #      - "443:443"
+  #    container_name: ragf_ui
+  #    restart: always
+  #    depends_on:
+  #      - ragf_server
+  #    command:
+  #      - nginx
+  #      - -g
+  #      - daemon off;
+  #    volumes:
+  #      # nginx https conf
+  #      # 通过 docker 进行部署时，需要打开此配置项并确保<挂载到容器内的证书文件路径>配置
+  #      # 与 nginx conf 中的 ssl 证书文件路径配置一致，如果你直接将 ssl 证书文件 cp
+  #      # 到了 docker 容器内，则无需挂载证书文件，直接将它们注释或删除即可
+  #      # local_ssl_pem_path：你在服务器存放 ssl pem 证书文件的路径，自行修改
+  #      # local_ssl_key_path: 你在服务器存放 ssl key 证书文件的路径，自行修改
+  #      # /etc/ssl/xxx.pem：挂载到容器内 ssl pem 证书文件的路径，自行修改
+  #      # /etc/ssl/xxx.key：挂载到容器内 ssl key 证书文件的路径，自行修改
+  #      - local_ssl_pem_path:/etc/ssl/xxx.pem
+  #      - local_ssl_key_path:/etc/ssl/xxx.key
+  #      - ragf_static:/www/ragf_server/backend/static
+  #      - ragf_static_upload:/www/ragf_server/backend/static/upload
+  #    networks:
+  #      - ragf_network
+
+  ragf_rabbitmq:
+    hostname: ragf_rabbitmq
+    image: rabbitmq:3.13.7-management
+    ports:
+      - "${DOCKER_MAP_RABBITMQ_UI_PORT:-15672}:15672"
+      - "${DOCKER_MAP_RABBITMQ_PORT:-5672}:5672"
+    container_name: ragf_rabbitmq
+    restart: always
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
     healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 30s
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
       timeout: 10s
-      retries: 3
+      retries: 12
+    volumes:
+      - ragf_rabbitmq:/var/lib/rabbitmq
+    networks:
+      - ragf_network
+
+  ragf_minio:
+    image: minio/minio:latest
+    ports:
+      - "${DOCKER_MAP_MINIO_API_PORT:-9000}:9000"
+      - "${DOCKER_MAP_MINIO_CONSOLE_PORT:-9001}:9001"
+    container_name: ragf_minio
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin123}
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    command: server /data --console-address ":9001"
+    volumes:
+      - ragf_minio_data:/data
+    networks:
+      ragf_network:
+        # MinIO 会校验 HTTP Host 头，下划线主机名会被拒绝（invalid hostname），
+        # 因此 Milvus 与后端应用统一通过不带下划线的别名访问
+        aliases:
+          - ragf-minio
+
+  # Milvus standalone 的元数据后端
+  ragf_etcd:
+    image: quay.io/coreos/etcd:v3.5.18
+    container_name: ragf_etcd
+    restart: always
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+    command:
+      - etcd
+      - -advertise-client-urls=http://ragf_etcd:2379
+      - -listen-client-urls=http://0.0.0.0:2379
+      - --data-dir=/etcd
+    volumes:
+      - ragf_etcd_data:/etcd
+    networks:
+      - ragf_network
+
+  # Milvus standalone（对象存储复用 ragf_minio，通过 MINIO_ADDRESS 指向）
+  ragf_milvus:
+    image: milvusdb/milvus:v2.5.12
+    ports:
+      - "${DOCKER_MAP_MILVUS_PORT:-19530}:19530"
+      - "${DOCKER_MAP_MILVUS_METRICS_PORT:-9091}:9091"
+    container_name: ragf_milvus
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+      - ETCD_ENDPOINTS=ragf_etcd:2379
+      - COMMON_STORAGETYPE=remote
+      - MINIO_ADDRESS=ragf-minio:9000
+      - MINIO_ACCESSKEYID=${MINIO_ROOT_USER:-minioadmin}
+      - MINIO_SECRETACCESSKEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
       start_period: 60s
-    networks:
-      - ragf-net
-
-  # ── 模型预拉取（一次性初始化任务）─────────────────────────────
-  ollama-init:
-    image: ollama/ollama:latest
-    container_name: ragf-ollama-init
-    restart: "no"
+    command: ["milvus", "run", "standalone"]
     depends_on:
-      ollama:
+      ragf_minio:
         condition: service_healthy
-    entrypoint: >
-      sh -c "
-        echo '[ollama-init] 开始拉取模型...' &&
-        OLLAMA_HOST=http://ollama:11434 ollama pull ${MODEL:-qwen2:0.5b} &&
-        echo '[ollama-init] 模型拉取完成: ${MODEL:-qwen2:0.5b}'
-      "
-    environment:
-      OLLAMA_HOST: http://ollama:11434
-    networks:
-      - ragf-net
-
-  # ── FastAPI 主服务（上传接收 + RAG 问答，优先保障资源）─────────
-  # 职责：HTTP 接口、文件校验、元数据写入、任务入队（毫秒级）
-  # 不执行任何 CPU 密集型操作，响应时间 < 300ms
-  backend:
-    build:
-      context: ./RagBackend
-      dockerfile: Dockerfile
-    container_name: ragf-backend
-    restart: unless-stopped
-    depends_on:
-      mysql:
-        condition: service_healthy
-      ollama:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      # 数据库（连接容器内 MySQL，主机名用 service 名）
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: ${DB_PASSWORD:-Www028820}
-      DB_NAME: ${DB_NAME:-rag_user_db}
-      DB_CHARSET: utf8mb4
-      # JWT
-      JWT_SECRET: ${JWT_SECRET:-changeme_jwt_secret_please_replace_in_production}
-      # Ollama
-      OLLAMA_BASE_URL: http://ollama:11434
-      MODEL: ${MODEL:-qwen2:0.5b}
-      # Redis（事件总线）
-      REDIS_URL: redis://redis:6379/0
-      # 多模型云端 API（可选）
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      HUNYUAN_SECRET_ID: ${HUNYUAN_SECRET_ID:-}
-      HUNYUAN_SECRET_KEY: ${HUNYUAN_SECRET_KEY:-}
-      # Whisper 语音识别（base/small/medium/large，默认 base）
-      WHISPER_MODEL: ${WHISPER_MODEL:-base}
-      # 飞书机器人集成（可选）
-      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
-      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
-      FEISHU_VERIFICATION_TOKEN: ${FEISHU_VERIFICATION_TOKEN:-}
-      FEISHU_ENCRYPT_KEY: ${FEISHU_ENCRYPT_KEY:-}
-      FEISHU_DEFAULT_KB_ID: ${FEISHU_DEFAULT_KB_ID:-}
-      # 前端地址（QQ 回调跳转）
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8089}
-      # Python
-      PYTHONUNBUFFERED: "1"
-    ports:
-      - "8000:8000"
+      ragf_etcd:
+        condition: service_started
     volumes:
-      # 持久化本地文件、向量库、用户头像（命名卷，IO 性能优于宿主机目录挂载）
-      - ragf_files:/app/local-KLB-files
-      - ragf_metadata:/app/metadata
-      - ragf_avatars:/app/user_avatars
-      - ragf_vectorstore:/app/knowledge_base
-      - ragf_sqlite:/app/data
-    deploy:
-      resources:
-        limits:
-          memory: 1500m   # 主服务：优先保障上传接口和 RAG 问答
-          cpus: "1.0"
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/docs')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+      - ragf_milvus_data:/var/lib/milvus
     networks:
-      - ragf-net
+      - ragf_network
 
-  # ── 文档处理 Worker（独立服务，资源隔离）──────────────────────
-  # 职责：从 Redis Stream 消费任务，执行文档解析 + 向量化
-  # 与主服务完全资源隔离：Worker OOM/崩溃，主服务上传/问答不受影响
-  # 复用同一 backend 镜像，零额外镜像体积
-  worker:
+  ragf_celery_worker:
     build:
-      context: ./RagBackend
+      context: .
       dockerfile: Dockerfile
-    container_name: ragf-worker
-    # Worker 启动命令：直接运行 Worker 入口，不启动 HTTP 服务器
-    command: >
-      python -c "
-      import asyncio, logging
-      logging.basicConfig(level=logging.INFO)
-      async def main():
-          from document_processing.vectorize_task import register_all
-          register_all()
-          from document_processing.task_queue import ensure_worker_started, _redis_worker
-          import os
-          redis_url = os.environ.get('REDIS_URL', 'redis://redis:6379/0')
-          logging.info('[Worker] 启动独立文档处理 Worker，REDIS_URL=%s', redis_url)
-          await ensure_worker_started()
-          # 永久保持运行
-          await asyncio.Event().wait()
-      asyncio.run(main())
-      "
-    restart: unless-stopped
-    depends_on:
-      redis:
-        condition: service_healthy
-      mysql:
-        condition: service_healthy
-      ollama:
-        condition: service_healthy
+      args:
+        - SERVER_TYPE=ragf_celery_worker
+    image: ragf_celery_worker:latest
+    # 如果你需要分布式部署 Worker，则必须移除此 container_name 配置
+    container_name: ragf_celery_worker
+    restart: always
     environment:
-      DB_HOST: mysql
-      DB_PORT: 3306
-      DB_USER: root
-      DB_PASSWORD: ${DB_PASSWORD:-Www028820}
-      DB_NAME: ${DB_NAME:-rag_user_db}
-      DB_CHARSET: utf8mb4
-      JWT_SECRET: ${JWT_SECRET:-changeme_jwt_secret_please_replace_in_production}
-      OLLAMA_BASE_URL: http://ollama:11434
-      MODEL: ${MODEL:-qwen2:0.5b}
-      REDIS_URL: redis://redis:6379/0
-      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      PYTHONUNBUFFERED: "1"
-    volumes:
-      # 与主服务共享同一组命名卷（文件存储、向量库）
-      - ragf_files:/app/local-KLB-files
-      - ragf_metadata:/app/metadata
-      - ragf_vectorstore:/app/knowledge_base
-      - ragf_sqlite:/app/data
-    deploy:
-      resources:
-        limits:
-          memory: 2000m   # Worker 需要更多内存用于向量化模型推理
-          cpus: "1.5"
-    networks:
-      - ragf-net
-
-  # ── Vue3 前端（生产构建 + Nginx 托管）────────────────────────
-  frontend:
-    build:
-      context: ./RagFrontend
-      dockerfile: Dockerfile
-    container_name: ragf-frontend
-    restart: unless-stopped
+      - TZ=Asia/Shanghai
     depends_on:
-      backend:
+      ragf_rabbitmq:
         condition: service_healthy
-    ports:
-      - "8089:80"
-    deploy:
-      resources:
-        limits:
-          memory: 64m     # Nginx 极低内存占用
+      ragf_minio:
+        condition: service_healthy
+      ragf_milvus:
+        condition: service_healthy
+    volumes:
+      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
+      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
     networks:
-      - ragf-net
+      - ragf_network
 
-# ── 持久化卷（命名卷比宿主机目录挂载 IO 性能高 40%+）────────────
-volumes:
-  mysql_data:
-    driver: local
-  redis_data:
-    driver: local
-  ollama_data:
-    driver: local
-  ragf_files:
-    driver: local
-  ragf_metadata:
-    driver: local
-  ragf_avatars:
-    driver: local
-  ragf_vectorstore:
-    driver: local
-  ragf_sqlite:
-    driver: local
+  # RAGF M8 拆分演练（ragf-design §10）：ingest.* 独立 worker，profile 显式启用。
+  # 用法：.env.server 设置 RAGF_CELERY_INGEST_QUEUE=ingest 后执行
+  #   docker compose --profile ragf-ingest up -d
+  ragf_celery_ingest_worker:
+    profiles: ["ragf-ingest"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SERVER_TYPE=ragf_celery_ingest_worker
+    image: ragf_celery_ingest_worker:latest
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      ragf_rabbitmq:
+        condition: service_healthy
+      ragf_minio:
+        condition: service_healthy
+      ragf_milvus:
+        condition: service_healthy
+    volumes:
+      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
+      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
+    networks:
+      - ragf_network
 
-# ── 网络 ──────────────────────────────────────────────────────
-networks:
-  ragf-net:
-    driver: bridge
+  ragf_celery_beat:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SERVER_TYPE=ragf_celery_beat
+    image: ragf_celery_beat:latest
+    container_name: ragf_celery_beat
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      ragf_rabbitmq:
+        condition: service_healthy
+      ragf_minio:
+        condition: service_healthy
+      ragf_milvus:
+        condition: service_healthy
+      ragf_celery_worker:
+        condition: service_started
+    volumes:
+      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
+      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
+    networks:
+      - ragf_network
+
+  ragf_celery_flower:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SERVER_TYPE=ragf_celery_flower
+    image: ragf_celery_flower:latest
+    ports:
+      - "${DOCKER_MAP_CELERY_FLOWER_PORT:-8555}:8555"
+    container_name: ragf_celery_flower
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      ragf_rabbitmq:
+        condition: service_healthy
+      ragf_celery_worker:
+        condition: service_started
+    volumes:
+      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
+      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
+    networks:
+      - ragf_network
+
+  ragf_celery_exporter:
+    image: danihodovic/celery-exporter:latest
+    restart: always
+    ports:
+      - "${DOCKER_MAP_CELERY_EXPORTER_PORT:-9808}:9808"
+    container_name: ragf_celery_exporter
+    environment:
+      - CE_BROKER_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@ragf_rabbitmq:5672//
+    depends_on:
+      ragf_rabbitmq:
+        condition: service_healthy
+    networks:
+      - ragf_network
+
+  ragf_loki:
+    image: grafana/loki:latest
+    restart: always
+    ports:
+      - "${DOCKER_MAP_LOKI_PORT:-3100}:3100"
+    container_name: ragf_loki
+    volumes:
+      - ragf_loki_data:/tmp/loki
+    networks:
+      - ragf_network
+    command: -config.file=/etc/loki/local-config.yaml
+
+  ragf_prometheus:
+    image: prom/prometheus:latest
+    restart: always
+    ports:
+      - "${DOCKER_MAP_PROMETHEUS_PORT:-9090}:9090"
+    container_name: ragf_prometheus
+    depends_on:
+      - ragf_loki
+    volumes:
+      - ./deploy/backend/grafana/ragf_prometheus.yml:/workspace/ragf_prometheus.yml
+      - ragf_prometheus_data:/prometheus
+    networks:
+      - ragf_network
+    command:
+      - --web.enable-remote-write-receiver
+      - --enable-feature=exemplar-storage
+      - --config.file=/workspace/ragf_prometheus.yml
+
+  ragf_alloy:
+    image: grafana/alloy:latest
+    restart: always
+    ports:
+      - "${DOCKER_MAP_ALLOY_GRPC_PORT:-4317}:4317"
+      - "${DOCKER_MAP_ALLOY_HTTP_PORT:-4318}:4318"
+      - "${DOCKER_MAP_ALLOY_UI_PORT:-12345}:12345"
+    container_name: ragf_alloy
+    depends_on:
+      - ragf_loki
+      - ragf_prometheus
+      - ragf_tempo
+      - ragf_server
+      - ragf_celery_exporter
+    volumes:
+      - ./deploy/backend/grafana/ragf_config.alloy:/etc/alloy/ragf_config.alloy
+    networks:
+      - ragf_network
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - /etc/alloy/ragf_config.alloy
+
+  ragf_tempo:
+    image: grafana/tempo:latest
+    restart: always
+    ports:
+      - "${DOCKER_MAP_TEMPO_PORT:-3200}:3200"
+    expose:
+      - 4317
+      - 4318
+    container_name: ragf_tempo
+    depends_on:
+      - ragf_loki
+      - ragf_prometheus
+    volumes:
+      - ./deploy/backend/grafana/ragf_tempo.yml:/etc/tempo/ragf_tempo.yml
+      - ragf_tempo_data:/tmp
+    networks:
+      - ragf_network
+    command:
+      - --config.file=/etc/tempo/ragf_tempo.yml
+
+  ragf_grafana:
+    image: grafana/grafana:latest
+    restart: always
+    ports:
+      - "${DOCKER_MAP_GRAFANA_PORT:-3000}:3000"
+    container_name: ragf_grafana
+    depends_on:
+      - ragf_loki
+      - ragf_prometheus
+      - ragf_tempo
+    volumes:
+      - ./deploy/backend/grafana/ragf_grafana.ini:/etc/grafana/grafana.ini
+      - ./deploy/backend/grafana/dashboards/ragf_celery.json:/etc/grafana/dashboards/ragf_celery.json
+      - ./deploy/backend/grafana/dashboards/ragf_server.json:/etc/grafana/dashboards/ragf_server.json
+      - ./deploy/backend/grafana/ragf_dashboards.yml:/etc/grafana/provisioning/dashboards/ragf_dashboards.yml
+      - ./deploy/backend/grafana/ragf_datasource.yml:/etc/grafana/provisioning/datasources/ragf_datasource.yml
+    networks:
+      - ragf_network

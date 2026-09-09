@@ -1,0 +1,28 @@
+from time import sleep
+from typing import cast
+
+from anyio import sleep as asleep
+
+from backend.src.app.task.celery import celery_app
+
+
+@celery_app.task(name='task_demo')
+def task_demo() -> str:
+    """示例任务，模拟耗时操作"""
+    sleep(30)
+    return 'test async'
+
+
+@celery_app.task(name='task_demo_async')
+async def task_demo_async() -> str:
+    """异步示例任务，模拟耗时操作"""
+    await asleep(30)
+    return 'test async'
+
+
+@celery_app.task(name='task_demo_params')
+async def task_demo_params(hello: str, world: str | None = None) -> str:
+    """参数示例任务，模拟传参操作"""
+    await asleep(1)
+    # world 实际由调用方必传，仅收窄类型，不改变运行时行为
+    return hello + cast('str', world)

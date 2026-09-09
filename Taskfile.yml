@@ -1,0 +1,119 @@
+version: '3'
+
+# 项目统一入口 Taskfile
+# 通过 includes 聚合前后端各自独立的子 Taskfile：
+# - backend/Taskfile.yml  后端任务
+# - frontend/Taskfile.yml 前端任务
+
+includes:
+  backend:
+    taskfile: backend/Taskfile.yml
+    dir: backend
+  frontend:
+    taskfile: frontend/Taskfile.yml
+    dir: frontend
+
+vars:
+  # Docker 依赖服务（本地开发：依赖跑容器，代码跑宿主机）
+  DEPS_SERVICES: ragf_postgres ragf_redis ragf_rabbitmq ragf_minio ragf_milvus
+
+tasks:
+  dev:
+    desc: 启动本地开发环境（Docker 依赖 + 宿主机代码）
+    cmds:
+      - task: deps-up
+      - task: backend:dev
+      - task: frontend:dev
+
+  dev:stop:
+    desc: 停止本地开发环境（结束前后端进程 + 停止 Docker 依赖）
+    cmds:
+      - sh -c 'pkill -f "[u]vicorn backend.main:app" 2>/dev/null && echo "后端已停止" || echo "后端未在运行"'
+      - sh -c 'pkill -f "[v]ite" 2>/dev/null && echo "前端已停止" || echo "前端未在运行"'
+      - task: deps-down
+
+  deps-up:
+    desc: 启动 Docker 依赖并等待健康（PostgreSQL / Redis / RabbitMQ）
+    cmds:
+      - sh -c '[ -f .env ] || { echo "缺少根 .env，请先创建：cp .env.example .env（填写 POSTGRES_*/RABBITMQ_* 等）"; exit 1; }'
+      - docker compose up -d --wait {{.DEPS_SERVICES}}
+
+  deps-down:
+    desc: 停止 Docker 依赖
+    cmds:
+      - docker compose stop {{.DEPS_SERVICES}}
+
+  deps-status:
+    desc: 查看 Docker 依赖运行状态
+    cmds:
+      - docker compose ps {{.DEPS_SERVICES}}
+
+  deps-logs:
+    desc: 跟踪 Docker 依赖日志
+    cmds:
+      - docker compose logs -f --tail=100 {{.DEPS_SERVICES}}
+
+  worker:
+    desc: 启动 Celery Worker（消息队列消费者）
+    cmds:
+      - task: backend:worker
+
+  beat:
+    desc: 启动 Celery Beat（定时任务调度器）
+    cmds:
+      - task: backend:beat
+
+  db-init:
+    desc: 导入数据库初始化数据（可选）
+    cmds:
+      - task: backend:db-init
+
+  init:
+    desc: 一键初始化项目（安装依赖 → 启动依赖 → 建表 → 种子数据）
+    cmds:
+      - task: install
+      - task: deps-up
+      - task: backend:init-db
+      - task: db-init
+      - task: deps-status
+      - echo '初始化完成。启动项目：task dev；异步任务另开终端：task worker'
+
+  build:
+    desc: 构建后端 Python 安装包（wheel + sdist）
+    cmds:
+      - task: backend:build
+
+  docker-build:
+    desc: 构建 Docker 镜像（默认 ragf_server 与全部 Celery 服务）
+    cmds:
+      - sh -c '[ -f .env ] || { echo "缺少根 .env，请先创建：cp .env.example .env（填写 POSTGRES_*/RABBITMQ_* 等）"; exit 1; }'
+      - docker compose build {{.DOCKER_SERVICES | default "ragf_server ragf_celery_worker ragf_celery_beat ragf_celery_flower"}}
+
+  env:check:
+    desc: 校验各层 env 账号字段一致性
+    cmds:
+      - backend/.venv/bin/python backend/scripts/env_check.py
+
+  install:
+    desc: 安装全部依赖（后端 + 前端）
+    cmds:
+      - task: backend:install
+      - task: frontend:install
+
+  lint:
+    desc: 代码检查（后端 + 前端）
+    cmds:
+      - task: backend:lint
+      - task: frontend:lint
+
+  format:
+    desc: 格式化代码（后端 + 前端）
+    cmds:
+      - task: backend:format
+      - task: frontend:format
+
+  test:
+    desc: 运行测试（后端 + 前端）
+    cmds:
+      - task: backend:test
+      - task: frontend:test

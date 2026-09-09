@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="RuffConfigService">
+    <option name="alwaysUseGlobalRuff" value="true" />
+    <option name="enableRuffLogging" value="true" />
+    <option name="globalRuffExecutablePath" value="$PROJECT_DIR$/backend/.venv/bin/ruff" />
+    <option name="runRuffOnSave" value="true" />
+    <option name="useRuffImportOptimizer" value="true" />
+    <option name="useRuffServer" value="true" />
+  </component>
+</project>

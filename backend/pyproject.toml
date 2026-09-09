@@ -1,0 +1,402 @@
+[project]
+name = "backend"
+dynamic = ["version"]
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "zhongye", email = "2760913192@qq.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "aiosmtplib>=5.1.2",
+    "alembic>=1.19.1",
+    "asyncio>=4.0.0",
+    "asyncmy>=0.2.14",
+    "asyncpg>=0.31.0",
+    "bcrypt>=5.0.0",
+    "cachebox>=6.2.5",
+    "celery>=5.6.3",
+    "celery-aio-pool>=0.1.0rc8",
+    "cryptography>=50.0.0",
+    "dulwich>=1.2.12",
+    "fast-captcha>=0.3.2",
+    "fastapi-oauth20>=0.0.3",
+    "fastapi-pagination>=0.15.16",
+    "fastapi[standard]>=0.141.1",
+    "gevent>=24.11.1",
+    "itsdangerous>=2.2.0",
+    "loguru>=0.7.3",
+    "minio>=7.2.0",
+    "msgspec>=0.21.1",
+    "opentelemetry-exporter-otlp>=1.44.0",
+    "opentelemetry-instrumentation-asyncio>=0.65b0",
+    "opentelemetry-instrumentation-fastapi>=0.65b0",
+    "opentelemetry-instrumentation-httpx>=0.65b0",
+    "opentelemetry-instrumentation-logging>=0.65b0",
+    "opentelemetry-instrumentation-openai>=0.62.3",
+    "opentelemetry-instrumentation-redis>=0.65b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.65b0",
+    "prometheus-client>=0.26.0",
+    "psutil>=7.2.2",
+    "psycopg[binary]>=3.2",
+    "pwdlib>=0.3.1",
+    "py-ip2region>=3.0.4",
+    "pymilvus>=2.5.0",
+    "pyrate-limiter>=4.4.0",
+    "python-jose>=3.5.0",
+    "redis>=8.1.0",
+    "rtoml>=0.13.0",
+    "ruff>=0.16.3",
+    "python-socketio>=5.16.4",
+    "sqlalchemy>=2.0.52",
+    "sqlalchemy-crud-plus>=1.13.3",
+    "sqlparse>=0.6.0",
+    "starlette-context>=0.5.1",
+    "user-agents>=2.2.0",
+    "opentelemetry-instrumentation-celery>=0.65b0",
+    "sse-starlette>=3.4.8",
+    "python-docx>=1.2.0",
+    "python-pptx>=1.0.2",
+    "rapidocr>=3.9.2",
+    "pypdfium2>=5.13.0",
+    "onnxruntime>=1.29.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.alembic]
+script_location = "%(here)s/src/alembic"
+file_template = "%%(year)d-%%(month).2d-%%(day).2d-%%(hour).2d_%%(minute).2d_%%(second).2d-%%(rev)s_%%(slug)s"
+prepend_sys_path = ["."]
+version_locations = ["%(here)s/src/alembic/versions"]
+
+[tool.hatch.build.targets.wheel]
+# backend 包即项目根目录自身（backend/__init__.py 位于 project root），
+# 因此用 force-include 将需要的文件/目录映射为 wheel 内的 backend/ 包。
+# 注意：hatchling 的 exclude 不作用于 force-include，未列出的内容不会进包。
+[tool.hatch.build.targets.wheel."force-include"]
+"__init__.py" = "backend/__init__.py"
+"main.py" = "backend/main.py"
+"src/__init__.py" = "backend/src/__init__.py"
+"src/alembic.ini" = "backend/src/alembic.ini"
+"src/alembic" = "backend/src/alembic"
+"src/app" = "backend/src/app"
+"src/common" = "backend/src/common"
+"src/core" = "backend/src/core"
+"src/database" = "backend/src/database"
+"src/locale" = "backend/src/locale"
+"src/middleware" = "backend/src/middleware"
+"src/plugin" = "backend/src/plugin"
+"src/sql" = "backend/src/sql"
+"src/static" = "backend/src/static"
+"src/utils" = "backend/src/utils"
+"src/.env.example" = "backend/src/.env.example"
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+    ".venv",
+    "dist",
+    "src/log",
+    "src/.env",
+    "scripts",
+]
+
+[tool.hatch.version]
+path = "__init__.py"
+
+[dependency-groups]
+dev = [
+    "import-linter>=2.1",
+    "pyright>=1.1.411",
+    "pytest>=9.1.1",
+    "task>=0.1.0",
+]
+lint = [
+    "prek>=0.4.13",
+]
+server = [
+    "aio-pika>=9.6.2",
+    "wait-for-it>=2.3.0",
+]
+
+[tool.uv]
+python-downloads = "manual"
+default-groups = ["dev", "lint"]
+
+[tool.ruff]
+line-length = 120
+preview = true
+fix = true
+unsafe-fixes = true
+show-fixes = true
+required-version = ">=0.15.0"
+
+[tool.ruff.lint]
+select = [
+  "FAST",
+  "missing-type-function-argument",
+  "missing-return-type-undocumented-public-function",
+  "missing-return-type-private-function",
+  "missing-return-type-special-method",
+  "missing-return-type-static-method",
+  "missing-return-type-class-method",
+  "async-busy-wait",
+  "long-sleep-not-forever",
+  "blocking-http-call-in-async-function",
+  "blocking-http-call-httpx-in-async-function",
+  "blocking-open-call-in-async-function",
+  "blocking-path-method-in-async-function",
+  "blocking-input-in-async-function",
+  "blocking-sleep-in-async-function",
+  "suspicious-url-open-usage",
+  "boolean-type-hint-positional-argument",
+  "boolean-default-value-positional-argument",
+  "unary-prefix-increment-decrement",
+  "strip-with-multi-characters",
+  "mutable-argument-default",
+  "unused-loop-control-variable",
+  "function-call-in-default-argument",
+  "get-attr-with-constant",
+  "set-attr-with-constant",
+  "redundant-tuple-in-exception-handler",
+  "duplicate-handler-exception",
+  "cached-instance-method",
+  "loop-variable-overrides-iterator",
+  "f-string-docstring",
+  "abstract-base-class-without-abstract-method",
+  "duplicate-try-block-exception",
+  "star-arg-unpacking-after-keyword-arg",
+  "empty-method-without-abstract-decorator",
+  "mutable-contextvar-default",
+  "COM",
+  "unnecessary-generator-dict",
+  "unnecessary-list-comprehension-set",
+  "unnecessary-list-comprehension-dict",
+  "unnecessary-collection-call",
+  "unnecessary-literal-within-list-call",
+  "unnecessary-list-call",
+  "unnecessary-double-cast-or-process",
+  "unnecessary-comprehension",
+  "unnecessary-map",
+  "unnecessary-literal-within-dict-call",
+  "unnecessary-comprehension-in-call",
+  "unnecessary-dict-comprehension-for-iterable",
+  "DTZ",
+  "EXE",
+  "single-line-implicit-string-concatenation",
+  "multi-line-implicit-string-concatenation",
+  "explicit-string-concatenation",
+  "PIE",
+  "pass-statement-stub-body",
+  "non-empty-stub-body",
+  "typed-argument-default-in-stub",
+  "pass-in-class-body",
+  "ellipsis-in-non-empty-class-body",
+  "duplicate-union-member",
+  "complex-assignment-in-stub",
+  "custom-type-var-for-self",
+  "quoted-annotation-in-stub",
+  "docstring-in-stub",
+  "collections-named-tuple",
+  "type-alias-without-annotation",
+  "unnecessary-literal-union",
+  "legacy-type-comment",
+  "non-self-return-type",
+  "bad-exit-annotation",
+  "redundant-numeric-union",
+  "snake-case-type-alias",
+  "unnecessary-type-union",
+  "redundant-none-literal",
+  "duplicate-literal-member",
+  "pep484-style-positional-only-parameter",
+  "bad-quotes-multiline-string",
+  "bad-quotes-docstring",
+  "unnecessary-paren-on-raise-exception",
+  "unnecessary-return-none",
+  "superfluous-else-return",
+  "superfluous-else-raise",
+  "superfluous-else-continue",
+  "superfluous-else-break",
+  "duplicate-isinstance-call",
+  "collapsible-if",
+  "needless-bool",
+  "return-in-try-except-finally",
+  "if-else-block-instead-of-if-exp",
+  "compare-with-tuple",
+  "reimplemented-builtin",
+  "if-with-same-arms",
+  "open-file-with-context-handler",
+  "negate-equal-op",
+  "negate-not-equal-op",
+  "if-expr-with-true-false",
+  "if-expr-with-false-true",
+  "if-expr-with-twisted-arms",
+  "yoda-conditions",
+  "if-else-block-instead-of-dict-get",
+  "dict-get-with-none-default",
+  "relative-imports",
+  "TC",
+  "FLY",
+  "I",
+  "complex-structure",
+  "N",
+  "PERF",
+  "E",
+  "W",
+  "docstring-starts-with-this",
+  "undocumented-param",
+  "empty-docstring",
+  "F",
+  "PGH",
+  "compare-to-empty-string",
+  "UP",
+  "FURB",
+  "RUF",
+  "TRY",
+]
+ignore = [
+  "missing-trailing-comma",
+  "blanket-type-ignore",
+  "ambiguous-unicode-character-string",
+  "ambiguous-unicode-character-docstring",
+  "ambiguous-unicode-character-comment",
+  "asyncio-dangling-task",
+  "mutable-class-default",
+  "non-empty-init-module",
+  "error-instead-of-exception",
+  "raise-vanilla-args",
+  "raise-within-try"
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/model/*.py" = ["typing-only-standard-library-import"]
+"src/common/socketio/server.py" = ["missing-type-function-argument"]
+"src/common/exception/exception_handler.py" = [
+  "missing-return-type-private-function",
+  "unused-async"
+]
+
+[tool.ruff.lint.flake8-pytest-style]
+parametrize-names-type = "list"
+parametrize-values-row-type = "list"
+parametrize-values-type = "list"
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = [
+  "pydantic.BaseModel",
+  "sqlalchemy.orm.DeclarativeBase"
+]
+
+[tool.ruff.lint.flake8-unused-arguments]
+ignore-variadic-names = true
+
+[tool.ruff.lint.isort]
+case-sensitive = true
+lines-between-types = 1
+order-by-type = true
+
+[tool.ruff.lint.pylint]
+allow-dunder-method-names = ["__tablename__", "__table_args__"]
+
+[tool.ruff.format]
+docstring-code-format = true
+quote-style = "single"
+
+[tool.importlinter]
+root_packages = ["backend"]
+
+[[tool.importlinter.contracts]]
+name = "kb 模块分层：api → service → crud → model → utils（上层可依赖下层，反之禁止）"
+type = "layers"
+containers = ["backend.src.app.kb"]
+layers = [
+    "api",
+    "service",
+    "crud",
+    "model",
+    "utils",
+]
+
+[[tool.importlinter.contracts]]
+name = "业务域互不依赖：admin / kb / task / ingest / retrieval / model_provider / chat / mcp（有意依赖需显式豁免）"
+type = "independence"
+modules = [
+    "backend.src.app.admin",
+    "backend.src.app.kb",
+    "backend.src.app.task",
+    "backend.src.app.ingest",
+    "backend.src.app.retrieval",
+    "backend.src.app.model_provider",
+    "backend.src.app.chat",
+    "backend.src.app.mcp",
+]
+ignore_imports = [
+    # db_log 任务消费 admin 日志服务：有意为之，后续可反转依赖方向
+    "backend.src.app.task.tasks.db_log.** -> backend.src.app.admin.**",
+    # common.security（JWT/权限）读取 admin 用户/角色数据：跨模块公共层，属已知债务，
+    # 后续应将用户查询下沉为独立 auth 模块或端口，届时删除本条豁免
+    "backend.src.common.security.** -> backend.src.app.admin.**",
+    # ragf-design §4：域间依赖方向固定为“下游域 → 上游基础域”
+    # ingest 消费 kb 文档登记/分块只读契约（D9）与 model_provider 模型客户端
+    "backend.src.app.ingest.** -> backend.src.app.kb.**",
+    "backend.src.app.ingest.** -> backend.src.app.model_provider.**",
+    # retrieval 经 kb 只读契约补全来源、经 model_provider 取 embedding/rerank
+    "backend.src.app.retrieval.** -> backend.src.app.kb.**",
+    "backend.src.app.retrieval.** -> backend.src.app.model_provider.**",
+    # chat 门面编排检索（复用 retrieval 服务）+ model_provider chat 模型（D18/M9）
+    "backend.src.app.chat.** -> backend.src.app.retrieval.**",
+    "backend.src.app.chat.** -> backend.src.app.model_provider.**",
+    "backend.src.app.chat.** -> backend.src.app.kb.**",
+    # mcp 工具面编排 chat/retrieval/kb 只读契约（D30：工具不直连存储）
+    "backend.src.app.mcp.** -> backend.src.app.chat.**",
+    "backend.src.app.mcp.** -> backend.src.app.retrieval.**",
+    "backend.src.app.mcp.** -> backend.src.app.kb.**",
+    # ingest 域内任务/上传端点经 app/task celery_app 派发（D10：任务代码域内归属，
+    # 发送仍走框架 celery 实例）
+    "backend.src.app.ingest.** -> backend.src.app.task.**",
+    # 测试模块豁免：测试可自由组合被测模块
+    "backend.src.app.*.tests.** -> backend.src.app.**",
+]
+
+[[tool.importlinter.contracts]]
+name = "retrieval 模块分层：api → service（上层可依赖下层，反之禁止）"
+type = "layers"
+containers = ["backend.src.app.retrieval"]
+layers = [
+    "api",
+    "service",
+]
+
+[[tool.importlinter.contracts]]
+name = "model_provider 模块分层：api → service → crud → model（上层可依赖下层，反之禁止）"
+type = "layers"
+containers = ["backend.src.app.model_provider"]
+layers = [
+    "api",
+    "service",
+    "crud",
+    "model",
+]
+
+[[tool.importlinter.contracts]]
+name = "chat 模块分层：api → service（上层可依赖下层，反之禁止）"
+type = "layers"
+containers = ["backend.src.app.chat"]
+layers = [
+    "api",
+    "service",
+]
+
+[[tool.importlinter.contracts]]
+name = "mcp 模块分层：api → service（上层可依赖下层，反之禁止）"
+type = "layers"
+containers = ["backend.src.app.mcp"]
+layers = [
+    "api",
+    "service",
+]

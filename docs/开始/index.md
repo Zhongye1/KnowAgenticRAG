@@ -1,149 +1,179 @@
-# 快速上手
-
-欢迎使用 KnowledgeRAG 知识管理系统！本指南将帮助你快速了解和使用系统。
-
-## 什么是 KnowledgeRAG？
-
-KnowledgeRAG 是一个基于 RAG（Retrieval Augmented Generation，检索增强生成）技术的知识管理系统，旨在帮助用户更好地管理和利用知识资源。
-
-### 核心特性
-
-TODO:这里要改正
-
-- 🔍 **混合检索**：BM25 关键词 + FAISS 语义向量双路检索
-- 🤖 **双模式问答**：普通 RAG + ReAct Agent 可切换
-- 📊 **知识图谱**：自动提取文档实体与关系，可视化展示
-- 💬 **多轮对话**：基于 Ollama 的本地对话，支持 RAG 增强
-- 🔗 **URL 导入**：一键导入网页链接至知识库
-- 👤 **完整用户系统**：JWT 认证、QQ 登录、邮件密码重置
-- 📚 **三级权限体系**：个人 / 共享 / 广场知识库模式
-
-## 技术栈
-
-TODO:这里要改正
-
-### 前端
-
-- Vue 3.4.21 + Vite 5.2.8
-- TypeScript 5.4.4
-- TDesign Vue Next 组件库
-- Pinia
-- Vue Router
-
-### 后端
-
-- FastAPI 0.116.1
-- LangChain + LangChain-Community
-- FAISS 向量数据库
-- MySQL
-- Ollama LLM 接入
-
-### 环境要求
-
-- Node.js 22
-- Python >= 3.10
-- MySQL >= 8.0
-- Ollama（可选，用于本地 LLM 推理）
-
-## 启动项目
-
-TODO:这里要补充
-
-## 🚀 快速启动
-
-### 环境前置要求
-
-1. **安装 Ollama**：[https://ollama.com](https://ollama.com)
-2. **拉取推荐模型**（低配机器）：
-    ```bash
-    ollama pull qwen2:0.5b    # ~400MB，仅需 600MB 内存
-    ```
-3. **硬件最低要求**（运行 qwen2:0.5b）：
-
-    | 组件        | 最低要求                   |
-    | ----------- | -------------------------- |
-    | 内存（RAM） | 4GB                        |
-    | 存储空间    | 5GB                        |
-    | GPU         | 可选（CPU 也可运行小模型） |
-
+---
+title: 本地启动指南
+description: 从拉取代码到环境安装、启动依赖、运行项目的完整本地开发流程
 ---
 
-### 方式一：Docker Compose（推荐生产/演示）
+# 本地启动指南
+
+> 开发模式约定：**依赖跑 Docker 容器，代码跑宿主机**。
+> 本指南覆盖完整流程：拉取代码 → 安装环境 → 启动依赖 → 启动项目。
+
+## 0. 一键初始化（推荐）
+
+代码拉取、工具安装完成后，一条命令完成全部初始化：
 
 ```bash
-# 克隆仓库
-git clone https://github.com/March030303/KnowledgeRAG-GZHU.git
-cd KnowledgeRAG-GZHU
-
-# 配置环境变量
-cp RagBackend/.env.example RagBackend/.env
-# 编辑 .env，填写 DB_PASSWORD / JWT_SECRET 等
-
-# 一键启动（前端 + 后端 + MySQL + Ollama）
-docker compose up -d
-
-# 访问
-# 前端：    http://localhost:8089
-# API 文档：http://localhost:8000/docs
-# Ollama：  http://localhost:11435
+task init
 ```
 
----
+自动执行：安装依赖 → 启动并等待依赖容器健康 → 建表与 Redis 初始化 → 导入种子数据（幂等，可重复执行）。
 
-### 方式二：一键开发脚本（推荐本地开发）
-
-```powershell
-
-# 启动所有服务（MySQL 用 Docker 托管，后端 + 前端本地运行）
-
-powershell -ExecutionPolicy Bypass -File .\dev.ps1
-
-# 查看状态
-
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 -Status
-
-# 停止所有
-
-powershell -ExecutionPolicy Bypass -File .\dev.ps1 -Stop
-
-# 访问
-
-# 前端（Vite）：http://localhost:5173
-# 后端 API： http://localhost:8000
-# API 文档： http://localhost:8000/docs
-
-```
-
----
-
-### 方式三：手动启动
-
-1. 启动 MySQL（Docker）
+完成后启动项目：
 
 ```bash
-docker run -d --name ragf-mysql -e MYSQL_ROOT_PASSWORD=yourpw -p 3306:3306 mysql:9.6
+task dev       # 启动后端（热重载）；异步任务另开终端 task worker
 ```
 
-2. 后端
+> 分步说明见下方各节，`task init` 是它们的组合。
+
+## 1. 环境要求
+
+| 软件 | 版本要求 | 用途 |
+| --- | --- | --- |
+| Git | 较新版本即可 | 拉取代码 |
+| Docker | 24+（含 Docker Compose v2） | 运行依赖容器 |
+| uv | 0.12+ | Python 包管理与虚拟环境 |
+| Task | 3.x | 项目任务统一入口 |
+
+后端运行时（Python 3.12+）由 uv 自动下载管理，无需手动安装；Node.js / pnpm 仅文档站需要，可选安装。
+
+### 安装 uv
 
 ```bash
-cd RagBackend
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# 安装完成后重启终端（或 source ~/.bashrc）使命令生效
+uv --version
 ```
 
-3. 前端
+### 安装 Task
+
+任选其一：
 
 ```bash
-cd RagFrontend
-npm install
-npm run dev # → http://localhost:5173
+# Homebrew（macOS / Linux）
+brew install go-task/tap/go-task
+
+# Go
+go install github.com/go-task/task/v3/cmd/task@latest
+
+# npm
+npm install -g @go-task/cli
 ```
 
----
+验证：`task --version`
 
-## 下一步
+> Windows 可参考 [taskfile.dev/installation](https://taskfile.dev/installation/)（推荐 winget / scoop）。Docker 建议直接安装 Docker Desktop。
 
-- 了解 [项目功能](/开始/项目功能说明)
-- 查看 [系统架构](/开始/系统架构说明)
-- 阅读 [API 文档](/API_reference/api)
+## 2. 拉取代码
+
+```bash
+git clone https://github.com/Zhongye1/KnowledgeRAG-OGAS.git
+cd KnowledgeRAG-OGAS
+```
+
+## 3. 安装后端依赖
+
+```bash
+task install
+```
+
+等价于在 `backend/` 目录下执行 `uv sync`：自动创建 `backend/.venv` 虚拟环境，并按 `pyproject.toml` / `uv.lock` 安装全部后端依赖。
+
+验证安装：
+
+```bash
+backend/.venv/bin/python --version   # 应输出 Python 3.12.x
+task --list-all                      # 查看全部可用任务
+```
+
+> 环境变量：本地开发读取 `backend/src/.env`，已默认指向 `localhost:5432 / 6379 / 5672`（即下方 Docker 映射端口），一般无需修改。
+
+## 4. 启动依赖（Docker）
+
+```bash
+task deps-up
+```
+
+启动 3 个依赖容器，并自动等待健康检查通过：
+
+| 容器 | 服务 | 宿主机端口 | 默认账号 |
+| --- | --- | --- | --- |
+| `ragf_postgres` | PostgreSQL 16 | 5432 | `postgres` / `123456` |
+| `ragf_redis` | Redis | 6379 | - |
+| `ragf_rabbitmq` | RabbitMQ 3.13 | 5672（管理台 15672） | `guest` / `guest` |
+
+查看状态与日志：
+
+```bash
+task deps-status    # 三个服务均应显示 healthy
+task deps-logs      # 跟踪容器日志（Ctrl+C 退出）
+```
+
+## 5. 启动项目
+
+### 一键启动（推荐）
+
+```bash
+task dev
+```
+
+该命令自动完成两步：① 拉起 Docker 依赖（已运行则跳过）→ ② 在宿主机启动后端开发服务器（热重载）。
+
+- API 文档： <http://127.0.0.1:8000/docs>
+- OpenAPI JSON： <http://127.0.0.1:8000/openapi>
+
+修改后端代码后服务器会自动重启，无需手动操作。停止开发环境：在该终端按 `Ctrl+C`。
+
+### 项目初始化说明
+
+| 项目 | 初始化方式 | 说明 |
+| --- | --- | --- |
+| 数据库表 | 自动 | 后端启动时自动 `create_all` 建表，无需手动迁移（Alembic 迁移为占位，未上线不生成脚本） |
+| Redis | 自动 | 后端启动时自动初始化连接与状态 |
+| 消息队列 | 手动 | Celery broker 为 Redis（db 1），结果写入 PostgreSQL；需另开终端 `task worker` |
+| 定时任务 | 手动 | 需另开终端 `task beat`（调度器：DatabaseScheduler） |
+| 初始化数据 | 可选 | `task db-init` 导入部门/菜单等种子数据（幂等，已初始化自动跳过） |
+
+> 首次使用流程：`task deps-up` → `task dev`（自动建表）→ 另开终端 `task worker`（异步任务）→ 可选 `task db-init`（种子数据）。
+
+### 单独启动后端
+
+```bash
+task backend:dev      # 热重载模式（默认推荐）
+task backend:run      # 通过 run.py 启动（IDE 调试友好）
+```
+
+## 6. 常用命令速查
+
+| 命令 | 说明 |
+| --- | --- |
+| `task init` | 一键初始化（依赖安装 → 容器 → 建表 → 种子数据） |
+| `task dev` | 一键启动本地开发环境（依赖 + 后端） |
+| `task deps-up` / `task deps-down` | 启动 / 停止 Docker 依赖 |
+| `task deps-status` / `task deps-logs` | 依赖状态 / 日志 |
+| `task worker` | 启动 Celery Worker（异步任务消费者） |
+| `task beat` | 启动 Celery Beat（定时任务调度器） |
+| `task db-init` | 导入数据库初始化数据（可选，幂等） |
+| `task install` | 安装全部依赖 |
+| `task lint` / `task format` | 代码检查 / 格式化 |
+| `task test` | 运行测试 |
+
+## 7. 常见问题
+
+**`task: command not found`**
+按第 1 节安装 Task CLI。
+
+**`docker: permission denied` 或无法连接 Docker daemon**
+启动 Docker（Docker Desktop，或 Linux 下 `systemctl start docker`），并确认当前用户已加入 `docker` 用户组。
+
+**`task deps-status` 显示容器未 healthy**
+健康检查需要数秒，稍等后重试；仍失败可 `task deps-logs` 查看容器日志定位。
+
+**后端启动报数据库 / Redis 连接超时**
+先确认 `task deps-status` 三个容器均为 healthy；再检查 `backend/src/.env` 中 `DATABASE_HOST`、`REDIS_HOST`、`CELERY_RABBITMQ_HOST` 是否为 `localhost`，端口与第 4 节表格一致。
+
+**端口 8000 被占用**
+修改 `backend/Taskfile.yml` 中 `backend:dev` 任务的 `--port`，或结束占用进程。
+
+**前端工程尚未迁移**
+`frontend:dev` 目前为占位任务，暂无需启动前端即可使用后端 API。

@@ -1,0 +1,46 @@
+### ============================================================
+### KnowledgeRAG 后端 API 调试（JetBrains HTTP Client）
+### 使用前提：后端已运行（task dev / backend: uvicorn dev）
+### 地址：http://127.0.0.1:8000
+### ============================================================
+
+### 基础变量
+@host = http://127.0.0.1:8000
+@token = 替换为登录返回的 access_token
+
+### 健康检查
+GET {{host}}/api/v1/health
+
+### OpenAPI 规范（Swagger JSON，可在 Endpoints 面板导入）
+GET {{host}}/openapi
+
+### Swagger UI（浏览器交互式 API 文档）
+GET {{host}}/docs
+
+### ReDoc 文档
+GET {{host}}/redoc
+
+### 获取登录验证码
+GET {{host}}/api/v1/auth/captcha
+
+### 用户登录（获取 access_token）
+# 登录接口限流 5 次/分钟；成功后将 access_token 填入 @token
+POST {{host}}/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "123456"
+}
+
+### 获取全部授权码
+GET {{host}}/api/v1/auth/codes
+Authorization: Bearer {{token}}
+
+### 刷新 token
+POST {{host}}/api/v1/auth/refresh
+Authorization: Bearer {{token}}
+
+### 用户登出
+POST {{host}}/api/v1/auth/logout
+Authorization: Bearer {{token}}

@@ -1,0 +1,321 @@
+@reference "../../../../index.css";
+
+/* ============================================================================
+ * AuthFormPanel 表单样式
+ * ----------------------------------------------------------------------------
+ * 颜色一律通过 Tailwind 工具类引用设计 Token（src/styles/tokens.css），
+ * 亮 / 暗主题自动适配。
+ * ========================================================================== */
+
+.right-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.form-container {
+  width: 100%;
+  max-width: 400px;
+}
+
+.form-header {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.form-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  @apply text-color-text-1;
+  letter-spacing: -0.5px;
+  margin-bottom: 6px;
+}
+
+.form-header p {
+  font-size: 14px;
+  @apply text-color-text-3;
+}
+
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  @apply text-color-text-1;
+  margin-bottom: 2px;
+}
+
+.form-group .input-wrapper {
+  position: relative;
+}
+
+.form-group input {
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-bottom: 1.5px solid;
+  @apply border-color-border-3;
+  padding: 0 40px 0 0;
+  font-size: 15px;
+  font-family: inherit;
+  @apply text-color-text-1;
+  background: transparent;
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+  @apply border-primary-6;
+}
+
+.form-group input::placeholder {
+  @apply text-color-text-4;
+}
+
+.form-group input[type='password']:not(:placeholder-shown) {
+  letter-spacing: 2px;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  @apply text-color-text-3;
+  padding: 6px;
+  transition: color 0.2s;
+}
+
+.toggle-password:hover {
+  @apply text-color-text-1;
+}
+
+.form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  @apply text-color-text-2;
+  cursor: pointer;
+}
+
+.remember-me input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  @apply accent-primary-6;
+  cursor: pointer;
+}
+
+.forgot-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: inherit;
+  cursor: pointer;
+  font-size: 13px;
+  @apply text-primary-6;
+  text-decoration: none;
+  font-weight: 500;
+  transition: opacity 0.2s;
+}
+
+.forgot-link:hover {
+  opacity: 0.8;
+}
+
+.btn-login,
+.btn-google {
+  position: relative;
+  width: 100%;
+  height: 50px;
+  border-radius: 25px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  transition: all 0.1s;
+}
+
+.btn-login {
+  border: 1.5px solid;
+  @apply border-primary-6 bg-primary-6 text-color-white;
+  margin-bottom: 12px;
+}
+
+.btn-login:hover {
+  @apply border-primary-7 bg-primary-7;
+}
+
+.btn-google {
+  border: 1.5px solid;
+  @apply border-color-border-2 bg-color-fill-2 text-color-text-1;
+}
+
+.btn-google:hover {
+  @apply border-color-border-3 bg-color-fill-3;
+}
+
+.btn-login .btn-text,
+.btn-google .btn-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.google-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.signup-link {
+  text-align: center;
+  font-size: 13px;
+  @apply text-color-text-3;
+}
+
+.signup-link a {
+  @apply text-color-text-1;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.signup-link a:hover {
+  text-decoration: underline;
+}
+
+.error-msg {
+  display: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  @apply border border-danger-2 bg-danger-1 text-danger-6;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.error-msg.show {
+  display: block;
+}
+
+.form-group input.error {
+  @apply border-danger-6;
+}
+
+.form-group label.error-label {
+  @apply text-danger-6;
+}
+
+/* ============================================================================
+ * 登录/注册切换 Tab、验证码、成功提示、链接按钮
+ * ========================================================================== */
+
+.form-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-bottom: 8px;
+}
+
+.form-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 6px 2px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  @apply text-color-text-3;
+  transition:
+    color 0.2s,
+    border-color 0.2s;
+}
+
+.form-tab:hover {
+  @apply text-color-text-1;
+}
+
+.form-tab.active {
+  @apply text-primary-6 border-primary-6;
+}
+
+.captcha-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.captcha-row .form-group {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.captcha-img-wrap {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.captcha-img {
+  display: block;
+  width: 120px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid;
+  @apply border-color-border-2;
+  transition: opacity 0.2s;
+}
+
+.captcha-img:hover {
+  opacity: 0.85;
+}
+
+.success-msg {
+  display: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  @apply border border-success-2 bg-success-1 text-success-6;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.success-msg.show {
+  display: block;
+}
+
+.btn-login:disabled,
+.btn-google:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  @apply text-color-text-1;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+}

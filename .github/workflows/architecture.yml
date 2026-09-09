@@ -1,0 +1,47 @@
+name: Architecture Checks
+
+# 架构契约校验：后端 import-linter（分层/模块独立性）+ 前端 dependency-cruiser（分层/feature 边界）。
+# 与 .pre-commit-config.yaml 中的 local hooks 共用同一套配置，违规即失败。
+
+on:
+  push:
+    branches: [main, 'refactor/**']
+  pull_request:
+
+jobs:
+  backend:
+    name: backend · import-linter
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - name: Sync dependencies (frozen)
+        run: uv sync --frozen
+      - name: Check architecture contracts
+        run: uv run import-linter lint
+
+  frontend:
+    name: frontend · dependency-cruiser
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Check architecture contracts
+        run: pnpm arch:check

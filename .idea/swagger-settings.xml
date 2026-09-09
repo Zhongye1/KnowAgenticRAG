@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SwaggerSettings">
+    <remoteSpecificationUrls>
+      <UrlInfo>
+        <option name="urlString" value="http://127.0.0.1:8000/docs#/" />
+      </UrlInfo>
+    </remoteSpecificationUrls>
+  </component>
+</project>
