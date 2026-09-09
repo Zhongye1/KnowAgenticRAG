@@ -1,13 +1,14 @@
 {
   "include": [
-    "backend/src",
-    "backend/main.py",
-    "backend/run.py",
-    "backend/conftest.py",
-    "backend/__init__.py"
+    "src",
+    "main.py",
+    "run.py",
+    "conftest.py",
+    "__init__.py"
   ],
   "exclude": ["**/__pycache__", "**/dist", "**/.venv"],
-  "venvPath": "backend",
+  "extraPaths": [".."],
+  "venvPath": ".",
   "venv": ".venv",
   "pythonVersion": "3.12",
   "typeCheckingMode": "basic"
