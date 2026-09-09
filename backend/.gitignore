@@ -2,4 +2,6 @@
 .env.*.local
 .pytest_cache/
 .ruff_cache/
+.grimp_cache/
+.import_linter_cache/
 src/log/

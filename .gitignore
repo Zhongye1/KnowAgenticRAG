@@ -52,3 +52,5 @@ logs/
 *.bat
 *.sh
 /tmp
+
+**/.obsidian/**
