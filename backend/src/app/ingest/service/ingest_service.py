@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import tempfile
 
 from typing import TYPE_CHECKING, Any
 
@@ -26,6 +27,11 @@ from backend.src.app.ingest.parser.factory import (
     parse_document,
     parse_document_with_fallback,
 )
+from backend.src.app.ingest.routing.router import (
+    filter_available_pipelines,
+    resolve_routing_inputs,
+    route,
+)
 from backend.src.app.kb.crud import doc_acl_dao, document_dao, knowledge_base_dao
 from backend.src.app.kb.service.chunk_service import ChunkService
 from backend.src.app.kb.service.document_storage import (
@@ -39,6 +45,7 @@ from backend.src.app.model_provider.service.provider_service import normalize_mo
 from backend.src.common.exception import errors
 from backend.src.common.log import log
 from backend.src.core.config import settings
+from backend.src.database.db import async_db_session
 from backend.src.database.milvus_kb_ops import (
     count_ragf_vectors_by_document,
     delete_ragf_vectors_by_document,
@@ -154,7 +161,7 @@ class IngestService:
             else settings.RAGF_TEMPLATE_DIM
         )
         # ACL 字段镜像（agent-layer spec §3.2：DB 为准、Milvus 为镜像）
-        acl_fields = await _resolve_acl_fields(db, doc=doc, ns=ns)
+        acl_fields = await resolve_acl_fields(db, doc=doc, ns=ns)
         vector_rows = [
             {
                 'chunk_id': f'{document_id}:{version_id}:{idx}',
@@ -310,12 +317,13 @@ class IngestService:
         await db.flush()
 
 
-async def _resolve_acl_fields(db: AsyncSession, *, doc: Any, ns: str) -> dict[str, Any]:
+async def resolve_acl_fields(db: AsyncSession, *, doc: Any, ns: str) -> dict[str, Any]:
     """解析文档 ACL 字段（镜像到 Milvus 行；DB 为 source-of-truth）。
 
     visibility/owner_id 取 documents 行（缺省 restricted/None）；groups 取
     rag_doc_acl 授权组行。legacy 文档（ACL 字段为空）按 restricted 处理，
     需重新摄取才能进入授权检索范围（backfill 语义）。
+    供 legacy / knowhere / visual 三条管线共用（spec D6：镜像字段集中穿透）。
     """
     visibility = str(getattr(doc, 'visibility', None) or 'restricted')
     owner_id = getattr(doc, 'owner_id', None) or ''
@@ -378,6 +386,74 @@ def _resolve_engine_extension(filename: str) -> str:
     return 'unsupported'
 
 
+async def plan_document_pipelines(
+    document_id: str,
+    kb_name: str,
+    plugin_namespace: str | None = None,
+) -> list[str]:
+    """路由规划（双管线摄取 spec D2/D3）：决定文档走 legacy / knowhere / visual。
+
+    只读阶段：读 KB 行（routing_mode / pdf_text_page_ratio）与文档行（文件名 /
+    对象键），auto 模式下 PDF 需下载做形态探测（事务外）。返回管线列表，任务层
+    据此执行 legacy 或派发 knowhere/visual 任务。
+    """
+    ns = instance_namespace(plugin_namespace)
+    async with async_db_session() as db:
+        kb = await knowledge_base_dao.get(db, kb_name, plugin_namespace=ns)
+        if kb is None:
+            raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
+        doc = await document_dao.get(db, document_id, kb_name=kb_name, plugin_namespace=ns)
+        if doc is None:
+            raise errors.NotFoundError(msg=f'文档不存在: {document_id}')
+        if doc.status in IN_PROGRESS_STATUSES:
+            raise errors.ConflictError(msg='文档正在摄取中，请等待完成后再试')
+        filename = doc.name or 'file'
+        object_key = doc.source_uri or ''
+        kb_routing_mode = getattr(kb, 'routing_mode', None)
+        text_page_ratio = getattr(kb, 'pdf_text_page_ratio', None)
+
+    ctx = resolve_routing_inputs(
+        filename=filename,
+        kb_routing_mode=kb_routing_mode,
+        text_page_ratio=text_page_ratio,
+        source_uri=object_key if str(object_key).startswith(('http://', 'https://')) else None,
+    )
+
+    # auto 模式下 PDF 形态探测需要本地文件；text/visual/hybrid 强制模式跳过探测
+    local_path: str | None = None
+    if ctx.routing_mode == 'auto' and ctx.is_pdf and not ctx.is_http:
+        local_path = await _download_for_probe(object_key, filename)
+
+    try:
+        pipelines = route(ctx)
+    finally:
+        if local_path:
+            os.unlink(local_path)
+    pipelines = filter_available_pipelines(pipelines, filename=filename)
+    log.info('文档路由完成 doc={} kb={} file={} pipelines={}', document_id, kb_name, filename, pipelines)
+    return pipelines
+
+
+async def _download_for_probe(object_key: str, filename: str) -> str | None:
+    """下载对象到临时文件供 PDF 形态探测（失败返回 None → 探测 selector 弃权）。"""
+    try:
+        data = await download_document_bytes(object_key)
+    except Exception as exc:
+        log.warning('PDF 形态探测下载失败（回退保守路由）file={}: {}', filename, exc)
+        return None
+    fd, path = tempfile.mkstemp(suffix='.pdf')
+    with os.fdopen(fd, 'wb') as f:
+        f.write(data)
+    return path
+
+
 ingest_service = IngestService()
 
-__all__ = ['IngestService', 'IngestStepError', '_resolve_engine_extension', 'ingest_service']
+__all__ = [
+    'IngestService',
+    'IngestStepError',
+    '_resolve_engine_extension',
+    'ingest_service',
+    'plan_document_pipelines',
+    'resolve_acl_fields',
+]
