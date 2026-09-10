@@ -40,8 +40,8 @@ class _StubMultiModal:
 @pytest.fixture()
 def stub_dashscope(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     module = ModuleType('dashscope')
-    module.MultiModalEmbedding = _StubMultiModal
-    module.TextReRank = _StubTextReRank
+    module.__dict__['MultiModalEmbedding'] = _StubMultiModal
+    module.__dict__['TextReRank'] = _StubTextReRank
     monkeypatch.setitem(sys.modules, 'dashscope', module)
     _StubMultiModal.calls = []
     _StubTextReRank.calls = []
