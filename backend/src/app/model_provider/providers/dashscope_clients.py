@@ -238,6 +238,9 @@ class DashScopeTextReRank:
             scores.extend(await self._batch_rerank(query, batch))
         return scores
 
+    async def aclose(self) -> None:
+        """资源释放（SDK 无长连客户端，空操作；对齐 BaseReranker 调用约定）。"""
+
     async def test_connection(self) -> tuple[bool, str]:
         try:
             scores = await self._batch_rerank('test query', ['test document'])
