@@ -11,7 +11,6 @@ from typing import Protocol
 
 from backend.src.app.ingest.routing.context import (
     PIPELINE_KNOWHERE,
-    PIPELINE_LEGACY,
     PIPELINE_VISUAL,
     RouteContext,
 )
@@ -91,20 +90,16 @@ class PdfFormSelector:
 
 
 class ExtensionSelector:
-    """扩展名命中：knowhere 集 / visual 集 / 其余受支持格式 → legacy 工厂。"""
+    """扩展名命中：knowhere 集（文档类）/ visual 集（图片类）；未命中弃权。"""
 
     def __init__(
         self,
         *,
         knowhere_exts: list[str],
         visual_exts: list[str],
-        supported_exts: list[str],
     ) -> None:
         self.knowhere_exts = {self._dot(e) for e in knowhere_exts}
         self.visual_exts = {self._dot(e) for e in visual_exts}
-        knowhere_visual = self.knowhere_exts | self.visual_exts
-        # 其余受支持格式（RAGF_INGEST_EXT_INCLUDE）继续走既有工厂链路
-        self.legacy_exts = {self._dot(e) for e in supported_exts} - knowhere_visual
 
     @staticmethod
     def _dot(ext: str) -> str:
@@ -115,8 +110,6 @@ class ExtensionSelector:
             return [PIPELINE_KNOWHERE]
         if ctx.ext in self.visual_exts:
             return [PIPELINE_VISUAL]
-        if ctx.ext in self.legacy_exts:
-            return [PIPELINE_LEGACY]
         return None
 
 

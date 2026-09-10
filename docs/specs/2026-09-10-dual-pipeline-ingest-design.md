@@ -115,6 +115,19 @@ dimension 对齐 `RAGF_TEMPLATE_DIM`；`qwen3-vl-embedding` 多模态向量 2048
 - **成本**：Knowhere LLM/VLM 摘要与 DashScope 编码按量计费 → 产物开关默认关闭、visual worker 并发=1。
 - **幂等**：全量替换语义（先删后插）在三条管线一致；`prepare_run` 桥接 worker 重启重投递；hybrid 模式两管线并发回写 `documents.status` 以文本管线完成态为准（chunk_count 语义 = 文本块数）。
 
+## 7.1 legacy 工厂链删除（未上线直接迁移）
+
+双管线默认化后（`RAGF_ROUTING_MODE='auto'`、`RAGF_KNOWHERE_MODE='api'`、knowhere 扩展集含
+pdf/docx/pptx/md/txt/csv），legacy 解析链整体删除：
+
+- 删除：`app/ingest/parser/`（factory/registry/base + direct_text/office_text/mineru_public/rapid_ocr）、
+  `app/ingest/chunking/`（dispatcher/presets/parsers，`count_tokens` 内联进 knowhere_mapping）、
+  `ingest_service.run_document_ingest` 及 preset/ocr 指纹、上传 API 的 `chunk_preset_id`/`ocr_engine` 参数、
+  配置组 `RAGF_MINERU_*`/`MINERU_API_TOKEN`/`RAGF_OCR_ENGINE`
+- 依赖删除：rapidocr / onnxruntime / python-docx / python-pptx（pypdfium2 保留——限额与 PDF 形态探测在用）
+- 语义变化：引擎不可用从「回退 legacy」改为 **路由期 fail-closed 报错**——摄取硬依赖
+  Knowhere 服务 + DASHSCOPE_API_KEY；`routing_mode` 取值不再含 `legacy`
+
 ## 8. 后续工作
 
 1. `knowhere_visual_chunks` 子任务：Knowhere 解析产物中的图表 chunk → 视觉索引（携带 parent_section/source_chunk_id 回链）。

@@ -1,4 +1,4 @@
-"""摄取/状态/rebuild API（ragf-design §7；D13 格式子集 415；D12 rebuild 受理）。"""
+"""上传/状态/rebuild API（ragf-design §7；D13 格式子集 415；D12 rebuild 受理）。解析由双管线接管（spec D1-D7）。"""
 
 from pathlib import PurePosixPath
 from typing import Annotated
@@ -61,8 +61,6 @@ async def ingest_document(
     current_namespace: CurrentNamespace,
     kb_name: Annotated[str, Path(description='知识库标识', pattern=r'^[a-z0-9_]+$')],
     file: Annotated[UploadFile, File(description='文档文件（D13 格式子集）')],
-    chunk_preset_id: Annotated[str | None, Form(description='分块预设（general/qa/separator/…）')] = None,
-    ocr_engine: Annotated[str | None, Form(description='OCR 引擎（pdf/图片；缺省走 settings）')] = None,
     *,
     force: Annotated[bool, Form(description='强制重摄取（同指纹文档）')] = False,
 ) -> ResponseSchemaModel[IngestResultItem]:
@@ -103,10 +101,6 @@ async def ingest_document(
             db=db, kb_name=kb_name, file=file, source_type='file', owner_id=owner_id, owner_dept_id=owner_dept_id
         )
 
-    doc.ingest_params = {
-        'chunk_preset_id': chunk_preset_id or (doc.ingest_params or {}).get('chunk_preset_id') or 'general',
-        'ocr_engine': ocr_engine or '',
-    }
     await db.flush()
     _enqueue_ingest(doc.document_id, doc.kb_name, doc.plugin_namespace)
     return response_base.success(

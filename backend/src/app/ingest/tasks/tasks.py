@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from backend.src.app.ingest.service.ingest_service import IngestService, IngestStepError, plan_document_pipelines
+from backend.src.app.ingest.service.ingest_service import IngestService, plan_document_pipelines
 
 # knowhere.* / visual.* 任务模块须随 tasks.py 一并被 celery autodiscover 导入注册
 from backend.src.app.ingest.tasks.knowhere import knowhere_parse_task  # ruff: ignore[unused-import]
@@ -37,7 +37,7 @@ async def process_document_task(
     plugin_namespace: str | None = None,
     params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """摄取单篇文档：路由 → legacy 就地执行 / 双管线派发（幂等：全量替换）。"""
+    """摄取单篇文档：路由规划 → 派发 knowhere/visual 管线（幂等：全量替换）。"""
     try:
         pipelines = await plan_document_pipelines(document_id, kb_name, plugin_namespace)
     except errors.ConflictError:
@@ -53,45 +53,7 @@ async def process_document_task(
         record_ingest_result('failed')
         return {'document_id': document_id, 'status': 'failed', 'error': str(exc)}
 
-    if pipelines == ['legacy']:
-        return await _run_legacy(document_id, kb_name, plugin_namespace, params)
-    return await _dispatch_pipelines(document_id, kb_name, plugin_namespace, pipelines)
-
-
-async def _run_legacy(
-    document_id: str,
-    kb_name: str,
-    plugin_namespace: str | None,
-    params: dict[str, Any] | None,
-) -> dict[str, Any]:
-    """legacy 管线（既有工厂链路，行为不变）。"""
-    try:
-        async with async_db_session.begin() as db:
-            result = await IngestService.run_document_ingest(
-                db,
-                document_id=document_id,
-                kb_name=kb_name,
-                plugin_namespace=plugin_namespace,
-                params=params,
-            )
-            record_ingest_result(str(result.get('status') or 'ready'))
-            return result
-    except IngestStepError as exc:
-        await _mark_failed(document_id, kb_name, plugin_namespace, exc.status, str(exc))
-        record_ingest_result(exc.status)
-        return {'document_id': document_id, 'status': exc.status, 'error': str(exc)}
-    except errors.ConflictError:
-        record_ingest_result('in_progress')
-        return {'document_id': document_id, 'status': 'in_progress', 'error': '文档摄取中，跳过重复任务'}
-    except errors.NotFoundError as exc:
-        log.warning('摄取任务目标不存在: {}', exc)
-        record_ingest_result('skipped')
-        return {'document_id': document_id, 'status': 'skipped', 'error': str(exc)}
-    except Exception as exc:
-        log.error('摄取任务异常 doc={} kb={}: {}', document_id, kb_name, exc)
-        await _mark_failed(document_id, kb_name, plugin_namespace, 'failed', f'{type(exc).__name__}: {exc}')
-        record_ingest_result('failed')
-        return {'document_id': document_id, 'status': 'failed', 'error': str(exc)}
+    return await _dispatch_pipelines(document_id, kb_name, plugin_namespace, pipelines, params)
 
 
 async def _dispatch_pipelines(
@@ -99,6 +61,7 @@ async def _dispatch_pipelines(
     kb_name: str,
     plugin_namespace: str | None,
     pipelines: list[str],
+    params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """创建 ingest_jobs 审计行（事务内）→ 事务提交后派发下游（job_id = task_id）。"""
     from uuid import uuid4
@@ -139,6 +102,7 @@ async def _dispatch_pipelines(
                 'document_id': document_id,
                 'kb_name': kb_name,
                 'plugin_namespace': ns,
+                'params': params,
             },
             task_id=item['job_id'],
         )

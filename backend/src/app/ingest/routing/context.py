@@ -10,13 +10,12 @@ from dataclasses import dataclass
 
 __all__ = ['RouteContext']
 
-# 管线名（spec D1）：legacy=既有工厂链路；knowhere=Knowhere 语义解析；visual=PixelRAG 视觉
-PIPELINE_LEGACY = 'legacy'
+# 管线名（spec D1）：knowhere=Knowhere 语义解析；visual=PixelRAG 视觉
+# （legacy 工厂链已删除——未上线直接迁移；引擎不可用时路由 fail-closed）
 PIPELINE_KNOWHERE = 'knowhere'
 PIPELINE_VISUAL = 'visual'
 
 FORCED_MODE_PIPELINE = {
-    'legacy': [PIPELINE_LEGACY],
     'text': [PIPELINE_KNOWHERE],
     'visual': [PIPELINE_VISUAL],
     'hybrid': [PIPELINE_KNOWHERE, PIPELINE_VISUAL],

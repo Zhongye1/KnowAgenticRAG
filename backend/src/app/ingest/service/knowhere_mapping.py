@@ -13,15 +13,25 @@
 
 from __future__ import annotations
 
+import re
+
 from dataclasses import dataclass, field
 from typing import Any
 
-from backend.src.app.ingest.chunking import nlp
 from backend.src.common.log import log
 
 __all__ = ['KnowhereMapped', 'aggregate_keyword_counts', 'build_doc_structure', 'map_knowhere_result']
 
 _STRUCTURE_MAX_NODES = 2000
+
+
+def count_tokens(text: str) -> int:
+    """近似 token 计数：英文单词/数字串 + CJK 单字（无 tokenizer 依赖）。"""
+    if not text:
+        return 0
+    return max(1, len(re.findall(r'[A-Za-z0-9_]+|[\u4e00-\u9fff]', text))) if text.strip() else 0
+
+
 _STRUCTURE_SUMMARY_CAP = 400
 
 
@@ -199,7 +209,7 @@ def map_knowhere_result(
         mapped.chunk_rows.append({
             'content': content,
             'chunk_index': idx,
-            'token_count': nlp.count_tokens(content),
+            'token_count': count_tokens(content),
             'char_pos_start': None,
             'char_pos_end': None,
             'meta': meta,

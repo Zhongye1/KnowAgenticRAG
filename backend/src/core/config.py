@@ -367,20 +367,8 @@ class Settings(BaseSettings):
     RAGF_MCP_RATE_LIMIT_ENABLED: bool = True
     RAGF_MCP_RATE_LIMIT_PER_MINUTE: int = 120
 
-    # 摄取（ragf-design D8/D13）
-    RAGF_OCR_ENGINE: Literal['mineru', 'rapidocr'] = 'mineru'
-    # MinerU 精准解析 API（公网 mineru.net v4，D8：不自建 OCR 容器）。
-    # token 在 mineru.net“API 管理页面”创建，经 env MINERU_API_TOKEN 配置；
-    # 未配置时引擎抛不可用 → 摄取按 M4 降级 rapid_ocr。
-    MINERU_API_TOKEN: str | None = None
-    RAGF_MINERU_API_BASE: str = 'https://mineru.net'
-    RAGF_MINERU_MODEL_VERSION: Literal['pipeline', 'vlm', 'MinerU-HTML'] = 'vlm'
-    RAGF_MINERU_IS_OCR: bool = True
-    RAGF_MINERU_ENABLE_FORMULA: bool = True
-    RAGF_MINERU_ENABLE_TABLE: bool = True
-    RAGF_MINERU_LANGUAGE: str = 'ch'
-    RAGF_MINERU_POLL_INTERVAL_SECONDS: float = 3.0
-    RAGF_MINERU_TIMEOUT_SECONDS: float = 900.0
+    # 摄取上传白名单（D13；路由 knowhere/visual 扩展集见 RAGF_ROUTING_*_EXTS。
+    # MinerU 直连配置已随 legacy 工厂链删除——PDF/扫描件 OCR 由 Knowhere 服务内部处理）
     RAGF_INGEST_EXT_INCLUDE: list[str] = ['pdf', 'docx', 'pptx', 'md', 'txt', 'csv', 'png', 'jpg']
 
     ##################################################
@@ -388,14 +376,14 @@ class Settings(BaseSettings):
     ##################################################
     # 路由（D2/D3）：KB 级 routing_mode 优先，空/legacy 走既有工厂链路；
     # auto=格式+形态路由（PDF 文本/扫描探测），text/visual/hybrid=强制管线。
-    RAGF_ROUTING_MODE: Literal['legacy', 'auto', 'text', 'visual', 'hybrid'] = 'auto'
+    RAGF_ROUTING_MODE: Literal['auto', 'text', 'visual', 'hybrid'] = 'auto'
     # 文件名前缀强制（knowhere:xxx.pdf / pixelrag:xxx.jpg）；值 = 管线名（knowhere/visual）
     RAGF_ROUTING_PREFIX_FORCE: dict[str, str] = Field(
         default_factory=lambda: {'knowhere:': 'knowhere', 'pixelrag:': 'visual'}
     )
     RAGF_ROUTING_KNOWHERE_EXTS: list[str] = Field(default_factory=lambda: ['pdf', 'docx', 'pptx', 'md', 'txt', 'csv'])
     RAGF_ROUTING_VISUAL_EXTS: list[str] = Field(default_factory=lambda: ['png', 'jpg', 'jpeg'])
-    RAGF_ROUTING_DEFAULT_PIPELINE: str = 'legacy'  # 全部 selector 弃权时的兜底管线
+    RAGF_ROUTING_DEFAULT_PIPELINE: str = 'knowhere'  # 全部 selector 弃权时的兜底管线
     # PDF 形态探测（D3）：文本页占比 / 每页均字符数低于阈值 → scanned → visual 管线
     RAGF_PDF_PROBE_TEXT_PAGE_RATIO: float = 0.2
     RAGF_PDF_PROBE_AVG_CHARS_PER_PAGE: int = 50

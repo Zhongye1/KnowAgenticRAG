@@ -11,7 +11,6 @@ from urllib.parse import urlparse
 
 from backend.src.app.ingest.routing.context import (
     PIPELINE_KNOWHERE,
-    PIPELINE_LEGACY,
     PIPELINE_VISUAL,
     RouteContext,
 )
@@ -24,7 +23,6 @@ from backend.src.app.ingest.routing.selectors import (
     PdfFormSelector,
     PrefixSelector,
 )
-from backend.src.common.log import log
 
 __all__ = [
     'filter_available_pipelines',
@@ -103,7 +101,6 @@ def route(ctx: RouteContext) -> list[str]:
             ExtensionSelector(
                 knowhere_exts=settings.RAGF_ROUTING_KNOWHERE_EXTS,
                 visual_exts=settings.RAGF_ROUTING_VISUAL_EXTS,
-                supported_exts=settings.RAGF_INGEST_EXT_INCLUDE,
             ),
         ],
         default_pipeline=settings.RAGF_ROUTING_DEFAULT_PIPELINE,
@@ -112,14 +109,14 @@ def route(ctx: RouteContext) -> list[str]:
 
 
 def filter_available_pipelines(pipelines: list[str], *, filename: str) -> list[str]:
-    """按引擎可用性过滤管线：不可用引擎显式回退 legacy（日志可见，spec D1）。
+    """按引擎可用性校验管线：不可用引擎直接 fail-closed 报错（spec D1）。
 
-    引擎未安装 / 未部署（RAGF_KNOWHERE_MODE=off、DashScope 无 key）时任务不可
-    能成功，路由期直接回退，避免派发后失败。
+    引擎未安装 / 未部署（Knowhere 服务缺失、DashScope 无 key）时任务不可能
+    成功，路由期即报错——legacy 工厂链已删除，无兜底；部署要求见 spec §6。
     """
     from backend.src.app.ingest.engine.availability import knowhere_available, visual_available
 
-    result: list[str] = []
+    unavailable: list[str] = []
     for pipeline in pipelines:
         if pipeline == PIPELINE_KNOWHERE:
             ok, reason = knowhere_available()
@@ -127,11 +124,11 @@ def filter_available_pipelines(pipelines: list[str], *, filename: str) -> list[s
             ok, reason = visual_available()
         else:
             ok, reason = True, ''
-        if ok:
-            if pipeline not in result:
-                result.append(pipeline)
-            continue
-        log.warning('管线 {} 不可用（{}），文档 {} 回退 legacy 管线', pipeline, reason, filename)
-        if PIPELINE_LEGACY not in result:
-            result.append(PIPELINE_LEGACY)
-    return result or [PIPELINE_LEGACY]
+        if not ok:
+            unavailable.append(f'{pipeline}（{reason}）')
+    if unavailable:
+        raise RuntimeError(
+            f'摄取引擎不可用: {"; ".join(unavailable)}；'
+            f'请部署 Knowhere 服务 / 配置 DASHSCOPE_API_KEY（文档 {filename} 无法路由）'
+        )
+    return list(dict.fromkeys(pipelines))
