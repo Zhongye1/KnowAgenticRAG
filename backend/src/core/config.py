@@ -392,6 +392,9 @@ class Settings(BaseSettings):
     # parser=knowhere-parse-sdk 进程内（P4）；off=关闭（文档路由期 fail-closed 报错）
     RAGF_KNOWHERE_MODE: Literal['api', 'parser', 'off'] = 'api'
     RAGF_KNOWHERE_BASE_URL: str = 'http://knowhere:5005'
+    # Knowhere HTTP 层可选凭据（SDK Authorization 头）：仅当部署带鉴权网关
+    # （共享/公网暴露）时配置；自建 compose 容器留空即可（SDK 传 None 不带认证头）。
+    # 注意它不是 SaaS 平台 token——MinerU 等解析后端的凭据由 Knowhere 服务自己持有
     RAGF_KNOWHERE_API_KEY: str = ''
     RAGF_KNOWHERE_TIMEOUT: float = 30.0
     RAGF_KNOWHERE_UPLOAD_TIMEOUT: float = 300.0
