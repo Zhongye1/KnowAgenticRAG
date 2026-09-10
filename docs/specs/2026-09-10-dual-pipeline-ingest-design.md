@@ -107,7 +107,7 @@ dimension 对齐 `RAGF_TEMPLATE_DIM`；`qwen3-vl-embedding` 多模态向量 2048
 1. Knowhere api 模式：部署 Knowhere 服务（:5005，compose 占位注释）→ `.env.server` 设 `RAGF_KNOWHERE_MODE=api`、`RAGF_KNOWHERE_BASE_URL`；worker 侧可选装 `knowhere-python-sdk`。
 2. 视觉管线：`.env.server` 设 `DASHSCOPE_API_KEY`；visual worker 可选装 `pixelrag`（git 依赖）。
 3. 队列拆分：`.env.server` 设 `RAGF_CELERY_KNOWHERE_QUEUE=knowhere` / `RAGF_CELERY_VISUAL_QUEUE=visual` → `docker compose --profile ragf-ingest up -d ragf_celery_knowhere_worker ragf_celery_visual_worker`。
-4. 灰度：目标 KB 设 `routing_mode='auto'`（`knowledge_bases` 行）；回滚 = 切回 `'legacy'` + `POST /{kb}/rebuild`。
+4. 灰度：**未上线直接全量切换**——默认值已改为 `RAGF_ROUTING_MODE='auto'`、`RAGF_KNOWHERE_MODE='api'`、新 KB `routing_mode='auto'`，且 knowhere 扩展集含 pdf/docx/pptx/md/txt/csv（office/文本格式不再走 legacy 工厂）；图片/扫描 PDF 走 visual。仅需部署 Knowhere 服务 + `DASHSCOPE_API_KEY`。既有 dev 库执行 `UPDATE knowledge_bases SET routing_mode='auto'` 或重建。回滚 = KB 切 `'legacy'` + `POST /{kb}/rebuild`。
 
 ## 7. 风险与守护
 

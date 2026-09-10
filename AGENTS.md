@@ -80,6 +80,4 @@ task dev:stop    # 停止前后端进程 + 依赖容器
 
 ## 9. 已知债务 / 注意事项
 
-- `CONTRIBUTING.md` 是空文件占位。
-- backend 存在 1 个历史 pyright 错误：`src/app/model_provider/tests/test_hf_clients.py:102` 参数类型不匹配，待修。
-- 后端 `common.security → admin` 等跨模块豁免为已知债务（backend/AGENTS.md §5、pyproject 契约注释）。
+- 项目未上线，目前没有存量包袱

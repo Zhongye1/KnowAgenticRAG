@@ -40,7 +40,7 @@ def test_prefix_stripped_in_routing_inputs() -> None:
     ctx = resolve_routing_inputs(filename='knowhere:报告.pdf', kb_routing_mode=None, text_page_ratio=None)
     assert ctx.cleaned_name == '报告.pdf'
     assert ctx.ext == '.pdf'
-    assert ctx.routing_mode == 'legacy'
+    assert ctx.routing_mode == 'auto'  # 全局默认 auto（未上线直接切双管线）
 
 
 def test_effective_mode_kb_overrides_global(monkeypatch: pytest.MonkeyPatch) -> None:

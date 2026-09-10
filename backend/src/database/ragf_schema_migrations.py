@@ -22,7 +22,7 @@ _RAGF_ADD_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ('documents', 'visibility', "VARCHAR(16) DEFAULT 'restricted' NOT NULL"),
     ('documents', 'owner_id', 'VARCHAR(64)'),
     # 双管线摄取（spec D2/D6）：路由模式 + Knowhere 产物列
-    ('knowledge_bases', 'routing_mode', "VARCHAR(16) DEFAULT 'legacy' NOT NULL"),
+    ('knowledge_bases', 'routing_mode', "VARCHAR(16) DEFAULT 'auto' NOT NULL"),
     ('documents', 'summary', 'TEXT'),
     ('documents', 'structure', 'JSON'),
 )

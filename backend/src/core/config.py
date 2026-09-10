@@ -388,12 +388,12 @@ class Settings(BaseSettings):
     ##################################################
     # 路由（D2/D3）：KB 级 routing_mode 优先，空/legacy 走既有工厂链路；
     # auto=格式+形态路由（PDF 文本/扫描探测），text/visual/hybrid=强制管线。
-    RAGF_ROUTING_MODE: Literal['legacy', 'auto', 'text', 'visual', 'hybrid'] = 'legacy'
+    RAGF_ROUTING_MODE: Literal['legacy', 'auto', 'text', 'visual', 'hybrid'] = 'auto'
     # 文件名前缀强制（knowhere:xxx.pdf / pixelrag:xxx.jpg）；值 = 管线名（knowhere/visual）
     RAGF_ROUTING_PREFIX_FORCE: dict[str, str] = Field(
         default_factory=lambda: {'knowhere:': 'knowhere', 'pixelrag:': 'visual'}
     )
-    RAGF_ROUTING_KNOWHERE_EXTS: list[str] = Field(default_factory=lambda: ['pdf'])
+    RAGF_ROUTING_KNOWHERE_EXTS: list[str] = Field(default_factory=lambda: ['pdf', 'docx', 'pptx', 'md', 'txt', 'csv'])
     RAGF_ROUTING_VISUAL_EXTS: list[str] = Field(default_factory=lambda: ['png', 'jpg', 'jpeg'])
     RAGF_ROUTING_DEFAULT_PIPELINE: str = 'legacy'  # 全部 selector 弃权时的兜底管线
     # PDF 形态探测（D3）：文本页占比 / 每页均字符数低于阈值 → scanned → visual 管线
@@ -402,7 +402,7 @@ class Settings(BaseSettings):
 
     # Knowhere 引擎（D1）：api=官方 SDK 调自建 :5005 服务；parser=knowhere-parse-sdk 进程内；
     # off=引擎未部署（auto 路由遇 PDF/图片回退 legacy 工厂链路，显式配置不静默）
-    RAGF_KNOWHERE_MODE: Literal['api', 'parser', 'off'] = 'off'
+    RAGF_KNOWHERE_MODE: Literal['api', 'parser', 'off'] = 'api'
     RAGF_KNOWHERE_BASE_URL: str = 'http://knowhere:5005'
     RAGF_KNOWHERE_API_KEY: str = ''
     RAGF_KNOWHERE_TIMEOUT: float = 30.0
