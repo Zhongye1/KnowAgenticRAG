@@ -62,6 +62,15 @@ dependencies = [
     "onnxruntime>=1.29.0",
 ]
 
+# 双管线摄取引擎依赖（双管线摄取 spec D1）为**可选**组件，不进主依赖/uv.lock：
+#   api 模式：knowhere-python-sdk
+#   parser 模式：knowhere-parse-sdk @ git+https://github.com/zhiweio/knowhere-parse-sdk.git
+#   视觉管线：pixelrag @ git+https://github.com/StarTrail-org/PixelRAG.git + dashscope
+# 部署 knowhere/visual worker 时在对应环境单独安装（uv pip install ...），
+# 代码侧全部惰性导入，缺包时引擎显式报错（fail-closed），不影响 server/其余 worker 启动。
+# 注：曾尝试 optional-dependencies + allow-direct-references，git 依赖锁定期需外网，
+# 与 uv sync --locked 构建链冲突，故改为文档化约定（spec D1）。
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

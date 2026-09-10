@@ -382,6 +382,64 @@ class Settings(BaseSettings):
     RAGF_MINERU_TIMEOUT_SECONDS: float = 900.0
     RAGF_INGEST_EXT_INCLUDE: list[str] = ['pdf', 'docx', 'pptx', 'md', 'txt', 'csv', 'png', 'jpg']
 
+    ##################################################
+    # [ RAGF ] 双管线摄取（EagleRAG ingest 迁移；docs/specs/2026-09-10-dual-pipeline-ingest-design.md）
+    ##################################################
+    # 路由（D2/D3）：KB 级 routing_mode 优先，空/legacy 走既有工厂链路；
+    # auto=格式+形态路由（PDF 文本/扫描探测），text/visual/hybrid=强制管线。
+    RAGF_ROUTING_MODE: Literal['legacy', 'auto', 'text', 'visual', 'hybrid'] = 'legacy'
+    # 文件名前缀强制（knowhere:xxx.pdf / pixelrag:xxx.jpg）；值 = 管线名（knowhere/visual）
+    RAGF_ROUTING_PREFIX_FORCE: dict[str, str] = Field(
+        default_factory=lambda: {'knowhere:': 'knowhere', 'pixelrag:': 'visual'}
+    )
+    RAGF_ROUTING_KNOWHERE_EXTS: list[str] = Field(default_factory=lambda: ['pdf'])
+    RAGF_ROUTING_VISUAL_EXTS: list[str] = Field(default_factory=lambda: ['png', 'jpg', 'jpeg'])
+    RAGF_ROUTING_DEFAULT_PIPELINE: str = 'legacy'  # 全部 selector 弃权时的兜底管线
+    # PDF 形态探测（D3）：文本页占比 / 每页均字符数低于阈值 → scanned → visual 管线
+    RAGF_PDF_PROBE_TEXT_PAGE_RATIO: float = 0.2
+    RAGF_PDF_PROBE_AVG_CHARS_PER_PAGE: int = 50
+
+    # Knowhere 引擎（D1）：api=官方 SDK 调自建 :5005 服务；parser=knowhere-parse-sdk 进程内；
+    # off=引擎未部署（auto 路由遇 PDF/图片回退 legacy 工厂链路，显式配置不静默）
+    RAGF_KNOWHERE_MODE: Literal['api', 'parser', 'off'] = 'off'
+    RAGF_KNOWHERE_BASE_URL: str = 'http://knowhere:5005'
+    RAGF_KNOWHERE_API_KEY: str = ''
+    RAGF_KNOWHERE_TIMEOUT: float = 30.0
+    RAGF_KNOWHERE_UPLOAD_TIMEOUT: float = 300.0
+    RAGF_KNOWHERE_MAX_RETRIES: int = 2
+    RAGF_KNOWHERE_POLL_INTERVAL: float = 3.0
+    RAGF_KNOWHERE_POLL_TIMEOUT: float = 1800.0
+    # 解析产物开关（LLM/VLM 摘要按量计费；缺省关闭，KB 级 ingest_params 可覆盖）
+    RAGF_KNOWHERE_SUMMARY_IMAGE: bool = False
+    RAGF_KNOWHERE_SUMMARY_TABLE: bool = False
+    RAGF_KNOWHERE_SMART_TITLE_PARSE: bool = True
+
+    # PixelRAG 视觉管线（D7）：pixelrag_render 渲染切片 → Qwen3-VL-Embedding 2048d → ragf_visual
+    RAGF_PIXELRAG_TILE_HEIGHT: int = 1024
+    RAGF_PIXELRAG_QUALITY: int = 85
+    RAGF_PIXELRAG_VIEWPORT_WIDTH: int = 1280
+    RAGF_PIXELRAG_PDF_DPI: int = 150
+    RAGF_PIXELRAG_EMBED_INSTRUCTION: str = ''
+    # 视觉编码 provider（D7：摄取与查询必须同 provider，切换需重建 ragf_visual）
+    RAGF_VISUAL_PROVIDER: Literal['dashscope', 'local'] = 'dashscope'
+    RAGF_VISUAL_MODEL: str = 'qwen3-vl-embedding'
+    RAGF_VISUAL_DIM: int = 2048
+    RAGF_VISUAL_BATCH_SIZE: int = 10
+    RAGF_VISUAL_TIMEOUT_SECONDS: float = 30.0
+    RAGF_VISUAL_MAX_RETRIES: int = 3
+    DASHSCOPE_API_KEY: str = ''  # RAGF_VISUAL_PROVIDER=dashscope 时必填（或环境变量 DASHSCOPE_API_KEY）
+
+    # 摄取限额（D8，EagleRAG limits 迁移：MinerU 精提取上限；0 值 = 关闭对应项）
+    RAGF_INGEST_LIMITS_ENABLED: bool = True
+    RAGF_INGEST_MAX_FILE_BYTES: int = 200 * 1024 * 1024
+    RAGF_INGEST_MAX_PDF_PAGES: int = 200
+
+    # 队列路由（D4）：None=沿用默认队列 celery（单 worker 拓扑不变）；显式设置后
+    # knowhere.* / visual.* 任务入独立队列，需配套 worker（-Q knowhere / -Q visual，
+    # compose profile ragf-ingest 的 ragf_celery_knowhere_worker / ragf_celery_visual_worker）。
+    RAGF_CELERY_KNOWHERE_QUEUE: str | None = None
+    RAGF_CELERY_VISUAL_QUEUE: str | None = None
+
     # ModelProvider（ragf-design D11/D16，键读环境变量 MODELSCOPE_ACCESS_TOKEN）
     MODELSCOPE_API_BASE: str = 'https://api-inference.modelscope.cn/v1/'
     MODELSCOPE_ACCESS_TOKEN: str | None = None

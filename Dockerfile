@@ -77,6 +77,24 @@ RUN mkdir -p /var/log/ragf
 
 CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
+# === Celery Knowhere Worker image（双管线摄取 spec D4：-Q knowhere 独立消费 knowhere.*） ===
+FROM base_server AS ragf_celery_knowhere_worker
+
+COPY deploy/backend/supervisor/ragf_celery_knowhere_worker.conf /etc/supervisor/conf.d/
+
+RUN mkdir -p /var/log/ragf
+
+CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
+# === Celery Visual Worker image（双管线摄取 spec D4/D7：-Q visual，并发=1） ===
+FROM base_server AS ragf_celery_visual_worker
+
+COPY deploy/backend/supervisor/ragf_celery_visual_worker.conf /etc/supervisor/conf.d/
+
+RUN mkdir -p /var/log/ragf
+
+CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
 # === Celery Beat image ===
 FROM base_server AS ragf_celery_beat
 

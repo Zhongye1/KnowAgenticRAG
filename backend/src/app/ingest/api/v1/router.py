@@ -81,6 +81,14 @@ async def ingest_document(
         raise errors.RequestError(msg='文件内容为空')
     await file.seek(0)
 
+    # 摄取限额（双管线摄取 spec D8）：MinerU 上限（200 MiB / 200 页）前置拒绝，422 结构化 detail
+    from backend.src.app.ingest.limits import IngestLimitError, validate_ingest_bytes
+
+    try:
+        validate_ingest_bytes(data, filename)
+    except IngestLimitError as exc:
+        raise HTTPException(status_code=422, detail=exc.to_detail()) from exc
+
     sha256 = compute_sha256_bytes(data)
     existing = await dedup_dao.get_by_sha256(db, sha256, kb_name=kb_name, plugin_namespace=current_namespace)
     if existing is not None and not force:

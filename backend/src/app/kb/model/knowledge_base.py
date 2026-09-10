@@ -5,7 +5,7 @@ from typing import Any
 
 import sqlalchemy as sa
 
-from sqlalchemy import JSON, Float, Text
+from sqlalchemy import JSON, Float, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.src.common.model import MappedBase, TimeZone
@@ -31,6 +31,10 @@ class KnowledgeBase(MappedBase):
     pdf_text_page_ratio: Mapped[float] = mapped_column(Float, default=0.2, comment='PDF 文本页比例阈值')
     embedding_model: Mapped[str] = mapped_column(
         Text, default='bge-m3', comment='嵌入模型（换模型=重建 KB，为 Phase 2 留迁移通道）'
+    )
+    # 双管线摄取路由（spec D2）：legacy=既有工厂链路；auto=格式+形态路由；text/visual/hybrid=强制管线
+    routing_mode: Mapped[str] = mapped_column(
+        String(16), default='legacy', comment='摄取路由模式（legacy/auto/text/visual/hybrid）'
     )
     query_params: Mapped[dict] = mapped_column(
         JSON,
