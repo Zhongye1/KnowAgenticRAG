@@ -103,13 +103,13 @@ async def register_init(app: FastAPI) -> AsyncGenerator[None, None]:
     ensure_base_collections()
     ensure_ragf_template_collection()
 
-    # 幂等确保默认 modelscope provider（D11/D16；表已由 create_tables 建好）
+    # 幂等确保默认模型供应商（D11/D16 演进：仅内置 dashscope 千问平台通道；
+    # chat/自定义向量由用户在「模型供应商」管理自建 openai 兼容 provider 行）
     from backend.src.app.model_provider.service.provider_service import provider_service
     from backend.src.database.db import async_db_session
 
     async with async_db_session() as session:
-        await provider_service.ensure_default_modelscope(session)
-        # 幂等确保默认 dashscope provider（千问平台 token：qwen3.7 向量/重排 + qwen3-vl 多模态向量）
+        # 千问平台 token：qwen3.7 文本向量/重排 + qwen3-vl 多模态向量
         await provider_service.ensure_default_dashscope(session)
 
     # 初始化对象存储 minio

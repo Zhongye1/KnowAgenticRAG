@@ -166,7 +166,7 @@ class DashScopeEmbedding:
 class DashScopeTextReRank:
     """千问平台重排客户端（``dashscope.TextReRank.call``，qwen3.7-text-rerank）。
 
-    接口与 ``BaseReranker`` 对齐（``acompute_score`` / ``test_connection``）；
+    接口与检索层调用约定对齐（``acompute_score`` / ``test_connection``）；
     SDK 同步调用经线程池包装。重排分数已是 0..1，不再二次 sigmoid（保显示值）。
     """
 
@@ -239,7 +239,7 @@ class DashScopeTextReRank:
         return scores
 
     async def aclose(self) -> None:
-        """资源释放（SDK 无长连客户端，空操作；对齐 BaseReranker 调用约定）。"""
+        """资源释放（SDK 无长连客户端，空操作；对齐检索层调用约定）。"""
 
     async def test_connection(self) -> tuple[bool, str]:
         try:

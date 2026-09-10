@@ -439,9 +439,7 @@ class Settings(BaseSettings):
     RAGF_URL_TIMEOUT_SECONDS: float = 30.0
     RAGF_URL_MAX_REDIRECTS: int = 3
 
-    # ModelProvider（ragf-design D11/D16，键读环境变量 MODELSCOPE_ACCESS_TOKEN）
-    MODELSCOPE_API_BASE: str = 'https://api-inference.modelscope.cn/v1/'
-    MODELSCOPE_ACCESS_TOKEN: str | None = None
+    # ModelProvider（ragf-design D11/D16）
     MODEL_PROVIDER_CACHE_REDIS_PREFIX: str = 'fba:cache:model_provider'
     MODEL_PROVIDER_CACHE_TTL: int = 3600
 

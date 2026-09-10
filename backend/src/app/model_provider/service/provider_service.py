@@ -36,7 +36,6 @@ if TYPE_CHECKING:
     from backend.src.app.model_provider.providers.chat import OpenAICompatibleChatModel
     from backend.src.app.model_provider.providers.dashscope_clients import DashScopeEmbedding, DashScopeTextReRank
     from backend.src.app.model_provider.providers.embed import OpenAICompatibleEmbedding
-    from backend.src.app.model_provider.providers.rerank import BaseReranker
     from backend.src.app.model_provider.schema.provider import (
         ModelProviderCreateParam,
         ModelProviderUpdateParam,
@@ -51,7 +50,7 @@ class ProviderService:
 
     @staticmethod
     def api_key_available(provider: ModelProvider) -> bool:
-        """是否解析到可用凭据：直配 api_key / api_key_env / modelscope 默认 env（不回显原文）。"""
+        """是否解析到可用凭据：直配 api_key / api_key_env（不回显原文）。"""
         return bool(resolve_provider_api_key(provider))
 
     # ------------------------------------------------------------------ 校验
@@ -65,9 +64,7 @@ class ProviderService:
         if provider_type not in VALID_PROVIDER_TYPES:
             raise errors.RequestError(msg=f'provider_type 必须是 {sorted(VALID_PROVIDER_TYPES)} 之一')
         if not str(data.get('base_url') or '').strip():
-            if provider_type != 'modelscope':
-                raise errors.RequestError(msg='base_url 不能为空（modelscope 可缺省用默认通道）')
-            data['base_url'] = settings.MODELSCOPE_API_BASE
+            raise errors.RequestError(msg='base_url 不能为空')
         data['base_url'] = str(data['base_url']).strip().rstrip('/')
         data['capabilities'] = _validate_capabilities(data.get('capabilities') or [])
         data['enabled_models'] = _validate_enabled_models(
@@ -157,7 +154,7 @@ class ProviderService:
             raise errors.NotFoundError(msg=f'未找到模型 spec: {spec}（请检查 model_providers 配置）')
         return select_embedding_model(info)
 
-    async def get_reranker(self, db: AsyncSession, spec: str) -> BaseReranker | DashScopeTextReRank:
+    async def get_reranker(self, db: AsyncSession, spec: str) -> DashScopeTextReRank:
         """按 spec 返回 Reranker 客户端（供 retrieval 使用）。"""
         info = await self.get_model_info(db, spec)
         if info is None:
@@ -195,47 +192,6 @@ class ProviderService:
     async def rebuild_cache(self, db: AsyncSession) -> int:
         providers = await provider_dao.get_list(db)
         return await self.cache.rebuild(providers)
-
-    async def ensure_default_modelscope(self, db: AsyncSession) -> ModelProvider | None:
-        """幂等确保默认 modelscope provider（D11/D16：embedding bge-m3 + rerank bge-reranker-v2-m3）。"""
-        provider = await provider_dao.get(db, 'modelscope')
-        defaults = {
-            'provider_id': 'modelscope',
-            'display_name': 'ModelScope API',
-            'provider_type': 'modelscope',
-            'base_url': settings.MODELSCOPE_API_BASE.rstrip('/'),
-            'capabilities': ['embedding', 'rerank'],
-            'enabled_models': [
-                {'id': 'BAAI/bge-m3', 'type': 'embedding', 'dimension': 1024, 'batch_size': 200},
-                {
-                    'id': 'BAAI/bge-reranker-v2-m3',
-                    'type': 'rerank',
-                    'extra': {'rerank_protocol': 'openai'},
-                },
-            ],
-            'is_builtin': True,
-            'is_enabled': True,
-        }
-        if provider is None:
-            provider = await provider_dao.create(db, defaults)
-            await db.commit()  # 先提交 PG
-            await self.cache.invalidate()
-            log.info('[ModelProvider] 已创建默认 modelscope provider')
-            return provider
-        missing = [
-            model['id']
-            for model in defaults['enabled_models']
-            if model['id'] not in {item.get('id') for item in (provider.enabled_models or []) if isinstance(item, dict)}
-        ]
-        if missing:
-            provider.enabled_models = list(provider.enabled_models or []) + [
-                model for model in defaults['enabled_models'] if model['id'] in missing
-            ]
-            provider.capabilities = sorted(set(provider.capabilities or []) | {'embedding', 'rerank'})
-            await provider_dao.update(db, provider, {})
-            await db.commit()
-            await self.cache.invalidate()
-        return provider
 
     async def ensure_default_dashscope(self, db: AsyncSession) -> ModelProvider | None:
         """幂等确保默认 dashscope provider（千问平台 token 通道）。

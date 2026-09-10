@@ -1,7 +1,7 @@
 """model_provider 域单元测试（ragf-design §11/D11/D16/M6 验收：纯函数与协议形状，无网络）。
 
-覆盖：legacy spec 兼容、provider 行构建 ModelInfo、key 回退、模型项/能力校验、
-rerank 协议类 payload 形状与常量（32/512/30s）、embedding 客户端装配。
+覆盖：spec 归一、provider 行构建 ModelInfo、key 回退（api_key / api_key_env / dashscope
+settings 兜底）、模型项/能力校验、千问 SDK 重排通道分派、embedding 客户端装配。
 """
 
 from __future__ import annotations
@@ -10,15 +10,8 @@ import pytest
 
 from backend.src.app.model_provider.cache import ModelInfo, build_model_info, resolve_provider_api_key
 from backend.src.app.model_provider.model.provider import ModelProvider
+from backend.src.app.model_provider.providers.dashscope_clients import DashScopeTextReRank
 from backend.src.app.model_provider.providers.embed import ensure_embeddings_url
-from backend.src.app.model_provider.providers.rerank import (
-    RERANK_BATCH_SIZE,
-    RERANK_MAX_LENGTH,
-    RERANK_TIMEOUT_SECONDS,
-    OpenAIReranker,
-    ensure_rerank_url,
-    sigmoid,
-)
 from backend.src.app.model_provider.service.model_factory import get_reranker, select_embedding_model
 from backend.src.app.model_provider.service.provider_service import (
     _normalize_model_item,
@@ -31,19 +24,19 @@ from backend.src.core.config import settings
 
 def _provider(**overrides: object) -> ModelProvider:
     base: dict[str, object] = {
-        'provider_id': 'modelscope',
-        'display_name': 'ModelScope API',
-        'provider_type': 'modelscope',
-        'base_url': 'https://api-inference.modelscope.cn/v1',
+        'provider_id': 'custom_openai',
+        'display_name': '自定义 OpenAI 兼容',
+        'provider_type': 'openai',
+        'base_url': 'https://api.example.com/v1',
         'api_key': '',
-        'api_key_env': 'MODELSCOPE_ACCESS_TOKEN',
-        'capabilities': ['embedding', 'rerank'],
+        'api_key_env': 'CUSTOM_OPENAI_API_KEY',
+        'capabilities': ['embedding', 'rerank', 'chat'],
         'enabled_models': [
-            {'id': 'BAAI/bge-m3', 'type': 'embedding', 'dimension': 1024, 'batch_size': 200},
-            {'id': 'BAAI/bge-reranker-v2-m3', 'type': 'rerank', 'extra': {'rerank_protocol': 'openai'}},
+            {'id': 'text-embedding-custom', 'type': 'embedding', 'dimension': 1024, 'batch_size': 200},
+            {'id': 'qwen3.7-text-rerank', 'type': 'rerank', 'extra': {'rerank_protocol': 'dashscope-sdk'}},
         ],
         'is_enabled': True,
-        'is_builtin': True,
+        'is_builtin': False,
     }
     base.update(overrides)
     return ModelProvider(**base)
@@ -63,46 +56,43 @@ def test_normalize_model_spec_strips_whitespace() -> None:
 def test_build_model_info_embedding_defaults() -> None:
     """ModelInfo：dimension/batch_size（D17 默认 200）/spec 装配正确。"""
     provider = _provider()
-    info = build_model_info(provider, {'id': 'BAAI/bge-m3', 'type': 'embedding', 'dimension': 1024})
+    info = build_model_info(provider, {'id': 'text-embedding-custom', 'type': 'embedding', 'dimension': 1024})
     assert info is not None
-    assert info.spec == 'modelscope:BAAI/bge-m3'
+    assert info.spec == 'custom_openai:text-embedding-custom'
     assert info.dimension == 1024
     assert info.batch_size == 200  # 未显式给 batch_size → 默认 200
-    assert info.provider_type == 'modelscope'
+    assert info.provider_type == 'openai'
 
 
 def test_resolve_provider_api_key_fallback_env(monkeypatch: pytest.MonkeyPatch) -> None:
-    """api_key 为空 → 回退 api_key_env 环境变量（D11 modelscope 默认通道）。"""
-    monkeypatch.setenv('MODELSCOPE_ACCESS_TOKEN', 'sk-fallback')
+    """api_key 为空 → 回退 api_key_env 环境变量。"""
+    monkeypatch.setenv('CUSTOM_OPENAI_API_KEY', 'sk-fallback')
     provider = _provider()
-    info = build_model_info(provider, {'id': 'BAAI/bge-m3', 'type': 'embedding'})
+    info = build_model_info(provider, {'id': 'text-embedding-custom', 'type': 'embedding'})
     assert info is not None and info.api_key == 'sk-fallback'
 
 
 def test_resolve_provider_api_key_direct_wins(monkeypatch: pytest.MonkeyPatch) -> None:
-    """直配 api_key 优先于 api_key_env 与 modelscope 默认 env。"""
-    monkeypatch.setenv('MODELSCOPE_ACCESS_TOKEN', 'sk-env')
+    """直配 api_key 优先于 api_key_env。"""
+    monkeypatch.setenv('CUSTOM_OPENAI_API_KEY', 'sk-env')
     provider = _provider(api_key='sk-direct')
     assert resolve_provider_api_key(provider) == 'sk-direct'
 
 
-def test_resolve_provider_api_key_modelscope_env_default(monkeypatch: pytest.MonkeyPatch) -> None:
-    """无 api_key/api_key_env → modelscope provider 回退 settings（服务端 env 默认通道）。"""
-    monkeypatch.setattr(settings, 'MODELSCOPE_ACCESS_TOKEN', 'sk-server-default')
-    provider = _provider(api_key_env=None)
-    assert resolve_provider_api_key(provider) == 'sk-server-default'
+def test_resolve_provider_api_key_dashscope_settings_fallback(monkeypatch: pytest.MonkeyPatch) -> None:
+    """dashscope provider 无 api_key/api_key_env → 回退 settings.DASHSCOPE_API_KEY。"""
+    monkeypatch.setattr(settings, 'DASHSCOPE_API_KEY', 'sk-dashscope')
+    provider = _provider(
+        provider_id='dashscope',
+        provider_type='dashscope',
+        api_key_env=None,
+        base_url='',
+    )
+    assert resolve_provider_api_key(provider) == 'sk-dashscope'
 
 
-def test_resolve_provider_api_key_env_empty_falls_back(monkeypatch: pytest.MonkeyPatch) -> None:
-    """api_key_env 对应环境变量为空串 → 视同未配置，modelscope 回退服务端默认（空值不产生假凭据）。"""
-    monkeypatch.setenv('MODELSCOPE_ACCESS_TOKEN', '')
-    monkeypatch.setattr(settings, 'MODELSCOPE_ACCESS_TOKEN', 'sk-server-default')
-    provider = _provider()
-    assert resolve_provider_api_key(provider) == 'sk-server-default'
-
-
-def test_resolve_provider_api_key_non_modelscope_without_key() -> None:
-    """非 modelscope 且无任何凭据来源 → None（不误用默认通道）。"""
+def test_resolve_provider_api_key_without_key() -> None:
+    """无任何凭据来源 → None（不误用默认通道）。"""
     provider = _provider(provider_type='openai', base_url='https://api.example.com', api_key_env=None)
     assert resolve_provider_api_key(provider) is None
 
@@ -131,61 +121,27 @@ def test_validate_capabilities_and_model_item() -> None:
         _normalize_model_item({'id': 'dup', 'type': 'embedding'}, None, seen)
 
 
-def test_rerank_constants_and_sigmoid() -> None:
-    """D17：rerank 客户端常量 32/512/30s 硬编码；sigmoid 归一化边界。"""
-    assert (RERANK_BATCH_SIZE, RERANK_MAX_LENGTH) == (32, 512)
-    assert pytest.approx(30.0) == RERANK_TIMEOUT_SECONDS
-    assert sigmoid(0.0) == pytest.approx(0.5)
-    assert sigmoid(100.0) == pytest.approx(1.0)
-    assert sigmoid(-100.0) == pytest.approx(0.0)
-
-
-def test_rerank_protocol_payload_shapes() -> None:
-    """D16：OpenAI 兼容 /rerank 与 DashScope payload 形状/URL 推断。"""
-    openai = OpenAIReranker(
-        model='BAAI/bge-reranker-v2-m3',
-        base_url='https://api-inference.modelscope.cn/v1/rerank',
-        api_key='sk',
-    )
-    assert openai.url == 'https://api-inference.modelscope.cn/v1/rerank'
-    payload = openai._build_payload('查询', ['文档一', '文档二'])
-    assert payload == {
-        'model': 'BAAI/bge-reranker-v2-m3',
-        'query': '查询',
-        'documents': ['文档一', '文档二'],
-        'max_chunks_per_doc': 512,
-    }
-    assert openai._extract_results({'results': [{'index': 0}]}) == [{'index': 0}]
-
-
 def test_url_ensure_helpers() -> None:
-    assert ensure_rerank_url('https://x/v1') == 'https://x/v1/rerank'
-    assert ensure_rerank_url('https://x/v1/rerank') == 'https://x/v1/rerank'
     assert ensure_embeddings_url('https://x/v1') == 'https://x/v1/embeddings'
     assert ensure_embeddings_url('https://x/v1/embeddings') == 'https://x/v1/embeddings'
 
 
 def test_select_embedding_model_rejects_non_embedding() -> None:
     info = ModelInfo(
-        provider_id='modelscope',
-        model_id='BAAI/bge-reranker-v2-m3',
+        provider_id='custom_openai',
+        model_id='qwen3.7-text-rerank',
         model_type='rerank',
         display_name='rerank',
         api_key='sk',
         base_url='https://x/v1',
-        provider_type='modelscope',
+        provider_type='openai',
     )
     with pytest.raises(errors.RequestError):
         select_embedding_model(info)
 
 
-def test_get_reranker_protocol_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
-    """extra.rerank_protocol 决定协议类：缺省 openai，dashscope-sdk 走千问 SDK 通道。"""
-    provider = _provider()
-    openai_info = build_model_info(provider, {'id': 'BAAI/bge-reranker-v2-m3', 'type': 'rerank'})
-    assert openai_info is not None
-    assert isinstance(get_reranker(openai_info), OpenAIReranker)
-
+def test_get_reranker_requires_dashscope_sdk_protocol() -> None:
+    """重排仅支持千问 SDK 通道（dashscope-sdk）；openai 协议 rerank 已下线。"""
     sdk_provider = _provider(
         provider_id='dashscope',
         provider_type='dashscope',
@@ -195,6 +151,9 @@ def test_get_reranker_protocol_dispatch(monkeypatch: pytest.MonkeyPatch) -> None
     )
     sdk_info = build_model_info(sdk_provider, sdk_provider.enabled_models[0])
     assert sdk_info is not None
-    from backend.src.app.model_provider.providers.dashscope_clients import DashScopeTextReRank
-
     assert isinstance(get_reranker(sdk_info), DashScopeTextReRank)
+
+    openai_info = build_model_info(_provider(), {'id': 'qwen3.7-text-rerank', 'type': 'rerank'})
+    assert openai_info is not None
+    with pytest.raises(errors.RequestError, match='dashscope-sdk'):
+        get_reranker(openai_info)
