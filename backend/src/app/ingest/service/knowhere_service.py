@@ -80,7 +80,7 @@ class KnowhereIngestService:
             doc.status = 'parsing'
             doc.error_message = None
             await db.flush()
-            embed_spec = normalize_model_spec(kb.embedding_model) or 'huggingface:BAAI/bge-m3'
+            embed_spec = normalize_model_spec(kb.embedding_model) or 'dashscope:qwen3.7-text-embedding-flash'
             version_id = int(doc.active_version or 1)
             filename = doc.name or 'file'
             object_key = doc.source_uri or ''

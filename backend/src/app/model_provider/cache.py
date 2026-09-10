@@ -88,6 +88,8 @@ def resolve_provider_api_key(provider: ModelProvider) -> str | None:
         value = os.getenv(provider.api_key_env)
         if value:
             return value
+    if provider.provider_type == 'dashscope' and settings.DASHSCOPE_API_KEY:
+        return settings.DASHSCOPE_API_KEY
     if provider.provider_type == 'modelscope' and settings.MODELSCOPE_ACCESS_TOKEN:
         return settings.MODELSCOPE_ACCESS_TOKEN
     if provider.provider_type == 'huggingface' and settings.HF_TOKEN:

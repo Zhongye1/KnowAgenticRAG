@@ -111,6 +111,8 @@ async def register_init(app: FastAPI) -> AsyncGenerator[None, None]:
         await provider_service.ensure_default_modelscope(session)
         # 幂等确保默认 huggingface provider（bge-m3 embedding + bge-reranker-v2-m3 精排走 hf-inference）
         await provider_service.ensure_default_huggingface(session)
+        # 幂等确保默认 dashscope provider（千问平台 token：qwen3.7 向量/重排 + qwen3-vl 多模态向量）
+        await provider_service.ensure_default_dashscope(session)
 
     # 初始化对象存储 minio
     await minio_client.init()

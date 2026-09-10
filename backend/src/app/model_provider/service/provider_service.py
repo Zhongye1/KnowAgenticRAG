@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from backend.src.app.model_provider.providers.chat import OpenAICompatibleChatModel
+    from backend.src.app.model_provider.providers.dashscope_clients import DashScopeEmbedding, DashScopeTextReRank
     from backend.src.app.model_provider.providers.embed import OpenAICompatibleEmbedding
     from backend.src.app.model_provider.providers.rerank import BaseReranker
     from backend.src.app.model_provider.schema.provider import (
@@ -147,14 +148,16 @@ class ProviderService:
                 return build_model_info(provider, model)
         return None
 
-    async def get_embedding_model(self, db: AsyncSession, spec: str) -> OpenAICompatibleEmbedding:
+    async def get_embedding_model(
+        self, db: AsyncSession, spec: str
+    ) -> OpenAICompatibleEmbedding | DashScopeEmbedding:
         """按 spec 返回 Embedding 客户端（供 ingest/retrieval 使用）。"""
         info = await self.get_model_info(db, spec)
         if info is None:
             raise errors.NotFoundError(msg=f'未找到模型 spec: {spec}（请检查 model_providers 配置）')
         return select_embedding_model(info)
 
-    async def get_reranker(self, db: AsyncSession, spec: str) -> BaseReranker:
+    async def get_reranker(self, db: AsyncSession, spec: str) -> BaseReranker | DashScopeTextReRank:
         """按 spec 返回 Reranker 客户端（供 retrieval 使用）。"""
         info = await self.get_model_info(db, spec)
         if info is None:
@@ -260,6 +263,57 @@ class ProviderService:
             await db.commit()  # 先提交 PG
             await self.cache.invalidate()
             log.info('[ModelProvider] 已创建默认 huggingface provider')
+            return provider
+        missing = [
+            model['id']
+            for model in defaults['enabled_models']
+            if model['id'] not in {item.get('id') for item in (provider.enabled_models or []) if isinstance(item, dict)}
+        ]
+        if missing:
+            provider.enabled_models = list(provider.enabled_models or []) + [
+                model for model in defaults['enabled_models'] if model['id'] in missing
+            ]
+            provider.capabilities = sorted(set(provider.capabilities or []) | {'embedding', 'rerank'})
+            await provider_dao.update(db, provider, {})
+            await db.commit()
+            await self.cache.invalidate()
+        return provider
+
+    async def ensure_default_dashscope(self, db: AsyncSession) -> ModelProvider | None:
+        """幂等确保默认 dashscope provider（千问平台 token 通道）。
+
+        模型面（ragf-design D11 扩展）：``qwen3.7-text-embedding-flash``（文本向量，
+        dimension 对齐模板集合 RAGF_TEMPLATE_DIM）/ ``qwen3-vl-embedding``（多模态
+        向量，2048 维，与视觉管线同模型）/ ``qwen3.7-text-rerank``（SDK 重排通道）。
+        凭据走 ``DASHSCOPE_API_KEY``（api_key_env 回退，D11 同款）；SDK 为可选依赖，
+        行常驻、调用期报缺。
+        """
+        provider = await provider_dao.get(db, 'dashscope')
+        defaults = {
+            'provider_id': 'dashscope',
+            'display_name': '阿里云百炼（DashScope）',
+            'provider_type': 'dashscope',
+            'base_url': '',
+            'api_key_env': 'DASHSCOPE_API_KEY',
+            'capabilities': ['embedding', 'rerank'],
+            'enabled_models': [
+                {
+                    'id': 'qwen3.7-text-embedding-flash',
+                    'type': 'embedding',
+                    'dimension': settings.RAGF_TEMPLATE_DIM,
+                    'batch_size': 10,
+                },
+                {'id': 'qwen3-vl-embedding', 'type': 'embedding', 'dimension': 2048, 'batch_size': 10},
+                {'id': 'qwen3.7-text-rerank', 'type': 'rerank', 'extra': {'rerank_protocol': 'dashscope-sdk'}},
+            ],
+            'is_builtin': True,
+            'is_enabled': True,
+        }
+        if provider is None:
+            provider = await provider_dao.create(db, defaults)
+            await db.commit()  # 先提交 PG
+            await self.cache.invalidate()
+            log.info('[ModelProvider] 已创建默认 dashscope provider（千问平台）')
             return provider
         missing = [
             model['id']

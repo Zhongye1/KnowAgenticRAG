@@ -2,6 +2,7 @@
 
 from backend.src.app.model_provider.cache import ModelInfo
 from backend.src.app.model_provider.providers.chat import OpenAICompatibleChatModel
+from backend.src.app.model_provider.providers.dashscope_clients import DashScopeEmbedding, DashScopeTextReRank
 from backend.src.app.model_provider.providers.embed import HuggingFaceEmbedding, OpenAICompatibleEmbedding
 from backend.src.app.model_provider.providers.rerank import (
     BaseReranker,
@@ -13,7 +14,7 @@ from backend.src.common.exception import errors
 from backend.src.core.config import settings
 
 
-def select_embedding_model(info: ModelInfo) -> OpenAICompatibleEmbedding:
+def select_embedding_model(info: ModelInfo) -> OpenAICompatibleEmbedding | DashScopeEmbedding:
     """按 ModelInfo 构建 Embedding 客户端（模型 type 必须是 embedding）。"""
     if info.model_type != 'embedding':
         raise errors.RequestError(msg=f'模型 {info.spec} 不是 embedding 模型（type={info.model_type}）')
@@ -26,6 +27,14 @@ def select_embedding_model(info: ModelInfo) -> OpenAICompatibleEmbedding:
             batch_size=info.batch_size,
             headers=info.headers,
             repo_id=info.extra.get('hf_repo_id'),
+        )
+    if info.provider_type == 'dashscope':
+        # 千问平台 token 通道（SDK 调用，ragf-design D11 扩展）
+        return DashScopeEmbedding(
+            model=info.model_id,
+            api_key=info.api_key,
+            dimension=info.dimension,
+            batch_size=info.batch_size,
         )
     return OpenAICompatibleEmbedding(
         model=info.model_id,
@@ -50,7 +59,7 @@ def select_chat_model(info: ModelInfo) -> OpenAICompatibleChatModel:
     )
 
 
-def get_reranker(info: ModelInfo) -> BaseReranker:
+def get_reranker(info: ModelInfo) -> BaseReranker | DashScopeTextReRank:
     """按 ModelInfo 构建 Reranker（D16：默认 OpenAI 兼容；rerank_protocol=dashscope 走 DashScope；
     provider_type=huggingface 走 HF Inference text-classification）。"""
     if info.model_type != 'rerank':
@@ -64,5 +73,8 @@ def get_reranker(info: ModelInfo) -> BaseReranker:
             repo_id=info.extra.get('hf_repo_id'),
         )
     protocol = str(info.extra.get('rerank_protocol') or info.extra.get('protocol') or 'openai')
+    if protocol == 'dashscope-sdk':
+        # 千问平台 SDK 重排通道（qwen3.7-text-rerank）
+        return DashScopeTextReRank(model=info.model_id, api_key=info.api_key)
     cls = DashscopeReranker if protocol == 'dashscope' else OpenAIReranker
     return cls(model=info.model_id, base_url=info.base_url, api_key=info.api_key, headers=info.headers)

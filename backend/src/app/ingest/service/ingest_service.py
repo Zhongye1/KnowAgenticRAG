@@ -97,7 +97,7 @@ class IngestService:
         await db.flush()
 
         processing = _resolve_processing_params(doc, params)
-        embed_spec = normalize_model_spec(kb.embedding_model) or 'huggingface:BAAI/bge-m3'
+        embed_spec = normalize_model_spec(kb.embedding_model) or 'dashscope:qwen3.7-text-embedding-flash'
         version_id = int(doc.active_version or 1)
         filename = doc.name or 'file'
         object_key = doc.source_uri or kb_object_key(ns, kb_name, document_id, filename)

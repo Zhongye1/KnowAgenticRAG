@@ -97,6 +97,13 @@ POST /documents/ingest (multipart)      POST /documents/ingest/url (D10, 默认�
 
 ## 6. 部署启用指引
 
+**千问平台 token（D11 扩展）**：文本向量 / 重排 / 视觉向量统一走阿里云百炼 ——
+`DASHSCOPE_API_KEY` + dashscope SDK（`MultiModalEmbedding.call` / `TextReRank.call`）。
+启动时幂等注册 `dashscope` provider（`qwen3.7-text-embedding-flash` 文本向量，
+dimension 对齐 `RAGF_TEMPLATE_DIM`；`qwen3-vl-embedding` 多模态向量 2048 维；
+`qwen3.7-text-rerank` SDK 重排通道）。新 KB 默认 embedding spec = `dashscope:qwen3.7-text-embedding-flash`，
+全局默认精排 = `dashscope:qwen3.7-text-rerank`；既有 KB 保持原模型不变（换模型 = 重建 KB）。
+
 1. Knowhere api 模式：部署 Knowhere 服务（:5005，compose 占位注释）→ `.env.server` 设 `RAGF_KNOWHERE_MODE=api`、`RAGF_KNOWHERE_BASE_URL`；worker 侧可选装 `knowhere-python-sdk`。
 2. 视觉管线：`.env.server` 设 `DASHSCOPE_API_KEY`；visual worker 可选装 `pixelrag`（git 依赖）。
 3. 队列拆分：`.env.server` 设 `RAGF_CELERY_KNOWHERE_QUEUE=knowhere` / `RAGF_CELERY_VISUAL_QUEUE=visual` → `docker compose --profile ragf-ingest up -d ragf_celery_knowhere_worker ragf_celery_visual_worker`。

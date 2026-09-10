@@ -208,10 +208,7 @@ class HuggingFaceReranker(BaseReranker):
     def _extract_results(self, result: dict) -> list[dict]:
         if not isinstance(result, list):
             return []
-        return [
-            {'index': index, 'relevance_score': hf_positive_score(row)}
-            for index, row in enumerate(result)
-        ]
+        return [{'index': index, 'relevance_score': hf_positive_score(row)} for index, row in enumerate(result)]
 
     async def acompute_score(
         self,

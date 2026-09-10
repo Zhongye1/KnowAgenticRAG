@@ -343,7 +343,8 @@ class Settings(BaseSettings):
     RAGF_RETRIEVAL_SIMILARITY_THRESHOLD: float = 0.2
     RAGF_RETRIEVAL_USE_RERANKER: bool = True
     RAGF_RETRIEVAL_RRF_K: int = 60
-    RAGF_RETRIEVAL_RERANK_SPEC: str = 'huggingface:BAAI/bge-reranker-v2-m3'  # D16：默认精排模型 spec（provider:model）
+    # D16：默认精排模型 spec（千问平台 token，dashscope SDK 通道）
+    RAGF_RETRIEVAL_RERANK_SPEC: str = 'dashscope:qwen3.7-text-rerank'
 
     # RAGF：chat 门面（ragf-design D18/M9）
     RAGF_CHAT_MODEL_SPEC: str = ''  # 默认 chat 模型 spec（provider:model）；空 = 请求必须显式 model
