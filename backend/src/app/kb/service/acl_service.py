@@ -135,19 +135,47 @@ async def _propagate_acl(
     owner_id: str,
     groups: list[str],
 ) -> int:
-    """文档 ACL → Milvus 标量 upsert（IO 阻塞走线程，DB 会话不参与）。"""
+    """文档 ACL → Milvus 标量 upsert（IO 阻塞走线程，DB 会话不参与）。
+
+    同步传播到文本模板集合与 ragf_visual 视觉集合（双管线摄取 spec D7：
+    两集合 ACL 镜像字段同规）。
+    """
     import asyncio
 
-    return await asyncio.to_thread(
-        lambda: update_ragf_document_acl(
-            kb_name,
-            document_id,
-            visibility=visibility,
-            owner_id=owner_id,
-            groups=groups[:32],  # 对齐 Milvus groups max_capacity
-            plugin_namespace=instance_namespace(plugin_namespace),
+    from backend.src.database.milvus_visual_ops import update_visual_document_acl
+
+    ns = instance_namespace(plugin_namespace)
+
+    async def _propagate_text() -> int:
+        return await asyncio.to_thread(
+            lambda: update_ragf_document_acl(
+                kb_name,
+                document_id,
+                visibility=visibility,
+                owner_id=owner_id,
+                groups=groups[:32],  # 对齐 Milvus groups max_capacity
+                plugin_namespace=ns,
+            )
         )
-    )
+
+    async def _propagate_visual() -> int:
+        return await asyncio.to_thread(
+            lambda: update_visual_document_acl(
+                kb_name,
+                document_id,
+                visibility=visibility,
+                owner_id=owner_id,
+                groups=groups[:32],
+                plugin_namespace=ns,
+            )
+        )
+
+    updated = await _propagate_text()
+    try:
+        updated += await _propagate_visual()
+    except Exception as exc:
+        log.warning('视觉集合 ACL 传播失败 kb={} doc={}: {}', kb_name, document_id, exc)
+    return updated
 
 
 acl_service = AclService()

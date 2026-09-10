@@ -190,9 +190,14 @@ class DocumentService:
             'doc_acl': 0,
             'objects': 0,
         }
-        text_coll, visual_coll = base_collection_names()
+        text_coll, _visual_coll = base_collection_names()
         counts['milvus_text'] = delete_vectors_by_document(text_coll, doc.kb_name, document_id, plugin_namespace=ns)
-        counts['milvus_visual'] = delete_vectors_by_document(visual_coll, doc.kb_name, document_id, plugin_namespace=ns)
+        # 视觉集合（双管线摄取 spec D7：显式 schema，删除走专用 ops；tile 图对象一并清理）
+        from backend.src.app.kb.service.document_storage import kb_tile_objects_by_document
+        from backend.src.database.milvus_visual_ops import delete_visual_by_document
+
+        counts['milvus_visual'] = delete_visual_by_document(doc.kb_name, document_id, plugin_namespace=ns)
+        await kb_tile_objects_by_document(ns, doc.kb_name, document_id)
         ragf_deleted = delete_ragf_vectors_by_document(doc.kb_name, document_id, plugin_namespace=ns)
         counts['milvus_text_ragf'] = sum(ragf_deleted.values())
         counts['chunks'] = await chunk_dao.delete_by_document(db, document_id, kb_name=doc.kb_name, plugin_namespace=ns)
