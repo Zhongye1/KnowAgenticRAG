@@ -59,8 +59,9 @@ _RERANK_DEGRADED = _METER.create_counter(
 )
 
 
-DEFAULT_EMBEDDING_SPEC = 'huggingface:BAAI/bge-m3'
-DEFAULT_RERANK_SPEC = 'huggingface:BAAI/bge-reranker-v2-m3'
+# 查询侧兜底默认（与 KB 摄取侧默认一致，千问平台 token，防止两侧向量空间错配）
+DEFAULT_EMBEDDING_SPEC = 'dashscope:qwen3.7-text-embedding-flash'
+DEFAULT_RERANK_SPEC = 'dashscope:qwen3.7-text-rerank'
 MAX_KB_NAMES = 20  # M11：单次跨 KB 聚合上限
 MAX_RERANK_CANDIDATES = 300  # 精排候选上限（防御多 KB × 大 recall 的越界成本）
 

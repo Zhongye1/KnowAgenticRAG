@@ -15,7 +15,6 @@ from backend.src.app.model_provider.providers.rerank import (
     RERANK_BATCH_SIZE,
     RERANK_MAX_LENGTH,
     RERANK_TIMEOUT_SECONDS,
-    DashscopeReranker,
     OpenAIReranker,
     ensure_rerank_url,
     sigmoid,
@@ -50,15 +49,15 @@ def _provider(**overrides: object) -> ModelProvider:
     return ModelProvider(**base)
 
 
-def test_normalize_model_spec_legacy_compat() -> None:
-    """D11/M6：legacy 裸 id → huggingface:BAAI/bge-m3；已带 provider 的 spec 原样保留。"""
-    assert normalize_model_spec('bge-m3') == 'huggingface:BAAI/bge-m3'
-    assert normalize_model_spec('BAAI/bge-m3') == 'huggingface:BAAI/bge-m3'
+def test_normalize_model_spec_strips_whitespace() -> None:
+    """归一只做去空白（裸 id 兼容别名已随 HF 通道删除）：spec 原样保留，未知 spec 由查找方报 NotFound。"""
+    spec = 'dashscope:qwen3.7-text-embedding-flash'
+    assert normalize_model_spec(f'  {spec}  ') == spec
     assert normalize_model_spec('modelscope:BAAI/bge-m3') == 'modelscope:BAAI/bge-m3'
-    assert normalize_model_spec('huggingface:BAAI/bge-m3') == 'huggingface:BAAI/bge-m3'
     assert normalize_model_spec('deepseek/deepseek-chat') == 'deepseek/deepseek-chat'
     assert not normalize_model_spec('')
     assert not normalize_model_spec(None)
+    assert not normalize_model_spec('   ')
 
 
 def test_build_model_info_embedding_defaults() -> None:
@@ -158,17 +157,6 @@ def test_rerank_protocol_payload_shapes() -> None:
     }
     assert openai._extract_results({'results': [{'index': 0}]}) == [{'index': 0}]
 
-    dashscope = DashscopeReranker(
-        model='gte-rerank',
-        base_url='https://dashscope.aliyuncs.com/api/v1/services/rerank',
-        api_key='sk',
-    )
-    assert dashscope.url.endswith('/services/rerank')
-    dash_payload = dashscope._build_payload('查询', ['文档'])
-    assert dash_payload['model'] == 'gte-rerank'
-    assert dash_payload['input']['documents'] == ['文档']
-    assert dash_payload['parameters']['top_n'] == 1
-
 
 def test_url_ensure_helpers() -> None:
     assert ensure_rerank_url('https://x/v1') == 'https://x/v1/rerank'
@@ -192,20 +180,21 @@ def test_select_embedding_model_rejects_non_embedding() -> None:
 
 
 def test_get_reranker_protocol_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
-    """extra.rerank_protocol 决定协议类：缺省 openai，dashscope 走 Dashscope。"""
+    """extra.rerank_protocol 决定协议类：缺省 openai，dashscope-sdk 走千问 SDK 通道。"""
     provider = _provider()
     openai_info = build_model_info(provider, {'id': 'BAAI/bge-reranker-v2-m3', 'type': 'rerank'})
     assert openai_info is not None
     assert isinstance(get_reranker(openai_info), OpenAIReranker)
 
-    dash_provider = _provider(
+    sdk_provider = _provider(
         provider_id='dashscope',
         provider_type='dashscope',
         api_key_env='DASHSCOPE_API_KEY',
-        base_url='https://dashscope.aliyuncs.com/api/v1/services/rerank',
-        enabled_models=[{'id': 'gte-rerank', 'type': 'rerank', 'extra': {'rerank_protocol': 'dashscope'}}],
+        base_url='',
+        enabled_models=[{'id': 'qwen3.7-text-rerank', 'type': 'rerank', 'extra': {'rerank_protocol': 'dashscope-sdk'}}],
     )
-    dash_info = build_model_info(dash_provider, dash_provider.enabled_models[0])
-    assert dash_info is not None
-    assert dash_info.extra.get('rerank_protocol') == 'dashscope'
-    assert isinstance(get_reranker(dash_info), DashscopeReranker)
+    sdk_info = build_model_info(sdk_provider, sdk_provider.enabled_models[0])
+    assert sdk_info is not None
+    from backend.src.app.model_provider.providers.dashscope_clients import DashScopeTextReRank
+
+    assert isinstance(get_reranker(sdk_info), DashScopeTextReRank)

@@ -14,14 +14,9 @@ from abc import ABC, abstractmethod
 
 import httpx
 
-from backend.src.app.model_provider.providers.embed import HF_INFERENCE_BASE_URL
-
 RERANK_TIMEOUT_SECONDS = 30.0
 RERANK_BATCH_SIZE = 32
 RERANK_MAX_LENGTH = 512
-
-# bge-reranker-v2-m3 走 hf-inference 的 text-classification 任务（与 bge-m3 同路由基址）
-HF_RERANK_POSITIVE_LABELS = {'1', 'label_1', 'relevant', 'entailment', 'true'}
 
 
 def sigmoid(value: float) -> float:
@@ -141,81 +136,3 @@ class OpenAIReranker(BaseReranker):
 
     def _extract_results(self, result: dict) -> list[dict]:
         return list(result.get('results', []))
-
-
-class DashscopeReranker(BaseReranker):
-    """DashScope rerank 协议（备选通道，D16）。"""
-
-    def __init__(self, **kwargs) -> None:
-        self._url = (str(kwargs.pop('base_url') or '')).rstrip('/')
-        super().__init__(**kwargs)
-
-    @property
-    def url(self) -> str:
-        return self._url
-
-    def _build_payload(self, query: str, documents: list[str]) -> dict:
-        params: dict = {'top_n': len(documents), 'return_documents': False}
-        instruct = self.headers.get('x-dashscope-instruct')
-        if instruct:
-            params['instruct'] = instruct
-        return {'model': self.model, 'input': {'query': query, 'documents': documents}, 'parameters': params}
-
-    def _extract_results(self, result: dict) -> list[dict]:
-        return list((result.get('output') or {}).get('results', []))
-
-
-def hf_positive_score(entry: object) -> float:
-    """从单条输入的分类结果中取正类分数。
-
-    entry 为 ``{label, score}`` 或其列表；有明确正类标签（LABEL_1/relevant 等）
-    取该分，单标签回归头（如 bge-reranker-v2-m3 的 LABEL_0）直接取分，其余取最大分。
-    """
-    rows = entry if isinstance(entry, list) else [entry]
-    rows = [row for row in rows if isinstance(row, dict)]
-    if not rows:
-        return 0.0
-    for row in rows:
-        if str(row.get('label', '')).lower() in HF_RERANK_POSITIVE_LABELS:
-            return float(row.get('score') or 0.0)
-    if len(rows) == 1:
-        return float(rows[0].get('score') or 0.0)
-    return max(float(row.get('score') or 0.0) for row in rows)
-
-
-class HuggingFaceReranker(BaseReranker):
-    """HF Inference text-classification 精排（bge-reranker-v2-m3 通道）。
-
-    端点：``{base}/models/{repo_id}``，payload 为句对
-    ``{"inputs": [{"text": query, "text_pair": doc}, ...]}``；响应分数已是
-    0..1 概率，因此关闭基类的二次 sigmoid（保序不保真会 distorted 显示值）。
-    """
-
-    def __init__(self, *, repo_id: str | None = None, batch_size: int = 8, **kwargs) -> None:
-        self._repo_id = repo_id
-        kwargs['batch_size'] = batch_size
-        base = (str(kwargs.pop('base_url', '') or '') or HF_INFERENCE_BASE_URL).rstrip('/')
-        self._url = f'{base}/models/{self._repo_id or kwargs["model"]}'
-        super().__init__(**kwargs)
-
-    @property
-    def url(self) -> str:
-        return self._url
-
-    def _build_payload(self, query: str, documents: list[str]) -> dict:
-        return {'inputs': [{'text': query, 'text_pair': doc} for doc in documents]}
-
-    def _extract_results(self, result: dict) -> list[dict]:
-        if not isinstance(result, list):
-            return []
-        return [{'index': index, 'relevance_score': hf_positive_score(row)} for index, row in enumerate(result)]
-
-    async def acompute_score(
-        self,
-        query: str,
-        documents: list[str],
-        *,
-        normalize: bool = False,
-        batch_size: int | None = None,
-    ) -> list[float]:
-        return await super().acompute_score(query, documents, normalize=False, batch_size=batch_size)

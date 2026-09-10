@@ -80,7 +80,7 @@ def resolve_provider_api_key(provider: ModelProvider) -> str | None:
 
     空字符串视同未配置（env 占位符场景不产生空凭据）：api_key_env 对应环境变量未设/为空时，
     modelscope 类型继续回退服务端默认 ``MODELSCOPE_ACCESS_TOKEN``（settings，D11），
-    huggingface 类型回退 ``HF_TOKEN``。
+
     """
     if provider.api_key:
         return provider.api_key
@@ -92,8 +92,7 @@ def resolve_provider_api_key(provider: ModelProvider) -> str | None:
         return settings.DASHSCOPE_API_KEY
     if provider.provider_type == 'modelscope' and settings.MODELSCOPE_ACCESS_TOKEN:
         return settings.MODELSCOPE_ACCESS_TOKEN
-    if provider.provider_type == 'huggingface' and settings.HF_TOKEN:
-        return settings.HF_TOKEN
+
     return None
 
 

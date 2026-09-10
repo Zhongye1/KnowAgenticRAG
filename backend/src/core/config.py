@@ -442,8 +442,6 @@ class Settings(BaseSettings):
     # ModelProvider（ragf-design D11/D16，键读环境变量 MODELSCOPE_ACCESS_TOKEN）
     MODELSCOPE_API_BASE: str = 'https://api-inference.modelscope.cn/v1/'
     MODELSCOPE_ACCESS_TOKEN: str | None = None
-    # HuggingFace Inference（hf-inference 路由；键读环境变量 HF_TOKEN）
-    HF_TOKEN: str | None = None
     MODEL_PROVIDER_CACHE_REDIS_PREFIX: str = 'fba:cache:model_provider'
     MODEL_PROVIDER_CACHE_TTL: int = 3600
 

@@ -3,13 +3,8 @@
 from backend.src.app.model_provider.cache import ModelInfo
 from backend.src.app.model_provider.providers.chat import OpenAICompatibleChatModel
 from backend.src.app.model_provider.providers.dashscope_clients import DashScopeEmbedding, DashScopeTextReRank
-from backend.src.app.model_provider.providers.embed import HuggingFaceEmbedding, OpenAICompatibleEmbedding
-from backend.src.app.model_provider.providers.rerank import (
-    BaseReranker,
-    DashscopeReranker,
-    HuggingFaceReranker,
-    OpenAIReranker,
-)
+from backend.src.app.model_provider.providers.embed import OpenAICompatibleEmbedding
+from backend.src.app.model_provider.providers.rerank import BaseReranker, OpenAIReranker
 from backend.src.common.exception import errors
 from backend.src.core.config import settings
 
@@ -18,16 +13,6 @@ def select_embedding_model(info: ModelInfo) -> OpenAICompatibleEmbedding | DashS
     """按 ModelInfo 构建 Embedding 客户端（模型 type 必须是 embedding）。"""
     if info.model_type != 'embedding':
         raise errors.RequestError(msg=f'模型 {info.spec} 不是 embedding 模型（type={info.model_type}）')
-    if info.provider_type == 'huggingface':
-        return HuggingFaceEmbedding(
-            model=info.model_id,
-            base_url=info.base_url,
-            api_key=info.api_key,
-            dimension=info.dimension,
-            batch_size=info.batch_size,
-            headers=info.headers,
-            repo_id=info.extra.get('hf_repo_id'),
-        )
     if info.provider_type == 'dashscope':
         # 千问平台 token 通道（SDK 调用，ragf-design D11 扩展）
         return DashScopeEmbedding(
@@ -64,17 +49,10 @@ def get_reranker(info: ModelInfo) -> BaseReranker | DashScopeTextReRank:
     provider_type=huggingface 走 HF Inference text-classification）。"""
     if info.model_type != 'rerank':
         raise errors.RequestError(msg=f'模型 {info.spec} 不是 rerank 模型（type={info.model_type}）')
-    if info.provider_type == 'huggingface':
-        return HuggingFaceReranker(
-            model=info.model_id,
-            base_url=info.base_url,
-            api_key=info.api_key,
-            headers=info.headers,
-            repo_id=info.extra.get('hf_repo_id'),
-        )
     protocol = str(info.extra.get('rerank_protocol') or info.extra.get('protocol') or 'openai')
     if protocol == 'dashscope-sdk':
         # 千问平台 SDK 重排通道（qwen3.7-text-rerank）
         return DashScopeTextReRank(model=info.model_id, api_key=info.api_key)
-    cls = DashscopeReranker if protocol == 'dashscope' else OpenAIReranker
-    return cls(model=info.model_id, base_url=info.base_url, api_key=info.api_key, headers=info.headers)
+    return OpenAIReranker(
+        model=info.model_id, base_url=info.base_url, api_key=info.api_key, headers=info.headers
+    )

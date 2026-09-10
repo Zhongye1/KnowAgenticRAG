@@ -237,48 +237,6 @@ class ProviderService:
             await self.cache.invalidate()
         return provider
 
-    async def ensure_default_huggingface(self, db: AsyncSession) -> ModelProvider | None:
-        """幂等确保默认 huggingface provider（bge-m3 embedding + bge-reranker-v2-m3 精排）。
-
-        hf-inference 通道：凭据走 ``HF_TOKEN`` 环境变量（api_key_env 回退，D11 同款）；
-        bge-m3 输出 1024 维。HF 免费层限流严格，embedding 批大小降到 16。
-        """
-        provider = await provider_dao.get(db, 'huggingface')
-        defaults = {
-            'provider_id': 'huggingface',
-            'display_name': 'HuggingFace Inference',
-            'provider_type': 'huggingface',
-            'base_url': 'https://router.huggingface.co/hf-inference',
-            'api_key_env': 'HF_TOKEN',
-            'capabilities': ['embedding', 'rerank'],
-            'enabled_models': [
-                {'id': 'BAAI/bge-m3', 'type': 'embedding', 'dimension': 1024, 'batch_size': 16},
-                {'id': 'BAAI/bge-reranker-v2-m3', 'type': 'rerank'},
-            ],
-            'is_builtin': True,
-            'is_enabled': True,
-        }
-        if provider is None:
-            provider = await provider_dao.create(db, defaults)
-            await db.commit()  # 先提交 PG
-            await self.cache.invalidate()
-            log.info('[ModelProvider] 已创建默认 huggingface provider')
-            return provider
-        missing = [
-            model['id']
-            for model in defaults['enabled_models']
-            if model['id'] not in {item.get('id') for item in (provider.enabled_models or []) if isinstance(item, dict)}
-        ]
-        if missing:
-            provider.enabled_models = list(provider.enabled_models or []) + [
-                model for model in defaults['enabled_models'] if model['id'] in missing
-            ]
-            provider.capabilities = sorted(set(provider.capabilities or []) | {'embedding', 'rerank'})
-            await provider_dao.update(db, provider, {})
-            await db.commit()
-            await self.cache.invalidate()
-        return provider
-
     async def ensure_default_dashscope(self, db: AsyncSession) -> ModelProvider | None:
         """幂等确保默认 dashscope provider（千问平台 token 通道）。
 
@@ -331,18 +289,9 @@ class ProviderService:
         return provider
 
 
-LEGACY_EMBEDDING_ALIASES: dict[str, str] = {
-    'bge-m3': 'huggingface:BAAI/bge-m3',
-    'BAAI/bge-m3': 'huggingface:BAAI/bge-m3',
-}
-
-
 def normalize_model_spec(spec: str | None) -> str:
-    """归一模型 spec（ragf-design §5.6）：legacy 裸 id 兼容默认 provider。"""
-    value = (spec or '').strip()
-    if not value:
-        return ''
-    return LEGACY_EMBEDDING_ALIASES.get(value, value)
+    """归一模型 spec（ragf-design §5.6）：去空白；非法/未知 spec 由查找方报 NotFound。"""
+    return (spec or '').strip()
 
 
 def _validate_capabilities(capabilities: list[Any]) -> list[str]:
