@@ -22,7 +22,7 @@ from backend.src.app.ingest.engine.visual_encoder import get_visual_encoder
 from backend.src.app.ingest.limits import IngestLimitError, validate_ingest_file
 from backend.src.app.ingest.service.ingest_service import resolve_acl_fields
 from backend.src.app.ingest.service.job_service import job_service
-from backend.src.app.kb.crud import document_dao, knowledge_base_dao
+from backend.src.app.kb.crud import dedup_dao, document_dao, knowledge_base_dao
 from backend.src.app.kb.service.document_storage import download_document_bytes, upload_document_bytes
 from backend.src.app.kb.utils.namespace import instance_namespace
 from backend.src.common.exception import errors
@@ -73,7 +73,7 @@ class VisualIngestService:
     """PixelRAG 视觉管线编排（分段事务，与 Knowhere 管线同构）。"""
 
     @staticmethod
-    async def run_document_parse(
+    async def run_document_parse(  # ruff:ignore[complex-structure] —— 与 legacy run_document_ingest 同约定
         *,
         document_id: str,
         kb_name: str,
@@ -99,6 +99,7 @@ class VisualIngestService:
             await db.flush()
             filename = doc.name or 'file'
             object_key = doc.source_uri or ''
+            sha256 = doc.sha256
 
         await job_service.append_log(job_id, f'PixelRAG 渲染开始 file={filename}')
 
@@ -169,6 +170,15 @@ class VisualIngestService:
                     'tiles': len(rows),
                 }
                 await db.flush()
+                if sha256:
+                    # dedup 后置登记（spec D9；SAVEPOINT 冲突容忍）
+                    await dedup_dao.register(
+                        db,
+                        sha256=sha256,
+                        kb_name=kb_name,
+                        document_id=document_id,
+                        plugin_namespace=ns,
+                    )
             await job_service.mark_success_with_db(
                 db,
                 job_id,

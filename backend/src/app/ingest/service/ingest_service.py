@@ -32,7 +32,7 @@ from backend.src.app.ingest.routing.router import (
     resolve_routing_inputs,
     route,
 )
-from backend.src.app.kb.crud import doc_acl_dao, document_dao, knowledge_base_dao
+from backend.src.app.kb.crud import dedup_dao, doc_acl_dao, document_dao, knowledge_base_dao
 from backend.src.app.kb.service.chunk_service import ChunkService
 from backend.src.app.kb.service.document_storage import (
     download_document_bytes,
@@ -216,6 +216,17 @@ class IngestService:
             'embedding_model': embed_spec,
         }
         doc.pipeline = f'ragf:{processing["chunk_preset_id"]}'
+        # dedup 后置登记（spec D9）：仅成功后写指纹，失败不挡重传；冲突（并发同指纹）
+        # 经 SAVEPOINT 吞掉，不影响本事务
+        if doc.sha256:
+            await dedup_dao.register(
+                db,
+                sha256=doc.sha256,
+                kb_name=kb_name,
+                document_id=document_id,
+                object_key=object_key,
+                plugin_namespace=ns,
+            )
         await db.flush()
         log.info('文档摄取完成 doc={} kb={} chunks={}', document_id, kb_name, len(meta_rows))
         return {'document_id': document_id, 'status': 'ready', 'chunk_count': len(meta_rows)}
@@ -252,6 +263,34 @@ class IngestService:
                     truncated = True
                     break
                 checked += 1
+                declared = int(doc.chunk_count or 0)
+                pipeline = str(getattr(doc, 'pipeline', '') or '')
+                # 视觉管线文档（pipeline=visual）：无 PG chunks，声明值对视觉集合计数（spec D7）
+                if pipeline == 'visual':
+                    from backend.src.database.milvus_visual_ops import count_visual_by_document
+
+                    visual_count = await asyncio.to_thread(
+                        count_visual_by_document, kb.kb_name, doc.document_id, plugin_namespace=ns
+                    )
+                    if declared == visual_count:
+                        continue
+                    anomalies.append({
+                        'document_id': doc.document_id,
+                        'kb_name': doc.kb_name,
+                        'plugin_namespace': ns,
+                        'declared_chunk_count': declared,
+                        'pg_chunk_count': None,
+                        'vector_count': visual_count,
+                        'reasons': ['declared_chunk_count != milvus_visual (visual pipeline)'],
+                    })
+                    log.warning(
+                        '摄取对账异常（visual）doc={} kb={} declared={} milvus_visual={}',
+                        doc.document_id,
+                        doc.kb_name,
+                        declared,
+                        visual_count,
+                    )
+                    continue
                 pg_count = await ChunkService.count_by_document(
                     db,
                     doc.document_id,
@@ -264,7 +303,6 @@ class IngestService:
                     doc.document_id,
                     plugin_namespace=ns,
                 )
-                declared = int(doc.chunk_count or 0)
                 if declared == pg_count == vector_count:
                     continue
                 reasons = []

@@ -27,7 +27,7 @@ from backend.src.app.ingest.limits import IngestLimitError, validate_ingest_file
 from backend.src.app.ingest.service.ingest_service import resolve_acl_fields
 from backend.src.app.ingest.service.job_service import job_service
 from backend.src.app.ingest.service.knowhere_mapping import KnowhereMapped, map_knowhere_result
-from backend.src.app.kb.crud import document_dao, keyword_dao, knowledge_base_dao
+from backend.src.app.kb.crud import dedup_dao, document_dao, keyword_dao, knowledge_base_dao
 from backend.src.app.kb.model import DocumentKeyword
 from backend.src.app.kb.service.chunk_service import ChunkService
 from backend.src.app.kb.service.document_storage import download_document_bytes
@@ -84,6 +84,7 @@ class KnowhereIngestService:
             version_id = int(doc.active_version or 1)
             filename = doc.name or 'file'
             object_key = doc.source_uri or ''
+            sha256 = doc.sha256
 
         await job_service.append_log(job_id, f'Knowhere 解析开始 file={filename}')
 
@@ -117,6 +118,8 @@ class KnowhereIngestService:
                 version_id=version_id,
                 mapped=mapped,
                 vector_rows=vector_rows,
+                object_key=object_key,
+                sha256=sha256,
             )
         except _PhaseError as exc:
             if exc.compensate:
@@ -221,8 +224,10 @@ class KnowhereIngestService:
         version_id: int,
         mapped: KnowhereMapped,
         vector_rows: list[dict[str, Any]],
+        object_key: str,
+        sha256: str | None,
     ) -> dict[str, Any]:
-        """事务 3：PG chunks + documents 回写 + 关键词目录 + job success。"""
+        """事务 3：PG chunks + documents 回写 + 关键词目录 + dedup 登记 + job success。"""
         try:
             async with async_db_session.begin() as db:
                 await ChunkService.replace_document_chunks(
@@ -252,6 +257,16 @@ class KnowhereIngestService:
                 await _replace_document_keywords(
                     db, document_id=document_id, kb_name=kb_name, ns=ns, counts=mapped.keyword_counts
                 )
+                if sha256:
+                    # dedup 后置登记（spec D9；SAVEPOINT 冲突容忍，不阻断本事务）
+                    await dedup_dao.register(
+                        db,
+                        sha256=sha256,
+                        kb_name=kb_name,
+                        document_id=document_id,
+                        object_key=object_key,
+                        plugin_namespace=ns,
+                    )
                 await job_service.mark_success_with_db(
                     db,
                     job_id,
