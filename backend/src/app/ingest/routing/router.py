@@ -1,7 +1,7 @@
 """路由入口（双管线摄取 spec D2/D3，EagleRAG ingest/router.py 迁移）。
 
 ``route()`` 纯函数组装策略链；``resolve_effective_routing_mode`` 合成 KB 行与
-全局配置；``filter_available_pipelines`` 把不可用引擎显式回退 legacy（日志可见，
+全局配置；``filter_available_pipelines`` 对不可用引擎 fail-closed 报错（
 不静默 mock）。任务派发在任务层（tasks/），本模块不触碰 Celery。
 """
 
@@ -33,7 +33,7 @@ __all__ = [
 
 
 def resolve_effective_routing_mode(kb_routing_mode: str | None) -> str:
-    """合成生效路由模式：KB 行 routing_mode 非 legacy 时优先，否则全局配置。"""
+    """合成生效路由模式：KB 行 routing_mode 合法时优先，否则全局配置。"""
     from backend.src.core.config import settings
 
     mode = (kb_routing_mode or '').strip().lower()

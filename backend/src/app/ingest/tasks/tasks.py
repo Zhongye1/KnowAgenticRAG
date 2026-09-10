@@ -1,6 +1,6 @@
 """ingest.* Celery 任务（ragf-design D6/D10；双管线摄取 spec D4/D5）。
 
-``ingest.process_document`` 为路由入口：plan（路由规划）→ legacy 就地执行 /
+``ingest.process_document`` 为路由入口：plan（路由规划）→
 knowhere·visual 派发下游（ingest_jobs.job_id = Celery task_id）。失败分阶段落
 ``parsing_failed / indexing_failed / failed``（D3），重试入口 = 重新入队同一
 ``(document_id, version_id)``（幂等全量替换，§5.4/§6.3）。

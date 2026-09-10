@@ -374,8 +374,8 @@ class Settings(BaseSettings):
     ##################################################
     # [ RAGF ] 双管线摄取（EagleRAG ingest 迁移；docs/specs/2026-09-10-dual-pipeline-ingest-design.md）
     ##################################################
-    # 路由（D2/D3）：KB 级 routing_mode 优先，空/legacy 走既有工厂链路；
-    # auto=格式+形态路由（PDF 文本/扫描探测），text/visual/hybrid=强制管线。
+    # 路由（D2/D3）：KB 级 routing_mode 优先（auto/text/visual/hybrid），
+    # 空/非法值落到全局默认；auto=格式+形态路由（PDF 文本/扫描探测）。
     RAGF_ROUTING_MODE: Literal['auto', 'text', 'visual', 'hybrid'] = 'auto'
     # 文件名前缀强制（knowhere:xxx.pdf / pixelrag:xxx.jpg）；值 = 管线名（knowhere/visual）
     RAGF_ROUTING_PREFIX_FORCE: dict[str, str] = Field(
@@ -388,8 +388,8 @@ class Settings(BaseSettings):
     RAGF_PDF_PROBE_TEXT_PAGE_RATIO: float = 0.2
     RAGF_PDF_PROBE_AVG_CHARS_PER_PAGE: int = 50
 
-    # Knowhere 引擎（D1）：api=官方 SDK 调自建 :5005 服务；parser=knowhere-parse-sdk 进程内；
-    # off=引擎未部署（auto 路由遇 PDF/图片回退 legacy 工厂链路，显式配置不静默）
+    # Knowhere 引擎（D1）：api=官方 SDK 调自建 :5005 服务（需部署服务）；
+    # parser=knowhere-parse-sdk 进程内（P4）；off=关闭（文档路由期 fail-closed 报错）
     RAGF_KNOWHERE_MODE: Literal['api', 'parser', 'off'] = 'api'
     RAGF_KNOWHERE_BASE_URL: str = 'http://knowhere:5005'
     RAGF_KNOWHERE_API_KEY: str = ''

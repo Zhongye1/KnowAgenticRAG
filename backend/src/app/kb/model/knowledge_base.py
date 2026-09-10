@@ -36,7 +36,7 @@ class KnowledgeBase(MappedBase):
     )
     # 双管线摄取路由（spec D2）：legacy=既有工厂链路；auto=格式+形态路由；text/visual/hybrid=强制管线
     routing_mode: Mapped[str] = mapped_column(
-        String(16), default='auto', comment='摄取路由模式（auto/text/visual/hybrid/legacy 兜底）'
+        String(16), default='auto', comment='摄取路由模式（auto/text/visual/hybrid）'
     )
     query_params: Mapped[dict] = mapped_column(
         JSON,

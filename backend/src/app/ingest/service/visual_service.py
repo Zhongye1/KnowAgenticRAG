@@ -73,7 +73,7 @@ class VisualIngestService:
     """PixelRAG 视觉管线编排（分段事务，与 Knowhere 管线同构）。"""
 
     @staticmethod
-    async def run_document_parse(  # ruff:ignore[complex-structure] —— 与 legacy run_document_ingest 同约定
+    async def run_document_parse(  # ruff:ignore[complex-structure]
         *,
         document_id: str,
         kb_name: str,

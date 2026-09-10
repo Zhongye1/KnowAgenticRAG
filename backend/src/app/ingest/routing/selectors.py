@@ -48,7 +48,7 @@ class PrefixSelector:
 
 
 class ForcedModeSelector:
-    """生效路由模式强制（text/visual/hybrid/legacy）；auto 弃权进策略链。"""
+    """生效路由模式强制（text/visual/hybrid）；auto 弃权进策略链。"""
 
     def select(self, ctx: RouteContext) -> list[str] | None:
         return ctx.forced_pipelines

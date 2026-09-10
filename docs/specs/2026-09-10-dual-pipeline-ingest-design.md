@@ -30,9 +30,9 @@ date: 2026-09-10
 
 | 编号 | 决策 | 理由 |
 | --- | --- | --- |
-| D1 | 整体拓扑：路由任务 → knowhere / visual 双管线（legacy 保留为第三管线）；引擎依赖为可选组件（惰性导入 + fail-closed），不进 uv.lock | 解析引擎按部署形态安装（api 模式零重依赖）；缺包显式报错，绝不静默 mock |
-| D2 | KB 级灰度开关：`knowledge_bases.routing_mode`（legacy/auto/text/visual/hybrid），KB 行优先于全局 `RAGF_ROUTING_MODE`；默认 legacy，行为不变 | 逐 KB 迁移，回滚 = 切回 legacy + rebuild |
-| D3 | 路由策略链（对齐 EagleRAG 优先级）：文件名前缀强制 > 生效模式强制 > HTTP URI > PDF 形态探测 > 扩展名 > 默认管线；探测阈值 KB 级自适应（`pdf_text_page_ratio`）；引擎不可用显式回退 legacy（日志可见） | 前缀是运维逃生门；形态探测让扫描件走视觉、文本 PDF 走语义解析；不可用引擎路由期拦截而非派发后失败 |
+| D1 | 整体拓扑：路由任务 → knowhere / visual 双管线（legacy 工厂链初始保留为兜底，后随 §7.1 整体删除）；引擎依赖为可选组件（惰性导入 + fail-closed），不进 uv.lock | 解析引擎按部署形态安装（api 模式零重依赖）；缺包显式报错，绝不静默 mock |
+| D2 | KB 级开关：`knowledge_bases.routing_mode`（auto/text/visual/hybrid），KB 行优先于全局 `RAGF_ROUTING_MODE`；未上线直接全量切换，默认 auto 且无 legacy 取值（§7.1） | 出厂即双管线；引擎异常靠路由期 fail-closed 暴露，不做静默兜底 |
+| D3 | 路由策略链（对齐 EagleRAG 优先级）：文件名前缀强制 > 生效模式强制 > HTTP URI > PDF 形态探测 > 扩展名 > 默认管线；探测阈值 KB 级自适应（`pdf_text_page_ratio`）；引擎不可用路由期 fail-closed 报错（§7.1 起，无 legacy 兜底） | 前缀是运维逃生门；形态探测让扫描件走视觉、文本 PDF 走语义解析；不可用引擎路由期拦截而非派发后失败 |
 | D4 | 任务拆分与队列：`ingest.process_document`（路由入口）→ `knowhere.parse_document` / `visual.parse_document`；`RAGF_CELERY_KNOWHERE_QUEUE` / `RAGF_CELERY_VISUAL_QUEUE` 与既有 ingest 队列同模式（None=默认队列，拓扑不变）；visual worker 并发=1 | 延续 M8 拆分演练模式；解析与视觉编码资源画像不同，独立扩缩容 |
 | D5 | `ingest_jobs` 审计表：状态机 pending → running(stage: routing/rendering/embedding/indexing) → success/failed；`job_id = Celery task_id`；成功跳过、重投递桥接；documents.status 保持粗粒度镜像不动 | 用户可见细粒度进度，前端零改动即可继续轮询旧状态 |
 | D6 | Knowhere 产物映射：chunk → PG chunks（meta 存 path/level/summary/keywords/page_nums/connect_to）+ ragf_text 行（动态字段 chunk_type/path/level）；章节摘要节点 `chunk_type='section_summary'` 与内容 chunk 共享 path 前缀（parent-doc 检索）；关键词聚合进 `document_keywords`；doc_nav/文档摘要 → `documents.structure`/`summary`；ACL 镜像字段（namespace/visibility/owner_id/groups）逐行穿透 | 不绕开既有双写与 BM25；所有标量随行写，检索过滤无二次查询 |
@@ -53,16 +53,16 @@ POST /documents/ingest (multipart)      POST /documents/ingest/url (D10, 默认�
 ┌─ 路由任务（spec D3 策略链）────────────────────────────┐
 │ 前缀 knowhere:/pixelrag: → KB routing_mode → URL →    │
 │ PDF 形态探测（pdf_text_page_ratio）→ 扩展名 → 默认     │
-│ 产出: [legacy] / [knowhere] / [visual] / [knowhere,visual] │
+│ 产出: [knowhere] / [visual] / [knowhere,visual]            │
 └──────────────┬───────────────────────────────────────┘
                │ 建 ingest_jobs 行（D5）→ 按队列派发（D4）
-   ┌───────────┼──────────────────────┐
-   ▼           ▼                      ▼
- legacy      knowhere.parse_document  visual.parse_document
- 既有工厂链   Knowhere SDK(:5005)      pixelrag_render → tiles
- →Markdown   → chunks+doc_nav          → DashScope 编码 2048d
- →preset分块  → bge-m3 embedding        → tile 图 → MinIO
- →bge-m3                                  → ragf_visual（ACL 镜像）
+   ┌───────────┴────────────┐
+   ▼                        ▼
+ knowhere.parse_document   visual.parse_document
+ Knowhere SDK(:5005)       pixelrag_render → tiles
+ → chunks+doc_nav          → DashScope 编码 2048d
+ → bge-m3 embedding        → tile 图 → MinIO
+                             → ragf_visual（ACL 镜像）
    │           │                          │
    ▼           ▼                          ▼
 ┌─ 落盘（PG 为事实源，Milvus/MinIO 为镜像）──────────────┐
@@ -107,7 +107,7 @@ dimension 对齐 `RAGF_TEMPLATE_DIM`；`qwen3-vl-embedding` 多模态向量 2048
 1. Knowhere api 模式：部署 Knowhere 服务（:5005，compose 占位注释）→ `.env.server` 设 `RAGF_KNOWHERE_MODE=api`、`RAGF_KNOWHERE_BASE_URL`；worker 侧可选装 `knowhere-python-sdk`。
 2. 视觉管线：`.env.server` 设 `DASHSCOPE_API_KEY`；visual worker 可选装 `pixelrag`（git 依赖）。
 3. 队列拆分：`.env.server` 设 `RAGF_CELERY_KNOWHERE_QUEUE=knowhere` / `RAGF_CELERY_VISUAL_QUEUE=visual` → `docker compose --profile ragf-ingest up -d ragf_celery_knowhere_worker ragf_celery_visual_worker`。
-4. 灰度：**未上线直接全量切换**——默认值已改为 `RAGF_ROUTING_MODE='auto'`、`RAGF_KNOWHERE_MODE='api'`、新 KB `routing_mode='auto'`，且 knowhere 扩展集含 pdf/docx/pptx/md/txt/csv（office/文本格式不再走 legacy 工厂）；图片/扫描 PDF 走 visual。仅需部署 Knowhere 服务 + `DASHSCOPE_API_KEY`。既有 dev 库执行 `UPDATE knowledge_bases SET routing_mode='auto'` 或重建。回滚 = KB 切 `'legacy'` + `POST /{kb}/rebuild`。
+4. 灰度：**未上线直接全量切换**——默认值已改为 `RAGF_ROUTING_MODE='auto'`、`RAGF_KNOWHERE_MODE='api'`、新 KB `routing_mode='auto'`，且 knowhere 扩展集含 pdf/docx/pptx/md/txt/csv（office/文本格式不再走 legacy 工厂）；图片/扫描 PDF 走 visual。仅需部署 Knowhere 服务 + `DASHSCOPE_API_KEY`。既有 dev 库执行 `UPDATE knowledge_bases SET routing_mode='auto'` 或重建。异常回退 = 修复引擎（起 Knowhere / 补 key）后 `POST /{kb}/rebuild`。
 
 ## 7. 风险与守护
 

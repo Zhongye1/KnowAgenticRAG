@@ -31,8 +31,8 @@ class IngestJob(MappedBase):
     document_id: Mapped[str] = mapped_column(Text, comment='文档 ID')
     kb_name: Mapped[str] = mapped_column(Text, default='default', comment='所属知识库')
     plugin_namespace: Mapped[str] = mapped_column(Text, default='core', comment='部署级域标识')
-    # legacy/knowhere/visual/knowhere_visual（Knowhere 拆出的视觉子任务用独立 job 记录）
-    pipeline: Mapped[str] = mapped_column(Text, default='legacy', comment='执行管线')
+    # knowhere/visual/knowhere_visual（Knowhere 拆出的视觉子任务用独立 job 记录）
+    pipeline: Mapped[str] = mapped_column(Text, default='knowhere', comment='执行管线')
     status: Mapped[str] = mapped_column(Text, default='pending', comment='状态（pending/running/success/failed）')
     stage: Mapped[str | None] = mapped_column(
         Text, nullable=True, comment='运行阶段（routing/rendering/embedding/indexing）'

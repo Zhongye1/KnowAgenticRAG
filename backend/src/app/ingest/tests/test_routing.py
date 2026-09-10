@@ -46,10 +46,10 @@ def test_prefix_stripped_in_routing_inputs() -> None:
 def test_effective_mode_kb_overrides_global(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, 'RAGF_ROUTING_MODE', 'auto')
     assert resolve_effective_routing_mode('visual') == 'visual'
-    assert resolve_effective_routing_mode('legacy') == 'auto'
+    assert resolve_effective_routing_mode('bogus') == 'auto'  # 非法 KB 值落全局默认
     assert resolve_effective_routing_mode('') == 'auto'
     monkeypatch.setattr(settings, 'RAGF_ROUTING_MODE', 'hybrid')
-    assert resolve_effective_routing_mode('legacy') == 'hybrid'
+    assert resolve_effective_routing_mode('bogus') == 'hybrid'
 
 
 def test_route_forced_modes(monkeypatch: pytest.MonkeyPatch) -> None:

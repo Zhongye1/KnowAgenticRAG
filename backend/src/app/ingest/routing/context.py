@@ -31,7 +31,7 @@ class RouteContext:
     ext: str  # 小写扩展名（带点）
     is_http: bool  # source_uri 为 http/https（URL 摄取，spec D10）
     local_path: str | None  # PDF 形态探测用；None 时探测 selector 弃权
-    routing_mode: str  # 生效路由模式（legacy/auto/text/visual/hybrid）
+    routing_mode: str  # 生效路由模式（auto/text/visual/hybrid）
     text_page_ratio: float | None  # KB 级 PDF 文本页占比阈值（None=全局默认）
     source_uri: str | None = None
 

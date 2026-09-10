@@ -63,7 +63,7 @@ class KBCreateParam(SchemaBase):
         description='嵌入模型 spec（千问平台 token；换模型=重建 KB）',
     )
     routing_mode: str = Field(
-        'auto', max_length=16, description='摄取路由模式（auto/text/visual/hybrid/legacy 兜底）'
+        'auto', max_length=16, description='摄取路由模式（auto/text/visual/hybrid）'
     )
     query_params: dict = Field(default_factory=dict, description='检索默认参数（见 §6.4 白名单）')
 
@@ -76,7 +76,7 @@ class KBCreateParam(SchemaBase):
 class KBUpdateParam(SchemaBase):
     """更新知识库参数（全部可选）"""
 
-    routing_mode: str | None = Field(None, max_length=16, description='摄取路由模式（auto/text/visual/hybrid/legacy）')
+    routing_mode: str | None = Field(None, max_length=16, description='摄取路由模式（auto/text/visual/hybrid）')
 
     display_name: str | None = Field(None, max_length=128, description='展示名称')
     description: str | None = Field(None, description='描述')

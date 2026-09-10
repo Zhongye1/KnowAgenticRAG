@@ -1,6 +1,6 @@
 """引擎可用性探测（双管线摄取 spec D1/D3）。
 
-路由期调用：不可用引擎显式回退 legacy，避免任务派发后失败。只做轻量探测
+路由期调用：不可用引擎路由期即 fail-closed 报错（legacy 兜底已删除）。只做轻量探测
 （settings / importlib.util.find_spec），不触发 torch 等重依赖的真实导入。
 """
 
