@@ -369,6 +369,10 @@ ignore_imports = [
     "backend.src.app.kb.** -> backend.src.app.retrieval.**",
     # 测试模块豁免：测试可自由组合被测模块
     "backend.src.app.*.tests.** -> backend.src.app.**",
+    # 测试装配完整应用（backend.main → 全域路由/中间件链）驱动 TestClient，
+    # 传递链不可避免触及各域（并经 jwt 中间件回连 admin），同属测试豁免
+    "backend.src.app.*.tests.** -> backend.main",
+    "backend.src.app.*.tests.** -> backend.src.middleware.**",
 ]
 
 [[tool.importlinter.contracts]]
