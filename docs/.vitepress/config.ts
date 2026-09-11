@@ -23,6 +23,7 @@ export default defineConfig({
             { text: "首页", link: "/" },
             { text: "开始", link: "/开始/" },
             { text: "工程治理", link: "/工程治理/" },
+            { text: "架构设计", link: "/架构设计/系统架构设计" },
             { text: "知识库设计", link: "/知识库设计/知识库设计概览" },
             { text: "RAG核心", link: "/RAG_core/00_RAG核心的设计总览" },
             { text: "设计文档", link: "/specs/01-开发顺序" },
@@ -73,6 +74,12 @@ export default defineConfig({
                 ],
             },
             {
+                text: "架构设计",
+                items: [
+                    { text: "系统架构设计", link: "/架构设计/系统架构设计" },
+                ],
+            },
+            {
                 text: "知识库设计",
                 items: [
                     { text: "知识库设计概览", link: "/知识库设计/知识库设计概览" },
@@ -83,6 +90,7 @@ export default defineConfig({
                 items: [
                     { text: "RAG核心的设计总览", link: "/RAG_core/00_RAG核心的设计总览" },
                     { text: "文档解析（Document Parsing）", link: "/RAG_core/01_文档解析（Document Parsing）" },
+                    { text: "检索与问答设计", link: "/RAG_core/02_检索与问答设计" },
                 ],
             },
             {
