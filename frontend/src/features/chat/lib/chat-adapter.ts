@@ -19,7 +19,7 @@ import { parseD25Data, parseSseStream, type SseMessage } from './d25-sse';
  */
 
 const chatUrl = (kbName: string) =>
-  `${env.API_URL}/api/v1/knowledge_bases/${encodeURIComponent(kbName)}/chat`;
+  `${env.API_URL}/api/v1/knowledge_bases/${encodeURIComponent(kbName)}/chat/stream`;
 
 const isAbortError = (error: unknown): boolean =>
   error instanceof Error && error.name === 'AbortError';

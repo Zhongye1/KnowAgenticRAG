@@ -7,8 +7,8 @@ import { networkDelay } from '../utils';
 /**
  * 知识问答相关 MSW handlers。
  * - GET  /api/v1/knowledge_bases：知识库列表（选择器数据源）
- * - POST /api/v1/knowledge_bases/:kbName/chat：D25 SSE 事件流脚本回放
- *   （meta → citation → delta* → usage → done；提问含"未命中"时走空命中分支）
+ * - POST /api/v1/knowledge_bases/:kbName/chat/stream：D25 SSE 事件流脚本回放
+ *   （step* → meta → citation → delta* → usage → done；提问含"未命中"时走空命中分支）
  */
 
 const ok = <T>(data: T) => ({ code: 0, msg: 'OK', data });
@@ -157,7 +157,7 @@ export const chatHandlers = [
   }),
 
   http.post(
-    `${env.API_URL}/api/v1/knowledge_bases/:kbName/chat`,
+    `${env.API_URL}/api/v1/knowledge_bases/:kbName/chat/stream`,
     async ({ request, params }) => {
       await networkDelay();
       const kbName = String(params.kbName ?? 'platform_docs');
@@ -188,7 +188,18 @@ export const chatHandlers = [
       const answer = buildAnswer(query);
       // meta.model_spec 回显请求的 model，用于端到端验证模型选择链路
       const modelSpec = body.model ?? 'mock:default';
+      const steps = [
+        { name: 'recall', detail: 'text=2 visual=0 recall_top_k=10' },
+        { name: 'rerank', detail: 'applied' },
+        { name: 'hydrate', detail: 'text=2 visual=0' },
+      ];
+      const usage = {
+        prompt_tokens: 512,
+        completion_tokens: 256,
+        total_tokens: 768,
+      };
       const events: Array<{ event: string; data: unknown; delay?: number }> = [
+        ...steps.map((step) => ({ event: 'step', data: step })),
         {
           event: 'meta',
           data: { kb_name: kbName, mode: 'hybrid', model_spec: modelSpec, hit_count: 2 },
@@ -200,8 +211,22 @@ export const chatHandlers = [
           data: { content },
           delay: 60,
         })),
-        { event: 'usage', data: { prompt_tokens: 512, completion_tokens: 256, total_tokens: 768 } },
-        { event: 'done', data: { reason: 'complete' } },
+        { event: 'usage', data: usage },
+        {
+          event: 'done',
+          data: {
+            reason: 'complete',
+            answer,
+            route: {
+              mode: 'hybrid',
+              selected: ['text'],
+              reason: 'explicit params',
+              kb_names: [kbName],
+            },
+            steps,
+            usage,
+          },
+        },
       ];
 
       return new HttpResponse(sseStream(events), {

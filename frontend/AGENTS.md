@@ -85,7 +85,7 @@ features/（业务切片：auth / chat / knowledge / users / teams / …）
 
 ## 6. 关键链路
 
-**流式问答（SSE）**：`ChatRuntimeProvider`（`features/chat/lib/chat-runtime.tsx`，挂在 `/app` 根，侧边栏「最近对话」与聊天页共享同一 runtime）→ 每线程 `useLocalRuntime(chatAdapter)` → `chat-adapter.ts` 用 fetch POST `/api/v1/knowledge_bases/{kbName}/chat`，`d25-sse.ts` 手工解析事件行协议（`meta` / `citation` / `delta` / `usage` / `done` / `error`，`: ping` 保活）→ delta 累积后以全量文本 yield（assistant-ui 要求累计态），`meta/citation/usage` 写入 zustand run-store（按 messageId，上限 100 条）→ `answer-markdown.tsx` 把正文 `[n]` 标注替换为引用角标，`message-sources.tsx` 渲染参考来源。**无 WebSocket**；文档摄取状态用轮询（`use-document-polling`，指数退避 10s→30s）。会话标题由 `chat-thread-list-adapter.ts` 覆写 `generateTitle`（取首条用户消息）。
+**流式问答（SSE）**：`ChatRuntimeProvider`（`features/chat/lib/chat-runtime.tsx`，挂在 `/app` 根，侧边栏「最近对话」与聊天页共享同一 runtime）→ 每线程 `useLocalRuntime(chatAdapter)` → `chat-adapter.ts` 用 fetch POST `/api/v1/knowledge_bases/{kbName}/chat/stream`，`d25-sse.ts` 手工解析事件行协议（`step` / `meta` / `citation` / `delta` / `usage` / `done` / `error`，`: ping` 保活）→ delta 累积后以全量文本 yield（assistant-ui 要求累计态），`meta/citation/usage` 写入 zustand run-store（按 messageId，上限 100 条）→ `answer-markdown.tsx` 把正文 `[n]` 标注替换为引用角标，`message-sources.tsx` 渲染参考来源。**无 WebSocket**；文档摄取状态用轮询（`use-document-polling`，指数退避 10s→30s）。会话标题由 `chat-thread-list-adapter.ts` 覆写 `generateTitle`（取首条用户消息）。
 
 **认证**：`lib/auth.tsx` 的 `configureAuth`（userFn/loginFn/logoutFn/registerFn）+ `ProtectedRoute` 包裹 `/app`；token 存 localStorage，`api-client.ts` 请求拦截器注入 Bearer，401 触发**单飞刷新**（独立 raw axios 实例 POST `/api/v1/auth/refresh`，避免递归）后重试一次；RBAC 策略对象在 `lib/authorization.tsx`（POLICIES）。
 

@@ -1,7 +1,8 @@
 /**
  * 知识库对话（D25 SSE 事件协议）的 DTO 镜像。
- * 后端契约：POST /api/v1/knowledge_bases/{kb_name}/chat，
- * 事件流 meta / citation / delta / usage / done / error，data 行为 JSON。
+ * 后端契约：POST /api/v1/knowledge_bases/{kb_name}/chat/stream（非流式为
+ * POST .../chat，返回 ChatResponse 统一 JSON），
+ * 事件流 step / meta / citation / delta / usage / done / error，data 行为 JSON。
  */
 
 export type ChatRole = 'user' | 'assistant' | 'system';
