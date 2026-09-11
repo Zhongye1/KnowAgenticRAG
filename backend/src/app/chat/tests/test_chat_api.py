@@ -73,8 +73,9 @@ def _canned_stream(*events: tuple[str, dict[str, Any]]) -> Callable[..., AsyncIt
 
 
 def test_chat_sse_event_lines_protocol(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
-    """meta/citation/delta/usage/done 事件行按约定顺序流出。"""
+    """step/meta/citation/delta/usage/done 事件行按约定顺序流出。"""
     events = [
+        ('step', {'name': 'recall', 'detail': 'text=1 visual=0 recall_top_k=10'}),
         ('meta', {'kb_name': 'dev', 'mode': 'hybrid', 'model_spec': 'acme:qwen-max', 'hit_count': 1}),
         ('citation', {'citations': [{'n': 1, 'document_id': 'doc-a', 'version_id': 1, 'chunk_id': 'doc-a:1:0'}]}),
         ('delta', {'content': '版本差异在于 '}),
@@ -83,15 +84,16 @@ def test_chat_sse_event_lines_protocol(client: TestClient, monkeypatch: pytest.M
     ]
     monkeypatch.setattr(chat_service, 'astream', _canned_stream(*events))
     resp = client.post(
-        '/api/v1/knowledge_bases/dev/chat',
+        '/api/v1/knowledge_bases/dev/chat/stream',
         json={'query_text': '版本差异'},
         headers={'X-Plugin-Namespace': 'core'},
     )
     assert resp.status_code == 200
     assert 'text/event-stream' in resp.headers.get('content-type', '')
     body = resp.text
-    for event in ('meta', 'citation', 'delta', 'usage', 'done'):
+    for event in ('step', 'meta', 'citation', 'delta', 'usage', 'done'):
         assert f'event: {event}' in body
+    assert body.index('event: step') < body.index('event: meta') < body.index('event: done')
     assert '"hit_count": 1' in body
     assert '"reason": "complete"' in body
 
@@ -104,7 +106,7 @@ def test_chat_sse_empty_result_short_circuit(client: TestClient, monkeypatch: py
     ]
     monkeypatch.setattr(chat_service, 'astream', _canned_stream(*events))
     resp = client.post(
-        '/api/v1/knowledge_bases/dev/chat',
+        '/api/v1/knowledge_bases/dev/chat/stream',
         json={'query_text': '不存在的问题'},
         headers={'X-Plugin-Namespace': 'core'},
     )
@@ -119,10 +121,57 @@ def test_chat_sse_error_event_passthrough(client: TestClient, monkeypatch: pytes
     events = [('error', {'code': 'MODEL_NOT_CONFIGURED', 'msg': 'chat 模型未配置', 'trace_id': 'trace-1'})]
     monkeypatch.setattr(chat_service, 'astream', _canned_stream(*events))
     resp = client.post(
-        '/api/v1/knowledge_bases/dev/chat',
+        '/api/v1/knowledge_bases/dev/chat/stream',
         json={'query_text': 'x'},
         headers={'X-Plugin-Namespace': 'core'},
     )
     assert resp.status_code == 200
     assert 'event: error' in resp.text
     assert 'MODEL_NOT_CONFIGURED' in resp.text
+
+
+def test_chat_sync_endpoint_returns_full_payload(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    """非流式端点：统一 JSON 包装 + 自包含 ChatResponse（与流式 done 同源）。"""
+
+    async def _acomplete(  # ruff: ignore[unused-async]  # 对齐 chat_service.acomplete 的 async 契约
+        db: Any, *, kb_name: str, param: Any, plugin_namespace: str | None = None, scope: Any = None
+    ) -> dict[str, Any]:
+        return {
+            'kb_name': kb_name,
+            'kb_names': [kb_name],
+            'mode': 'hybrid',
+            'model_spec': 'acme:qwen-max',
+            'hit_count': 1,
+            'visual_count': 0,
+            'answer': '版本差异在于 [1]',
+            'reason': 'complete',
+            'citations': [
+                {
+                    'n': 1,
+                    'kb_name': kb_name,
+                    'document_id': 'doc-a',
+                    'version_id': 1,
+                    'chunk_id': 'doc-a:1:0',
+                    'content': '原文',
+                }
+            ],
+            'images': [],
+            'route': {'mode': 'hybrid', 'selected': ['text'], 'reason': 'explicit params', 'kb_names': [kb_name]},
+            'steps': [{'name': 'recall', 'detail': 'text=1 visual=0 recall_top_k=10'}],
+            'usage': {'prompt_tokens': 1, 'completion_tokens': 2, 'total_tokens': 3},
+        }
+
+    monkeypatch.setattr(chat_service, 'acomplete', _acomplete)
+    resp = client.post(
+        '/api/v1/knowledge_bases/dev/chat',
+        json={'query_text': '版本差异'},
+        headers={'X-Plugin-Namespace': 'core'},
+    )
+    assert resp.status_code == 200
+    assert 'text/event-stream' not in resp.headers.get('content-type', '')
+    body = resp.json()
+    assert body['code'] == 200
+    assert body['data']['answer'] == '版本差异在于 [1]'
+    assert body['data']['citations'][0]['chunk_id'] == 'doc-a:1:0'
+    assert body['data']['route']['selected'] == ['text']
+    assert body['data']['steps'][0]['name'] == 'recall'

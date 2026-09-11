@@ -31,20 +31,32 @@ def _hit(n: int) -> dict[str, Any]:
     }
 
 
+def _steps(results: list[dict[str, Any]]) -> list[dict[str, str]]:
+    return [
+        {'name': 'recall', 'detail': f'text={len(results)} visual=0 recall_top_k=10'},
+        {'name': 'rerank', 'detail': 'applied'},
+        {'name': 'hydrate', 'detail': f'text={len(results)} visual=0'},
+    ]
+
+
 def _search_output(results: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         'kb_name': 'dev',
+        'kb_names': ['dev'],
         'mode': 'hybrid',
         'recall_count': len(results),
         'reranked': True,
         'degraded': False,
         'duration_ms': 5,
         'results': results,
+        'visual_results': [],
+        'include_visual': False,
+        'steps': _steps(results),
     }
 
 
 class FakeRetrieval:
-    """检索替身：按配置返回命中或抛语义错误。"""
+    """检索替身：按配置返回命中/步骤或抛语义错误；同步与流式两条门面同源。"""
 
     def __init__(self, *, output: dict[str, Any] | None = None, exc: Exception | None = None) -> None:
         self.output = output or _search_output([])
@@ -65,6 +77,23 @@ class FakeRetrieval:
         if self.exc is not None:
             raise self.exc
         return self.output
+
+    async def astream_search(
+        self,
+        db: Any,
+        *,
+        kb_names: list[str],
+        query_text: str,
+        param: Any = None,
+        plugin_namespace: str | None = None,
+        scope: Any = None,
+    ) -> AsyncIterator[tuple[str, dict[str, Any]]]:
+        self.calls.append({'kb_names': kb_names, 'query_text': query_text, 'param': param, 'ns': plugin_namespace})
+        if self.exc is not None:
+            raise self.exc
+        for step in self.output.get('steps') or []:
+            yield 'step', step
+        yield 'result', self.output
 
 
 class FakeChatModel:
@@ -114,6 +143,15 @@ def _run(service: ChatService, **param_overrides: Any) -> list[tuple[str, dict[s
     return asyncio.run(_collect(service, **param_overrides))
 
 
+def _names(events: list[tuple[str, dict[str, Any]]]) -> list[str]:
+    return [event for event, _data in events]
+
+
+def _non_step(events: list[tuple[str, dict[str, Any]]]) -> list[tuple[str, dict[str, Any]]]:
+    """剔除检索 step 事件后的序列（事件顺序在 test_stream_emits_retrieval_steps 单独断言）。"""
+    return [item for item in events if item[0] != 'step']
+
+
 def test_empty_result_short_circuit_without_model(monkeypatch: pytest.MonkeyPatch) -> None:
     """无命中：meta(hit=0) → citation([]) → 明确文案 → usage(0) → done(empty_result)，不调模型。"""
     monkeypatch.setattr(settings, 'RAGF_CHAT_MODEL_SPEC', '')
@@ -121,7 +159,7 @@ def test_empty_result_short_circuit_without_model(monkeypatch: pytest.MonkeyPatc
     gateway = FakeGateway()
     service = ChatService(retrieval=retrieval, chat_gateway=gateway)
 
-    events = _run(service)
+    events = _non_step(_run(service))
 
     assert events[0] == (
         'meta',
@@ -130,7 +168,10 @@ def test_empty_result_short_circuit_without_model(monkeypatch: pytest.MonkeyPatc
     assert events[1] == ('citation', {'citations': [], 'images': []})
     assert events[2] == ('delta', {'content': EMPTY_RESULT_MESSAGE})
     assert events[3] == ('usage', {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0})
-    assert events[4] == ('done', {'reason': 'empty_result'})
+    assert events[4][0] == 'done'
+    assert events[4][1]['reason'] == 'empty_result'
+    assert events[4][1]['answer'] == EMPTY_RESULT_MESSAGE
+    assert events[4][1]['steps'] == _steps([])
     assert gateway.specs == []
 
 
@@ -141,10 +182,11 @@ def test_hit_streams_with_citations_and_usage() -> None:
     gateway = FakeGateway(model=model)
     service = ChatService(retrieval=retrieval, chat_gateway=gateway)
 
-    events = _run(service, model='acme:qwen-max', temperature=0.7)
+    events = _non_step(_run(service, model='acme:qwen-max', temperature=0.7))
 
-    names = [event for event, _data in events]
+    names = _names(events)
     assert names == ['meta', 'citation', 'delta', 'delta', 'usage', 'done']
+    assert retrieval.calls[0]['kb_names'] == ['dev']  # 流式走 astream_search（同一编排）
     meta = events[0][1]
     assert meta['hit_count'] == 2
     assert meta['model_spec'] == 'acme:qwen-max'
@@ -155,7 +197,10 @@ def test_hit_streams_with_citations_and_usage() -> None:
     assert citations[0]['source'] == 'guide.md'
     assert ''.join(data['content'] for event, data in events if event == 'delta') == '版本差异如下'
     assert events[-2] == ('usage', {'prompt_tokens': 10, 'completion_tokens': 4, 'total_tokens': 14})
-    assert events[-1] == ('done', {'reason': 'complete'})
+    done = events[-1][1]
+    assert done['reason'] == 'complete'
+    assert done['answer'] == '版本差异如下'
+    assert done['usage'] == {'prompt_tokens': 10, 'completion_tokens': 4, 'total_tokens': 14}
     assert gateway.specs == ['acme:qwen-max']
     assert model.kwargs['temperature'] == pytest.approx(0.7)
     assert model.kwargs['messages'][0]['role'] == 'system'
@@ -170,11 +215,14 @@ def test_model_not_configured_error_event(monkeypatch: pytest.MonkeyPatch) -> No
 
     events = _run(service)
 
-    assert len(events) == 1
-    event, data = events[0]
+    # 检索步骤先于装配产出（step 是真实进度），模型未配置在装配后才可知
+    assert _names(events) == ['step', 'step', 'step', 'error']
+    event, data = events[-1]
     assert event == 'error'
     assert data['code'] == 'MODEL_NOT_CONFIGURED'
     assert 'trace_id' in data
+    assert 'meta' not in _names(events)
+    assert 'citation' not in _names(events)
 
 
 def test_kb_not_found_error_event() -> None:
@@ -204,7 +252,7 @@ def test_upstream_stream_error_event() -> None:
 
     events = _run(service, model='acme:qwen-max')
 
-    names = [event for event, _data in events]
+    names = _names(_non_step(events))
     assert names == ['meta', 'citation', 'error']
     assert events[-1][1]['code'] == 'STREAM_ERROR'
 
@@ -259,7 +307,7 @@ def test_include_visual_projected_and_meta_counts() -> None:
     gateway = FakeGateway(model=FakeChatModel())
     service = ChatService(retrieval=retrieval, chat_gateway=gateway)
 
-    events = _run(service, model='acme:qwen-max', include_visual=True, visual_top_k=3)
+    events = _non_step(_run(service, model='acme:qwen-max', include_visual=True, visual_top_k=3))
 
     param = retrieval.calls[0]['param']
     assert param.include_visual is True
@@ -289,10 +337,86 @@ def test_citation_event_carries_visual_items() -> None:
     retrieval = FakeRetrieval(output=output)
     service = ChatService(retrieval=retrieval, chat_gateway=FakeGateway(model=FakeChatModel()))
 
-    events = _run(service, model='acme:qwen-max', include_visual=True)
+    events = _non_step(_run(service, model='acme:qwen-max', include_visual=True))
 
     images = events[1][1]['images']
     assert len(images) == 1
     assert images[0]['image_id'] == 'doc-9_t0'
     assert images[0]['type'] == 'image'
     assert len(events[1][1]['citations']) == 1
+
+
+def _run_sync(service: ChatService, **param_overrides: Any) -> dict[str, Any]:
+    param = ChatParam(query_text='版本差异是什么', **param_overrides)
+
+    async def _call() -> dict[str, Any]:
+        return await service.acomplete(None, kb_name='dev', param=param)  # type: ignore[arg-type]
+
+    return asyncio.run(_call())
+
+
+def test_stream_emits_retrieval_steps_before_meta() -> None:
+    """step 事件随检索编排即时产出且在 meta 之前（EagleRAG query_stream 事件序对齐）。"""
+    retrieval = FakeRetrieval(output=_search_output([_hit(1)]))
+    service = ChatService(retrieval=retrieval, chat_gateway=FakeGateway(model=FakeChatModel()))
+
+    events = _run(service, model='acme:qwen-max')
+
+    assert _names(events) == ['step', 'step', 'step', 'meta', 'citation', 'delta', 'delta', 'usage', 'done']
+    assert events[0][1] == {'name': 'recall', 'detail': 'text=1 visual=0 recall_top_k=10'}
+    assert events[1][1] == {'name': 'rerank', 'detail': 'applied'}
+    assert events[2][1] == {'name': 'hydrate', 'detail': 'text=1 visual=0'}
+
+
+def test_done_event_is_self_contained() -> None:
+    """done 携带全文 + route/steps/用量，客户端可只消费 done 渲染。"""
+    retrieval = FakeRetrieval(output=_search_output([_hit(1)]))
+    service = ChatService(retrieval=retrieval, chat_gateway=FakeGateway(model=FakeChatModel()))
+
+    done = _run(service, model='acme:qwen-max')[-1][1]
+
+    assert done['reason'] == 'complete'
+    assert done['answer'] == '版本差异如下'
+    assert done['kb_name'] == 'dev'
+    assert done['kb_names'] == ['dev']
+    assert done['mode'] == 'hybrid'
+    assert done['hit_count'] == 1
+    assert done['model_spec'] == 'acme:qwen-max'
+    assert done['route']['selected'] == ['text']
+    assert [step['name'] for step in done['steps']] == ['recall', 'rerank', 'hydrate']
+    assert done['usage']['total_tokens'] == 14
+
+
+def test_acomplete_returns_full_payload() -> None:
+    """非流式 acomplete：一次返回回答 + 引用 + route/steps（与流式 done 同源）。"""
+    retrieval = FakeRetrieval(output=_search_output([_hit(1), _hit(2)]))
+    model = FakeChatModel()
+    service = ChatService(retrieval=retrieval, chat_gateway=FakeGateway(model=model))
+
+    payload = _run_sync(service, model='acme:qwen-max')
+
+    assert payload['answer'] == '版本差异如下'
+    assert payload['reason'] == 'complete'
+    assert payload['hit_count'] == 2
+    assert payload['model_spec'] == 'acme:qwen-max'
+    assert [item['n'] for item in payload['citations']] == [1, 2]
+    assert payload['route']['kb_names'] == ['dev']
+    assert [step['name'] for step in payload['steps']] == ['recall', 'rerank', 'hydrate']
+    assert payload['usage']['completion_tokens'] == 4
+    assert retrieval.calls[0]['kb_name'] == 'dev'
+
+
+def test_acomplete_empty_result_short_circuits(monkeypatch: pytest.MonkeyPatch) -> None:
+    """无命中：不调模型，answer 为约定文案 + reason=empty_result。"""
+    monkeypatch.setattr(settings, 'RAGF_CHAT_MODEL_SPEC', '')
+    gateway = FakeGateway()
+    service = ChatService(retrieval=FakeRetrieval(), chat_gateway=gateway)
+
+    payload = _run_sync(service)
+
+    assert payload['answer'] == EMPTY_RESULT_MESSAGE
+    assert payload['reason'] == 'empty_result'
+    assert payload['hit_count'] == 0
+    assert payload['citations'] == []
+    assert payload['usage'] == {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0}
+    assert gateway.specs == []

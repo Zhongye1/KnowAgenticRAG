@@ -65,12 +65,13 @@ def test_rag_image_route_requires_read_perm() -> None:
     assert _has_rbac_after_perm(route, RAG_KB_READ)
 
 
-def test_chat_route_requires_chat_perm() -> None:
+def test_chat_routes_require_chat_perm() -> None:
     from backend.src.app.chat.api.v1.chat import router
 
-    route = _find_route(router, '/{kb_name}/chat', 'POST')
-    assert RAG_KB_CHAT in _route_perm_codes(route)
-    assert _has_rbac_after_perm(route, RAG_KB_CHAT)
+    for path in ('/{kb_name}/chat', '/{kb_name}/chat/stream'):
+        route = _find_route(router, path, 'POST')
+        assert RAG_KB_CHAT in _route_perm_codes(route)
+        assert _has_rbac_after_perm(route, RAG_KB_CHAT)
 
 
 def test_kb_routes_require_list_or_manage_perm() -> None:

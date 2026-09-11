@@ -6,12 +6,19 @@ from typing import Literal
 
 from pydantic import ConfigDict, Field
 
+from backend.src.app.retrieval.schema.rag_query import (
+    ImageSourceItem,  # ruff: ignore[typing-only-first-party-import]  # pydantic 需运行时解析字段前向引用
+    QueryStepItem,  # ruff: ignore[typing-only-first-party-import]
+    RouteInfoItem,  # ruff: ignore[typing-only-first-party-import]
+)
 from backend.src.app.retrieval.schema.search_result import (
     RetrievalFilters,  # ruff: ignore[typing-only-first-party-import]  # pydantic 需运行时解析字段前向引用
 )
 from backend.src.common.schema import SchemaBase
 
 ChatRole = Literal['user', 'assistant', 'system']
+
+ChatDoneReason = Literal['complete', 'empty_result', 'max_tokens']
 
 ThinkingLevel = Literal['off', 'low', 'medium', 'high']
 
@@ -74,3 +81,33 @@ class CitationItem(SchemaBase):
     source: str = Field('', description='来源文件名')
     score: float = Field(0.0, description='相关度得分')
     content: str = Field(description='片段原文')
+
+
+class ChatUsage(SchemaBase):
+    """模型用量（非流式响应与流式 usage 事件同构）。"""
+
+    prompt_tokens: int = Field(default=0, description='提示 token 数')
+    completion_tokens: int = Field(default=0, description='生成 token 数')
+    total_tokens: int = Field(default=0, description='总 token 数')
+
+
+class ChatResponse(SchemaBase):
+    """非流式问答响应（字段 = 流式 meta/citation/usage/done 事件负载的并集）。
+
+    与 ``/chat/stream`` 的 ``done`` 事件同构：同一 ``_build_prepared`` 产物驱动，
+    仅生成调用为阻塞式（``achat``）。回答中 ``[n]`` 序号与 ``citations[].n`` 对应。
+    """
+
+    kb_name: str = Field(description='知识库标识（单库路径参数）')
+    kb_names: list[str] = Field(default_factory=list, description='本次检索的知识库（单库为单元素）')
+    mode: str = Field('hybrid', description='实际生效检索模式：vector / hybrid')
+    model_spec: str = Field('', description='实际生效 chat 模型 spec（provider_id:model_id）')
+    hit_count: int = Field(0, description='文本命中数（精排后 final_top_k 内）')
+    visual_count: int = Field(0, description='视觉召回命中数（不进引用）')
+    answer: str = Field(description='完整回答文本（无命中时为约定文案）')
+    reason: ChatDoneReason = Field(description='结束原因：complete / empty_result / max_tokens')
+    citations: list[CitationItem] = Field(default_factory=list, description='引用条目（D24）')
+    images: list[ImageSourceItem] = Field(default_factory=list, description='视觉来源（经 /rag/images 回源）')
+    route: RouteInfoItem = Field(description='路由信息（显式参数语义，selector=explicit）')
+    steps: list[QueryStepItem] = Field(default_factory=list, description='过程轨迹（按执行序）')
+    usage: ChatUsage = Field(default_factory=ChatUsage, description='token 用量')
