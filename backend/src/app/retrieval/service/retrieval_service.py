@@ -2,11 +2,12 @@
 ragf-design §5.7/§7/§14.4/§A.3-A.5；agent-layer spec §5.3/D26/D27/M11 扩展）。
 
 编排：KB/参数装配 → embedding 向量化 → 策略化召回（vector/hybrid，服务端 RRF，
-支持单 KB 与多 KB 聚合，M11）→ CrossEncoder 精排（可选，失败按召回序降级 + 结
-构化日志）→ 结构化过滤（文档级条件解析为 document_id 集 + 精确 version_id）→
-来源补全（PG 事实源 + 文件名 + active_version 收敛）。去 PPR 段（二期）；不出现
-Yuxi ``except → return []`` 反模式：核心能力（embedding/召回）失败直接上抛，精排
-（可选能力）失败降级。
+支持单 KB 与多 KB 聚合，M11；可选视觉召回 ragf_visual，独立 visual_results）
+→ CrossEncoder 精排（可选，失败按召回序降级 + 结构化日志）→ 结构化过滤（文
+档级条件解析为 document_id 集 + 精确 version_id）→ 来源补全（PG 事实源 + 文
+件名 + active_version 收敛）。去 PPR 段（二期）；不出现
+Yuxi ``except → return []`` 反模式：核心能力（embedding/召回）失败直接上抛，精
+排（可选能力）失败降级。
 
 检索为同步只读路径：方法持有 ``db``（fba ``CurrentSession``），不写库、不派任务。
 多 KB 场景：各 KB 归属/越权逐库校验（防工具版 IDOR，D33/M11），聚合后统一精排
@@ -15,6 +16,7 @@ Yuxi ``except → return []`` 反模式：核心能力（embedding/召回）失�
 
 from __future__ import annotations
 
+import asyncio
 import time
 
 from typing import TYPE_CHECKING, Any
@@ -36,6 +38,7 @@ from backend.src.app.retrieval.service.filters import (
 from backend.src.app.retrieval.service.params import merge_search_params, resolve_recall_top_k
 from backend.src.app.retrieval.service.scope import Scope, to_milvus_expr
 from backend.src.app.retrieval.service.strategies import RETRIEVE_STRATEGIES
+from backend.src.app.retrieval.service.strategies.visual import retrieve_visual
 from backend.src.common.exception import errors
 from backend.src.common.log import log
 from backend.src.core.config import settings
@@ -56,6 +59,9 @@ _RETRIEVAL_DURATION = _METER.create_histogram(
 )
 _RERANK_DEGRADED = _METER.create_counter(
     'ragf.retrieval.rerank_degraded', unit='1', description='精排失败降级为召回序的次数（§A.5）'
+)
+_VISUAL_DEGRADED = _METER.create_counter(
+    'ragf.retrieval.visual_degraded', unit='1', description='视觉召回失败降级次数（编码/检索异常，D7）'
 )
 
 
@@ -107,12 +113,14 @@ class RetrievalService:
         doc_dao: Any | None = None,
         provider: Any | None = None,
         strategies: dict[str, Any] | None = None,
+        visual_strategy: Any | None = None,
     ) -> None:
         self._chunk_source = chunk_source or PgChunkSource()
         self._kb_dao = kb_dao or knowledge_base_dao
         self._doc_dao = doc_dao or document_dao
         self._provider = provider or provider_service
         self._strategies = dict(strategies or RETRIEVE_STRATEGIES)
+        self._visual_strategy = visual_strategy or retrieve_visual
 
     # ------------------------------------------------------------------ 门面
     async def search(
@@ -152,6 +160,8 @@ class RetrievalService:
             span.set_attribute('ragf.recall_count', data['recall_count'])
             span.set_attribute('ragf.reranked', data['reranked'])
             span.set_attribute('ragf.degraded', data['degraded'])
+            span.set_attribute('ragf.visual_count', len(data['visual_results']))
+            span.set_attribute('ragf.visual_degraded', data['visual_degraded'])
             span.set_attribute('ragf.hit_count', len(data['results']))
             _RETRIEVAL_REQUESTS.add(1, {'result': 'degraded' if data['degraded'] else 'ok'})
             _RETRIEVAL_DURATION.record(time.perf_counter() - started)
@@ -195,6 +205,8 @@ class RetrievalService:
             span.set_attribute('ragf.recall_count', data['recall_count'])
             span.set_attribute('ragf.reranked', data['reranked'])
             span.set_attribute('ragf.degraded', data['degraded'])
+            span.set_attribute('ragf.visual_count', len(data['visual_results']))
+            span.set_attribute('ragf.visual_degraded', data['visual_degraded'])
             span.set_attribute('ragf.hit_count', len(data['results']))
             _RETRIEVAL_REQUESTS.add(1, {'result': 'degraded' if data['degraded'] else 'ok'})
             _RETRIEVAL_DURATION.record(time.perf_counter() - started)
@@ -233,6 +245,8 @@ class RetrievalService:
         mode = str(merged['search_mode'])
         final_top_k = max(int(merged['final_top_k']), 1)
         use_reranker = bool(merged['use_reranker'])
+        include_visual = bool(merged['include_visual'])
+        visual_top_k = max(int(merged['visual_top_k']), 1)
         recall_top_k = resolve_recall_top_k(
             recall_top_k=merged['recall_top_k'],
             final_top_k=final_top_k,
@@ -244,8 +258,19 @@ class RetrievalService:
         # ② embedding（核心能力，失败上抛不伪装成功；按 embedding 模型分组复用）
         embed_groups = await self._load_embeddings(db, kbs=kbs, names=names, query_text=query_text)
 
-        # ③ 文档级过滤解析 + 逐 KB 召回（带 scope 过滤）
-        merged_hits = await self._recall_kbs(
+        # ②b 视觉编码（可选能力，失败降级为纯文本检索；整次查询编码一次）
+        visual_vector: list[float] | None = None
+        visual_degraded = False
+        if include_visual:
+            try:
+                visual_vector = await self._load_visual_embedding(query_text)
+            except Exception as exc:
+                visual_degraded = True
+                _VISUAL_DEGRADED.add(1, {'stage': 'encode', 'kb_name': names[0]})
+                log.warning('视觉召回编码失败，降级为纯文本检索: {}', exc)
+
+        # ③ 文档级过滤解析 + 逐 KB 召回（带 scope 过滤；可选视觉召回）
+        merged_hits, visual_hits, visual_recalled = await self._recall_kbs(
             db,
             names=names,
             kbs=kbs,
@@ -258,7 +283,10 @@ class RetrievalService:
             request_data=request_data,
             embed_groups=embed_groups,
             scope=scope,
+            visual_vector=visual_vector,
+            visual_top_k=visual_top_k,
         )
+        visual_degraded = visual_degraded or visual_recalled
 
         # ④ 精排（可选能力，失败降级为召回序，§A.5/§14.9）
         ranked, reranked, degraded = await self._rank_hits(
@@ -285,6 +313,8 @@ class RetrievalService:
             reranked=reranked,
             degraded=degraded,
             results=results,
+            visual_results=self._build_visual_results(visual_hits, fallback_kb=names[0], visual_top_k=visual_top_k),
+            visual_degraded=visual_degraded,
         )
 
     # ------------------------------------------------------------------ 编排步骤
@@ -320,6 +350,17 @@ class RetrievalService:
             group['dim'] = int(embed_client.dimension) if embed_client.dimension else len(group['query_embedding'])
         return groups
 
+    async def _load_visual_embedding(self, query_text: str) -> list[float]:
+        """视觉编码（查询文本 → ragf_visual 同一向量空间；sync 编码器经线程池调用）。"""
+        encoder_getter = getattr(self._provider, 'get_visual_encoder', None)
+        if encoder_getter is None:
+            raise RuntimeError('provider 未提供视觉编码器（get_visual_encoder）')
+        encoder = encoder_getter()
+        vector = await asyncio.to_thread(encoder.embed_text, query_text)
+        if not vector:
+            raise errors.RequestError(msg='视觉编码返回为空')
+        return list(vector)
+
     async def _recall_kbs(
         self,
         db: AsyncSession,
@@ -335,25 +376,25 @@ class RetrievalService:
         request_data: dict[str, Any],
         embed_groups: dict[str, dict[str, Any]],
         scope: Scope | None = None,
-    ) -> list[dict[str, Any]]:
+        visual_vector: list[float] | None = None,
+        visual_top_k: int = 5,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], bool]:
         """逐 KB 文档过滤解析 + 策略化召回；结果打上 kb_name 归属。
 
         scope: 检索范围（ACL 过滤），用于生成 Milvus 过滤表达式。
+        visual_vector: 视觉查询向量（None = 不做视觉召回）；视觉命中独立于文本
+        命中返回（tile 无 PG chunks，不进精排/引用），召回失败降级不阻塞文本。
         """
         merged: list[dict[str, Any]] = []
+        visual_merged: list[dict[str, Any]] = []
+        visual_degraded = False
         for kb_name in names:
             doc_ids = await self._resolve_doc_ids(db, kb_name=kb_name, ns=ns, request_data=request_data)
             if doc_ids == []:
                 continue
 
             # 构建 Milvus 过滤表达式：组合 doc_ids 过滤 + scope 过滤
-            expr = compose_retrieval_expr(doc_ids=doc_ids, version_id=version_id)
-
-            # 如果有 scope，追加 scope 过滤
-            if scope is not None:
-                scope_expr = to_milvus_expr(scope)
-                # 组合：doc_ids 过滤 AND scope 过滤
-                expr = f'({expr}) and ({scope_expr})' if expr else scope_expr
+            expr = self._compose_kb_expr(doc_ids=doc_ids, version_id=version_id, scope=scope)
 
             group = next(item for item in embed_groups.values() if kb_name in item['kb_names'])
             ctx: dict[str, Any] = {
@@ -370,7 +411,25 @@ class RetrievalService:
             for hit in await strategy(ctx):
                 hit['kb_name'] = kb_name
                 merged.append(hit)
-        return merged
+
+            # 视觉召回（可选；表达式同构但无版本标量，视觉行不区分版本）
+            if visual_vector is not None:
+                visual_ctx: dict[str, Any] = {
+                    'kb_name': kb_name,
+                    'query_visual_embedding': visual_vector,
+                    'visual_top_k': visual_top_k,
+                    'expr': self._compose_kb_expr(doc_ids=doc_ids, version_id=None, scope=scope),
+                    'plugin_namespace': ns,
+                }
+                try:
+                    for hit in await self._visual_strategy(visual_ctx):
+                        hit['kb_name'] = kb_name
+                        visual_merged.append(hit)
+                except Exception as exc:
+                    visual_degraded = True
+                    _VISUAL_DEGRADED.add(1, {'stage': 'recall', 'kb_name': kb_name})
+                    log.warning('视觉召回失败，跳过 kb={}: {}', kb_name, exc)
+        return merged, visual_merged, visual_degraded
 
     async def _rank_hits(
         self,
@@ -503,6 +562,40 @@ class RetrievalService:
 
     # ------------------------------------------------------------------ 纯辅助
     @staticmethod
+    def _compose_kb_expr(doc_ids: list[str] | None, version_id: int | None, scope: Scope | None) -> str | None:
+        """KB 内过滤表达式：document_id 集 AND version_id AND scope ACL（kb_name 由 milvus 层注入）。"""
+        expr = compose_retrieval_expr(doc_ids=doc_ids, version_id=version_id)
+        if scope is not None:
+            scope_expr = to_milvus_expr(scope)
+            expr = f'({expr}) and ({scope_expr})' if expr else scope_expr
+        return expr
+
+    @staticmethod
+    def _build_visual_results(
+        hits: list[dict[str, Any]],
+        *,
+        fallback_kb: str,
+        visual_top_k: int,
+    ) -> list[dict[str, Any]]:
+        """视觉命中组装：跨 KB 按视觉相似度降序统一截断（无精排/收敛段）。"""
+        ordered = sorted(hits, key=lambda hit: float(hit.get('score') or 0.0), reverse=True)
+        return [
+            {
+                'id': str(hit.get('id') or ''),
+                'image_path': str(hit.get('image_path') or ''),
+                'document_id': str(hit.get('document_id') or ''),
+                'kb_name': str(hit.get('kb_name') or fallback_kb),
+                'page': int(hit.get('page') or 0),
+                'position': str(hit.get('position') or ''),
+                'chunk_type': str(hit.get('chunk_type') or 'tile'),
+                'parent_section': str(hit.get('parent_section') or ''),
+                'content_summary': str(hit.get('content_summary') or ''),
+                'score': float(hit.get('score') or 0.0),
+            }
+            for hit in ordered[: max(int(visual_top_k), 1)]
+        ]
+
+    @staticmethod
     def _request_data(param: KBSearchParam | dict[str, Any] | None) -> dict[str, Any]:
         return param.model_dump(exclude_unset=True) if isinstance(param, KBSearchParam) else dict(param or {})
 
@@ -551,6 +644,8 @@ class RetrievalService:
         reranked: bool = False,
         degraded: bool = False,
         results: list[dict[str, Any]] | None = None,
+        visual_results: list[dict[str, Any]] | None = None,
+        visual_degraded: bool = False,
     ) -> dict[str, Any]:
         results = results or []
         return {
@@ -563,6 +658,8 @@ class RetrievalService:
             'degraded': degraded,
             'duration_ms': int((time.perf_counter() - started) * 1000),
             'results': results,
+            'visual_results': visual_results or [],
+            'visual_degraded': visual_degraded,
         }
 
 

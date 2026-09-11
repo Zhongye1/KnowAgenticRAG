@@ -2,7 +2,7 @@
 
 PixelRAG 被收敛为「渲染 + 切片」库调用：``pixelrag_render`` 将 PDF/图片/网页
 渲染为条带 tile（``{outdir}/{stem}.png.tiles/``：tiles.json 清单 + JPEG 条带），
-视觉编码交给 :mod:`engine.visual_encoder`。不启动 pixelrag serve、不建 FAISS。
+视觉编码交给 :mod:`model_provider.providers.visual`。不启动 pixelrag serve、不建 FAISS。
 
 失败 fail-closed：库缺包或渲染零 tile 抛 ``PixelRagEngineError``。
 """

@@ -69,6 +69,10 @@ class KBSearchParam(SchemaBase):
         None, ge=0.0, le=1.0, description='vector 模式余弦相似度阈值（低于阈值丢弃，Yuxi 语义）'
     )
     use_reranker: bool | None = Field(None, description='是否精排（默认开，D16）')
+    include_visual: bool | None = Field(
+        None, description='是否附带视觉召回（ragf_visual 集合；默认关，命中以 visual_results 独立返回）'
+    )
+    visual_top_k: int | None = Field(None, ge=1, le=50, description='视觉召回条数上限（视觉不进精排）')
     file_name: str | None = Field(None, max_length=255, description='可选文件名关键词过滤（命中 0 个文档返回空）')
     filters: RetrievalFilters | None = Field(None, description='结构化过滤（D26/M11：与 file_name 合并）')
 
@@ -93,6 +97,21 @@ class SearchHitItem(SchemaBase):
     )
 
 
+class VisualHitItem(SchemaBase):
+    """视觉召回命中条目（ragf_visual 集合；独立于文本 chunk 结果，不进精排/引用）。"""
+
+    id: str = Field(description='视觉行 ID（{document_id}_t{序号}）')
+    image_path: str = Field(description='tile 图对象键（MinIO kb/{ns}/{kb}/{doc}/tiles/）')
+    document_id: str = Field(description='所属文档')
+    kb_name: str = Field(description='知识库标识')
+    page: int = Field(0, description='页码')
+    position: str = Field('', description='条带位置')
+    chunk_type: str = Field('tile', description='视觉切片类型（tile/image/table）')
+    parent_section: str = Field('', description='父章节（预留）')
+    content_summary: str = Field('', description='内容摘要（预留，当前摄取侧为空）')
+    score: float = Field(0.0, description='视觉余弦相似度')
+
+
 class KBSearchOutput(SchemaBase):
     """同步检索输出"""
 
@@ -103,3 +122,10 @@ class KBSearchOutput(SchemaBase):
     degraded: bool = Field(False, description='精排失败降级为召回序（§A.5）')
     duration_ms: int = Field(0, description='检索耗时（毫秒）')
     results: list[SearchHitItem] = Field(default_factory=list, description='按相关度降序的最终结果')
+    visual_results: list[VisualHitItem] = Field(
+        default_factory=list, description='视觉召回命中（include_visual 开启时；按视觉相似度降序）'
+    )
+    visual_degraded: bool = Field(False, description='视觉召回失败降级（编码/检索异常；文本结果不受影响）')
+
+
+__all__ = ['KBSearchOutput', 'KBSearchParam', 'RetrievalFilters', 'SearchHitItem', 'VisualHitItem']

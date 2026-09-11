@@ -18,7 +18,15 @@ __all__ = [
     'resolve_recall_top_k',
 ]
 
-RETRIEVAL_PARAM_KEYS = frozenset({'search_mode', 'recall_top_k', 'final_top_k', 'similarity_threshold', 'use_reranker'})
+RETRIEVAL_PARAM_KEYS = frozenset({
+    'search_mode',
+    'recall_top_k',
+    'final_top_k',
+    'similarity_threshold',
+    'use_reranker',
+    'include_visual',
+    'visual_top_k',
+})
 SEARCH_MODES = frozenset({'vector', 'hybrid'})
 
 
@@ -30,14 +38,16 @@ def default_search_params() -> dict[str, Any]:
         'final_top_k': int(settings.RAGF_RETRIEVAL_FINAL_TOP_K),
         'similarity_threshold': float(settings.RAGF_RETRIEVAL_SIMILARITY_THRESHOLD),
         'use_reranker': bool(settings.RAGF_RETRIEVAL_USE_RERANKER),
+        'include_visual': bool(settings.RAGF_RETRIEVAL_USE_VISUAL),
+        'visual_top_k': int(settings.RAGF_RETRIEVAL_VISUAL_TOP_K),
     }
 
 
 def _coerce_param(key: str, value: Any) -> Any:
-    """按键轻量强转；非法值返回 None 表示“放弃该层覆盖”。"""
+    """按键轻量强转；非法值返回 None 表示「放弃该层覆盖」。"""
     if key == 'search_mode':
         return value if value in SEARCH_MODES else None
-    if key in {'recall_top_k', 'final_top_k'}:
+    if key in {'recall_top_k', 'final_top_k', 'visual_top_k'}:
         try:
             return max(int(value), 1)
         except (TypeError, ValueError):
@@ -48,7 +58,7 @@ def _coerce_param(key: str, value: Any) -> Any:
         except (TypeError, ValueError):
             return None
         return coerced if 0.0 <= coerced <= 1.0 else None
-    if key == 'use_reranker':
+    if key in {'use_reranker', 'include_visual'}:
         if isinstance(value, bool):
             return value
         if isinstance(value, str) and value.strip().lower() in {'true', 'false'}:

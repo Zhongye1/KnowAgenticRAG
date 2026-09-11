@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from backend.src.app.model_provider.providers.chat import OpenAICompatibleChatModel
     from backend.src.app.model_provider.providers.dashscope_clients import DashScopeEmbedding, DashScopeTextReRank
     from backend.src.app.model_provider.providers.embed import OpenAICompatibleEmbedding
+    from backend.src.app.model_provider.providers.visual import VisualEncoder
     from backend.src.app.model_provider.schema.provider import (
         ModelProviderCreateParam,
         ModelProviderUpdateParam,
@@ -145,9 +146,7 @@ class ProviderService:
                 return build_model_info(provider, model)
         return None
 
-    async def get_embedding_model(
-        self, db: AsyncSession, spec: str
-    ) -> OpenAICompatibleEmbedding | DashScopeEmbedding:
+    async def get_embedding_model(self, db: AsyncSession, spec: str) -> OpenAICompatibleEmbedding | DashScopeEmbedding:
         """按 spec 返回 Embedding 客户端（供 ingest/retrieval 使用）。"""
         info = await self.get_model_info(db, spec)
         if info is None:
@@ -167,6 +166,17 @@ class ProviderService:
         if info is None:
             raise errors.NotFoundError(msg=f'未找到模型 spec: {spec}（请检查 model_providers 配置）')
         return select_chat_model(info)
+
+    @staticmethod
+    def get_visual_encoder() -> VisualEncoder:
+        """视觉编码器（qwen3-vl-embedding 同一向量空间；配置驱动，不入 provider 注册表）。
+
+        供摄取写入与检索查询两侧共用（spec D7 指纹守卫）；构造期校验
+        DASHSCOPE_API_KEY 与维度，缺失即抛错，由调用方决定降级语义。
+        """
+        from backend.src.app.model_provider.providers.visual import get_visual_encoder
+
+        return get_visual_encoder()
 
     async def test_connectivity(self, db: AsyncSession, spec: str) -> dict[str, Any]:
         """连通性测试（embedding/rerank/chat，D18 起 chat 纳入）。"""

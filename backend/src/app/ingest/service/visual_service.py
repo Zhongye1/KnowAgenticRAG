@@ -18,13 +18,13 @@ import tempfile
 from typing import Any
 
 from backend.src.app.ingest.engine.pixelrag import PixelRagEngineError, Tile, render_to_tiles
-from backend.src.app.ingest.engine.visual_encoder import get_visual_encoder
 from backend.src.app.ingest.limits import IngestLimitError, validate_ingest_file
 from backend.src.app.ingest.service.ingest_service import resolve_acl_fields
 from backend.src.app.ingest.service.job_service import job_service
 from backend.src.app.kb.crud import dedup_dao, document_dao, knowledge_base_dao
 from backend.src.app.kb.service.document_storage import download_document_bytes, upload_document_bytes
 from backend.src.app.kb.utils.namespace import instance_namespace
+from backend.src.app.model_provider.providers.visual import get_visual_encoder
 from backend.src.common.exception import errors
 from backend.src.common.log import log
 from backend.src.core.config import settings

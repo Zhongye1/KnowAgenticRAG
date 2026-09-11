@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import math
 
-from backend.src.app.ingest.engine.visual_encoder import _image_mime, _l2_normalize
 from backend.src.app.ingest.service.visual_service import build_visual_rows, visual_tile_object_key
+from backend.src.app.model_provider.providers.visual import _image_mime, _l2_normalize
 
 _ACL = {'namespace': 'core', 'visibility': 'public', 'owner_id': 'u1', 'groups': ['g1']}
 

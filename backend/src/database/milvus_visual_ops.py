@@ -73,9 +73,12 @@ def _schema(name: str, dim: int) -> CollectionSchema:
 
 
 def _fingerprint() -> str:
-    from backend.src.app.ingest.engine.visual_encoder import encoder_fingerprint
+    """编码器指纹（provider:model:dim），写入集合描述做一致性守卫（spec D7）。
 
-    return encoder_fingerprint()
+    与 model_provider.providers.visual 的编码器读取同一组 settings，公式单点
+    维护在本模块（集合 schema 的守卫关注点），避免 database 反向依赖业务域。
+    """
+    return f'{settings.RAGF_VISUAL_PROVIDER}:{settings.RAGF_VISUAL_MODEL}:{settings.RAGF_VISUAL_DIM}'
 
 
 def _schema_ready(client: MilvusClient, collection: str, *, dim: int) -> bool:

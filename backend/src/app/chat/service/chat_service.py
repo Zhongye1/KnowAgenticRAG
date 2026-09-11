@@ -64,6 +64,8 @@ _SEARCH_PARAM_KEYS = frozenset({
     'final_top_k',
     'similarity_threshold',
     'use_reranker',
+    'include_visual',
+    'visual_top_k',
     'file_name',
     'filters',
 })
@@ -121,6 +123,7 @@ class PreparedChat:
     thinking_level: str | None = None
     model_error: tuple[str, str] | None = None
     kb_names: list[str] | None = None
+    visual_count: int = 0
 
 
 class _ProviderChatGateway:
@@ -306,7 +309,7 @@ class ChatService:
 
     async def _emit_empty(self, *, kb_name: str, mode: str) -> AsyncIterator[ChatEvent]:
         """无命中短路（D18：不调用模型，明确文案走 empty_result）。"""
-        yield ('meta', {'kb_name': kb_name, 'mode': mode, 'model_spec': '', 'hit_count': 0})
+        yield ('meta', {'kb_name': kb_name, 'mode': mode, 'model_spec': '', 'hit_count': 0, 'visual_count': 0})
         yield ('citation', {'citations': []})
         yield ('delta', {'content': EMPTY_RESULT_MESSAGE})
         yield ('usage', _usage_payload(None))
@@ -321,6 +324,7 @@ class ChatService:
                 'mode': prepared.mode,
                 'model_spec': prepared.model_spec,
                 'hit_count': prepared.hit_count,
+                'visual_count': prepared.visual_count,
             },
         )
         yield ('citation', {'citations': prepared.citations})
@@ -478,6 +482,7 @@ class ChatService:
             else float(settings.RAGF_CHAT_DEFAULT_TEMPERATURE),
             max_tokens=param.max_tokens,
             thinking_level=param.thinking_level,
+            visual_count=len(data.get('visual_results') or []),
         )
 
     @staticmethod

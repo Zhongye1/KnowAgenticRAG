@@ -1,10 +1,11 @@
-"""视觉编码后端（双管线摄取 spec D7，EagleRAG ingest/visual_encoder.py 迁移）。
+"""视觉编码客户端（双管线摄取 spec D7，EagleRAG ingest/visual_encoder.py 迁移；
+自 ingest/engine 下沉至模型接入域：摄取写入与检索查询两侧共用同一向量空间）。
 
 图片与文本共享同一向量空间（Qwen3-VL-Embedding，2048 维）。P2 接入
 DashScope 百炼 provider（免 GPU）；本地 HF provider 为 P4 可选项（显式报错）。
 
 约束（spec D7）：摄取与查询必须使用同一 provider；切换 provider 需重建
-ragf_visual 集合，代码侧以指纹守卫（见 visual_service.encoder_fingerprint）。
+ragf_visual 集合，代码侧以指纹守卫（见 database/milvus_visual_ops._fingerprint）。
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from typing import Any, Protocol
 
 from backend.src.common.log import log
 
-__all__ = ['DashScopeQwen3VLEncoder', 'VisualEncoder', 'encoder_fingerprint', 'get_visual_encoder']
+__all__ = ['DashScopeQwen3VLEncoder', 'VisualEncoder', 'get_visual_encoder']
 
 _DASHSCOPE_DIMS = frozenset({256, 512, 768, 1024, 1536, 2048, 2560})
 _RETRYABLE_STATUS = {429, 500, 502, 503, 504}
@@ -59,13 +60,6 @@ def _image_data_uri(image_bytes: bytes) -> str:
     fmt = _image_mime(image_bytes)
     b64 = base64.b64encode(image_bytes).decode('ascii')
     return f'data:image/{fmt};base64,{b64}'
-
-
-def encoder_fingerprint() -> str:
-    """编码器指纹（provider:model:dim），写入 ragf_visual 集合描述做一致性守卫。"""
-    from backend.src.core.config import settings
-
-    return f'{settings.RAGF_VISUAL_PROVIDER}:{settings.RAGF_VISUAL_MODEL}:{settings.RAGF_VISUAL_DIM}'
 
 
 class DashScopeQwen3VLEncoder:

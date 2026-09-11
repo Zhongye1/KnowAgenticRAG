@@ -49,9 +49,9 @@ backend/
     │   ├── admin/           # 认证与系统管理：JWT、RBAC、用户/角色/菜单/日志/验证码
     │   ├── kb/              # 知识库域：知识库/文档/ACL/标签 CRUD、租户 scope 依赖注入（deps.py）
     │   ├── ingest/          # 摄取域：上传入队 Celery、解析工厂/注册表、分块器（chunking/）
-    │   ├── retrieval/       # 检索域：策略召回 vector/hybrid → RRF → 精排 → PG 来源补全
+    │   ├── retrieval/       # 检索域：策略召回 vector/hybrid → RRF → 精排 → PG 来源补全；可选视觉召回 ragf_visual（独立 visual_results）
     │   ├── chat/            # 问答域：SSE 流式生成、引用组装、prompt 上下文
-    │   ├── model_provider/  # 模型接入域：模型工厂（embed/chat/rerank）、ModelCache、连通性测试
+    │   ├── model_provider/  # 模型接入域：模型工厂（embed/chat/rerank/visual）、ModelCache、连通性测试
     │   ├── task/            # 任务域：Celery 实例（celery.py）、队列划分、动态定时 DatabaseScheduler
     │   └── mcp/             # MCP 工具面：对外检索/带引用问答/文档读取（PAT 鉴权，复用 chat/retrieval）
     ├── common/              # 跨域公共设施：security（jwt/rbac/permission）、cache、exception、
@@ -93,7 +93,7 @@ mcp ──→ chat ──→ retrieval ──→ kb
 
 ## 6. 关键链路
 
-**问答（SSE 流式）**：`app/chat/api/v1/chat.py`（EventSourceResponse）→ `ChatService.astream` → `RetrievalService._aggregate` 五步编排：① KB 归属/ACL 校验（scope 表达式由 `retrieval/service/scope.py` 生成 Milvus 标量过滤）② embedding（model_provider）③ 策略召回（`RETRIEVE_STRATEGIES` 注册表 → `milvus_kb_ops.search_ragf_kb`，dense+sparse RRF）④ reranker 精排（失败降级为召回序）⑤ 回查 PG chunks 补全来源 → `build_citations` → chat model 流式输出 `delta` 帧。
+**问答（SSE 流式）**：`app/chat/api/v1/chat.py`（EventSourceResponse）→ `ChatService.astream` → `RetrievalService._aggregate` 五步编排：① KB 归属/ACL 校验（scope 表达式由 `retrieval/service/scope.py` 生成 Milvus 标量过滤）② embedding（model_provider）③ 策略召回（`RETRIEVE_STRATEGIES` 注册表 → `milvus_kb_ops.search_ragf_kb`，dense+sparse RRF；可选视觉召回 `strategies/visual.py` → `milvus_visual_ops.search_visual`，命中独立 `visual_results` 返回，失败降级）④ reranker 精排（失败降级为召回序）⑤ 回查 PG chunks 补全来源 → `build_citations` → chat model 流式输出 `delta` 帧。
 
 **摄取（Celery 异步，双管线 spec：docs/specs/2026-09-10-dual-pipeline-ingest-design.md）**：上传/URL 端点 `send_task` 入队（ingest/knowhere/visual 三队列可独立路由）→ `ingest/tasks/tasks.py: ingest.process_document` 为**路由入口**：策略链（`ingest/routing/`，默认 auto：knowhere 扩展集含 pdf/docx/pptx/md/txt/csv，图片/扫描件走 visual）决定管线。knowhere = Knowhere SDK 语义解析（`ingest/service/knowhere_service.py`）；visual = PixelRAG 视觉切片（`ingest/service/visual_service.py`）。**legacy 工厂链（parser/chunking/MinerU 直连）已删除**——摄取硬依赖 Knowhere 服务 + DASHSCOPE_API_KEY，引擎不可用时路由期 fail-closed 报错。两条管线共享：**先 Milvus 后 PG 双写**（失败删向量补偿）、`ingest_jobs` 细粒度审计（`ingest/model/ingest_job.py`，job_id = Celery task_id）、dedup 成功后置登记（D9）、限额三道关（`ingest/limits.py`）；`ingest.reconcile` 由 beat 周期对账（含视觉管线），PG 为事实源。
 

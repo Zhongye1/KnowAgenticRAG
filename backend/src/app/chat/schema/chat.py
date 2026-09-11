@@ -55,6 +55,10 @@ class ChatParam(SchemaBase):
     final_top_k: int | None = Field(None, ge=1, le=50, description='最终返回条数覆盖')
     similarity_threshold: float | None = Field(None, ge=0.0, le=1.0, description='vector 模式余弦阈值覆盖')
     use_reranker: bool | None = Field(None, description='是否精排覆盖')
+    include_visual: bool | None = Field(
+        None, description='是否附带视觉召回覆盖（ragf_visual；命中经 meta.visual_count 透出，不进引用）'
+    )
+    visual_top_k: int | None = Field(None, ge=1, le=50, description='视觉召回条数上限覆盖')
     file_name: str | None = Field(None, max_length=255, description='可选文件名关键词过滤覆盖')
     filters: RetrievalFilters | None = Field(None, description='结构化过滤覆盖（M11/D26：与 file_name 合并）')
 

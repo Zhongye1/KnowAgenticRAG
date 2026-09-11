@@ -345,6 +345,10 @@ class Settings(BaseSettings):
     RAGF_RETRIEVAL_RRF_K: int = 60
     # D16：默认精排模型 spec（千问平台 token，dashscope SDK 通道）
     RAGF_RETRIEVAL_RERANK_SPEC: str = 'dashscope:qwen3.7-text-rerank'
+    # 视觉召回（ragf_visual 集合，双管线摄取 spec D7 查询侧）：默认关闭，
+    # KB 级 query_params / 请求逐层开启；编码失败按可选能力降级不阻塞文本检索
+    RAGF_RETRIEVAL_USE_VISUAL: bool = False
+    RAGF_RETRIEVAL_VISUAL_TOP_K: int = 5
 
     # RAGF：chat 门面（ragf-design D18/M9）
     RAGF_CHAT_MODEL_SPEC: str = ''  # 默认 chat 模型 spec（provider:model）；空 = 请求必须显式 model

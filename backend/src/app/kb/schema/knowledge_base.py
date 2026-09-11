@@ -14,6 +14,8 @@ QUERY_PARAM_WHITELIST = frozenset({
     'final_top_k',
     'similarity_threshold',
     'use_reranker',
+    'include_visual',
+    'visual_top_k',
 })
 
 
@@ -33,7 +35,7 @@ def _coerce_query_param(key: str, val: Any) -> Any:
         if val not in {'vector', 'hybrid'}:
             raise ValueError('search_mode 只能是 vector 或 hybrid')
         return val
-    if key in {'recall_top_k', 'final_top_k'}:
+    if key in {'recall_top_k', 'final_top_k', 'visual_top_k'}:
         coerced = int(val)
         if coerced < 1:
             raise ValueError(f'{key} 必须 >= 1')
@@ -43,9 +45,11 @@ def _coerce_query_param(key: str, val: Any) -> Any:
         if not 0 <= coerced <= 1:
             raise ValueError('similarity_threshold 必须在 0~1')
         return coerced
-    if not isinstance(val, bool):
-        raise TypeError('use_reranker 必须是布尔值')
-    return val
+    if key in {'use_reranker', 'include_visual'}:
+        if not isinstance(val, bool):
+            raise TypeError(f'{key} 必须是布尔值')
+        return val
+    raise ValueError(f'query_params 非法键: {key}')
 
 
 class KBCreateParam(SchemaBase):
@@ -62,9 +66,7 @@ class KBCreateParam(SchemaBase):
         max_length=64,
         description='嵌入模型 spec（千问平台 token；换模型=重建 KB）',
     )
-    routing_mode: str = Field(
-        'auto', max_length=16, description='摄取路由模式（auto/text/visual/hybrid）'
-    )
+    routing_mode: str = Field('auto', max_length=16, description='摄取路由模式（auto/text/visual/hybrid）')
     query_params: dict = Field(default_factory=dict, description='检索默认参数（见 §6.4 白名单）')
 
     @field_validator('query_params')

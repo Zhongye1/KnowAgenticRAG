@@ -14,6 +14,7 @@ from typing import Any
 import pytest
 
 from backend.src.app.retrieval.service.retrieval_service import RetrievalService
+from backend.src.app.retrieval.service.scope import Scope
 from backend.src.common.exception import errors
 
 
@@ -304,3 +305,180 @@ def test_multi_empty_or_too_many_kbs_rejected() -> None:
                 query_text='x',
             )
         )
+
+
+# ---------------------------------------------------------------------------
+# 视觉召回（ragf_visual，spec D7 查询侧）
+# ---------------------------------------------------------------------------
+
+
+class FakeVisualEncoder:
+    def __init__(self, *, exc: Exception | None = None) -> None:
+        self.exc = exc
+        self.texts: list[str] = []
+
+    def embed_text(self, text: str) -> list[float]:
+        self.texts.append(text)
+        if self.exc is not None:
+            raise self.exc
+        return [0.4, 0.5, 0.6]
+
+
+class FakeVisualProvider(FakeProvider):
+    def __init__(self, encoder: FakeVisualEncoder | None = None) -> None:
+        super().__init__()
+        self.encoder = encoder or FakeVisualEncoder()
+
+    def get_visual_encoder(self) -> FakeVisualEncoder:
+        return self.encoder
+
+
+class FakeVisualStrategy:
+    def __init__(self, hits: list[dict[str, Any]] | None = None, exc: Exception | None = None) -> None:
+        self.hits = hits or []
+        self.exc = exc
+        self.ctxs: list[dict[str, Any]] = []
+
+    async def __call__(self, ctx: dict[str, Any]) -> list[dict[str, Any]]:
+        self.ctxs.append(dict(ctx))
+        if self.exc is not None:
+            raise self.exc
+        return [dict(hit) for hit in self.hits]
+
+
+def _visual_hit(document_id: str, kb_name: str, score: float) -> dict[str, Any]:
+    return {
+        'id': f'{document_id}_t0',
+        'image_path': f'kb/core/{kb_name}/{document_id}/tiles/{document_id}_t0.jpg',
+        'document_id': document_id,
+        'page': 3,
+        'position': 'strip_0',
+        'chunk_type': 'tile',
+        'parent_section': '',
+        'content_summary': '',
+        'score': score,
+    }
+
+
+def _visual_service(
+    *,
+    provider: FakeVisualProvider | None = None,
+    visual: FakeVisualStrategy | None = None,
+    scopes: dict[str, list[str]] | None = None,
+) -> tuple[RetrievalService, FakeStrategies, FakeVisualStrategy]:
+    strategies = FakeStrategies()
+    visual_strategy = visual or FakeVisualStrategy()
+    service = RetrievalService(
+        chunk_source=FakeChunkSource(),
+        kb_dao=FakeKbDao([FakeKb('dev'), FakeKb('ops')]),
+        doc_dao=FakeDocDao(scopes or {}),
+        provider=provider or FakeVisualProvider(),
+        strategies=strategies.build(),
+        visual_strategy=visual_strategy,
+    )
+    return service, strategies, visual_strategy
+
+
+def test_visual_recall_disabled_by_default() -> None:
+    service, strategies, visual = _visual_service()
+    data = _run(
+        service.search(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            query_text='x',
+            param={'use_reranker': False},
+        )
+    )
+    assert visual.ctxs == []
+    assert data['visual_results'] == []
+    assert data['visual_degraded'] is False
+    assert strategies.ctxs  # 文本召回正常
+
+
+def test_visual_recall_enabled_returns_sorted_visual_results() -> None:
+    visual = FakeVisualStrategy([_visual_hit('doc-a', 'dev', 0.8), _visual_hit('doc-b', 'dev', 0.9)])
+    provider = FakeVisualProvider()
+    service, _, _ = _visual_service(provider=provider, visual=visual)
+    data = _run(
+        service.search(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            query_text='架构图',
+            param={'use_reranker': False, 'include_visual': True, 'visual_top_k': 1},
+        )
+    )
+    assert provider.encoder.texts == ['架构图']  # 整次查询编码一次
+    assert len(visual.ctxs) == 1
+    assert visual.ctxs[0]['query_visual_embedding'] == [0.4, 0.5, 0.6]
+    assert visual.ctxs[0]['visual_top_k'] == 1
+    assert [hit['id'] for hit in data['visual_results']] == ['doc-b_t0']  # 全局降序 + 截断
+    assert data['visual_results'][0]['kb_name'] == 'dev'
+    assert data['visual_degraded'] is False
+
+
+def test_visual_recall_multi_kb_keeps_attribution_and_sort() -> None:
+    visual = FakeVisualStrategy([_visual_hit('doc-a', 'dev', 0.7), _visual_hit('doc-b', 'ops', 0.95)])
+    service, _, _ = _visual_service(visual=visual)
+    data = _run(
+        service.search_multi(
+            None,  # type: ignore[arg-type]
+            kb_names=['dev', 'ops'],
+            query_text='x',
+            param={'use_reranker': False, 'include_visual': True},
+        )
+    )
+    assert len(visual.ctxs) == 2  # 逐库召回
+    assert {hit['kb_name'] for hit in data['visual_results']} == {'dev', 'ops'}
+    assert data['visual_results'][0]['document_id'] == 'doc-b'  # 跨库按分数降序
+
+
+def test_visual_encode_failure_degrades_without_blocking_text() -> None:
+    provider = FakeVisualProvider(encoder=FakeVisualEncoder(exc=RuntimeError('dashscope down')))
+    service, _, visual = _visual_service(provider=provider)
+    data = _run(
+        service.search(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            query_text='x',
+            param={'use_reranker': False, 'include_visual': True},
+        )
+    )
+    assert data['visual_degraded'] is True
+    assert data['visual_results'] == []
+    assert data['hit_count'] == 1  # 文本结果不受影响
+    assert visual.ctxs == []
+
+
+def test_visual_recall_failure_degrades_without_blocking_text() -> None:
+    visual = FakeVisualStrategy(exc=RuntimeError('milvus visual down'))
+    service, _, _ = _visual_service(visual=visual)
+    data = _run(
+        service.search(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            query_text='x',
+            param={'use_reranker': False, 'include_visual': True},
+        )
+    )
+    assert data['visual_degraded'] is True
+    assert data['hit_count'] == 1
+    assert visual.ctxs  # 召回被调用过（失败在策略内）
+
+
+def test_visual_expr_doc_filter_and_scope_without_version() -> None:
+    visual = FakeVisualStrategy([_visual_hit('doc-a', 'dev', 0.9)])
+    service, _, _ = _visual_service(visual=visual, scopes={'dev': ['doc-a']})
+    scope = Scope(namespace='core', user_id='u1', groups=['1'], allowed_kbs=['dev'])
+    _run(
+        service.search(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            query_text='x',
+            param={'use_reranker': False, 'include_visual': True, 'filters': {'version_id': 2, 'tag': '升级'}},
+            scope=scope,
+        )
+    )
+    expr = visual.ctxs[0]['expr']
+    assert 'document_id == "doc-a"' in expr  # 文档级过滤解析后下推
+    assert 'namespace == "core"' in expr  # scope ACL 同构下推
+    assert 'version_id' not in expr  # 视觉行无版本标量，不做版本过滤

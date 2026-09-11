@@ -123,7 +123,10 @@ def test_empty_result_short_circuit_without_model(monkeypatch: pytest.MonkeyPatc
 
     events = _run(service)
 
-    assert events[0] == ('meta', {'kb_name': 'dev', 'mode': 'hybrid', 'model_spec': '', 'hit_count': 0})
+    assert events[0] == (
+        'meta',
+        {'kb_name': 'dev', 'mode': 'hybrid', 'model_spec': '', 'hit_count': 0, 'visual_count': 0},
+    )
     assert events[1] == ('citation', {'citations': []})
     assert events[2] == ('delta', {'content': EMPTY_RESULT_MESSAGE})
     assert events[3] == ('usage', {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0})
@@ -275,3 +278,35 @@ def test_acomplete_aggregates_answer_and_usage() -> None:
     assert result['citations'][0]['n'] == 1
     assert result['usage'] == {'prompt_tokens': 10, 'completion_tokens': 4, 'total_tokens': 14}
     assert model.kwargs['messages'][0]['role'] == 'system'
+
+
+def test_include_visual_projected_and_meta_counts() -> None:
+    """include_visual/visual_top_k 投影为检索覆盖层；meta 透出 visual_count，引用仍只含 chunk。"""
+    visual = [
+        {
+            'id': 'doc-9_t0',
+            'image_path': 'kb/core/dev/doc-9/tiles/doc-9_t0.jpg',
+            'document_id': 'doc-9',
+            'kb_name': 'dev',
+            'page': 1,
+            'position': 'strip_0',
+            'chunk_type': 'tile',
+            'parent_section': '',
+            'content_summary': '',
+            'score': 0.88,
+        }
+    ]
+    output = _search_output([_hit(1)])
+    output['visual_results'] = visual
+    retrieval = FakeRetrieval(output=output)
+    gateway = FakeGateway(model=FakeChatModel())
+    service = ChatService(retrieval=retrieval, chat_gateway=gateway)
+
+    events = _run(service, model='acme:qwen-max', include_visual=True, visual_top_k=3)
+
+    param = retrieval.calls[0]['param']
+    assert param.include_visual is True
+    assert param.visual_top_k == 3
+    assert events[0][1]['visual_count'] == 1
+    assert events[0][1]['hit_count'] == 1
+    assert len(events[1][1]['citations']) == 1  # 引用契约不含视觉命中
