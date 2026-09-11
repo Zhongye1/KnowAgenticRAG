@@ -45,6 +45,8 @@ from backend.src.common.log import log
 from backend.src.core.config import settings
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from backend.src.app.retrieval.service.ports import ChunkSourcePort
@@ -134,39 +136,15 @@ class RetrievalService:
         plugin_namespace: str | None = None,
         scope: Scope | None = None,
     ) -> dict[str, Any]:
-        """同步检索门面入口（单 KB；§14.13：span + 指标，不承载编排逻辑）。
-
-        scope: 检索范围（ACL 过滤），由 build_retrieval_scope() 构建。
-               如果提供，会在 Milvus 召回时注入权限过滤表达式。
-        """
-        started = time.perf_counter()
-        with _TRACER.start_as_current_span('ragf.retrieval.search') as span:
-            span.set_attribute('ragf.kb_name', kb_name)
-            if scope:
-                span.set_attribute('ragf.scope.user_id', scope.user_id)
-                span.set_attribute('ragf.scope.groups', len(scope.groups))
-            try:
-                data = await self._aggregate(
-                    db,
-                    kb_names=[kb_name],
-                    query_text=query_text,
-                    param=param,
-                    plugin_namespace=plugin_namespace,
-                    scope=scope,
-                )
-            except Exception:
-                _RETRIEVAL_REQUESTS.add(1, {'result': 'error'})
-                raise
-            span.set_attribute('ragf.mode', data['mode'])
-            span.set_attribute('ragf.recall_count', data['recall_count'])
-            span.set_attribute('ragf.reranked', data['reranked'])
-            span.set_attribute('ragf.degraded', data['degraded'])
-            span.set_attribute('ragf.visual_count', len(data['visual_results']))
-            span.set_attribute('ragf.visual_degraded', data['visual_degraded'])
-            span.set_attribute('ragf.hit_count', len(data['results']))
-            _RETRIEVAL_REQUESTS.add(1, {'result': 'degraded' if data['degraded'] else 'ok'})
-            _RETRIEVAL_DURATION.record(time.perf_counter() - started)
-            return data
+        """同步检索门面入口（单 KB；search_multi 的单库特例，span/指标共用）。"""
+        return await self.search_multi(
+            db,
+            kb_names=[kb_name],
+            query_text=query_text,
+            param=param,
+            plugin_namespace=plugin_namespace,
+            scope=scope,
+        )
 
     async def search_multi(
         self,
@@ -184,14 +162,13 @@ class RetrievalService:
                如果提供，会在 Milvus 召回时注入权限过滤表达式。
         """
         started = time.perf_counter()
-        label = ','.join(kb_names or [])
         with _TRACER.start_as_current_span('ragf.retrieval.search_multi') as span:
-            span.set_attribute('ragf.kb_names', label)
+            span.set_attribute('ragf.kb_names', ','.join(kb_names or []))
             if scope:
                 span.set_attribute('ragf.scope.user_id', scope.user_id)
                 span.set_attribute('ragf.scope.groups', len(scope.groups))
             try:
-                data = await self._aggregate(
+                data = await self._collect(
                     db,
                     kb_names=kb_names,
                     query_text=query_text,
@@ -213,8 +190,50 @@ class RetrievalService:
             _RETRIEVAL_DURATION.record(time.perf_counter() - started)
             return data
 
+    async def astream_search(
+        self,
+        db: AsyncSession,
+        *,
+        kb_names: list[str],
+        query_text: str,
+        param: KBSearchParam | dict[str, Any] | None = None,
+        plugin_namespace: str | None = None,
+        scope: Scope | None = None,
+    ) -> AsyncIterator[tuple[str, dict[str, Any]]]:
+        """流式检索供源（SSE）：``('step', {name, detail})*`` → ``('result', 输出 dict)``。
+
+        span + 指标与同步门面同规（§14.13）；语义错误原样上抛，由端点转 error 事件。
+        """
+        started = time.perf_counter()
+        with _TRACER.start_as_current_span('ragf.retrieval.search_stream') as span:
+            span.set_attribute('ragf.kb_names', ','.join(kb_names or []))
+            if scope:
+                span.set_attribute('ragf.scope.user_id', scope.user_id)
+                span.set_attribute('ragf.scope.groups', len(scope.groups))
+            outcome = 'error'
+            try:
+                async for kind, payload in self._asteps(
+                    db,
+                    kb_names=kb_names,
+                    query_text=query_text,
+                    param=param,
+                    plugin_namespace=plugin_namespace,
+                    scope=scope,
+                ):
+                    if kind == 'result':
+                        outcome = 'degraded' if payload.get('degraded') or payload.get('visual_degraded') else 'ok'
+                    yield kind, payload
+            except Exception:
+                _RETRIEVAL_REQUESTS.add(1, {'result': 'error'})
+                raise
+            finally:
+                span.set_attribute('ragf.result', outcome)
+                if outcome != 'error':
+                    _RETRIEVAL_REQUESTS.add(1, {'result': outcome})
+                    _RETRIEVAL_DURATION.record(time.perf_counter() - started)
+
     # ------------------------------------------------------------------ 编排
-    async def _aggregate(
+    async def _collect(
         self,
         db: AsyncSession,
         *,
@@ -224,6 +243,37 @@ class RetrievalService:
         plugin_namespace: str | None = None,
         scope: Scope | None = None,
     ) -> dict[str, Any]:
+        """消费 _asteps 事件流取最终输出（同步门面的内部通道）。"""
+        result: dict[str, Any] | None = None
+        async for kind, payload in self._asteps(
+            db,
+            kb_names=kb_names,
+            query_text=query_text,
+            param=param,
+            plugin_namespace=plugin_namespace,
+            scope=scope,
+        ):
+            if kind == 'result':
+                result = payload
+        if result is None:
+            raise errors.RequestError(msg='检索编排未产出结果')
+        return result
+
+    async def _asteps(
+        self,
+        db: AsyncSession,
+        *,
+        kb_names: list[str],
+        query_text: str,
+        param: KBSearchParam | dict[str, Any] | None = None,
+        plugin_namespace: str | None = None,
+        scope: Scope | None = None,
+    ) -> AsyncIterator[tuple[str, dict[str, Any]]]:
+        """五步编排的事件化形态：`('step', {name, detail})*` → `('result', 输出 dict)`。
+
+        步骤语义与同步路径完全一致（五步编排即同一协程的事件视图）；步骤在完成
+        时即时产出，供 SSE 流式推送（EagleRAG search_stream 对齐）。
+        """
         ns = instance_namespace(plugin_namespace)
         names = self._normalize_kb_names(kb_names)
         query_text = (query_text or '').strip()
@@ -288,12 +338,13 @@ class RetrievalService:
             visual_top_k=visual_top_k,
         )
         visual_degraded = visual_degraded or visual_recalled
-        steps: list[dict[str, str]] = [
-            {
-                'name': 'recall',
-                'detail': f'text={len(merged_hits)} visual={len(visual_hits)} recall_top_k={recall_top_k}',
-            }
-        ]
+        steps: list[dict[str, str]] = []
+        recall_step = {
+            'name': 'recall',
+            'detail': f'text={len(merged_hits)} visual={len(visual_hits)} recall_top_k={recall_top_k}',
+        }
+        steps.append(recall_step)
+        yield 'step', recall_step
 
         # ④ 精排（可选能力，失败降级为召回序，§A.5/§14.9）
         ranked, reranked, degraded = await self._rank_hits(
@@ -303,10 +354,12 @@ class RetrievalService:
             hits=merged_hits,
             use_reranker=use_reranker,
         )
-        steps.append({
+        rerank_step = {
             'name': 'rerank',
             'detail': 'applied' if reranked else ('degraded → recall order' if use_reranker else 'skipped'),
-        })
+        }
+        steps.append(rerank_step)
+        yield 'step', rerank_step
 
         # ⑤ 来源补全 + active_version 收敛 + 统一 final_top_k 组装
         results = await self._build_results(
@@ -317,19 +370,24 @@ class RetrievalService:
             version_requested=bool(filters is not None and filters.version_id is not None),
         )
         visual_results = self._build_visual_results(visual_hits, fallback_kb=names[0], visual_top_k=visual_top_k)
-        steps.append({'name': 'hydrate', 'detail': f'text={len(results)} visual={len(visual_results)}'})
-        return self._output(
-            kb_names=names,
-            mode=mode,
-            started=started,
-            recall_count=len(merged_hits),
-            reranked=reranked,
-            degraded=degraded,
-            results=results,
-            visual_results=visual_results,
-            visual_degraded=visual_degraded,
-            include_visual=include_visual,
-            steps=steps,
+        hydrate_step = {'name': 'hydrate', 'detail': f'text={len(results)} visual={len(visual_results)}'}
+        steps.append(hydrate_step)
+        yield 'step', hydrate_step
+        yield (
+            'result',
+            self._output(
+                kb_names=names,
+                mode=mode,
+                started=started,
+                recall_count=len(merged_hits),
+                reranked=reranked,
+                degraded=degraded,
+                results=results,
+                visual_results=visual_results,
+                visual_degraded=visual_degraded,
+                include_visual=include_visual,
+                steps=steps,
+            ),
         )
 
     # ------------------------------------------------------------------ 编排步骤

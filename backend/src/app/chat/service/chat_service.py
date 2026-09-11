@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import time
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
 from opentelemetry import metrics as otel_metrics
@@ -27,6 +27,7 @@ from backend.src.app.chat.service.prompts import (
     truncate_citations,
 )
 from backend.src.app.model_provider.service.provider_service import normalize_model_spec, provider_service
+from backend.src.app.retrieval.schema.rag_query import to_image_source
 from backend.src.app.retrieval.schema.search_result import KBSearchParam
 from backend.src.app.retrieval.service.retrieval_service import retrieval_service
 from backend.src.common.exception import errors
@@ -124,6 +125,7 @@ class PreparedChat:
     model_error: tuple[str, str] | None = None
     kb_names: list[str] | None = None
     visual_count: int = 0
+    visual_items: list[dict[str, Any]] = field(default_factory=list)
 
 
 class _ProviderChatGateway:
@@ -310,7 +312,7 @@ class ChatService:
     async def _emit_empty(self, *, kb_name: str, mode: str) -> AsyncIterator[ChatEvent]:
         """无命中短路（D18：不调用模型，明确文案走 empty_result）。"""
         yield ('meta', {'kb_name': kb_name, 'mode': mode, 'model_spec': '', 'hit_count': 0, 'visual_count': 0})
-        yield ('citation', {'citations': []})
+        yield ('citation', {'citations': [], 'images': []})
         yield ('delta', {'content': EMPTY_RESULT_MESSAGE})
         yield ('usage', _usage_payload(None))
         yield ('done', {'reason': 'empty_result'})
@@ -327,7 +329,7 @@ class ChatService:
                 'visual_count': prepared.visual_count,
             },
         )
-        yield ('citation', {'citations': prepared.citations})
+        yield ('citation', {'citations': prepared.citations, 'images': prepared.visual_items})
 
         finish_reason: str | None = None
         usage: dict[str, Any] | None = None
@@ -483,6 +485,7 @@ class ChatService:
             max_tokens=param.max_tokens,
             thinking_level=param.thinking_level,
             visual_count=len(data.get('visual_results') or []),
+            visual_items=[to_image_source(item) for item in data.get('visual_results') or []],
         )
 
     @staticmethod

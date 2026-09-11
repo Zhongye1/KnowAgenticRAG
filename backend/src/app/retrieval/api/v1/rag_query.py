@@ -8,10 +8,13 @@
 """
 
 import asyncio
+import json
 
-from typing import Annotated, cast
+from collections.abc import AsyncIterator
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, Path
+from sse_starlette import EventSourceResponse
 
 from backend.src.app.kb.crud import document_dao
 from backend.src.app.kb.deps import CurrentNamespace, CurrentScope
@@ -55,6 +58,65 @@ async def rag_search(
     return cast(
         'ResponseSchemaModel[RagSearchOutput]', response_base.success(data=RagSearchOutput.model_validate(payload))
     )
+
+
+@search_router.post('/search/stream', summary='RAG 跨库检索 SSE（step/sources/done/error）')
+async def rag_search_stream(
+    db: CurrentSession,
+    current_namespace: CurrentNamespace,
+    scope: CurrentScope,
+    obj: RagSearchParam,
+) -> EventSourceResponse:
+    """检索步骤即时推送（step），完成后 sources + done；语义错误统一 error 事件。"""
+
+    async def _events() -> AsyncIterator[dict[str, Any]]:
+        try:
+            async for kind, payload in retrieval_service.astream_search(
+                db,
+                kb_names=obj.kb_names,
+                query_text=obj.query_text,
+                param=obj,
+                plugin_namespace=current_namespace,
+                scope=scope,
+            ):
+                if kind == 'step':
+                    yield {'event': 'step', 'data': json.dumps(payload, ensure_ascii=False)}
+                elif kind == 'result':
+                    rag = build_rag_payload(payload)
+                    yield {'event': 'sources', 'data': json.dumps(rag['sources'], ensure_ascii=False)}
+                    summary = {
+                        'kb_names': rag['kb_names'],
+                        'mode': rag['mode'],
+                        'route': rag['route'],
+                        'steps': rag['steps'],
+                        'recall_count': rag['recall_count'],
+                        'reranked': rag['reranked'],
+                        'degraded': rag['degraded'],
+                        'visual_degraded': rag['visual_degraded'],
+                        'duration_ms': rag['duration_ms'],
+                        'hit_count': len(rag['sources']['text']),
+                        'visual_count': len(rag['sources']['image']),
+                    }
+                    yield {'event': 'done', 'data': json.dumps(summary, ensure_ascii=False)}
+        except errors.ForbiddenError as exc:
+            yield {
+                'event': 'error',
+                'data': json.dumps({'code': 'PERMISSION_DENIED', 'message': exc.msg}, ensure_ascii=False),
+            }
+        except errors.NotFoundError as exc:
+            yield {
+                'event': 'error',
+                'data': json.dumps({'code': 'KB_NOT_FOUND', 'message': exc.msg}, ensure_ascii=False),
+            }
+        except errors.RequestError as exc:
+            yield {
+                'event': 'error',
+                'data': json.dumps({'code': 'INVALID_REQUEST', 'message': exc.msg}, ensure_ascii=False),
+            }
+        except Exception as exc:
+            yield {'event': 'error', 'data': json.dumps({'code': 'INTERNAL', 'message': str(exc)}, ensure_ascii=False)}
+
+    return EventSourceResponse(_events(), headers={'Cache-Control': 'no-cache', 'X-Accel-Buffering': 'no'})
 
 
 @images_router.get('/images/{image_id}/url', summary='视觉 tile 预签名 URL（对象键 → 短期直链）')

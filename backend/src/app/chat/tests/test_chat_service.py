@@ -127,7 +127,7 @@ def test_empty_result_short_circuit_without_model(monkeypatch: pytest.MonkeyPatc
         'meta',
         {'kb_name': 'dev', 'mode': 'hybrid', 'model_spec': '', 'hit_count': 0, 'visual_count': 0},
     )
-    assert events[1] == ('citation', {'citations': []})
+    assert events[1] == ('citation', {'citations': [], 'images': []})
     assert events[2] == ('delta', {'content': EMPTY_RESULT_MESSAGE})
     assert events[3] == ('usage', {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0})
     assert events[4] == ('done', {'reason': 'empty_result'})
@@ -310,3 +310,32 @@ def test_include_visual_projected_and_meta_counts() -> None:
     assert events[0][1]['visual_count'] == 1
     assert events[0][1]['hit_count'] == 1
     assert len(events[1][1]['citations']) == 1  # 引用契约不含视觉命中
+
+
+def test_citation_event_carries_visual_items() -> None:
+    """citation 事件附带 images 列表(visual_results 归一映射);引用编号仍只含 chunk。"""
+    output = _search_output([_hit(1)])
+    output['visual_results'] = [
+        {
+            'id': 'doc-9_t0',
+            'image_path': 'kb/core/dev/doc-9/tiles/doc-9_t0.jpg',
+            'document_id': 'doc-9',
+            'kb_name': 'dev',
+            'page': 1,
+            'position': 'strip_0',
+            'chunk_type': 'tile',
+            'parent_section': '',
+            'content_summary': '',
+            'score': 0.88,
+        }
+    ]
+    retrieval = FakeRetrieval(output=output)
+    service = ChatService(retrieval=retrieval, chat_gateway=FakeGateway(model=FakeChatModel()))
+
+    events = _run(service, model='acme:qwen-max', include_visual=True)
+
+    images = events[1][1]['images']
+    assert len(images) == 1
+    assert images[0]['image_id'] == 'doc-9_t0'
+    assert images[0]['type'] == 'image'
+    assert len(events[1][1]['citations']) == 1

@@ -546,3 +546,45 @@ def test_output_carries_steps_trajectory() -> None:
     assert [step['name'] for step in data['steps']] == ['recall', 'rerank', 'hydrate']
     assert data['steps'][1]['detail'] == 'skipped'  # use_reranker=False
     assert data['include_visual'] is False
+
+
+# ---------------------------------------------------------------------------
+# 流式检索供源(SSE,阶段2)
+# ---------------------------------------------------------------------------
+
+
+def test_astream_search_emits_steps_then_result() -> None:
+    service, _, _ = _service()
+
+    async def _collect() -> list[tuple[str, dict[str, Any]]]:
+        events = []
+        async for kind, payload in service.astream_search(
+            None,  # type: ignore[arg-type]
+            kb_names=['dev'],
+            query_text='x',
+            param={'use_reranker': False},
+        ):
+            events.append((kind, payload))
+        return events
+
+    events = asyncio.run(_collect())
+    assert [kind for kind, _ in events] == ['step', 'step', 'step', 'result']
+    assert [payload['name'] for kind, payload in events if kind == 'step'] == ['recall', 'rerank', 'hydrate']
+    result = events[-1][1]
+    assert result['hit_count'] == 1
+    assert [step['name'] for step in result['steps']] == ['recall', 'rerank', 'hydrate']
+
+
+def test_astream_search_semantic_error_propagates() -> None:
+    service, _, _ = _service(kbs=[FakeKb('dev')])
+
+    async def _collect() -> None:
+        async for _ in service.astream_search(
+            None,  # type: ignore[arg-type]
+            kb_names=['secret'],
+            query_text='x',
+        ):
+            pass
+
+    with pytest.raises(errors.NotFoundError):
+        asyncio.run(_collect())
