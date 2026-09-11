@@ -359,17 +359,10 @@ services:
     networks:
       - ragf_network
 
-  # Knowhere 解析服务（双管线摄取 spec D1，RAGF_KNOWHERE_MODE=api 时必需）。
-  # 官方 SDK 面向自建 HTTP 服务（:5005）；服务镜像随部署方提供，此处占位注释：
-  # 取消注释并填入实际镜像后，ragf_server/worker 经 RAGF_KNOWHERE_BASE_URL 访问。
-  # knowhere:
-  #   image: <knowhere-server-image>
-  #   container_name: knowhere
-  #   restart: always
-  #   ports:
-  #     - "5005:5005"
-  #   networks:
-  #     - ragf_network
+  # Knowhere 解析服务不在本 compose 定义：独立自托管栈见 docker/knowhere/compose.yaml
+  # （app + 专用 postgres/redis/localstack；task dev / task deps-up 经根 Taskfile 自动拉起，
+  # 也可 task knowhere:up 单独运维）。容器部署时让 ragf_server/worker 加入外部网络
+  # knowhere-net（docker network create knowhere-net），经 http://knowhere:5005 访问。
 
   ragf_celery_beat:
     build:

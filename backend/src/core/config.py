@@ -388,10 +388,12 @@ class Settings(BaseSettings):
     RAGF_PDF_PROBE_TEXT_PAGE_RATIO: float = 0.2
     RAGF_PDF_PROBE_AVG_CHARS_PER_PAGE: int = 50
 
-    # Knowhere 引擎（D1）：api=官方 SDK 调自建 :5005 服务（需部署服务）；
-    # parser=knowhere-parse-sdk 进程内（P4）；off=关闭（文档路由期 fail-closed 报错）
+    # Knowhere 引擎（D1）：api=官方 SDK 调自建 :5005 服务（task dev 经 docker/knowhere/
+    # 栈自动拉起）；parser=knowhere-parse-sdk 进程内（P4）；off=关闭（文档路由期 fail-closed 报错）
     RAGF_KNOWHERE_MODE: Literal['api', 'parser', 'off'] = 'api'
-    RAGF_KNOWHERE_BASE_URL: str = 'http://knowhere:5005'
+    # 默认本地开发（后端跑宿主机）→ localhost:5005；容器部署加入 knowhere-net 后
+    # 经 env 覆盖为 http://knowhere:5005
+    RAGF_KNOWHERE_BASE_URL: str = 'http://localhost:5005'
     # Knowhere HTTP 层可选凭据（SDK Authorization 头）：仅当部署带鉴权网关
     # （共享/公网暴露）时配置；自建 compose 容器留空即可（SDK 传 None 不带认证头）。
     # 注意它不是 SaaS 平台 token——MinerU 等解析后端的凭据由 Knowhere 服务自己持有

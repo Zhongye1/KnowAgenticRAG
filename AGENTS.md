@@ -13,6 +13,7 @@
 ├── frontend/                # React 19 + Vite 前端 —— 见 frontend/AGENTS.md
 ├── docs/                    # VitePress 文档站（工程治理 / RAG_core / 参考 / specs）
 ├── deploy/                  # 部署配置（Grafana/Alloy/Prometheus/Tempo 等）
+├── docker/knowhere/         # Knowhere 解析服务自托管栈（独立 compose 项目）
 ├── docker-compose.yml       # 依赖容器 + 部署栈
 ├── Dockerfile               # 后端镜像（ragf_server / ragf_celery_*）
 ├── Taskfile.yml             # 项目统一任务入口（聚合前后端子 Taskfile）
@@ -31,13 +32,14 @@
 
 ```bash
 task init        # 一键初始化（幂等）：uv/pnpm 装依赖 → 起依赖容器 → 建表 → 种子数据
-task dev         # 一键开发环境：依赖容器 + 后端 uvicorn 热重载(8000) + 前端 Vite(5000)
+task dev         # 一键开发环境：依赖容器 + Knowhere 解析栈 + 后端 uvicorn 热重载(8000) + 前端 Vite(5000)
 task worker      # Celery Worker（摄取等异步任务）；task beat 为定时调度
 task dev:stop    # 停止前后端进程 + 依赖容器
 ```
 
 - 前后端子任务以命名空间调用：`task backend:<t>` / `task frontend:<t>`（如 `backend:dev`、`frontend:test`）。
 - 依赖容器：`task deps-up / deps-status / deps-logs / deps-down`（PostgreSQL 16 / Redis / RabbitMQ 3.13 / MinIO / Milvus 2.5 + etcd，`--wait` 等健康检查）。
+- Knowhere 解析栈（`docker/knowhere/`，app + 专用 postgres/redis/localstack）随 `deps-up` 一并拉起；单独运维用 `task knowhere:up / stop / down / ps / logs`。解析凭据（MinerU/LLM key）在 `docker/knowhere/.env` 配置（cp 自其 `.env.example`），后端经 `RAGF_KNOWHERE_BASE_URL=http://localhost:5005` 访问。
 - 通用命令跨两端聚合：`task lint / format / test / install / build`。
 - 根目录还有 `task env:check`：校验各层 env 账号字段一致性；`task docker-build`：构建 ragf_server + Celery 系列镜像。
 

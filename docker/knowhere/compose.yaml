@@ -1,0 +1,155 @@
+# Knowhere 文档语义解析服务（双管线摄取 spec D1，独立自托管栈）。
+#
+# 与主 docker-compose.yml 分离维护（沿用 EagleRAG 拆分模式）：Knowhere 自带
+# 专用 postgres/redis/localstack，不与 ragf_* 依赖混部。由根 Taskfile 接线：
+#   task deps-up      → 一并拉起本栈（--wait 健康门禁，超时仅告警不阻塞）
+#   task deps-down    → 一并停止本栈
+#   task knowhere:ps / knowhere:logs / knowhere:down → 单独运维
+#
+# 网络：外部共享网络 knowhere-net（Taskfile 自动创建），本栈以 DNS 别名 knowhere
+# 暴露 :5005；容器部署的 ragf_server/worker 加入 knowhere-net 后经
+# RAGF_KNOWHERE_BASE_URL=http://knowhere:5005 访问。
+# 本地开发（后端跑宿主机，task dev 默认形态）直接用 http://localhost:5005。
+#
+# env 优先级：env.defaults（厂商默认）< .env（用户覆盖，含真实 key，不入库）。
+# 解析凭据（MINERU_API_KEYS / ALI_API_KEYS / DS_KEY）在 Knowhere 服务侧配置：
+# cp docker/knowhere/.env.example docker/knowhere/.env 后填入。
+
+services:
+  app:
+    image: ${KNOWHERE_IMAGE:-ghcr.io/ontos-ai/knowhere:latest}
+    env_file:
+      - path: env.defaults
+        required: true
+      - path: .env
+        required: false
+    ports:
+      - "${DASHBOARD_HOST_BIND:-127.0.0.1}:${DASHBOARD_HOST_PORT:-13000}:3000"
+      - "${API_HOST_BIND:-127.0.0.1}:${API_HOST_PORT:-5005}:5005"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    volumes:
+      - knowhere_user_data:/data/users
+      - knowhere_model_cache:/data/models
+      - knowhere_secrets:/data/secrets
+    healthcheck:
+      # 官方镜像 python:3.12-slim 且 Dockerfile 内已装 curl；探测 /health
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:5005/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s   # 对齐官方 Dockerfile HEALTHCHECK，留预热时间
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      default: {}
+      knowhere-net:
+        aliases:
+          # ragf 容器经 DNS 名 knowhere 访问（http://knowhere:5005）
+          - knowhere
+
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: Knowhere
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-root123}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "${POSTGRES_HOST_BIND:-127.0.0.1}:${POSTGRES_HOST_PORT:-15432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d Knowhere"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru --stop-writes-on-bgsave-error no
+    ports:
+      - "${REDIS_HOST_BIND:-127.0.0.1}:${REDIS_HOST_PORT:-16379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  localstack:
+    image: localstack/localstack:3.8
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      SERVICES: s3,sns,sqs,iam,sts
+      DEBUG: "1"
+      PERSISTENCE: "1"
+      DATA_DIR: /var/lib/localstack/data
+      S3_SKIP_SIGNATURE_VALIDATION: "1"
+      S3_SKIP_SSL_VERIFICATION: "1"
+      LOCALSTACK_HOST: localstack:4566
+      HOSTNAME_EXTERNAL: localstack
+      EDGE_PORT: "4566"
+      SNS_ENDPOINT_STRATEGY: domain
+    ports:
+      - "${LOCALSTACK_HOST_BIND:-127.0.0.1}:${LOCALSTACK_HOST_PORT:-4566}:4566"
+    volumes:
+      - localstack_data:/var/lib/localstack
+    networks:
+      default:
+        aliases:
+          # knowhere app 的 S3_ENDPOINT_URL=http://localhost.localstack.cloud:4566 解析到此别名
+          - localhost.localstack.cloud
+      knowhere-net:
+        # knowhere-python-sdk 上传文件走 S3 端点（localhost.localstack.cloud），
+        # 容器侧客户端需能解析该域名，否则上传 Connection refused
+        aliases:
+          - localhost.localstack.cloud
+          - localstack
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_localstack/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  default:
+    driver: bridge
+  # 外部共享网络（先于首个部署创建：docker network create knowhere-net；
+  # 根 Taskfile 的 knowhere:net 任务已自动兜底），供 ragf 容器按 DNS 名 knowhere 访问
+  knowhere-net:
+    external: true
+    name: knowhere-net
+
+volumes:
+  knowhere_user_data:
+  knowhere_model_cache:
+  knowhere_secrets:
+  postgres_data:
+  redis_data:
+  localstack_data:
