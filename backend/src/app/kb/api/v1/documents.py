@@ -2,7 +2,7 @@
 
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Depends, File, Form, Path, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Path, Query, UploadFile
 
 from backend.src.app.kb.crud import chunk_dao, document_dao
 from backend.src.app.kb.deps import CurrentNamespace
@@ -69,18 +69,6 @@ async def get_document_chunks(
     data = await paging_data(db, stmt)
     data['items'] = [ChunkItem.model_validate(item) for item in data['items']]
     return cast('ResponseSchemaModel[PageData[ChunkItem]]', response_base.success(data=data))
-
-
-@router.post('', summary='上传文档（存入对象存储）', dependencies=_PERM_INGEST)
-async def upload_document(
-    db: CurrentSessionTransaction,
-    current_namespace: CurrentNamespace,
-    file: Annotated[UploadFile, File(description='文档文件')],
-    kb_name: Annotated[str, Form(description='知识库标识')],
-    source_type: Annotated[str, Form(description='来源类型')] = 'file',
-) -> ResponseSchemaModel[DocumentItem]:
-    doc = await document_service.upload(db=db, kb_name=kb_name, file=file, source_type=source_type)
-    return response_base.success(data=DocumentItem.model_validate(_doc_to_dict(doc)))
 
 
 @router.get('', summary='文档列表', dependencies=[*(_PERM_LIST), DependsPagination])

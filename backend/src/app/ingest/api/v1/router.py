@@ -1,4 +1,8 @@
-"""上传/状态/rebuild API（ragf-design §7；D13 格式子集 415；D12 rebuild 受理）。解析由双管线接管（spec D1-D7）。"""
+"""上传/触发/状态/rebuild API（ragf-design §7；D13 格式子集 415；D12 rebuild 受理）。
+
+两段式职责：``POST /{kb}/documents`` = 存储 + 登记 + 关口（格式/限额，不派发）；
+``POST /{kb}/documents/{document_id}/ingest`` = 仅派发摄取。解析由双管线接管（spec D1-D7）。
+"""
 
 from pathlib import PurePosixPath
 from typing import Annotated
@@ -6,9 +10,14 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Path, Request, UploadFile
 from starlette.authentication import UnauthenticatedUser
 
-from backend.src.app.ingest.schema.ingest import DocumentStatusItem, IngestResultItem, RebuildResultItem
-from backend.src.app.kb.crud import dedup_dao, document_dao, knowledge_base_dao
-from backend.src.app.kb.crud.crud_dedup import compute_sha256_bytes
+from backend.src.app.ingest.schema.ingest import (
+    DocumentStatusItem,
+    DocumentUploadItem,
+    IngestResultItem,
+    RebuildResultItem,
+)
+from backend.src.app.ingest.service.ingest_service import IN_PROGRESS_STATUSES
+from backend.src.app.kb.crud import document_dao, knowledge_base_dao
 from backend.src.app.kb.deps import CurrentNamespace
 from backend.src.app.kb.service.document_service import document_service
 from backend.src.app.kb.utils.permissions import RAG_KB_INGEST, RAG_KB_LIST
@@ -50,36 +59,39 @@ def _enqueue_ingest(document_id: str, kb_name: str, plugin_namespace: str) -> No
     )
 
 
+def _uploader_identity(request: Request) -> tuple[str | None, int | None]:
+    """上传者身份（入库打标：owner_id + 上传者部门，§8.1）。"""
+    if isinstance(request.user, UnauthenticatedUser):
+        return None, None
+    return str(request.user.id), request.user.dept_id
+
+
 @router.post(
-    '/{kb_name}/documents/ingest',
-    summary='上传并触发摄取（幂等去重 409；force=1 强制重摄取）',
+    '/{kb_name}/documents',
+    summary='上传文档（对象存储 + 登记 + 格式/限额关口，不触发摄取）',
     dependencies=_PERM_INGEST,
 )
-async def ingest_document(
+async def upload_document(
     request: Request,
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
     kb_name: Annotated[str, Path(description='知识库标识', pattern=r'^[a-z0-9_]+$')],
     file: Annotated[UploadFile, File(description='文档文件（D13 格式子集）')],
-    *,
-    force: Annotated[bool, Form(description='强制重摄取（同指纹文档）')] = False,
-) -> ResponseSchemaModel[IngestResultItem]:
+    source_type: Annotated[str, Form(description='来源类型')] = 'file',
+) -> ResponseSchemaModel[DocumentUploadItem]:
+    """两段式第一步：存储 + 登记，不派发摄取（去重命中 409）。"""
     kb = await knowledge_base_dao.get(db, kb_name, plugin_namespace=current_namespace)
     if kb is None:
         raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
     filename = (file.filename or '').strip() or 'file'
     _ensure_supported_format(filename)
 
-    # 上传者身份（入库打标：owner_id + 默认 restricted + 上传者部门组，§8.1）
-    owner_id = None if isinstance(request.user, UnauthenticatedUser) else str(request.user.id)
-    owner_dept_id = None if isinstance(request.user, UnauthenticatedUser) else request.user.dept_id
-
     data = await file.read()
     if not data:
         raise errors.RequestError(msg='文件内容为空')
     await file.seek(0)
 
-    # 摄取限额（双管线摄取 spec D8）：MinerU 上限（200 MiB / 200 页）前置拒绝，422 结构化 detail
+    # 摄取限额（双管线摄取 spec D8）：MinerU 上限前置拒绝，422 结构化 detail
     from backend.src.app.ingest.limits import IngestLimitError, validate_ingest_bytes
 
     try:
@@ -87,28 +99,57 @@ async def ingest_document(
     except IngestLimitError as exc:
         raise HTTPException(status_code=422, detail=exc.to_detail()) from exc
 
-    sha256 = compute_sha256_bytes(data)
-    existing = await dedup_dao.get_by_sha256(db, sha256, kb_name=kb_name, plugin_namespace=current_namespace)
-    if existing is not None and not force:
-        raise errors.ConflictError(msg='该文件已存在于知识库中（需强制重摄取请带 force=1）')
-
-    if existing is not None and force:
-        doc = await document_dao.get(db, existing.document_id, kb_name=kb_name, plugin_namespace=current_namespace)
-        if doc is None:
-            raise errors.NotFoundError(msg='去重记录指向的文档不存在')
-    else:
-        doc = await document_service.upload(
-            db=db, kb_name=kb_name, file=file, source_type='file', owner_id=owner_id, owner_dept_id=owner_dept_id
-        )
-
+    owner_id, owner_dept_id = _uploader_identity(request)
+    doc = await document_service.upload(
+        db=db,
+        kb_name=kb_name,
+        file=file,
+        source_type=source_type,
+        owner_id=owner_id,
+        owner_dept_id=owner_dept_id,
+    )
     await db.flush()
+    return response_base.success(
+        data=DocumentUploadItem(
+            document_id=doc.document_id,
+            kb_name=doc.kb_name,
+            name=doc.name,
+            status=doc.status,
+            sha256=doc.sha256,
+            source_uri=doc.source_uri,
+            created_time=doc.created_time,
+        )
+    )
+
+
+@router.post(
+    '/{kb_name}/documents/{document_id}/ingest',
+    summary='触发已登记文档摄取（幂等；摄取中 409）',
+    dependencies=_PERM_INGEST,
+)
+async def ingest_registered_document(
+    db: CurrentSessionTransaction,
+    current_namespace: CurrentNamespace,
+    kb_name: Annotated[str, Path(description='知识库标识', pattern=r'^[a-z0-9_]+$')],
+    document_id: Annotated[str, Path(description='文档 ID')],
+) -> ResponseSchemaModel[IngestResultItem]:
+    """两段式第二步：仅派发摄取，不再接收文件字节。"""
+    kb = await knowledge_base_dao.get(db, kb_name, plugin_namespace=current_namespace)
+    if kb is None:
+        raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
+    doc = await document_dao.get(db, document_id, kb_name=kb_name, plugin_namespace=current_namespace)
+    if doc is None:
+        raise errors.NotFoundError(msg='文档不存在')
+    if doc.status in IN_PROGRESS_STATUSES:
+        raise errors.ConflictError(msg='文档正在摄取中，请等待完成后再试')
+
     _enqueue_ingest(doc.document_id, doc.kb_name, doc.plugin_namespace)
     return response_base.success(
         data=IngestResultItem(
             document_id=doc.document_id,
             kb_name=doc.kb_name,
             name=doc.name,
-            sha256=sha256,
+            sha256=doc.sha256,
             status=doc.status,
             queued=True,
         )

@@ -87,14 +87,15 @@ def test_document_routes_require_read_ingest_manage_perm() -> None:
 
     assert RAG_KB_READ in _route_perm_codes(_find_route(router, '/{document_id}', 'GET'))
     assert RAG_KB_READ in _route_perm_codes(_find_route(router, '/{document_id}/download', 'GET'))
-    assert RAG_KB_INGEST in _route_perm_codes(_find_route(router, '', 'POST'))
+    assert RAG_KB_INGEST in _route_perm_codes(_find_route(router, '/{document_id}/file', 'PUT'))
     assert RAG_KB_MANAGE in _route_perm_codes(_find_route(router, '/{document_id}', 'DELETE'))
 
 
 def test_ingest_routes_require_ingest_perm() -> None:
     from backend.src.app.ingest.api.v1.router import router
 
-    assert RAG_KB_INGEST in _route_perm_codes(_find_route(router, '/{kb_name}/documents/ingest', 'POST'))
+    assert RAG_KB_INGEST in _route_perm_codes(_find_route(router, '/{kb_name}/documents', 'POST'))
+    assert RAG_KB_INGEST in _route_perm_codes(_find_route(router, '/{kb_name}/documents/{document_id}/ingest', 'POST'))
     assert RAG_KB_INGEST in _route_perm_codes(_find_route(router, '/{kb_name}/rebuild', 'POST'))
 
 

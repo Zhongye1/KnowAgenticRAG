@@ -40,14 +40,16 @@ date: 2026-09-10
 | D8 | 摄取限额：200 MiB / 200 页（MinerU 精提取上限），三道关口——API 上传预检（422 结构化 detail）、worker 防御复检、URL 下载限量流式断点 | 引擎上限前置到入口，避免派发后必失败；pypdfium2 数页不引新依赖 |
 | D9 | dedup 后置登记：上传/替换只做 409 预检，指纹在管线成功后写入；`register` 改 SAVEPOINT 冲突容忍（原 `db.rollback()` 会摧毁调用方事务） | 失败摄取不残留指纹挡重传；并发同指纹以先成功者为准 |
 | D10 | URL 摄取：默认关闭（`RAGF_URL_INGEST_ENABLED`）；四步防护——格式校验 → SSRF（DNS 解析拒私网/环回/云元数据，带硬超时）→ 部署出网白名单 → 限量流式下载（重定向后最终 URL 复检 SSRF）；仅接受文件直链 | 多租户产品比 EagleRAG 更不能信任用户 URL；网页正文提取（CDP 渲染）依赖浏览器，不在本期 |
+| D14 | 两段式摄取：`POST /{kb}/documents` 只做存储 + 登记 + 关口（格式 415 / 限额 422 / dedup 409，不派发），`POST /{kb}/documents/{document_id}/ingest` 只派发，删除旧"上传+触发"一把梭端点 | 原 kb 域 `POST /documents` 无格式/限额关口，关口寄居在一把梭端点导致职责分离；拆分后 ingest 域持有全部文档写入口（kb 域不能 import ingest，import-linter 单向豁免），kb `/documents` 回归只读 + 替换/删除 |
 
 ## 3. 数据流
 
 ```
-POST /documents/ingest (multipart)      POST /documents/ingest/url (D10, 默认关)
-        │ 限额预检 D8 / dedup 409 预检 D9          │ 格式→SSRF→白名单→限量下载 D10
+POST /{kb}/documents (multipart, D14)   POST /{kb}/documents/ingest/url (D10, 默认关)
+        │ 格式 415 / 限额 D8 / dedup 409 D9        │ 格式→SSRF→白名单→限量下载 D10
         ▼                                          ▼
-   MinIO 原件 ◄────────────────────────────────────┘
+   MinIO 原件 + documents 登记 ◄───────────────────┘
+        │  POST /{kb}/documents/{document_id}/ingest (D14, 仅派发)
         │  send_task(ingest.process_document)
         ▼
 ┌─ 路由任务（spec D3 策略链）────────────────────────────┐

@@ -58,7 +58,8 @@ date: 2026-09-06
 | | 删除 | DELETE | `/api/v1/knowledge_bases/{kb_name}` | P0 |
 | | 文件类型分布 | GET | `/api/v1/knowledge_bases/{kb_name}/format-distribution` | P2 |
 | | 摄入时间序列 | GET | `/api/v1/knowledge_bases/{kb_name}/ingestion-volume` | P2 |
-| **Document** | 上传 | POST | `/api/v1/documents` | P0 |
+| **Document** | 上传（存储+登记，两段式第一步） | POST | `/api/v1/knowledge_bases/{kb_name}/documents` | P0 |
+| | 触发摄取（两段式第二步） | POST | `/api/v1/knowledge_bases/{kb_name}/documents/{document_id}/ingest` | P0 |
 | | 列表 | GET | `/api/v1/documents` | P0 |
 | | 详情 | GET | `/api/v1/documents/{document_id}` | P0 |
 | | 下载链接 | GET | `/api/v1/documents/{document_id}/download` | P1 |
@@ -189,8 +190,8 @@ async def test_kb(auth_client):
 
 | # | 用例 | 前置条件 | 步骤 | 预期结果 |
 |---|------|---------|------|---------|
-| DI01 | 上传文档 | 已创建KB | POST /documents | 返回 document_id |
-| DI02 | 触发摄取 | 文档已上传 | POST /ingest | 返回 task_id，状态=pending |
+| DI01 | 上传文档 | 已创建KB | POST /knowledge_bases/{kb}/documents | 返回 document_id |
+| DI02 | 触发摄取 | 文档已上传 | POST /knowledge_bases/{kb}/documents/{id}/ingest | 返回 task_id，状态=pending |
 | DI03 | 查询摄取状态 | 摄取已触发 | GET /status | 状态流转至 ready |
 | DI04 | 获取文档列表 | 文档已摄取 | GET /documents | 包含测试文档 |
 | DI05 | 获取文档详情 | 文档已摄取 | GET /documents/{id} | 返回完整信息+chunk_count |

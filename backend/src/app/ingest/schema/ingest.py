@@ -6,7 +6,7 @@ from typing import Any
 from backend.src.common.schema import SchemaBase
 from pydantic import Field
 
-__all__ = ['DocumentStatusItem', 'IngestResultItem', 'RebuildResultItem']
+__all__ = ['DocumentStatusItem', 'DocumentUploadItem', 'IngestResultItem', 'RebuildResultItem']
 
 
 class DocumentStatusItem(SchemaBase):
@@ -22,6 +22,18 @@ class DocumentStatusItem(SchemaBase):
     ingest_params: dict[str, Any] = Field(default_factory=dict, description='摄取参数指纹')
     created_time: datetime = Field(description='创建时间')
     updated_time: datetime | None = Field(None, description='更新时间')
+
+
+class DocumentUploadItem(SchemaBase):
+    """文档上传（对象存储 + 元数据登记）受理结果（两段式第一步）。"""
+
+    document_id: str = Field(description='文档 ID（两段式第二步据此触发摄取）')
+    kb_name: str = Field(description='所属知识库')
+    name: str = Field(description='文档名称')
+    status: str = Field(description='受理后状态（pending：已登记未摄取）')
+    sha256: str | None = Field(None, description='文件指纹')
+    source_uri: str | None = Field(None, description='对象存储对象键')
+    created_time: datetime = Field(description='创建时间')
 
 
 class IngestResultItem(SchemaBase):

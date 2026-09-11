@@ -51,8 +51,8 @@ async def main() -> None:
 
         # 上传文档（对象存储 + 元数据登记）
         resp = await client.post(
-            '/documents',
-            data={'kb_name': 'smoke_test', 'source_type': 'file'},
+            '/knowledge_bases/smoke_test/documents',
+            data={'source_type': 'file'},
             files={'file': ('hello.txt', b'hello kb smoke', 'text/plain')},
         )
         assert resp.status_code == 200, resp.text
@@ -62,8 +62,8 @@ async def main() -> None:
 
         # 同内容重复上传 → 409（去重）
         resp = await client.post(
-            '/documents',
-            data={'kb_name': 'smoke_test', 'source_type': 'file'},
+            '/knowledge_bases/smoke_test/documents',
+            data={'source_type': 'file'},
             files={'file': ('hello2.txt', b'hello kb smoke', 'text/plain')},
         )
         assert resp.status_code == 409, resp.text
@@ -106,8 +106,8 @@ async def main() -> None:
 
         # 级联删除前再上传一个文档，验证对象存储随库删除清理
         resp = await client.post(
-            '/documents',
-            data={'kb_name': 'smoke_test', 'source_type': 'file'},
+            '/knowledge_bases/smoke_test/documents',
+            data={'source_type': 'file'},
             files={'file': ('final.txt', b'final kb smoke', 'text/plain')},
         )
         assert resp.status_code == 200, resp.text
