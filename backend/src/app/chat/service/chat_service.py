@@ -176,50 +176,6 @@ class ChatService:
                     _CHAT_FIRST_TOKEN.record(first_token_at - started)
                 _CHAT_DURATION.record(time.perf_counter() - started)
 
-    async def acomplete(
-        self,
-        db: AsyncSession,
-        *,
-        kb_name: str,
-        param: ChatParam,
-        plugin_namespace: str | None = None,
-    ) -> dict[str, Any]:
-        """非流式问答（MCP answer_with_citations 批次面，M10）：返回答案 + 引用 + 用量。
-
-        与 ``astream`` 共用 prepare 语义：无命中短路返回约定文案；语义错误
-        （KB 不存在/参数非法/模型未配置）以 fba 异常上抛，由调用方映射工具错误码。
-        """
-        prepared = await self._prepare(db, kb_name=kb_name, param=param, plugin_namespace=plugin_namespace)
-        if prepared.hit_count == 0:
-            return {
-                'kb_name': kb_name,
-                'mode': prepared.mode,
-                'model_spec': '',
-                'hit_count': 0,
-                'citations': [],
-                'answer': EMPTY_RESULT_MESSAGE,
-                'reason': 'empty_result',
-                'usage': _usage_payload(None),
-            }
-        if prepared.model_error is not None:
-            raise errors.RequestError(msg=f'{prepared.model_error[1]}（code={prepared.model_error[0]}）')
-        content, usage = await prepared.chat_model.achat(  # type: ignore[union-attr]
-            prepared.messages or [],
-            temperature=prepared.temperature,
-            max_tokens=prepared.max_tokens,
-            thinking_level=prepared.thinking_level,
-        )
-        return {
-            'kb_name': kb_name,
-            'mode': prepared.mode,
-            'model_spec': prepared.model_spec,
-            'hit_count': prepared.hit_count,
-            'citations': prepared.citations,
-            'answer': content,
-            'reason': 'complete',
-            'usage': _usage_payload(usage),
-        }
-
     async def acomplete_multi(
         self,
         db: AsyncSession,

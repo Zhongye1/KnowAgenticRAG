@@ -158,13 +158,6 @@ class FakeRetrieval:
 
 
 class FakeChat:
-    async def acomplete(
-        self, db: Any, *, kb_name: str, param: Any, plugin_namespace: str | None = None, scope: Any = None
-    ) -> dict[str, Any]:
-        return await self.acomplete_multi(
-            db, kb_names=[kb_name], param=param, plugin_namespace=plugin_namespace, scope=scope
-        )
-
     async def acomplete_multi(
         self, db: Any, *, kb_names: list[str], param: Any, plugin_namespace: str | None = None, scope: Any = None
     ) -> dict[str, Any]:
@@ -185,9 +178,6 @@ class FakeChat:
 
 
 class RaisingChat:
-    async def acomplete(self, db: Any, **kwargs: Any) -> dict[str, Any]:
-        raise errors.RequestError(msg='chat 模型未配置或不可用')
-
     async def acomplete_multi(self, db: Any, **kwargs: Any) -> dict[str, Any]:
         raise errors.RequestError(msg='chat 模型未配置或不可用')
 

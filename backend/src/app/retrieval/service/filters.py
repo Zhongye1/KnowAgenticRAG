@@ -20,7 +20,6 @@ __all__ = [
     'coerce_filters',
     'compose_retrieval_expr',
     'filter_active_versions',
-    'normalize_file_type',
 ]
 
 # 文档级过滤命中上限（对齐既有 file_name 过滤语义，防一次性拉全库）
@@ -44,14 +43,6 @@ def coerce_document_ids(value: Any) -> list[str] | None:
     if len(ids) > MAX_DOC_FILTER_MATCH:
         raise ValueError(f'document_ids 数量超限: {len(ids)} > {MAX_DOC_FILTER_MATCH}')
     return ids
-
-
-def normalize_file_type(value: str | None) -> str | None:
-    """文件扩展名归一：去前导点 + 小写；空值返回 None。"""
-    if value is None:
-        return None
-    text = value.strip().lstrip('.').lower()
-    return text or None
 
 
 def coerce_filters(raw: Any) -> RetrievalFilters | None:

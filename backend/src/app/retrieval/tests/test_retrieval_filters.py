@@ -9,7 +9,6 @@ from backend.src.app.retrieval.service.filters import (
     coerce_filters,
     compose_retrieval_expr,
     filter_active_versions,
-    normalize_file_type,
 )
 
 
@@ -67,9 +66,3 @@ def test_coerce_filters_normalizes_and_validates() -> None:
         coerce_filters('not-a-dict')
     with pytest.raises(ValueError):
         coerce_filters({'tag': 123})  # 类型非法
-
-
-def test_normalize_file_type() -> None:
-    assert normalize_file_type('.PDF') == 'pdf'
-    assert normalize_file_type('Markdown') == 'markdown'
-    assert normalize_file_type(None) is None
