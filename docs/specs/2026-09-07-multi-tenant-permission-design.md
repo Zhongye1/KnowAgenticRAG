@@ -60,7 +60,7 @@ date: 2026-09-07
 | `rag:kb:list` | KB 列表/详情/统计、摄取状态 | `GET /knowledge_bases*`、`GET /documents`、`GET .../status`、KB ACL 读 | `list_knowledge_bases` |
 | `rag:kb:search` | 同步检索 | `POST /knowledge_bases/{kb}/search` | `search_knowledge` |
 | `rag:kb:read` | 文档详情/下载/分块浏览、文档 ACL 读 | `GET /documents/{id}`、`GET /documents/{id}/download`、`GET /{id}/chunks` | `read_document_chunks`、`get_document` |
-| `rag:kb:chat` | 问答（SSE / 带引用） | `POST /knowledge_bases/{kb}/chat` | `answer_with_citations` |
+| `rag:kb:chat` | 问答（同步 / SSE，带引用） | `POST /knowledge_bases/{kb}/chat[/stream]` | `answer_with_citations` |
 | `rag:kb:ingest` | 上传/替换文件/重摄取 | ingest 上传、`PUT /documents/{id}/file`、`POST .../rebuild`、`POST /documents` | —（MCP 只读） |
 | `rag:kb:manage` | KB/文档管理 + ACL 配置（含设 public） | KB/文档写路由、ACL 写路由 | —（MCP 只读） |
 

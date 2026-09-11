@@ -69,7 +69,8 @@ date: 2026-09-06
 | | 状态查询 | GET | `/api/v1/knowledge_bases/{kb_name}/documents/{document_id}/status` | P0 |
 | | 重摄取 | POST | `/api/v1/knowledge_bases/{kb_name}/rebuild` | P1 |
 | **Retrieval** | 搜索 | POST | `/api/v1/knowledge_bases/{kb_name}/search` | P0 |
-| **Chat** | 问答 | POST | `/api/v1/knowledge_bases/{kb_name}/chat` | P0 |
+| **Chat** | 问答（同步 JSON） | POST | `/api/v1/knowledge_bases/{kb_name}/chat` | P0 |
+| **Chat Stream** | 问答（SSE） | POST | `/api/v1/knowledge_bases/{kb_name}/chat/stream` | P0 |
 | **Model Provider** | 列表 | GET | `/api/v1/system/model-providers` | P0 |
 | | 详情 | GET | `/api/v1/system/model-providers/{provider_id}` | P1 |
 | | 创建 | POST | `/api/v1/system/model-providers` | P0 |
@@ -212,9 +213,9 @@ async def test_kb(auth_client):
 
 | # | 用例 | 前置条件 | 步骤 | 预期结果 |
 |---|------|---------|------|---------|
-| C01 | SSE流式问答 | KB有已摄取文档 | POST /chat (SSE) | 返回 meta/delta/done 事件 |
-| C02 | 无命中短路 | 空KB | POST /chat | 返回 meta.hit=0 + 提示文案 |
-| C03 | 引用返回 | 有命中 | POST /chat | citation 事件包含引用列表 |
+| C01 | SSE流式问答 | KB有已摄取文档 | POST /chat/stream (SSE) | 返回 step/meta/delta/done 事件 |
+| C02 | 无命中短路 | 空KB | POST /chat/stream | 返回 meta.hit=0 + 提示文案 |
+| C03 | 引用返回 | 有命中 | POST /chat/stream | citation 事件包含引用列表 |
 
 ### 4.6 MCP E2E（6 用例）
 

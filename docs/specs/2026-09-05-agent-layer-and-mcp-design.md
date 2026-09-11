@@ -102,7 +102,7 @@ RAG-F 保持「同步、无状态、可重试」的知识服务层，对外暴�
 | D22 | 鉴权收敛于一个多凭证中间件（`app/mcp/auth.py`）：自家 host 走用户 JWT 直通；Codex 走 PAT + env 注入（旧版 mcp-remote 桥）；Claude Code 走原生 OAuth 2.1（Keycloak DCR 就绪后）或 PAT header；stdio 回落 = 本地桥接进程而非本地 server。三类凭证归一为同一 `UserContext(sub/tenant/scp)`，tool 层强制检查零改动 | 外部 client 凭证能力各不相同，但授权模型只有一套（既有 RBAC 权限点）；凭证差异只收敛在中间件一层 |
 | D23 | chat 模型走 model_provider OpenAI 兼容通道：新增 `providers/chat.py` + `select_chat_model`，模型行 `type=chat`；默认 spec 经 `RAGF_CHAT_MODEL_SPEC`，单次请求可显式 `model` 覆盖 | 与 D16 rerank 同通道，复用 modelscope provider 行 |
 | D24 | 引用契约结构化：文本以 `[n]` 标注，citation 携带 `kb_name / document_id / version_id / chunk_id / score / content`；跨版本问题需命中多版本 chunk 并保留 `version_id` 供对比 | 引用稳定到版本，支撑「版本差异 / 兼容性」类回答与前端/Agent 溯源 |
-| D25 | SSE 事件行协议 `meta / citation / delta / usage / done / error`，复用 `sse-starlette`，不套统一响应包装 | 与 ragf-design D18 事件契约一致；错误与降级有约定路径 |
+| D25 | SSE 事件行协议 `step / meta / citation / delta / usage / done / error`（`done` 自包含），复用 `sse-starlette`，不套统一响应包装；同步 `POST .../chat` 返回同源 `ChatResponse` | 与 ragf-design D18 事件契约一致；错误与降级有约定路径；两形态共用 prepare 产物 |
 | D26 | 检索过滤从 `file_name` 扩展为结构化 `filters`：keyword/tag、`version_id`、`updated` 时间、文件类型/路径前缀 | `document_keywords` 与 `chunk.meta` 已预埋，属低风险演进 |
 | D27 | 新增多 KB 聚合检索：工具/接口支持 `kb_names: [..]`，结果保留 KB 归属 | 工程问答常跨 Wiki / 仓库 / 内部系统（多 KB） |
 | D28 | 数据源连接器（Git / Wiki / URL）与版本化语义为演进目标，按 §8 信号启动，不提前建设 | 避免在摄取契约未稳前引入连接器复杂度 |
@@ -118,7 +118,7 @@ RAG-F 保持「同步、无状态、可重试」的知识服务层，对外暴�
 backend/src/
 ├── app/
 │   ├── chat/                        # 🆕 M9（D18）：检索 + 生成门面，SSE 流式
-│   │   ├── api/v1/chat.py           # POST /knowledge_bases/{kb_name}/chat（事件行协议）
+│   │   ├── api/v1/chat.py           # POST /knowledge_bases/{kb_name}/chat[/stream]（JSON / 事件行协议）
 │   │   ├── service/chat_service.py  # 门面：prepare（检索装配）+ events（SSE 序列）
 │   │   ├── service/prompts.py       # system/上下文/引用编号模板
 │   │   └── schema/chat.py           # ChatParam / ChatMessage / Citation
@@ -146,14 +146,18 @@ backend/src/
 ```text
 请求（检索覆盖层同 search + model + history）
   → prepare：检索 → token 预算裁剪 → 上下文块【片段N】（来源：kb/doc/version）
-  → events：SSE 事件行 meta / citation / delta / usage / done / error
+  → 流式 events：SSE 事件行 step / meta / citation / delta / usage / done / error
+  → 非流式：同一 prepare 产物一次性生成，返回 ChatResponse（字段 = 各事件负载并集）
   → 无命中短路：meta.hit=0 + 明确文案，不调用模型
-  → 模型未配置/超时/流错误：error 事件携带 code（含 trace_id）
+  → 模型未配置/超时/流错误：流式走 error 事件携带 code（含 trace_id）；非流式走 HTTP 异常
 ```
+
+两种形态共用 `chat_service` 的装配与产物（EagleRAG `query`/`query_stream` 同构：仅生成调用分阻塞/流式）：`POST .../chat` 非流式、`POST .../chat/stream` SSE。
 
 - `model` 解析：`model_spec`（`provider_id:model_id`）→ provider 行 → 流式 Chat Completions；默认 `RAGF_CHAT_MODEL_SPEC`，支持单次覆盖。
 - 多轮：首版无服务端会话状态，`history` 由调用方显式传入（近 N 轮，默认 10）。
 - 引用：`citation` 事件在首个 `delta` 前或 `done` 前发送一次，结构与 D24 一致；`chunk_id` 形如 `{document_id}:{version_id}:{idx}`。
+- 过程可解释：`step` 事件随检索编排即时产出（recall/rerank/hydrate），`done` 自包含 `{reason, answer, route, steps, usage}`，客户端可只消费 `done` 渲染。
 
 ### 5.2 MCP 工具面（M10）
 
@@ -219,26 +223,30 @@ backend/src/
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| `POST` | `/api/v1/knowledge_bases/{kb_name}/chat` | 检索 + chat 模型 SSE 流式回答（D18/D25），挂 JWT |
+| `POST` | `/api/v1/knowledge_bases/{kb_name}/chat` | 检索 + chat 模型非流式回答，返回统一 JSON `ChatResponse`（D18/D25），挂 JWT |
+| `POST` | `/api/v1/knowledge_bases/{kb_name}/chat/stream` | 同一流水线 SSE 流式回答（D18/D25），挂 JWT |
 | `GET` | `/mcp/tools` | MCP 工具静态目录（JSON Schema 列表） |
 | `POST` | `/mcp` | MCP Streamable HTTP 端点（JSON-RPC；多凭证鉴权见 §5.5，路径可配置） |
 
 SSE 事件行（对齐 D25，`text/event-stream`）：
 
+事件顺序：`step*` → `meta` → `citation` → `delta*` → `usage` → `done`（或 `error`）。
+
 | 事件 | 数据（要点） |
 | --- | --- |
-| `meta` | `{kb_name, mode, model_spec, hit_count, message_id?}` |
-| `citation` | `{citations: [{n, kb_name, document_id, version_id, chunk_id, score, content}]}` |
+| `step` | `{name: recall/rerank/hydrate, detail}` —— 检索编排即时产出 |
+| `meta` | `{kb_name, mode, model_spec, hit_count, visual_count}` |
+| `citation` | `{citations: [{n, kb_name, document_id, version_id, chunk_id, score, content}], images: [...]}` |
 | `delta` | `{content}` |
 | `usage` | `{prompt_tokens, completion_tokens, total_tokens}` |
-| `done` | `{reason: 'complete'/'empty_result'/'max_tokens'}` |
+| `done` | `{reason: 'complete'/'empty_result'/'max_tokens', answer, kb_name, kb_names, mode, model_spec, hit_count, visual_count, route, steps, usage}`（自包含） |
 | `error` | `{code, msg, trace_id}` |
 
 ## 7. 里程碑与验收
 
 | 里程碑 | 内容 | 完成标准 |
 | --- | --- | --- |
-| M9（延续 ragf-design） | chat 门面：`providers/chat.py` + `select_chat_model` + `type=chat` 模型行；`prepare` + `events` + `prompts`；`POST .../chat` | 同 provider 行 `type=chat` 模型可流式返回（SSE 逐帧 delta）；事件行契约稳定；无命中短路与模型未配置走约定路径；prompts/客户端协议单测 + API 冒烟绿 |
+| M9（延续 ragf-design） | chat 门面：`providers/chat.py` + `select_chat_model` + `type=chat` 模型行；`prepare` + `events` + `prompts`；`POST .../chat` + `POST .../chat/stream` | 同 provider 行 `type=chat` 模型可流式返回（SSE 逐帧 delta）；非流式与流式 `done` 同源；事件行契约稳定；无命中短路与模型未配置走约定路径；prompts/客户端协议单测 + API 冒烟绿 |
 | M10 | MCP 服务端：Streamable HTTP + stdio 回落桥；5 工具；多凭证中间件（§5.5）；调用日志；`/mcp/tools` | 三种凭证归一验证：自家 host JWT 直通闭环；Codex 经桥接进程 + env PAT 可调用；Claude Code 以 PAT header（Keycloak 就绪后 OAuth）可调用；401 带 `WWW-Authenticate`；`tools/list` 按权限动态过滤；`kb_id` 越权负向用例绿；调用日志落库 |
 | M11 | 检索增强：`filters` + 多 KB 聚合 | unit + 真实 PG/Milvus integration：tag/version 过滤正确、跨 KB 聚合保留归属、跨 KB 越权不可见 |
 | M12 | 数据源演进（信号驱动）：Git/Wiki/URL loader 复用 ingest；版本化语义生效 | 同文档 v2 摄取后查询可命中两版本 chunk 且 `version_id` 可区分；`active_version` 切换原子；源刷新可触发重摄取（§8 信号到才启动） |
