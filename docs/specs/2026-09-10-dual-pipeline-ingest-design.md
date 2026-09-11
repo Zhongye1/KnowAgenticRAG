@@ -1,6 +1,6 @@
 ---
 title: 双管线摄取设计（EagleRAG ingest 迁移）
-description: Knowhere/PixelRAG 双解析管线接入 RAG-F：策略链路由、任务审计、视觉向量、dedup 后置与 URL 摄取
+description: Knowhere/PixelRAG 双解析管线接入 RAG-F：策略链路由、任务审计、视觉向量、dedup 后置
 status: 已实现（P0-P3）
 date: 2026-09-10
 ---
@@ -11,7 +11,7 @@ date: 2026-09-10
 
 把 EagleRAG 验证过的摄取管线设计移植到 RAG-F（KnowledgeRAG-OGAS）：
 
-- **编排层**：策略链路由（格式 + 内容形态决定管线）、Celery 任务拆分、细粒度任务审计、dedup 后置登记、URL 摄取 + SSRF 防护。
+- **编排层**：策略链路由（格式 + 内容形态决定管线）、Celery 任务拆分、细粒度任务审计、dedup 后置登记。
 - **引擎层**：Knowhere 语义解析（api 模式，自建 :5005）与 PixelRAG 视觉管线（render → tiles → Qwen3-VL-Embedding）。
 - **落点**：全部写入 RAG-F 既有设施——Milvus 模板集合（dense + 服务端 BM25）、PG chunks 双写、ACL 镜像、`ragf_visual` 预留集合、reconcile 对账。
 
@@ -32,23 +32,26 @@ date: 2026-09-10
 | --- | --- | --- |
 | D1 | 整体拓扑：路由任务 → knowhere / visual 双管线（legacy 工厂链初始保留为兜底，后随 §7.1 整体删除）；引擎依赖为可选组件（惰性导入 + fail-closed），不进 uv.lock | 解析引擎按部署形态安装（api 模式零重依赖）；缺包显式报错，绝不静默 mock |
 | D2 | KB 级开关：`knowledge_bases.routing_mode`（auto/text/visual/hybrid），KB 行优先于全局 `RAGF_ROUTING_MODE`；未上线直接全量切换，默认 auto 且无 legacy 取值（§7.1） | 出厂即双管线；引擎异常靠路由期 fail-closed 暴露，不做静默兜底 |
-| D3 | 路由策略链（对齐 EagleRAG 优先级）：文件名前缀强制 > 生效模式强制 > HTTP URI > PDF 形态探测 > 扩展名 > 默认管线；探测阈值 KB 级自适应（`pdf_text_page_ratio`）；引擎不可用路由期 fail-closed 报错（§7.1 起，无 legacy 兜底） | 前缀是运维逃生门；形态探测让扫描件走视觉、文本 PDF 走语义解析；不可用引擎路由期拦截而非派发后失败 |
+| D3 | 路由策略链（对齐 EagleRAG 优先级）：文件名前缀强制 > 生效模式强制 > PDF 形态探测 > 扩展名 > 默认管线；探测阈值 KB 级自适应（`pdf_text_page_ratio`）；引擎不可用路由期 fail-closed 报错（§7.1 起，无 legacy 兜底） | 前缀是运维逃生门；形态探测让扫描件走视觉、文本 PDF 走语义解析；不可用引擎路由期拦截而非派发后失败 |
 | D4 | 任务拆分与队列：`ingest.process_document`（路由入口）→ `knowhere.parse_document` / `visual.parse_document`；`RAGF_CELERY_KNOWHERE_QUEUE` / `RAGF_CELERY_VISUAL_QUEUE` 与既有 ingest 队列同模式（None=默认队列，拓扑不变）；visual worker 并发=1 | 延续 M8 拆分演练模式；解析与视觉编码资源画像不同，独立扩缩容 |
 | D5 | `ingest_jobs` 审计表：状态机 pending → running(stage: routing/rendering/embedding/indexing) → success/failed；`job_id = Celery task_id`；成功跳过、重投递桥接；documents.status 保持粗粒度镜像不动 | 用户可见细粒度进度，前端零改动即可继续轮询旧状态 |
 | D6 | Knowhere 产物映射：chunk → PG chunks（meta 存 path/level/summary/keywords/page_nums/connect_to）+ ragf_text 行（动态字段 chunk_type/path/level）；章节摘要节点 `chunk_type='section_summary'` 与内容 chunk 共享 path 前缀（parent-doc 检索）；关键词聚合进 `document_keywords`；doc_nav/文档摘要 → `documents.structure`/`summary`；ACL 镜像字段（namespace/visibility/owner_id/groups）逐行穿透 | 不绕开既有双写与 BM25；所有标量随行写，检索过滤无二次查询 |
 | D7 | 视觉管线：pixelrag_render 渲染切片 → DashScope qwen3-vl-embedding（2048d，摄取与查询同 provider）→ tile 图落 MinIO + 向量写 ragf_visual；集合 schema 带 ACL 镜像（namespace 分区键）与编码器指纹（provider:model:dim），指纹不一致且非空拒绝重建 | 填补预留集合；指纹守卫防两个向量空间混用；切换 provider 必须重建集合 |
 | D8 | 摄取限额：200 MiB / 200 页（MinerU 精提取上限），三道关口——API 上传预检（422 结构化 detail）、worker 防御复检、URL 下载限量流式断点 | 引擎上限前置到入口，避免派发后必失败；pypdfium2 数页不引新依赖 |
 | D9 | dedup 后置登记：上传/替换只做 409 预检，指纹在管线成功后写入；`register` 改 SAVEPOINT 冲突容忍（原 `db.rollback()` 会摧毁调用方事务） | 失败摄取不残留指纹挡重传；并发同指纹以先成功者为准 |
-| D10 | URL 摄取：默认关闭（`RAGF_URL_INGEST_ENABLED`）；四步防护——格式校验 → SSRF（DNS 解析拒私网/环回/云元数据，带硬超时）→ 部署出网白名单 → 限量流式下载（重定向后最终 URL 复检 SSRF）；仅接受文件直链 | 多租户产品比 EagleRAG 更不能信任用户 URL；网页正文提取（CDP 渲染）依赖浏览器，不在本期 |
+
+> **D10（URL 摄取）已整体移除**：接口（`POST /{kb}/documents/ingest/url`）、SSRF 校验
+> （`url_validator.py`）、请求 DTO 与 `RAGF_URL_*` 配置全部下线；摄取入口只保留本地上传。
+> 路由链中的 HTTP URI 分支（`HttpUriSelector`）与 `DocumentService.upload_bytes` 随之删除。
 | D14 | 两段式摄取：`POST /{kb}/documents` 只做存储 + 登记 + 关口（格式 415 / 限额 422 / dedup 409，不派发），`POST /{kb}/documents/{document_id}/ingest` 只派发，删除旧"上传+触发"一把梭端点 | 原 kb 域 `POST /documents` 无格式/限额关口，关口寄居在一把梭端点导致职责分离；拆分后 ingest 域持有全部文档写入口（kb 域不能 import ingest，import-linter 单向豁免），kb `/documents` 回归只读 + 替换/删除 |
 
 ## 3. 数据流
 
 ```
-POST /{kb}/documents (multipart, D14)   POST /{kb}/documents/ingest/url (D10, 默认关)
-        │ 格式 415 / 限额 D8 / dedup 409 D9        │ 格式→SSRF→白名单→限量下载 D10
-        ▼                                          ▼
-   MinIO 原件 + documents 登记 ◄───────────────────┘
+POST /{kb}/documents (multipart, D14)
+        │ 格式 415 / 限额 D8 / dedup 409 D9
+        ▼
+   MinIO 原件 + documents 登记
         │  POST /{kb}/documents/{document_id}/ingest (D14, 仅派发)
         │  send_task(ingest.process_document)
         ▼
@@ -84,8 +87,8 @@ POST /{kb}/documents (multipart, D14)   POST /{kb}/documents/ingest/url (D10, �
 | 映射/编排 | `backend/src/app/ingest/service/`（knowhere_mapping / knowhere_service / visual_service / job_service） |
 | 任务 | `backend/src/app/ingest/tasks/`（tasks 重构 / knowhere / visual / metrics） |
 | 审计 | `backend/src/app/ingest/model/ingest_job.py` + `crud/crud_job.py` |
-| API | `api/v1/jobs.py`（进度查询）、`api/v1/url_ingest.py`（URL 摄取） |
-| 防护 | `app/ingest/limits.py`、`app/ingest/url_validator.py` |
+| API | `api/v1/jobs.py`（进度查询） |
+| 防护 | `app/ingest/limits.py`（体积/页数限额） |
 | 存储 | `backend/src/database/milvus_visual_ops.py`（ragf_visual） |
 | 演进列 | `database/ragf_schema_migrations.py`（routing_mode / summary / structure） |
 | 部署 | `docker-compose.yml`（knowhere/visual worker，profile ragf-ingest）、`Dockerfile`、`deploy/backend/supervisor/*.conf` |

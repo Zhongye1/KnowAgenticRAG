@@ -438,13 +438,6 @@ class Settings(BaseSettings):
     RAGF_CELERY_KNOWHERE_QUEUE: str | None = None
     RAGF_CELERY_VISUAL_QUEUE: str | None = None
 
-    # URL 摄取（D10，EagleRAG url_validator 迁移；多租户产品默认关闭，部署显式开启）
-    RAGF_URL_INGEST_ENABLED: bool = False
-    # 出网白名单：域名后缀列表（如 ['example.com']）；空 = 允许全部公网地址（仍强制 SSRF 防护）
-    RAGF_URL_EGRESS_ALLOWLIST: list[str] = Field(default_factory=list)
-    RAGF_URL_TIMEOUT_SECONDS: float = 30.0
-    RAGF_URL_MAX_REDIRECTS: int = 3
-
     # ModelProvider（ragf-design D11/D16）
     MODEL_PROVIDER_CACHE_REDIS_PREFIX: str = 'fba:cache:model_provider'
     MODEL_PROVIDER_CACHE_TTL: int = 3600

@@ -218,12 +218,11 @@ async def plan_document_pipelines(
         filename=filename,
         kb_routing_mode=kb_routing_mode,
         text_page_ratio=text_page_ratio,
-        source_uri=object_key if str(object_key).startswith(('http://', 'https://')) else None,
     )
 
     # auto 模式下 PDF 形态探测需要本地文件；text/visual/hybrid 强制模式跳过探测
     local_path: str | None = None
-    if ctx.routing_mode == 'auto' and ctx.is_pdf and not ctx.is_http:
+    if ctx.routing_mode == 'auto' and ctx.is_pdf:
         local_path = await _download_for_probe(object_key, filename)
 
     try:

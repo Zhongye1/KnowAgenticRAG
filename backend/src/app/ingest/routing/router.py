@@ -7,8 +7,6 @@
 
 from __future__ import annotations
 
-from urllib.parse import urlparse
-
 from backend.src.app.ingest.routing.context import (
     PIPELINE_KNOWHERE,
     PIPELINE_VISUAL,
@@ -19,7 +17,6 @@ from backend.src.app.ingest.routing.selectors import (
     ExtensionSelector,
     FallbackChain,
     ForcedModeSelector,
-    HttpUriSelector,
     PdfFormSelector,
     PrefixSelector,
 )
@@ -42,22 +39,11 @@ def resolve_effective_routing_mode(kb_routing_mode: str | None) -> str:
     return (settings.RAGF_ROUTING_MODE or 'legacy').lower()
 
 
-def _is_http_uri(source_uri: str | None) -> bool:
-    if not source_uri:
-        return False
-    try:
-        parsed = urlparse(source_uri)
-    except ValueError:
-        return False
-    return parsed.scheme.lower() in {'http', 'https'}
-
-
 def resolve_routing_inputs(
     *,
     filename: str,
     kb_routing_mode: str | None,
     text_page_ratio: float | None,
-    source_uri: str | None = None,
     local_path: str | None = None,
 ) -> RouteContext:
     """由任务层输入构建 RouteContext（剥离前缀 / 派生扩展名 / 合成生效模式）。"""
@@ -76,11 +62,9 @@ def resolve_routing_inputs(
         filename=filename or '',
         cleaned_name=cleaned,
         ext=ext,
-        is_http=_is_http_uri(source_uri),
         local_path=local_path,
         routing_mode=resolve_effective_routing_mode(kb_routing_mode),
         text_page_ratio=text_page_ratio,
-        source_uri=source_uri,
     )
 
 
@@ -92,7 +76,6 @@ def route(ctx: RouteContext) -> list[str]:
         [
             PrefixSelector(prefix_force=settings.RAGF_ROUTING_PREFIX_FORCE),
             ForcedModeSelector(),
-            HttpUriSelector(),
             PdfFormSelector(
                 probe=probe_pdf_form,
                 text_page_ratio_default=settings.RAGF_PDF_PROBE_TEXT_PAGE_RATIO,

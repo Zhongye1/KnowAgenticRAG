@@ -20,7 +20,6 @@ __all__ = [
     'ExtensionSelector',
     'FallbackChain',
     'ForcedModeSelector',
-    'HttpUriSelector',
     'PdfFormSelector',
     'PrefixSelector',
     'RouteSelector',
@@ -52,15 +51,6 @@ class ForcedModeSelector:
 
     def select(self, ctx: RouteContext) -> list[str] | None:
         return ctx.forced_pipelines
-
-
-class HttpUriSelector:
-    """http/https URL 来源 → visual（CDP 截图渲染；spec D10）。"""
-
-    def select(self, ctx: RouteContext) -> list[str] | None:
-        if ctx.is_http:
-            return [PIPELINE_VISUAL]
-        return None
 
 
 class PdfFormSelector:

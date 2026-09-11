@@ -26,11 +26,9 @@ def _ctx(**overrides) -> RouteContext:
         'filename': 'test.pdf',
         'cleaned_name': 'test.pdf',
         'ext': '.pdf',
-        'is_http': False,
         'local_path': None,
         'routing_mode': 'auto',
         'text_page_ratio': None,
-        'source_uri': None,
     }
     base.update(overrides)
     return RouteContext(**base)
@@ -63,12 +61,6 @@ def test_route_prefix_force_beats_mode(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, 'RAGF_ROUTING_PREFIX_FORCE', {'knowhere:': 'knowhere', 'pixelrag:': 'visual'})
     ctx = resolve_routing_inputs(filename='pixelrag:scan.pdf', kb_routing_mode='text', text_page_ratio=None)
     assert ctx.cleaned_name == 'scan.pdf'
-    assert route(ctx) == ['visual']
-
-
-def test_route_http_uri_goes_visual(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(settings, 'RAGF_ROUTING_PREFIX_FORCE', {})
-    ctx = _ctx(is_http=True, source_uri='https://example.com/page')
     assert route(ctx) == ['visual']
 
 

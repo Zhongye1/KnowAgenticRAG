@@ -59,12 +59,11 @@ def _read_tiles_from_paths(paths: list[Path]) -> list[Tile]:
     return out
 
 
-def render_to_tiles(source: str, *, source_kind: str = 'file') -> list[Tile]:
+def render_to_tiles(source: str) -> list[Tile]:
     """渲染 + 切片，返回 tile 字典列表（阻塞调用，任务层以 to_thread 执行）。
 
     Args:
-        source: 本地文件路径（source_kind='file'）。
-        source_kind: 'file'（图片/PDF）或 'url'（P3 URL 摄取接入 CDP 渲染）。
+        source: 本地文件路径（图片/PDF）。
     """
     try:
         import pixelrag_render  # type: ignore[reportMissingImports]  # 可选依赖
@@ -72,9 +71,6 @@ def render_to_tiles(source: str, *, source_kind: str = 'file') -> list[Tile]:
         raise PixelRagEngineError('pixelrag 未安装（可选依赖，安装方式见双管线摄取 spec D1）') from exc
 
     from backend.src.core.config import settings
-
-    if source_kind == 'url':
-        raise PixelRagEngineError('URL 渲染随 URL 摄取在 P3 接入（spec D10）')
 
     outdir = tempfile.mkdtemp(prefix='ragf_render_')
     try:
