@@ -89,10 +89,14 @@ async def _create_all(engine: AsyncEngine) -> None:
 
 
 async def _ensure_acl_columns(engine: AsyncEngine) -> None:
-    """既有测试库幂等补 ACL 列（create_all 不改已有表，与 ragf_schema_migrations 对齐）。"""
+    """既有测试库幂等补列（create_all 不改已有表，与 ragf_schema_migrations 对齐）。"""
     stmts = (
         "ALTER TABLE documents ADD COLUMN IF NOT EXISTS visibility VARCHAR(16) DEFAULT 'restricted' NOT NULL",
         'ALTER TABLE documents ADD COLUMN IF NOT EXISTS owner_id VARCHAR(64)',
+        # 双管线摄取（spec D2/D6）
+        "ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS routing_mode VARCHAR(16) DEFAULT 'legacy' NOT NULL",
+        'ALTER TABLE documents ADD COLUMN IF NOT EXISTS summary TEXT',
+        'ALTER TABLE documents ADD COLUMN IF NOT EXISTS structure JSON',
     )
     async with engine.begin() as conn:
         for stmt in stmts:

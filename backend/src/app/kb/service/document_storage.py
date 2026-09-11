@@ -91,3 +91,23 @@ async def delete_document_object(object_key: str) -> None:
 def get_document_url(object_key: str, expires: int = 3600) -> str:
     """生成对象预签名下载 URL。"""
     return minio_client.presigned_get_object(settings.MINIO_KB_BUCKET, object_key, expires=timedelta(seconds=expires))
+
+
+async def kb_tile_objects_by_document(
+    plugin_namespace: str,
+    kb_name: str,
+    document_id: str,
+) -> int:
+    """删除文档视觉 tile 图对象（``.../tiles/`` 前缀，尽力而为；双管线摄取 spec D7）。"""
+    prefix = f'kb/{plugin_namespace}/{kb_name}/{document_id}/tiles/'
+    try:
+        objects = await asyncio.to_thread(
+            list, minio_client.list_objects(settings.MINIO_KB_BUCKET, prefix=prefix, recursive=True)
+        )
+        for obj in objects:
+            if obj.object_name:
+                await delete_document_object(obj.object_name)
+        return len(objects)
+    except Exception as exc:
+        log.warning('枚举 tile 对象失败 prefix={}: {}', prefix, exc)
+        return 0

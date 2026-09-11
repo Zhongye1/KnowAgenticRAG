@@ -343,7 +343,8 @@ class Settings(BaseSettings):
     RAGF_RETRIEVAL_SIMILARITY_THRESHOLD: float = 0.2
     RAGF_RETRIEVAL_USE_RERANKER: bool = True
     RAGF_RETRIEVAL_RRF_K: int = 60
-    RAGF_RETRIEVAL_RERANK_SPEC: str = 'huggingface:BAAI/bge-reranker-v2-m3'  # D16：默认精排模型 spec（provider:model）
+    # D16：默认精排模型 spec（千问平台 token，dashscope SDK 通道）
+    RAGF_RETRIEVAL_RERANK_SPEC: str = 'dashscope:qwen3.7-text-rerank'
 
     # RAGF：chat 门面（ragf-design D18/M9）
     RAGF_CHAT_MODEL_SPEC: str = ''  # 默认 chat 模型 spec（provider:model）；空 = 请求必须显式 model
@@ -366,27 +367,81 @@ class Settings(BaseSettings):
     RAGF_MCP_RATE_LIMIT_ENABLED: bool = True
     RAGF_MCP_RATE_LIMIT_PER_MINUTE: int = 120
 
-    # 摄取（ragf-design D8/D13）
-    RAGF_OCR_ENGINE: Literal['mineru', 'rapidocr'] = 'mineru'
-    # MinerU 精准解析 API（公网 mineru.net v4，D8：不自建 OCR 容器）。
-    # token 在 mineru.net“API 管理页面”创建，经 env MINERU_API_TOKEN 配置；
-    # 未配置时引擎抛不可用 → 摄取按 M4 降级 rapid_ocr。
-    MINERU_API_TOKEN: str | None = None
-    RAGF_MINERU_API_BASE: str = 'https://mineru.net'
-    RAGF_MINERU_MODEL_VERSION: Literal['pipeline', 'vlm', 'MinerU-HTML'] = 'vlm'
-    RAGF_MINERU_IS_OCR: bool = True
-    RAGF_MINERU_ENABLE_FORMULA: bool = True
-    RAGF_MINERU_ENABLE_TABLE: bool = True
-    RAGF_MINERU_LANGUAGE: str = 'ch'
-    RAGF_MINERU_POLL_INTERVAL_SECONDS: float = 3.0
-    RAGF_MINERU_TIMEOUT_SECONDS: float = 900.0
+    # 摄取上传白名单（D13；路由 knowhere/visual 扩展集见 RAGF_ROUTING_*_EXTS。
+    # MinerU 直连配置已随 legacy 工厂链删除——PDF/扫描件 OCR 由 Knowhere 服务内部处理）
     RAGF_INGEST_EXT_INCLUDE: list[str] = ['pdf', 'docx', 'pptx', 'md', 'txt', 'csv', 'png', 'jpg']
 
-    # ModelProvider（ragf-design D11/D16，键读环境变量 MODELSCOPE_ACCESS_TOKEN）
-    MODELSCOPE_API_BASE: str = 'https://api-inference.modelscope.cn/v1/'
-    MODELSCOPE_ACCESS_TOKEN: str | None = None
-    # HuggingFace Inference（hf-inference 路由；键读环境变量 HF_TOKEN）
-    HF_TOKEN: str | None = None
+    ##################################################
+    # [ RAGF ] 双管线摄取（EagleRAG ingest 迁移；docs/specs/2026-09-10-dual-pipeline-ingest-design.md）
+    ##################################################
+    # 路由（D2/D3）：KB 级 routing_mode 优先（auto/text/visual/hybrid），
+    # 空/非法值落到全局默认；auto=格式+形态路由（PDF 文本/扫描探测）。
+    RAGF_ROUTING_MODE: Literal['auto', 'text', 'visual', 'hybrid'] = 'auto'
+    # 文件名前缀强制（knowhere:xxx.pdf / pixelrag:xxx.jpg）；值 = 管线名（knowhere/visual）
+    RAGF_ROUTING_PREFIX_FORCE: dict[str, str] = Field(
+        default_factory=lambda: {'knowhere:': 'knowhere', 'pixelrag:': 'visual'}
+    )
+    RAGF_ROUTING_KNOWHERE_EXTS: list[str] = Field(default_factory=lambda: ['pdf', 'docx', 'pptx', 'md', 'txt', 'csv'])
+    RAGF_ROUTING_VISUAL_EXTS: list[str] = Field(default_factory=lambda: ['png', 'jpg', 'jpeg'])
+    RAGF_ROUTING_DEFAULT_PIPELINE: str = 'knowhere'  # 全部 selector 弃权时的兜底管线
+    # PDF 形态探测（D3）：文本页占比 / 每页均字符数低于阈值 → scanned → visual 管线
+    RAGF_PDF_PROBE_TEXT_PAGE_RATIO: float = 0.2
+    RAGF_PDF_PROBE_AVG_CHARS_PER_PAGE: int = 50
+
+    # Knowhere 引擎（D1）：api=官方 SDK 调自建 :5005 服务（task dev 经 docker/knowhere/
+    # 栈自动拉起）；parser=knowhere-parse-sdk 进程内（P4）；off=关闭（文档路由期 fail-closed 报错）
+    RAGF_KNOWHERE_MODE: Literal['api', 'parser', 'off'] = 'api'
+    # 默认本地开发（后端跑宿主机）→ localhost:5005；容器部署加入 knowhere-net 后
+    # 经 env 覆盖为 http://knowhere:5005
+    RAGF_KNOWHERE_BASE_URL: str = 'http://localhost:5005'
+    # Knowhere HTTP 层可选凭据（SDK Authorization 头）：仅当部署带鉴权网关
+    # （共享/公网暴露）时配置；自建 compose 容器留空即可（SDK 传 None 不带认证头）。
+    # 注意它不是 SaaS 平台 token——MinerU 等解析后端的凭据由 Knowhere 服务自己持有
+    RAGF_KNOWHERE_API_KEY: str = ''
+    RAGF_KNOWHERE_TIMEOUT: float = 30.0
+    RAGF_KNOWHERE_UPLOAD_TIMEOUT: float = 300.0
+    RAGF_KNOWHERE_MAX_RETRIES: int = 2
+    RAGF_KNOWHERE_POLL_INTERVAL: float = 3.0
+    RAGF_KNOWHERE_POLL_TIMEOUT: float = 1800.0
+    # 解析产物开关（LLM/VLM 摘要按量计费；缺省关闭，KB 级 ingest_params 可覆盖）
+    RAGF_KNOWHERE_SUMMARY_IMAGE: bool = False
+    RAGF_KNOWHERE_SUMMARY_TABLE: bool = False
+    RAGF_KNOWHERE_SMART_TITLE_PARSE: bool = True
+
+    # PixelRAG 视觉管线（D7）：pixelrag_render 渲染切片 → Qwen3-VL-Embedding 2048d → ragf_visual
+    RAGF_PIXELRAG_TILE_HEIGHT: int = 1024
+    RAGF_PIXELRAG_QUALITY: int = 85
+    RAGF_PIXELRAG_VIEWPORT_WIDTH: int = 1280
+    RAGF_PIXELRAG_PDF_DPI: int = 150
+    RAGF_PIXELRAG_EMBED_INSTRUCTION: str = ''
+    # 视觉编码 provider（D7：摄取与查询必须同 provider，切换需重建 ragf_visual）
+    RAGF_VISUAL_PROVIDER: Literal['dashscope', 'local'] = 'dashscope'
+    RAGF_VISUAL_MODEL: str = 'qwen3-vl-embedding'
+    RAGF_VISUAL_DIM: int = 2048
+    RAGF_VISUAL_BATCH_SIZE: int = 10
+    RAGF_VISUAL_TIMEOUT_SECONDS: float = 30.0
+    RAGF_VISUAL_MAX_RETRIES: int = 3
+    DASHSCOPE_API_KEY: str = ''  # RAGF_VISUAL_PROVIDER=dashscope 时必填（或环境变量 DASHSCOPE_API_KEY）
+
+    # 摄取限额（D8，EagleRAG limits 迁移：MinerU 精提取上限；0 值 = 关闭对应项）
+    RAGF_INGEST_LIMITS_ENABLED: bool = True
+    RAGF_INGEST_MAX_FILE_BYTES: int = 200 * 1024 * 1024
+    RAGF_INGEST_MAX_PDF_PAGES: int = 200
+
+    # 队列路由（D4）：None=沿用默认队列 celery（单 worker 拓扑不变）；显式设置后
+    # knowhere.* / visual.* 任务入独立队列，需配套 worker（-Q knowhere / -Q visual，
+    # compose profile ragf-ingest 的 ragf_celery_knowhere_worker / ragf_celery_visual_worker）。
+    RAGF_CELERY_KNOWHERE_QUEUE: str | None = None
+    RAGF_CELERY_VISUAL_QUEUE: str | None = None
+
+    # URL 摄取（D10，EagleRAG url_validator 迁移；多租户产品默认关闭，部署显式开启）
+    RAGF_URL_INGEST_ENABLED: bool = False
+    # 出网白名单：域名后缀列表（如 ['example.com']）；空 = 允许全部公网地址（仍强制 SSRF 防护）
+    RAGF_URL_EGRESS_ALLOWLIST: list[str] = Field(default_factory=list)
+    RAGF_URL_TIMEOUT_SECONDS: float = 30.0
+    RAGF_URL_MAX_REDIRECTS: int = 3
+
+    # ModelProvider（ragf-design D11/D16）
     MODEL_PROVIDER_CACHE_REDIS_PREFIX: str = 'fba:cache:model_provider'
     MODEL_PROVIDER_CACHE_TTL: int = 3600
 

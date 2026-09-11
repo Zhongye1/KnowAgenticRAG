@@ -72,15 +72,58 @@ class DocumentService:
                 sha256=sha256,
                 owner_id=owner_id,
             )
-            await dedup_dao.register(
-                db,
-                sha256=sha256,
-                kb_name=kb_name,
-                document_id=document_id,
-                object_key=object_key,
-                source_name=filename,
-            )
+            # dedup 登记后置到管线成功（spec D9）：失败摄取不残留指纹挡重传
             # 入库打标默认值（agent-layer spec §8.1）：restricted + 上传者直属部门组
+            if owner_id:
+                await doc_acl_dao.replace_document_acl(
+                    db,
+                    document_id=document_id,
+                    kb_name=kb_name,
+                    group_ids=[str(owner_dept_id)] if owner_dept_id else [],
+                    created_by=owner_id,
+                )
+        except Exception:
+            await delete_document_object(object_key)
+            raise
+        return doc
+
+    @staticmethod
+    async def upload_bytes(
+        db: AsyncSession,
+        *,
+        kb_name: str,
+        name: str,
+        data: bytes,
+        content_type: str = 'application/octet-stream',
+        source_type: str = 'url',
+        owner_id: str | None = None,
+        owner_dept_id: int | None = None,
+    ) -> Document:
+        """字节流上传并登记文档元数据（URL 摄取路径，spec D10；dedup 后置登记 D9）。"""
+        kb = await knowledge_base_dao.get(db, kb_name)
+        if kb is None:
+            raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
+
+        document_id = uuid4().hex
+        object_key = kb_object_key(instance_namespace(), kb_name, document_id, name)
+        try:
+            await upload_document_bytes(object_key, data, content_type=content_type)
+        except Exception as exc:
+            log.error('URL 摄取对象存储失败 kb={}: {}', kb_name, exc)
+            raise errors.RequestError(msg='对象存储上传失败') from exc
+
+        try:
+            doc = await document_dao.create(
+                db,
+                document_id=document_id,
+                kb_name=kb_name,
+                name=name,
+                source_type=source_type,
+                source_uri=object_key,
+                sha256=compute_sha256_bytes(data),
+                owner_id=owner_id,
+            )
+            # dedup 登记后置到管线成功（spec D9）
             if owner_id:
                 await doc_acl_dao.replace_document_acl(
                     db,
@@ -150,14 +193,7 @@ class DocumentService:
 
         try:
             await dedup_dao.delete_by_document(db, document_id)
-            await dedup_dao.register(
-                db,
-                sha256=sha256,
-                kb_name=doc.kb_name,
-                document_id=document_id,
-                object_key=object_key,
-                source_name=filename,
-            )
+            # 新指纹登记后置到管线成功（spec D9）
             doc.name = filename
             doc.sha256 = sha256
             doc.source_uri = object_key
@@ -190,9 +226,14 @@ class DocumentService:
             'doc_acl': 0,
             'objects': 0,
         }
-        text_coll, visual_coll = base_collection_names()
+        text_coll, _visual_coll = base_collection_names()
         counts['milvus_text'] = delete_vectors_by_document(text_coll, doc.kb_name, document_id, plugin_namespace=ns)
-        counts['milvus_visual'] = delete_vectors_by_document(visual_coll, doc.kb_name, document_id, plugin_namespace=ns)
+        # 视觉集合（双管线摄取 spec D7：显式 schema，删除走专用 ops；tile 图对象一并清理）
+        from backend.src.app.kb.service.document_storage import kb_tile_objects_by_document
+        from backend.src.database.milvus_visual_ops import delete_visual_by_document
+
+        counts['milvus_visual'] = delete_visual_by_document(doc.kb_name, document_id, plugin_namespace=ns)
+        await kb_tile_objects_by_document(ns, doc.kb_name, document_id)
         ragf_deleted = delete_ragf_vectors_by_document(doc.kb_name, document_id, plugin_namespace=ns)
         counts['milvus_text_ragf'] = sum(ragf_deleted.values())
         counts['chunks'] = await chunk_dao.delete_by_document(db, document_id, kb_name=doc.kb_name, plugin_namespace=ns)

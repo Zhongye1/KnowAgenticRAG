@@ -21,6 +21,10 @@ _RAGF_ADD_COLUMNS: tuple[tuple[str, str, str], ...] = (
     # ACL 列（agent-layer spec RAG 数据权限设计；rag_kb_acl/rag_doc_acl 为新表，create_all 直建）
     ('documents', 'visibility', "VARCHAR(16) DEFAULT 'restricted' NOT NULL"),
     ('documents', 'owner_id', 'VARCHAR(64)'),
+    # 双管线摄取（spec D2/D6）：路由模式 + Knowhere 产物列
+    ('knowledge_bases', 'routing_mode', "VARCHAR(16) DEFAULT 'auto' NOT NULL"),
+    ('documents', 'summary', 'TEXT'),
+    ('documents', 'structure', 'JSON'),
 )
 
 

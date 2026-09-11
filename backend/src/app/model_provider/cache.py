@@ -33,7 +33,7 @@ class ModelInfo:
     display_name: str
     api_key: str
     base_url: str
-    provider_type: str  # openai / modelscope / dashscope
+    provider_type: str  # openai（自定义兼容）/ dashscope（千问平台）
     headers: dict[str, str] = field(default_factory=dict)
     extra: dict[str, Any] = field(default_factory=dict)
     dimension: int | None = None
@@ -79,8 +79,7 @@ def resolve_provider_api_key(provider: ModelProvider) -> str | None:
     """解析 provider 的 API Key：直接配置 > api_key_env 环境变量 > 类型默认环境变量。
 
     空字符串视同未配置（env 占位符场景不产生空凭据）：api_key_env 对应环境变量未设/为空时，
-    modelscope 类型继续回退服务端默认 ``MODELSCOPE_ACCESS_TOKEN``（settings，D11），
-    huggingface 类型回退 ``HF_TOKEN``。
+
     """
     if provider.api_key:
         return provider.api_key
@@ -88,10 +87,9 @@ def resolve_provider_api_key(provider: ModelProvider) -> str | None:
         value = os.getenv(provider.api_key_env)
         if value:
             return value
-    if provider.provider_type == 'modelscope' and settings.MODELSCOPE_ACCESS_TOKEN:
-        return settings.MODELSCOPE_ACCESS_TOKEN
-    if provider.provider_type == 'huggingface' and settings.HF_TOKEN:
-        return settings.HF_TOKEN
+    if provider.provider_type == 'dashscope' and settings.DASHSCOPE_API_KEY:
+        return settings.DASHSCOPE_API_KEY
+
     return None
 
 

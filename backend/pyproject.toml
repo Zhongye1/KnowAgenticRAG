@@ -55,12 +55,17 @@ dependencies = [
     "user-agents>=2.2.0",
     "opentelemetry-instrumentation-celery>=0.65b0",
     "sse-starlette>=3.4.8",
-    "python-docx>=1.2.0",
-    "python-pptx>=1.0.2",
-    "rapidocr>=3.9.2",
     "pypdfium2>=5.13.0",
-    "onnxruntime>=1.29.0",
 ]
+
+# 双管线摄取引擎依赖（双管线摄取 spec D1）为**可选**组件，不进主依赖/uv.lock：
+#   api 模式：knowhere-python-sdk
+#   parser 模式：knowhere-parse-sdk @ git+https://github.com/zhiweio/knowhere-parse-sdk.git
+#   视觉管线：pixelrag @ git+https://github.com/StarTrail-org/PixelRAG.git + dashscope
+# 部署 knowhere/visual worker 时在对应环境单独安装（uv pip install ...），
+# 代码侧全部惰性导入，缺包时引擎显式报错（fail-closed），不影响 server/其余 worker 启动。
+# 注：曾尝试 optional-dependencies + allow-direct-references，git 依赖锁定期需外网，
+# 与 uv sync --locked 构建链冲突，故改为文档化约定（spec D1）。
 
 [build-system]
 requires = ["hatchling"]
@@ -359,6 +364,9 @@ ignore_imports = [
     # ingest 域内任务/上传端点经 app/task celery_app 派发（D10：任务代码域内归属，
     # 发送仍走框架 celery 实例）
     "backend.src.app.ingest.** -> backend.src.app.task.**",
+    # 存量债务（master 既有，非双管线引入）：kb.deps 复用 retrieval scope 构建
+    # 用户上下文，方向与「下游域 → 上游基础域」相反；待 scope 下沉公共层后删除
+    "backend.src.app.kb.** -> backend.src.app.retrieval.**",
     # 测试模块豁免：测试可自由组合被测模块
     "backend.src.app.*.tests.** -> backend.src.app.**",
 ]
@@ -399,4 +407,15 @@ containers = ["backend.src.app.mcp"]
 layers = [
     "api",
     "service",
+]
+
+[[tool.importlinter.contracts]]
+name = "ingest 模块分层：api → service → crud → model（上层可依赖下层，反之禁止；routing/engine/mapping/parser/chunking/tasks 为域内横向包不受此契约约束）"
+type = "layers"
+containers = ["backend.src.app.ingest"]
+layers = [
+    "api",
+    "service",
+    "crud",
+    "model",
 ]

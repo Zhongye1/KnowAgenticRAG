@@ -2,30 +2,23 @@
 
 from backend.src.app.model_provider.cache import ModelInfo
 from backend.src.app.model_provider.providers.chat import OpenAICompatibleChatModel
-from backend.src.app.model_provider.providers.embed import HuggingFaceEmbedding, OpenAICompatibleEmbedding
-from backend.src.app.model_provider.providers.rerank import (
-    BaseReranker,
-    DashscopeReranker,
-    HuggingFaceReranker,
-    OpenAIReranker,
-)
+from backend.src.app.model_provider.providers.dashscope_clients import DashScopeEmbedding, DashScopeTextReRank
+from backend.src.app.model_provider.providers.embed import OpenAICompatibleEmbedding
 from backend.src.common.exception import errors
 from backend.src.core.config import settings
 
 
-def select_embedding_model(info: ModelInfo) -> OpenAICompatibleEmbedding:
+def select_embedding_model(info: ModelInfo) -> OpenAICompatibleEmbedding | DashScopeEmbedding:
     """按 ModelInfo 构建 Embedding 客户端（模型 type 必须是 embedding）。"""
     if info.model_type != 'embedding':
         raise errors.RequestError(msg=f'模型 {info.spec} 不是 embedding 模型（type={info.model_type}）')
-    if info.provider_type == 'huggingface':
-        return HuggingFaceEmbedding(
+    if info.provider_type == 'dashscope':
+        # 千问平台 token 通道（SDK 调用，ragf-design D11 扩展）
+        return DashScopeEmbedding(
             model=info.model_id,
-            base_url=info.base_url,
             api_key=info.api_key,
             dimension=info.dimension,
             batch_size=info.batch_size,
-            headers=info.headers,
-            repo_id=info.extra.get('hf_repo_id'),
         )
     return OpenAICompatibleEmbedding(
         model=info.model_id,
@@ -50,19 +43,17 @@ def select_chat_model(info: ModelInfo) -> OpenAICompatibleChatModel:
     )
 
 
-def get_reranker(info: ModelInfo) -> BaseReranker:
-    """按 ModelInfo 构建 Reranker（D16：默认 OpenAI 兼容；rerank_protocol=dashscope 走 DashScope；
-    provider_type=huggingface 走 HF Inference text-classification）。"""
+def get_reranker(info: ModelInfo) -> DashScopeTextReRank:
+    """按 ModelInfo 构建 Reranker（D16 演进：重排仅千问 SDK 通道 qwen3.7-text-rerank）。
+
+    模型行 extra 需声明 ``rerank_protocol='dashscope-sdk'``；其余协议已下线。
+    """
     if info.model_type != 'rerank':
         raise errors.RequestError(msg=f'模型 {info.spec} 不是 rerank 模型（type={info.model_type}）')
-    if info.provider_type == 'huggingface':
-        return HuggingFaceReranker(
-            model=info.model_id,
-            base_url=info.base_url,
-            api_key=info.api_key,
-            headers=info.headers,
-            repo_id=info.extra.get('hf_repo_id'),
+    protocol = str(info.extra.get('rerank_protocol') or info.extra.get('protocol') or '')
+    if protocol != 'dashscope-sdk':
+        raise errors.RequestError(
+            msg=f'重排仅支持千问 SDK 通道：模型 {info.spec} '
+            f'需 extra.rerank_protocol=dashscope-sdk（当前 {protocol or "未声明"}）'
         )
-    protocol = str(info.extra.get('rerank_protocol') or info.extra.get('protocol') or 'openai')
-    cls = DashscopeReranker if protocol == 'dashscope' else OpenAIReranker
-    return cls(model=info.model_id, base_url=info.base_url, api_key=info.api_key, headers=info.headers)
+    return DashScopeTextReRank(model=info.model_id, api_key=info.api_key)

@@ -57,7 +57,14 @@ class KBCreateParam(SchemaBase):
     theme: str = Field('blue', max_length=32, description='主题色')
     icon: str = Field('database', max_length=32, description='图标')
     pdf_text_page_ratio: float = Field(0.2, ge=0.0, le=1.0, description='PDF 文本页比例阈值')
-    embedding_model: str = Field('bge-m3', max_length=64, description='嵌入模型（换模型=重建 KB）')
+    embedding_model: str = Field(
+        'dashscope:qwen3.7-text-embedding-flash',
+        max_length=64,
+        description='嵌入模型 spec（千问平台 token；换模型=重建 KB）',
+    )
+    routing_mode: str = Field(
+        'auto', max_length=16, description='摄取路由模式（auto/text/visual/hybrid）'
+    )
     query_params: dict = Field(default_factory=dict, description='检索默认参数（见 §6.4 白名单）')
 
     @field_validator('query_params')
@@ -68,6 +75,8 @@ class KBCreateParam(SchemaBase):
 
 class KBUpdateParam(SchemaBase):
     """更新知识库参数（全部可选）"""
+
+    routing_mode: str | None = Field(None, max_length=16, description='摄取路由模式（auto/text/visual/hybrid）')
 
     display_name: str | None = Field(None, max_length=128, description='展示名称')
     description: str | None = Field(None, description='描述')

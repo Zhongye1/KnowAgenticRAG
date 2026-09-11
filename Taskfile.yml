@@ -16,10 +16,13 @@ includes:
 vars:
   # Docker 依赖服务（本地开发：依赖跑容器，代码跑宿主机）
   DEPS_SERVICES: ragf_postgres ragf_redis ragf_rabbitmq ragf_minio ragf_milvus
+  # Knowhere 自托管解析栈（独立 compose 项目：app + 专用 postgres/redis/localstack，
+  # 见 docker/knowhere/compose.yaml；解析凭据在 docker/knowhere/.env 配置）
+  KNOWHERE_DIR: ./docker/knowhere
 
 tasks:
   dev:
-    desc: 启动本地开发环境（Docker 依赖 + 宿主机代码）
+    desc: 启动本地开发环境（Docker 依赖 + Knowhere 解析栈 + 宿主机代码）
     cmds:
       - task: deps-up
       - task: backend:dev
@@ -33,25 +36,68 @@ tasks:
       - task: deps-down
 
   deps-up:
-    desc: 启动 Docker 依赖并等待健康（PostgreSQL / Redis / RabbitMQ）
+    desc: 启动 Docker 依赖并等待健康（PostgreSQL / Redis / RabbitMQ / MinIO / Milvus + Knowhere）
     cmds:
       - sh -c '[ -f .env ] || { echo "缺少根 .env，请先创建：cp .env.example .env（填写 POSTGRES_*/RABBITMQ_* 等）"; exit 1; }'
       - docker compose up -d --wait {{.DEPS_SERVICES}}
+      - task: knowhere:up
 
   deps-down:
     desc: 停止 Docker 依赖
     cmds:
       - docker compose stop {{.DEPS_SERVICES}}
+      - task: knowhere:stop
 
   deps-status:
     desc: 查看 Docker 依赖运行状态
     cmds:
       - docker compose ps {{.DEPS_SERVICES}}
+      - task: knowhere:ps
 
   deps-logs:
-    desc: 跟踪 Docker 依赖日志
+    desc: 跟踪 Docker 依赖日志（Knowhere 栈日志另用 task knowhere:logs）
     cmds:
       - docker compose logs -f --tail=100 {{.DEPS_SERVICES}}
+
+  # ==================== Knowhere 自托管解析栈（独立 compose 项目） ====================
+  # app（ghcr.io/ontos-ai/knowhere，API :5005 / 控制台 :13000）+ 专用 postgres/redis/localstack；
+  # 经外部共享网络 knowhere-net 以 DNS 名 knowhere 暴露。宿主机代码直接用 localhost:5005。
+  knowhere:net:
+    desc: 确保共享外部网络 knowhere-net 存在（ragf 容器经 DNS 名 knowhere 访问）
+    cmds:
+      - docker network create knowhere-net 2>/dev/null || true
+
+  knowhere:up:
+    desc: 拉起 Knowhere 解析栈（首次拉镜像较慢；--wait 超时仅告警不阻塞）
+    dir: '{{.KNOWHERE_DIR}}'
+    deps: [knowhere:net]
+    cmds:
+      # unset 防 shell 残留环境变量覆盖栈自身 env.defaults（如 POSTGRES_PASSWORD）
+      - sh -c 'unset POSTGRES_PASSWORD APP_ENV; docker compose up -d --wait --wait-timeout 240 || echo "⚠️ Knowhere 栈尚未健康（首次拉镜像/预热较慢），就绪前摄取 fail-closed；task knowhere:ps 查看"'
+
+  knowhere:stop:
+    desc: 停止 Knowhere 解析栈（保留容器与数据卷，重启更快）
+    dir: '{{.KNOWHERE_DIR}}'
+    cmds:
+      - sh -c 'unset POSTGRES_PASSWORD APP_ENV; docker compose stop'
+
+  knowhere:down:
+    desc: 移除 Knowhere 解析栈容器（保留数据卷：模型缓存/库数据）
+    dir: '{{.KNOWHERE_DIR}}'
+    cmds:
+      - sh -c 'unset POSTGRES_PASSWORD APP_ENV; docker compose down'
+
+  knowhere:ps:
+    desc: 查看 Knowhere 解析栈状态
+    dir: '{{.KNOWHERE_DIR}}'
+    cmds:
+      - sh -c 'unset POSTGRES_PASSWORD APP_ENV; docker compose ps'
+
+  knowhere:logs:
+    desc: 跟踪 Knowhere 解析栈日志
+    dir: '{{.KNOWHERE_DIR}}'
+    cmds:
+      - sh -c 'unset POSTGRES_PASSWORD APP_ENV; docker compose logs -f --tail=100'
 
   worker:
     desc: 启动 Celery Worker（消息队列消费者）

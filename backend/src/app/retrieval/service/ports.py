@@ -1,7 +1,7 @@
 """检索域端口（ragf-design §14.2：消费方定义 Port，实现方供 Adapter）。
 
 - ``EmbeddingPort`` / ``RerankPort``：实现方 = ``app/model_provider`` 模型客户端
-  （``OpenAICompatibleEmbedding`` / ``BaseReranker`` 结构满足本协议，检索域不
+  （``OpenAICompatibleEmbedding`` / ``DashScopeTextReRank`` 结构满足本协议，检索域不
   直接 import 其实现模块）；
 - ``ChunkSourcePort``：实现方 = kb 域只读契约适配器（chunks/documents），默认
   实现见 ``retrieval_service.PgChunkSource``。

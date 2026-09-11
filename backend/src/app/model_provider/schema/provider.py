@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field
 from backend.src.app.model_provider.model.provider import PROVIDER_ID_PATTERN
 from backend.src.common.schema import SchemaBase
 
-ProviderType = Literal['openai', 'modelscope', 'dashscope']
+ProviderType = Literal['openai', 'dashscope']
 ModelType = Literal['chat', 'embedding', 'rerank']
 
 
@@ -34,7 +34,7 @@ class ModelProviderCreateParam(SchemaBase):
     base_url: str = Field('', max_length=500, description='API 基础 URL')
     embedding_base_url: str | None = Field(None, max_length=500, description='Embedding 请求 URL')
     rerank_base_url: str | None = Field(None, max_length=500, description='Rerank 请求 URL')
-    api_key: str | None = Field(None, description='API Key（为空回退 api_key_env / MODELSCOPE_ACCESS_TOKEN）')
+    api_key: str | None = Field(None, description='API Key（为空回退 api_key_env 指定的环境变量）')
     api_key_env: str | None = Field(None, description='API Key 环境变量名')
     capabilities: list[str] = Field(default_factory=list, description='能力：chat/embedding/rerank')
     enabled_models: list[ModelItemParam] = Field(default_factory=list, description='已启用模型')
@@ -72,7 +72,7 @@ class ModelProviderDetail(SchemaBase):
     embedding_base_url: str | None = None
     rerank_base_url: str | None = None
     api_key_env: str | None = None
-    api_key_set: bool = Field(description='是否可用凭据：api_key / api_key_env / modelscope 默认 env（不回显原文）')
+    api_key_set: bool = Field(description='是否可用凭据：api_key / api_key_env（不回显原文）')
     capabilities: list[str] = Field(default_factory=list)
     enabled_models: list[dict[str, Any]] = Field(default_factory=list)
     headers_json: dict[str, Any] = Field(default_factory=dict)

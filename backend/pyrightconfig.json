@@ -1,0 +1,15 @@
+{
+  "include": [
+    "src",
+    "main.py",
+    "run.py",
+    "conftest.py",
+    "__init__.py"
+  ],
+  "exclude": ["**/__pycache__", "**/dist", "**/.venv"],
+  "extraPaths": [".."],
+  "venvPath": ".",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "basic"
+}

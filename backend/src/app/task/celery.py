@@ -76,9 +76,14 @@ def init_celery() -> celery.Celery:
     # 默认沿用默认队列（celery），单 worker 拓扑与既有行为不变；显式设置
     # RAGF_CELERY_INGEST_QUEUE 后任务入独立队列，由 -Q ingest 的
     # ragf_celery_ingest_worker（compose profile ragf-ingest）消费。
-    task_routes: dict[str, dict[str, str]] | None = None
+    # 双管线摄取（spec D4）：knowhere.* / visual.* 同模式各自独立队列。
+    task_routes: dict[str, dict[str, str]] = {}
     if settings.RAGF_CELERY_INGEST_QUEUE:
-        task_routes = {'ingest.*': {'queue': settings.RAGF_CELERY_INGEST_QUEUE}}
+        task_routes['ingest.*'] = {'queue': settings.RAGF_CELERY_INGEST_QUEUE}
+    if settings.RAGF_CELERY_KNOWHERE_QUEUE:
+        task_routes['knowhere.*'] = {'queue': settings.RAGF_CELERY_KNOWHERE_QUEUE}
+    if settings.RAGF_CELERY_VISUAL_QUEUE:
+        task_routes['visual.*'] = {'queue': settings.RAGF_CELERY_VISUAL_QUEUE}
 
     # https://docs.celeryq.dev/en/stable/userguide/configuration.html
     app = celery.Celery(

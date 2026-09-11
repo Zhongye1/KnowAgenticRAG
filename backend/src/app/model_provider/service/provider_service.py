@@ -34,8 +34,8 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from backend.src.app.model_provider.providers.chat import OpenAICompatibleChatModel
+    from backend.src.app.model_provider.providers.dashscope_clients import DashScopeEmbedding, DashScopeTextReRank
     from backend.src.app.model_provider.providers.embed import OpenAICompatibleEmbedding
-    from backend.src.app.model_provider.providers.rerank import BaseReranker
     from backend.src.app.model_provider.schema.provider import (
         ModelProviderCreateParam,
         ModelProviderUpdateParam,
@@ -50,7 +50,7 @@ class ProviderService:
 
     @staticmethod
     def api_key_available(provider: ModelProvider) -> bool:
-        """是否解析到可用凭据：直配 api_key / api_key_env / modelscope 默认 env（不回显原文）。"""
+        """是否解析到可用凭据：直配 api_key / api_key_env（不回显原文）。"""
         return bool(resolve_provider_api_key(provider))
 
     # ------------------------------------------------------------------ 校验
@@ -64,9 +64,7 @@ class ProviderService:
         if provider_type not in VALID_PROVIDER_TYPES:
             raise errors.RequestError(msg=f'provider_type 必须是 {sorted(VALID_PROVIDER_TYPES)} 之一')
         if not str(data.get('base_url') or '').strip():
-            if provider_type != 'modelscope':
-                raise errors.RequestError(msg='base_url 不能为空（modelscope 可缺省用默认通道）')
-            data['base_url'] = settings.MODELSCOPE_API_BASE
+            raise errors.RequestError(msg='base_url 不能为空')
         data['base_url'] = str(data['base_url']).strip().rstrip('/')
         data['capabilities'] = _validate_capabilities(data.get('capabilities') or [])
         data['enabled_models'] = _validate_enabled_models(
@@ -147,14 +145,16 @@ class ProviderService:
                 return build_model_info(provider, model)
         return None
 
-    async def get_embedding_model(self, db: AsyncSession, spec: str) -> OpenAICompatibleEmbedding:
+    async def get_embedding_model(
+        self, db: AsyncSession, spec: str
+    ) -> OpenAICompatibleEmbedding | DashScopeEmbedding:
         """按 spec 返回 Embedding 客户端（供 ingest/retrieval 使用）。"""
         info = await self.get_model_info(db, spec)
         if info is None:
             raise errors.NotFoundError(msg=f'未找到模型 spec: {spec}（请检查 model_providers 配置）')
         return select_embedding_model(info)
 
-    async def get_reranker(self, db: AsyncSession, spec: str) -> BaseReranker:
+    async def get_reranker(self, db: AsyncSession, spec: str) -> DashScopeTextReRank:
         """按 spec 返回 Reranker 客户端（供 retrieval 使用）。"""
         info = await self.get_model_info(db, spec)
         if info is None:
@@ -193,64 +193,32 @@ class ProviderService:
         providers = await provider_dao.get_list(db)
         return await self.cache.rebuild(providers)
 
-    async def ensure_default_modelscope(self, db: AsyncSession) -> ModelProvider | None:
-        """幂等确保默认 modelscope provider（D11/D16：embedding bge-m3 + rerank bge-reranker-v2-m3）。"""
-        provider = await provider_dao.get(db, 'modelscope')
-        defaults = {
-            'provider_id': 'modelscope',
-            'display_name': 'ModelScope API',
-            'provider_type': 'modelscope',
-            'base_url': settings.MODELSCOPE_API_BASE.rstrip('/'),
-            'capabilities': ['embedding', 'rerank'],
-            'enabled_models': [
-                {'id': 'BAAI/bge-m3', 'type': 'embedding', 'dimension': 1024, 'batch_size': 200},
-                {
-                    'id': 'BAAI/bge-reranker-v2-m3',
-                    'type': 'rerank',
-                    'extra': {'rerank_protocol': 'openai'},
-                },
-            ],
-            'is_builtin': True,
-            'is_enabled': True,
-        }
-        if provider is None:
-            provider = await provider_dao.create(db, defaults)
-            await db.commit()  # 先提交 PG
-            await self.cache.invalidate()
-            log.info('[ModelProvider] 已创建默认 modelscope provider')
-            return provider
-        missing = [
-            model['id']
-            for model in defaults['enabled_models']
-            if model['id'] not in {item.get('id') for item in (provider.enabled_models or []) if isinstance(item, dict)}
-        ]
-        if missing:
-            provider.enabled_models = list(provider.enabled_models or []) + [
-                model for model in defaults['enabled_models'] if model['id'] in missing
-            ]
-            provider.capabilities = sorted(set(provider.capabilities or []) | {'embedding', 'rerank'})
-            await provider_dao.update(db, provider, {})
-            await db.commit()
-            await self.cache.invalidate()
-        return provider
+    async def ensure_default_dashscope(self, db: AsyncSession) -> ModelProvider | None:
+        """幂等确保默认 dashscope provider（千问平台 token 通道）。
 
-    async def ensure_default_huggingface(self, db: AsyncSession) -> ModelProvider | None:
-        """幂等确保默认 huggingface provider（bge-m3 embedding + bge-reranker-v2-m3 精排）。
-
-        hf-inference 通道：凭据走 ``HF_TOKEN`` 环境变量（api_key_env 回退，D11 同款）；
-        bge-m3 输出 1024 维。HF 免费层限流严格，embedding 批大小降到 16。
+        模型面（ragf-design D11 扩展）：``qwen3.7-text-embedding-flash``（文本向量，
+        dimension 对齐模板集合 RAGF_TEMPLATE_DIM）/ ``qwen3-vl-embedding``（多模态
+        向量，2048 维，与视觉管线同模型）/ ``qwen3.7-text-rerank``（SDK 重排通道）。
+        凭据走 ``DASHSCOPE_API_KEY``（api_key_env 回退，D11 同款）；SDK 为可选依赖，
+        行常驻、调用期报缺。
         """
-        provider = await provider_dao.get(db, 'huggingface')
+        provider = await provider_dao.get(db, 'dashscope')
         defaults = {
-            'provider_id': 'huggingface',
-            'display_name': 'HuggingFace Inference',
-            'provider_type': 'huggingface',
-            'base_url': 'https://router.huggingface.co/hf-inference',
-            'api_key_env': 'HF_TOKEN',
+            'provider_id': 'dashscope',
+            'display_name': '阿里云百炼（DashScope）',
+            'provider_type': 'dashscope',
+            'base_url': '',
+            'api_key_env': 'DASHSCOPE_API_KEY',
             'capabilities': ['embedding', 'rerank'],
             'enabled_models': [
-                {'id': 'BAAI/bge-m3', 'type': 'embedding', 'dimension': 1024, 'batch_size': 16},
-                {'id': 'BAAI/bge-reranker-v2-m3', 'type': 'rerank'},
+                {
+                    'id': 'qwen3.7-text-embedding-flash',
+                    'type': 'embedding',
+                    'dimension': settings.RAGF_TEMPLATE_DIM,
+                    'batch_size': 10,
+                },
+                {'id': 'qwen3-vl-embedding', 'type': 'embedding', 'dimension': 2048, 'batch_size': 10},
+                {'id': 'qwen3.7-text-rerank', 'type': 'rerank', 'extra': {'rerank_protocol': 'dashscope-sdk'}},
             ],
             'is_builtin': True,
             'is_enabled': True,
@@ -259,7 +227,7 @@ class ProviderService:
             provider = await provider_dao.create(db, defaults)
             await db.commit()  # 先提交 PG
             await self.cache.invalidate()
-            log.info('[ModelProvider] 已创建默认 huggingface provider')
+            log.info('[ModelProvider] 已创建默认 dashscope provider（千问平台）')
             return provider
         missing = [
             model['id']
@@ -275,20 +243,11 @@ class ProviderService:
             await db.commit()
             await self.cache.invalidate()
         return provider
-
-
-LEGACY_EMBEDDING_ALIASES: dict[str, str] = {
-    'bge-m3': 'huggingface:BAAI/bge-m3',
-    'BAAI/bge-m3': 'huggingface:BAAI/bge-m3',
-}
 
 
 def normalize_model_spec(spec: str | None) -> str:
-    """归一模型 spec（ragf-design §5.6）：legacy 裸 id 兼容默认 provider。"""
-    value = (spec or '').strip()
-    if not value:
-        return ''
-    return LEGACY_EMBEDDING_ALIASES.get(value, value)
+    """归一模型 spec（ragf-design §5.6）：去空白；非法/未知 spec 由查找方报 NotFound。"""
+    return (spec or '').strip()
 
 
 def _validate_capabilities(capabilities: list[Any]) -> list[str]:

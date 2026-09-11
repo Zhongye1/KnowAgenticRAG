@@ -47,6 +47,13 @@ class Document(MappedBase):
         JSON, default=dict, comment='本次摄取参数指纹（engine/preset/embedding_model）'
     )
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True, comment='最近一次失败原因（重试/对账用）')
+    # 双管线摄取（spec D6）：Knowhere 产物（legacy 链路保持 None）
+    summary: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment='文档级摘要（Knowhere document_top_summary）'
+    )
+    structure: Mapped[list | None] = mapped_column(
+        JSON, default=None, comment='解析结构树（Knowhere doc_nav 章节根列表）'
+    )
     created_time: Mapped[datetime] = mapped_column(TimeZone, default=timezone.now, comment='创建时间')
     updated_time: Mapped[datetime] = mapped_column(
         TimeZone, default=timezone.now, onupdate=timezone.now, comment='更新时间'

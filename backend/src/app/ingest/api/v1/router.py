@@ -1,4 +1,4 @@
-"""摄取/状态/rebuild API（ragf-design §7；D13 格式子集 415；D12 rebuild 受理）。"""
+"""上传/状态/rebuild API（ragf-design §7；D13 格式子集 415；D12 rebuild 受理）。解析由双管线接管（spec D1-D7）。"""
 
 from pathlib import PurePosixPath
 from typing import Annotated
@@ -61,8 +61,6 @@ async def ingest_document(
     current_namespace: CurrentNamespace,
     kb_name: Annotated[str, Path(description='知识库标识', pattern=r'^[a-z0-9_]+$')],
     file: Annotated[UploadFile, File(description='文档文件（D13 格式子集）')],
-    chunk_preset_id: Annotated[str | None, Form(description='分块预设（general/qa/separator/…）')] = None,
-    ocr_engine: Annotated[str | None, Form(description='OCR 引擎（pdf/图片；缺省走 settings）')] = None,
     *,
     force: Annotated[bool, Form(description='强制重摄取（同指纹文档）')] = False,
 ) -> ResponseSchemaModel[IngestResultItem]:
@@ -81,6 +79,14 @@ async def ingest_document(
         raise errors.RequestError(msg='文件内容为空')
     await file.seek(0)
 
+    # 摄取限额（双管线摄取 spec D8）：MinerU 上限（200 MiB / 200 页）前置拒绝，422 结构化 detail
+    from backend.src.app.ingest.limits import IngestLimitError, validate_ingest_bytes
+
+    try:
+        validate_ingest_bytes(data, filename)
+    except IngestLimitError as exc:
+        raise HTTPException(status_code=422, detail=exc.to_detail()) from exc
+
     sha256 = compute_sha256_bytes(data)
     existing = await dedup_dao.get_by_sha256(db, sha256, kb_name=kb_name, plugin_namespace=current_namespace)
     if existing is not None and not force:
@@ -95,10 +101,6 @@ async def ingest_document(
             db=db, kb_name=kb_name, file=file, source_type='file', owner_id=owner_id, owner_dept_id=owner_dept_id
         )
 
-    doc.ingest_params = {
-        'chunk_preset_id': chunk_preset_id or (doc.ingest_params or {}).get('chunk_preset_id') or 'general',
-        'ocr_engine': ocr_engine or '',
-    }
     await db.flush()
     _enqueue_ingest(doc.document_id, doc.kb_name, doc.plugin_namespace)
     return response_base.success(

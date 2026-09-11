@@ -66,14 +66,15 @@ class CRUDDedup(TenantScopedCrud[DocumentDedup]):
             object_key=object_key,
             source_name=source_name,
         )
+        # SAVEPOINT 内插入：冲突只回滚保存点，不摧毁调用方整个事务（spec D9 后置登记
+        # 时与 chunks/documents 同事务写入，整事务回滚代价不可接受）
         try:
-            await db.execute(stmt)
-            await db.flush()
+            async with db.begin_nested():
+                await db.execute(stmt)
         except IntegrityError:
-            await db.rollback()
             return False
-        else:
-            return True
+        await db.flush()
+        return True
 
     async def delete_by_kb(
         self,

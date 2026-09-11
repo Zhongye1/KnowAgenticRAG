@@ -306,6 +306,64 @@ services:
     networks:
       - ragf_network
 
+  # RAGF 双管线摄取（spec D4）：Knowhere 解析 worker（-Q knowhere）。
+  # 用法：.env.server 设置 RAGF_CELERY_KNOWHERE_QUEUE=knowhere 后
+  #   docker compose --profile ragf-ingest up -d ragf_celery_knowhere_worker
+  ragf_celery_knowhere_worker:
+    profiles: ["ragf-ingest"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SERVER_TYPE=ragf_celery_knowhere_worker
+    image: ragf_celery_knowhere_worker:latest
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      ragf_rabbitmq:
+        condition: service_healthy
+      ragf_minio:
+        condition: service_healthy
+      ragf_milvus:
+        condition: service_healthy
+    volumes:
+      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
+      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
+    networks:
+      - ragf_network
+
+  # RAGF 双管线摄取（spec D4/D7）：视觉 worker（-Q visual，并发=1：
+  # Qwen3-VL 编码 / DashScope 限流 / pixelrag_render 渲染均为重资源，串行消费）。
+  ragf_celery_visual_worker:
+    profiles: ["ragf-ingest"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SERVER_TYPE=ragf_celery_visual_worker
+    image: ragf_celery_visual_worker:latest
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      ragf_rabbitmq:
+        condition: service_healthy
+      ragf_minio:
+        condition: service_healthy
+      ragf_milvus:
+        condition: service_healthy
+    volumes:
+      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
+      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
+    networks:
+      - ragf_network
+
+  # Knowhere 解析服务不在本 compose 定义：独立自托管栈见 docker/knowhere/compose.yaml
+  # （app + 专用 postgres/redis/localstack；task dev / task deps-up 经根 Taskfile 自动拉起，
+  # 也可 task knowhere:up 单独运维）。容器部署时让 ragf_server/worker 加入外部网络
+  # knowhere-net（docker network create knowhere-net），经 http://knowhere:5005 访问。
+
   ragf_celery_beat:
     build:
       context: .
