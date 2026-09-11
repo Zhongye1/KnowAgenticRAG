@@ -16,6 +16,7 @@ from backend.src.app.retrieval.service.params import build_document_expr
 
 __all__ = [
     'MAX_DOC_FILTER_MATCH',
+    'coerce_document_ids',
     'coerce_filters',
     'compose_retrieval_expr',
     'filter_active_versions',
@@ -24,6 +25,25 @@ __all__ = [
 
 # 文档级过滤命中上限（对齐既有 file_name 过滤语义，防一次性拉全库）
 MAX_DOC_FILTER_MATCH = 500
+
+
+def coerce_document_ids(value: Any) -> list[str] | None:
+    """document_ids 直推清洗：非列表返回 None（无过滤）；空列表 = 空命中短路。
+
+    条目去空去重、保留原序；超 MAX_DOC_FILTER_MATCH 报错（防表达式越界）。
+    """
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        raise TypeError('document_ids 必须是字符串列表')
+    ids: list[str] = []
+    for item in value:
+        text = str(item or '').strip()
+        if text and text not in ids:
+            ids.append(text)
+    if len(ids) > MAX_DOC_FILTER_MATCH:
+        raise ValueError(f'document_ids 数量超限: {len(ids)} > {MAX_DOC_FILTER_MATCH}')
+    return ids
 
 
 def normalize_file_type(value: str | None) -> str | None:

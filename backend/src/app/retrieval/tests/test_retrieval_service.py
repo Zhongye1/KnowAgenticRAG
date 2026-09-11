@@ -482,3 +482,67 @@ def test_visual_expr_doc_filter_and_scope_without_version() -> None:
     assert 'document_id == "doc-a"' in expr  # 文档级过滤解析后下推
     assert 'namespace == "core"' in expr  # scope ACL 同构下推
     assert 'version_id' not in expr  # 视觉行无版本标量，不做版本过滤
+
+
+# ---------------------------------------------------------------------------
+# document_ids 直推(RAG 查询面)与 steps 轨迹
+# ---------------------------------------------------------------------------
+
+
+def test_document_ids_direct_filter_skips_pg_resolution() -> None:
+    service, strategies, doc_dao = _service()
+    data = _run(
+        service.search_multi(
+            None,  # type: ignore[arg-type]
+            kb_names=['dev'],
+            query_text='x',
+            param={'use_reranker': False, 'document_ids': ['doc-a', 'doc-b']},
+        )
+    )
+    assert doc_dao.calls == []  # 直推不查 PG
+    assert strategies.ctxs[0]['expr'] == 'document_id in ["doc-a", "doc-b"]'
+    assert data['hit_count'] == 1
+
+
+def test_document_ids_empty_short_circuits() -> None:
+    service, strategies, _ = _service()
+    data = _run(
+        service.search(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            query_text='x',
+            param={'use_reranker': False, 'document_ids': []},
+        )
+    )
+    assert data['results'] == []
+    assert data['visual_results'] == []
+    assert strategies.ctxs == []
+
+
+def test_document_ids_dedup_and_blank_dropped() -> None:
+    service, strategies, doc_dao = _service()
+    _run(
+        service.search(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            query_text='x',
+            param={'use_reranker': False, 'document_ids': ['doc-a', ' ', 'doc-a']},
+        )
+    )
+    assert strategies.ctxs[0]['expr'] == 'document_id == "doc-a"'
+    assert doc_dao.calls == []
+
+
+def test_output_carries_steps_trajectory() -> None:
+    service, _, _ = _service()
+    data = _run(
+        service.search(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            query_text='x',
+            param={'use_reranker': False},
+        )
+    )
+    assert [step['name'] for step in data['steps']] == ['recall', 'rerank', 'hydrate']
+    assert data['steps'][1]['detail'] == 'skipped'  # use_reranker=False
+    assert data['include_visual'] is False

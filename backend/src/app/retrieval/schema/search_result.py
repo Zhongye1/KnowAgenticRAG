@@ -7,13 +7,13 @@ path_prefix）在检索服务层合并解析为 ``document_id`` 过滤表达式�
 """
 
 from datetime import datetime
-from typing import Any, Literal
+from typing import Literal
 
 from pydantic import ConfigDict, Field
 
 from backend.src.common.schema import SchemaBase
 
-__all__ = ['KBSearchOutput', 'KBSearchParam', 'RetrievalFilters', 'SearchHitItem']
+__all__ = ['KBSearchParam', 'RetrievalFilters']
 
 
 class RetrievalFilters(SchemaBase):
@@ -80,52 +80,3 @@ class KBSearchParam(SchemaBase):
     def effective_filters(self) -> RetrievalFilters:
         """归一后的结构化过滤（未提交时为空对象 = 无过滤）。"""
         return self.filters if self.filters is not None else RetrievalFilters.model_validate({})
-
-
-class SearchHitItem(SchemaBase):
-    """检索命中条目"""
-
-    chunk_id: str = Field(description='分块 ID（{document_id}:{version_id}:{idx}）')
-    document_id: str = Field(description='所属文档')
-    kb_name: str = Field(description='知识库标识')
-    version_id: int = Field(1, description='版本')
-    chunk_index: int = Field(0, description='块序号')
-    content: str = Field(description='分块文本（PG chunks 为事实源，缺失时回退 Milvus）')
-    metadata: dict[str, Any] = Field(
-        default_factory=dict,
-        description='source（文件名）/ score / rerank_score / token_count 等附加信息',
-    )
-
-
-class VisualHitItem(SchemaBase):
-    """视觉召回命中条目（ragf_visual 集合；独立于文本 chunk 结果，不进精排/引用）。"""
-
-    id: str = Field(description='视觉行 ID（{document_id}_t{序号}）')
-    image_path: str = Field(description='tile 图对象键（MinIO kb/{ns}/{kb}/{doc}/tiles/）')
-    document_id: str = Field(description='所属文档')
-    kb_name: str = Field(description='知识库标识')
-    page: int = Field(0, description='页码')
-    position: str = Field('', description='条带位置')
-    chunk_type: str = Field('tile', description='视觉切片类型（tile/image/table）')
-    parent_section: str = Field('', description='父章节（预留）')
-    content_summary: str = Field('', description='内容摘要（预留，当前摄取侧为空）')
-    score: float = Field(0.0, description='视觉余弦相似度')
-
-
-class KBSearchOutput(SchemaBase):
-    """同步检索输出"""
-
-    kb_name: str = Field(description='知识库标识')
-    mode: str = Field(description='实际生效检索模式：vector / hybrid')
-    recall_count: int = Field(0, description='召回候选数（精排前）')
-    reranked: bool = Field(False, description='是否完成精排')
-    degraded: bool = Field(False, description='精排失败降级为召回序（§A.5）')
-    duration_ms: int = Field(0, description='检索耗时（毫秒）')
-    results: list[SearchHitItem] = Field(default_factory=list, description='按相关度降序的最终结果')
-    visual_results: list[VisualHitItem] = Field(
-        default_factory=list, description='视觉召回命中（include_visual 开启时；按视觉相似度降序）'
-    )
-    visual_degraded: bool = Field(False, description='视觉召回失败降级（编码/检索异常；文本结果不受影响）')
-
-
-__all__ = ['KBSearchOutput', 'KBSearchParam', 'RetrievalFilters', 'SearchHitItem', 'VisualHitItem']

@@ -27,6 +27,7 @@ __all__ = [
     'delete_visual_by_document',
     'delete_visual_by_kb',
     'ensure_visual_collection',
+    'get_visual_image_ref',
     'insert_visual_rows',
     'search_visual',
     'update_visual_document_acl',
@@ -242,6 +243,39 @@ _VISUAL_OUTPUT_FIELDS = [
     'content_summary',
     'source_chunk_id',
 ]
+
+
+def get_visual_image_ref(image_id: str, *, plugin_namespace: str | None = None) -> dict[str, str] | None:
+    """按主键取视觉行定位信息（回源鉴权与预签名 URL 生成用）。
+
+    返回 ``{document_id, kb_name, image_path}``；不存在或集合缺失返回 None。
+    """
+    image_id = str(image_id or '').strip()
+    if not image_id:
+        return None
+    collection = visual_collection_name()
+    client = _client(plugin_namespace)
+    if not client.has_collection(collection):
+        return None
+    try:
+        rows = client.query(
+            collection,
+            filter=f'id == "{image_id}"',
+            output_fields=['document_id', 'kb_name', 'image_path'],
+            limit=1,
+        )
+    except Exception as exc:
+        logger.warning('视觉行定位查询失败 coll=%s id=%s: %s', collection, image_id, exc)
+        return None
+    if not rows:
+        return None
+    row = rows[0] or {}
+    document_id = str(row.get('document_id') or '')
+    kb_name = str(row.get('kb_name') or '')
+    image_path = str(row.get('image_path') or '')
+    if not document_id or not image_path:
+        return None
+    return {'document_id': document_id, 'kb_name': kb_name, 'image_path': image_path}
 
 
 def search_visual(

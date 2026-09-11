@@ -31,6 +31,7 @@ from backend.src.app.model_provider.service.provider_service import normalize_mo
 from backend.src.app.retrieval.schema.search_result import KBSearchParam
 from backend.src.app.retrieval.service.filters import (
     MAX_DOC_FILTER_MATCH,
+    coerce_document_ids,
     coerce_filters,
     compose_retrieval_expr,
     filter_active_versions,
@@ -287,6 +288,12 @@ class RetrievalService:
             visual_top_k=visual_top_k,
         )
         visual_degraded = visual_degraded or visual_recalled
+        steps: list[dict[str, str]] = [
+            {
+                'name': 'recall',
+                'detail': f'text={len(merged_hits)} visual={len(visual_hits)} recall_top_k={recall_top_k}',
+            }
+        ]
 
         # ④ 精排（可选能力，失败降级为召回序，§A.5/§14.9）
         ranked, reranked, degraded = await self._rank_hits(
@@ -296,6 +303,10 @@ class RetrievalService:
             hits=merged_hits,
             use_reranker=use_reranker,
         )
+        steps.append({
+            'name': 'rerank',
+            'detail': 'applied' if reranked else ('degraded → recall order' if use_reranker else 'skipped'),
+        })
 
         # ⑤ 来源补全 + active_version 收敛 + 统一 final_top_k 组装
         results = await self._build_results(
@@ -305,6 +316,8 @@ class RetrievalService:
             fallback_kb=names[0],
             version_requested=bool(filters is not None and filters.version_id is not None),
         )
+        visual_results = self._build_visual_results(visual_hits, fallback_kb=names[0], visual_top_k=visual_top_k)
+        steps.append({'name': 'hydrate', 'detail': f'text={len(results)} visual={len(visual_results)}'})
         return self._output(
             kb_names=names,
             mode=mode,
@@ -313,8 +326,10 @@ class RetrievalService:
             reranked=reranked,
             degraded=degraded,
             results=results,
-            visual_results=self._build_visual_results(visual_hits, fallback_kb=names[0], visual_top_k=visual_top_k),
+            visual_results=visual_results,
             visual_degraded=visual_degraded,
+            include_visual=include_visual,
+            steps=steps,
         )
 
     # ------------------------------------------------------------------ 编排步骤
@@ -388,8 +403,16 @@ class RetrievalService:
         merged: list[dict[str, Any]] = []
         visual_merged: list[dict[str, Any]] = []
         visual_degraded = False
+        # document_ids 直推（RAG 查询面）：跳过 PG 解析，直接作为 doc_id 集
+        try:
+            direct_doc_ids = coerce_document_ids(request_data.get('document_ids'))
+        except (TypeError, ValueError) as exc:
+            raise errors.RequestError(msg=str(exc)) from exc
         for kb_name in names:
-            doc_ids = await self._resolve_doc_ids(db, kb_name=kb_name, ns=ns, request_data=request_data)
+            if direct_doc_ids is not None:
+                doc_ids = direct_doc_ids
+            else:
+                doc_ids = await self._resolve_doc_ids(db, kb_name=kb_name, ns=ns, request_data=request_data)
             if doc_ids == []:
                 continue
 
@@ -646,6 +669,8 @@ class RetrievalService:
         results: list[dict[str, Any]] | None = None,
         visual_results: list[dict[str, Any]] | None = None,
         visual_degraded: bool = False,
+        include_visual: bool = False,
+        steps: list[dict[str, str]] | None = None,
     ) -> dict[str, Any]:
         results = results or []
         return {
@@ -660,6 +685,8 @@ class RetrievalService:
             'results': results,
             'visual_results': visual_results or [],
             'visual_degraded': visual_degraded,
+            'include_visual': include_visual,
+            'steps': steps or [],
         }
 
 

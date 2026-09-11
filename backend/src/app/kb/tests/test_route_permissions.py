@@ -50,11 +50,19 @@ def _find_route(router: Any, path: str, method: str) -> Any:
 
 
 def test_search_route_requires_search_perm() -> None:
-    from backend.src.app.retrieval.api.v1.search import router
+    from backend.src.app.retrieval.api.v1.rag_query import search_router
 
-    route = _find_route(router, '/{kb_name}/search', 'POST')
+    route = _find_route(search_router, '/search', 'POST')
     assert RAG_KB_SEARCH in _route_perm_codes(route)
     assert _has_rbac_after_perm(route, RAG_KB_SEARCH)
+
+
+def test_rag_image_route_requires_read_perm() -> None:
+    from backend.src.app.retrieval.api.v1.rag_query import images_router
+
+    route = _find_route(images_router, '/images/{image_id}/url', 'GET')
+    assert RAG_KB_READ in _route_perm_codes(route)
+    assert _has_rbac_after_perm(route, RAG_KB_READ)
 
 
 def test_chat_route_requires_chat_perm() -> None:
