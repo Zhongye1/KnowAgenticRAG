@@ -334,7 +334,7 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "业务域互不依赖：admin / kb / task / ingest / retrieval / model_provider / chat / mcp（有意依赖需显式豁免）"
+name = "业务域互不依赖：admin / kb / task / ingest / retrieval / model_provider / chat / mcp / agent（有意依赖需显式豁免）"
 type = "independence"
 modules = [
     "backend.src.app.admin",
@@ -345,6 +345,7 @@ modules = [
     "backend.src.app.model_provider",
     "backend.src.app.chat",
     "backend.src.app.mcp",
+    "backend.src.app.agent",
 ]
 ignore_imports = [
     # db_log 任务消费 admin 日志服务：有意为之，后续可反转依赖方向
@@ -370,6 +371,12 @@ ignore_imports = [
     # ingest 域内任务/上传端点经 app/task celery_app 派发（D10：任务代码域内归属，
     # 发送仍走框架 celery 实例）
     "backend.src.app.ingest.** -> backend.src.app.task.**",
+    # agent 为编排域（D34 两层图）：图节点复用 chat 的引用/提示词装配与
+    # retrieval 检索门面，工具经 kb 只读契约取文档/分块（D30 工具不直连存储、D37 复用
+    # MCP 工具语义）；方向同为「下游域 → 上游基础域」
+    "backend.src.app.agent.** -> backend.src.app.chat.**",
+    "backend.src.app.agent.** -> backend.src.app.retrieval.**",
+    "backend.src.app.agent.** -> backend.src.app.kb.**",
     # 存量债务（master 既有，非双管线引入）：kb.deps 复用 retrieval scope 构建
     # 用户上下文，方向与「下游域 → 上游基础域」相反；待 scope 下沉公共层后删除
     "backend.src.app.kb.** -> backend.src.app.retrieval.**",
@@ -414,6 +421,15 @@ layers = [
 name = "mcp 模块分层：api → service（上层可依赖下层，反之禁止）"
 type = "layers"
 containers = ["backend.src.app.mcp"]
+layers = [
+    "api",
+    "service",
+]
+
+[[tool.importlinter.contracts]]
+name = "agent 模块分层：api → service（上层可依赖下层，反之禁止；graph/schema 为域内横向包不受此契约约束，两层图装配见 D34）"
+type = "layers"
+containers = ["backend.src.app.agent"]
 layers = [
     "api",
     "service",

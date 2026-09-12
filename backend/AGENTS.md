@@ -9,7 +9,7 @@ RAG-F 智能知识管理平台后端：基于 **FastAPI** 的私有知识库 RAG
 ## 2. 铁律（违反会被 CI/工具链拦下）
 
 1. **分层依赖方向由 import-linter 强制**（契约定义在 `pyproject.toml` 的 `[tool.importlinter]`）。改完 import 后跑 `uv run lint-imports`（dev 依赖组已含）。跨域新增依赖必须在契约 `ignore_imports` 中显式豁免，并注明决策依据（引用 `docs/specs/` 中的 D/M 编号）。
-2. **8 个业务域互不依赖**（independence 契约）；域内固定 `api → service → crud → model` 分层，上层可依赖下层，反之禁止。
+2. **9 个业务域互不依赖**（independence 契约：admin / kb / task / ingest / retrieval / model_provider / chat / mcp / agent）；域内固定 `api → service → crud → model` 分层，上层可依赖下层，反之禁止。
 3. **ruff 规则严格**：单引号、line-length 120、异步函数内禁止阻塞调用（open/httpx/sleep 等规则已开启）、公共函数必须标注返回类型。提交前 `task lint`。
 4. `model/__init__.py` **必须聚合导出全部模型类**——建表与模型注册依赖它。
 5. **配置一律走 `src/core/config.py` 的 `Settings`**（pydantic-settings），不在业务代码里直接读 `os.environ`；RAGF 业务参数以 `RAGF_` 前缀集中声明。
