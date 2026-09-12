@@ -100,6 +100,7 @@ export default defineConfig({
                     { text: "任务队列", link: "/specs/0x00/任务队列" },
                     { text: "Agentic RAG 系统设计", link: "/specs/2026-08-21-agentic-rag-系统设计" },
                     { text: "RAG API 设计与落地路线", link: "/specs/2026-08-25-rag-api设计与落地路线" },
+                    { text: "Agentic RAG 落地改造清单", link: "/specs/2026-09-12-agentic-rag-落地改造清单" },
                 ],
             },
             {
