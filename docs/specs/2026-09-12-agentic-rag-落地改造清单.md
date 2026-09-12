@@ -188,7 +188,7 @@ class AgentState(TypedDict):
 | 0.3 | 冲突核查 | 确认 pydantic（现 2.13.4）、httpx（0.28.1）、SQLAlchemy 2.0.52 无版本回退 | `uv tree` 无降级 |
 | 0.4 | `agent/graph/stream_bridge.py`（🆕） | **关键件**：把 `graph.astream(stream_mode=[...])` 的输出映射为 D25 事件 | 单测：桩图 → 事件序列符合 D25 |
 | 0.5 | spike 验证 | 最小图（2 节点 + 1 条件边）跑通流式；确认 `get_stream_writer()` 可发自定义 `step` 事件 | demo 可跑 |
-| 0.6 | 镜像体积 | 记录引入前后镜像 size 差 | 增量可接受（预期 < 50MB） |
+| 0.6 ✅ | 镜像体积 | 记录引入前后镜像 size 差 | 实测 **≈46.5MB**（`du -sc` 统计 site-packages 内 langgraph/langgraph-sdk/checkpoint/prebuilt + langchain/langchain-core/langchain-openai + openai + tiktoken + langsmith + jiter；未跑 `docker build`，镜像层另有压缩，故为上限估计），在 < 50MB 预期内 |
 
 **事件映射规则（0.4 的核心）**：
 
@@ -289,6 +289,8 @@ class AgentState(TypedDict):
 
 用法：`builder.add_node('act', act_node, timeout=TimeoutPolicy(run_timeout=60), retry_policy=RetryPolicy(max_attempts=2))`。
 
+**落地取舍（2026-09-12）**：实际只用了 `RetryPolicy`（plan/rewrite）与 `CachePolicy`（plan，TTL 5min）；`act` 的墙钟用 `builder.add_node(..., timeout=<float>)`（异步节点必须用 timeout 参数，LangGraph 不允许同步节点配 `TimeoutPolicy`）。`ToolCallLimitMiddleware` / `ModelCallLimitMiddleware` **未采用**：外层 `recursion_limit`（步数预算）+ 内层 `RAGF_AGENT_ACT_RECURSION_LIMIT`（工具循环）已双重封顶，再叠中间件只增加一层依赖与调试面。
+
 **红线**：`sub_queries` 上限 `RAGF_AGENT_MAX_SUB_QUERIES`（默认 3），防提示注入放大成本。
 
 ---
@@ -297,11 +299,12 @@ class AgentState(TypedDict):
 
 | 编号 | 落点 | 改动 | 验收 |
 | --- | --- | --- | --- |
-| 3.1 | `agent/graph/edges/grade.py`（🆕） | **条件边判据**（满足任一即 `rewrite`）：`hit_count == 0` / `grade_score < RAGF_AGENT_MIN_SCORE` | 单测覆盖三类分支（go / rewrite / abort） |
-| 3.2 | `agent/graph/nodes/rewrite.py`（🆕） | 一次查询改写（低温 `with_structured_output` → `{rewritten_query, reason}`），写回 state 后边回 `act` | 改写失败 → 保持原结果，不抛异常 |
-| 3.3 | `agent/graph/nodes/act.py` | 合并：原命中与新命中按 `chunk_id` 去重，按 score 重排取 `final_top_k` | 去重单测 |
-| 3.4 | `agent/graph/builder.py` | **预算**：`rewrite_count` 状态计数达 `RAGF_AGENT_MAX_REWRITES` → 边指向 `abort`（走 `EMPTY_RESULT_MESSAGE` 降级）；整体 `asyncio.timeout` 墙钟兜底；步数/工具次数用 §5.2 的 `ModelCallLimitMiddleware` / `ToolCallLimitMiddleware` 兜底，不自研计数器 | 单测：预算耗尽不死循环 |
-| 3.5 | 事件 | `step.name='rewrite'`，`detail` 带触发原因与改写后查询 | SSE 可见 rewrite 步骤 |
+| 3.1 ✅ | `agent/graph/edges/grade.py`（🆕） | **条件边判据**（满足任一即 `rewrite`）：`hit_count == 0` / `grade_score < RAGF_AGENT_MIN_SCORE` | 单测覆盖三类分支（go / rewrite / abort） |
+| 3.2 ✅ | `agent/graph/nodes/rewrite.py`（🆕） | 一次查询改写（低温 `with_structured_output` → `{rewritten_query, reason}`），写回 state 后边回 `act` | 改写失败 → 保持原结果，不抛异常 |
+| 3.3 ✅ | `agent/graph/nodes/act.py` | 合并：原命中与新命中按 `chunk_id` 去重，按 score 重排取 `final_top_k` | 去重单测 |
+| 3.4 ✅ | `agent/graph/builder.py` | **预算**：`rewrite_count` 达 `RAGF_AGENT_MAX_REWRITES` → 条件边直接走 `generate`（无命中时 `EMPTY_RESULT_MESSAGE` 降级，不空转）；墙钟由 service 层 `asyncio.timeout(RAGF_AGENT_TIMEOUT_SECONDS)` 兜底；外层步数用 `config.recursion_limit`（`AgentBudget.recursion_limit`），内层 ReAct 用 `RAGF_AGENT_ACT_RECURSION_LIMIT`——**未采用** §5.2 的 `ModelCallLimitMiddleware`/`ToolCallLimitMiddleware`（两级 recursion_limit 已封顶，少一层中间件依赖） | 单测：预算耗尽不死循环 |
+
+| 3.5 ✅ | 事件 | `step.name='rewrite'`，`detail` 带触发原因与改写后查询 | SSE 可见 rewrite 步骤 |
 | 3.6 ✅ | 埋点 | `ragf.agent.rewrites`（counter）、`ragf.agent.steps`（histogram）、`ragf.agent.tool_calls`（counter，按 `tool` 名分桶）、`ragf.agent.duration_seconds`、`ragf.agent.first_token_seconds`、`ragf.agent.requests`（result=ok/empty/error/cancelled） | Grafana 可查（`ragf_agent` 仪表盘） |
 
 **与 CRAG 的差异（有意为之）**：不引入 LLM 逐文档打分（成本 = 文档数 × 调用数）。用**精排分数**这个已有信号做判据，零额外成本。
@@ -367,7 +370,7 @@ class AgentState(TypedDict):
 | import-linter 豁免滥用 | 🟡 低 | 每条豁免注明 D 编号；核对方向为「下游域 → 上游基础域」 |
 
 **红线**：
-1. `stream_bridge` 是**唯一**允许 import LangGraph 类型细节并翻译为 D25 的模块；service 层以上不得出现 LangGraph 概念泄漏。
+1. `stream_bridge` 是**唯一**允许 import LangGraph 流式 API（`get_stream_writer` / `astream`）并翻译为 D25 的模块；service 层以上不得出现 LangGraph 概念泄漏。图装配（`graph/builder.py`）不可避免要 import `StateGraph` / `START` / `END` 与节点策略类型（`TimeoutPolicy` 等），属装配必需品，不算「翻译层泄漏」——判据是 **D25 事件的翻译只发生在 `stream_bridge`**。
 2. Agent 工具面**只读**（D30），不含任何写路径。
 3. 现有 `/chat`、`/chat/stream`、`ChatResponse` 契约冻结（D35）。
 4. 权限检查必须在 handler 内强制执行（D33）。
@@ -440,11 +443,24 @@ backend/src/app/agent/
     ├── __init__.py
     ├── test_agent_api.py
     ├── test_agent_service.py
-    ├── test_tools.py
-    ├── test_graph_plan.py
-    ├── test_graph_grade.py
+    ├── test_agent_act.py            # 工具面 + 预取 + 去重（原 test_tools 合并）
+    ├── test_agent_graph.py          # 图拓扑 + T1/T3 分支（原 test_graph_plan/grade 合并）
+    ├── test_agent_run_log.py        # 1.11 运行审计（状态映射 + 真实 PG 落库）
+    ├── test_model_adapter.py        # ModelInfo → ChatOpenAI 适配
+    ├── test_prompts.py              # 2.4 提示词不变量 + 注入防护
     └── test_stream_bridge.py        # ★ 契约测试：桩图 → 断言 D25 事件序列
 ```
+
+#### 9.1.1 实际落地与上表的差异（2026-09-12 收口）
+
+| 计划 | 实际 | 原因 |
+| --- | --- | --- |
+| `service/events.py` | `graph/stream_bridge.py`（含事件翻译 + `build_done_payload`） | D25 事件由 LangGraph 流出直接翻译，放 service 层会泄漏框架细节（红线 1） |
+| `graph/edges/grade.py` | `graph/nodes/grade.py`（判据函数 + `route_after_grade`） | 判据与 `grade` 节点同源同测，拆两个包无收益 |
+| `tests/test_tools.py` | 并入 `tests/test_agent_act.py`（工具预算/分桶/去重） | 工具面用例与 act 节点共用 `ToolContext` 夹具 |
+| `tests/test_graph_plan.py` / `test_graph_grade.py` | 并入 `tests/test_agent_graph.py`（T1/T3 分支 + 预算封顶） | 分支行为需整图驱动才可见条件边语义 |
+| — | 新增 `service/run_log.py` + `model/agent_run.py` + `tests/test_agent_run_log.py` | 1.11 运行审计（D40） |
+| — | 新增 `tests/test_prompts.py` | 2.4 验收（提示词不变量 + 注入防护） |
 
 ### 9.2 修改（9 处）
 
