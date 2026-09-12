@@ -7,6 +7,12 @@
 
 export type ChatRole = 'user' | 'assistant' | 'system';
 
+/**
+ * 问答模式（D35）：chat = /chat/stream 固定检索一次后生成；
+ * agent = /agent/stream 服务端图编排（plan → act → grade/rewrite → generate）。
+ */
+export type ChatMode = 'chat' | 'agent';
+
 export type ChatDoneReason = 'complete' | 'empty_result' | 'max_tokens';
 
 /** D25 meta 事件载荷：{kb_name, mode, model_spec, hit_count} */

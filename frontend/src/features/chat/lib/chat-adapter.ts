@@ -10,6 +10,7 @@ import type {
   ChatCitation,
   ChatImageSource,
   ChatMeta,
+  ChatMode,
   ChatStep,
   ChatUsage,
 } from '../types';
@@ -29,16 +30,14 @@ import { parseD25Data, parseSseStream, type SseMessage } from './d25-sse';
  * 事件协议一致，故共用解析与状态写入路径，不写第二套解析器（D38）。
  */
 
-export type KbChatMode = 'chat' | 'agent';
-
-const kbChatUrl = (mode: KbChatMode, kbName: string) =>
+const kbChatUrl = (mode: ChatMode, kbName: string) =>
   `${env.API_URL}/api/v1/knowledge_bases/${encodeURIComponent(kbName)}/${mode}/stream`;
 
 const isAbortError = (error: unknown): boolean =>
   error instanceof Error && error.name === 'AbortError';
 
 async function* openEventStream(
-  mode: KbChatMode,
+  mode: ChatMode,
   kbName: string,
   body: unknown,
   signal: AbortSignal,
@@ -103,7 +102,7 @@ const toImages = (value: unknown): ChatImageSource[] | undefined =>
   Array.isArray(value) ? (value as ChatImageSource[]) : undefined;
 
 /** 组装指定模式的 ChatModelAdapter（chat / agent 共用，仅端点与 step 消费路径不同） */
-export const createKbChatAdapter = (mode: KbChatMode): ChatModelAdapter => ({
+export const createKbChatAdapter = (mode: ChatMode): ChatModelAdapter => ({
   async *run({ messages, abortSignal, context, unstable_assistantMessageId }) {
     const messageId = unstable_assistantMessageId ?? '';
 
@@ -203,3 +202,16 @@ export const chatAdapter: ChatModelAdapter = createKbChatAdapter('chat');
 
 /** Agentic 知识库问答（/agent/stream，plan → act → grade/rewrite → generate） */
 export const agentAdapter: ChatModelAdapter = createKbChatAdapter('agent');
+
+/**
+ * 按当前设置委派到 chat / agent 适配器的门面（runtime 订阅的实例）。
+ *
+ * 模式是运行期可变的设置（UI 开关），而 runtime 在挂载时固定适配器实例，
+ * 故这里每轮 run 时读取一次 store，避免切换模式导致 runtime 重建（会丢会话）。
+ */
+export const kbChatAdapter: ChatModelAdapter = {
+  run: (options) =>
+    (useChatSettingsStore.getState().mode === 'agent' ? agentAdapter : chatAdapter).run(
+      options,
+    ),
+};

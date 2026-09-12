@@ -31,6 +31,8 @@ import { TooltipIconButton } from '@/components/assistant-ui/elements/tooltip-ic
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+import { AgentModeToggle } from './agent-mode-toggle';
+import { AgentSteps } from './agent-steps';
 import { ChatWelcome } from './chat-welcome';
 import { AnswerMarkdown } from './answer-markdown';
 import { KbPicker } from './kb-picker';
@@ -103,6 +105,7 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
             <div className="flex items-center gap-1.5">
               <KbPicker />
               <ChatModelSelector />
+              <AgentModeToggle />
             </div>
             <Composer autoFocus={autoFocus} />
           </ThreadPrimitive.ViewportFooter>
@@ -206,6 +209,7 @@ const AssistantMessage: FC = () => (
   >
     <div className="text-foreground px-2 leading-relaxed wrap-break-word">
       <AssistantMessageMeta />
+      <AgentSteps />
       <MessagePrimitive.Parts components={{ Text: AnswerMarkdown }} />
       <MessageSources />
       <TruncationHint />

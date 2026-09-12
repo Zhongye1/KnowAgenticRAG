@@ -9,6 +9,8 @@ import { networkDelay } from '../utils';
  * - GET  /api/v1/knowledge_bases：知识库列表（选择器数据源）
  * - POST /api/v1/knowledge_bases/:kbName/chat/stream：D25 SSE 事件流脚本回放
  *   （step* → meta → citation → delta* → usage → done；提问含"未命中"时走空命中分支）
+ * - POST /api/v1/knowledge_bases/:kbName/agent/stream：Agent 形态（同协议，额外
+ *   plan/act/grade/rewrite step 与 done.agent；提问含"改写"时展示自省改写分支）
  */
 
 const ok = <T>(data: T) => ({ code: 0, msg: 'OK', data });
@@ -225,6 +227,101 @@ export const chatHandlers = [
             },
             steps,
             usage,
+          },
+        },
+      ];
+
+      return new HttpResponse(sseStream(events), {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+        },
+      });
+    },
+  ),
+
+  http.post(
+    `${env.API_URL}/api/v1/knowledge_bases/:kbName/agent/stream`,
+    async ({ request, params }) => {
+      await networkDelay();
+      const kbName = String(params.kbName ?? 'platform_docs');
+      const body = (await request.json().catch(() => ({}))) as {
+        query_text?: string;
+        model?: string;
+      };
+      const query = body.query_text ?? '这个问题';
+      const rewrote = /改写|重写/.test(query);
+      const citations = buildCitations(kbName);
+      const answer = buildAnswer(query);
+      const modelSpec = body.model ?? 'mock:default';
+      const images = [
+        {
+          type: 'image',
+          image_id: 'doc-d25-2_t1',
+          image_path: `kb/core/${kbName}/doc-d25-2/tiles/1.png`,
+          document_id: 'doc-d25-2',
+          kb_name: kbName,
+          page: 3,
+          position: 'top',
+          chunk_type: 'tile',
+          content_summary: 'D25 事件流时序图',
+          score: 0.83,
+        },
+      ];
+      const steps = [
+        { name: 'plan', detail: 'need_retrieval=true sub_queries=2' },
+        { name: 'act', detail: 'tool_calls=2 hits=2' },
+        { name: 'grade', detail: rewrote ? 'score=0.22 threshold=0.3' : 'score=0.58 threshold=0.3' },
+        ...(rewrote
+          ? [{ name: 'rewrite', detail: 'reason=low_score attempts=1' }]
+          : []),
+        { name: 'generate', detail: `model=${modelSpec}` },
+      ];
+      const usage = { prompt_tokens: 640, completion_tokens: 288, total_tokens: 928 };
+      const agent = {
+        need_retrieval: true,
+        sub_queries: ['知识库问答的事件协议', '引用如何稳定到文档版本'],
+        plan_rationale: '问题涉及事件协议与引用机制，拆成两个子查询分别召回',
+        grade_score: rewrote ? 0.22 : 0.58,
+        rewrites: rewrote ? 1 : 0,
+        tool_calls: 2,
+      };
+      const events: Array<{ event: string; data: unknown; delay?: number }> = [
+        ...steps.map((step) => ({
+          event: 'step',
+          data: step,
+          delay: 120,
+        })),
+        {
+          event: 'meta',
+          data: { kb_name: kbName, mode: 'hybrid', model_spec: modelSpec, hit_count: 2 },
+          delay: 200,
+        },
+        { event: 'citation', data: { citations, images }, delay: 80 },
+        { event: 'delta', data: { content: answer }, delay: 120 },
+        { event: 'usage', data: usage },
+        {
+          event: 'done',
+          data: {
+            reason: 'complete',
+            answer,
+            kb_name: kbName,
+            kb_names: [kbName],
+            mode: 'hybrid',
+            model_spec: modelSpec,
+            hit_count: 2,
+            citations,
+            images,
+            route: {
+              mode: 'hybrid',
+              selected: ['text'],
+              reason: 'agent: explicit params',
+              kb_names: [kbName],
+            },
+            steps,
+            usage,
+            agent,
           },
         },
       ];

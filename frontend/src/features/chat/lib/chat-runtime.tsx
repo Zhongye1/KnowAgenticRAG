@@ -6,13 +6,13 @@ import {
 import { useEffect, useMemo, type PropsWithChildren } from 'react';
 import { useLocation } from 'react-router';
 
-import { chatAdapter } from './chat-adapter';
+import { kbChatAdapter } from './chat-adapter';
 import { chatAttachmentAdapter } from './attachment-adapter';
 import { ChatThreadListAdapter } from './chat-thread-list-adapter';
 
 /** 每线程 LocalRuntime：附随问附件 adapter（assistant-ui runtimeHook 约定） */
 const useChatLocalRuntime = () =>
-  useLocalRuntime(chatAdapter, {
+  useLocalRuntime(kbChatAdapter, {
     adapters: { attachments: chatAttachmentAdapter },
   });
 

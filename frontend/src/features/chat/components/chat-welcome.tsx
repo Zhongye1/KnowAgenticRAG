@@ -12,18 +12,24 @@ const SUGGESTED_QUESTIONS = [
 /** 空会话欢迎态：选择知识库的引导 + 建议问题 */
 export const ChatWelcome = () => {
   const kbName = useChatSettingsStore((s) => s.kbName);
+  const mode = useChatSettingsStore((s) => s.mode);
   const aui = useAui();
+  const isAgent = mode === 'agent';
 
   return (
     <div className="flex flex-col items-center px-4 text-center">
       <div className="bg-primary/10 text-primary flex size-12 items-center justify-center rounded-2xl">
         <LibraryBig className="size-6" />
       </div>
-      <h1 className="mt-4 text-2xl font-medium tracking-tight">知识库问答</h1>
+      <h1 className="mt-4 text-2xl font-medium tracking-tight">
+        {isAgent ? 'Agent 知识库问答' : '知识库问答'}
+      </h1>
       <p className="text-muted-foreground mt-2 text-sm">
-        {kbName
-          ? '基于所选知识库检索并生成带引用来源的回答'
-          : '请先在下方选择要问答的知识库'}
+        {!kbName
+          ? '请先在下方选择要问答的知识库'
+          : isAgent
+            ? '先规划子查询、按需工具检索并自省改写，再生成带引用的回答'
+            : '基于所选知识库检索并生成带引用来源的回答'}
       </p>
       <div className="mt-6 flex w-full flex-wrap items-center justify-center gap-2">
         {SUGGESTED_QUESTIONS.map((question) => (
