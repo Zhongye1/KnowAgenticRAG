@@ -17,7 +17,8 @@ from fastapi import APIRouter, Depends, Path
 from sse_starlette import EventSourceResponse
 
 from backend.src.app.kb.crud import document_dao
-from backend.src.app.kb.deps import CurrentNamespace, CurrentScope
+from backend.src.app.kb.deps import CurrentKbUser, CurrentNamespace, CurrentScope
+from backend.src.app.kb.service.acl.resolver import Perm, perm_at_least, resolve_kb_perm
 from backend.src.app.kb.service.document_storage import get_document_url
 from backend.src.app.kb.utils.permissions import RAG_KB_READ, RAG_KB_SEARCH
 from backend.src.app.retrieval.schema.rag_query import ImageUrlData, RagSearchOutput, RagSearchParam
@@ -124,6 +125,7 @@ async def get_rag_image_url(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
     image_id: Annotated[str, Path(description='视觉行 ID（{document_id}_t{序号}）', max_length=255)],
+    user: CurrentKbUser,
 ) -> ResponseSchemaModel[ImageUrlData]:
     ref = await asyncio.to_thread(get_visual_image_ref, image_id, plugin_namespace=current_namespace)
     if ref is None:
@@ -131,6 +133,10 @@ async def get_rag_image_url(
     # 文档存在性校验（PG 事实源；kb_name 归属随行返回，防跨库对象键伪造）
     doc = await document_dao.get(db, ref['document_id'], kb_name=ref['kb_name'], plugin_namespace=current_namespace)
     if doc is None:
+        raise errors.NotFoundError(msg='视觉图像不存在')
+    # 资源级校验：KB >= read（无权与不存在同形态 404，D50）
+    perm = await resolve_kb_perm(db, user_id=user.user_id, dept_id=user.dept_id, roles=user.roles, kb_name=doc.kb_name)
+    if not perm_at_least(perm, Perm.READ):
         raise errors.NotFoundError(msg='视觉图像不存在')
     url = get_document_url(ref['image_path'], expires=_IMAGE_URL_EXPIRES)
     data = ImageUrlData(

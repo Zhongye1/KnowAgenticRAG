@@ -8,6 +8,8 @@ from typing import Any, cast
 
 import pytest
 
+from backend.src.app.kb.service.acl.resolver import Perm
+from backend.src.app.kb.service.acl.scope import UserContext
 from backend.src.app.retrieval.api.v1 import rag_query
 from backend.src.app.retrieval.service.rag_adapter import build_rag_payload
 from backend.src.common.exception import errors
@@ -95,14 +97,23 @@ def test_get_rag_image_url_signs_object_key(monkeypatch: pytest.MonkeyPatch) -> 
         },
     )
 
+    class _FakeDoc:
+        kb_name = 'dev'
+
     class FakeDocDao:
         async def get(self, db: Any, document_id: str, *, kb_name: Any = None, plugin_namespace: Any = None) -> Any:
-            return object()
+            return _FakeDoc()
 
     monkeypatch.setattr(rag_query, 'document_dao', FakeDocDao())
     monkeypatch.setattr(rag_query, 'get_document_url', lambda key, expires=3600: f'http://signed/{key}')
 
-    result = _run(rag_query.get_rag_image_url(cast('Any', None), 'core', 'doca_t0'))
+    async def _allow(*_a: Any, **_k: Any) -> Any:
+        await asyncio.sleep(0)
+        return Perm.READ
+
+    monkeypatch.setattr(rag_query, 'resolve_kb_perm', _allow)
+    user = UserContext(user_id='u1', namespace='core')
+    result = _run(rag_query.get_rag_image_url(cast('Any', None), 'core', 'doca_t0', user))
     data = result.data
     assert data.image_id == 'doca_t0'
     assert data.document_id == 'doca'
@@ -114,7 +125,11 @@ def test_get_rag_image_url_signs_object_key(monkeypatch: pytest.MonkeyPatch) -> 
 def test_get_rag_image_url_unknown_image_404(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(rag_query, 'get_visual_image_ref', lambda image_id, *, plugin_namespace=None: None)
     with pytest.raises(errors.NotFoundError):
-        _run(rag_query.get_rag_image_url(cast('Any', None), 'core', 'missing_t0'))
+        _run(
+            rag_query.get_rag_image_url(
+                cast('Any', None), 'core', 'missing_t0', UserContext(user_id='u1', namespace='core')
+            )
+        )
 
 
 def test_get_rag_image_url_missing_document_404(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -135,4 +150,8 @@ def test_get_rag_image_url_missing_document_404(monkeypatch: pytest.MonkeyPatch)
 
     monkeypatch.setattr(rag_query, 'document_dao', FakeDocDao())
     with pytest.raises(errors.NotFoundError):
-        _run(rag_query.get_rag_image_url(cast('Any', None), 'core', 'ghost_t0'))
+        _run(
+            rag_query.get_rag_image_url(
+                cast('Any', None), 'core', 'ghost_t0', UserContext(user_id='u1', namespace='core')
+            )
+        )

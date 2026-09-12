@@ -1,6 +1,8 @@
 """知识库注册表 CRUD。"""
 
-from sqlalchemy import Select, delete, or_, select
+from collections.abc import Sequence
+
+from sqlalchemy import Select, delete, false, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.app.kb.crud.base import TenantScopedCrud, result_rowcount
@@ -28,10 +30,17 @@ class CRUDKnowledgeBase(TenantScopedCrud[KnowledgeBase]):
         plugin_namespace: str | None = None,
         query: str | None = None,
         sort: str = 'recent',
+        kb_names: Sequence[str] | None = None,
     ) -> Select:
-        """构造列表查询（供分页器使用）。"""
+        """构造列表查询（供分页器使用）。
+
+        kb_names 为资源权限求值后的可见集合（default deny 过滤在 service 层完成）：
+        传 None = 不过滤；传空序列 = 无任何可见库（短路返回空集）。
+        """
         ns = instance_namespace(plugin_namespace)
         stmt: Select = select(KnowledgeBase).where(KnowledgeBase.plugin_namespace == ns)
+        if kb_names is not None:
+            stmt = stmt.where(KnowledgeBase.kb_name.in_(kb_names)) if kb_names else stmt.where(false())
         if query:
             stmt = stmt.where(
                 or_(

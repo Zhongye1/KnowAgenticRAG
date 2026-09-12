@@ -18,7 +18,8 @@ from backend.src.app.ingest.schema.ingest import (
 )
 from backend.src.app.ingest.service.ingest_service import IN_PROGRESS_STATUSES
 from backend.src.app.kb.crud import document_dao, knowledge_base_dao
-from backend.src.app.kb.deps import CurrentNamespace
+from backend.src.app.kb.deps import CurrentKbUser, CurrentNamespace
+from backend.src.app.kb.service.acl.resolver import Perm, perm_at_least, resolve_kb_perm
 from backend.src.app.kb.service.document_service import document_service
 from backend.src.app.kb.utils.permissions import RAG_KB_INGEST, RAG_KB_LIST
 from backend.src.common.exception import errors
@@ -59,6 +60,18 @@ def _enqueue_ingest(document_id: str, kb_name: str, plugin_namespace: str) -> No
     )
 
 
+async def _require_kb_perm(
+    db: CurrentSessionTransaction,
+    kb_name: str,
+    user: CurrentKbUser,
+    threshold: Perm,
+) -> None:
+    """资源级权限断言：未达 threshold 与 KB 不存在同形态 404（不泄露存在性，D50）。"""
+    perm = await resolve_kb_perm(db, user_id=user.user_id, dept_id=user.dept_id, roles=user.roles, kb_name=kb_name)
+    if not perm_at_least(perm, threshold):
+        raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
+
+
 def _uploader_identity(request: Request) -> tuple[str | None, int | None]:
     """上传者身份（入库打标：owner_id + 上传者部门，§8.1）。"""
     if isinstance(request.user, UnauthenticatedUser):
@@ -77,12 +90,14 @@ async def upload_document(
     current_namespace: CurrentNamespace,
     kb_name: Annotated[str, Path(description='知识库标识', pattern=r'^[a-z0-9_]+$')],
     file: Annotated[UploadFile, File(description='文档文件（D13 格式子集）')],
+    user: CurrentKbUser,
     source_type: Annotated[str, Form(description='来源类型')] = 'file',
 ) -> ResponseSchemaModel[DocumentUploadItem]:
     """两段式第一步：存储 + 登记，不派发摄取（去重命中 409）。"""
     kb = await knowledge_base_dao.get(db, kb_name, plugin_namespace=current_namespace)
     if kb is None:
         raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
+    await _require_kb_perm(db, kb_name, user, Perm.CONTRIBUTE)
     filename = (file.filename or '').strip() or 'file'
     _ensure_supported_format(filename)
 
@@ -132,11 +147,13 @@ async def ingest_registered_document(
     current_namespace: CurrentNamespace,
     kb_name: Annotated[str, Path(description='知识库标识', pattern=r'^[a-z0-9_]+$')],
     document_id: Annotated[str, Path(description='文档 ID')],
+    user: CurrentKbUser,
 ) -> ResponseSchemaModel[IngestResultItem]:
     """两段式第二步：仅派发摄取，不再接收文件字节。"""
     kb = await knowledge_base_dao.get(db, kb_name, plugin_namespace=current_namespace)
     if kb is None:
         raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
+    await _require_kb_perm(db, kb_name, user, Perm.CONTRIBUTE)
     doc = await document_dao.get(db, document_id, kb_name=kb_name, plugin_namespace=current_namespace)
     if doc is None:
         raise errors.NotFoundError(msg='文档不存在')
@@ -166,10 +183,12 @@ async def get_document_status(
     current_namespace: CurrentNamespace,
     kb_name: Annotated[str, Path(description='知识库标识')],
     document_id: Annotated[str, Path(description='文档 ID')],
+    user: CurrentKbUser,
 ) -> ResponseSchemaModel[DocumentStatusItem]:
     doc = await document_dao.get(db, document_id, kb_name=kb_name, plugin_namespace=current_namespace)
     if doc is None:
         raise errors.NotFoundError(msg='文档不存在')
+    await _require_kb_perm(db, kb_name, user, Perm.READ)
     return response_base.success(
         data=DocumentStatusItem(
             document_id=doc.document_id,
@@ -195,10 +214,12 @@ async def rebuild_knowledge_base(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
     kb_name: Annotated[str, Path(description='知识库标识')],
+    user: CurrentKbUser,
 ) -> ResponseSchemaModel[RebuildResultItem]:
     kb = await knowledge_base_dao.get(db, kb_name, plugin_namespace=current_namespace)
     if kb is None:
         raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
+    await _require_kb_perm(db, kb_name, user, Perm.CONTRIBUTE)
     stmt = await document_dao.get_select(kb_name=kb_name, plugin_namespace=current_namespace)
     documents = list((await db.execute(stmt)).scalars().all())
     dispatched = 0

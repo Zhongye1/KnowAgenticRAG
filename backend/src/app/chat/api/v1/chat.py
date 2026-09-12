@@ -32,6 +32,7 @@ from backend.src.app.kb.deps import (
     CurrentScope,  # ruff: ignore[typing-only-first-party-import]
 )
 from backend.src.app.kb.utils.permissions import RAG_KB_CHAT
+from backend.src.common.exception import errors
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
 from backend.src.common.security.permission import RequestPermission
@@ -58,8 +59,10 @@ async def chat_knowledge_base(
 ) -> ResponseSchemaModel[ChatResponse]:
     """检索命中 → 带引用上下文的完整回答（字段 = 流式各事件负载并集）。
 
-    语义错误走 HTTP：KB 不存在 404、参数/模型未配置 400（fba 统一异常面）。
+    语义错误走 HTTP：KB 不存在/无权同形态 404（D50）、参数/模型未配置 400（fba 统一异常面）。
     """
+    if kb_name not in scope.allowed_kbs:
+        raise errors.NotFoundError(msg='知识库不存在')
     data = await chat_service.acomplete(db, kb_name=kb_name, param=obj, plugin_namespace=current_namespace, scope=scope)
     return cast(
         'ResponseSchemaModel[ChatResponse]',
@@ -76,6 +79,8 @@ async def chat_knowledge_base_stream(
     obj: ChatParam,
 ) -> EventSourceResponse:
     """检索 step 即时推送 → 引用 → 逐帧 delta → 自包含 done；错误走约定事件。"""
+    if kb_name not in scope.allowed_kbs:
+        raise errors.NotFoundError(msg='知识库不存在')
 
     async def _events() -> AsyncIterator[dict[str, Any]]:
         async for event, data in chat_service.astream(

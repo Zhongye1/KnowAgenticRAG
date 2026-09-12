@@ -1,21 +1,18 @@
-"""Scope 构建与 Milvus 表达式生成单元测试（agent-layer spec ACL 设计）。
+"""Milvus 表达式生成单元测试（agent-layer spec ACL 设计）。
 
 覆盖：
-- Scope / UserContext 数据类
 - validate_ids_for_expr 白名单校验
 - to_milvus_expr 表达式生成（namespace + 文档级 ACL，kb_name 由 milvus 层注入）
+
+Scope/UserContext 数据类测试在 kb 域（scope 已下沉，kb-ownership-and-acl-v2 D46）。
 """
 
 from __future__ import annotations
 
 import pytest
 
-from backend.src.app.retrieval.service.scope import (
-    Scope,
-    UserContext,
-    to_milvus_expr,
-    validate_ids_for_expr,
-)
+from backend.src.app.kb.service.acl.scope import Scope
+from backend.src.app.retrieval.service.scope import to_milvus_expr, validate_ids_for_expr
 
 
 class TestValidateIdsForExpr:
@@ -127,51 +124,3 @@ class TestToMilvusExpr:
 
         assert 'namespace == "prod"' in expr
         assert 'array_contains_any(groups, ["admins"])' in expr
-
-
-class TestScopeDataclass:
-    """Scope 数据类测试。"""
-
-    def test_frozen(self) -> None:
-        """Scope 应为不可变对象。"""
-        scope = Scope(
-            namespace='core',
-            user_id='user1',
-            groups=[],
-            allowed_kbs=[],
-        )
-        # 故意赋值，验证 frozen dataclass 运行时抛出 AttributeError
-        with pytest.raises(AttributeError):
-            scope.namespace = 'other'  # pyright: ignore[reportAttributeAccessIssue]
-
-    def test_defaults(self) -> None:
-        """Scope 应有默认值。"""
-        scope = Scope(
-            namespace='core',
-            user_id='user1',
-        )
-        assert scope.groups == []
-        assert scope.allowed_kbs == []
-
-
-class TestUserContextDataclass:
-    """UserContext 数据类测试。"""
-
-    def test_frozen(self) -> None:
-        """UserContext 应为不可变对象。"""
-        ctx = UserContext(user_id='user1', namespace='core', dept_id=1)
-        # 故意赋值，验证 frozen dataclass 运行时抛出 AttributeError
-        with pytest.raises(AttributeError):
-            ctx.user_id = 'other'  # pyright: ignore[reportAttributeAccessIssue]
-
-    def test_dept_id_optional(self) -> None:
-        """dept_id 应有默认值 None。"""
-        ctx = UserContext(user_id='user1', namespace='core')
-        assert ctx.dept_id is None
-
-    def test_full_context(self) -> None:
-        """完整上下文应正确构造。"""
-        ctx = UserContext(user_id='user1', namespace='core', dept_id=42)
-        assert ctx.user_id == 'user1'
-        assert ctx.namespace == 'core'
-        assert ctx.dept_id == 42

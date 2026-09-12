@@ -42,8 +42,8 @@ if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
     from backend.src.app.chat.schema.chat import ChatParam
+    from backend.src.app.kb.service.acl.scope import Scope
     from backend.src.app.model_provider.providers.chat import OpenAICompatibleChatModel
-    from backend.src.app.retrieval.service.scope import Scope
 
 ChatEvent = tuple[str, dict[str, Any]]
 

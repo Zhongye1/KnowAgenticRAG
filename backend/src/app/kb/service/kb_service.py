@@ -16,6 +16,8 @@ from backend.src.app.kb.crud import (
 from backend.src.app.kb.model import KnowledgeBase
 from backend.src.app.kb.schema.knowledge_base import KBCreateParam, KBUpdateParam
 from backend.src.app.kb.service.acl.entries import acl_entry_service
+from backend.src.app.kb.service.acl.resolver import Perm, perm_at_least, resolve_kb_perm, resolve_visible_kbs
+from backend.src.app.kb.service.acl.scope import UserContext
 from backend.src.app.kb.service.document_storage import delete_document_object, kb_parsed_object_key
 from backend.src.app.kb.service.kb_stats_service import KnowledgeBaseStatsService
 from backend.src.app.kb.utils.namespace import instance_namespace
@@ -29,28 +31,38 @@ from backend.src.database.milvus_kb_ops import (
 
 
 class KnowledgeBaseService:
-    """知识库业务逻辑。"""
+    """知识库业务逻辑（资源级权限经 resolve_kb_perm，无权统一 404 不泄露存在性）。"""
 
     @staticmethod
     async def get_list(
         *,
         db: AsyncSession,
+        user: UserContext,
         query: str | None = None,
         sort: str = 'recent',
     ) -> dict[str, Any]:
-        """分页获取知识库列表（含实时统计）。"""
-        stmt = await knowledge_base_dao.get_select(query=query, sort=sort)
+        """分页获取知识库列表（含实时统计；仅含当前用户可见库，default deny）。"""
+        visible = await resolve_visible_kbs(db, user_id=user.user_id, dept_id=user.dept_id, roles=user.roles)
+        stmt = await knowledge_base_dao.get_select(query=query, sort=sort, kb_names=visible)
         data = await paging_data(db, stmt)
         data['items'] = [await KnowledgeBaseService._with_stats(db=db, kb=kb) for kb in data['items']]
         return data
 
     @staticmethod
-    async def get_detail(*, db: AsyncSession, kb_name: str) -> dict[str, Any]:
-        """获取单个知识库（含统计）。"""
+    async def get_detail(*, db: AsyncSession, kb_name: str, user: UserContext) -> dict[str, Any]:
+        """获取单个知识库（含统计；无权与不存在同形态 404）。"""
         kb = await knowledge_base_dao.get(db, kb_name)
-        if kb is None:
+        if kb is None or not await KnowledgeBaseService._has_perm(
+            db=db, kb_name=kb_name, user=user, threshold=Perm.READ
+        ):
             raise errors.NotFoundError(msg='知识库不存在')
         return await KnowledgeBaseService._with_stats(db=db, kb=kb)
+
+    @staticmethod
+    async def _has_perm(*, db: AsyncSession, kb_name: str, user: UserContext, threshold: Perm) -> bool:
+        """当前用户在 KB 上是否达到 threshold 级别。"""
+        perm = await resolve_kb_perm(db, user_id=user.user_id, dept_id=user.dept_id, roles=user.roles, kb_name=kb_name)
+        return perm_at_least(perm, threshold)
 
     @staticmethod
     async def _with_stats(*, db: AsyncSession, kb: KnowledgeBase) -> dict[str, Any]:
@@ -88,19 +100,26 @@ class KnowledgeBaseService:
         return kb
 
     @staticmethod
-    async def update(*, db: AsyncSession, kb_name: str, obj: KBUpdateParam) -> KnowledgeBase:
-        """更新知识库。"""
-        kb = await knowledge_base_dao.update(db, kb_name, obj)
-        if kb is None:
+    async def update(*, db: AsyncSession, kb_name: str, obj: KBUpdateParam, user: UserContext) -> KnowledgeBase:
+        """更新知识库（仅 Owner；无权与不存在同形态 404）。"""
+        kb = await knowledge_base_dao.get(db, kb_name)
+        if kb is None or not await KnowledgeBaseService._has_perm(
+            db=db, kb_name=kb_name, user=user, threshold=Perm.OWNER
+        ):
             raise errors.NotFoundError(msg='知识库不存在')
-        return kb
+        updated = await knowledge_base_dao.update(db, kb_name, obj)
+        if updated is None:  # pragma: no cover - 前置已确认存在
+            raise errors.NotFoundError(msg='知识库不存在')
+        return updated
 
     @staticmethod
-    async def delete(*, db: AsyncSession, kb_name: str) -> dict[str, int]:
-        """级联删除知识库：Milvus 向量 → documents → dedup → keywords → 注册行。"""
+    async def delete(*, db: AsyncSession, kb_name: str, user: UserContext) -> dict[str, int]:
+        """级联删除知识库（仅 Owner）：Milvus 向量 → documents → dedup → keywords → 注册行。"""
         ns = instance_namespace()
         kb = await knowledge_base_dao.get(db, kb_name, plugin_namespace=ns)
-        if kb is None:
+        if kb is None or not await KnowledgeBaseService._has_perm(
+            db=db, kb_name=kb_name, user=user, threshold=Perm.OWNER
+        ):
             raise errors.NotFoundError(msg='知识库不存在')
 
         counts: dict[str, int] = {

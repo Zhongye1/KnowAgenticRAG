@@ -16,7 +16,7 @@ from starlette.testclient import TestClient
 from backend.main import app
 from backend.src.app.agent.service.agent_service import agent_service
 from backend.src.app.kb.deps import get_retrieval_scope
-from backend.src.app.retrieval.service.scope import Scope
+from backend.src.app.kb.service.acl.scope import Scope
 from backend.src.common.security.jwt import jwt_authentication_verify
 from backend.src.common.security.rbac import rbac_verify
 from backend.src.database.db import get_db

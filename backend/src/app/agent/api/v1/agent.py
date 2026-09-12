@@ -33,6 +33,7 @@ from backend.src.app.kb.deps import (
     CurrentScope,  # ruff: ignore[typing-only-first-party-import]
 )
 from backend.src.app.kb.utils.permissions import RAG_KB_AGENT
+from backend.src.common.exception import errors
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
 from backend.src.common.security.permission import RequestPermission
@@ -59,8 +60,10 @@ async def agent_knowledge_base(
 ) -> ResponseSchemaModel[AgentResponse]:
     """服务端图编排（plan/act/grade/rewrite/generate）后返回带引用的完整回答。
 
-    语义错误走 HTTP：KB 不存在 404、参数/模型未配置 400（fba 统一异常面）。
+    语义错误走 HTTP：KB 不存在/无权同形态 404（D50）、参数/模型未配置 400（fba 统一异常面）。
     """
+    if kb_name not in scope.allowed_kbs:
+        raise errors.NotFoundError(msg='知识库不存在')
     data = await agent_service.acomplete(
         db, kb_name=kb_name, param=obj, plugin_namespace=current_namespace, scope=scope
     )

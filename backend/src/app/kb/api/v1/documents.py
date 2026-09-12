@@ -5,10 +5,11 @@ from typing import Annotated, cast
 from fastapi import APIRouter, Depends, File, Path, Query, UploadFile
 
 from backend.src.app.kb.crud import chunk_dao, document_dao
-from backend.src.app.kb.deps import CurrentNamespace
+from backend.src.app.kb.deps import CurrentKbUser, CurrentNamespace
 from backend.src.app.kb.model import Document
 from backend.src.app.kb.schema.chunk import ChunkItem
 from backend.src.app.kb.schema.document import DocumentItem, DocumentUpdateParam
+from backend.src.app.kb.service.acl.resolver import Perm, perm_at_least, resolve_kb_perm, resolve_visible_kbs
 from backend.src.app.kb.service.document_service import document_service
 from backend.src.app.kb.utils.permissions import RAG_KB_INGEST, RAG_KB_LIST, RAG_KB_MANAGE, RAG_KB_READ
 from backend.src.common.exception import errors
@@ -25,6 +26,18 @@ _PERM_INGEST = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_INGEST)), Depen
 _PERM_MANAGE = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_MANAGE)), DependsRBAC]
 
 router = APIRouter()
+
+
+async def _require_kb_perm(
+    db: CurrentSession,
+    kb_name: str,
+    user: CurrentKbUser,
+    threshold: Perm,
+) -> None:
+    """资源级权限断言：未达 threshold 与文档不存在同形态 404（不泄露存在性，D50）。"""
+    perm = await resolve_kb_perm(db, user_id=user.user_id, dept_id=user.dept_id, roles=user.roles, kb_name=kb_name)
+    if not perm_at_least(perm, threshold):
+        raise errors.NotFoundError(msg='文档不存在')
 
 
 def _doc_to_dict(doc: Document) -> dict:
@@ -56,11 +69,13 @@ async def get_document_chunks(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
     document_id: Annotated[str, Path(description='文档 ID')],
+    user: CurrentKbUser,
     version: Annotated[int | None, Query(description='版本（缺省 = 当前 active_version）')] = None,
 ) -> ResponseSchemaModel[PageData[ChunkItem]]:
     doc = await document_dao.get(db, document_id)
     if doc is None:
         raise errors.NotFoundError(msg='文档不存在')
+    await _require_kb_perm(db, doc.kb_name, user, Perm.READ)
     stmt = await chunk_dao.get_page_select(
         document_id=document_id,
         kb_name=doc.kb_name,
@@ -75,16 +90,19 @@ async def get_document_chunks(
 async def get_documents(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
+    user: CurrentKbUser,
     kb_name: Annotated[str | None, Query(description='知识库标识')] = None,
     query: Annotated[str | None, Query(description='搜索关键词')] = None,
     source_type: Annotated[str | None, Query(description='来源类型')] = None,
     status: Annotated[str | None, Query(description='状态')] = None,
 ) -> ResponseSchemaModel[PageData[DocumentItem]]:
+    visible = await resolve_visible_kbs(db, user_id=user.user_id, dept_id=user.dept_id, roles=user.roles)
     stmt = await document_dao.get_select(
         kb_name=kb_name,
         query=query,
         source_type=source_type,
         status=status,
+        kb_names=visible,
     )
     data = await paging_data(db, stmt)
     data['items'] = [DocumentItem.model_validate(_doc_to_dict(item)) for item in data['items']]
@@ -96,7 +114,12 @@ async def get_document_download(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
     document_id: Annotated[str, Path(description='文档 ID')],
+    user: CurrentKbUser,
 ) -> ResponseSchemaModel[dict[str, str]]:
+    doc = await document_dao.get(db, document_id)
+    if doc is None:
+        raise errors.NotFoundError(msg='文档不存在')
+    await _require_kb_perm(db, doc.kb_name, user, Perm.READ)
     url = await document_service.get_download_url(db=db, document_id=document_id)
     return response_base.success(data={'url': url})
 
@@ -107,7 +130,12 @@ async def replace_document_file(
     current_namespace: CurrentNamespace,
     document_id: Annotated[str, Path(description='文档 ID')],
     file: Annotated[UploadFile, File(description='新的文档文件')],
+    user: CurrentKbUser,
 ) -> ResponseSchemaModel[DocumentItem]:
+    doc = await document_dao.get(db, document_id)
+    if doc is None:
+        raise errors.NotFoundError(msg='文档不存在')
+    await _require_kb_perm(db, doc.kb_name, user, Perm.CONTRIBUTE)
     doc = await document_service.replace_file(db=db, document_id=document_id, file=file)
     return response_base.success(data=DocumentItem.model_validate(_doc_to_dict(doc)))
 
@@ -118,7 +146,12 @@ async def update_document(
     current_namespace: CurrentNamespace,
     document_id: Annotated[str, Path(description='文档 ID')],
     obj: DocumentUpdateParam,
+    user: CurrentKbUser,
 ) -> ResponseSchemaModel[DocumentItem]:
+    old = await document_dao.get(db, document_id)
+    if old is None:
+        raise errors.NotFoundError(msg='文档不存在')
+    await _require_kb_perm(db, old.kb_name, user, Perm.MANAGE)
     doc = await document_service.update(db=db, document_id=document_id, obj=obj)
     return response_base.success(data=DocumentItem.model_validate(_doc_to_dict(doc)))
 
@@ -128,7 +161,12 @@ async def delete_document(
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
     document_id: Annotated[str, Path(description='文档 ID')],
+    user: CurrentKbUser,
 ) -> ResponseSchemaModel[dict[str, int]]:
+    doc = await document_dao.get(db, document_id)
+    if doc is None:
+        raise errors.NotFoundError(msg='文档不存在')
+    await _require_kb_perm(db, doc.kb_name, user, Perm.MANAGE)
     counts = await document_service.delete(db=db, document_id=document_id)
     return response_base.success(data=counts)
 
@@ -138,8 +176,10 @@ async def get_document(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
     document_id: Annotated[str, Path(description='文档 ID')],
+    user: CurrentKbUser,
 ) -> ResponseSchemaModel[DocumentItem]:
     doc = await document_dao.get(db, document_id)
     if doc is None:
         raise errors.NotFoundError(msg='文档不存在')
+    await _require_kb_perm(db, doc.kb_name, user, Perm.READ)
     return response_base.success(data=DocumentItem.model_validate(_doc_to_dict(doc)))

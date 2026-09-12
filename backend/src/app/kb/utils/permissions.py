@@ -7,8 +7,10 @@ D30 不发明第二套权限模型）与 SQL seed（``sys_menu.perms``）共用�
 from __future__ import annotations
 
 __all__ = [
+    'RAG_KB_ACL',
     'RAG_KB_AGENT',
     'RAG_KB_CHAT',
+    'RAG_KB_CREATE',
     'RAG_KB_INGEST',
     'RAG_KB_LIST',
     'RAG_KB_MANAGE',
@@ -26,7 +28,9 @@ RAG_KB_AGENT = 'rag:kb:agent'  # Agentic 问答（plan/act/grade 工具循环，
 
 # 写动作
 RAG_KB_INGEST = 'rag:kb:ingest'  # 上传/替换/重摄取
-RAG_KB_MANAGE = 'rag:kb:manage'  # KB/文档管理 + ACL 配置 + 设 public
+RAG_KB_MANAGE = 'rag:kb:manage'  # KB/文档管理 + 设 public
+RAG_KB_CREATE = 'rag:kb:create'  # 建库（D49：建库权与授权权分离）
+RAG_KB_ACL = 'rag:kb:acl'  # 改 ACL（D49：还需逐库 == owner）
 
 # MCP 只读工具面默认权限点集合（D30）
 RAG_KB_READ_SCOPES = frozenset({RAG_KB_LIST, RAG_KB_SEARCH, RAG_KB_READ, RAG_KB_CHAT})

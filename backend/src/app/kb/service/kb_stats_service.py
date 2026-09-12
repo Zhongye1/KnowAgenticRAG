@@ -33,17 +33,24 @@ class KnowledgeBaseStatsService:
         }
 
     @staticmethod
-    async def get_overview(*, db: AsyncSession) -> dict[str, int]:
-        """跨知识库聚合。"""
+    async def get_overview(*, db: AsyncSession, kb_names: list[str] | None = None) -> dict[str, int]:
+        """跨知识库聚合（kb_names 传 None = 全域；传可见集合 = 仅聚合可见库，防汇总图泄露）。"""
         ns = instance_namespace()
-        total_kbs = await knowledge_base_dao.count(db, plugin_namespace=ns)
-        total_documents = await document_dao.count(db, plugin_namespace=ns)
         text_coll, visual_coll = base_collection_names()
+        if kb_names is None:
+            total_kbs = await knowledge_base_dao.count(db, plugin_namespace=ns)
+            total_documents = await document_dao.count(db, plugin_namespace=ns)
+            return {
+                'total_kbs': total_kbs,
+                'total_documents': total_documents,
+                'total_text_vectors': count_all_entities(text_coll, plugin_namespace=ns),
+                'total_visual_vectors': count_all_entities(visual_coll, plugin_namespace=ns),
+            }
         return {
-            'total_kbs': total_kbs,
-            'total_documents': total_documents,
-            'total_text_vectors': count_all_entities(text_coll, plugin_namespace=ns),
-            'total_visual_vectors': count_all_entities(visual_coll, plugin_namespace=ns),
+            'total_kbs': len(kb_names),
+            'total_documents': await document_dao.count_by_kbs(db, kb_names=kb_names, plugin_namespace=ns),
+            'total_text_vectors': sum(count_entities_by_kb(text_coll, kb, plugin_namespace=ns) for kb in kb_names),
+            'total_visual_vectors': sum(count_entities_by_kb(visual_coll, kb, plugin_namespace=ns) for kb in kb_names),
         }
 
     @staticmethod

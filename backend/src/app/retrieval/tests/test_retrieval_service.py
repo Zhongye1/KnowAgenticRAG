@@ -13,8 +13,8 @@ from typing import Any
 
 import pytest
 
+from backend.src.app.kb.service.acl.scope import Scope
 from backend.src.app.retrieval.service.retrieval_service import RetrievalService
-from backend.src.app.retrieval.service.scope import Scope
 from backend.src.common.exception import errors
 
 

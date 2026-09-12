@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from backend.src.app.kb.service.acl.scope import Scope
 from backend.src.app.mcp.schemas import (
     PERM_KB_CHAT,
     PERM_KB_READ,
@@ -14,7 +15,6 @@ from backend.src.app.mcp.schemas import (
     UserContext,
 )
 from backend.src.app.mcp.service import TOOLS_BY_NAME, McpToolkit, ToolError
-from backend.src.app.retrieval.service.scope import Scope
 from backend.src.common.exception import errors
 
 

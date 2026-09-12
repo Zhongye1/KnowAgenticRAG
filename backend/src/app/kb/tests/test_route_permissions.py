@@ -9,7 +9,9 @@ from __future__ import annotations
 from typing import Any
 
 from backend.src.app.kb.utils.permissions import (
+    RAG_KB_ACL,
     RAG_KB_CHAT,
+    RAG_KB_CREATE,
     RAG_KB_INGEST,
     RAG_KB_LIST,
     RAG_KB_MANAGE,
@@ -79,7 +81,7 @@ def test_kb_routes_require_list_or_manage_perm() -> None:
 
     assert RAG_KB_LIST in _route_perm_codes(_find_route(router, '', 'GET'))
     assert RAG_KB_LIST in _route_perm_codes(_find_route(router, '/overview', 'GET'))
-    assert RAG_KB_MANAGE in _route_perm_codes(_find_route(router, '', 'POST'))
+    assert RAG_KB_CREATE in _route_perm_codes(_find_route(router, '', 'POST'))  # D49 建库权拆分
     assert RAG_KB_MANAGE in _route_perm_codes(_find_route(router, '/{kb_name}', 'DELETE'))
 
 
@@ -104,7 +106,7 @@ def test_acl_routes_require_manage_perm() -> None:
     from backend.src.app.kb.api.v1.acls import doc_acl_router, kb_acl_router
 
     assert RAG_KB_LIST in _route_perm_codes(_find_route(kb_acl_router, '/{kb_name}/acl', 'GET'))
-    assert RAG_KB_MANAGE in _route_perm_codes(_find_route(kb_acl_router, '/{kb_name}/acl', 'PUT'))
+    assert RAG_KB_ACL in _route_perm_codes(_find_route(kb_acl_router, '/{kb_name}/acl', 'PUT'))  # D49 授权权拆分
     assert RAG_KB_READ in _route_perm_codes(_find_route(doc_acl_router, '/{document_id}/acl', 'GET'))
     assert RAG_KB_MANAGE in _route_perm_codes(_find_route(doc_acl_router, '/{document_id}/acl', 'PUT'))
 

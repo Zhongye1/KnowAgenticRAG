@@ -37,7 +37,7 @@ from backend.src.app.retrieval.service.filters import (
     filter_active_versions,
 )
 from backend.src.app.retrieval.service.params import merge_search_params, resolve_recall_top_k
-from backend.src.app.retrieval.service.scope import Scope, to_milvus_expr
+from backend.src.app.retrieval.service.scope import to_milvus_expr
 from backend.src.app.retrieval.service.strategies import RETRIEVE_STRATEGIES
 from backend.src.app.retrieval.service.strategies.visual import retrieve_visual
 from backend.src.common.exception import errors
@@ -49,6 +49,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.ext.asyncio import AsyncSession
 
+    from backend.src.app.kb.service.acl.scope import Scope
     from backend.src.app.retrieval.service.ports import ChunkSourcePort
 
 _TRACER = otel_trace.get_tracer('backend.ragf')

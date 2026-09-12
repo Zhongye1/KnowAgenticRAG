@@ -16,6 +16,8 @@ from backend.src.app.kb.crud.crud_acl import doc_acl_dao, kb_acl_dao
 from backend.src.app.kb.crud.crud_acl_audit import acl_audit_dao
 from backend.src.app.kb.model.acl import DocAcl, KbAcl
 from backend.src.app.kb.schema.acl import DocAclEntry, KBAclEntry
+from backend.src.app.kb.service.acl.resolver import Perm, perm_at_least, resolve_kb_perm
+from backend.src.app.kb.service.acl.scope import UserContext
 from backend.src.app.kb.utils.namespace import instance_namespace
 from backend.src.common.exception import errors
 from backend.src.common.log import log
@@ -24,6 +26,13 @@ from backend.src.database.milvus_kb_ops import update_ragf_document_acl
 _AUDIT_ACTIONS_KB_ACL = 'kb_acl_update'
 _AUDIT_ACTIONS_DOC_ACL = 'doc_acl_update'
 _AUDIT_ACTIONS_OWNER_INIT = 'kb_owner_init'
+
+
+async def _require_perm(db: AsyncSession, *, kb_name: str, user: UserContext, threshold: Perm) -> None:
+    """资源级权限断言：未达 threshold 与 KB 不存在同形态 404（不泄露存在性，D50）。"""
+    perm = await resolve_kb_perm(db, user_id=user.user_id, dept_id=user.dept_id, roles=user.roles, kb_name=kb_name)
+    if not perm_at_least(perm, threshold):
+        raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
 
 
 def _entry_snapshot(*entries: KbAcl | DocAcl | KBAclEntry | DocAclEntry) -> list[dict[str, Any]]:
@@ -47,8 +56,9 @@ class AclEntryService:
 
     # ------------------------------------------------------------------ KB 级
     @staticmethod
-    async def get_kb_acl(*, db: AsyncSession, kb_name: str) -> dict[str, Any]:
-        """查询 KB 授权条目列表（KB 不存在 → NotFound）。"""
+    async def get_kb_acl(*, db: AsyncSession, kb_name: str, user: UserContext) -> dict[str, Any]:
+        """查询 KB 授权条目列表（要求 >= manage，G8；无权与不存在同形态 404）。"""
+        await _require_perm(db, kb_name=kb_name, user=user, threshold=Perm.MANAGE)
         kb = await knowledge_base_dao.get(db, kb_name)
         if kb is None:
             raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
@@ -62,8 +72,10 @@ class AclEntryService:
         kb_name: str,
         entries: list[KBAclEntry],
         operator_id: str | None,
+        user: UserContext,
     ) -> dict[str, Any]:
-        """全量替换 KB 授权条目 + 审计（KB 级 ACL 是查询期语义，无 Milvus 传播）。"""
+        """全量替换 KB 授权条目 + 审计（要求 == owner，D49；KB 级 ACL 是查询期语义）。"""
+        await _require_perm(db, kb_name=kb_name, user=user, threshold=Perm.OWNER)
         kb = await knowledge_base_dao.get(db, kb_name)
         if kb is None:
             raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
@@ -119,11 +131,12 @@ class AclEntryService:
 
     # ------------------------------------------------------------------ 文档级
     @staticmethod
-    async def get_document_acl(*, db: AsyncSession, document_id: str) -> dict[str, Any]:
-        """查询文档可见性 + 授权条目列表（文档不存在 → NotFound）。"""
+    async def get_document_acl(*, db: AsyncSession, document_id: str, user: UserContext) -> dict[str, Any]:
+        """查询文档可见性 + 授权条目列表（要求 KB >= read；文档不存在 → NotFound）。"""
         doc = await document_dao.get(db, document_id)
         if doc is None:
             raise errors.NotFoundError(msg='文档不存在')
+        await _require_perm(db, kb_name=doc.kb_name, user=user, threshold=Perm.READ)
         entries = await doc_acl_dao.list_entries(
             db, document_id=document_id, kb_name=doc.kb_name, plugin_namespace=doc.plugin_namespace
         )
@@ -140,17 +153,19 @@ class AclEntryService:
         *,
         db: AsyncSession,
         document_id: str,
+        user: UserContext,
         visibility: str | None = None,
         entries: list[DocAclEntry] | None = None,
         updated_by: str | None = None,
     ) -> dict[str, Any]:
-        """更新文档 ACL（DB 为准 + Milvus 标量按主键 upsert 传播 + 审计）。
+        """更新文档 ACL（要求 KB >= manage；DB 为准 + Milvus 标量按主键 upsert 传播 + 审计）。
 
         visibility/entries 传 None = 保持不变；entries 提供即全量替换。
         """
         doc = await document_dao.get(db, document_id)
         if doc is None:
             raise errors.NotFoundError(msg='文档不存在')
+        await _require_perm(db, kb_name=doc.kb_name, user=user, threshold=Perm.MANAGE)
 
         before = _entry_snapshot(
             *(

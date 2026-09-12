@@ -1,9 +1,10 @@
 """文档元数据 CRUD（只读登记，不含摄取）。"""
 
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Select, delete, func, or_, select
+from sqlalchemy import Select, delete, false, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.app.kb.crud.base import TenantScopedCrud, result_rowcount
@@ -72,10 +73,16 @@ class CRUDDocument(TenantScopedCrud[Document]):
         query: str | None = None,
         source_type: str | None = None,
         status: str | None = None,
+        kb_names: Sequence[str] | None = None,
     ) -> Select:
-        """构造文档列表查询（供分页器使用）。"""
+        """构造文档列表查询（供分页器使用）。
+
+        kb_names 为资源权限求值后的可见集合：传 None = 不过滤；传空序列 = 空集。
+        """
         ns = instance_namespace(plugin_namespace)
         stmt: Select = select(Document).where(Document.plugin_namespace == ns)
+        if kb_names is not None:
+            stmt = stmt.where(Document.kb_name.in_(kb_names)) if kb_names else stmt.where(false())
         if kb_name:
             stmt = stmt.where(Document.kb_name == kb_name)
         if query:
@@ -172,6 +179,27 @@ class CRUDDocument(TenantScopedCrud[Document]):
     async def count(self, db: AsyncSession, *, plugin_namespace: str | None = None) -> int:
         """统计域内文档总数。"""
         return await self.count_scoped(db, plugin_namespace=plugin_namespace)
+
+    async def count_by_kbs(
+        self,
+        db: AsyncSession,
+        *,
+        kb_names: Sequence[str],
+        plugin_namespace: str | None = None,
+    ) -> int:
+        """统计可见 KB 集合内的文档总数（default deny 聚合过滤）。"""
+        ns = instance_namespace(plugin_namespace)
+        if not kb_names:
+            return 0
+        stmt = (
+            select(func.count())
+            .select_from(Document)
+            .where(
+                Document.plugin_namespace == ns,
+                Document.kb_name.in_(kb_names),
+            )
+        )
+        return int((await db.scalar(stmt)) or 0)
 
     async def list_ids_by_kb(
         self,

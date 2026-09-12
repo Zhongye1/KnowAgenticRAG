@@ -51,7 +51,7 @@ if TYPE_CHECKING:
 
     from backend.src.app.agent.graph.stream_bridge import AgentEvent
     from backend.src.app.agent.schema.agent import AgentParam
-    from backend.src.app.retrieval.service.scope import Scope
+    from backend.src.app.kb.service.acl.scope import Scope
 
 __all__ = ['AgentBudget', 'AgentService', 'agent_service']
 

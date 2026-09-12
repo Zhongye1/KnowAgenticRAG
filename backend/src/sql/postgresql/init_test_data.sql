@@ -65,7 +65,9 @@ values
 (60, '新增', 'AddModelProvider', null, 0, null, 2, null, 'sys:model-provider:add', 1, 0, 1, '', null, 59, '2025-06-26 20:29:06', null),
 (61, '修改', 'EditModelProvider', null, 0, null, 2, null, 'sys:model-provider:edit', 1, 0, 1, '', null, 59, '2025-06-26 20:29:06', null),
 (62, '删除', 'DeleteModelProvider', null, 0, null, 2, null, 'sys:model-provider:del', 1, 0, 1, '', null, 59, '2025-06-26 20:29:06', null),
-(63, 'Agent 问答', 'RagKbAgent', null, 0, null, 2, null, 'rag:kb:agent', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null);
+(63, 'Agent 问答', 'RagKbAgent', null, 0, null, 2, null, 'rag:kb:agent', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null),
+(64, '知识库创建', 'RagKbCreate', null, 0, null, 2, null, 'rag:kb:create', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null),
+(65, '知识库授权', 'RagKbAcl', null, 0, null, 2, null, 'rag:kb:acl', 1, 0, 1, '', null, 52, '2025-06-26 20:29:06', null);
 
 insert into sys_role (id, name, status, is_filter_scopes, remark, created_time, updated_time)
 values (1, '测试', 1, true, null, now(), null);
@@ -88,7 +90,9 @@ values
 (14, 1, 60),
 (15, 1, 61),
 (16, 1, 62),
-(17, 1, 63);
+(17, 1, 63),
+(18, 1, 64),
+(19, 1, 65);
 
 insert into sys_user (id, uuid, username, nickname, password, salt, email, status, is_superuser, is_staff, is_multi_login, avatar, phone, join_time, last_login_time, last_password_changed_time, dept_id, created_time, updated_time)
 values

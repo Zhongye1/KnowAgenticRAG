@@ -18,6 +18,8 @@ from pydantic import ValidationError
 from backend.src.app.chat.schema.chat import ChatMessage, ChatParam
 from backend.src.app.chat.service.chat_service import chat_service
 from backend.src.app.kb.crud import document_dao, knowledge_base_dao
+from backend.src.app.kb.service.acl.scope import Scope, build_retrieval_scope
+from backend.src.app.kb.service.acl.scope import UserContext as ScopeUserContext
 from backend.src.app.kb.service.chunk_service import chunk_service
 from backend.src.app.mcp.auth import require_perms
 from backend.src.app.mcp.schemas import (
@@ -33,8 +35,6 @@ from backend.src.app.mcp.schemas import (
     UserContext,
 )
 from backend.src.app.retrieval.service.retrieval_service import retrieval_service
-from backend.src.app.retrieval.service.scope import Scope, build_retrieval_scope
-from backend.src.app.retrieval.service.scope import UserContext as ScopeUserContext
 from backend.src.common.exception import errors
 from backend.src.common.log import log
 
