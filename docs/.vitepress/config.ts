@@ -101,6 +101,7 @@ export default defineConfig({
                     { text: "Agentic RAG 系统设计", link: "/specs/2026-08-21-agentic-rag-系统设计" },
                     { text: "RAG API 设计与落地路线", link: "/specs/2026-08-25-rag-api设计与落地路线" },
                     { text: "Agentic RAG 落地改造清单", link: "/specs/2026-09-12-agentic-rag-落地改造清单" },
+                    { text: "知识库角色与 ACL v2", link: "/specs/2026-09-12-kb-ownership-and-acl-v2-design" },
                 ],
             },
             {
