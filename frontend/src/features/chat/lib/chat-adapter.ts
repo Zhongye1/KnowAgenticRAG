@@ -5,33 +5,47 @@ import { getAccessToken, refreshAccessToken } from '@/lib/api-client';
 
 import { useChatRunStore } from '../stores/chat-run-store';
 import { useChatSettingsStore } from '../stores/chat-settings-store';
-import type { ChatCitation, ChatMeta, ChatUsage } from '../types';
+import type {
+  ChatAgentInfo,
+  ChatCitation,
+  ChatImageSource,
+  ChatMeta,
+  ChatStep,
+  ChatUsage,
+} from '../types';
 import { buildChatParam } from './chat-param';
 import { parseD25Data, parseSseStream, type SseMessage } from './d25-sse';
 
 /**
- * D25 SSE → assistant-ui LocalRuntime 适配器。
+ * D25 SSE → assistant-ui LocalRuntime 适配器（chat / agent 同一实现）。
  *
- * 每轮：D18 参数（query_text + history）POST 到知识库 chat 端点，
+ * 每轮：D18 参数（query_text + history）POST 到知识库问答端点，
  * delta 增量累积后以全量文本 yield（runtime 要求累计状态而非增量）；
- * meta / citation / usage / done 写入 run store 供消息 UI 消费；
+ * meta / citation / images / step / usage / done / agent 写入 run store 供消息 UI 消费；
  * error 事件转成异常走 MessagePrimitive.Error 渲染。
+ *
+ * 两种模式只在端点上分叉（D35）：`/chat/stream` 固定检索一次后生成，
+ * `/agent/stream` 由服务端图编排，额外推送 plan/act/grade/rewrite step 与 done.agent——
+ * 事件协议一致，故共用解析与状态写入路径，不写第二套解析器（D38）。
  */
 
-const chatUrl = (kbName: string) =>
-  `${env.API_URL}/api/v1/knowledge_bases/${encodeURIComponent(kbName)}/chat/stream`;
+export type KbChatMode = 'chat' | 'agent';
+
+const kbChatUrl = (mode: KbChatMode, kbName: string) =>
+  `${env.API_URL}/api/v1/knowledge_bases/${encodeURIComponent(kbName)}/${mode}/stream`;
 
 const isAbortError = (error: unknown): boolean =>
   error instanceof Error && error.name === 'AbortError';
 
 async function* openEventStream(
+  mode: KbChatMode,
   kbName: string,
   body: unknown,
   signal: AbortSignal,
 ): AsyncGenerator<SseMessage> {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     const token = getAccessToken();
-    const response = await fetch(chatUrl(kbName), {
+    const response = await fetch(kbChatUrl(mode, kbName), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -60,7 +74,36 @@ async function* openEventStream(
   }
 }
 
-export const chatAdapter: ChatModelAdapter = {
+const asRecord = (value: unknown): Record<string, unknown> | null =>
+  value && typeof value === 'object' ? (value as Record<string, unknown>) : null;
+
+/** step 事件 → ChatStep；缺 name 的畸形负载丢弃（前向兼容未知 step） */
+const toStep = (payload: Record<string, unknown> | null): ChatStep | null => {
+  const name = payload?.name;
+  if (typeof name !== 'string' || !name) return null;
+  return { name, detail: typeof payload?.detail === 'string' ? payload.detail : '' };
+};
+
+/** done.agent → ChatAgentInfo；仅取已知字段，未知键忽略 */
+const toAgentInfo = (value: unknown): ChatAgentInfo | undefined => {
+  const raw = asRecord(value);
+  if (!raw) return undefined;
+  const subQueries = raw.sub_queries;
+  return {
+    need_retrieval: typeof raw.need_retrieval === 'boolean' ? raw.need_retrieval : undefined,
+    sub_queries: Array.isArray(subQueries) ? subQueries.map((item) => String(item)) : undefined,
+    plan_rationale: typeof raw.plan_rationale === 'string' ? raw.plan_rationale : undefined,
+    grade_score: typeof raw.grade_score === 'number' ? raw.grade_score : undefined,
+    rewrites: typeof raw.rewrites === 'number' ? raw.rewrites : undefined,
+    tool_calls: typeof raw.tool_calls === 'number' ? raw.tool_calls : undefined,
+  };
+};
+
+const toImages = (value: unknown): ChatImageSource[] | undefined =>
+  Array.isArray(value) ? (value as ChatImageSource[]) : undefined;
+
+/** 组装指定模式的 ChatModelAdapter（chat / agent 共用，仅端点与 step 消费路径不同） */
+export const createKbChatAdapter = (mode: KbChatMode): ChatModelAdapter => ({
   async *run({ messages, abortSignal, context, unstable_assistantMessageId }) {
     const messageId = unstable_assistantMessageId ?? '';
 
@@ -85,7 +128,7 @@ export const chatAdapter: ChatModelAdapter = {
     let text = '';
 
     try {
-      for await (const message of openEventStream(kbName, param, abortSignal)) {
+      for await (const message of openEventStream(mode, kbName, param, abortSignal)) {
         const payload = parseD25Data(message.data);
 
         switch (message.event) {
@@ -99,7 +142,15 @@ export const chatAdapter: ChatModelAdapter = {
                 ? (payload.citations as ChatCitation[])
                 : [],
             );
+            if (payload?.images !== undefined) {
+              runStore.setImages(messageId, toImages(payload.images) ?? []);
+            }
             break;
+          case 'step': {
+            const step = toStep(payload);
+            if (step) runStore.appendStep(messageId, step);
+            break;
+          }
           case 'delta': {
             const content = payload?.content;
             text += typeof content === 'string' ? content : '';
@@ -114,6 +165,13 @@ export const chatAdapter: ChatModelAdapter = {
               messageId,
               typeof payload?.reason === 'string' ? payload.reason : undefined,
             );
+            // agent 的 done 是自包含负载：引用/视觉来源/agent 元数据随终态一并送达
+            if (payload?.images !== undefined) {
+              runStore.setImages(messageId, toImages(payload.images) ?? []);
+            }
+            if (payload?.agent !== undefined) {
+              runStore.setAgent(messageId, toAgentInfo(payload.agent));
+            }
             break;
           case 'error': {
             const detail =
@@ -138,4 +196,10 @@ export const chatAdapter: ChatModelAdapter = {
       throw error;
     }
   },
-};
+});
+
+/** 普通知识库问答（/chat/stream，D25 固定检索一次） */
+export const chatAdapter: ChatModelAdapter = createKbChatAdapter('chat');
+
+/** Agentic 知识库问答（/agent/stream，plan → act → grade/rewrite → generate） */
+export const agentAdapter: ChatModelAdapter = createKbChatAdapter('agent');
