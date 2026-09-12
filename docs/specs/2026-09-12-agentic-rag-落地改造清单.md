@@ -183,11 +183,11 @@ class AgentState(TypedDict):
 
 | 编号 | 落点 | 改动 | 验收 |
 | --- | --- | --- | --- |
-| 0.1 | `backend/pyproject.toml` | 加 `langgraph>=1.2,<2`、`langchain>=1.4,<2`、`langchain-openai>=1.6,<2`（连带新增 `openai` + `tiktoken`） | `uv sync` 通过 |
-| 0.2 | `backend/uv.lock` | 重新锁定 | CI `uv sync --locked` 绿 |
-| 0.3 | 冲突核查 | 确认 pydantic（现 2.13.4）、httpx（0.28.1）、SQLAlchemy 2.0.52 无版本回退 | `uv tree` 无降级 |
-| 0.4 | `agent/graph/stream_bridge.py`（🆕） | **关键件**：把 `graph.astream(stream_mode=[...])` 的输出映射为 D25 事件 | 单测：桩图 → 事件序列符合 D25 |
-| 0.5 | spike 验证 | 最小图（2 节点 + 1 条件边）跑通流式；确认 `get_stream_writer()` 可发自定义 `step` 事件 | demo 可跑 |
+| 0.1 ✅ | `backend/pyproject.toml` | 加 `langgraph>=1.2,<2`、`langchain>=1.4,<2`、`langchain-openai>=1.6,<2`（连带新增 `openai` + `tiktoken`） | `uv sync` 通过 |
+| 0.2 ✅ | `backend/uv.lock` | 重新锁定 | CI `uv sync --locked` 绿（锁文件已随依赖提交） |
+| 0.3 ✅ | 冲突核查 | 确认 pydantic（现 2.13.4）、httpx（0.28.1）、SQLAlchemy 2.0.52 无版本回退 | 实测 `importlib.metadata`：pydantic 2.13.4 / httpx 0.28.1 / SQLAlchemy 2.0.52 均未降级；新增 langgraph 1.2.11 / langchain 1.4.0 / langchain-openai 1.6.2 |
+| 0.4 ✅ | `agent/graph/stream_bridge.py`（🆕） | **关键件**：把 `graph.astream(stream_mode=[...])` 的输出映射为 D25 事件 | 单测：桩图 → 事件序列符合 D25 |
+| 0.5 ✅ | spike 验证 | 最小图（2 节点 + 1 条件边）跑通流式；确认 `get_stream_writer()` 可发自定义 `step` 事件 | `tests/test_stream_bridge.py`（桩图 → 完整事件序列）+ 真实图 `tests/test_agent_graph.py` 均跑通 |
 | 0.6 ✅ | 镜像体积 | 记录引入前后镜像 size 差 | 实测 **≈46.5MB**（`du -sc` 统计 site-packages 内 langgraph/langgraph-sdk/checkpoint/prebuilt + langchain/langchain-core/langchain-openai + openai + tiktoken + langsmith + jiter；未跑 `docker build`，镜像层另有压缩，故为上限估计），在 < 50MB 预期内 |
 
 **事件映射规则（0.4 的核心）**：
@@ -219,16 +219,16 @@ class AgentState(TypedDict):
 
 | 编号 | 落点 | 改动 | 验收 |
 | --- | --- | --- | --- |
-| 1.1 | `backend/src/app/agent/`（🆕） | 分层：`api/` / `schema/` / `service/` / `graph/`（横向包，类比 ingest 的 `routing/engine/parser`） / `model/` / `tests/` | 目录就位 |
+| 1.1 ✅ | `backend/src/app/agent/`（🆕） | 分层：`api/` / `schema/` / `service/` / `graph/`（横向包，类比 ingest 的 `routing/engine/parser`） / `model/` / `tests/` | 目录就位 |
 | 1.2 | `backend/pyproject.toml` `[tool.importlinter]` | independence `modules` 加 `backend.src.app.agent`；新增 agent 的 `layers` 契约（`api → service → model`，`graph` 为域内横向包不受约束）；`ignore_imports` 加 `agent → retrieval / model_provider / chat / kb`（注释引用 D34/D37） | `uv run lint-imports` 0 broken |
-| 1.3 | `agent/graph/tools.py`（🆕） | 用 LangChain `@tool` 包装 5 个只读工具（对齐 `mcp/service.py:80`）：`list_knowledge_bases` / `search_knowledge` / `read_document_chunks` / `get_document` / `answer_with_citations`；**权限检查在 handler 内强制**（D33） | 单测：无权限 → 工具返回结构化拒绝 |
-| 1.4 | `agent/graph/react.py`（🆕） | 内层 ReAct 子图：`create_agent(model=ChatOpenAI(...), tools=TOOLS)` | 单测：桩模型触发 1 次工具调用后收敛 |
-| 1.5 | `agent/graph/builder.py`（🆕） | 外层 `StateGraph` 装配：`START → plan → act → grade → generate → END`（本阶段 `plan`/`grade` 可为直通桩） | 图可编译、可 `astream` |
-| 1.6 | `agent/service/agent_service.py`（🆕） | 门面 `astream` / `acomplete`，经 `stream_bridge` 直出 D25 事件 | 与 `chat_service` 形态同构 |
-| 1.7 | `agent/api/v1/agent.py` + `router.py`（🆕） | `POST /{kb_name}/agent`（JSON）+ `/agent/stream`（SSE）；挂到 `src/app/router.py` | OpenAPI 出现新路径；`/chat` 不变 |
-| 1.8 | 权限点 | 新增 `rag:kb:agent`（`kb/utils/permissions.py`，与 `rag:kb:chat` 同风格）+ 菜单/权限 SQL 种子 | 无权限 403 |
-| 1.9 | `agent/schema/agent.py`（🆕） | `AgentParam`（= `ChatParam` + `max_steps` / `allow_rewrite` / `max_sub_queries` / `min_score`）、`AgentResponse`（含 `agent` 规划元数据）、`AgentPlanInfo` | 字段带 `Field(description=...)` |
-| 1.10 | `core/config.py` | `RAGF_AGENT_*`：`MODEL_SPEC`（空则回落 `RAGF_CHAT_MODEL_SPEC`）、`MAX_STEPS=6`、`MAX_STEPS_HARD=12`、`TIMEOUT_SECONDS=180`、`MAX_REWRITES=1`、`MIN_SCORE=0.3`、`MAX_SUB_QUERIES=3`、`ACT_TIMEOUT_SECONDS=90`、`ACT_RECURSION_LIMIT=12` | `.env.example` 同步 |
+| 1.3 ✅ | `agent/graph/tools.py`（🆕） | 用 LangChain `@tool` 包装 5 个只读工具（对齐 `mcp/service.py:80`）：`list_knowledge_bases` / `search_knowledge` / `read_document_chunks` / `get_document` / `answer_with_citations`；**权限检查在 handler 内强制**（D33） | 单测：无权限 → 工具返回结构化拒绝。**落地收敛为 4 个只读证据工具**（`answer_with_citations` 属生成能力，由 `generate` 节点承担），见落地状态注记 |
+| 1.4 ✅ | `agent/graph/react.py`（🆕） | 内层 ReAct 子图：`create_agent(model=ChatOpenAI(...), tools=TOOLS)`（**落地直接放在 `graph/nodes/act.py`，不单列 `react.py`**，见落地状态注记） | 单测：桩模型触发 1 次工具调用后收敛 |
+| 1.5 ✅ | `agent/graph/builder.py`（🆕） | 外层 `StateGraph` 装配：`START → plan → act → grade → generate → END`（本阶段 `plan`/`grade` 可为直通桩） | 图可编译、可 `astream` |
+| 1.6 ✅ | `agent/service/agent_service.py`（🆕） | 门面 `astream` / `acomplete`，经 `stream_bridge` 直出 D25 事件 | 与 `chat_service` 形态同构 |
+| 1.7 ✅ | `agent/api/v1/agent.py` + `router.py`（🆕） | `POST /{kb_name}/agent`（JSON）+ `/agent/stream`（SSE）；挂到 `src/app/router.py` | 实测 `app.openapi()` 含 `/api/v1/knowledge_bases/{kb_name}/agent` 与 `/agent/stream`；`/chat` 路径与 schema 未变 |
+| 1.8 ✅ | 权限点 | 新增 `rag:kb:agent`（`kb/utils/permissions.py`，与 `rag:kb:chat` 同风格）+ 菜单/权限 SQL 种子 | `RAG_KB_AGENT = 'rag:kb:agent'` 在 `kb/utils/permissions.py`；`init_test_data.sql` 菜单 id=63 + 角色绑定已种子；无权限 403 |
+| 1.9 ✅ | `agent/schema/agent.py`（🆕） | `AgentParam`（= `ChatParam` + `max_steps` / `allow_rewrite` / `max_sub_queries` / `min_score`）、`AgentResponse`（含 `agent` 规划元数据）、`AgentPlanInfo` | 字段带 `Field(description=...)` |
+| 1.10 ✅ | `core/config.py` | `RAGF_AGENT_*`：`MODEL_SPEC`（空则回落 `RAGF_CHAT_MODEL_SPEC`）、`MAX_STEPS=6`、`MAX_STEPS_HARD=12`、`TIMEOUT_SECONDS=180`、`MAX_REWRITES=1`、`MIN_SCORE=0.3`、`MAX_SUB_QUERIES=3`、`ACT_TIMEOUT_SECONDS=90`、`ACT_RECURSION_LIMIT=12` | 实测 9 个 `RAGF_AGENT_*` 键在 `core/config.py` 与 `src/.env.example` 一一对应 |
 | 1.11 ✅ | `agent/model/agent_run.py`（🆕） | 表 `agent_runs`：`run_id / kb_names / plugin_namespace / query / status / model_spec / steps(jsonb) / tool_call_count / rewrite_count / usage / created_time` | 模型类在 `model/__init__.py` 聚合导出；**无需迁移脚本**（项目未上线，建表走启动时 `create_all`，见 `src/alembic/versions/README.md`）。落库在 `agent/service/run_log.py`（best-effort，失败只告警），写入点在 `AgentService.astream` 的 finally，流式/非流式同源 |
 
 **模型接入**：`ChatOpenAI(base_url=..., api_key=..., model=...)`，base_url/key 从 **现有 `provider_service` 的 provider 配置**解析，不新建一套模型配置。这样 `/chat` 与 `/agent` 用同一个模型源，运维只看一处。
@@ -239,12 +239,12 @@ class AgentState(TypedDict):
 
 | 编号 | 落点 | 改动 | 验收 |
 | --- | --- | --- | --- |
-| 2.1 | `agent/graph/nodes/plan.py`（🆕） | 一次低温结构化调用（`with_structured_output`），产出 `{need_retrieval, sub_queries, rationale}`；解析失败降级为「不规划，用原问句」 | 单测：简单问句 → `sub_queries=[原问句]`；复杂问句 → 多子查询 |
-| 2.2a | `retrieval/service/retrieval_service.py` + `strategies/*` | 按 **D41** 下沉多查询融合：门面收 `query_texts` → 同一批 embedding → 策略内逐路并行召回 → `fusion.fuse_rrf` 跨查询融合；RRF + 精排仍单次；ctx 保留单查询字段 | 单测：`query_texts=[q]` 与既有 `query_text=q` 结果一致（向后兼容）；多查询只精排一次 |
-| 2.2b | `agent/graph/nodes/act.py` | 计划子查询经 `prefetch_evidence` 一次交给检索层（`query_texts=sub_queries`，`query_text` 仍是原问句作精排判据）；内层 ReAct 只补差；预取失败不阻断 | 单测：一次检索调用、命中入收集器、无权限/失败不抛 |
-| 2.3 | 事件 | `get_stream_writer()` 发 `step.name='plan'`（子查询数 + 理由） | SSE 可见 plan 步骤 |
-| 2.4 | `agent/graph/prompts.py`（🆕） | planner / reflector / answer 三套提示词分离 | `test_prompts.py` 覆盖 |
-| 2.5 | — | **已决策：采用 2.1 服务端 `plan` 节点，不采用 `TodoListMiddleware`**，理由见 §5.1 | — |
+| 2.1 ✅ | `agent/graph/nodes/plan.py`（🆕） | 一次低温结构化调用（`with_structured_output`），产出 `{need_retrieval, sub_queries, rationale}`；解析失败降级为「不规划，用原问句」 | 单测：简单问句 → `sub_queries=[原问句]`；复杂问句 → 多子查询 |
+| 2.2a ✅ | `retrieval/service/retrieval_service.py` + `strategies/*` | 按 **D41** 下沉多查询融合：门面收 `query_texts` → 同一批 embedding → 策略内逐路并行召回 → `fusion.fuse_rrf` 跨查询融合；RRF + 精排仍单次；ctx 保留单查询字段 | 单测：`query_texts=[q]` 与既有 `query_text=q` 结果一致（向后兼容）；多查询只精排一次 |
+| 2.2b ✅ | `agent/graph/nodes/act.py` | 计划子查询经 `prefetch_evidence` 一次交给检索层（`query_texts=sub_queries`，`query_text` 仍是原问句作精排判据）；内层 ReAct 只补差；预取失败不阻断 | 单测：一次检索调用、命中入收集器、无权限/失败不抛 |
+| 2.3 ✅ | 事件 | `get_stream_writer()` 发 `step.name='plan'`（子查询数 + 理由） | SSE 可见 plan 步骤 |
+| 2.4 ✅ | `agent/graph/prompts.py`（🆕） | planner / reflector / answer 三套提示词分离 | `test_prompts.py` 覆盖 |
+| 2.5 ✅ | — | **已决策：采用 2.1 服务端 `plan` 节点，不采用 `TodoListMiddleware`**，理由见 §5.1 | — |
 
 #### 5.1 为什么不用 `TodoListMiddleware`（源码实测对比）
 
