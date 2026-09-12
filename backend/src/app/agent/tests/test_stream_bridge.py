@@ -92,12 +92,14 @@ def test_done_is_self_contained_with_agent_metadata() -> None:
     assert done['agent'] == {
         'need_retrieval': True,
         'sub_queries': ['甲', '乙'],
+        'plan_rationale': '',
         'grade_score': 0.42,
         'rewrites': 1,
     }
     # 自包含：客户端只消费 done 即可重建引用之外的全部信息
     assert done['kb_names'] == ['finance']
     assert done['route']['selected'] == ['text']
+    assert done['citations'] == []
     assert len(done['steps']) == 1
 
 
@@ -121,5 +123,7 @@ def test_build_done_payload_handles_empty_state() -> None:
     done = build_done_payload({})
     assert not done['answer']
     assert done['usage'] == {'prompt_tokens': 0, 'completion_tokens': 0, 'total_tokens': 0}
-    assert done['mode'] == 'hybrid'
-    assert done['route'] == {}
+    # 未检索路径（T1）：mode/route 显式标注 none，而非伪装成检索过
+    assert done['mode'] == 'none'
+    assert done['route']['mode'] == 'none'
+    assert done['route']['selected'] == []

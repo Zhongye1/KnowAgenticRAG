@@ -83,6 +83,7 @@ def make_generate_node(
         })
 
         if not citations:
+            step = emit_step('generate', '无命中，短路回答')
             emit_citation([], visual_items)
             emit_delta(EMPTY_RESULT_MESSAGE)
             emit_usage(None)
@@ -90,11 +91,15 @@ def make_generate_node(
                 'answer': EMPTY_RESULT_MESSAGE,
                 'reason': 'empty_result',
                 'citations': [],
+                'model_spec': model_spec,
                 'usage': {},
-                'steps': [emit_step('generate', '无命中，短路回答')],
+                'steps': [step],
             }
 
         kept, dropped = truncate_citations(citations, int(context_max_tokens))
+        # step 先于 meta/citation/delta 发出：D25 约定「step 描述系统在做什么」，
+        # 客户端据此在首 token 前渲染进度（generate 是最后一站，紧随 grade/rewrite）
+        step = emit_step('generate', f'{len(kept)} 条引用，开始生成回答')
         emit_citation(kept, visual_items)
         log.debug('agent 生成上下文 kept={} dropped={}', len(kept), dropped)
 
@@ -131,8 +136,9 @@ def make_generate_node(
             'reason': 'max_tokens' if finish_reason == 'length' else 'complete',
             'finish_reason': finish_reason,
             'citations': kept,
+            'model_spec': model_spec,
             'usage': usage or {},
-            'steps': [emit_step('generate', f'{len(kept)} 条引用，生成 {len(parts)} 帧')],
+            'steps': [step],
         }
 
     return generate_node

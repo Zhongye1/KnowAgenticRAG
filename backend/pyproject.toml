@@ -373,10 +373,12 @@ ignore_imports = [
     "backend.src.app.ingest.** -> backend.src.app.task.**",
     # agent 为编排域（D34 两层图）：图节点复用 chat 的引用/提示词装配与
     # retrieval 检索门面，工具经 kb 只读契约取文档/分块（D30 工具不直连存储、D37 复用
-    # MCP 工具语义）；方向同为「下游域 → 上游基础域」
+    # MCP 工具语义）；服务层经 model_provider 解析模型并适配为 LangChain ChatOpenAI
+    # （D34 适配层在 agent 域内，基础域不反向依赖 LangChain）；方向同为「下游域 → 上游基础域」
     "backend.src.app.agent.** -> backend.src.app.chat.**",
     "backend.src.app.agent.** -> backend.src.app.retrieval.**",
     "backend.src.app.agent.** -> backend.src.app.kb.**",
+    "backend.src.app.agent.** -> backend.src.app.model_provider.**",
     # 存量债务（master 既有，非双管线引入）：kb.deps 复用 retrieval scope 构建
     # 用户上下文，方向与「下游域 → 上游基础域」相反；待 scope 下沉公共层后删除
     "backend.src.app.kb.** -> backend.src.app.retrieval.**",

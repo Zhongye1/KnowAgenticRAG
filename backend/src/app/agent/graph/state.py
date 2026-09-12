@@ -45,6 +45,7 @@ class AgentState(TypedDict, total=False):
     answer: str
     reason: str
     finish_reason: str | None
+    model_spec: str
     usage: dict[str, int]
 
     # 轨迹（归并语义：各节点追加，不覆盖）

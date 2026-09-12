@@ -127,25 +127,39 @@ def build_done_payload(state: dict[str, Any], *, extra: dict[str, Any] | None = 
     """终态 → 自包含 ``done`` 负载（聊天 ``done`` 的超集，增 ``agent`` 元数据）。
 
     客户端可只消费 ``done`` 重建完整响应（EagleRAG/D25 契约对齐）。
+    引用与视觉来源随 ``done`` 一并送达，非流式响应因此可从同一事件序列还原。
     """
     retrieval = state.get('retrieval') or {}
     finish_reason = state.get('finish_reason')
     answer = str(state.get('answer') or '')
     reason = str(state.get('reason') or ('max_tokens' if finish_reason == 'length' else 'complete'))
+    # T1 不检索路径没有检索层 route，这里补一个语义等价的占位，保证负载自洽
+    route = dict(retrieval.get('route') or {})
+    if not route:
+        route = {
+            'mode': str(retrieval.get('mode') or 'none'),
+            'selected': [],
+            'reason': 'plan: need_retrieval=false' if not retrieval else 'agent: 工具未产出检索路由',
+            'kb_names': list(state.get('kb_names') or []),
+        }
     return {
         'reason': reason,
         'answer': answer,
         'kb_name': str(state.get('kb_name') or ''),
         'kb_names': list(state.get('kb_names') or []),
-        'mode': str(retrieval.get('mode') or 'hybrid'),
+        'mode': str(retrieval.get('mode') or route['mode']),
+        'model_spec': str(state.get('model_spec') or ''),
         'hit_count': len(state.get('hits') or []),
         'visual_count': len(state.get('visual_items') or []),
-        'route': dict(retrieval.get('route') or {}),
+        'citations': list(state.get('citations') or []),
+        'images': list(state.get('visual_items') or []),
+        'route': route,
         'steps': list(state.get('steps') or []),
         'usage': _usage_payload(state.get('usage')),
         'agent': {
             'need_retrieval': bool(state.get('need_retrieval', True)),
             'sub_queries': list(state.get('sub_queries') or []),
+            'plan_rationale': str(state.get('plan_rationale') or ''),
             'grade_score': float(state.get('grade_score') or 0.0),
             'rewrites': int(state.get('rewrite_count') or 0),
             **(extra or {}),
