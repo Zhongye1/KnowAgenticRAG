@@ -57,6 +57,16 @@ def test_prefetch_uses_planned_sub_queries_in_one_call(monkeypatch: Any) -> None
     assert ctx.last_retrieval['mode'] == 'hybrid'
 
 
+def test_tool_context_buckets_calls_by_tool_name() -> None:
+    """工具调用按名分桶（Grafana 分布 + done.agent 解释「查了什么」）。"""
+    ctx = _ctx()
+    ctx.note_tool_call('search_knowledge')
+    ctx.note_tool_call('search_knowledge')
+    ctx.note_tool_call('read_document_chunks')
+    assert ctx.tool_calls == 3
+    assert ctx.tool_calls_by_name == {'search_knowledge': 2, 'read_document_chunks': 1}
+
+
 def test_prefetch_failure_is_non_blocking(monkeypatch: Any) -> None:
     """预取失败不抛异常：内层工具回路仍可自行检索。"""
     monkeypatch.setattr(act_mod, 'retrieval_service', _StubRetrieval(boom=True))

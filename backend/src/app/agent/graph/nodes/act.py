@@ -97,6 +97,7 @@ def make_act_node(
         return {
             'hits': hits,
             'tool_calls': tool_ctx.tool_calls,
+            'tool_calls_by_name': dict(tool_ctx.tool_calls_by_name),
             'retrieval': {
                 'mode': str(rag.get('mode') or 'hybrid'),
                 'route': dict(rag.get('route') or {}),

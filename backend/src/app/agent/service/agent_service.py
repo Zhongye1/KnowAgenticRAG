@@ -30,6 +30,12 @@ from backend.src.app.agent.graph.builder import AgentGraphConfig, build_agent_gr
 from backend.src.app.agent.graph.stream_bridge import run_agent_stream
 from backend.src.app.agent.graph.tools import ToolContext
 from backend.src.app.agent.service.model_adapter import build_agent_chat_model
+from backend.src.app.agent.service.run_log import (
+    build_run_fields,
+    new_run_id,
+    record_agent_run,
+    status_for,
+)
 from backend.src.app.chat.service.chat_service import to_search_param
 from backend.src.app.kb.crud import knowledge_base_dao
 from backend.src.app.model_provider.service.provider_service import normalize_model_spec, provider_service
@@ -61,7 +67,11 @@ _AGENT_DURATION = _METER.create_histogram('ragf.agent.duration_seconds', unit='s
 # D36/§3.6：预算与自省的可观测面（Grafana 可查「谁跑满了预算」）
 _AGENT_STEPS = _METER.create_histogram('ragf.agent.steps', unit='1', description='单次运行的轨迹步数')
 _AGENT_REWRITES = _METER.create_counter('ragf.agent.rewrites', unit='1', description='T3 自省改写次数')
-_AGENT_TOOL_CALLS = _METER.create_counter('ragf.agent.tool_calls', unit='1', description='内层工具循环调用次数')
+_AGENT_TOOL_CALLS = _METER.create_counter(
+    'ragf.agent.tool_calls', unit='1', description='内层工具循环调用次数（按 tool 名分桶）'
+)
+# 运行审计轨迹上限（防御异常长流；agent_runs.steps 快照不至于无界）
+_MAX_AUDIT_STEPS = 50
 
 
 @dataclass(frozen=True)
@@ -131,33 +141,80 @@ class AgentService:
         plugin_namespace: str | None = None,
         scope: Scope | None = None,
     ) -> AsyncIterator[AgentEvent]:
-        """D25 事件序列（step/meta/citation/delta/usage/done/error；span + 指标）。"""
+        """D25 事件序列（step/meta/citation/delta/usage/done/error；span + 指标 + 运行审计）。"""
         started = time.perf_counter()
+        run_id = new_run_id()
         first_delta_at: float | None = None
         final: dict[str, Any] | None = None
+        steps_seen: list[dict[str, Any]] = []
+        meta_hits: int | None = None
+        errored = False
         with _TRACER.start_as_current_span('ragf.agent.stream') as span:
             span.set_attribute('ragf.kb_name', kb_name)
-            outcome = 'error'
+            span.set_attribute('ragf.run_id', run_id)
             try:
                 async for event, data in self._events(
                     db, kb_name=kb_name, param=param, plugin_namespace=plugin_namespace, scope=scope
                 ):
                     if event == 'meta':
-                        outcome = 'empty' if int(data.get('hit_count') or 0) == 0 else 'ok'
+                        meta_hits = int(data.get('hit_count') or 0)
                     elif event == 'error':
-                        outcome = 'error'
+                        errored = True
                     elif event == 'done':
                         final = data
+                    elif event == 'step' and len(steps_seen) < _MAX_AUDIT_STEPS:
+                        steps_seen.append(_step_snapshot(data))
                     elif event == 'delta' and first_delta_at is None and data.get('content'):
                         first_delta_at = time.perf_counter()
                     yield (event, data)
             finally:
+                outcome = _outcome(errored=errored, meta_hits=meta_hits)
                 span.set_attribute('ragf.result', outcome)
                 _AGENT_REQUESTS.add(1, {'result': outcome})
                 _record_run_metrics(final)
                 if first_delta_at is not None:
                     _AGENT_FIRST_TOKEN.record(first_delta_at - started)
                 _AGENT_DURATION.record(time.perf_counter() - started)
+                await self._audit_run(
+                    db,
+                    run_id=run_id,
+                    kb_name=kb_name,
+                    plugin_namespace=plugin_namespace,
+                    query=str(param.query_text or ''),
+                    outcome=outcome,
+                    done=final,
+                    steps=steps_seen,
+                )
+
+    async def _audit_run(
+        self,
+        db: AsyncSession,
+        *,
+        run_id: str,
+        kb_name: str,
+        plugin_namespace: str | None,
+        query: str,
+        outcome: str,
+        done: dict[str, Any] | None,
+        steps: list[dict[str, Any]],
+    ) -> None:
+        """运行审计落库（best-effort；D40：无 checkpointer，审计即运行历史）。"""
+        agent = (done or {}).get('agent') or {}
+        await record_agent_run(
+            db,
+            **build_run_fields(
+                run_id=run_id,
+                kb_names=[kb_name],
+                plugin_namespace=plugin_namespace,
+                query=query,
+                status=status_for(done=done, outcome=outcome),
+                steps=(done or {}).get('steps') or steps,
+                usage=(done or {}).get('usage'),
+                model_spec=(done or {}).get('model_spec'),
+                tool_calls=int(agent.get('tool_calls') or 0),
+                rewrites=int(agent.get('rewrites') or 0),
+            ),
+        )
 
     async def acomplete(
         self,
@@ -340,6 +397,20 @@ def _http_error(data: dict[str, Any]) -> Exception:
     return errors.ServerError(msg=msg)
 
 
+def _step_snapshot(data: dict[str, Any]) -> dict[str, str]:
+    """step 事件 → 审计快照（与 D25 事件同形，仅留 name/detail）。"""
+    return {'name': str(data.get('name') or ''), 'detail': str(data.get('detail') or '')}
+
+
+def _outcome(*, errored: bool, meta_hits: int | None) -> str:
+    """事件流终态 → 指标标签：error / empty / ok / cancelled（客户端中断/超时）。"""
+    if errored:
+        return 'error'
+    if meta_hits is None:
+        return 'cancelled'
+    return 'empty' if meta_hits == 0 else 'ok'
+
+
 def _record_run_metrics(done: dict[str, Any] | None) -> None:
     """done 负载 → 预算/自省指标（失败或未产出 done 时不打点，避免污染直方图）。"""
     if not done:
@@ -347,7 +418,15 @@ def _record_run_metrics(done: dict[str, Any] | None) -> None:
     agent = done.get('agent') or {}
     _AGENT_STEPS.record(len(done.get('steps') or []))
     _AGENT_REWRITES.add(max(0, int(agent.get('rewrites') or 0)))
-    _AGENT_TOOL_CALLS.add(max(0, int(agent.get('tool_calls') or 0)))
+    total_calls = max(0, int(agent.get('tool_calls') or 0))
+    by_name = {str(k): max(0, int(v)) for k, v in (agent.get('tool_calls_by_name') or {}).items()}
+    if by_name:
+        for tool, calls in by_name.items():
+            if calls:
+                _AGENT_TOOL_CALLS.add(calls, {'tool': tool})
+    elif total_calls:
+        # 兼容：无工具名明细（替身图/旧负载）时只记总量，工具名归一为 unknown
+        _AGENT_TOOL_CALLS.add(total_calls, {'tool': 'unknown'})
 
 
 agent_service = AgentService()

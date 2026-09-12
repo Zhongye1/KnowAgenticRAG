@@ -43,6 +43,7 @@ def _full_node(state: AgentState) -> dict[str, Any]:
         'grade_score': 0.42,
         'rewrite_count': 1,
         'tool_calls': 2,
+        'tool_calls_by_name': {'search_knowledge': 2},
         'steps': steps,
         'usage': usage,
     }
@@ -97,6 +98,7 @@ def test_done_is_self_contained_with_agent_metadata() -> None:
         'grade_score': 0.42,
         'rewrites': 1,
         'tool_calls': 2,
+        'tool_calls_by_name': {'search_knowledge': 2},
     }
     # 自包含：客户端只消费 done 即可重建引用之外的全部信息
     assert done['kb_names'] == ['finance']

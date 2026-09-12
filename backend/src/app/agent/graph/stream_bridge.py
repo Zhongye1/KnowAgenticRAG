@@ -163,6 +163,7 @@ def build_done_payload(state: dict[str, Any], *, extra: dict[str, Any] | None = 
             'grade_score': float(state.get('grade_score') or 0.0),
             'rewrites': int(state.get('rewrite_count') or 0),
             'tool_calls': int(state.get('tool_calls') or 0),
+            'tool_calls_by_name': {str(k): int(v) for k, v in (state.get('tool_calls_by_name') or {}).items()},
             **(extra or {}),
         },
     }

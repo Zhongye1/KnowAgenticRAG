@@ -43,6 +43,7 @@ class AgentState(TypedDict, total=False):
 
     # act 节点产物：内层工具循环的累计调用次数（可观测 + done 元数据）
     tool_calls: int
+    tool_calls_by_name: dict[str, int]
 
     # generate 节点产物
     answer: str

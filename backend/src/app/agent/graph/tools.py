@@ -48,6 +48,14 @@ class ToolContext:
     collected: list[dict[str, Any]] = field(default_factory=list)
     last_retrieval: dict[str, Any] = field(default_factory=dict)
     tool_calls: int = 0
+    # 按工具名分桶（可观测：Grafana 工具调用分布；done.agent 一并透出）
+    tool_calls_by_name: dict[str, int] = field(default_factory=dict)
+
+    def note_tool_call(self, name: str) -> None:
+        """记账一次工具调用（总量 + 工具名分桶）。"""
+        self.tool_calls += 1
+        key = str(name)
+        self.tool_calls_by_name[key] = self.tool_calls_by_name.get(key, 0) + 1
 
     def allowed_names(self) -> list[str]:
         """目标库与 ACL 允许集求交（scope 为空表示不限，仅用于测试替身）。"""
@@ -85,7 +93,7 @@ def _list_kbs_tool(ctx: ToolContext) -> BaseTool:
 
         当你不确定该查哪个库时先调用本工具；已知 kb_name 时可直接检索。
         """
-        ctx.tool_calls += 1
+        ctx.note_tool_call('list_knowledge_bases')
         rows = []
         for kb in await knowledge_base_dao.list_all(ctx.db, plugin_namespace=ctx.plugin_namespace):
             kb_name = str(getattr(kb, 'kb_name', '') or '')
@@ -112,7 +120,7 @@ def _search_tool(ctx: ToolContext) -> BaseTool:
         返回片段含 chunk_id / document_id / kb_name / score / content，
         需要看某片段上下文时用 read_document_chunks 续读。
         """
-        ctx.tool_calls += 1
+        ctx.note_tool_call('search_knowledge')
         names = ctx.allowed_names()
         if not names:
             return _dumps({'error': '当前没有可访问的知识库'})
@@ -155,7 +163,7 @@ def _read_chunks_tool(ctx: ToolContext) -> BaseTool:
 
         document_id 来自检索结果的 document_id；offset 为起始 chunk 序号。
         """
-        ctx.tool_calls += 1
+        ctx.note_tool_call('read_document_chunks')
         for kb_name in ctx.allowed_names():
             payload = await _read_window(ctx, document_id=document_id, kb_name=kb_name, offset=offset)
             if payload is not None:
@@ -174,7 +182,7 @@ def _get_document_tool(ctx: ToolContext) -> BaseTool:
 
         用于回答「这份文档是什么」「最新版本是几」这类溯源问题。
         """
-        ctx.tool_calls += 1
+        ctx.note_tool_call('get_document')
         for kb_name in ctx.allowed_names():
             doc = await document_dao.get(ctx.db, document_id, kb_name=kb_name, plugin_namespace=ctx.plugin_namespace)
             if doc is None:

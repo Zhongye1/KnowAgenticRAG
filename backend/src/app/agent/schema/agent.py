@@ -50,6 +50,9 @@ class AgentPlanInfo(SchemaBase):
     grade_score: float = Field(0.0, description='自省判据：精排最高分')
     rewrites: int = Field(0, description='实际发生的改写次数（受服务端预算封顶）')
     tool_calls: int = Field(0, description='内层工具循环的累计调用次数')
+    tool_calls_by_name: dict[str, int] = Field(
+        default_factory=dict, description='工具调用按工具名分桶（Grafana 分布 + 前端解释「查了什么」）'
+    )
 
 
 class AgentResponse(SchemaBase):
@@ -75,7 +78,13 @@ class AgentResponse(SchemaBase):
     )
     agent: AgentPlanInfo = Field(
         default_factory=lambda: AgentPlanInfo(
-            need_retrieval=True, sub_queries=[], plan_rationale='', grade_score=0.0, rewrites=0, tool_calls=0
+            need_retrieval=True,
+            sub_queries=[],
+            plan_rationale='',
+            grade_score=0.0,
+            rewrites=0,
+            tool_calls=0,
+            tool_calls_by_name={},
         ),
         description='Agent 规划与自省元数据',
     )
