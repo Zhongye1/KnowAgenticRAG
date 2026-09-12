@@ -174,6 +174,7 @@ class AclEntryService:
                 )
             )
         )
+        before_visibility = str(doc.visibility or 'restricted')
         if visibility is not None:
             doc.visibility = visibility
         if entries is not None:
@@ -195,7 +196,7 @@ class AclEntryService:
             kb_name=doc.kb_name,
             action=_AUDIT_ACTIONS_DOC_ACL,
             document_id=document_id,
-            before_json={'visibility': visibility, 'entries': before} if visibility or entries else None,
+            before_json={'visibility': before_visibility, 'entries': before} if visibility or entries else None,
             after_json={'visibility': doc.visibility, 'entries': after},
             operator_id=updated_by,
             plugin_namespace=doc.plugin_namespace,

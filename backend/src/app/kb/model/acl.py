@@ -18,6 +18,7 @@ from datetime import datetime
 import sqlalchemy as sa
 
 from sqlalchemy import BigInteger, Text
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.src.common.model import MappedBase, TimeZone
@@ -121,7 +122,7 @@ class AclAudit(MappedBase):
     principal_id: Mapped[str | None] = mapped_column(Text, nullable=True, comment='变更涉及的主体 ID')
     perm: Mapped[str | None] = mapped_column(sa.String(16), nullable=True, comment='变更涉及的权限级别')
     effect: Mapped[str | None] = mapped_column(sa.String(8), nullable=True, comment='变更涉及的 allow/deny')
-    before_json: Mapped[dict | None] = mapped_column(sa.JSON, nullable=True, comment='变更前快照')
-    after_json: Mapped[dict | None] = mapped_column(sa.JSON, nullable=True, comment='变更后快照')
+    before_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True, comment='变更前快照')
+    after_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True, comment='变更后快照')
     operator_id: Mapped[str | None] = mapped_column(Text, nullable=True, comment='操作人')
     created_time: Mapped[datetime] = mapped_column(TimeZone, default=timezone.now, comment='创建时间')

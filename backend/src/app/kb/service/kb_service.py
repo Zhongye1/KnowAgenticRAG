@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.app.kb.crud import (
+    acl_audit_dao,
     chunk_dao,
     dedup_dao,
     doc_acl_dao,
@@ -101,15 +102,26 @@ class KnowledgeBaseService:
 
     @staticmethod
     async def update(*, db: AsyncSession, kb_name: str, obj: KBUpdateParam, user: UserContext) -> KnowledgeBase:
-        """更新知识库（仅 Owner；无权与不存在同形态 404）。"""
+        """更新知识库（仅 Owner；无权与不存在同形态 404）；is_public 变更留审计（spec §7.1）。"""
         kb = await knowledge_base_dao.get(db, kb_name)
         if kb is None or not await KnowledgeBaseService._has_perm(
             db=db, kb_name=kb_name, user=user, threshold=Perm.OWNER
         ):
             raise errors.NotFoundError(msg='知识库不存在')
+        before_public = kb.is_public
         updated = await knowledge_base_dao.update(db, kb_name, obj)
         if updated is None:  # pragma: no cover - 前置已确认存在
             raise errors.NotFoundError(msg='知识库不存在')
+        if obj.is_public is not None and obj.is_public != before_public:
+            await acl_audit_dao.append(
+                db,
+                kb_name=kb_name,
+                action='kb_public_update',
+                before_json={'is_public': before_public},
+                after_json={'is_public': updated.is_public},
+                operator_id=user.user_id or None,
+                plugin_namespace=updated.plugin_namespace,
+            )
         return updated
 
     @staticmethod

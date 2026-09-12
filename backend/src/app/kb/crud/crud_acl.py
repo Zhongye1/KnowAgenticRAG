@@ -210,27 +210,6 @@ class CRUDDocAcl(TenantScopedCrud[DocAcl]):
         await db.flush()
         return getattr(result, 'rowcount', 0) or 0
 
-    async def delete_expired_by_kb(
-        self,
-        db: AsyncSession,
-        *,
-        kb_name: str,
-        now: datetime,
-        plugin_namespace: str | None = None,
-    ) -> int:
-        """清理 KB 下已过期授权条目（巡检任务用；文档级当前不接受 expires_at，防御性保留）。"""
-        ns = instance_namespace(plugin_namespace)
-        result = await db.execute(
-            delete(DocAcl).where(
-                DocAcl.plugin_namespace == ns,
-                DocAcl.kb_name == kb_name,
-                DocAcl.expires_at.is_not(None),
-                DocAcl.expires_at <= now,
-            )
-        )
-        await db.flush()
-        return getattr(result, 'rowcount', 0) or 0
-
     async def delete_expired(
         self,
         db: AsyncSession,

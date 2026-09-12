@@ -83,6 +83,7 @@ async def _prepare_schema(engine: AsyncEngine) -> None:
     async with engine.begin() as conn:
         await conn.execute(text('DROP TABLE IF EXISTS rag_kb_acl'))
         await conn.execute(text('DROP TABLE IF EXISTS rag_doc_acl'))
+        await conn.execute(text('DROP TABLE IF EXISTS rag_acl_audit'))
         await conn.run_sync(MappedBase.metadata.create_all)
 
 

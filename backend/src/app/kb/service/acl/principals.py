@@ -13,8 +13,6 @@ from dataclasses import dataclass
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.src.common.log import log
-
 __all__ = ['Principal', 'expand_principals']
 
 _MAX_DEPT_DEPTH = 20  # 防部门树循环引用
@@ -54,8 +52,8 @@ async def _load_user_role_ids(db: AsyncSession, user_id: str) -> list[str]:
             {'uid': int(user_id)},
         )
         return [str(row[0]) for row in rows.fetchall()]
-    except (ValueError, Exception) as exc:
-        log.debug('查询用户角色失败 user_id={}: {}', user_id, exc)
+    except ValueError:
+        # 非数字用户 ID（如 MCP PAT 主体）无角色绑定；DB 异常不吞——主体集缩小会使 deny 失配
         return []
 
 
@@ -68,8 +66,8 @@ async def _resolve_user_dept_id(db: AsyncSession, user_id: str) -> int | None:
         )
         result = row.fetchone()
         return int(result[0]) if result and result[0] is not None else None
-    except (ValueError, Exception) as exc:
-        log.debug('查询用户部门失败 user_id={}: {}', user_id, exc)
+    except ValueError:
+        # 非数字用户 ID（如 MCP PAT 主体）无部门绑定；DB 异常不吞（fail-closed）
         return None
 
 

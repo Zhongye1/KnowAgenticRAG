@@ -73,6 +73,7 @@ async def _prepare_schema(engine: AsyncEngine) -> None:
     async with engine.begin() as conn:
         await conn.execute(text('DROP TABLE IF EXISTS rag_kb_acl'))
         await conn.execute(text('DROP TABLE IF EXISTS rag_doc_acl'))
+        await conn.execute(text('DROP TABLE IF EXISTS rag_acl_audit'))
         for stmt in (
             'ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS owner_id VARCHAR(64)',
             'ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE NOT NULL',
