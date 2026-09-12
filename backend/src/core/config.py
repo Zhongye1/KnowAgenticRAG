@@ -357,6 +357,25 @@ class Settings(BaseSettings):
     RAGF_CHAT_TIMEOUT_SECONDS: float = 120.0
     RAGF_CHAT_DEFAULT_TEMPERATURE: float = 0.3
 
+    # RAGF：Agentic 问答编排（agentic-rag spec D34-D41；两层图 = 外层 StateGraph + 内层 create_agent）
+    # 默认 agent 模型 spec；留空 = 回落 RAGF_CHAT_MODEL_SPEC（同一模型行可直接复用）
+    RAGF_AGENT_MODEL_SPEC: str = ''
+    # D36 三重预算之一：外层图步数（LangGraph recursion_limit）
+    RAGF_AGENT_MAX_STEPS: int = 6
+    # 客户端 max_steps 的硬上限（防绕过预算把图跑到失控）
+    RAGF_AGENT_MAX_STEPS_HARD: int = 12
+    # D36 三重预算之二：单请求墙钟（act 节点级超时 + 服务端整体守护）
+    RAGF_AGENT_TIMEOUT_SECONDS: float = 180.0
+    # D36 三重预算之三：T3 自省改写次数（grade 条件边硬封顶）
+    RAGF_AGENT_MAX_REWRITES: int = 1
+    # grade 判据：精排最高分低于此值视为证据不足（零额外模型成本，D36）
+    RAGF_AGENT_MIN_SCORE: float = 0.3
+    # plan 拆分子查询上限（结构化输出约束 + 运行时截断双保险）
+    RAGF_AGENT_MAX_SUB_QUERIES: int = 3
+    # act 内层工具循环：节点超时与内层 ReAct 步数上限
+    RAGF_AGENT_ACT_TIMEOUT_SECONDS: float = 90.0
+    RAGF_AGENT_ACT_RECURSION_LIMIT: int = 12
+
     # RAGF：MCP 工具面（agent-layer spec D22/D31-D33/M10）
     # PAT 经桥接进程 env 注入（Codex stdio 桥 / Claude Code 未上 Keycloak 前）；空 = 未启用 PAT 通道
     RAGF_MCP_PAT: str = ''

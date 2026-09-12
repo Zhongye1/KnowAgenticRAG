@@ -204,6 +204,13 @@ class AgentState(TypedDict):
 
 ### Phase 1 — agent 域骨架 + 工具面（特性①：自主决策）
 
+> **落地状态（2026-09-12）**：1.2 / 1.5 / 1.6 / 1.7 / 1.8 / 1.9 / 1.10 已实现并
+> 通过 `lint-imports`（8 kept）/ `pyright`（0 error）/ `pytest`（35 passed，agent 域）。
+> 与下述条目的两处有意偏差：① 1.3 收敛为 **4 个只读证据工具**（`answer_with_citations`
+> 属生成能力而非证据收集，由 `generate` 节点承担）；② 1.4 内层 ReAct 直接落在
+> `graph/nodes/act.py`（不单列 `react.py`）。1.11（`agent_runs` 表）与 2.2（D41 检索层
+> 多查询融合）**未做**。
+
 | 编号 | 落点 | 改动 | 验收 |
 | --- | --- | --- | --- |
 | 1.1 | `backend/src/app/agent/`（🆕） | 分层：`api/` / `schema/` / `service/` / `graph/`（横向包，类比 ingest 的 `routing/engine/parser`） / `model/` / `tests/` | 目录就位 |
@@ -214,8 +221,8 @@ class AgentState(TypedDict):
 | 1.6 | `agent/service/agent_service.py`（🆕） | 门面 `astream` / `acomplete`，经 `stream_bridge` 直出 D25 事件 | 与 `chat_service` 形态同构 |
 | 1.7 | `agent/api/v1/agent.py` + `router.py`（🆕） | `POST /{kb_name}/agent`（JSON）+ `/agent/stream`（SSE）；挂到 `src/app/router.py` | OpenAPI 出现新路径；`/chat` 不变 |
 | 1.8 | 权限点 | 新增 `rag:kb:agent`（`kb/utils/permissions.py`，与 `rag:kb:chat` 同风格）+ 菜单/权限 SQL 种子 | 无权限 403 |
-| 1.9 | `agent/schema/agent.py`（🆕） | `AgentParam`（= `ChatParam` + `max_steps` / `enabled_tools` / `allow_rewrite`）、`AgentResponse` | 字段带 `Field(description=...)` |
-| 1.10 | `core/config.py` | `RAGF_AGENT_*`：`MAX_STEPS=6`、`MAX_STEPS_HARD=12`、`TIMEOUT_SECONDS=180`、`MAX_REWRITES=1`、`MIN_SCORE=0.3`、`MAX_SUB_QUERIES=3` | `.env.example` 同步 |
+| 1.9 | `agent/schema/agent.py`（🆕） | `AgentParam`（= `ChatParam` + `max_steps` / `allow_rewrite` / `max_sub_queries` / `min_score`）、`AgentResponse`（含 `agent` 规划元数据）、`AgentPlanInfo` | 字段带 `Field(description=...)` |
+| 1.10 | `core/config.py` | `RAGF_AGENT_*`：`MODEL_SPEC`（空则回落 `RAGF_CHAT_MODEL_SPEC`）、`MAX_STEPS=6`、`MAX_STEPS_HARD=12`、`TIMEOUT_SECONDS=180`、`MAX_REWRITES=1`、`MIN_SCORE=0.3`、`MAX_SUB_QUERIES=3`、`ACT_TIMEOUT_SECONDS=90`、`ACT_RECURSION_LIMIT=12` | `.env.example` 同步 |
 | 1.11 | `agent/model/agent_run.py`（🆕，可后置） | 表 `agent_runs`：`run_id / kb_names / query / status / steps(jsonb) / tool_call_count / rewrite_count / usage / created_at` | 模型类在 `model/__init__.py` 聚合导出；**无需迁移脚本**（项目未上线，建表走启动时 `create_all`，见 `src/alembic/versions/README.md`） |
 
 **模型接入**：`ChatOpenAI(base_url=..., api_key=..., model=...)`，base_url/key 从 **现有 `provider_service` 的 provider 配置**解析，不新建一套模型配置。这样 `/chat` 与 `/agent` 用同一个模型源，运维只看一处。
