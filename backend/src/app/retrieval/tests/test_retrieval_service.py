@@ -51,18 +51,25 @@ class FakeEmbedding:
     model = 'bge-m3'
     dimension = 3
 
+    def __init__(self) -> None:
+        self.batches: list[list[str]] = []
+
     async def aencode(self, texts: list[str] | str) -> list[list[float]]:
-        return [[0.1, 0.2, 0.3]]
+        items = [texts] if isinstance(texts, str) else list(texts)
+        self.batches.append(items)
+        return [[0.1, 0.2, 0.3] for _ in items]
 
 
 class FakeReranker:
     def __init__(self) -> None:
         self.calls = 0
+        self.queries: list[str] = []
 
     async def acompute_score(
         self, query: str, documents: list[str], *, normalize: bool = True, batch_size: int | None = None
     ) -> list[float]:
         self.calls += 1
+        self.queries.append(query)
         # 分数随序递增：排序后末位文档排最前，便于断言重排生效
         return [float(index + 1) for index in range(len(documents))]
 
@@ -73,9 +80,10 @@ class FakeReranker:
 class FakeProvider:
     def __init__(self, reranker: FakeReranker | None = None) -> None:
         self.reranker = reranker or FakeReranker()
+        self.embedding = FakeEmbedding()
 
     async def get_embedding_model(self, db: Any, spec: str) -> FakeEmbedding:
-        return FakeEmbedding()
+        return self.embedding
 
     async def get_reranker(self, db: Any, spec: str) -> FakeReranker:
         return self.reranker
@@ -183,6 +191,44 @@ def test_single_search_basic_shape() -> None:
     assert data['results'][0]['chunk_id'] == 'doc-a:2:0'
     assert data['results'][0]['kb_name'] == 'dev'
     assert strategies.ctxs[0]['expr'] is None
+
+
+def test_multi_query_recall_batches_embeddings_and_reranks_once() -> None:
+    """D41：多子查询一次批量编码、逐路召回（ctx 带 query_texts），精排只跑一次。
+
+    精排判据仍用调用方给的**原始问题**——子查询是召回表述，用户原问才是相关性判据。
+    """
+    provider = FakeProvider()
+    service, strategies, _ = _service(provider=provider)
+    data = _run(
+        service.search(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            query_text='原始问题',
+            query_texts=['甲', '乙'],
+            param={'use_reranker': True},
+        )
+    )
+    assert provider.embedding.batches == [['甲', '乙']]
+    assert strategies.ctxs[0]['query_texts'] == ['甲', '乙']
+    assert len(strategies.ctxs[0]['query_embeddings']) == 2
+    assert strategies.ctxs[0]['query_text'] == '甲'  # 单查询字段保留，存量策略兼容
+    assert provider.reranker.calls == 1
+    assert provider.reranker.queries == ['原始问题']
+    assert data['query_texts'] == ['甲', '乙']
+
+
+def test_single_query_ctx_is_backward_compatible() -> None:
+    """不传 query_texts 时 ctx 仍带单查询字段，且输出与既有行为一致。"""
+    service, strategies, _ = _service()
+    data = _run(
+        service.search(None, kb_name='dev', query_text='版本差异', param={'use_reranker': False})  # type: ignore[arg-type]
+    )
+    assert strategies.ctxs[0]['query_text'] == '版本差异'
+    assert strategies.ctxs[0]['query_embedding'] == [0.1, 0.2, 0.3]
+    assert strategies.ctxs[0]['query_texts'] == ['版本差异']
+    assert data['query_texts'] == ['版本差异']
+    assert data['results'][0]['chunk_id'] == 'doc-a:2:0'
 
 
 def test_tag_filter_resolves_doc_ids_and_expr() -> None:

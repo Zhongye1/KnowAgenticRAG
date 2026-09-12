@@ -132,6 +132,7 @@ class RetrievalService:
         *,
         kb_name: str,
         query_text: str,
+        query_texts: list[str] | None = None,
         param: KBSearchParam | dict[str, Any] | None = None,
         plugin_namespace: str | None = None,
         scope: Scope | None = None,
@@ -141,6 +142,7 @@ class RetrievalService:
             db,
             kb_names=[kb_name],
             query_text=query_text,
+            query_texts=query_texts,
             param=param,
             plugin_namespace=plugin_namespace,
             scope=scope,
@@ -152,12 +154,14 @@ class RetrievalService:
         *,
         kb_names: list[str],
         query_text: str,
+        query_texts: list[str] | None = None,
         param: KBSearchParam | dict[str, Any] | None = None,
         plugin_namespace: str | None = None,
         scope: Scope | None = None,
     ) -> dict[str, Any]:
         """多 KB 聚合检索门面（M11/D27：跨库召回 → 合并 → 统一精排/final_top_k）。
 
+        query_texts: D41 多子查询（互补检索式）；缺省回退 query_text 单查询。
         scope: 检索范围（ACL 过滤），由 build_retrieval_scope() 构建。
                如果提供，会在 Milvus 召回时注入权限过滤表达式。
         """
@@ -172,6 +176,7 @@ class RetrievalService:
                     db,
                     kb_names=kb_names,
                     query_text=query_text,
+                    query_texts=query_texts,
                     param=param,
                     plugin_namespace=plugin_namespace,
                     scope=scope,
@@ -196,6 +201,7 @@ class RetrievalService:
         *,
         kb_names: list[str],
         query_text: str,
+        query_texts: list[str] | None = None,
         param: KBSearchParam | dict[str, Any] | None = None,
         plugin_namespace: str | None = None,
         scope: Scope | None = None,
@@ -216,6 +222,7 @@ class RetrievalService:
                     db,
                     kb_names=kb_names,
                     query_text=query_text,
+                    query_texts=query_texts,
                     param=param,
                     plugin_namespace=plugin_namespace,
                     scope=scope,
@@ -239,6 +246,7 @@ class RetrievalService:
         *,
         kb_names: list[str],
         query_text: str,
+        query_texts: list[str] | None = None,
         param: KBSearchParam | dict[str, Any] | None = None,
         plugin_namespace: str | None = None,
         scope: Scope | None = None,
@@ -249,6 +257,7 @@ class RetrievalService:
             db,
             kb_names=kb_names,
             query_text=query_text,
+            query_texts=query_texts,
             param=param,
             plugin_namespace=plugin_namespace,
             scope=scope,
@@ -265,6 +274,7 @@ class RetrievalService:
         *,
         kb_names: list[str],
         query_text: str,
+        query_texts: list[str] | None = None,
         param: KBSearchParam | dict[str, Any] | None = None,
         plugin_namespace: str | None = None,
         scope: Scope | None = None,
@@ -276,9 +286,9 @@ class RetrievalService:
         """
         ns = instance_namespace(plugin_namespace)
         names = self._normalize_kb_names(kb_names)
-        query_text = (query_text or '').strip()
-        if not query_text:
-            raise errors.RequestError(msg='query_text 不能为空')
+        # D41：多子查询为召回表述集合；精排仍以调用方给的「原始问题」为判据（单次）
+        texts = self._normalize_queries(query_text=query_text, query_texts=query_texts)
+        rerank_query = (query_text or '').strip() or texts[0]
 
         # ① KB 归属校验（多 KB 逐库校验：跨 KB 越权不可见，D33/M11）
         # 如果有 scope，使用 scope.allowed_kbs 校验；否则使用现有逻辑
@@ -307,14 +317,14 @@ class RetrievalService:
         filters, version_id = self._filters_from(request_data)
 
         # ② embedding（核心能力，失败上抛不伪装成功；按 embedding 模型分组复用）
-        embed_groups = await self._load_embeddings(db, kbs=kbs, names=names, query_text=query_text)
+        embed_groups = await self._load_embeddings(db, kbs=kbs, names=names, query_texts=texts)
 
         # ②b 视觉编码（可选能力，失败降级为纯文本检索；整次查询编码一次）
         visual_vector: list[float] | None = None
         visual_degraded = False
         if include_visual:
             try:
-                visual_vector = await self._load_visual_embedding(query_text)
+                visual_vector = await self._load_visual_embedding(rerank_query)
             except Exception as exc:
                 visual_degraded = True
                 _VISUAL_DEGRADED.add(1, {'stage': 'encode', 'kb_name': names[0]})
@@ -326,7 +336,7 @@ class RetrievalService:
             names=names,
             kbs=kbs,
             ns=ns,
-            query_text=query_text,
+            query_texts=texts,
             mode=mode,
             recall_top_k=recall_top_k,
             threshold=float(merged['similarity_threshold']),
@@ -341,7 +351,9 @@ class RetrievalService:
         steps: list[dict[str, str]] = []
         recall_step = {
             'name': 'recall',
-            'detail': f'text={len(merged_hits)} visual={len(visual_hits)} recall_top_k={recall_top_k}',
+            'detail': (
+                f'text={len(merged_hits)} visual={len(visual_hits)} recall_top_k={recall_top_k} queries={len(texts)}'
+            ),
         }
         steps.append(recall_step)
         yield 'step', recall_step
@@ -350,7 +362,7 @@ class RetrievalService:
         ranked, reranked, degraded = await self._rank_hits(
             db,
             kb_label=names[0],
-            query_text=query_text,
+            query_text=rerank_query,
             hits=merged_hits,
             use_reranker=use_reranker,
         )
@@ -377,6 +389,7 @@ class RetrievalService:
             'result',
             self._output(
                 kb_names=names,
+                query_texts=texts,
                 mode=mode,
                 started=started,
                 recall_count=len(merged_hits),
@@ -391,6 +404,26 @@ class RetrievalService:
         )
 
     # ------------------------------------------------------------------ 编排步骤
+    @staticmethod
+    def _normalize_queries(*, query_text: str, query_texts: list[str] | None) -> list[str]:
+        """归一本次召回的查询集合（D41）：去空白、去重、保序。
+
+        ``query_texts`` 非空时以其为准（子查询是调用方给出的召回表述），否则回退
+        单查询；全空即参数错误（与既有 ``query_text 不能为空`` 语义一致）。
+        """
+        raw = [*(query_texts or []), query_text] if not query_texts else list(query_texts)
+        cleaned: list[str] = []
+        seen: set[str] = set()
+        for item in raw:
+            text = str(item or '').strip()
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            cleaned.append(text)
+        if not cleaned:
+            raise errors.RequestError(msg='query_text 不能为空')
+        return cleaned
+
     async def _load_kbs(self, db: AsyncSession, *, names: list[str], ns: str) -> dict[str, Any]:
         """逐库加载并校验归属（None = 不存在/跨租户不可见 → NotFoundError）。"""
         kbs: dict[str, Any] = {}
@@ -407,20 +440,28 @@ class RetrievalService:
         *,
         kbs: dict[str, Any],
         names: list[str],
-        query_text: str,
+        query_texts: list[str],
     ) -> dict[str, dict[str, Any]]:
-        """按 embedding 模型分组编码（每组一次调用；返回 spec → 向量/维度）。"""
+        """按 embedding 模型分组编码（每组一次批量调用；返回 spec → 向量集/维度）。
+
+        D41：多子查询在**同一批**内编码（一次调用 N 条），避免 N 次往返；返回的
+        ``query_embeddings`` 与 ``query_texts`` 同序。
+        """
         groups: dict[str, dict[str, Any]] = {}
         for kb_name in names:
             spec = normalize_model_spec(kbs[kb_name].embedding_model) or DEFAULT_EMBEDDING_SPEC
             groups.setdefault(spec, {'spec': spec, 'kb_names': []})['kb_names'].append(kb_name)
         for group in groups.values():
             embed_client = await self._provider.get_embedding_model(db, group['spec'])
-            vectors = await embed_client.aencode([query_text])
-            if not vectors:
-                raise errors.RequestError(msg=f'Embedding 返回为空 spec={group["spec"]}')
-            group['query_embedding'] = list(vectors[0])
-            group['dim'] = int(embed_client.dimension) if embed_client.dimension else len(group['query_embedding'])
+            vectors = await embed_client.aencode(list(query_texts))
+            if len(vectors) != len(query_texts):
+                raise errors.RequestError(
+                    msg=f'Embedding 返回数量不匹配 spec={group["spec"]} '
+                    f'（期望 {len(query_texts)}，实际 {len(vectors)}）'
+                )
+            embeddings = [list(vector) for vector in vectors]
+            group['query_embeddings'] = embeddings
+            group['dim'] = int(embed_client.dimension) if embed_client.dimension else len(embeddings[0])
         return groups
 
     async def _load_visual_embedding(self, query_text: str) -> list[float]:
@@ -441,7 +482,7 @@ class RetrievalService:
         names: list[str],
         kbs: dict[str, Any],
         ns: str,
-        query_text: str,
+        query_texts: list[str],
         mode: str,
         recall_top_k: int,
         threshold: float,
@@ -480,8 +521,12 @@ class RetrievalService:
             group = next(item for item in embed_groups.values() if kb_name in item['kb_names'])
             ctx: dict[str, Any] = {
                 'kb_name': kb_name,
-                'query_text': query_text,
-                'query_embedding': group['query_embedding'],
+                # 单查询字段保留：自定义/存量策略仍可只读 query_text/query_embedding
+                'query_text': query_texts[0],
+                'query_embedding': group['query_embeddings'][0],
+                # D41：多子查询逐路召回（策略内并行 + RRF 融合）
+                'query_texts': list(query_texts),
+                'query_embeddings': list(group['query_embeddings']),
                 'dim': group['dim'],
                 'recall_top_k': recall_top_k,
                 'similarity_threshold': threshold,
@@ -719,6 +764,7 @@ class RetrievalService:
     def _output(
         *,
         kb_names: list[str],
+        query_texts: list[str] | None = None,
         mode: str,
         started: float,
         recall_count: int = 0,
@@ -734,6 +780,7 @@ class RetrievalService:
         return {
             'kb_name': kb_names[0],
             'kb_names': kb_names,
+            'query_texts': list(query_texts or []),
             'mode': mode,
             'recall_count': recall_count,
             'hit_count': len(results),
