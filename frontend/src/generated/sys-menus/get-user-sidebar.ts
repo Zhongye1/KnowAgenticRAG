@@ -10,7 +10,7 @@ import { QueryConfig } from '@/lib/react-query';
 
 /** 获取用户菜单侧边栏 */
 
-export const getUserSidebar = (): Promise<unknown[]> => {
+export const getUserSidebar = (): Promise<Record<string, unknown>[]> => {
   return api.get(`/api/v1/sys/menus/sidebar`).then((res) => res.data);
 };
 

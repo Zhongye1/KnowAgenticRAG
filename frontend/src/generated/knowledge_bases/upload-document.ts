@@ -2,27 +2,26 @@ import { useMutation } from '@tanstack/react-query';
 
 import { api } from '@/lib/api-client';
 import { MutationConfig } from '@/lib/react-query';
-import { DocumentItem } from '../types';
+import { DocumentUploadItem } from '../types';
 
 /**
  * AUTO-GENERATED from backend OpenAPI (apidoc). DO NOT EDIT.
  * Regenerate with: pnpm generate:api
  */
 
-/** 上传文档（存入对象存储） */
+/** 上传文档（对象存储 + 登记 + 格式/限额关口，不触发摄取） */
 export type UploadDocumentParams = {
+  kb_name: string | number;
   file: File;
-  kb_name: string;
   source_type?: string | null;
 };
 
-export const uploadDocument = (params: UploadDocumentParams): Promise<DocumentItem> => {
-  const { file, kb_name, source_type } = params;
+export const uploadDocument = (params: UploadDocumentParams): Promise<DocumentUploadItem> => {
+  const { kb_name, file, source_type } = params;
   const formData = new FormData();
   formData.append('file', file);
-  formData.append('kb_name', kb_name);
   if (source_type) formData.append('source_type', source_type);
-  return api.post(`/api/v1/documents`, formData).then((res) => res.data);
+  return api.post(`/api/v1/knowledge_bases/${kb_name}/documents`, formData).then((res) => res.data);
 };
 
 type UseUploadDocumentOptions = {

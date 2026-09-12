@@ -32,6 +32,7 @@ const createDocument = (
     status: 'pending',
     sha256: null,
     chunk_count: 0,
+    active_version: 1,
     created_time: '2026-09-01T08:00:00Z',
     updated_time: null,
   }

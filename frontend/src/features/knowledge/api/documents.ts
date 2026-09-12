@@ -8,7 +8,7 @@ import {
 } from '@/generated/documents/get-documents'
 import { replaceDocumentFile } from '@/generated/documents/replace-document-file'
 import { updateDocument } from '@/generated/documents/update-document'
-import { uploadDocument } from '@/generated/documents/upload-document'
+import { uploadDocument } from '@/generated/knowledge_bases/upload-document'
 import { MutationConfig, QueryConfig } from '@/lib/react-query'
 
 /**

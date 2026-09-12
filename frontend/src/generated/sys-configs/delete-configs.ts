@@ -13,7 +13,7 @@ export type DeleteConfigsParamsData = {
 };
 
 export const deleteConfigs = (data: DeleteConfigsParamsData): Promise<unknown> => {
-  return api.delete(`/api/v1/sys/configs`, data).then((res) => res.data);
+  return api.delete(`/api/v1/sys/configs`, { data }).then((res) => res.data);
 };
 
 type UseDeleteConfigsOptions = {

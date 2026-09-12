@@ -117,11 +117,12 @@ export const knowledgeHandlers = [
     },
   ),
 
-  http.post(`${env.API_URL}/api/v1/documents`, async ({ request }) => {
+  // 两段式入库：上传只做对象存储 + 登记（POST /knowledge_bases/{kb}/documents）
+  http.post(`${env.API_URL}/api/v1/knowledge_bases/:kbName/documents`, async ({ request, params }) => {
     await networkDelay();
     const form = await request.formData();
     const file = form.get('file');
-    const kbName = String(form.get('kb_name') ?? '');
+    const kbName = String(params.kbName ?? '');
     const sourceType = String(form.get('source_type') ?? 'file');
     const name =
       file instanceof File ? file.name : 'mock-upload-' + Date.now();
@@ -137,6 +138,7 @@ export const knowledgeHandlers = [
       status: 'pending',
       sha256: null,
       chunk_count: 0,
+      active_version: 1,
       created_time: new Date().toISOString(),
       updated_time: new Date().toISOString(),
     };
