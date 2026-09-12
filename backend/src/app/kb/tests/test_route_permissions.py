@@ -17,6 +17,7 @@ from backend.src.app.kb.utils.permissions import (
     RAG_KB_MANAGE,
     RAG_KB_READ,
     RAG_KB_SEARCH,
+    RAG_KB_TRANSFER,
 )
 from backend.src.common.security.permission import RequestPermission
 from backend.src.common.security.rbac import rbac_verify
@@ -82,6 +83,9 @@ def test_kb_routes_require_list_or_manage_perm() -> None:
     assert RAG_KB_LIST in _route_perm_codes(_find_route(router, '', 'GET'))
     assert RAG_KB_LIST in _route_perm_codes(_find_route(router, '/overview', 'GET'))
     assert RAG_KB_CREATE in _route_perm_codes(_find_route(router, '', 'POST'))  # D49 建库权拆分
+    assert RAG_KB_TRANSFER in _route_perm_codes(
+        _find_route(router, '/{kb_name}/transfer', 'POST')
+    )  # §7.1 组织管理员兜底通道
     assert RAG_KB_MANAGE in _route_perm_codes(_find_route(router, '/{kb_name}', 'DELETE'))
 
 

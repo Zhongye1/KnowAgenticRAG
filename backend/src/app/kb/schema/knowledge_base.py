@@ -159,6 +159,20 @@ class KBFacetItem(SchemaBase):
     count: int = Field(description='数量')
 
 
+class KBTransferParam(SchemaBase):
+    """所有权转移参数（kb-ownership-and-acl-v2 spec §7.1：组织管理员发起）"""
+
+    new_owner_id: str = Field(max_length=64, description='新 Owner 用户 ID（sys_user.id 的字符串形式）')
+
+
+class KBTransferResult(SchemaBase):
+    """所有权转移结果"""
+
+    kb_name: str = Field(description='知识库标识')
+    previous_owner_id: str | None = Field(default=None, description='原 Owner 用户 ID（可为空：无主库首次指定）')
+    owner_id: str = Field(description='新 Owner 用户 ID')
+
+
 class KBDeleteResponse(SchemaBase):
     """删除响应"""
 

@@ -17,6 +17,7 @@ __all__ = [
     'RAG_KB_READ',
     'RAG_KB_READ_SCOPES',
     'RAG_KB_SEARCH',
+    'RAG_KB_TRANSFER',
 ]
 
 # 读动作
@@ -31,6 +32,7 @@ RAG_KB_INGEST = 'rag:kb:ingest'  # 上传/替换/重摄取
 RAG_KB_MANAGE = 'rag:kb:manage'  # KB/文档管理 + 设 public
 RAG_KB_CREATE = 'rag:kb:create'  # 建库（D49：建库权与授权权分离）
 RAG_KB_ACL = 'rag:kb:acl'  # 改 ACL（D49：还需逐库 == owner）
+RAG_KB_TRANSFER = 'rag:kb:transfer'  # 转移所有权（组织管理员兜底，spec §7.1；不要求发起人 == owner）
 
 # MCP 只读工具面默认权限点集合（D30）
 RAG_KB_READ_SCOPES = frozenset({RAG_KB_LIST, RAG_KB_SEARCH, RAG_KB_READ, RAG_KB_CHAT})

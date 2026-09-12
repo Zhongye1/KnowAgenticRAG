@@ -9,6 +9,7 @@ upsert 传播——向量/内容原样复用，不需要重嵌入。
 
 from typing import Any
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.app.kb.crud import document_dao, knowledge_base_dao
@@ -26,6 +27,19 @@ from backend.src.database.milvus_kb_ops import update_ragf_document_acl
 _AUDIT_ACTIONS_KB_ACL = 'kb_acl_update'
 _AUDIT_ACTIONS_DOC_ACL = 'doc_acl_update'
 _AUDIT_ACTIONS_OWNER_INIT = 'kb_owner_init'
+_AUDIT_ACTIONS_TRANSFER = 'kb_transfer'
+
+
+async def _require_sys_user(db: AsyncSession, user_id: str) -> str:
+    """校验目标用户存在（sys_user 只读 SQL，不 import admin 域）；返回规范化 ID。"""
+    try:
+        uid = str(int(user_id))
+    except ValueError as exc:
+        raise errors.RequestError(msg='新 Owner 用户不存在') from exc
+    row = await db.execute(text('SELECT id FROM sys_user WHERE id = :uid AND deleted = 0'), {'uid': int(uid)})
+    if row.fetchone() is None:
+        raise errors.RequestError(msg='新 Owner 用户不存在')
+    return uid
 
 
 async def _require_perm(db: AsyncSession, *, kb_name: str, user: UserContext, threshold: Perm) -> None:
@@ -128,6 +142,69 @@ class AclEntryService:
             plugin_namespace=plugin_namespace,
         )
         log.info('KB Owner 落地 kb={} owner={}', kb_name, owner_id)
+
+    @staticmethod
+    async def transfer_owner(
+        *,
+        db: AsyncSession,
+        kb_name: str,
+        new_owner_id: str,
+        user: UserContext,
+    ) -> dict[str, Any]:
+        """转移知识库所有权（kb-ownership-and-acl-v2 spec §7.1）。
+
+        由组织管理员发起（功能码 ``rag:kb:transfer`` 在路由层强制，资源级不做
+        ``== owner`` 校验——场景即旧 Owner 已不可用）。同一事务内：
+        换 ``owner_id`` → 新 Owner 写 owner 条目、旧 Owner 的 owner 条目回收
+        （其余条目不动，如需保留访问可由新 Owner 经 ACL 接口另行授予）→
+        写 ``kb_transfer`` 审计。
+        """
+        kb = await knowledge_base_dao.get(db, kb_name)
+        if kb is None:
+            raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')
+        new_owner_id = await _require_sys_user(db, new_owner_id)
+        previous_owner_id = kb.owner_id
+        if previous_owner_id == new_owner_id:
+            raise errors.ConflictError(msg='该用户已是知识库 Owner')
+
+        rows = await kb_acl_dao.list_entries(db, kb_name=kb_name, plugin_namespace=kb.plugin_namespace)
+        before = _entry_snapshot(*rows)
+        kb.owner_id = new_owner_id
+        # 回收全部旧 owner 条目；新 Owner 的既有条目（如 read）由 owner 条目取代
+        keep = [
+            KBAclEntry(
+                principal_type=row.principal_type,
+                principal_id=row.principal_id,
+                perm=row.perm,
+                effect=row.effect,
+                expires_at=row.expires_at,
+            )
+            for row in rows
+            if not (row.principal_type == 'user' and row.perm == 'owner')
+            and not (row.principal_type == 'user' and row.principal_id == new_owner_id)
+        ]
+        keep.append(KBAclEntry(principal_type='user', principal_id=new_owner_id, perm='owner'))
+        await kb_acl_dao.replace_entries(
+            db, kb_name=kb_name, entries=keep, created_by=user.user_id or None, plugin_namespace=kb.plugin_namespace
+        )
+        after = _entry_snapshot(
+            *(await kb_acl_dao.list_entries(db, kb_name=kb_name, plugin_namespace=kb.plugin_namespace))
+        )
+        await acl_audit_dao.append(
+            db,
+            kb_name=kb_name,
+            action=_AUDIT_ACTIONS_TRANSFER,
+            principal_type='user',
+            principal_id=new_owner_id,
+            perm='owner',
+            effect='allow',
+            before_json={'owner_id': previous_owner_id, 'entries': before},
+            after_json={'owner_id': new_owner_id, 'entries': after},
+            operator_id=user.user_id or None,
+            plugin_namespace=kb.plugin_namespace,
+        )
+        log.info('KB Owner 转移 kb={} {} -> {} by={}', kb_name, previous_owner_id, new_owner_id, user.user_id)
+        return {'kb_name': kb_name, 'previous_owner_id': previous_owner_id, 'owner_id': new_owner_id, 'entries': after}
 
     # ------------------------------------------------------------------ 文档级
     @staticmethod

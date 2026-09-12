@@ -19,8 +19,13 @@ from sqlalchemy.pool import NullPool
 
 from backend.src.app.kb.crud.crud_acl import kb_acl_dao
 from backend.src.app.kb.crud.crud_acl_audit import acl_audit_dao
+from backend.src.app.kb.schema.acl import KBAclEntry
 from backend.src.app.kb.schema.knowledge_base import KBCreateParam
+from backend.src.app.kb.service.acl.entries import acl_entry_service
+from backend.src.app.kb.service.acl.resolver import Perm, resolve_kb_perm
+from backend.src.app.kb.service.acl.scope import UserContext
 from backend.src.app.kb.service.kb_service import kb_service
+from backend.src.common.exception import errors
 from backend.src.core.config import settings
 from backend.src.database.db import MappedBase, get_database_url
 
@@ -69,7 +74,9 @@ async def _ensure_test_db() -> None:
 
 async def _prepare_schema(engine: AsyncEngine) -> None:
     """测试库 schema 对齐 v2：ACL v1 表为破坏性重构，DROP 后由 create_all 重建；
-    knowledge_bases 旧表幂等补列（与 ragf_schema_migrations 对齐）。"""
+    knowledge_bases 旧表幂等补列（与 ragf_schema_migrations 对齐）；sys_user 为
+    admin 域表（Base 元数据，不在 MappedBase.create_all 内），建最小结构供
+    Owner 转移的存在性校验使用。"""
     async with engine.begin() as conn:
         await conn.execute(text('DROP TABLE IF EXISTS rag_kb_acl'))
         await conn.execute(text('DROP TABLE IF EXISTS rag_doc_acl'))
@@ -80,6 +87,14 @@ async def _prepare_schema(engine: AsyncEngine) -> None:
         ):
             await conn.execute(text(stmt))
         await conn.run_sync(MappedBase.metadata.create_all)
+        await conn.execute(
+            text(
+                'INSERT INTO sys_user (id, uuid, username, nickname, status, is_superuser, is_staff, is_multi_login, join_time, created_time, deleted) VALUES '
+                "(11, gen_random_uuid(), 'kbx-11', 'KB 转移用户11', 1, false, false, false, now(), now(), 0), "
+                "(22, gen_random_uuid(), 'kbx-22', 'KB 转移用户22', 1, false, false, false, now(), now(), 0) "
+                'ON CONFLICT (id) DO NOTHING'
+            )
+        )
 
 
 def _run_create(*, owner_id: str | None) -> tuple[str | None, bool, list[tuple[str, str, str, str]], list[str]]:
@@ -121,3 +136,105 @@ def test_create_without_owner_writes_no_acl() -> None:
     assert owner_id is None
     assert entries == []
     assert actions == []
+
+
+def _run_transfer(*, owner_id: str | None, new_owner_id: str, operator: str = '1') -> Any:
+    """在独立会话内执行所有权转移（不 commit，退出即回滚）。"""
+
+    async def _run() -> Any:
+        engine = create_async_engine(get_database_url(unittest=True), poolclass=NullPool)
+        try:
+            async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+                await kb_service.create(
+                    db=session,
+                    obj=KBCreateParam.model_validate({'kb_name': KB_NAME, 'display_name': '转移测试库'}),
+                    owner_id=owner_id,
+                )
+                operator_ctx = UserContext(user_id=operator, namespace='core')
+                try:
+                    result = await acl_entry_service.transfer_owner(
+                        db=session, kb_name=KB_NAME, new_owner_id=new_owner_id, user=operator_ctx
+                    )
+                except errors.RequestError as exc:
+                    return {'error': 'RequestError', 'msg': exc.msg}
+                except errors.ConflictError as exc:
+                    return {'error': 'ConflictError', 'msg': exc.msg}
+                entries = await kb_acl_dao.list_entries(session, kb_name=KB_NAME)
+                audits = await acl_audit_dao.list_by_kb(session, kb_name=KB_NAME)
+                old_perm = await resolve_kb_perm(
+                    session, user_id=str(owner_id) if owner_id else '0', dept_id=None, roles=[], kb_name=KB_NAME
+                )
+                new_perm = await resolve_kb_perm(session, user_id=new_owner_id, dept_id=None, roles=[], kb_name=KB_NAME)
+                return {
+                    'result': result,
+                    'entries': [(e.principal_type, e.principal_id, e.perm, e.effect) for e in entries],
+                    'actions': [a.action for a in audits],
+                    'old_perm': old_perm,
+                    'new_perm': new_perm,
+                }
+        finally:
+            await engine.dispose()
+
+    return asyncio.run(_run())
+
+
+def test_transfer_changes_owner_entries_and_audit() -> None:
+    """转移（spec §7.1）：owner 换绑、旧 owner 条目回收、其余条目保留、kb_transfer 审计。"""
+    out = _run_transfer(owner_id='42', new_owner_id='11')
+    assert out['result']['previous_owner_id'] == '42'
+    assert out['result']['owner_id'] == '11'
+    assert ('user', '42', 'owner', 'allow') not in out['entries']
+    assert ('user', '11', 'owner', 'allow') in out['entries']
+    assert out['actions'][0] == 'kb_transfer'  # list_by_kb 倒序，最新在前
+    assert out['old_perm'] is None  # 旧 Owner 失去 owner 条目且无其他授权 → 不可见
+    assert out['new_perm'] == Perm.OWNER  # 求值函数即时生效
+
+
+def test_transfer_keeps_unrelated_entries() -> None:
+    """非 owner 条目（部门授权）在转移后保留。"""
+
+    async def _run() -> list[tuple[str, str, str]]:
+        engine = create_async_engine(get_database_url(unittest=True), poolclass=NullPool)
+        try:
+            async with async_sessionmaker(engine, expire_on_commit=False)() as session:
+                await kb_service.create(
+                    db=session,
+                    obj=KBCreateParam.model_validate({'kb_name': KB_NAME, 'display_name': '转移测试库'}),
+                    owner_id='42',
+                )
+                await kb_acl_dao.replace_entries(
+                    session,
+                    kb_name=KB_NAME,
+                    entries=[KBAclEntry(principal_type='dept', principal_id='10', perm='read')],
+                    plugin_namespace='core',
+                )
+                await acl_entry_service.transfer_owner(
+                    db=session, kb_name=KB_NAME, new_owner_id='11', user=UserContext(user_id='1', namespace='core')
+                )
+                entries = await kb_acl_dao.list_entries(session, kb_name=KB_NAME)
+                return [(e.principal_type, e.principal_id, e.perm) for e in entries]
+        finally:
+            await engine.dispose()
+
+    entries = asyncio.run(_run())
+    assert ('dept', '10', 'read') in entries
+    assert ('user', '11', 'owner') in entries
+    assert ('user', '42', 'owner') not in entries
+
+
+def test_transfer_to_missing_user_rejected() -> None:
+    out = _run_transfer(owner_id='42', new_owner_id='999')
+    assert out == {'error': 'RequestError', 'msg': '新 Owner 用户不存在'}
+
+
+def test_transfer_to_self_rejected() -> None:
+    out = _run_transfer(owner_id='11', new_owner_id='11')
+    assert out == {'error': 'ConflictError', 'msg': '该用户已是知识库 Owner'}
+
+
+def test_transfer_orphan_kb_assigns_owner() -> None:
+    """无主库（owner_id 为空）可直接指定 Owner。"""
+    out = _run_transfer(owner_id=None, new_owner_id='22')
+    assert out['result']['previous_owner_id'] is None
+    assert out['result']['owner_id'] == '22'
+    assert out['new_perm'] == Perm.OWNER

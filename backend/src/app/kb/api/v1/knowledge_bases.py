@@ -16,12 +16,15 @@ from backend.src.app.kb.schema.knowledge_base import (
     KBIngestionVolumeItem,
     KBItem,
     KBOverview,
+    KBTransferParam,
+    KBTransferResult,
     KBUpdateParam,
 )
+from backend.src.app.kb.service.acl.entries import acl_entry_service
 from backend.src.app.kb.service.acl.resolver import resolve_visible_kbs
 from backend.src.app.kb.service.kb_service import kb_service
 from backend.src.app.kb.service.kb_stats_service import kb_stats_service
-from backend.src.app.kb.utils.permissions import RAG_KB_CREATE, RAG_KB_LIST, RAG_KB_MANAGE
+from backend.src.app.kb.utils.permissions import RAG_KB_CREATE, RAG_KB_LIST, RAG_KB_MANAGE, RAG_KB_TRANSFER
 from backend.src.common.pagination import DependsPagination, PageData
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
@@ -32,6 +35,7 @@ from backend.src.database.db import CurrentSession, CurrentSessionTransaction
 _PERM_LIST = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_LIST)), DependsRBAC]
 _PERM_MANAGE = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_MANAGE)), DependsRBAC]
 _PERM_CREATE = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_CREATE)), DependsRBAC]
+_PERM_TRANSFER = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_TRANSFER)), DependsRBAC]
 
 router = APIRouter()
 
@@ -74,6 +78,23 @@ async def create_knowledge_base(
     kb = await kb_service.create(db=db, obj=obj, owner_id=owner_id)
     detail = await kb_service.get_detail(db=db, kb_name=kb.kb_name, user=user)
     return response_base.success(data=KBDetail.model_validate(detail))
+
+
+@router.post('/{kb_name}/transfer', summary='转移知识库所有权（组织管理员兜底）', dependencies=_PERM_TRANSFER)
+async def transfer_knowledge_base_owner(
+    db: CurrentSessionTransaction,
+    current_namespace: CurrentNamespace,
+    kb_name: Annotated[str, Path(description='知识库标识', pattern=r'^[a-z0-9_]+$')],
+    obj: KBTransferParam,
+    user: CurrentKbUser,
+) -> ResponseSchemaModel[KBTransferResult]:
+    """旧 Owner 离职等场景的兜底通道（spec §7.1）：换 owner_id + 调整 ACL 条目 + 写审计。
+
+    与改 ACL 的 ``== owner`` 校验不同：转移不要求发起人是 Owner（旧 Owner 可能已不可用），
+    由 ``rag:kb:transfer`` 功能码（组织管理员持有）把关。
+    """
+    data = await acl_entry_service.transfer_owner(db=db, kb_name=kb_name, new_owner_id=obj.new_owner_id, user=user)
+    return response_base.success(data=KBTransferResult.model_validate(data))
 
 
 @router.get('/{kb_name}', summary='知识库详情', dependencies=_PERM_LIST)
