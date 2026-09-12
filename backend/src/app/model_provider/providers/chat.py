@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING, Any
 
 import httpx
 
+from backend.src.common.llm_protocol import apply_thinking_level, chat_completions_url
+
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Iterable, Iterator
 
@@ -22,11 +24,8 @@ _SSE_DONE = '[DONE]'
 
 
 def ensure_chat_completions_url(base_url: str) -> str:
-    """Chat Completions 端点推断：base_url 以 /chat/completions 结尾则原样，否则拼接。"""
-    url = (base_url or '').rstrip('/')
-    if url.endswith('/chat/completions'):
-        return url
-    return f'{url}/chat/completions'
+    """Chat Completions 端点推断（实现见 ``common.llm_protocol``，与 agent 链路共用）。"""
+    return chat_completions_url(base_url)
 
 
 @dataclass(frozen=True)
@@ -37,9 +36,6 @@ class ChatStreamEvent:
     reasoning_content: str = ''
     finish_reason: str | None = None
     usage: dict[str, Any] | None = None
-
-
-_THINKING_EFFORT_LEVELS = frozenset({'low', 'medium', 'high'})
 
 
 def build_chat_payload(
@@ -64,11 +60,7 @@ def build_chat_payload(
         payload['max_tokens'] = int(max_tokens)
     if stream:
         payload['stream_options'] = {'include_usage': True}
-    if thinking_level in _THINKING_EFFORT_LEVELS:
-        payload['reasoning_effort'] = thinking_level
-    elif thinking_level == 'off':
-        payload['chat_template_kwargs'] = {'enable_thinking': False}
-    return payload
+    return apply_thinking_level(payload, thinking_level)
 
 
 def parse_sse_data_line(line: str) -> tuple[str, dict[str, Any]] | None:

@@ -23,6 +23,11 @@ from langchain_openai import ChatOpenAI
 from pydantic import SecretStr
 
 from backend.src.common.exception import errors
+from backend.src.common.llm_protocol import (
+    api_root_url,
+    apply_thinking_level,
+    normalize_max_tokens_field,
+)
 
 if TYPE_CHECKING:
     from langchain_core.language_models import LanguageModelInput
@@ -31,8 +36,6 @@ if TYPE_CHECKING:
 
 __all__ = ['AgentChatModel', 'build_agent_chat_model']
 
-_COMPLETIONS_SUFFIX = '/chat/completions'
-_THINKING_EFFORT_LEVELS = frozenset({'low', 'medium', 'high'})
 # 自建 OpenAI 兼容服务（vLLM/ollama）通常不校验 key，但 ChatOpenAI 构造期强制要求非空
 _PLACEHOLDER_API_KEY = 'not-required'
 
@@ -60,22 +63,8 @@ class AgentChatModel(ChatOpenAI):
         相同请求体。
         """
         thinking_level = kwargs.pop('thinking_level', None)
-        payload = super()._get_request_payload(input_, stop=stop, **kwargs)
-        if 'max_completion_tokens' in payload:
-            payload['max_tokens'] = payload.pop('max_completion_tokens')
-        if thinking_level in _THINKING_EFFORT_LEVELS:
-            payload['reasoning_effort'] = thinking_level
-        elif thinking_level == 'off':
-            payload['chat_template_kwargs'] = {'enable_thinking': False}
-        return payload
-
-
-def _api_root(base_url: str) -> str:
-    """剥离 ``/chat/completions`` 后缀：LangChain 自行拼接该路径。"""
-    url = (base_url or '').strip().rstrip('/')
-    if url.endswith(_COMPLETIONS_SUFFIX):
-        return url[: -len(_COMPLETIONS_SUFFIX)]
-    return url
+        payload = normalize_max_tokens_field(super()._get_request_payload(input_, stop=stop, **kwargs))
+        return apply_thinking_level(payload, thinking_level)
 
 
 def build_agent_chat_model(
@@ -88,12 +77,12 @@ def build_agent_chat_model(
     """由 provider 模型行构建 LangChain chat 模型（type 必须是 chat，fail-closed）。"""
     if info.model_type != 'chat':
         raise errors.RequestError(msg=f'模型 {info.spec} 不是 chat 模型（type={info.model_type}）')
-    if not _api_root(info.base_url):
+    if not api_root_url(info.base_url):
         raise errors.RequestError(msg=f'模型 {info.spec} 未配置 base_url，无法作为 Agent 模型使用')
     return AgentChatModel(
         model=info.model_id,
         api_key=SecretStr(info.api_key or _PLACEHOLDER_API_KEY),
-        base_url=_api_root(info.base_url),
+        base_url=api_root_url(info.base_url),
         default_headers=dict(info.headers or {}) or None,
         temperature=temperature,
         max_completion_tokens=max_tokens,

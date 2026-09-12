@@ -315,7 +315,7 @@ class AgentState(TypedDict):
 
 | 编号 | 落点 | 改动 | 验收 |
 | --- | --- | --- | --- |
-| 4.1 | 可选：`model_provider/providers/chat.py` | 评估是否把 `/chat` 也切到 `ChatOpenAI`，统一两条链路；或反向把 agent 的 tool-calling 下沉到 `provider`（二选一，评审定） | `/chat` 回归全绿 |
+| 4.1 ✅ | 可选：`model_provider/providers/chat.py` | **已评审（采纳方案 C）**：`/chat` 保留自研 httpx 客户端、`/agent` 保留 `ChatOpenAI`，两者共用 `common/llm_protocol` 的协议规则（thinking_level / token 字段名 / URL 互推），并以跨链路一致性测试锁死漂移；方案 A（/chat 切 ChatOpenAI）记触发条件，方案 B（tool-calling 下沉 provider）因与 D34 冲突排除。评估全文见 [2026-09-12-chat-model-path-unification-eval.md](2026-09-12-chat-model-path-unification-eval.md) | `/chat` 回归全绿（全量 pytest 323 passed / 1 skipped；两条链路一致性用例常绿） |
 | 4.2 | `frontend/src/features/chat/lib/chat-adapter.ts` | 新增 agent 适配（或参数化 endpoint） | 单测通过 |
 | 4.3 | `frontend/src/features/chat/components/` | Chat 页加「Agent 模式」开关；steps 面板渲染 `plan` / `tool_call` / `rewrite` | 手动验证 |
 | 4.4 | `frontend/src/testing/mocks/handlers/chat.ts` | MSW mock 补 Agent SSE（含 plan/rewrite 步骤） | 前端测试绿 |
@@ -336,7 +336,8 @@ class AgentState(TypedDict):
 >   改写率/工具调用分布），并在 `docker-compose.yml` 挂载；`ragf.agent.tool_calls` 已按
 >   `tool` 名分桶（`ToolContext.tool_calls_by_name` → `done.agent.tool_calls_by_name`），
 >   分布面板与前端轨迹面板同源。
-> - 4.1 ⏳ 待评审：`/chat` 是否切 `ChatOpenAI`（契约冻结，本轮不动）。
+> - 4.1 ✅ 已评审：**不切传输，只统一协议规则**（`common/llm_protocol`）+ 跨链路一致性测试；
+>   方案 A 的迁移清单与触发条件见评估文档，`/chat` 契约保持冻结。
 
 ---
 
