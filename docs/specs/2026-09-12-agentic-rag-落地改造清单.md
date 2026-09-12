@@ -210,11 +210,12 @@ class AgentState(TypedDict):
 > 属生成能力而非证据收集，由 `generate` 节点承担）；② 1.4 内层 ReAct 直接落在
 > `graph/nodes/act.py`（不单列 `react.py`）。2.2a / 2.2b 已实现（检索层 `query_texts` +
 > act 服务端融合预取）；3.6 埋点已实现（`ragf.agent.requests/duration_seconds/
-> first_token_seconds/steps/rewrites/tool_calls`）。前端 Phase 4 除 4.1（`/chat` 是否切
-> `ChatOpenAI`，待评审）外均已落地：4.2 适配器参数化（`createKbChatAdapter` +
-> 委派式 `kbChatAdapter`）、4.3 Chat 页 Agent 开关与轨迹面板、4.4 MSW Agent SSE、
-> 4.5 `generated` 全量重生成、4.6 `ragf_agent` Grafana 面板。1.11（`agent_runs` 表）
-> 仍**未做**（可后置）。
+> first_token_seconds/steps/rewrites/tool_calls`，其中 `tool_calls` 按 `tool` 名分桶）。
+> 1.11 已实现（`agent_runs` 表 + best-effort 落库，`AgentService.astream` 的 finally 写入，
+> 覆盖 ok/empty/error/cancelled）。前端 Phase 4 除 4.1（`/chat` 是否切 `ChatOpenAI`，
+> 待评审）外均已落地：4.2 适配器参数化（`createKbChatAdapter` + 委派式 `kbChatAdapter`）、
+> 4.3 Chat 页 Agent 开关与轨迹面板、4.4 MSW Agent SSE、4.5 `generated` 全量重生成、
+> 4.6 `ragf_agent` Grafana 面板（含工具调用分布）。
 
 | 编号 | 落点 | 改动 | 验收 |
 | --- | --- | --- | --- |
@@ -228,7 +229,7 @@ class AgentState(TypedDict):
 | 1.8 | 权限点 | 新增 `rag:kb:agent`（`kb/utils/permissions.py`，与 `rag:kb:chat` 同风格）+ 菜单/权限 SQL 种子 | 无权限 403 |
 | 1.9 | `agent/schema/agent.py`（🆕） | `AgentParam`（= `ChatParam` + `max_steps` / `allow_rewrite` / `max_sub_queries` / `min_score`）、`AgentResponse`（含 `agent` 规划元数据）、`AgentPlanInfo` | 字段带 `Field(description=...)` |
 | 1.10 | `core/config.py` | `RAGF_AGENT_*`：`MODEL_SPEC`（空则回落 `RAGF_CHAT_MODEL_SPEC`）、`MAX_STEPS=6`、`MAX_STEPS_HARD=12`、`TIMEOUT_SECONDS=180`、`MAX_REWRITES=1`、`MIN_SCORE=0.3`、`MAX_SUB_QUERIES=3`、`ACT_TIMEOUT_SECONDS=90`、`ACT_RECURSION_LIMIT=12` | `.env.example` 同步 |
-| 1.11 | `agent/model/agent_run.py`（🆕，可后置） | 表 `agent_runs`：`run_id / kb_names / query / status / steps(jsonb) / tool_call_count / rewrite_count / usage / created_at` | 模型类在 `model/__init__.py` 聚合导出；**无需迁移脚本**（项目未上线，建表走启动时 `create_all`，见 `src/alembic/versions/README.md`） |
+| 1.11 ✅ | `agent/model/agent_run.py`（🆕） | 表 `agent_runs`：`run_id / kb_names / plugin_namespace / query / status / model_spec / steps(jsonb) / tool_call_count / rewrite_count / usage / created_time` | 模型类在 `model/__init__.py` 聚合导出；**无需迁移脚本**（项目未上线，建表走启动时 `create_all`，见 `src/alembic/versions/README.md`）。落库在 `agent/service/run_log.py`（best-effort，失败只告警），写入点在 `AgentService.astream` 的 finally，流式/非流式同源 |
 
 **模型接入**：`ChatOpenAI(base_url=..., api_key=..., model=...)`，base_url/key 从 **现有 `provider_service` 的 provider 配置**解析，不新建一套模型配置。这样 `/chat` 与 `/agent` 用同一个模型源，运维只看一处。
 
@@ -301,7 +302,7 @@ class AgentState(TypedDict):
 | 3.3 | `agent/graph/nodes/act.py` | 合并：原命中与新命中按 `chunk_id` 去重，按 score 重排取 `final_top_k` | 去重单测 |
 | 3.4 | `agent/graph/builder.py` | **预算**：`rewrite_count` 状态计数达 `RAGF_AGENT_MAX_REWRITES` → 边指向 `abort`（走 `EMPTY_RESULT_MESSAGE` 降级）；整体 `asyncio.timeout` 墙钟兜底；步数/工具次数用 §5.2 的 `ModelCallLimitMiddleware` / `ToolCallLimitMiddleware` 兜底，不自研计数器 | 单测：预算耗尽不死循环 |
 | 3.5 | 事件 | `step.name='rewrite'`，`detail` 带触发原因与改写后查询 | SSE 可见 rewrite 步骤 |
-| 3.6 | 埋点 | `ragf.agent.rewrites`（counter）、`ragf.agent.steps`（histogram）、`ragf.agent.tool_calls`（counter）、`ragf.agent.duration_seconds` | Grafana 可查 |
+| 3.6 ✅ | 埋点 | `ragf.agent.rewrites`（counter）、`ragf.agent.steps`（histogram）、`ragf.agent.tool_calls`（counter，按 `tool` 名分桶）、`ragf.agent.duration_seconds`、`ragf.agent.first_token_seconds`、`ragf.agent.requests`（result=ok/empty/error/cancelled） | Grafana 可查（`ragf_agent` 仪表盘） |
 
 **与 CRAG 的差异（有意为之）**：不引入 LLM 逐文档打分（成本 = 文档数 × 调用数）。用**精排分数**这个已有信号做判据，零额外成本。
 
@@ -329,9 +330,9 @@ class AgentState(TypedDict):
 > - 4.4 ✅ `testing/mocks/handlers/chat.ts` 增 `/agent/stream` handler（含改写分支）。
 > - 4.5 ✅ `generated/` 全量重生成，新增 `agent-knowledge-base(-stream).ts` 等产物。
 > - 4.6 ✅ 新增 `deploy/backend/grafana/dashboards/ragf_agent.json`（请求/延迟 P95/平均步数/
->   改写率/工具调用），并在 `docker-compose.yml` 挂载。
->   **偏差**：`ragf.agent.tool_calls` 为无标签 counter，无法出「工具名分布」面板，
->   改为「工具调用速率 + 每请求均值」；若要真分布需给 counter 加 `tool` 标签。
+>   改写率/工具调用分布），并在 `docker-compose.yml` 挂载；`ragf.agent.tool_calls` 已按
+>   `tool` 名分桶（`ToolContext.tool_calls_by_name` → `done.agent.tool_calls_by_name`），
+>   分布面板与前端轨迹面板同源。
 > - 4.1 ⏳ 待评审：`/chat` 是否切 `ChatOpenAI`（契约冻结，本轮不动）。
 
 ---

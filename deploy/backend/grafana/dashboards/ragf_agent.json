@@ -15,7 +15,7 @@
       }
     ]
   },
-  "description": "Agentic RAG 监控仪表盘（D35/D36/D38）：/agent(/stream) 请求与延迟、三重预算消耗、自省改写与工具调用。指标经 OTLP → Alloy → Prometheus，命名按 OTel Prometheus 约定（点转下划线，counter 补 _total）。",
+  "description": "Agentic RAG 监控仪表盘（D35/D36/D38/D40）：/agent(/stream) 请求与延迟、三重预算消耗、自省改写、工具调用分布与运行审计（agent_runs）。指标经 OTLP → Alloy → Prometheus，命名按 OTel Prometheus 约定（点转下划线，counter 补 _total）。",
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 1,
@@ -805,7 +805,7 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 8,
+        "w": 6,
         "x": 0,
         "y": 16
       },
@@ -913,8 +913,8 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 8,
-        "x": 8,
+        "w": 6,
+        "x": 6,
         "y": 16
       },
       "id": 21,
@@ -966,7 +966,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "内层工具循环调用速率（当前指标无工具名维度，只能看总量与每请求均值）",
+      "description": "内层工具循环调用速率拆到工具名（list_knowledge_bases / search_knowledge / read_document_chunks / get_document），并给出每请求平均调用次数；检索类工具占比异常升高说明规划子查询不足、模型在靠工具补差。",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1021,8 +1021,8 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 8,
-        "x": 16,
+        "w": 6,
+        "x": 12,
         "y": 16
       },
       "id": 22,
@@ -1051,8 +1051,8 @@
             "uid": "prometheus"
           },
           "editorMode": "code",
-          "expr": "rate(ragf_agent_tool_calls_total[5m])",
-          "legendFormat": "工具调用/秒",
+          "expr": "sum by (tool) (rate(ragf_agent_tool_calls_total[5m]))",
+          "legendFormat": "{{tool}}",
           "refId": "A"
         },
         {
@@ -1066,8 +1066,79 @@
           "refId": "B"
         }
       ],
-      "title": "工具调用",
+      "title": "工具调用（按工具名）",
       "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "窗口内工具调用按工具名的构成（unknown = 旧负载未带工具名明细）。",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 6,
+        "x": 18,
+        "y": 16
+      },
+      "id": 23,
+      "options": {
+        "displayLabels": [
+          "name",
+          "percent"
+        ],
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "showLegend": true,
+          "values": [
+            "value"
+          ]
+        },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "sum"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "pluginVersion": "12.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "editorMode": "code",
+          "expr": "sum by (tool) (increase(ragf_agent_tool_calls_total[1h]))",
+          "legendFormat": "{{tool}}",
+          "refId": "A"
+        }
+      ],
+      "title": "工具调用分布",
+      "type": "piechart"
     }
   ],
   "preload": false,
