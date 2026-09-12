@@ -60,6 +60,7 @@ export interface AgentPlanInfo {
   grade_score?: number;
   rewrites?: number;
   tool_calls?: number;
+  tool_calls_by_name?: Record<string, number>;
 }
 
 export interface AgentResponse {

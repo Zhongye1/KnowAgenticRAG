@@ -286,6 +286,7 @@ export const chatHandlers = [
         grade_score: rewrote ? 0.22 : 0.58,
         rewrites: rewrote ? 1 : 0,
         tool_calls: 2,
+        tool_calls_by_name: { search_knowledge: 1, read_document_chunks: 1 },
       };
       const events: Array<{ event: string; data: unknown; delay?: number }> = [
         ...steps.map((step) => ({

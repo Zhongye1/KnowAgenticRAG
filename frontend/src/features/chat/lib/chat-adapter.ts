@@ -83,6 +83,16 @@ const toStep = (payload: Record<string, unknown> | null): ChatStep | null => {
   return { name, detail: typeof payload?.detail === 'string' ? payload.detail : '' };
 };
 
+/** 工具名 → 调用次数（非法值丢弃；后端空对象表示无工具调用明细） */
+const toToolCallsByName = (value: unknown): Record<string, number> | undefined => {
+  const raw = asRecord(value);
+  if (!raw) return undefined;
+  const entries = Object.entries(raw)
+    .map(([tool, count]) => [tool, Number(count)] as const)
+    .filter(([tool, count]) => tool && Number.isFinite(count) && count >= 0);
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+};
+
 /** done.agent → ChatAgentInfo；仅取已知字段，未知键忽略 */
 const toAgentInfo = (value: unknown): ChatAgentInfo | undefined => {
   const raw = asRecord(value);
@@ -95,6 +105,7 @@ const toAgentInfo = (value: unknown): ChatAgentInfo | undefined => {
     grade_score: typeof raw.grade_score === 'number' ? raw.grade_score : undefined,
     rewrites: typeof raw.rewrites === 'number' ? raw.rewrites : undefined,
     tool_calls: typeof raw.tool_calls === 'number' ? raw.tool_calls : undefined,
+    tool_calls_by_name: toToolCallsByName(raw.tool_calls_by_name),
   };
 };
 

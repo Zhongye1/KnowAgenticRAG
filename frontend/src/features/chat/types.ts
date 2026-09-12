@@ -91,4 +91,6 @@ export interface ChatAgentInfo {
   grade_score?: number;
   rewrites?: number;
   tool_calls?: number;
+  /** 工具调用按工具名分桶（后端 done.agent.tool_calls_by_name） */
+  tool_calls_by_name?: Record<string, number>;
 }

@@ -108,6 +108,7 @@ describe('createKbChatAdapter', () => {
               grade_score: 0.42,
               rewrites: 1,
               tool_calls: 2,
+              tool_calls_by_name: { search_knowledge: 1, read_document_chunks: 1 },
             },
           },
         },
@@ -126,6 +127,7 @@ describe('createKbChatAdapter', () => {
       sub_queries: ['营收确认规则', '收入准则条款'],
       rewrites: 1,
       tool_calls: 2,
+      tool_calls_by_name: { search_knowledge: 1, read_document_chunks: 1 },
     });
   });
 

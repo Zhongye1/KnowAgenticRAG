@@ -35,6 +35,8 @@ export const AgentSteps = () => {
       ? `工具 ${agent.tool_calls} 次`
       : undefined;
 
+  const toolEntries = Object.entries(agent.tool_calls_by_name ?? {});
+
   const summary = [
     agent.need_retrieval === false ? '未检索，直接作答' : `子查询 ${subQueryCount}`,
     `${steps.length} 步`,
@@ -68,6 +70,14 @@ export const AgentSteps = () => {
               </li>
             ))}
           </ul>
+        )}
+        {toolEntries.length > 0 && (
+          <p className="text-muted-foreground mt-1.5 text-xs">
+            工具调用：
+            {toolEntries
+              .map(([tool, count]) => `${tool} × ${count}`)
+              .join(' · ')}
+          </p>
         )}
         {steps.length > 0 && (
           <ol className="border-border mt-2 space-y-1 border-s-2 ps-3">
