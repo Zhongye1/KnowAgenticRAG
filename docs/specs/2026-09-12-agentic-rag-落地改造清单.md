@@ -205,11 +205,11 @@ class AgentState(TypedDict):
 ### Phase 1 — agent 域骨架 + 工具面（特性①：自主决策）
 
 > **落地状态（2026-09-12）**：1.2 / 1.5 / 1.6 / 1.7 / 1.8 / 1.9 / 1.10 已实现并
-> 通过 `lint-imports`（8 kept）/ `pyright`（0 error）/ `pytest`（35 passed，agent 域）。
+> 通过 `lint-imports`（8 kept）/ `pyright`（0 error）/ `pytest`（290 passed，全量）。
 > 与下述条目的两处有意偏差：① 1.3 收敛为 **4 个只读证据工具**（`answer_with_citations`
 > 属生成能力而非证据收集，由 `generate` 节点承担）；② 1.4 内层 ReAct 直接落在
-> `graph/nodes/act.py`（不单列 `react.py`）。1.11（`agent_runs` 表）与 2.2（D41 检索层
-> 多查询融合）**未做**。
+> `graph/nodes/act.py`（不单列 `react.py`）。2.2a / 2.2b 已实现（检索层 `query_texts` +
+> act 服务端融合预取）。1.11（`agent_runs` 表）、3.6（自省埋点）、Phase 4 **未做**。
 
 | 编号 | 落点 | 改动 | 验收 |
 | --- | --- | --- | --- |
@@ -234,8 +234,8 @@ class AgentState(TypedDict):
 | 编号 | 落点 | 改动 | 验收 |
 | --- | --- | --- | --- |
 | 2.1 | `agent/graph/nodes/plan.py`（🆕） | 一次低温结构化调用（`with_structured_output`），产出 `{need_retrieval, sub_queries, rationale}`；解析失败降级为「不规划，用原问句」 | 单测：简单问句 → `sub_queries=[原问句]`；复杂问句 → 多子查询 |
-| 2.2a | `retrieval/service/retrieval_service.py` + `strategies/*` | 按 **D41** 下沉多查询融合：`ctx` 增加 `query_texts: list[str]`，策略内多路召回并行，RRF + 精排仍单次 | 单测：`query_texts=[q]` 与既有 `query_text=q` 结果一致（向后兼容） |
-| 2.2b | `agent/graph/nodes/act.py` | 把 `sub_queries` 透传给检索层（`query_texts=sub_queries`），agent 层**不做**任何合并/去重/精排 | 多子查询命中数 ≥ 单查询，精排次数 = 1 |
+| 2.2a | `retrieval/service/retrieval_service.py` + `strategies/*` | 按 **D41** 下沉多查询融合：门面收 `query_texts` → 同一批 embedding → 策略内逐路并行召回 → `fusion.fuse_rrf` 跨查询融合；RRF + 精排仍单次；ctx 保留单查询字段 | 单测：`query_texts=[q]` 与既有 `query_text=q` 结果一致（向后兼容）；多查询只精排一次 |
+| 2.2b | `agent/graph/nodes/act.py` | 计划子查询经 `prefetch_evidence` 一次交给检索层（`query_texts=sub_queries`，`query_text` 仍是原问句作精排判据）；内层 ReAct 只补差；预取失败不阻断 | 单测：一次检索调用、命中入收集器、无权限/失败不抛 |
 | 2.3 | 事件 | `get_stream_writer()` 发 `step.name='plan'`（子查询数 + 理由） | SSE 可见 plan 步骤 |
 | 2.4 | `agent/graph/prompts.py`（🆕） | planner / reflector / answer 三套提示词分离 | `test_prompts.py` 覆盖 |
 | 2.5 | — | **已决策：采用 2.1 服务端 `plan` 节点，不采用 `TodoListMiddleware`**，理由见 §5.1 | — |

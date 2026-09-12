@@ -1,8 +1,12 @@
-"""检索节点（内层 ReAct：模型自主调用只读工具收集证据）。
+"""检索节点（服务端融合召回 + 内层 ReAct 补充证据）。
 
 D34 两层图的「内层」：``create_agent`` 提供工具循环（T1 自主决策），外层图负责
 编排与预算。节点不从消息历史里抠结果——工具把命中写入 ``ToolContext.collected``，
 节点读收集器，因此证据是结构化且跨多次工具调用去重的。
+
+D41：计划产出的子查询由**服务端一次融合召回**（``query_texts`` → 检索层逐路并行 +
+RRF + 单次精排），不在 agent 层做 N 次检索后合并；内层 ReAct 只负责补差（续读原文、
+定位文档、追加检索）。预取失败不阻断——工具回路仍可自行检索。
 
 rewrite → act 会二次进入本节点；收集器保留累计结果，故二次检索是「合并」语义
 （与 D41 的检索层融合配套：合并发生在同一证据池，不产生两份精排列表）。
@@ -20,18 +24,44 @@ from backend.src.app.agent.graph.state import (
 )
 from backend.src.app.agent.graph.stream_bridge import emit_step
 from backend.src.app.retrieval.service.rag_adapter import build_rag_payload
+from backend.src.app.retrieval.service.retrieval_service import retrieval_service
 from backend.src.common.log import log
 
 if TYPE_CHECKING:
     from backend.src.app.agent.graph.tools import ToolContext
 
-__all__ = ['make_act_node']
+__all__ = ['build_task_prompt', 'make_act_node']
 
 
-def build_task_prompt(sub_queries: list[str]) -> str:
-    """把检索计划交给内层 ReAct 的任务说明。"""
+def build_task_prompt(sub_queries: list[str], *, collected: int = 0) -> str:
+    """把检索计划交给内层 ReAct 的任务说明（已预取的证据量一并告知）。"""
     lines = '\n'.join(f'- {item}' for item in sub_queries if str(item).strip())
-    return f'请收集下列检索任务所需的证据：\n{lines}'
+    header = '请收集下列检索任务所需的证据：'
+    if collected:
+        header = f'服务端已按下列检索任务完成融合检索，证据池现有 {collected} 条命中；仅在证据不足时调用工具补充：'
+    return f'{header}\n{lines}'
+
+
+async def prefetch_evidence(tool_ctx: ToolContext, *, query: str, sub_queries: list[str]) -> None:
+    """按计划子查询做一次融合召回（D41）；失败只记日志，交由内层工具兜底。"""
+    names = tool_ctx.allowed_names()
+    if not names or not sub_queries:
+        return
+    try:
+        data = await retrieval_service.search_multi(
+            tool_ctx.db,
+            kb_names=names,
+            query_text=query,
+            query_texts=sub_queries,
+            param=tool_ctx.param,
+            plugin_namespace=tool_ctx.plugin_namespace,
+            scope=tool_ctx.scope,
+        )
+    except Exception as exc:
+        log.warning('agent 计划子查询融合召回失败，转由内层工具兜底 err={}', exc)
+        return
+    tool_ctx.collect(list(data.get('results') or []))
+    tool_ctx.last_retrieval = data
 
 
 def make_act_node(
@@ -48,11 +78,12 @@ def make_act_node(
         sub_queries = [str(item) for item in (state.get('sub_queries') or []) if str(item).strip()]
         if not sub_queries:
             sub_queries = [str(state.get('query') or '')]
-        hits_before = len(tool_ctx.collected)
+        await prefetch_evidence(tool_ctx, query=str(state.get('query') or ''), sub_queries=sub_queries)
+        prefetched = len(tool_ctx.collected)
         calls_before = tool_ctx.tool_calls
         try:
             await agent.ainvoke(
-                {'messages': [{'role': 'user', 'content': build_task_prompt(sub_queries)}]},
+                {'messages': [{'role': 'user', 'content': build_task_prompt(sub_queries, collected=prefetched)}]},
                 config={'recursion_limit': max(2, int(recursion_limit))},
             )
         except Exception as exc:
@@ -62,10 +93,7 @@ def make_act_node(
         # 与 chat 同源适配：raw 检索 dict → 显式 route（selector=explicit）+ 二元来源
         data = dict(tool_ctx.last_retrieval)
         rag = build_rag_payload(data) if data else {}
-        detail = (
-            f'工具调用 {tool_ctx.tool_calls - calls_before} 次，'
-            f'新增命中 {len(hits) - hits_before} 条，累计 {len(hits)} 条'
-        )
+        detail = f'融合召回 {prefetched} 条，工具调用 {tool_ctx.tool_calls - calls_before} 次，累计 {len(hits)} 条'
         return {
             'hits': hits,
             'retrieval': {
