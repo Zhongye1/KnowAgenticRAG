@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.src.app.kb.crud import chunk_dao, dedup_dao, doc_acl_dao, document_dao, keyword_dao, knowledge_base_dao
 from backend.src.app.kb.crud.crud_dedup import compute_sha256_bytes
 from backend.src.app.kb.model import Document
+from backend.src.app.kb.schema.acl import DocAclEntry
 from backend.src.app.kb.schema.document import DocumentUpdateParam
 from backend.src.app.kb.service.document_storage import (
     delete_document_object,
@@ -73,13 +74,15 @@ class DocumentService:
                 owner_id=owner_id,
             )
             # dedup 登记后置到管线成功（spec D9）：失败摄取不残留指纹挡重传
-            # 入库打标默认值（agent-layer spec §8.1）：restricted + 上传者直属部门组
+            # 入库打标默认值（agent-layer spec §8.1）：restricted + 上传者直属部门主体
             if owner_id:
-                await doc_acl_dao.replace_document_acl(
+                await doc_acl_dao.replace_entries(
                     db,
                     document_id=document_id,
                     kb_name=kb_name,
-                    group_ids=[str(owner_dept_id)] if owner_dept_id else [],
+                    entries=[DocAclEntry(principal_type='dept', principal_id=str(owner_dept_id))]
+                    if owner_dept_id
+                    else [],
                     created_by=owner_id,
                 )
         except Exception:

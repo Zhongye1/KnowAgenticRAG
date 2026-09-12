@@ -1,5 +1,6 @@
 from backend.src.app.kb.crud.crud_acl import doc_acl_dao as doc_acl_dao
 from backend.src.app.kb.crud.crud_acl import kb_acl_dao as kb_acl_dao
+from backend.src.app.kb.crud.crud_acl_audit import acl_audit_dao as acl_audit_dao
 from backend.src.app.kb.crud.crud_chunk import chunk_dao as chunk_dao
 from backend.src.app.kb.crud.crud_dedup import dedup_dao as dedup_dao
 from backend.src.app.kb.crud.crud_document import document_dao as document_dao

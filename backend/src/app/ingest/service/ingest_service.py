@@ -171,20 +171,20 @@ async def resolve_acl_fields(db: AsyncSession, *, doc: Any, ns: str) -> dict[str
     """解析文档 ACL 字段（镜像到 Milvus 行；DB 为 source-of-truth）。
 
     visibility/owner_id 取 documents 行（缺省 restricted/None）；groups 取
-    rag_doc_acl 授权组行。legacy 文档（ACL 字段为空）按 restricted 处理，
-    需重新摄取才能进入授权检索范围（backfill 语义）。
+    rag_doc_acl 主体 ID 行（user/dept，v2 条目化）。legacy 文档（ACL 字段为空）
+    按 restricted 处理，需重新摄取才能进入授权检索范围（backfill 语义）。
     供 knowhere / visual 管线共用（spec D6：镜像字段集中穿透）。
     """
     visibility = str(getattr(doc, 'visibility', None) or 'restricted')
     owner_id = getattr(doc, 'owner_id', None) or ''
-    groups = await doc_acl_dao.list_document_groups(
+    entries = await doc_acl_dao.list_entries(
         db, document_id=str(doc.document_id), kb_name=str(doc.kb_name), plugin_namespace=ns
     )
     return {
         'namespace': ns,
         'visibility': visibility,
         'owner_id': owner_id,
-        'groups': groups,
+        'groups': [entry.principal_id for entry in entries],
     }
 
 

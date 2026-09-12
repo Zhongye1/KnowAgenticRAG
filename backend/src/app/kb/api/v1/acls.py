@@ -1,9 +1,10 @@
-"""RAG ACL 管理 API（agent-layer spec ACL 设计 §3/§8）。
+"""RAG ACL 管理 API（kb-ownership-and-acl-v2 spec §5.2）。
 
-- KB 级：GET/PUT ``/knowledge_bases/{kb_name}/acl``（授权组全量替换）
-- 文档级：GET/PUT ``/documents/{document_id}/acl``（visibility + 授权组）
+- KB 级：GET/PUT ``/knowledge_bases/{kb_name}/acl``（授权条目全量替换）
+- 文档级：GET/PUT ``/documents/{document_id}/acl``（visibility + 授权条目）
 
-写路由挂 ``rag:kb:manage`` 权限码（RBAC；超管绕过），变更下推 Milvus 镜像字段。
+写路由挂 ``rag:kb:manage`` 权限码（RBAC；超管绕过）——资源级校验（== owner /
+>= manage）在 Phase 3 接入求值函数后启用；变更下推 Milvus 镜像字段并写审计。
 """
 
 from typing import Annotated, cast
@@ -12,7 +13,7 @@ from fastapi import APIRouter, Depends, Path, Request
 from starlette.authentication import UnauthenticatedUser
 
 from backend.src.app.kb.schema.acl import DocAclDetail, DocAclUpdateParam, KBAclDetail, KBAclUpdateParam
-from backend.src.app.kb.service.acl_service import acl_service
+from backend.src.app.kb.service.acl.entries import acl_entry_service
 from backend.src.app.kb.utils.permissions import RAG_KB_LIST, RAG_KB_MANAGE, RAG_KB_READ
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.common.security.jwt import DependsJwtAuth
@@ -33,34 +34,34 @@ def _operator_id(request: Request) -> str | None:
     return None if isinstance(request.user, UnauthenticatedUser) else str(request.user.id)
 
 
-@kb_acl_router.get('/{kb_name}/acl', summary='查询知识库授权组列表', dependencies=_KB_ACL_READ)
+@kb_acl_router.get('/{kb_name}/acl', summary='查询知识库授权条目', dependencies=_KB_ACL_READ)
 async def get_kb_acl(
     db: CurrentSession,
     kb_name: Annotated[str, Path(description='知识库标识', pattern=r'^[a-z0-9_]+$')],
 ) -> ResponseSchemaModel[KBAclDetail]:
-    data = await acl_service.get_kb_acl(db=db, kb_name=kb_name)
+    data = await acl_entry_service.get_kb_acl(db=db, kb_name=kb_name)
     return response_base.success(data=KBAclDetail.model_validate(data))
 
 
-@kb_acl_router.put('/{kb_name}/acl', summary='更新知识库授权组（全量替换）', dependencies=_MANAGE_ACL)
+@kb_acl_router.put('/{kb_name}/acl', summary='更新知识库授权条目（全量替换）', dependencies=_MANAGE_ACL)
 async def update_kb_acl(
     request: Request,
     db: CurrentSessionTransaction,
     kb_name: Annotated[str, Path(description='知识库标识', pattern=r'^[a-z0-9_]+$')],
     obj: KBAclUpdateParam,
 ) -> ResponseSchemaModel[KBAclDetail]:
-    data = await acl_service.update_kb_acl(
-        db=db, kb_name=kb_name, group_ids=obj.group_ids, created_by=_operator_id(request)
+    data = await acl_entry_service.update_kb_acl(
+        db=db, kb_name=kb_name, entries=obj.entries, operator_id=_operator_id(request)
     )
     return response_base.success(data=KBAclDetail.model_validate(data))
 
 
-@doc_acl_router.get('/{document_id}/acl', summary='查询文档可见性与授权组', dependencies=_DOC_ACL_READ)
+@doc_acl_router.get('/{document_id}/acl', summary='查询文档可见性与授权条目', dependencies=_DOC_ACL_READ)
 async def get_document_acl(
     db: CurrentSession,
     document_id: Annotated[str, Path(description='文档 ID')],
 ) -> ResponseSchemaModel[DocAclDetail]:
-    data = await acl_service.get_document_acl(db=db, document_id=document_id)
+    data = await acl_entry_service.get_document_acl(db=db, document_id=document_id)
     return response_base.success(data=DocAclDetail.model_validate(data))
 
 
@@ -71,11 +72,11 @@ async def update_document_acl(
     document_id: Annotated[str, Path(description='文档 ID')],
     obj: DocAclUpdateParam,
 ) -> ResponseSchemaModel[DocAclDetail]:
-    data = await acl_service.update_document_acl(
+    data = await acl_entry_service.update_document_acl(
         db=db,
         document_id=document_id,
         visibility=obj.visibility,
-        group_ids=obj.group_ids,
+        entries=obj.entries,
         updated_by=_operator_id(request),
     )
     return cast('ResponseSchemaModel[DocAclDetail]', response_base.success(data=DocAclDetail.model_validate(data)))

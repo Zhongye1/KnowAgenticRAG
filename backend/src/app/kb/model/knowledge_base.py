@@ -5,7 +5,7 @@ from typing import Any
 
 import sqlalchemy as sa
 
-from sqlalchemy import JSON, Float, String, Text
+from sqlalchemy import JSON, Boolean, Float, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.src.common.model import MappedBase, TimeZone
@@ -44,6 +44,12 @@ class KnowledgeBase(MappedBase):
         comment='检索默认参数（D17：search_mode/recall_top_k/final_top_k/similarity_threshold/use_reranker）',
     )
     collections_used: Mapped[list[Any]] = mapped_column(JSON, default=list, comment='已写入的集合目录')
+    owner_id: Mapped[str | None] = mapped_column(
+        String(64), nullable=True, comment='库所有者用户 ID（建库人，资源级角色见 rag_kb_acl perm=owner）'
+    )
+    is_public: Mapped[bool] = mapped_column(
+        Boolean, default=False, comment='公开库（对任意持检索功能码用户可读；取代"ACL 表为空=全放开"的隐式语义）'
+    )
     created_time: Mapped[datetime] = mapped_column(TimeZone, default=timezone.now, comment='创建时间')
     updated_time: Mapped[datetime] = mapped_column(
         TimeZone, default=timezone.now, onupdate=timezone.now, comment='更新时间'

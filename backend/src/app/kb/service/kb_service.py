@@ -15,6 +15,7 @@ from backend.src.app.kb.crud import (
 )
 from backend.src.app.kb.model import KnowledgeBase
 from backend.src.app.kb.schema.knowledge_base import KBCreateParam, KBUpdateParam
+from backend.src.app.kb.service.acl.entries import acl_entry_service
 from backend.src.app.kb.service.document_storage import delete_document_object, kb_parsed_object_key
 from backend.src.app.kb.service.kb_stats_service import KnowledgeBaseStatsService
 from backend.src.app.kb.utils.namespace import instance_namespace
@@ -66,18 +67,25 @@ class KnowledgeBaseService:
             'embedding_model': kb.embedding_model,
             'query_params': kb.query_params or {},
             'collections_used': kb.collections_used,
+            'owner_id': kb.owner_id,
+            'is_public': kb.is_public,
             'created_time': kb.created_time,
             'updated_time': kb.updated_time,
             **stats,
         }
 
     @staticmethod
-    async def create(*, db: AsyncSession, obj: KBCreateParam) -> KnowledgeBase:
-        """创建知识库；同名（同域）冲突时 409。"""
+    async def create(*, db: AsyncSession, obj: KBCreateParam, owner_id: str | None = None) -> KnowledgeBase:
+        """创建知识库；同名（同域）冲突时 409；建库即 Owner（spec §7.1）。"""
         existing = await knowledge_base_dao.get(db, obj.kb_name)
         if existing is not None:
             raise errors.ConflictError(msg=f'知识库 {obj.kb_name} 已存在')
-        return await knowledge_base_dao.create(db, obj)
+        kb = await knowledge_base_dao.create(db, obj, owner_id=owner_id)
+        if owner_id is not None:
+            await acl_entry_service.ensure_owner(
+                db=db, kb_name=kb.kb_name, owner_id=owner_id, plugin_namespace=kb.plugin_namespace
+            )
+        return kb
 
     @staticmethod
     async def update(*, db: AsyncSession, kb_name: str, obj: KBUpdateParam) -> KnowledgeBase:

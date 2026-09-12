@@ -235,7 +235,7 @@ async def _resolve_allowed_kbs(
         kbs = await db.scalars(select(KnowledgeBase.kb_name).where(KnowledgeBase.plugin_namespace == namespace))
         return list(kbs.all())
 
-    # 有 ACL 记录 → 只返回用户组有权限的 KB
+    # 有 ACL 记录 → 只返回用户组（主体 ID）有 allow 条目的 KB
     if not groups:
         return []
 
@@ -243,7 +243,8 @@ async def _resolve_allowed_kbs(
         select(KbAcl.kb_name)
         .where(
             KbAcl.plugin_namespace == namespace,
-            KbAcl.group_id.in_(groups),
+            KbAcl.principal_id.in_(groups),
+            KbAcl.effect == 'allow',
         )
         .distinct()
     )

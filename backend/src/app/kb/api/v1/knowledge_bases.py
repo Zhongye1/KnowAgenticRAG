@@ -2,7 +2,8 @@
 
 from typing import Annotated, cast
 
-from fastapi import APIRouter, Depends, Path, Query
+from fastapi import APIRouter, Depends, Path, Query, Request
+from starlette.authentication import UnauthenticatedUser
 
 from backend.src.app.kb.deps import CurrentNamespace
 from backend.src.app.kb.schema.knowledge_base import (
@@ -56,11 +57,13 @@ async def get_knowledge_bases_overview(
 
 @router.post('', summary='创建知识库', dependencies=_PERM_MANAGE)
 async def create_knowledge_base(
+    request: Request,
     db: CurrentSessionTransaction,
     current_namespace: CurrentNamespace,
     obj: KBCreateParam,
 ) -> ResponseSchemaModel[KBDetail]:
-    kb = await kb_service.create(db=db, obj=obj)
+    owner_id = None if isinstance(request.user, UnauthenticatedUser) else str(request.user.id)
+    kb = await kb_service.create(db=db, obj=obj, owner_id=owner_id)
     detail = await kb_service.get_detail(db=db, kb_name=kb.kb_name)
     return response_base.success(data=KBDetail.model_validate(detail))
 

@@ -87,6 +87,7 @@ class KBUpdateParam(SchemaBase):
     pdf_text_page_ratio: float | None = Field(None, ge=0.0, le=1.0, description='PDF 文本页比例阈值')
     embedding_model: str | None = Field(None, max_length=64, description='嵌入模型')
     query_params: dict | None = Field(None, description='检索默认参数（整字段替换 + 白名单）')
+    is_public: bool | None = Field(default=None, description='公开库开关（>= manage 可改；需留审计）')
 
     @field_validator('query_params')
     @classmethod
@@ -107,6 +108,8 @@ class KBItem(SchemaBase):
     embedding_model: str = Field(description='嵌入模型')
     query_params: dict = Field(default_factory=dict, description='检索默认参数')
     collections_used: list[str] = Field(default_factory=list, description='已写入的集合目录')
+    owner_id: str | None = Field(default=None, description='库所有者用户 ID')
+    is_public: bool = Field(default=False, description='是否公开库')
     documents: int = Field(0, description='文档数')
     text_vectors: int = Field(0, description='文本向量数')
     visual_vectors: int = Field(0, description='视觉向量数')

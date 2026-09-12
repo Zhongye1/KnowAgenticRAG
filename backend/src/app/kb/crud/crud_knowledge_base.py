@@ -51,8 +51,9 @@ class CRUDKnowledgeBase(TenantScopedCrud[KnowledgeBase]):
         obj: KBCreateParam,
         *,
         plugin_namespace: str | None = None,
+        owner_id: str | None = None,
     ) -> KnowledgeBase:
-        """创建知识库注册行。"""
+        """创建知识库注册行（owner_id 为建库人，资源级授权见 rag_kb_acl）。"""
         ns = instance_namespace(plugin_namespace)
         kb = KnowledgeBase(
             kb_name=obj.kb_name,
@@ -63,6 +64,7 @@ class CRUDKnowledgeBase(TenantScopedCrud[KnowledgeBase]):
             icon=obj.icon,
             pdf_text_page_ratio=obj.pdf_text_page_ratio,
             query_params=obj.query_params or {},
+            owner_id=owner_id,
         )
         db.add(kb)
         await db.flush()

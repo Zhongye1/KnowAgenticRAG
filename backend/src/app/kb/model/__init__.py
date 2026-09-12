@@ -1,3 +1,4 @@
+from backend.src.app.kb.model.acl import AclAudit as AclAudit
 from backend.src.app.kb.model.acl import DocAcl as DocAcl
 from backend.src.app.kb.model.acl import KbAcl as KbAcl
 from backend.src.app.kb.model.chunk import Chunk as Chunk
