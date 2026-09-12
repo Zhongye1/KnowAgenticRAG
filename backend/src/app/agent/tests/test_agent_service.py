@@ -68,7 +68,12 @@ def _stub_nodes(*, hits: list[dict[str, Any]]) -> dict[str, Any]:
         }
 
     def act_node(state: dict[str, Any]) -> dict[str, Any]:
-        return {'hits': hits, 'visual_items': [], 'steps': [emit_step('act', f'{len(hits)} 条命中')]}
+        return {
+            'hits': hits,
+            'visual_items': [],
+            'tool_calls': 2,
+            'steps': [emit_step('act', f'{len(hits)} 条命中')],
+        }
 
     def generate_node(state: dict[str, Any]) -> dict[str, Any]:
         kept = list(state.get('hits') or [])
@@ -149,6 +154,7 @@ def test_astream_emits_d25_events_with_self_contained_done(monkeypatch: pytest.M
     assert done['citations'][0]['chunk_id'] == 'doc-1:1:0'
     assert done['agent']['plan_rationale'] == '需要查资料'
     assert done['agent']['need_retrieval'] is True
+    assert done['agent']['tool_calls'] == 2
 
 
 def test_acomplete_returns_the_same_done_payload(monkeypatch: pytest.MonkeyPatch) -> None:

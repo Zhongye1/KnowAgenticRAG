@@ -209,7 +209,9 @@ class AgentState(TypedDict):
 > 与下述条目的两处有意偏差：① 1.3 收敛为 **4 个只读证据工具**（`answer_with_citations`
 > 属生成能力而非证据收集，由 `generate` 节点承担）；② 1.4 内层 ReAct 直接落在
 > `graph/nodes/act.py`（不单列 `react.py`）。2.2a / 2.2b 已实现（检索层 `query_texts` +
-> act 服务端融合预取）。1.11（`agent_runs` 表）、3.6（自省埋点）、Phase 4 **未做**。
+> act 服务端融合预取）；3.6 埋点已实现（`ragf.agent.requests/duration_seconds/
+> first_token_seconds/steps/rewrites/tool_calls`）。1.11（`agent_runs` 表）与 Phase 4
+> （前端接入 / 代码生成）**未做**。
 
 | 编号 | 落点 | 改动 | 验收 |
 | --- | --- | --- | --- |

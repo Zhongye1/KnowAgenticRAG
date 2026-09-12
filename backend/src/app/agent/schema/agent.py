@@ -49,6 +49,7 @@ class AgentPlanInfo(SchemaBase):
     plan_rationale: str = Field('', description='规划理由（一句话）')
     grade_score: float = Field(0.0, description='自省判据：精排最高分')
     rewrites: int = Field(0, description='实际发生的改写次数（受服务端预算封顶）')
+    tool_calls: int = Field(0, description='内层工具循环的累计调用次数')
 
 
 class AgentResponse(SchemaBase):
@@ -74,7 +75,7 @@ class AgentResponse(SchemaBase):
     )
     agent: AgentPlanInfo = Field(
         default_factory=lambda: AgentPlanInfo(
-            need_retrieval=True, sub_queries=[], plan_rationale='', grade_score=0.0, rewrites=0
+            need_retrieval=True, sub_queries=[], plan_rationale='', grade_score=0.0, rewrites=0, tool_calls=0
         ),
         description='Agent 规划与自省元数据',
     )

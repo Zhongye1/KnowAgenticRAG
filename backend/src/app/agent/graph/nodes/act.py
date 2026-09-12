@@ -96,6 +96,7 @@ def make_act_node(
         detail = f'融合召回 {prefetched} 条，工具调用 {tool_ctx.tool_calls - calls_before} 次，累计 {len(hits)} 条'
         return {
             'hits': hits,
+            'tool_calls': tool_ctx.tool_calls,
             'retrieval': {
                 'mode': str(rag.get('mode') or 'hybrid'),
                 'route': dict(rag.get('route') or {}),

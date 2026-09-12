@@ -58,6 +58,10 @@ _AGENT_FIRST_TOKEN = _METER.create_histogram(
     'ragf.agent.first_token_seconds', unit='s', description='agent 首 delta 延迟'
 )
 _AGENT_DURATION = _METER.create_histogram('ragf.agent.duration_seconds', unit='s', description='agent 请求总耗时')
+# D36/§3.6：预算与自省的可观测面（Grafana 可查「谁跑满了预算」）
+_AGENT_STEPS = _METER.create_histogram('ragf.agent.steps', unit='1', description='单次运行的轨迹步数')
+_AGENT_REWRITES = _METER.create_counter('ragf.agent.rewrites', unit='1', description='T3 自省改写次数')
+_AGENT_TOOL_CALLS = _METER.create_counter('ragf.agent.tool_calls', unit='1', description='内层工具循环调用次数')
 
 
 @dataclass(frozen=True)
@@ -130,6 +134,7 @@ class AgentService:
         """D25 事件序列（step/meta/citation/delta/usage/done/error；span + 指标）。"""
         started = time.perf_counter()
         first_delta_at: float | None = None
+        final: dict[str, Any] | None = None
         with _TRACER.start_as_current_span('ragf.agent.stream') as span:
             span.set_attribute('ragf.kb_name', kb_name)
             outcome = 'error'
@@ -141,12 +146,15 @@ class AgentService:
                         outcome = 'empty' if int(data.get('hit_count') or 0) == 0 else 'ok'
                     elif event == 'error':
                         outcome = 'error'
+                    elif event == 'done':
+                        final = data
                     elif event == 'delta' and first_delta_at is None and data.get('content'):
                         first_delta_at = time.perf_counter()
                     yield (event, data)
             finally:
                 span.set_attribute('ragf.result', outcome)
                 _AGENT_REQUESTS.add(1, {'result': outcome})
+                _record_run_metrics(final)
                 if first_delta_at is not None:
                     _AGENT_FIRST_TOKEN.record(first_delta_at - started)
                 _AGENT_DURATION.record(time.perf_counter() - started)
@@ -330,6 +338,16 @@ def _http_error(data: dict[str, Any]) -> Exception:
     if code in {'INVALID_REQUEST', 'MODEL_NOT_CONFIGURED'}:
         return errors.RequestError(msg=msg)
     return errors.ServerError(msg=msg)
+
+
+def _record_run_metrics(done: dict[str, Any] | None) -> None:
+    """done 负载 → 预算/自省指标（失败或未产出 done 时不打点，避免污染直方图）。"""
+    if not done:
+        return
+    agent = done.get('agent') or {}
+    _AGENT_STEPS.record(len(done.get('steps') or []))
+    _AGENT_REWRITES.add(max(0, int(agent.get('rewrites') or 0)))
+    _AGENT_TOOL_CALLS.add(max(0, int(agent.get('tool_calls') or 0)))
 
 
 agent_service = AgentService()

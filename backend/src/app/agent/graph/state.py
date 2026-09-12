@@ -41,6 +41,9 @@ class AgentState(TypedDict, total=False):
     # rewrite 节点产物
     rewrite_count: int
 
+    # act 节点产物：内层工具循环的累计调用次数（可观测 + done 元数据）
+    tool_calls: int
+
     # generate 节点产物
     answer: str
     reason: str
