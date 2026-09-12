@@ -367,7 +367,7 @@ class Settings(BaseSettings):
     # D36 三重预算之二：单请求墙钟（act 节点级超时 + 服务端整体守护）
     RAGF_AGENT_TIMEOUT_SECONDS: float = 180.0
     # D36 三重预算之三：T3 自省改写次数（grade 条件边硬封顶）
-    RAGF_AGENT_MAX_REWRITES: int = 1
+    RAGF_AGENT_MAX_REWRITES: int = 3
     # grade 判据：精排最高分低于此值视为证据不足（零额外模型成本，D36）
     RAGF_AGENT_MIN_SCORE: float = 0.3
     # plan 拆分子查询上限（结构化输出约束 + 运行时截断双保险）

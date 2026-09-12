@@ -53,7 +53,7 @@ class AgentGraphConfig:
     kb_names: list[str] = field(default_factory=list)
     model_spec: str = ''
     max_sub_queries: int = 3
-    max_rewrites: int = 1
+    max_rewrites: int = 3
     min_score: float = 0.3
     allow_rewrite: bool = True
     act_timeout_seconds: float = 90.0
