@@ -56,6 +56,12 @@ dependencies = [
     "opentelemetry-instrumentation-celery>=0.65b0",
     "sse-starlette>=3.4.8",
     "pypdfium2>=5.13.0",
+    # Agent 运行时（agentic-rag spec D34）：LangGraph + LangChain create_agent + OpenAI 兼容协议。
+    # langchain-openai 连带引入 openai / tiktoken；不引入 deepagents（D39，其强制依赖
+    # langchain-anthropic + langchain-google-genai，对检索 Agent 非必需）。
+    "langgraph>=1.2,<2",
+    "langchain>=1.4,<2",
+    "langchain-openai>=1.6,<2",
 ]
 
 # 双管线摄取引擎依赖（双管线摄取 spec D1）为**可选**组件，不进主依赖/uv.lock：
