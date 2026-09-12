@@ -226,7 +226,7 @@ class AgentState(TypedDict):
 | 1.5 ✅ | `agent/graph/builder.py`（🆕） | 外层 `StateGraph` 装配：`START → plan → act → grade → generate → END`（本阶段 `plan`/`grade` 可为直通桩） | 图可编译、可 `astream` |
 | 1.6 ✅ | `agent/service/agent_service.py`（🆕） | 门面 `astream` / `acomplete`，经 `stream_bridge` 直出 D25 事件 | 与 `chat_service` 形态同构 |
 | 1.7 ✅ | `agent/api/v1/agent.py` + `router.py`（🆕） | `POST /{kb_name}/agent`（JSON）+ `/agent/stream`（SSE）；挂到 `src/app/router.py` | 实测 `app.openapi()` 含 `/api/v1/knowledge_bases/{kb_name}/agent` 与 `/agent/stream`；`/chat` 路径与 schema 未变 |
-| 1.8 ✅ | 权限点 | 新增 `rag:kb:agent`（`kb/utils/permissions.py`，与 `rag:kb:chat` 同风格）+ 菜单/权限 SQL 种子 | `RAG_KB_AGENT = 'rag:kb:agent'` 在 `kb/utils/permissions.py`；`init_test_data.sql` 菜单 id=63 + 角色绑定已种子；无权限 403 |
+| 1.8 ✅ | 权限点 | 新增 `rag:kb:agent`（`kb/utils/permissions.py`，与 `rag:kb:chat` 同风格）+ 菜单/权限 SQL 种子 | `RAG_KB_AGENT = 'rag:kb:agent'` 在 `kb/utils/permissions.py`；`init_test_data.sql` 菜单 id=63 + 角色绑定已种子；无权限 403。**决策：不进 `RAG_KB_READ_SCOPES`**——该集合是 MCP 只读工具面的默认权限点，agent 是 HTTP 编排端点而非 MCP 工具 |
 | 1.9 ✅ | `agent/schema/agent.py`（🆕） | `AgentParam`（= `ChatParam` + `max_steps` / `allow_rewrite` / `max_sub_queries` / `min_score`）、`AgentResponse`（含 `agent` 规划元数据）、`AgentPlanInfo` | 字段带 `Field(description=...)` |
 | 1.10 ✅ | `core/config.py` | `RAGF_AGENT_*`：`MODEL_SPEC`（空则回落 `RAGF_CHAT_MODEL_SPEC`）、`MAX_STEPS=6`、`MAX_STEPS_HARD=12`、`TIMEOUT_SECONDS=180`、`MAX_REWRITES=1`、`MIN_SCORE=0.3`、`MAX_SUB_QUERIES=3`、`ACT_TIMEOUT_SECONDS=90`、`ACT_RECURSION_LIMIT=12` | 实测 9 个 `RAGF_AGENT_*` 键在 `core/config.py` 与 `src/.env.example` 一一对应 |
 | 1.11 ✅ | `agent/model/agent_run.py`（🆕） | 表 `agent_runs`：`run_id / kb_names / plugin_namespace / query / status / model_spec / steps(jsonb) / tool_call_count / rewrite_count / usage / created_time` | 模型类在 `model/__init__.py` 聚合导出；**无需迁移脚本**（项目未上线，建表走启动时 `create_all`，见 `src/alembic/versions/README.md`）。落库在 `agent/service/run_log.py`（best-effort，失败只告警），写入点在 `AgentService.astream` 的 finally，流式/非流式同源 |
@@ -479,7 +479,7 @@ backend/src/app/agent/
 
 ### 9.3 不动（明确边界）
 
-`backend/src/app/chat/**`（契约冻结，D35）、`backend/src/app/mcp/**`（工具语义被复用但不改）、`backend/src/app/ingest/**`、`backend/src/app/model_provider/**`（首版不改，Phase 4.1 再评估统一）。
+`backend/src/app/chat/**`（契约冻结，D35）、`backend/src/app/mcp/**`（工具语义被复用但不改）、`backend/src/app/ingest/**`、`backend/src/app/model_provider/**`（契约与行为不动；4.1 已评审：只抽出 `common/llm_protocol` 的共用协议规则，httpx 客户端行为不变，见评估文档）。
 
 ---
 
