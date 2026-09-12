@@ -515,6 +515,7 @@ services:
       - ./deploy/backend/grafana/ragf_grafana.ini:/etc/grafana/grafana.ini
       - ./deploy/backend/grafana/dashboards/ragf_celery.json:/etc/grafana/dashboards/ragf_celery.json
       - ./deploy/backend/grafana/dashboards/ragf_server.json:/etc/grafana/dashboards/ragf_server.json
+      - ./deploy/backend/grafana/dashboards/ragf_agent.json:/etc/grafana/dashboards/ragf_agent.json
       - ./deploy/backend/grafana/ragf_dashboards.yml:/etc/grafana/provisioning/dashboards/ragf_dashboards.yml
       - ./deploy/backend/grafana/ragf_datasource.yml:/etc/grafana/provisioning/datasources/ragf_datasource.yml
     networks:

@@ -210,8 +210,11 @@ class AgentState(TypedDict):
 > 属生成能力而非证据收集，由 `generate` 节点承担）；② 1.4 内层 ReAct 直接落在
 > `graph/nodes/act.py`（不单列 `react.py`）。2.2a / 2.2b 已实现（检索层 `query_texts` +
 > act 服务端融合预取）；3.6 埋点已实现（`ragf.agent.requests/duration_seconds/
-> first_token_seconds/steps/rewrites/tool_calls`）。1.11（`agent_runs` 表）与 Phase 4
-> （前端接入 / 代码生成）**未做**。
+> first_token_seconds/steps/rewrites/tool_calls`）。前端 Phase 4 除 4.1（`/chat` 是否切
+> `ChatOpenAI`，待评审）外均已落地：4.2 适配器参数化（`createKbChatAdapter` +
+> 委派式 `kbChatAdapter`）、4.3 Chat 页 Agent 开关与轨迹面板、4.4 MSW Agent SSE、
+> 4.5 `generated` 全量重生成、4.6 `ragf_agent` Grafana 面板。1.11（`agent_runs` 表）
+> 仍**未做**（可后置）。
 
 | 编号 | 落点 | 改动 | 验收 |
 | --- | --- | --- | --- |
@@ -314,6 +317,22 @@ class AgentState(TypedDict):
 | 4.4 | `frontend/src/testing/mocks/handlers/chat.ts` | MSW mock 补 Agent SSE（含 plan/rewrite 步骤） | 前端测试绿 |
 | 4.5 | `frontend/src/generated/` | 后端起 8000 → `pnpm generate:api` | 类型对齐 |
 | 4.6 | `deploy/backend/grafana/` | Agent 面板：改写率、平均步数、工具调用分布 | 面板可见 |
+
+> **Phase 4 落地状态（2026-09-12）**
+>
+> - 4.2 ✅ `frontend/src/features/chat/lib/chat-adapter.ts` 抽出 `createKbChatAdapter(mode)`，
+>   两种模式仅端点分叉（`/chat/stream` ↔ `/agent/stream`），共用 D25 解析；新增
+>   `agentAdapter` 与运行期委派的 `kbChatAdapter`（切模式不重建 runtime）。
+> - 4.3 ✅ 新增 `agent-mode-toggle.tsx`（聊天页脚，localStorage 持久化）与
+>   `agent-steps.tsx`（折叠摘要 + plan/act/grade/rewrite/generate 明细 + 子查询/规划理由）；
+>   仅在 `done.agent` 存在时渲染。
+> - 4.4 ✅ `testing/mocks/handlers/chat.ts` 增 `/agent/stream` handler（含改写分支）。
+> - 4.5 ✅ `generated/` 全量重生成，新增 `agent-knowledge-base(-stream).ts` 等产物。
+> - 4.6 ✅ 新增 `deploy/backend/grafana/dashboards/ragf_agent.json`（请求/延迟 P95/平均步数/
+>   改写率/工具调用），并在 `docker-compose.yml` 挂载。
+>   **偏差**：`ragf.agent.tool_calls` 为无标签 counter，无法出「工具名分布」面板，
+>   改为「工具调用速率 + 每请求均值」；若要真分布需给 counter 加 `tool` 标签。
+> - 4.1 ⏳ 待评审：`/chat` 是否切 `ChatOpenAI`（契约冻结，本轮不动）。
 
 ---
 
