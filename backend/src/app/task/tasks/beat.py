@@ -13,6 +13,10 @@ def get_local_beat_schedule() -> dict[str, dict[str, Any]]:
             'task': 'ingest.reconcile',
             'schedule': TzAwareCrontab('30', '*'),
         },
+        'ACL 巡检：过期清理与 Milvus 镜像对账': {
+            'task': 'kb.acl_reconcile',
+            'schedule': TzAwareCrontab('0', '*'),
+        },
         '测试同步任务': {
             'task': 'task_demo',
             'schedule': schedule(30),

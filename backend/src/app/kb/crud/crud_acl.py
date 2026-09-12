@@ -80,6 +80,25 @@ class CRUDKbAcl(TenantScopedCrud[KbAcl]):
         await db.flush()
         return len(entries)
 
+    async def delete_expired(
+        self,
+        db: AsyncSession,
+        *,
+        now: datetime,
+        plugin_namespace: str | None = None,
+    ) -> int:
+        """清理域内已过期 KB 授权条目（巡检任务用；求值期同样即时忽略过期条目）。"""
+        ns = instance_namespace(plugin_namespace)
+        result = await db.execute(
+            delete(KbAcl).where(
+                KbAcl.plugin_namespace == ns,
+                KbAcl.expires_at.is_not(None),
+                KbAcl.expires_at <= now,
+            )
+        )
+        await db.flush()
+        return getattr(result, 'rowcount', 0) or 0
+
     async def delete_by_kb(
         self,
         db: AsyncSession,
@@ -111,6 +130,19 @@ class CRUDDocAcl(TenantScopedCrud[DocAcl]):
         if kb_name is not None:
             filters.append(DocAcl.kb_name == kb_name)
         stmt = select(DocAcl).where(*filters)
+        rows = await db.scalars(stmt)
+        return list(rows.all())
+
+    async def list_entries_by_kb(
+        self,
+        db: AsyncSession,
+        *,
+        kb_name: str,
+        plugin_namespace: str | None = None,
+    ) -> list[DocAcl]:
+        """查询 KB 下全部文档授权条目（镜像重建/对账用）。"""
+        ns = instance_namespace(plugin_namespace)
+        stmt = select(DocAcl).where(DocAcl.plugin_namespace == ns, DocAcl.kb_name == kb_name)
         rows = await db.scalars(stmt)
         return list(rows.all())
 
@@ -192,6 +224,25 @@ class CRUDDocAcl(TenantScopedCrud[DocAcl]):
             delete(DocAcl).where(
                 DocAcl.plugin_namespace == ns,
                 DocAcl.kb_name == kb_name,
+                DocAcl.expires_at.is_not(None),
+                DocAcl.expires_at <= now,
+            )
+        )
+        await db.flush()
+        return getattr(result, 'rowcount', 0) or 0
+
+    async def delete_expired(
+        self,
+        db: AsyncSession,
+        *,
+        now: datetime,
+        plugin_namespace: str | None = None,
+    ) -> int:
+        """清理域内已过期授权条目（巡检任务用）。"""
+        ns = instance_namespace(plugin_namespace)
+        result = await db.execute(
+            delete(DocAcl).where(
+                DocAcl.plugin_namespace == ns,
                 DocAcl.expires_at.is_not(None),
                 DocAcl.expires_at <= now,
             )

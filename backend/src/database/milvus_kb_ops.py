@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import logging
 
-from typing import cast
+from typing import Any, cast
 
 from pymilvus import CollectionSchema, DataType, FieldSchema, Function, FunctionType, MilvusClient
 from pymilvus.client.abstract import AnnSearchRequest, RRFRanker
@@ -736,3 +736,34 @@ def update_ragf_document_acl(
     if updated:
         logger.info('ACL 变更传播 coll_upsert=%s kb=%s doc=%s', updated, kb_name, document_id)
     return updated
+
+
+def read_ragf_document_acl(
+    kb_name: str,
+    document_id: str,
+    *,
+    plugin_namespace: str | None = None,
+) -> dict[str, Any] | None:
+    """读取文档 ACL 镜像标量（kb-ownership-and-acl-v2 spec §7.3 对账用）。
+
+    任一 ragf 模板集合命中即返回 ``{visibility, owner_id, groups}``；
+    集合缺失/无行返回 None（未摄取文档不在对账修复范围，由摄取流程落镜像）。
+    """
+    for collection in ragf_template_collections(plugin_namespace=plugin_namespace):
+        client = _client(plugin_namespace)
+        if not client.has_collection(collection):
+            continue
+        expr = f'kb_name == "{kb_name}" and document_id == "{document_id}"'
+        try:
+            rows = client.query(collection, filter=expr, output_fields=['visibility', 'owner_id', 'groups'])
+        except Exception as exc:
+            logger.warning('ACL 对账读取失败 coll=%s kb=%s doc=%s: %s', collection, kb_name, document_id, exc)
+            continue
+        if rows:
+            row = rows[0]
+            return {
+                'visibility': str(row.get('visibility') or ''),
+                'owner_id': str(row.get('owner_id') or ''),
+                'groups': [str(g) for g in (row.get('groups') or [])],
+            }
+    return None

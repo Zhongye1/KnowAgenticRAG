@@ -371,3 +371,30 @@ def update_visual_document_acl(
         return 0
     logger.info('视觉集合 ACL 传播完成 coll=%s kb=%s doc=%s rows=%s', collection, kb_name, document_id, len(new_rows))
     return len(new_rows)
+
+
+def read_visual_document_acl(
+    kb_name: str,
+    document_id: str,
+    *,
+    plugin_namespace: str | None = None,
+) -> dict[str, Any] | None:
+    """读取视觉集合文档 ACL 镜像标量（kb-ownership-and-acl-v2 spec §7.3 对账用）。"""
+    collection = visual_collection_name()
+    client = _client(plugin_namespace)
+    if not client.has_collection(collection):
+        return None
+    expr = f'kb_name == "{kb_name}" and document_id == "{document_id}"'
+    try:
+        rows = client.query(collection, filter=expr, output_fields=['visibility', 'owner_id', 'groups'])
+    except Exception as exc:
+        logger.warning('视觉集合 ACL 对账读取失败 kb=%s doc=%s: %s', kb_name, document_id, exc)
+        return None
+    if not rows:
+        return None
+    row = rows[0]
+    return {
+        'visibility': str(row.get('visibility') or ''),
+        'owner_id': str(row.get('owner_id') or ''),
+        'groups': [str(g) for g in (row.get('groups') or [])],
+    }

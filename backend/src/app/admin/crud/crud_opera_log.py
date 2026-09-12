@@ -1,10 +1,21 @@
-from sqlalchemy import Select
+from typing import Any, cast
+
+from sqlalchemy import CursorResult, Select
 from sqlalchemy import delete as sa_delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy_crud_plus import CRUDPlus
 
 from backend.src.app.admin.model import OperaLog
 from backend.src.app.admin.schema.opera_log import CreateOperaLogParam
+from backend.src.core.config import settings
+
+# 审计删除保护（kb-ownership-and-acl-v2 spec §7.2/D48）：KB/文档/ACL/检索资源类
+# 操作记录禁止物理删除；API 批量删除、清空与定时清理共用本过滤
+_PROTECTED_PATH_PREFIXES = ('/knowledge_bases', '/documents', '/rag')
+
+
+def _protected_event_filters() -> list[Any]:
+    return [~OperaLog.path.startswith(f'{settings.FASTAPI_API_V1_PATH}{prefix}') for prefix in _PROTECTED_PATH_PREFIXES]
 
 
 class CRUDOperaLogDao(CRUDPlus[OperaLog]):
@@ -52,23 +63,25 @@ class CRUDOperaLogDao(CRUDPlus[OperaLog]):
 
     async def delete(self, db: AsyncSession, pks: list[int]) -> int:
         """
-        批量删除操作日志
+        批量删除操作日志（资源类事件受删除保护，不计入删除集）
 
         :param db: 数据库会话
         :param pks: 操作日志 ID 列表
         :return:
         """
-        return await self.delete_model_by_column(db, allow_multiple=True, id__in=pks)
+        stmt = sa_delete(OperaLog).where(OperaLog.id.in_(pks), *_protected_event_filters())
+        result = await db.execute(stmt)
+        return cast('CursorResult[Any]', result).rowcount or 0
 
     @staticmethod
     async def delete_all(db: AsyncSession) -> None:
         """
-        删除所有日志
+        删除所有日志（资源类事件受删除保护，保留）
 
         :param db: 数据库会话
         :return:
         """
-        await db.execute(sa_delete(OperaLog))
+        await db.execute(sa_delete(OperaLog).where(*_protected_event_filters()))
 
 
 opera_log_dao: CRUDOperaLogDao = CRUDOperaLogDao(OperaLog)
