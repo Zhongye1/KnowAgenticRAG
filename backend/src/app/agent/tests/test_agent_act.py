@@ -67,6 +67,19 @@ def test_tool_context_buckets_calls_by_tool_name() -> None:
     assert ctx.tool_calls_by_name == {'search_knowledge': 2, 'read_document_chunks': 1}
 
 
+def test_collect_dedupes_hits_across_calls() -> None:
+    """3.3 去重：改写后二次检索与首次命中重叠时，证据池只保留一份（按 chunk_id）。"""
+    ctx = _ctx()
+    ctx.collect([{'chunk_id': 'c1', 'content': '首查'}, {'chunk_id': 'c2'}])
+    ctx.collect([{'chunk_id': 'c1', 'content': '重查'}, {'chunk_id': 'c3'}])
+    assert [hit['chunk_id'] for hit in ctx.collected] == ['c1', 'c2', 'c3']
+    # 保留首次命中内容（先到先得，避免二次检索覆盖已有证据）
+    assert ctx.collected[0]['content'] == '首查'
+    # 无 chunk_id 的畸形命中丢弃，不污染证据池
+    ctx.collect([{'content': '无 id'}])
+    assert len(ctx.collected) == 3
+
+
 def test_prefetch_failure_is_non_blocking(monkeypatch: Any) -> None:
     """预取失败不抛异常：内层工具回路仍可自行检索。"""
     monkeypatch.setattr(act_mod, 'retrieval_service', _StubRetrieval(boom=True))

@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, Any, cast
 
 from backend.src.app.agent.graph.builder import AgentGraphConfig, build_agent_graph
 from backend.src.app.agent.graph.nodes.grade import make_grade_node
+from backend.src.app.agent.graph.nodes.plan import Plan, make_plan_node
+from backend.src.app.agent.graph.nodes.rewrite import make_rewrite_node
 from backend.src.app.agent.graph.stream_bridge import (
     emit_citation,
     emit_delta,
@@ -217,3 +219,43 @@ def test_done_payload_is_self_contained() -> None:
     assert done['usage'] == {'prompt_tokens': 1, 'completion_tokens': 1, 'total_tokens': 2}
     assert done['agent']['need_retrieval'] is True
     assert done['agent']['sub_queries'] == ['甲']
+
+
+# --------------------------------------------------------------- 节点降级路径（2.1 / 3.2）
+def test_plan_failure_degrades_to_original_query() -> None:
+    """规划失败绝不中断请求：降级为「检索原问句」并留下降级理由。"""
+
+    async def _boom(_messages: list[dict[str, str]]) -> Any:  # ruff: ignore[unused-async]  # 替身按 awaitable 契约注入
+        raise RuntimeError('结构化输出不可用')
+
+    node = make_plan_node(planner=_boom, max_sub_queries=3)
+    result = asyncio.run(node({'query': '原问题'}))
+    assert result['need_retrieval'] is True
+    assert result['sub_queries'] == ['原问题']
+    assert '降级' in result['plan_rationale']
+    assert result['steps'][0]['name'] == 'plan'
+
+
+def test_plan_node_dedupes_and_caps_sub_queries() -> None:
+    """2.1：子查询去空白、去重、按 max_sub_queries 截断。"""
+
+    async def _planner(_messages: list[dict[str, str]]) -> Plan:  # ruff: ignore[unused-async]  # 替身按 awaitable 契约注入
+        return Plan(need_retrieval=True, sub_queries=[' 甲 ', '甲', '', '乙', '丙'], rationale='r')
+
+    node = make_plan_node(planner=_planner, max_sub_queries=2)
+    result = asyncio.run(node({'query': '原问题'}))
+    assert result['sub_queries'] == ['甲', '乙']
+    assert result['need_retrieval'] is True
+
+
+def test_rewrite_failure_falls_back_to_original_query() -> None:
+    """3.2：改写失败 → 保持原结果（回退原问句），不抛异常，仍计数一次。"""
+
+    async def _boom(_messages: list[dict[str, str]]) -> Any:  # ruff: ignore[unused-async]  # 替身按 awaitable 契约注入
+        raise RuntimeError('模型不可用')
+
+    node = make_rewrite_node(rewriter=_boom)
+    result = asyncio.run(node({'query': '原问题', 'sub_queries': ['甲'], 'rewrite_count': 0}))
+    assert result['sub_queries'] == ['原问题']
+    assert result['rewrite_count'] == 1
+    assert result['steps'][0]['name'] == 'rewrite'
