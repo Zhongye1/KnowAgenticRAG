@@ -79,12 +79,12 @@ def resolve_provider_api_key(provider: ModelProvider) -> str | None:
     """解析 provider 的 API Key：直接配置 > api_key_env 环境变量 > 类型默认环境变量。
 
     空字符串视同未配置（env 占位符场景不产生空凭据）：api_key_env 对应环境变量未设/为空时，
-
+    再回退 settings 同名字段（.env 经 pydantic 加载，不进 os.environ）。
     """
     if provider.api_key:
         return provider.api_key
     if provider.api_key_env:
-        value = os.getenv(provider.api_key_env)
+        value = os.getenv(provider.api_key_env) or getattr(settings, provider.api_key_env, None)
         if value:
             return value
     if provider.provider_type == 'dashscope' and settings.DASHSCOPE_API_KEY:

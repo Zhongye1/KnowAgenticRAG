@@ -2,9 +2,9 @@
 
 按平台 SDK 调用约定（``import dashscope``）：
 
-- **向量**：``dashscope.MultiModalEmbedding.call(model=..., input=[{'text': ...}])``
-  —— 文本（``qwen3.7-text-embedding-flash``）与多模态（``qwen3-vl-embedding``）
-  同一 API；``dimension`` 显式传参对齐 Milvus 集合维度。
+- **向量**：按模型形态分流——文本模型（``qwen3.7-text-embedding-flash``）走
+  ``dashscope.TextEmbedding.call``，多模态模型（``qwen3-vl-embedding``）走
+  ``dashscope.MultiModalEmbedding.call``；``dimension`` 显式传参对齐 Milvus 集合维度。
 - **重排**：``dashscope.TextReRank.call(model=..., query=..., documents=...)``
   （``qwen3.7-text-rerank``）。
 
@@ -57,6 +57,11 @@ def _l2_normalize(vec: list[float]) -> list[float]:
     return [x / norm for x in vec]
 
 
+def _is_multimodal_model(model_id: str) -> bool:
+    """多模态向量模型判定（qwen3-vl-embedding / tongyi-embedding-vision-* / multimodal-embedding-*）。"""
+    return any(tag in model_id for tag in ('-vl-', 'vision', 'multimodal'))
+
+
 class DashScopeError(Exception):
     """DashScope SDK 调用失败（fail-closed）。"""
 
@@ -95,12 +100,7 @@ class DashScopeEmbedding:
         last_err: Exception | None = None
         for attempt in range(DASHSCOPE_MAX_RETRIES):
             try:
-                resp = dashscope.MultiModalEmbedding.call(
-                    model=self.model,
-                    input=[{'text': text} for text in batch],
-                    api_key=self.api_key,
-                    dimension=self.dimension,
-                )
+                resp = self._invoke_sdk(batch)
             except Exception as exc:
                 last_err = exc
                 log.warning(
@@ -122,6 +122,26 @@ class DashScopeEmbedding:
             raise DashScopeError(f'DashScope MultiModalEmbedding 失败 status={status}: {resp}')
 
         raise DashScopeError(f'DashScope MultiModalEmbedding 重试耗尽: {last_err}') from last_err
+
+    def _invoke_sdk(self, batch: list[str]) -> object:
+        """按模型形态选 SDK API：文本向量走 TextEmbedding，多模态走 MultiModalEmbedding。
+
+        text-embedding 模型（如 qwen3.7-text-embedding-flash）在 multimodal-embedding
+        API 上返回 400 InvalidParameter(url error)，两套 API 不通用。
+        """
+        if _is_multimodal_model(self.model):
+            return dashscope.MultiModalEmbedding.call(
+                model=self.model,
+                input=[{'text': text} for text in batch],
+                api_key=self.api_key,
+                dimension=self.dimension,
+            )
+        return dashscope.TextEmbedding.call(
+            model=self.model,
+            input=list(batch),
+            api_key=self.api_key,
+            dimension=self.dimension,
+        )
 
     def _parse_embeddings(self, resp: object, *, expected: int) -> list[list[float]]:
         output = getattr(resp, 'output', None) or {}
