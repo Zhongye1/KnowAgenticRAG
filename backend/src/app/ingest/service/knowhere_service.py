@@ -35,7 +35,6 @@ from backend.src.app.kb.utils.namespace import instance_namespace
 from backend.src.app.model_provider.service.provider_service import normalize_model_spec, provider_service
 from backend.src.common.exception import errors
 from backend.src.common.log import log
-from backend.src.core.config import settings
 from backend.src.database.db import async_db_session
 from backend.src.database.milvus_kb_ops import (
     delete_ragf_vectors_by_document,
@@ -248,7 +247,6 @@ class KnowhereIngestService:
                     doc.pipeline = 'knowhere'
                     doc.ingest_params = {
                         'engine': 'knowhere',
-                        'knowhere_mode': settings.RAGF_KNOWHERE_MODE,
                         'embedding_model': embed_spec,
                         'content_chunks': mapped.content_chunk_count,
                         'sections': mapped.section_count,

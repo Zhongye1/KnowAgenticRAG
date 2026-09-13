@@ -164,7 +164,7 @@ class VisualIngestService:
                 doc.pipeline = 'visual'
                 doc.ingest_params = {
                     'engine': 'pixelrag',
-                    'provider': settings.RAGF_VISUAL_PROVIDER,
+                    'provider': 'dashscope',
                     'model': settings.RAGF_VISUAL_MODEL,
                     'dim': settings.RAGF_VISUAL_DIM,
                     'tiles': len(rows),
