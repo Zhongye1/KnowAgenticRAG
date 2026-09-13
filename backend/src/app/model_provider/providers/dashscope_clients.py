@@ -9,7 +9,8 @@
   （``qwen3.7-text-rerank``）。
 
 凭据：``DASHSCOPE_API_KEY``（provider 行 ``api_key_env`` / settings 直配均可达）。
-SDK 为主依赖，模块顶层直接导入。
+SDK 为主依赖，模块顶层直接导入；区域化业务空间（``DASHSCOPE_WORKSPACE_ID``）
+经 :func:`apply_workspace_endpoint` 覆写 SDK 原生端点。
 """
 
 from __future__ import annotations
@@ -28,6 +29,25 @@ DASHSCOPE_MAX_RETRIES = 3
 DASHSCOPE_BATCH_LIMIT = 10
 
 _RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+
+# SDK 默认旧全局端点（dashscope.aliyuncs.com）；仅作测试基准/文档参照
+_DASHSCOPE_DEFAULT_BASE_URL = 'https://dashscope.aliyuncs.com/api/v1'
+
+
+def apply_workspace_endpoint() -> None:
+    """按 settings 把 SDK 原生端点指向业务空间所在地域的 MaaS 域名（幂等）。
+
+    区域化业务空间的 API Key 只在 ``https://{ws}.{region}.maas.aliyuncs.com/api/v1``
+    可达；SDK 默认旧全局端点对其返回 400 InvalidParameter(url error)。
+    未配置 workspace（全局 Key）时不覆写，沿用 SDK 默认。
+    """
+    from backend.src.core.config import settings
+
+    workspace = str(settings.DASHSCOPE_WORKSPACE_ID or '').strip()
+    if not workspace:
+        return
+    region = str(settings.DASHSCOPE_REGION or 'cn-beijing').strip()
+    dashscope.base_http_api_url = f'https://{workspace}.{region}.maas.aliyuncs.com/api/v1'
 
 
 def _l2_normalize(vec: list[float]) -> list[float]:
@@ -56,6 +76,7 @@ class DashScopeEmbedding:
         dimension: int | None = None,
         batch_size: int = DASHSCOPE_BATCH_LIMIT,
     ) -> None:
+        apply_workspace_endpoint()
         self.model = model
         self.api_key = api_key
         self.dimension = int(dimension) if dimension else None
@@ -166,6 +187,7 @@ class DashScopeTextReRank:
         batch_size: int = 32,
         timeout_seconds: float = 30.0,
     ) -> None:
+        apply_workspace_endpoint()
         self.model = model
         self.api_key = api_key
         self.batch_size = max(1, int(batch_size))

@@ -10,6 +10,7 @@ import math
 
 from types import ModuleType, SimpleNamespace
 
+import dashscope
 import pytest
 
 import backend.src.app.model_provider.providers.dashscope_clients as dashscope_clients
@@ -116,6 +117,29 @@ def test_embedding_missing_api_key_fails_closed() -> None:
     client = DashScopeEmbedding(model='m', api_key='')
     with pytest.raises(DashScopeError):
         client._call_sync(['x'])
+
+
+def test_workspace_endpoint_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    """配置业务空间后构造器覆写 SDK 原生端点；未配置则沿用 SDK 默认。"""
+    from backend.src.core.config import settings
+
+    monkeypatch.setattr(dashscope, 'base_http_api_url', 'https://dashscope.aliyuncs.com/api/v1')
+    monkeypatch.setattr(settings, 'DASHSCOPE_WORKSPACE_ID', 'ws-demo')
+    monkeypatch.setattr(settings, 'DASHSCOPE_REGION', 'cn-beijing')
+    DashScopeEmbedding(model='m', api_key='sk')
+    assert dashscope.base_http_api_url == 'https://ws-demo.cn-beijing.maas.aliyuncs.com/api/v1'
+
+    DashScopeTextReRank(model='m', api_key='sk')
+    assert dashscope.base_http_api_url == 'https://ws-demo.cn-beijing.maas.aliyuncs.com/api/v1'
+
+
+def test_workspace_endpoint_default_kept(monkeypatch: pytest.MonkeyPatch) -> None:
+    from backend.src.core.config import settings
+
+    monkeypatch.setattr(dashscope, 'base_http_api_url', 'https://dashscope.aliyuncs.com/api/v1')
+    monkeypatch.setattr(settings, 'DASHSCOPE_WORKSPACE_ID', '')
+    DashScopeEmbedding(model='m', api_key='sk')
+    assert dashscope.base_http_api_url == 'https://dashscope.aliyuncs.com/api/v1'
 
 
 def test_rerank_sdk_call_and_ordering(stub_dashscope: ModuleType) -> None:
