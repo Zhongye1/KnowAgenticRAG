@@ -411,9 +411,8 @@ class Settings(BaseSettings):
     RAGF_PDF_PROBE_TEXT_PAGE_RATIO: float = 0.2
     RAGF_PDF_PROBE_AVG_CHARS_PER_PAGE: int = 50
 
-    # Knowhere 引擎（D1）：api=官方 SDK 调自建 :5005 服务（task dev 经 docker/knowhere/
-    # 栈自动拉起）；parser=knowhere-parse-sdk 进程内（P4）；off=关闭（文档路由期 fail-closed 报错）
-    RAGF_KNOWHERE_MODE: Literal['api', 'parser', 'off'] = 'api'
+    # Knowhere 引擎（D1）：knowhere-python-sdk（主依赖）调自建 :5005 服务
+    # （task dev 经 docker/knowhere/ 栈自动拉起）
     # 默认本地开发（后端跑宿主机）→ localhost:5005；容器部署加入 knowhere-net 后
     # 经 env 覆盖为 http://knowhere:5005
     RAGF_KNOWHERE_BASE_URL: str = 'http://localhost:5005'
@@ -437,14 +436,14 @@ class Settings(BaseSettings):
     RAGF_PIXELRAG_VIEWPORT_WIDTH: int = 1280
     RAGF_PIXELRAG_PDF_DPI: int = 150
     RAGF_PIXELRAG_EMBED_INSTRUCTION: str = ''
-    # 视觉编码 provider（D7：摄取与查询必须同 provider，切换需重建 ragf_visual）
-    RAGF_VISUAL_PROVIDER: Literal['dashscope', 'local'] = 'dashscope'
+    # 视觉编码（D7：摄取与查询必须同一编码器，切换模型/维度需重建 ragf_visual）
     RAGF_VISUAL_MODEL: str = 'qwen3-vl-embedding'
     RAGF_VISUAL_DIM: int = 2048
     RAGF_VISUAL_BATCH_SIZE: int = 10
     RAGF_VISUAL_TIMEOUT_SECONDS: float = 30.0
     RAGF_VISUAL_MAX_RETRIES: int = 3
-    DASHSCOPE_API_KEY: str = ''  # RAGF_VISUAL_PROVIDER=dashscope 时必填（或环境变量 DASHSCOPE_API_KEY）
+    # 千问平台 token：主链路必填——文本向量 / 重排 / 多模态向量 / 视觉编码均经 dashscope SDK
+    DASHSCOPE_API_KEY: str = ''
 
     # 摄取限额（D8，EagleRAG limits 迁移：MinerU 精提取上限；0 值 = 关闭对应项）
     RAGF_INGEST_LIMITS_ENABLED: bool = True
