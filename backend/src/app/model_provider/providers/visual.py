@@ -1,8 +1,8 @@
 """视觉编码客户端（双管线摄取 spec D7，EagleRAG ingest/visual_encoder.py 迁移；
 自 ingest/engine 下沉至模型接入域：摄取写入与检索查询两侧共用同一向量空间）。
 
-图片与文本共享同一向量空间（Qwen3-VL-Embedding，2048 维）。P2 接入
-DashScope 百炼 provider（免 GPU）；本地 HF provider 为 P4 可选项（显式报错）。
+图片与文本共享同一向量空间（Qwen3-VL-Embedding，2048 维），统一走 DashScope
+百炼 provider（免 GPU）；本地 HF provider 方案已删除。
 
 约束（spec D7）：摄取与查询必须使用同一 provider；切换 provider 需重建
 ragf_visual 集合，代码侧以指纹守卫（见 database/milvus_visual_ops._fingerprint）。
@@ -16,6 +16,8 @@ import os
 import time
 
 from typing import Any, Protocol
+
+import dashscope
 
 from backend.src.common.log import log
 
@@ -75,15 +77,13 @@ class DashScopeQwen3VLEncoder:
         self._max_retries = max(1, int(settings.RAGF_VISUAL_MAX_RETRIES))
         self._timeout_s = float(settings.RAGF_VISUAL_TIMEOUT_SECONDS)
         if not self._api_key:
-            raise ValueError('RAGF_VISUAL_PROVIDER=dashscope 需要 DASHSCOPE_API_KEY')
+            raise ValueError('视觉编码（dashscope 通道）需要 DASHSCOPE_API_KEY')
         if self._dim not in _DASHSCOPE_DIMS:
             raise ValueError(
                 f'RAGF_VISUAL_DIM={self._dim} 不受 qwen3-vl-embedding 支持（可选: {sorted(_DASHSCOPE_DIMS)}）'
             )
 
     def _call(self, contents: list[dict[str, str]]) -> list[list[float]]:
-        import dashscope  # type: ignore[reportMissingImports]  # 可选依赖
-
         instruct = self._instruct()
         last_err: Exception | None = None
         for attempt in range(self._max_retries):
@@ -163,11 +163,6 @@ class DashScopeQwen3VLEncoder:
         return out
 
 
-def get_visual_encoder() -> VisualEncoder:
-    """按配置返回视觉编码器（dashscope；local 为 P4 可选，显式报错）。"""
-    from backend.src.core.config import settings
-
-    provider = (settings.RAGF_VISUAL_PROVIDER or 'dashscope').strip().lower()
-    if provider == 'local':
-        raise ValueError('本地视觉编码器为 P4 可选项（spec D7），当前请使用 dashscope provider')
+def get_visual_encoder() -> DashScopeQwen3VLEncoder:
+    """返回视觉编码器（dashscope 通道单一路径，spec D7）。"""
     return DashScopeQwen3VLEncoder()

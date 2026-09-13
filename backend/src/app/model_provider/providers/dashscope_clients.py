@@ -9,7 +9,7 @@
   （``qwen3.7-text-rerank``）。
 
 凭据：``DASHSCOPE_API_KEY``（provider 行 ``api_key_env`` / settings 直配均可达）。
-SDK 为可选依赖（视觉 worker 已引入），惰性导入，缺包显式报错。
+SDK 为主依赖，模块顶层直接导入。
 """
 
 from __future__ import annotations
@@ -18,12 +18,9 @@ import asyncio
 import math
 import time
 
-from typing import TYPE_CHECKING
+import dashscope
 
 from backend.src.common.log import log
-
-if TYPE_CHECKING:
-    from types import ModuleType
 
 DASHSCOPE_EMBEDDING_TIMEOUT_SECONDS = 60.0
 DASHSCOPE_MAX_RETRIES = 3
@@ -42,14 +39,6 @@ def _l2_normalize(vec: list[float]) -> list[float]:
 
 class DashScopeError(Exception):
     """DashScope SDK 调用失败（fail-closed）。"""
-
-
-def _import_dashscope() -> ModuleType:
-    try:
-        import dashscope  # type: ignore[reportMissingImports]  # 可选依赖
-    except ImportError as exc:
-        raise DashScopeError('dashscope SDK 未安装（pip install dashscope，千问平台通道）') from exc
-    return dashscope
 
 
 class DashScopeEmbedding:
@@ -74,15 +63,14 @@ class DashScopeEmbedding:
 
     def _call_sync(self, texts: list[str]) -> list[list[float]]:
         """按 SDK 单批上限分批调用（调用方无需关心批次）。"""
-        dashscope = _import_dashscope()
         if not self.api_key:
             raise DashScopeError('DASHSCOPE_API_KEY 未配置（provider api_key / api_key_env）')
         result: list[list[float]] = []
         for start in range(0, len(texts), self.batch_size):
-            result.extend(self._call_batch_sync(dashscope, texts[start : start + self.batch_size]))
+            result.extend(self._call_batch_sync(texts[start : start + self.batch_size]))
         return result
 
-    def _call_batch_sync(self, dashscope: ModuleType, batch: list[str]) -> list[list[float]]:
+    def _call_batch_sync(self, batch: list[str]) -> list[list[float]]:
         last_err: Exception | None = None
         for attempt in range(DASHSCOPE_MAX_RETRIES):
             try:
@@ -184,7 +172,6 @@ class DashScopeTextReRank:
         self.timeout_seconds = timeout_seconds
 
     def _call_sync(self, query: str, documents: list[str]) -> list[float]:
-        dashscope = _import_dashscope()
         if not self.api_key:
             raise DashScopeError('DASHSCOPE_API_KEY 未配置（provider api_key / api_key_env）')
         resp = dashscope.TextReRank.call(

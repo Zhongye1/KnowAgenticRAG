@@ -1,17 +1,18 @@
 """DashScope SDK 客户端单测（千问平台 token 通道，stub SDK 无网络）。
 
-通过向 ``sys.modules['dashscope']`` 注入桩模块验证调用约定（MultiModalEmbedding /
+向 ``dashscope_clients.dashscope`` 注入桩模块验证调用约定（MultiModalEmbedding /
 TextReRank）、维度对齐、L2 归一与批拆分。
 """
 
 from __future__ import annotations
 
 import math
-import sys
 
 from types import ModuleType, SimpleNamespace
 
 import pytest
+
+import backend.src.app.model_provider.providers.dashscope_clients as dashscope_clients
 
 from backend.src.app.model_provider.providers.dashscope_clients import (
     DASHSCOPE_BATCH_LIMIT,
@@ -42,7 +43,8 @@ def stub_dashscope(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     module = ModuleType('dashscope')
     module.__dict__['MultiModalEmbedding'] = _StubMultiModal
     module.__dict__['TextReRank'] = _StubTextReRank
-    monkeypatch.setitem(sys.modules, 'dashscope', module)
+    # dashscope 已是主依赖（模块顶层直接导入），patch 模块属性注入桩
+    monkeypatch.setattr(dashscope_clients, 'dashscope', module)
     _StubMultiModal.calls = []
     _StubTextReRank.calls = []
     return module
