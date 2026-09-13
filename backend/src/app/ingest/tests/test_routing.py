@@ -90,21 +90,14 @@ def test_pdf_probe_unreadable_falls_back_text(tmp_path: Path) -> None:
     assert probe_pdf_form(str(bad)) == 'text'
 
 
-def test_filter_availability_unavailable_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
-    import backend.src.app.ingest.engine.availability as availability
-
-    monkeypatch.setattr(availability, 'knowhere_available', lambda: (False, 'off'))
-    monkeypatch.setattr(availability, 'visual_available', lambda: (False, 'no key'))
-    # filter 内部为延迟导入（每次调用重新 from import），monkeypatch 模块属性即可生效；
-    # legacy 兜底已删除：不可用直接 fail-closed
+def test_filter_availability_missing_key_fails_closed(monkeypatch: pytest.MonkeyPatch) -> None:
+    # 引擎 SDK 均为主依赖，路由期只校验凭据前置：visual 无 DASHSCOPE_API_KEY 即报错
+    monkeypatch.setattr(settings, 'DASHSCOPE_API_KEY', '')
     with pytest.raises(RuntimeError, match='摄取引擎不可用'):
         filter_available_pipelines(['knowhere', 'visual'], filename='x.pdf')
 
 
 def test_filter_availability_available_kept_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
-    import backend.src.app.ingest.engine.availability as availability
-
-    monkeypatch.setattr(availability, 'knowhere_available', lambda: (True, ''))
-    monkeypatch.setattr(availability, 'visual_available', lambda: (True, ''))
+    monkeypatch.setattr(settings, 'DASHSCOPE_API_KEY', 'sk-test')
     assert filter_available_pipelines(['knowhere', 'visual'], filename='x.pdf') == ['knowhere', 'visual']
     assert filter_available_pipelines(['knowhere'], filename='x.pdf') == ['knowhere']

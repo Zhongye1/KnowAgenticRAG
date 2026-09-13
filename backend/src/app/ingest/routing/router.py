@@ -8,7 +8,6 @@
 from __future__ import annotations
 
 from backend.src.app.ingest.routing.context import (
-    PIPELINE_KNOWHERE,
     PIPELINE_VISUAL,
     RouteContext,
 )
@@ -92,26 +91,21 @@ def route(ctx: RouteContext) -> list[str]:
 
 
 def filter_available_pipelines(pipelines: list[str], *, filename: str) -> list[str]:
-    """按引擎可用性校验管线：不可用引擎直接 fail-closed 报错（spec D1）。
+    """按运行时前置校验管线：缺凭据 fail-closed 报错（spec D1）。
 
-    引擎未安装 / 未部署（Knowhere 服务缺失、DashScope 无 key）时任务不可能
-    成功，路由期即报错——legacy 工厂链已删除，无兜底；部署要求见 spec §6。
+    引擎 SDK 均为主依赖（uv lock 保证），路由期只校验凭据类前置（visual 管线
+    需要 DASHSCOPE_API_KEY）；Knowhere 服务不可达等运行期错误由调用期
+    fail-closed（KnowhereEngineError），legacy 兜底已删除。
     """
-    from backend.src.app.ingest.engine.availability import knowhere_available, visual_available
+    from backend.src.core.config import settings
 
-    unavailable: list[str] = []
-    for pipeline in pipelines:
-        if pipeline == PIPELINE_KNOWHERE:
-            ok, reason = knowhere_available()
-        elif pipeline == PIPELINE_VISUAL:
-            ok, reason = visual_available()
-        else:
-            ok, reason = True, ''
-        if not ok:
-            unavailable.append(f'{pipeline}（{reason}）')
+    unavailable: list[str] = [
+        f'{pipeline}（DASHSCOPE_API_KEY 未配置）'
+        for pipeline in pipelines
+        if pipeline == PIPELINE_VISUAL and not settings.DASHSCOPE_API_KEY
+    ]
     if unavailable:
         raise RuntimeError(
-            f'摄取引擎不可用: {"; ".join(unavailable)}；'
-            f'请部署 Knowhere 服务 / 配置 DASHSCOPE_API_KEY（文档 {filename} 无法路由）'
+            f'摄取引擎不可用: {"; ".join(unavailable)}；请配置 DASHSCOPE_API_KEY（文档 {filename} 无法路由）'
         )
     return list(dict.fromkeys(pipelines))

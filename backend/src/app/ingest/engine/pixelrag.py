@@ -4,7 +4,7 @@ PixelRAG 被收敛为「渲染 + 切片」库调用：``pixelrag_render`` 将 PD
 渲染为条带 tile（``{outdir}/{stem}.png.tiles/``：tiles.json 清单 + JPEG 条带），
 视觉编码交给 :mod:`model_provider.providers.visual`。不启动 pixelrag serve、不建 FAISS。
 
-失败 fail-closed：库缺包或渲染零 tile 抛 ``PixelRagEngineError``。
+失败 fail-closed：渲染零 tile 抛 ``PixelRagEngineError``。
 """
 
 from __future__ import annotations
@@ -14,6 +14,8 @@ import tempfile
 
 from pathlib import Path
 from typing import Any
+
+import pixelrag_render
 
 from backend.src.common.log import log
 
@@ -65,11 +67,6 @@ def render_to_tiles(source: str) -> list[Tile]:
     Args:
         source: 本地文件路径（图片/PDF）。
     """
-    try:
-        import pixelrag_render  # type: ignore[reportMissingImports]  # 可选依赖
-    except ImportError as exc:
-        raise PixelRagEngineError('pixelrag 未安装（可选依赖，安装方式见双管线摄取 spec D1）') from exc
-
     from backend.src.core.config import settings
 
     outdir = tempfile.mkdtemp(prefix='ragf_render_')

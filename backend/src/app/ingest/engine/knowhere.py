@@ -1,12 +1,10 @@
 """Knowhere 文档语义解析引擎（双管线摄取 spec D1，EagleRAG knowhere_adapter 迁移）。
 
-双模式（``RAGF_KNOWHERE_MODE``）：
+单一路径（api 模式）：``knowhere-python-sdk``（主依赖）调自建 HTTP 服务
+（:5005），上传后轮询；parser 进程内模式已删除。
 
-- **api**（默认）— ``knowhere-python-sdk`` 调自建 HTTP 服务（:5005），上传后轮询。
-- **parser** — ``knowhere-parse-sdk`` 进程内管线（P4 接入，当前显式报错）。
-
-失败 fail-closed：SDK 缺包或调用失败抛 ``KnowhereEngineError``，任务层落
-失败态，绝不静默降级。SDK 产物按 duck-typing 读取（不导入 SDK 类型），
+失败 fail-closed：调用失败抛 ``KnowhereEngineError``，任务层落失败态，
+绝不静默降级。SDK 产物按 duck-typing 读取（不导入 SDK 类型），
 解析结果约定：``chunks``（text/table/image，含 path/metadata）、
 ``doc_nav.sections``（章节树）、``full_markdown``。
 """
@@ -15,6 +13,8 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Any
+
+import knowhere
 
 from backend.src.common.log import log
 
@@ -38,11 +38,6 @@ def _parsing_params() -> dict[str, Any]:
 
 def _parse_via_api(file_path: str, *, file_name: str) -> Any:
     """经 knowhere-python-sdk 调自建 :5005 服务并轮询至完成。"""
-    try:
-        import knowhere
-    except ImportError as exc:
-        raise KnowhereEngineError('knowhere-python-sdk 未安装（可选依赖，安装方式见双管线摄取 spec D1）') from exc
-
     from backend.src.core.config import settings
 
     kh = settings
@@ -69,14 +64,11 @@ def _parse_via_api(file_path: str, *, file_name: str) -> Any:
 
 
 def parse_with_knowhere(file_path: str, *, file_name: str) -> Any:
-    """按配置模式解析文档，返回 SDK ParseResult（duck-typing）。
+    """经 Knowhere api 模式解析文档，返回 SDK ParseResult（duck-typing）。
 
     阻塞调用（含上传与轮询），任务层须以 ``asyncio.to_thread`` 执行。
     """
     from backend.src.core.config import settings
 
-    mode = (settings.RAGF_KNOWHERE_MODE or 'api').lower()
-    if mode == 'parser':
-        raise KnowhereEngineError('Knowhere parser 进程内模式 P4 接入（spec D1），当前请使用 api 模式')
     log.info('Knowhere api 模式解析开始 file={} base_url={}', file_name, settings.RAGF_KNOWHERE_BASE_URL)
     return _parse_via_api(file_path, file_name=file_name)
