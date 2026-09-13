@@ -19,6 +19,7 @@ from typing import Any, Protocol
 
 import dashscope
 
+from backend.src.app.model_provider.providers.dashscope_clients import apply_workspace_endpoint
 from backend.src.common.log import log
 
 __all__ = ['DashScopeQwen3VLEncoder', 'VisualEncoder', 'get_visual_encoder']
@@ -70,6 +71,7 @@ class DashScopeQwen3VLEncoder:
     def __init__(self) -> None:
         from backend.src.core.config import settings
 
+        apply_workspace_endpoint()
         self._model = settings.RAGF_VISUAL_MODEL
         self._dim = int(settings.RAGF_VISUAL_DIM)
         self._api_key = settings.DASHSCOPE_API_KEY or os.environ.get('DASHSCOPE_API_KEY', '')

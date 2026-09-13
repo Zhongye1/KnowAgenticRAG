@@ -444,6 +444,11 @@ class Settings(BaseSettings):
     RAGF_VISUAL_MAX_RETRIES: int = 3
     # 千问平台 token：主链路必填——文本向量 / 重排 / 多模态向量 / 视觉编码均经 dashscope SDK
     DASHSCOPE_API_KEY: str = ''
+    # 区域化业务空间（ragf-design D11 扩展）：配置后 SDK 原生端点覆写为
+    # https://{DASHSCOPE_WORKSPACE_ID}.{DASHSCOPE_REGION}.maas.aliyuncs.com/api/v1
+    # （华北2（北京）= cn-beijing）；留空 = 沿用 SDK 默认旧全局端点（全局 Key 适用）
+    DASHSCOPE_WORKSPACE_ID: str = ''
+    DASHSCOPE_REGION: str = 'cn-beijing'
 
     # 摄取限额（D8，EagleRAG limits 迁移：MinerU 精提取上限；0 值 = 关闭对应项）
     RAGF_INGEST_LIMITS_ENABLED: bool = True
