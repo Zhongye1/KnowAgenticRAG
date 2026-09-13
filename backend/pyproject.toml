@@ -18,6 +18,7 @@ dependencies = [
     "celery>=5.6.3",
     "celery-aio-pool>=0.1.0rc8",
     "cryptography>=50.0.0",
+    "dashscope>=1.27",
     "dulwich>=1.2.12",
     "fast-captcha>=0.3.2",
     "fastapi-oauth20>=0.0.3",
@@ -25,6 +26,7 @@ dependencies = [
     "fastapi[standard]>=0.141.1",
     "gevent>=24.11.1",
     "itsdangerous>=2.2.0",
+    "knowhere-python-sdk>=2.1",
     "loguru>=0.7.3",
     "minio>=7.2.0",
     "msgspec>=0.21.1",
@@ -41,6 +43,9 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "pwdlib>=0.3.1",
     "py-ip2region>=3.0.4",
+    # PixelRAG 视觉渲染（git 依赖，spec D7）：核心仅渲染切片、无 torch；
+    # embed/serve/index 等 extras 不引入（视觉编码走 dashscope 通道）。
+    "pixelrag @ git+https://github.com/StarTrail-org/PixelRAG.git",
     "pymilvus>=2.5.0",
     "pyrate-limiter>=4.4.0",
     "python-jose>=3.5.0",
@@ -64,18 +69,18 @@ dependencies = [
     "langchain-openai>=1.6,<2",
 ]
 
-# 双管线摄取引擎依赖（双管线摄取 spec D1）为**可选**组件，不进主依赖/uv.lock：
-#   api 模式：knowhere-python-sdk
-#   parser 模式：knowhere-parse-sdk @ git+https://github.com/zhiweio/knowhere-parse-sdk.git
-#   视觉管线：pixelrag @ git+https://github.com/StarTrail-org/PixelRAG.git + dashscope
-# 部署 knowhere/visual worker 时在对应环境单独安装（uv pip install ...），
-# 代码侧全部惰性导入，缺包时引擎显式报错（fail-closed），不影响 server/其余 worker 启动。
-# 注：曾尝试 optional-dependencies + allow-direct-references，git 依赖锁定期需外网，
-# 与 uv sync --locked 构建链冲突，故改为文档化约定（spec D1）。
+# 千问平台 / 双管线摄取引擎依赖（spec D1/D7/D11）为主依赖，代码侧模块顶层直接导入：
+#   dashscope——embedding / rerank / 视觉编码的千问平台 SDK 通道
+#   knowhere-python-sdk——api 模式调自建 :5005 解析服务（parser 进程内模式已删除）
+#   pixelrag——视觉渲染切片（运行期错误——服务不可达、凭据缺失——仍由调用方 fail-closed）
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+# pixelrag 为 git 直接引用（P EP 508 direct reference），hatchling 构建元数据需显式放行
+allow-direct-references = true
 
 [tool.alembic]
 script_location = "%(here)s/src/alembic"
