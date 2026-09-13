@@ -24,6 +24,20 @@ from backend.src.app.model_provider.providers.dashscope_clients import (
 )
 
 
+class _StubTextEmbedding:
+    """TextEmbedding.call 桩（文本向量 API），入参为 list[str]。"""
+
+    calls: list[dict] = []
+
+    @classmethod
+    def call(
+        cls, *, model: str, input: list, api_key: str | None = None, dimension: int | None = None, **kwargs
+    ) -> SimpleNamespace:
+        cls.calls.append({'model': model, 'input': input, 'dimension': dimension})
+        embeddings = [{'index': i, 'embedding': [1.0 + i, 0.0, 0.0, 0.0]} for i, _ in enumerate(input)]
+        return SimpleNamespace(status_code=200, output={'embeddings': embeddings})
+
+
 class _StubMultiModal:
     """记录调用参数、返回固定维度向量的桩。"""
 
@@ -42,10 +56,12 @@ class _StubMultiModal:
 @pytest.fixture()
 def stub_dashscope(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     module = ModuleType('dashscope')
+    module.__dict__['TextEmbedding'] = _StubTextEmbedding
     module.__dict__['MultiModalEmbedding'] = _StubMultiModal
     module.__dict__['TextReRank'] = _StubTextReRank
     # dashscope 已是主依赖（模块顶层直接导入），patch 模块属性注入桩
     monkeypatch.setattr(dashscope_clients, 'dashscope', module)
+    _StubTextEmbedding.calls = []
     _StubMultiModal.calls = []
     _StubTextReRank.calls = []
     return module
@@ -77,17 +93,28 @@ class _StubTextReRank:
         )
 
 
-def test_embedding_calling_convention_matches_platform_sdk(stub_dashscope: ModuleType) -> None:
-    """调用形态对齐平台示例：MultiModalEmbedding.call(model, input=[{'text': ...}])。"""
+def test_text_embedding_uses_text_api(stub_dashscope: ModuleType) -> None:
+    """文本模型走 TextEmbedding.call（多模态 API 对文本模型报 url error）。"""
     client = DashScopeEmbedding(model='qwen3.7-text-embedding-flash', api_key='sk-test', dimension=4)
-    vectors = client._call_sync(['通用多模态表征模型示例'])
+    vectors = client._call_sync(['通用文本表征示例'])
     assert len(vectors) == 1
-    call = _StubMultiModal.calls[0]
+    assert not _StubMultiModal.calls
+    call = _StubTextEmbedding.calls[0]
     assert call['model'] == 'qwen3.7-text-embedding-flash'
-    assert call['input'] == [{'text': '通用多模态表征模型示例'}]
+    assert call['input'] == ['通用文本表征示例']
     assert call['dimension'] == 4
     # L2 归一
     assert math.isclose(sum(x * x for x in vectors[0]), 1.0)
+
+
+def test_multimodal_embedding_uses_multimodal_api(stub_dashscope: ModuleType) -> None:
+    """多模态模型走 MultiModalEmbedding.call(model, input=[{'text': ...}])。"""
+    client = DashScopeEmbedding(model='qwen3-vl-embedding', api_key='sk-test', dimension=4)
+    client._call_sync(['多模态文本'])
+    assert not _StubTextEmbedding.calls
+    call = _StubMultiModal.calls[0]
+    assert call['model'] == 'qwen3-vl-embedding'
+    assert call['input'] == [{'text': '多模态文本'}]
 
 
 def test_embedding_batch_split_by_sdk_limit(stub_dashscope: ModuleType) -> None:
@@ -95,7 +122,7 @@ def test_embedding_batch_split_by_sdk_limit(stub_dashscope: ModuleType) -> None:
     texts = [f't{i}' for i in range(DASHSCOPE_BATCH_LIMIT + 3)]
     vectors = client._call_sync(texts)
     assert len(vectors) == DASHSCOPE_BATCH_LIMIT + 3
-    assert len(_StubMultiModal.calls) == 2  # 10 + 3 两批
+    assert len(_StubTextEmbedding.calls) == 2  # 10 + 3 两批
 
 
 def test_embedding_abatch_encode_async(stub_dashscope: ModuleType) -> None:
