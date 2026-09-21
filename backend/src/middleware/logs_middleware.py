@@ -22,6 +22,22 @@ from backend.src.database.db import async_db_session
 from backend.src.utils.trace_id import get_request_trace_id
 
 
+def as_message(value: Any) -> str | None:
+    """
+    归一化落库用的 ``msg``
+
+    错误信封的 ``msg`` 可能是结构化载荷（如摄取限额 422 的 ``{code, reason, suggestion}``），
+    而 ``CreateOperaLogParam.msg`` 是文本列——审计只读，不值得为此放宽 schema，
+    序列化成 JSON 文本落库即可。
+
+    :param value: 信封里的 msg（str / dict / None / 其它）
+    :return: 字符串形式的 msg
+    """
+    if value is None or isinstance(value, str):
+        return value
+    return json.dumps(value, ensure_ascii=False, default=str)
+
+
 class OperaLogMiddleware(BaseHTTPMiddleware):
     """操作日志中间件"""
 
@@ -98,30 +114,36 @@ class OperaLogMiddleware(BaseHTTPMiddleware):
                 log.info(f'{ctx.ip: <15} | {method: <8} | {code!s: <6} | {path} | {elapsed:.3f}ms')
 
             if should_log_opera and request.method != 'OPTIONS':
-                opera_log_in = CreateOperaLogParam(
-                    trace_id=get_request_trace_id(),
-                    username=username,
-                    method=method,
-                    title=summary,
-                    path=path,
-                    ip=ctx.ip,
-                    country=ctx.country,
-                    region=ctx.region,
-                    city=ctx.city,
-                    user_agent=ctx.user_agent,
-                    os=ctx.os,
-                    browser=ctx.browser,
-                    device=ctx.device,
-                    args=args,
-                    status=status,
-                    code=str(code),
-                    msg=msg,
-                    cost_time=elapsed,
-                    opera_time=ctx.start_time,
-                )
-                await self.opera_log_queue.put(opera_log_in)
-                if settings.GRAFANA_METRICS_ENABLE:
-                    observe_queue_size(self.opera_log_queue, queue_name=self.opera_log_queue_name)
+                try:
+                    opera_log_in = CreateOperaLogParam(
+                        trace_id=get_request_trace_id(),
+                        username=username,
+                        method=method,
+                        title=summary,
+                        path=path,
+                        ip=ctx.ip,
+                        country=ctx.country,
+                        region=ctx.region,
+                        city=ctx.city,
+                        user_agent=ctx.user_agent,
+                        os=ctx.os,
+                        browser=ctx.browser,
+                        device=ctx.device,
+                        args=args,
+                        status=status,
+                        code=str(code),
+                        msg=as_message(msg),
+                        cost_time=elapsed,
+                        opera_time=ctx.start_time,
+                    )
+                except Exception as e:
+                    # 操作日志是旁路：中间件跑在响应成形**之后**，这里抛异常会把已经写好的
+                    # 响应换成 500（客户端拿到的是断流），审计缺失不该有这个代价。
+                    log.error(f'操作日志构造失败：{e}')
+                else:
+                    await self.opera_log_queue.put(opera_log_in)
+                    if settings.GRAFANA_METRICS_ENABLE:
+                        observe_queue_size(self.opera_log_queue, queue_name=self.opera_log_queue_name)
 
         return response
 
@@ -165,11 +187,17 @@ class OperaLogMiddleware(BaseHTTPMiddleware):
             if 'application/json' not in content_types:
                 args['data'] = body_data.decode('utf-8', 'ignore') if isinstance(body_data, bytes) else str(body_data)
             else:
-                json_data = await request.json()
-                if isinstance(json_data, dict):
-                    args['json'] = self.desensitization(json_data)
+                try:
+                    # body 上面已读过（星链缓存），直接用已读字节解析，畸形 JSON 不在此处炸：
+                    # 请求体非法应由路由层回 -32700 / 422，日志中间件无权把请求判死。
+                    json_data = json.loads(body_data)
+                except ValueError:
+                    args['data'] = body_data.decode('utf-8', 'ignore')
                 else:
-                    args['data'] = str(json_data)
+                    if isinstance(json_data, dict):
+                        args['json'] = self.desensitization(json_data)
+                    else:
+                        args['data'] = str(json_data)
 
         if is_form:
             # 表单参数
