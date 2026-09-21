@@ -1,0 +1,7 @@
+# 仓库根 ruff 配置：只为「从根目录跑 ruff」定义作用域。
+#
+# 真正的项目规则在 backend/pyproject.toml（backend/ 下的文件按就近原则用它）；
+# 这里继承它，免得同一份代码在两处出现两套风格。`.agents/` 是从上游同步的技能目录
+# （见 skills-lock.json），不参与 lint。
+extend = "backend/pyproject.toml"
+extend-exclude = [".agents"]

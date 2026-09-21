@@ -1,6 +1,10 @@
 default_language_version:
   python: '>= 3.10'
 
+# 上游同步来的技能目录（.agents/，见 skills-lock.json）不是本项目代码：
+# 不参与任何钩子（格式化/JSON/YAML/TOML 校验/ruff），避免被本地规则改写。
+exclude: ^\.agents/
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0

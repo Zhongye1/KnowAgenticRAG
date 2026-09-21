@@ -20,7 +20,7 @@
 ├── flake.nix                # Nix 开发环境（node22 / python312 / go-task）
 ├── .pre-commit-config.yaml  # 提交钩子：格式化 + 架构契约（违规阻断提交）
 ├── .github/workflows/       # CI：architecture.yml（架构契约）、docs.yml（Pages 部署）
-├── .agents/ + skills-lock.json  # 仓库内 agent 技能（excalidraw 图、fba 规范等）
+├── .agents/ + skills-lock.json  # 仓库内 agent 技能（excalidraw 图、fba 规范等）；上游同步内容，不参与 lint
 └── .env.example             # 根 env（Docker Compose 用：POSTGRES_*/RABBITMQ_*/端口映射）
 ```
 
