@@ -25,6 +25,7 @@ __all__ = [
     'delete_kb',
     'delete_kb_quiet',
     'document_status',
+    'grant_doc_acl',
     'grant_kb_acl',
     'is_in_progress',
     'revoke_kb_acl',
@@ -68,6 +69,27 @@ async def grant_kb_acl(
 async def revoke_kb_acl(client: AsyncClient, headers: Headers, kb_name: str) -> dict[str, Any]:
     """清空 KB 授权条目（owner 条目会被服务端保留/重建）。"""
     return await grant_kb_acl(client, headers, kb_name, [])
+
+
+async def grant_doc_acl(
+    client: AsyncClient,
+    headers: Headers,
+    document_id: str,
+    *,
+    visibility: str | None = None,
+    entries: list[dict[str, Any]] | None = None,
+) -> dict[str, Any]:
+    """写文档级 ACL（需 KB >= manage）。None = 该字段保持不变，entries 提供即全量替换。
+
+    返回体带 ``milvus_updated_rows``：镜像传播是独立于 DB 写入的一步（失败不回滚 DB），
+    断言它可以区分「授权没生效」与「生效了但没传播到召回」。
+    """
+    payload: dict[str, Any] = {}
+    if visibility is not None:
+        payload['visibility'] = visibility
+    if entries is not None:
+        payload['entries'] = entries
+    return ok_data(await client.put(f'{API}/documents/{document_id}/acl', json=payload, headers=headers))
 
 
 async def upload_document(

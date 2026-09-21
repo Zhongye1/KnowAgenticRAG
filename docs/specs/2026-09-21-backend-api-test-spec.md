@@ -256,7 +256,28 @@ L2 与 L3 的差别不是「快慢」，而是**断言对象**：L2 断言单个
   重摄取复用同一 `version_id`，见 §8。
 - **不测「摄取中重复触发 409」**：文档在 worker claim 前状态一直是 `pending`，此时重复触发是合法入队（幂等）。409 只在 `parsing/indexing` 窗口内出现，测试侧无法确定性地卡进那个窗口，写这种用例只能是 flaky。
 
-### 5.5 降级可观测（未覆盖）
+### 5.5 文档级 ACL × 召回（`chain`）
+
+`test_document_acl_narrows_recall_inside_shared_kb`。**KB 授权 ≠ 文档可见**（D47：文档可见集 ⊆
+KB 可见集），两层都在**召回内**下推，但失败形态完全不同：
+
+| 层 | 过不了的表现 | 实现 |
+| --- | --- | --- |
+| KB 级 | **403**（批量检索保留诊断语义） | `build_retrieval_scope` 与 `allowed_kbs` 求交 |
+| 文档级 | **静默过滤**：200 + 命中集合为空 | `to_milvus_expr` 注入召回 filter（Milvus 内完成，非召回后过滤） |
+
+因此断言必须落在**命中集合**上——只看状态码会把「文档级拒绝」当成成功。
+用例路径：owner 摄取 → KB 层授 `read` 给**跨部门** reader（先证明「进得来」，同时排除
+「同部门隐式可见」这条旁路）→ reader 检索命中为空 → 文档层授 `read` → reader 命中同一份
+`chunk_id`（向量未重写、未重摄取，走的是标量镜像 upsert）。
+
+同一条用例还钉住**ACL 变更对检索立即可见**这条一致性不变量：`upsert` = 删旧 + 插新，默认
+Bounded 一致性下紧接着的检索会读到**写入前**视图（现象：刚授权却检索不到、刚撤销却仍可见）。
+故传播路径在 upsert 后同步 `flush` 封存段（`milvus_kb_ops.update_ragf_document_acl`、
+`milvus_visual_ops.update_visual_document_acl`）。因果已验证：去掉 `flush` 时该用例 3 跑挂 1，
+加上后连续通过——这条 flaky 本来会被误读成「ACL 授权不生效」。
+
+### 5.6 降级可观测（未覆盖）
 
 精排失败降级（`degraded=true`）、视觉召回失败（`visual_degraded=true`）需要**故意打断外部模型**才能触发，本套件不打这个替身（见 §3.4）。这些路径由域内单测覆盖，接口层暂不锁。
 
@@ -326,6 +347,8 @@ Knowhere API 强制 Bearer 鉴权（key 在 Dashboard `http://localhost:13000` �
 - **版本化未实现**：`Document.active_version` 是 Phase 2 占位（`model/document.py` 注释即写明「默认 1」），
   摄取链路从不递增它，重摄取覆盖同一 `version_id`。因此「多版本共存 / 旧版本回查」在接口层无法验证，
   本套件只锁 `chunk_id` 的 `{document_id}:{version_id}:{idx}` 形态与「引用可在 PG 事实源逐字回查」。
-- 数据权限层（文档级 `visibility` 下推 Milvus 表达式）只有 L1 schema 与域内单测覆盖，接口层未锁（需要构造多文档 + 不同可见性 + 检索召回结果集的对比）。
-- 降级路径（精排/视觉）未在接口层覆盖，见 §5.5。
+- 数据权限层：文档级 ACL 的**召回内过滤**与**变更传播**已由 §5.5 的 chain 用例锁住；仍未覆盖的是
+  「多文档、不同 `visibility`（`public` / `private` 档）的结果集对比」与视觉集合（`ragf_visual`）
+  的 ACL 过滤（两条都在 Milvus 表达式内生效，需要多条不同可见性文档才能对比结果集）。
+- 降级路径（精排/视觉）未在接口层覆盖，见 §5.6。
 - `backend/e2e/` 尚未接入 CI（`.github/workflows/` 现只有架构契约与文档站）；L3 需要 PG/Milvus/MinIO/Redis + worker + 模型密钥。
