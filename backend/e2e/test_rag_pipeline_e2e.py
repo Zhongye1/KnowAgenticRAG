@@ -188,3 +188,62 @@ async def test_duplicate_content_is_409_after_successful_ingest(
 
     other = await seed.upload_document(client, headers, kb, filename='e2e-other.md', content='# 另一份\n'.encode())
     assert other['document_id'] != document_id
+
+
+async def test_document_acl_narrows_recall_inside_shared_kb(
+    client: AsyncClient,
+    identities: dict[str, Identity],
+    make_kb: Callable[..., Awaitable[str]],
+    require_worker: None,
+) -> None:
+    """KB 授权 ≠ 文档可见（D47 只收窄）：跨部门读者进得来，召回里只有被授权的文档。
+
+    两层都在**召回内**下推，失败形态不同：KB 层过不了是 403，文档层过不了是
+    **静默过滤**（200 + 无命中）——所以断言必须落在命中集合上，只看状态码会漏。
+    文档 ACL 变更按主键 upsert 标量字段传播，不改向量也不重摄取，因此授权前后
+    命中的是同一条 ``chunk_id``。
+    """
+    kb = await make_kb()
+    owner = identities['owner'].headers
+    reader = identities['reader']  # dept 9102，与上传者部门(9101)不同：排除部门隐式可见
+    document_id, _upload = await _ingested_doc(client, owner, kb)
+
+    # KB 层：显式授予 read（证明这一层通了，后面看到空结果不是「进不来」）
+    await seed.grant_kb_acl(
+        client,
+        owner,
+        kb,
+        [
+            {
+                'principal_type': 'user',
+                'principal_id': str(reader.user_id),
+                'perm': 'read',
+                'effect': 'allow',
+            }
+        ],
+    )
+    assert ok_data(await client.get(f'{API}/knowledge_bases/{kb}', headers=reader.headers))['kb_name'] == kb
+
+    query = {'query_text': f'{TOKEN} 安装顺序', 'kb_names': [kb]}
+    denied = ok_data(await client.post(f'{API}/rag/search', json=query, headers=reader.headers))
+    assert denied['sources']['text'] == [], f'文档级 ACL 未在召回内过滤: {denied!r}'
+
+    # 文档层：显式授予 read（entries 全量替换 → 镜像 groups 只剩该主体）
+    detail = await seed.grant_doc_acl(
+        client,
+        owner,
+        document_id,
+        entries=[
+            {
+                'principal_type': 'user',
+                'principal_id': str(reader.user_id),
+                'perm': 'read',
+                'effect': 'allow',
+            }
+        ],
+    )
+    assert [entry['principal_id'] for entry in detail['entries']] == [str(reader.user_id)]
+
+    allowed = ok_data(await client.post(f'{API}/rag/search', json=query, headers=reader.headers))
+    hit = next(item for item in allowed['sources']['text'] if item['document_id'] == document_id)
+    assert hit['kb_name'] == kb
