@@ -2,6 +2,7 @@ from collections.abc import Generator
 
 import pytest
 
+from pytest import MonkeyPatch
 from starlette.testclient import TestClient
 
 from backend.main import app
@@ -28,13 +29,15 @@ def client() -> Generator:
 
 @pytest.fixture(scope='module')
 def token_headers(client: TestClient) -> dict[str, str]:
-    params = {
-        'username': PYTEST_USERNAME,
-        'password': PYTEST_PASSWORD,
-    }
-    response = client.post('/auth/login/swagger', params=params)
+    """真实登录换凭证（``POST /auth/login``：密码校验 + 会话键落 Redis）。
+
+    图形验证码在这里显式关掉——登录不是被测对象，留着它只会把「拿一个可用凭证」变成
+    需要绕过的前置。旧实现打 ``/auth/login/swagger``（该路由已不存在）恒 404，fixture
+    长期失效，所以依赖它的用例一直在 setup 阶段报错而不是真的没通过。
+    """
+    with MonkeyPatch.context() as patch:
+        patch.setattr(settings, 'LOGIN_CAPTCHA_ENABLED', False)
+        response = client.post('/auth/login', json={'username': PYTEST_USERNAME, 'password': PYTEST_PASSWORD})
     response.raise_for_status()
-    token_type = response.json()['token_type']
-    access_token = response.json()['access_token']
-    headers = {'Authorization': f'{token_type} {access_token}'}
-    return headers
+    access_token = response.json()['data']['access_token']
+    return {'Authorization': f'Bearer {access_token}'}
