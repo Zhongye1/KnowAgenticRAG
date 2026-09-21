@@ -79,7 +79,7 @@ def run_await[T](coro: Callable[..., Awaitable[T]] | Callable[..., Coroutine[Any
         except RuntimeError:
             # 如果没有，则创建一个新的事件循环
             try:
-                loop = asyncio.get_event_loop()
+                loop = asyncio.get_running_loop()
             except RuntimeError:
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
