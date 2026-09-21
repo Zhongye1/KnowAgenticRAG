@@ -41,11 +41,19 @@ def _parse_via_api(file_path: str, *, file_name: str) -> Any:
     from backend.src.core.config import settings
 
     kh = settings
+    if not kh.RAGF_KNOWHERE_API_KEY:
+        # Knowhere API 强制鉴权（Bearer：Dashboard 签发的 API key，见其 /v1/auth 端点），
+        # 且 SDK 也不接受空 key。缺配置时在这里给出可操作的错误，别让 SDK 抛
+        # 「api_key must be provided」——那句话看起来像 SDK 没装好，实际是 env 缺一行。
+        raise KnowhereEngineError(
+            '未配置 RAGF_KNOWHERE_API_KEY：Knowhere API 需要 API key（Dashboard :13000 生成，'
+            '或 POST /v1/auth/create），填入 backend/src/.env 后重试'
+        )
     client_cls = getattr(knowhere, 'Knowhere', None)
     if client_cls is None:
         raise KnowhereEngineError('knowhere-python-sdk 安装不完整（缺少 Knowhere 客户端类）')
     client = client_cls(
-        api_key=kh.RAGF_KNOWHERE_API_KEY or None,
+        api_key=kh.RAGF_KNOWHERE_API_KEY,
         base_url=kh.RAGF_KNOWHERE_BASE_URL.rstrip('/'),
         timeout=kh.RAGF_KNOWHERE_TIMEOUT,
         upload_timeout=kh.RAGF_KNOWHERE_UPLOAD_TIMEOUT,

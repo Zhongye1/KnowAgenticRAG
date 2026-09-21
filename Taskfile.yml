@@ -104,6 +104,11 @@ tasks:
     cmds:
       - task: backend:worker
 
+  worker:test:
+    desc: 启动指向测试库的 Celery Worker（接口 e2e chain 用例专用）
+    cmds:
+      - task: backend:worker:test
+
   beat:
     desc: 启动 Celery Beat（定时任务调度器）
     cmds:

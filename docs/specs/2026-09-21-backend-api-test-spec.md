@@ -45,7 +45,9 @@ L2 与 L3 的差别不是「快慢」，而是**断言对象**：L2 断言单个
 ### 3.1 运行目标与前置
 
 - 数据库：`ragf_test`（`get_database_url(unittest=True)`），由 `backend/conftest.py` 的 `app.dependency_overrides[get_db]` 注入。
-- 依赖：PostgreSQL + Redis + Milvus + MinIO（`task deps-up`）；`chain` 用例额外需要 Celery Worker（`task worker`）与可用模型供应商。
+- 依赖：PostgreSQL + Redis + Milvus + MinIO（`task deps-up`）；`chain` 用例额外需要
+  **指向测试库**的 Celery Worker（`task backend:worker:test`）与可用模型供应商凭据
+  （见 §6：`DASHSCOPE_API_KEY` + `RAGF_KNOWHERE_API_KEY`）。
 - **必须先起依赖栈**：`import backend.main` 会走插件发现，Redis 不可达时 `RedisCli.init` 直接 `sys.exit`（框架 fail-fast）。这不是可跳过项。
 - `backend/e2e/conftest.py` 幂等 bootstrap（DB 不存在则建 → `create_all` → 种子数据），不依赖 `task init-db`。
 - **不连 dev 库**：避免 e2e 污染 `ragf`，也避免与单测争抢同一份数据。
@@ -268,7 +270,7 @@ task deps-up
 cd backend && .venv/bin/pytest e2e/ -m "not chain"
 
 # 全量（含 RAG 链路；worker 未起时 chain 用例自行 skip）
-task worker                      # 另开一个终端
+task backend:worker:test         # 另开一个终端：worker 必须一起切到 ragf_test
 cd backend && .venv/bin/pytest e2e/
 
 # 等价入口（Taskfile）；追加参数走 `--`
@@ -285,7 +287,16 @@ markers（注册在 `backend/pyproject.toml`）：
 | `p0` | 冒烟：基建自检 + 权限矩阵 | `test_auth_e2e.py`、`test_permissions_e2e.py` |
 | `p1` | 回归：文档/检索接口行为与 RAG 链路 | `test_documents_e2e.py`、`test_search_e2e.py`、`test_rag_pipeline_e2e.py`、`test_chat_stream_e2e.py` |
 | `p2` | 扩展：MCP 工具面、模型供应商 | `test_mcp_e2e.py`、`test_model_provider_e2e.py` |
-| `chain` | 需要 Celery Worker 与外部模型供应商 | `test_rag_pipeline_e2e.py`、`test_chat_stream_e2e.py` |
+| `chain` | 需要 Celery Worker（指向测试库）与可用模型供应商凭据 | `test_rag_pipeline_e2e.py`、`test_chat_stream_e2e.py` |
+
+**Worker 必须指向测试库**：API 侧在进程内切到 `ragf_test`，而 Celery Worker 是独立进程、
+按 `.env` 的 `DATABASE_SCHEMA` 连库——用 `task worker` 起的 worker 读 dev 库，找不到测试库
+里的文档行，`chain` 用例必然超时失败。因此用 `task backend:worker:test`（内部就是
+`DATABASE_SCHEMA=ragf_test … celery worker` 覆盖，env 变量优先于 `.env`）。
+凭据方面：embedding 与精排走真实调用，需要 `.env` 的 `DASHSCOPE_API_KEY` /
+`RAGF_RETRIEVAL_RERANK_SPEC`（本地已配）；**解析还需要 `RAGF_KNOWHERE_API_KEY`**——
+Knowhere API 强制 Bearer 鉴权（key 在 Dashboard `http://localhost:13000` 生成），
+缺它时摄取会以 `parsing_failed: [401] UNAUTHENTICATED` 收场。chat 走替身，见 §3.4。
 
 ## 7. 非目标
 
@@ -307,6 +318,10 @@ markers（注册在 `backend/pyproject.toml`）：
   `tenant+sub` 计）。同一分钟内重复跑 `-m p2` 会累计到同一桶，极端情况下 429；
   用例已按主体分散调用，正常单次运行远低于阈值。
 - **`import backend.main` 需要 Redis**：插件发现在导入期同步连 Redis，失败即 `sys.exit()`。因此 e2e 套件的「跳过」只覆盖 lifespan/DB 层，导入期不可达属硬前置（`task deps-up`）。同因，`backend/conftest.py` 在无 Redis 环境下会直接终止整个收集阶段——所有 `backend/src/**/tests` 都受影响，不只是本套件。
+- **env 没有「测试环境」这一档**：`ENVIRONMENT` 只有 `dev | prod`，运行时配置也只有
+  `backend/src/.env` 一份。e2e 复用 dev 配置，靠进程内切库（`ragf_test`）隔离，因此
+  **凡是独立进程（Celery Worker）都得自己再切一次库**——这是本套件唯一需要人工双份配置的地方，
+  已由 `task backend:worker:test` 封装。若将来要跑真·独立测试环境，需要另加 env 档位而不是改这里。
 - `backend/conftest.py` 的 `token_headers` fixture 打的是 `/auth/login/swagger`，该路由在代码中已不存在（仅存在于 `TOKEN_REQUEST_PATH_EXCLUDE` 配置里），fixture 实际失效。本套件不复用它，自带身份工厂。
 - **版本化未实现**：`Document.active_version` 是 Phase 2 占位（`model/document.py` 注释即写明「默认 1」），
   摄取链路从不递增它，重摄取覆盖同一 `version_id`。因此「多版本共存 / 旧版本回查」在接口层无法验证，
