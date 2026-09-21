@@ -1,4 +1,4 @@
-import { DownloadSimple } from '@phosphor-icons/react'
+import { Download } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Table } from '@/components/ui/table'
@@ -170,7 +170,7 @@ export function DocumentListTable({
                   aria-label={`下载 ${entry.name}`}
                   onClick={() => onDownload(entry.document_id)}
                 >
-                  <DownloadSimple className="size-4" />
+              <Download className="size-4" />
                 </Button>
                 <DocumentActions
                   kbName={kbName}

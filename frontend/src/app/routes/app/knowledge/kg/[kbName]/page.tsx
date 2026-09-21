@@ -1,4 +1,4 @@
-import { ArrowLeft, Database } from '@phosphor-icons/react';
+import { ArrowLeft, Database } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
 
 import { Button } from '@/components/ui/button';

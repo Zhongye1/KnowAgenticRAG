@@ -1,4 +1,4 @@
-import { Plus } from '@phosphor-icons/react';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '@/components/ui/button';

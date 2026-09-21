@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils"
-import { SpinnerIcon } from "@phosphor-icons/react"
+import { LoaderCircle } from "lucide-react"
 
 // 兼容旧用法 size="lg"/"xl"，尺寸映射沿用迁移前的组件
 const SPINNER_SIZE_CLASSES = {
@@ -17,7 +17,7 @@ function Spinner({
   size?: keyof typeof SPINNER_SIZE_CLASSES
 }) {
   return (
-    <SpinnerIcon
+    <LoaderCircle
       data-slot="spinner"
       role="status"
       aria-label="Loading"
