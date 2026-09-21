@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 __all__ = [
     'INGEST_TERMINAL',
     'INGEST_TIMEOUT',
+    'assert_no_state_regression',
     'create_kb',
     'delete_kb',
     'delete_kb_quiet',
@@ -133,6 +134,7 @@ async def wait_ingest(
     assert last['status'] == 'ready', (
         f'摄取未成功：status={last["status"]} err={last.get("error_message")!r} 轨迹={seen}'
     )
+    assert_no_state_regression(seen)
     return last
 
 
