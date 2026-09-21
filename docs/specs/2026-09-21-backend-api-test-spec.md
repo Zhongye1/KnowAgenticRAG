@@ -13,6 +13,7 @@ supersedes: 2026-09-06-e2e-test-spec.md
 | 项 | 内容 |
 | --- | --- |
 | 状态 | 已落地（P0/P1/P2 + chain 四批，代码即规格本体） |
+| 批次 | 基建 → 权限矩阵（P0）→ 文档/检索（P1）→ RAG 链路/SSE（chain）→ MCP/供应商（P2）；每批一个 commit |
 | 日期 | 2026-09-21 |
 | 范围 | 后端 HTTP 接口的运行期行为：权限控制、RAG 全链路、契约信封、SSE/JSON-RPC 协议面 |
 | 代码位置 | `backend/e2e/` |
@@ -170,6 +171,23 @@ L2 与 L3 的差别不是「快慢」，而是**断言对象**：L2 断言单个
 - MCP：`tools/list` 只返回 `scp` 允许的工具；`tools/call` 越权返回稳定错误码 `PERMISSION_DENIED`（JSON-RPC error，不是 HTTP 4xx）。
 - 模型供应商：读路由仅需登录态，写路由要求 `sys:model-provider:*` 功能码（只读角色 → 403）。
 
+### 4.5 MCP 工具面（`scp` 是唯一鉴权依据，`test_mcp_e2e.py`）
+
+`/mcp` 不套统一信封、不吃 RBAC 菜单，鉴权与授权全在端点层归一：工具可见性与可调用性
+只由凭证里的 `scp` 决定（D30「不发明第二套权限模型」——`scp` 的值就是 `rag:kb:*` 权限码）。
+
+| 面 | 口径 | 用例锚点 |
+| --- | --- | --- |
+| 传输 | JSON-RPC 2.0 子集；`id` 缺省 = notification（202 空体，且**先于鉴权**短路） | `test_notification_gets_202_without_body` |
+| 传输负例 | 非 2.0 / 批量数组 → 400 `-32600`；坏 JSON → 400 `-32700`；未知方法 → `-32601`；GET 会话 → 405 | `test_batch_request_is_rejected` 等 |
+| 鉴权 | 401 必带 `WWW-Authenticate: Bearer realm="ragf-mcp"`；JWT 需**会话键存活**（撤销即时生效）+ `tenant` claim 与实例域一致 | `test_jwt_without_live_session_is_401` |
+| 授权 | `tools/list`/`GET /mcp/tools` 按 `scp` 过滤并回带 `required_permissions`；缺失 → `data.code=PERMISSION_DENIED` | `test_catalog_is_filtered_by_scope` |
+| 工具错误码 | 工具失败**不占 HTTP 状态码**（恒 200），靠 `error.data.code` 表达：`UNKNOWN_TOOL`/`INVALID_REQUEST`/`KB_NOT_FOUND`/`DOCUMENT_NOT_FOUND` | `test_unknown_tool_is_unknown_tool_code` |
+| 工具语义正例 | `get_document`/`read_document_chunks` 在**未摄取**（`pending`）时也可用：元数据可溯源、窗口为空但形状完整 | `test_get_document_returns_registered_document` |
+
+`scp` 由外部 IdP / PAT 桥接产生，API 面不签发，故用 `identity.mint_token(sub, scp=[...])` 补签；
+这与真实调用方的凭证形态一致（Codex/Claude Code 走的就是这条通道），不是「测试专用旁路」。
+
 ## 5. RAG 流程测试矩阵（重点）
 
 ### 5.1 主链路（L3，`chain`）
@@ -227,6 +245,9 @@ cd backend && .venv/bin/pytest e2e/ -m "not chain"
 task worker                      # 另开一个终端
 cd backend && .venv/bin/pytest e2e/
 
+# 等价入口（Taskfile）；追加参数走 `--`
+task backend:e2e -- -m p0
+
 # 按优先级
 cd backend && .venv/bin/pytest e2e/ -m p0
 ```
@@ -245,11 +266,32 @@ markers（注册在 `backend/pyproject.toml`）：
 - 不测旧端点 / 不做接口版本兼容（旧路径显式断言不存在）。
 - 不重复 L1 静态契约（权限码声明、RBAC 顺序）。
 - 不覆盖 admin 系统管理、插件、Task 调度、登录流程。
+- 不打 embedding / rerank 替身；模型**连通性**与降级路径（`test-connection` 真实返回）不在接口层锁。
 - 不做前端 UI 测试（前端 Playwright + MSW 打的是 mock，属另一条线）。
 - 不追求覆盖率数字，只锁定行为契约。
 
 ## 8. 已知缺口
 
+- **MCP 工具体不做 KB ACL 求值（最高优先级）**：`mcp/service.py` 的 `_ensure_kb` 只校验
+  「KB 属于本租户」，`get_document` / `read_document_chunks` 直接取文档，完全不走
+  `build_retrieval_scope`。后果：同租户任意用户凭**默认** `scp`（读面四点）即可读到无权
+  KB 的文档元数据与片段——D33 要求的「`kb_id`/`document_id` 参数级归属校验」只做了一半。
+  三条用例以 `xfail(strict=True)` 钉住（`test_get_document_ignores_kb_acl`、
+  `test_read_document_chunks_ignores_kb_acl`、`test_list_knowledge_bases_is_not_acl_filtered`）。
+- **MCP `list_knowledge_bases` 列整租户**：工具元数据写「列出当前身份可见 KB」（D21），实现是
+  `knowledge_base_dao.list_all(tenant)`，与 `GET /knowledge_bases` 的 `resolve_visible_kbs`
+  口径不一致（库名/展示名/文档数泄露）。
+- **MCP `search_knowledge` 的混合 `kb_names` 静默收窄**：实现用集合求交
+  （`requested ∩ scope.allowed_kbs`），请求里混入无权库时**丢弃**它继续检索；
+  `/rag/search` 同场景是 403。调用方（LLM）因此会在「少搜了库」的情况下拿到看似成功的回答。
+  用例 `test_mixed_kb_names_is_narrowed_not_denied`（`xfail(strict)`）。
+- `xfail(strict=True)` 的用法约定：这些缺口修复后会 XPASS → 用例失败，逼迫同步更新本 §8
+  与 §4.5，不允许静默变更行为。
+- **MCP PAT 通道当前不可用**：`RAGF_MCP_PAT` 默认为空，PAT 分支从未生效（本体是常量时间比对 +
+  免会话）。套件只覆盖 JWT 直通；PAT 通道要等桥接进程落地后再补用例（否则测的是配置默认值）。
+- **MCP 限流是每进程共享的 Redis bucket**（`RAGF_MCP_RATE_LIMIT_PER_MINUTE=120`，按
+  `tenant+sub` 计）。同一分钟内重复跑 `-m p2` 会累计到同一桶，极端情况下 429；
+  用例已按主体分散调用，正常单次运行远低于阈值。
 - **`import backend.main` 需要 Redis**：插件发现在导入期同步连 Redis，失败即 `sys.exit()`。因此 e2e 套件的「跳过」只覆盖 lifespan/DB 层，导入期不可达属硬前置（`task deps-up`）。同因，`backend/conftest.py` 在无 Redis 环境下会直接终止整个收集阶段——所有 `backend/src/**/tests` 都受影响，不只是本套件。
 - `backend/conftest.py` 的 `token_headers` fixture 打的是 `/auth/login/swagger`，该路由在代码中已不存在（仅存在于 `TOKEN_REQUEST_PATH_EXCLUDE` 配置里），fixture 实际失效。本套件不复用它，自带身份工厂。
 - **版本化未实现**：`Document.active_version` 是 Phase 2 占位（`model/document.py` 注释即写明「默认 1」），

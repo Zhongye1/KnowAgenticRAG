@@ -110,3 +110,8 @@ tasks:
     desc: 运行测试
     cmds:
       - pytest
+
+  e2e:
+    desc: 接口自动化测试（需先 task deps-up；追加参数用 -- ，如 task backend:e2e -- -m p0）
+    cmds:
+      - 'pytest e2e/ {{.CLI_ARGS | default }}'
