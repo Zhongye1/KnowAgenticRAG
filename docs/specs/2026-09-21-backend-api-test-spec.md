@@ -205,7 +205,9 @@ L2 与 L3 的差别不是「快慢」，而是**断言对象**：L2 断言单个
 ### 5.4 幂等 / 版本
 
 - 同文件（同 `sha256`）二次上传 → 409 去重。**注意指纹是摄取成功后登记的**（D9：失败摄取不残留指纹挡重传），所以去重用例必须先跑通一次摄取。
-- `POST /{kb}/rebuild` → `dispatched + skipped == total`；重摄取后 `active_version` 递增。
+- `POST /{kb}/rebuild` → `dispatched + skipped == total`；重摄取后文档回到 `ready` 且分块内容仍在。
+  **不测版本号递增**：`Document.active_version` 是 Phase 2 占位（默认 1，摄取链路不递增），
+  重摄取复用同一 `version_id`，见 §8。
 - **不测「摄取中重复触发 409」**：文档在 worker claim 前状态一直是 `pending`，此时重复触发是合法入队（幂等）。409 只在 `parsing/indexing` 窗口内出现，测试侧无法确定性地卡进那个窗口，写这种用例只能是 flaky。
 
 ### 5.5 降级可观测（未覆盖）
@@ -250,6 +252,9 @@ markers（注册在 `backend/pyproject.toml`）：
 
 - **`import backend.main` 需要 Redis**：插件发现在导入期同步连 Redis，失败即 `sys.exit()`。因此 e2e 套件的「跳过」只覆盖 lifespan/DB 层，导入期不可达属硬前置（`task deps-up`）。同因，`backend/conftest.py` 在无 Redis 环境下会直接终止整个收集阶段——所有 `backend/src/**/tests` 都受影响，不只是本套件。
 - `backend/conftest.py` 的 `token_headers` fixture 打的是 `/auth/login/swagger`，该路由在代码中已不存在（仅存在于 `TOKEN_REQUEST_PATH_EXCLUDE` 配置里），fixture 实际失效。本套件不复用它，自带身份工厂。
+- **版本化未实现**：`Document.active_version` 是 Phase 2 占位（`model/document.py` 注释即写明「默认 1」），
+  摄取链路从不递增它，重摄取覆盖同一 `version_id`。因此「多版本共存 / 旧版本回查」在接口层无法验证，
+  本套件只锁 `chunk_id` 的 `{document_id}:{version_id}:{idx}` 形态与「引用可在 PG 事实源逐字回查」。
 - 数据权限层（文档级 `visibility` 下推 Milvus 表达式）只有 L1 schema 与域内单测覆盖，接口层未锁（需要构造多文档 + 不同可见性 + 检索召回结果集的对比）。
 - 降级路径（精排/视觉）未在接口层覆盖，见 §5.5。
 - `backend/e2e/` 尚未接入 CI（`.github/workflows/` 现只有架构契约与文档站）；L3 需要 PG/Milvus/MinIO/Redis + worker + 模型密钥。
