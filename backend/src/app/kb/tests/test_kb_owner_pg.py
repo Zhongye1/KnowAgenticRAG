@@ -89,7 +89,9 @@ async def _prepare_schema(engine: AsyncEngine) -> None:
         await conn.run_sync(MappedBase.metadata.create_all)
         await conn.execute(
             text(
-                'INSERT INTO sys_user (id, uuid, username, nickname, status, is_superuser, is_staff, is_multi_login, join_time, created_time, deleted) VALUES '
+                'INSERT INTO sys_user '
+                '(id, uuid, username, nickname, status, is_superuser, is_staff, is_multi_login,'
+                ' join_time, created_time, deleted) VALUES '
                 "(11, gen_random_uuid(), 'kbx-11', 'KB 转移用户11', 1, false, false, false, now(), now(), 0), "
                 "(22, gen_random_uuid(), 'kbx-22', 'KB 转移用户22', 1, false, false, false, now(), now(), 0) "
                 'ON CONFLICT (id) DO NOTHING'
