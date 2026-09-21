@@ -35,7 +35,6 @@ async def process_document_task(
     document_id: str,
     kb_name: str,
     plugin_namespace: str | None = None,
-    params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """摄取单篇文档：路由规划 → 派发 knowhere/visual 管线（幂等：全量替换）。"""
     try:
@@ -53,7 +52,7 @@ async def process_document_task(
         record_ingest_result('failed')
         return {'document_id': document_id, 'status': 'failed', 'error': str(exc)}
 
-    return await _dispatch_pipelines(document_id, kb_name, plugin_namespace, pipelines, params)
+    return await _dispatch_pipelines(document_id, kb_name, plugin_namespace, pipelines)
 
 
 async def _dispatch_pipelines(
@@ -61,7 +60,6 @@ async def _dispatch_pipelines(
     kb_name: str,
     plugin_namespace: str | None,
     pipelines: list[str],
-    params: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """创建 ingest_jobs 审计行（事务内）→ 事务提交后派发下游（job_id = task_id）。"""
     from uuid import uuid4
@@ -96,13 +94,15 @@ async def _dispatch_pipelines(
 
     # 事务已提交再派发：下游任务能立即看到 job 行
     for item in plan:
+        # 下游任务只吃 document_id/kb_name/namespace（解析选项在文档行与 KB 配置里，
+        # 由服务层读库），不要再往 kwargs 里塞调用方参数：签名对不上会让任务一投递就
+        # TypeError 失败（曾经多传一个 params 就整条 knowhere/visual 链路投递即挂）。
         celery_app.send_task(
             item['task'],
             kwargs={
                 'document_id': document_id,
                 'kb_name': kb_name,
                 'plugin_namespace': ns,
-                'params': params,
             },
             task_id=item['job_id'],
         )
