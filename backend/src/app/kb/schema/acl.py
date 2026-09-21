@@ -152,3 +152,10 @@ class DocAclUpdateParam(SchemaBase):
                 deduped.append(entry)
         self.entries = deduped
         return self
+
+    @model_validator(mode='after')
+    def _check_private_has_no_entries(self) -> 'DocAclUpdateParam':
+        """``private`` = 仅 owner 可见，与授权条目互斥（D47 只收窄，不留放大通道）。"""
+        if self.visibility == 'private' and self.entries:
+            raise ValueError('private 文档不接受授权条目（仅 owner 可见）；如需共享请改用 restricted')
+        return self

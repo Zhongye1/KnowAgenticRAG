@@ -197,6 +197,9 @@ resolve_kb_perm(user_ctx, kb) -> Perm | None
 - **KB 公开** = `knowledge_bases.is_public = true`，等价于"给匿名主体发 read"，由求值函数第 8 步表达，不再依赖"ACL 表为空"。
 - **文档公开** = `documents.visibility = 'public'`，语义限定为"**KB 内**公开"：只能让已通过 KB 层求值的用户看到，**不能**让 KB 层 `None` 的用户看到。
 - `restricted` / `private` 语义维持上游 spec（`2026-09-06-rag-access-control-design.md` §2.2）。
+- `private` = 仅 owner，靠两处共同保证：**写入侧**置 `private` 时授权条目一律清空（条目非空即 422 拒收），
+  **表达式侧** `to_milvus_expr` 把主体集合限定在 `restricted` 下生效。缺任何一处，镜像 `groups`
+  里的残留主体条目都会把授权放大回去（D47 只收窄）。
 - 文档默认 `visibility` 必须显式定为 `restricted`（继承 KB 组成员），不得默认 `public`。
 
 ### 4.6 文档 ACL 只收窄

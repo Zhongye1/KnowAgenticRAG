@@ -38,7 +38,12 @@ def to_milvus_expr(scope: Scope) -> str:
 
     表达式语义：
     - namespace 精确匹配（租户硬边界）
-    - visibility == "public" OR owner_id == user_id OR groups 有交集（文档级 ACL）
+    - visibility == "public"（KB 内公开）OR owner_id == user_id OR
+      （visibility == "restricted" AND groups 有交集）
+
+    ``groups`` 只在 ``restricted`` 下生效：``private`` 的语义是「仅 owner」，若把主体
+    集合也当通行证，镜像一旦残留条目就等于放大授权（D47 文档 ACL 只收窄）。把语义写在
+    表达式里，授权判定就不依赖「写入侧一定清空了条目」这个数据不变量。
 
     注意：``kb_name`` 过滤由 ``search_ragf_kb()`` 在 Milvus 层注入（单 KB per
     call），KB 级 ACL 在服务层通过 ``allowed_kbs`` 求交校验，不在本表达式内。
@@ -53,13 +58,13 @@ def to_milvus_expr(scope: Scope) -> str:
     if scope.user_id:
         validate_ids_for_expr([scope.user_id], 'user_id')
 
-    # 文档级 ACL：visibility == "public" or owner_id == user or groups 有交集
+    # 文档级 ACL：public（KB 内公开）or owner or restricted 且主体命中
     doc_filters = ['visibility == "public"']
     if scope.user_id:
         doc_filters.append(f'owner_id == "{scope.user_id}"')
     if scope.groups:
         groups = ','.join(f'"{g}"' for g in scope.groups)
-        doc_filters.append(f'array_contains_any(groups, [{groups}])')
+        doc_filters.append(f'(visibility == "restricted" and array_contains_any(groups, [{groups}]))')
     doc_filter = ' or '.join(doc_filters)
 
     return f'namespace == "{scope.namespace}" and ({doc_filter})'

@@ -254,6 +254,14 @@ class AclEntryService:
         before_visibility = str(doc.visibility or 'restricted')
         if visibility is not None:
             doc.visibility = visibility
+        # private = 仅 owner：条目必须清空，否则镜像 groups 会把授权放大回主体集合
+        # （表达式侧同样对 groups 加了 restricted 守卫，这里是写入侧不产生矛盾数据）
+        if str(doc.visibility or 'restricted') == 'private':
+            if entries:
+                raise errors.RequestError(
+                    msg='private 文档不接受授权条目（仅 owner 可见）；如需共享请先把可见性改为 restricted'
+                )
+            entries = []
         if entries is not None:
             await doc_acl_dao.replace_entries(
                 db,

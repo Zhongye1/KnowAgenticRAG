@@ -124,3 +124,15 @@ class TestToMilvusExpr:
 
         assert 'namespace == "prod"' in expr
         assert 'array_contains_any(groups, ["admins"])' in expr
+
+    def test_groups_only_grant_for_restricted(self) -> None:
+        """主体集合只在 restricted 下放行：private 即使镜像残留条目也不得命中（D47）。"""
+        scope = Scope(
+            namespace='core',
+            user_id='user1',
+            groups=['dept1'],
+            allowed_kbs=['kb1'],
+        )
+        expr = to_milvus_expr(scope)
+
+        assert '(visibility == "restricted" and array_contains_any(groups, ["dept1"]))' in expr
