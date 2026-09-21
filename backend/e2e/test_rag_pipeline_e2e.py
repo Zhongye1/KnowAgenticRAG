@@ -18,6 +18,7 @@ import pytest
 from backend.e2e.support import seed
 from backend.e2e.support.api import API, err, ok_data, sse_events
 from backend.e2e.support.fake_llm import install_fake_chat
+from backend.e2e.support.media import png_bytes
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable, Callable
@@ -33,9 +34,19 @@ DOC_TEXT = f'# 部署手册\n\n内部代号 {TOKEN}：安装顺序为先装 Post
 FAKE_MODEL_SPEC = 'e2e:fake-chat'
 
 
-async def _ingested_doc(client: AsyncClient, headers: dict[str, str], kb: str) -> tuple[str, dict[str, Any]]:
+async def _ingested_doc(
+    client: AsyncClient,
+    headers: dict[str, str],
+    kb: str,
+    *,
+    filename: str = 'e2e-deploy.md',
+    content: bytes = DOC_TEXT.encode('utf-8'),
+    content_type: str = 'text/markdown',
+) -> tuple[str, dict[str, Any]]:
     """两段式跑通：上传 → 触发 → 轮询 ready。返回 (document_id, upload_data)。"""
-    upload = await seed.upload_document(client, headers, kb, filename='e2e-deploy.md', content=DOC_TEXT.encode('utf-8'))
+    upload = await seed.upload_document(
+        client, headers, kb, filename=filename, content=content, content_type=content_type
+    )
     document_id = str(upload['document_id'])
     queued = await seed.trigger_ingest(client, headers, kb, document_id)
     assert queued['queued'] is True
@@ -247,3 +258,125 @@ async def test_document_acl_narrows_recall_inside_shared_kb(
     allowed = ok_data(await client.post(f'{API}/rag/search', json=query, headers=reader.headers))
     hit = next(item for item in allowed['sources']['text'] if item['document_id'] == document_id)
     assert hit['kb_name'] == kb
+
+
+async def test_visibility_matrix_inside_shared_kb(
+    client: AsyncClient,
+    identities: dict[str, Identity],
+    make_kb: Callable[..., Awaitable[str]],
+    require_worker: None,
+) -> None:
+    """同一 KB 内三档 visibility 的召回**结果集**对比（D47：文档 ACL 只收窄）。
+
+    同一句 query 在三个主体上返回三个集合——这是「文档级 ACL 生效」的可判定证据：
+    ``public`` 是 KB 内公开（KB 层过不了照样看不到）、``restricted`` 看主体集合、
+    ``private`` 只有 owner。用集合比较而不是逐条断言，能同时挡住「多给」与「少给」。
+    """
+    kb = await make_kb()
+    owner = identities['owner'].headers
+    mate = identities['mate']  # 同部门 9101：restricted 命中、private 不命中
+    reader = identities['reader']  # 跨部门 9102：只有 KB 内公开那份
+
+    # 三份内容互不相同（否则同 sha256 会被去重挡在 409），但都带 TOKEN → 同一句 query 全召回
+    restricted_id, _ = await _ingested_doc(client, owner, kb)
+    public_id, _ = await _ingested_doc(
+        client, owner, kb, filename='e2e-public.md', content=f'{DOC_TEXT}公开版：全库可读。\n'.encode()
+    )
+    private_id, _ = await _ingested_doc(
+        client, owner, kb, filename='e2e-private.md', content=f'{DOC_TEXT}私有版：仅上传者可见。\n'.encode()
+    )
+    await seed.grant_doc_acl(client, owner, public_id, visibility='public')
+    await seed.grant_doc_acl(client, owner, private_id, visibility='private')
+
+    await seed.grant_kb_acl(
+        client,
+        owner,
+        kb,
+        [
+            {
+                'principal_type': 'user',
+                'principal_id': str(persona.user_id),
+                'perm': 'read',
+                'effect': 'allow',
+            }
+            for persona in (identities['mate'], identities['reader'])
+        ],
+    )
+
+    query = {'query_text': f'{TOKEN} 安装顺序', 'kb_names': [kb]}
+
+    async def hits(headers: dict[str, str]) -> set[str]:
+        resp = ok_data(await client.post(f'{API}/rag/search', json=query, headers=headers))
+        return {str(item['document_id']) for item in resp['sources']['text']}
+
+    assert await hits(owner) == {restricted_id, public_id, private_id}
+    assert await hits(mate.headers) == {restricted_id, public_id}
+    assert await hits(reader.headers) == {public_id}
+
+    # private 的语义靠「条目清空 + 表达式 restricted 守卫」两处共同保证，这里钉住写入侧
+    detail = ok_data(await client.get(f'{API}/documents/{private_id}/acl', headers=owner))
+    assert detail['visibility'] == 'private'
+    assert detail['entries'] == []
+
+
+async def test_visual_recall_respects_document_acl(
+    client: AsyncClient,
+    identities: dict[str, Identity],
+    make_kb: Callable[..., Awaitable[str]],
+    require_worker: None,
+) -> None:
+    """ragf_visual 的 ACL 过滤与文本集合同构（双管线摄取 D7）。
+
+    视觉行没有 PG chunks、不进精排，但**过滤表达式与文本集合共用同一份**
+    （``_compose_kb_expr`` + ``to_milvus_expr``），所以文档级 ACL 同样要在召回内生效。
+    这里跑真实渲染 + 真实视觉编码（qwen3-vl-embedding，不打替身），只断言 ACL 语义。
+
+    ``visual_degraded`` 必须为 False：视觉召回失败会降级成空结果，与「无权」同形，
+    不区分就会让这条用例在视觉通道挂掉时假绿。
+    """
+    kb = await make_kb(routing_mode='visual')
+    owner = identities['owner'].headers
+    reader = identities['reader']
+    document_id, _upload = await _ingested_doc(
+        client, owner, kb, filename='e2e-visual.png', content=png_bytes(), content_type='image/png'
+    )
+    assert ok_data(await client.get(f'{API}/documents/{document_id}', headers=owner))['pipeline'] == 'visual'
+    await seed.grant_kb_acl(
+        client,
+        owner,
+        kb,
+        [
+            {
+                'principal_type': 'user',
+                'principal_id': str(reader.user_id),
+                'perm': 'read',
+                'effect': 'allow',
+            }
+        ],
+    )
+
+    query = {'query_text': f'{TOKEN} 安装顺序', 'kb_names': [kb], 'include_visual': True, 'visual_top_k': 5}
+
+    async def tiles(headers: dict[str, str]) -> set[str]:
+        resp = ok_data(await client.post(f'{API}/rag/search', json=query, headers=headers))
+        assert resp['visual_degraded'] is False, f'视觉召回降级，「无权」与「失败」不可区分: {resp!r}'
+        assert 'visual' in resp['route']['selected'], f'视觉召回路未执行: {resp["route"]!r}'
+        return {str(item['document_id']) for item in resp['sources']['image']}
+
+    assert await tiles(owner) == {document_id}, 'owner 看不到自己的 tile，后续的「无权」断言会变成空转'
+    assert await tiles(reader.headers) == set()
+
+    await seed.grant_doc_acl(
+        client,
+        owner,
+        document_id,
+        entries=[
+            {
+                'principal_type': 'user',
+                'principal_id': str(reader.user_id),
+                'perm': 'read',
+                'effect': 'allow',
+            }
+        ],
+    )
+    assert await tiles(reader.headers) == {document_id}

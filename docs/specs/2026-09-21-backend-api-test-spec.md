@@ -131,7 +131,7 @@ L2 与 L3 的差别不是「快慢」，而是**断言对象**：L2 断言单个
 | 租户边界 | `resolve_namespace` / `instance_namespace` | 403 | `X-Plugin-Namespace` 与实例不一致 |
 | 功能权限 | RBAC 权限码 `rag:kb:*` + `sys_menu.perms` | 403 | 只读角色做写操作 |
 | 资源权限 | `Perm` 求值 read < contribute < manage < owner | **404** | 无 ACL 主体读写 |
-| 数据权限 | 文档级 `visibility/owner_id/groups` → Milvus 表达式 | 结果集变空 | 同 KB 内文档不可见（本项目未覆盖，见 §8） |
+| 数据权限 | 文档级 `visibility/owner_id/groups` → Milvus 表达式 | 结果集变空 | 同 KB 内文档不可见（§5.5，按主体比对结果集） |
 
 **404 而非 403 是刻意的**（D50 不泄露存在性）：资源级不足与「KB/文档不存在」必须**同形态**，这条要显式断言两边响应体一致（`test_absent_and_denied_kb_are_indistinguishable`）。
 
@@ -277,7 +277,37 @@ Bounded 一致性下紧接着的检索会读到**写入前**视图（现象：�
 `milvus_visual_ops.update_visual_document_acl`）。因果已验证：去掉 `flush` 时该用例 3 跑挂 1，
 加上后连续通过——这条 flaky 本来会被误读成「ACL 授权不生效」。
 
-### 5.6 降级可观测（未覆盖）
+**三档可见性的结果集对比**（`test_visibility_matrix_inside_shared_kb`）：一个 KB 内三份文档分别置
+`restricted`（默认）/`public`/`private`，同一句 query 打三个主体，断言**集合相等**而不是逐条包含——
+同时挡住「多给」和「少给」：
+
+| 主体 | 期望召回集合 | 依据 |
+| --- | --- | --- |
+| owner | 三份全中 | `owner_id` 命中（含自己那份 private） |
+| 同部门用户 | restricted + public | 上传时的部门条目（restricted 靠主体集合命中） |
+| 跨部门用户（KB 已授 read） | 仅 public | `public` = **KB 内**公开，KB 层过不了照样看不到 |
+
+`private` 的语义是「仅 owner」，由两处共同保证，**缺一处就会放大授权**：
+
+- **写入侧**：`PUT .../documents/{id}/acl` 置 `private` 时条目一律清空（带非空条目的组合直接 422）；
+  否则镜像 `groups` 里的部门条目会把文档放回给该部门（实测过：未修时同部门用户可见）。
+- **表达式侧**：`to_milvus_expr` 把主体集合限定在 `visibility == "restricted"` 下生效，
+  镜像残留条目也不会放行——授权判定不依赖「写入侧一定清干净了」这个数据不变量。
+
+### 5.6 视觉集合（`ragf_visual`）ACL（`chain`）
+
+`test_visual_recall_respects_document_acl`。视觉行没有 PG chunks、不进精排、不进引用，但
+**过滤表达式与文本集合共用同一份**（`_compose_kb_expr` + `to_milvus_expr`），所以文档级 ACL
+必须同样在召回内生效。用例跑真实链路：KB `routing_mode=visual` → PNG 素材渲染切片 →
+真实视觉编码（`qwen3-vl-embedding`，不打替身）→ 写 `ragf_visual` → `include_visual=true` 检索。
+
+| 断言 | 为什么必须写 |
+| --- | --- |
+| owner 能看到自己的 tile | 否则后面的「无权」是空转（区分不了「没有 tile」与「被过滤」） |
+| reader 的 `visual_degraded is False` 且 `visual` 在 `route.selected` 里 | 视觉召回失败会降级成空结果，与「无权」同形，不区分就会假绿 |
+| reader 交集为空 → 文档级授权后命中同一 `document_id` | 与文本集合同口径（KB 授权 ≠ 文档可见） |
+
+### 5.7 降级可观测（未覆盖）
 
 精排失败降级（`degraded=true`）、视觉召回失败（`visual_degraded=true`）需要**故意打断外部模型**才能触发，本套件不打这个替身（见 §3.4）。这些路径由域内单测覆盖，接口层暂不锁。
 
@@ -347,8 +377,7 @@ Knowhere API 强制 Bearer 鉴权（key 在 Dashboard `http://localhost:13000` �
 - **版本化未实现**：`Document.active_version` 是 Phase 2 占位（`model/document.py` 注释即写明「默认 1」），
   摄取链路从不递增它，重摄取覆盖同一 `version_id`。因此「多版本共存 / 旧版本回查」在接口层无法验证，
   本套件只锁 `chunk_id` 的 `{document_id}:{version_id}:{idx}` 形态与「引用可在 PG 事实源逐字回查」。
-- 数据权限层：文档级 ACL 的**召回内过滤**与**变更传播**已由 §5.5 的 chain 用例锁住；仍未覆盖的是
-  「多文档、不同 `visibility`（`public` / `private` 档）的结果集对比」与视觉集合（`ragf_visual`）
-  的 ACL 过滤（两条都在 Milvus 表达式内生效，需要多条不同可见性文档才能对比结果集）。
-- 降级路径（精排/视觉）未在接口层覆盖，见 §5.6。
+- 数据权限层已由 §5.5（文本集合：单文档授权链路 + 三档可见性结果集）与 §5.6（视觉集合）覆盖；
+  仍未覆盖的是**召回后的二次过滤类**能力（如 tag/文件类型过滤与 ACL 的组合、多 KB 聚合下的文档级过滤）。
+- 降级路径（精排/视觉）未在接口层覆盖，见 §5.7。
 - `backend/e2e/` 尚未接入 CI（`.github/workflows/` 现只有架构契约与文档站）；L3 需要 PG/Milvus/MinIO/Redis + worker + 模型密钥。
