@@ -2,6 +2,7 @@
 """校验各层 env 的账号类字段是否一致（防止改一处忘同步）"""
 
 import sys
+
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]  # 仓库根
@@ -48,7 +49,10 @@ def main() -> int:
                 print(f'[✓] {app_key} ({label}) 与 {compose_key} 一致')
 
     if failed:
-        print('\n提示：请同步 backend/src/.env 与 deploy/backend/docker-compose/.env.server 中的账号，使其与根 .env 一致')
+        print(
+            '\n提示：请同步 backend/src/.env 与 deploy/backend/docker-compose/.env.server 中的账号，'
+            '使其与根 .env 一致'
+        )
         return 1
     print('\n✓ 各层 env 账号字段一致')
     return 0
