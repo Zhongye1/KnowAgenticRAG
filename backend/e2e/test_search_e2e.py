@@ -37,14 +37,14 @@ async def test_old_per_kb_search_path_is_gone(
 ) -> None:
     """canonical-only：旧 ``/knowledge_bases/{kb}/search`` 不再存在（不写兼容端点）。
 
-    该路径只匹配到 ``GET /knowledge_bases/{kb_name}``，所以是 405 而不是 404——无论哪种，
-    关键是**没有**被服务成检索（没有 200）。
+    该路径没有任何路由匹配（canonical 检索只有 ``/rag/search``），因此是 404；关键是
+    **没有**被服务成检索（没有 200）——旧端点的存在本身就是兼容包袱。
     """
     kb = await make_kb()
     resp = await client.post(
         f'{API}/knowledge_bases/{kb}/search', json={'query_text': 'x'}, headers=identities['owner'].headers
     )
-    assert resp.status_code == 405, f'旧检索端点仍在: {resp.status_code} {resp.text[:200]!r}'
+    assert resp.status_code == 404, f'旧检索端点仍在: {resp.status_code} {resp.text[:200]!r}'
 
 
 async def test_search_validates_kb_names_bounds(client: AsyncClient, identities: dict[str, Identity]) -> None:
@@ -60,9 +60,14 @@ async def test_search_validates_query_text(client: AsyncClient, identities: dict
     err(await client.post(SEARCH, json=_body(['e2e_any'], query_text=''), headers=identities['owner'].headers), 422)
 
 
-async def test_search_absent_kb_is_404(client: AsyncClient, identities: dict[str, Identity]) -> None:
-    """库不存在 → 404（KB 归属加载阶段，早于 embedding）。"""
-    err(await client.post(SEARCH, json=_body(['e2e_absent_kb']), headers=identities['owner'].headers), 404)
+async def test_search_absent_kb_is_403_not_404(client: AsyncClient, identities: dict[str, Identity]) -> None:
+    """库不存在与库无权**同形态** 403：scope 求交在 KB 归属加载之前，看不见的库一律是「不在
+    ``allowed_kbs``」，因此不区分存在性（D50 不泄露存在性）。``/rag/search`` 是全平台唯一
+    资源权限报 403 的端点。请求不得带回任何结果。
+    """
+    body = err(await client.post(SEARCH, json=_body(['e2e_absent_kb']), headers=identities['owner'].headers), 403)
+    assert 'e2e_absent_kb' in str(body['msg']), f'403 文案应指出无权库: {body!r}'
+    assert body.get('data') is None, '越权/不可见请求不得带回结果'
 
 
 async def test_search_mixed_kb_names_is_403(
@@ -105,15 +110,15 @@ async def test_search_visible_kb_is_not_blocked_by_scope(
 async def test_search_kb_created_by_other_tenant_is_invisible_not_interchangeable(
     client: AsyncClient, identities: dict[str, Identity], make_kb: Callable[..., Awaitable[str]]
 ) -> None:
-    """跨部门/跨 owner 的库不可见：他人建的库对当前主体等价于不存在（403 与 404 各归其位）。"""
+    """跨部门/跨 owner 的库不可见：他人建的库对当前主体等价于不存在（同形态 403，不泄露存在性）。"""
     theirs = await make_kb(as_persona='outsider')
     # outsider 自己可见（权限层放行，后面失败与权限无关）
     resp = await client.post(SEARCH, json=_body([theirs]), headers=identities['outsider'].headers)
     assert resp.status_code not in (401, 403, 404)
     # owner 无权 → 越权 403
     err(await client.post(SEARCH, json=_body([theirs]), headers=identities['owner'].headers), 403)
-    # 不存在的库 → 404（与越权区分）
-    err(await client.post(SEARCH, json=_body(['e2e_absent_kb']), headers=identities['owner'].headers), 404)
+    # 不存在的库 → 同样 403（与越权同形态）
+    err(await client.post(SEARCH, json=_body(['e2e_absent_kb']), headers=identities['owner'].headers), 403)
 
 
 async def test_rag_images_url_is_404_for_unknown_image(client: AsyncClient, identities: dict[str, Identity]) -> None:

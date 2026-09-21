@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from backend.e2e.support import seed
-from backend.e2e.support.api import API, err, ok_data, sse_events, sse_json
+from backend.e2e.support.api import API, err, sse_events, sse_json
 from backend.e2e.support.fake_llm import install_fake_chat
 from backend.src.app.chat.service.prompts import EMPTY_RESULT_MESSAGE
 from backend.src.core.config import settings
@@ -109,12 +109,10 @@ async def test_stream_protocol_with_hits(
     """有命中：meta/citation 就绪后逐帧 delta，done 自包含（answer/route/steps/usage）。"""
     kb = await make_kb()
     headers = identities['owner'].headers
-    upload = ok_data(
-        await seed.upload_document(
-            client, headers, kb, filename='e2e-deploy.md', content=f'# 部署手册\n\n代号 {TOKEN}。\n'.encode()
-        )
+    upload = await seed.upload_document(
+        client, headers, kb, filename='e2e-deploy.md', content=f'# 部署手册\n\n代号 {TOKEN}。\n'.encode()
     )
-    ok_data(await seed.trigger_ingest(client, headers, kb, upload['document_id']))
+    await seed.trigger_ingest(client, headers, kb, upload['document_id'])
     await seed.wait_ingest(client, headers, kb, upload['document_id'])
     model = install_fake_chat(monkeypatch)
 
@@ -149,12 +147,10 @@ async def test_stream_reports_model_error_as_event(
     """未配置 chat 模型：有命中 → ``error`` 事件（HTTP 仍 200），客户端不必解析两套错误面。"""
     kb = await make_kb()
     headers = identities['owner'].headers
-    upload = ok_data(
-        await seed.upload_document(
-            client, headers, kb, filename='e2e-deploy.md', content=f'# 部署手册\n\n代号 {TOKEN}。\n'.encode()
-        )
+    upload = await seed.upload_document(
+        client, headers, kb, filename='e2e-deploy.md', content=f'# 部署手册\n\n代号 {TOKEN}。\n'.encode()
     )
-    ok_data(await seed.trigger_ingest(client, headers, kb, upload['document_id']))
+    await seed.trigger_ingest(client, headers, kb, upload['document_id'])
     await seed.wait_ingest(client, headers, kb, upload['document_id'])
 
     monkeypatch.setattr(settings, 'RAGF_CHAT_MODEL_SPEC', '')
