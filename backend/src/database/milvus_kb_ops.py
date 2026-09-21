@@ -66,21 +66,27 @@ def _collection_schema(name: str, dim: int) -> CollectionSchema:
 
 
 def ensure_base_collections(plugin_namespace: str | None = None) -> None:
-    """确保域内基础集合存在、向量/标量索引就绪并已加载。"""
+    """确保基础文本集合存在、向量/标量索引就绪并已加载。
+
+    视觉集合（``ragf_visual``）的 schema 与索引单点归
+    ``milvus_visual_ops.ensure_visual_collection``（含编码器指纹守卫与 ACL 镜像字段），
+    本函数不得插手：它的索引按 ``idx_vector`` / ``idx_kb_name`` 判重，与视觉集合的
+    ``idx_visual_*`` 名字不同，但 Milvus 的限制是「同一 field 只能有一个索引」——
+    两边并存会在启动期报 ``creating multiple indexes on same field is not supported``。
+    """
     client = _client(plugin_namespace)
-    text_coll, visual_coll = base_collection_names()
-    for name, dim in (
-        (text_coll, settings.MILVUS_TEXT_VECTOR_DIM),
-        (visual_coll, settings.MILVUS_VISUAL_VECTOR_DIM),
-    ):
-        if not client.has_collection(name):
-            client.create_collection(collection_name=name, schema=_collection_schema(name, dim))
-        _ensure_vector_index(client, name)
-        _ensure_kb_index(client, name)
-        try:
-            client.load_collection(name)
-        except Exception as exc:
-            logger.warning('加载集合失败 coll=%s: %s', name, exc)
+    text_coll, _visual_coll = base_collection_names()
+    if not client.has_collection(text_coll):
+        client.create_collection(
+            collection_name=text_coll,
+            schema=_collection_schema(text_coll, settings.MILVUS_TEXT_VECTOR_DIM),
+        )
+    _ensure_vector_index(client, text_coll)
+    _ensure_kb_index(client, text_coll)
+    try:
+        client.load_collection(text_coll)
+    except Exception as exc:
+        logger.warning('加载集合失败 coll=%s: %s', text_coll, exc)
 
 
 def _ensure_vector_index(client: MilvusClient, collection: str) -> None:
