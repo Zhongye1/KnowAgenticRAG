@@ -103,3 +103,14 @@ class TestDocAclUpdateParam:
         )
         assert param.entries is not None
         assert len(param.entries) == 2
+
+    def test_private_rejects_entries(self) -> None:
+        """private = 仅 owner：与授权条目互斥（否则镜像 groups 会把授权放大回去）。"""
+        with pytest.raises(ValidationError, match='private'):
+            DocAclUpdateParam(
+                visibility='private',
+                entries=[DocAclEntry(principal_type='user', principal_id='u1')],
+            )
+
+    def test_private_with_empty_entries_allowed(self) -> None:
+        assert DocAclUpdateParam(visibility='private', entries=[]).entries == []
