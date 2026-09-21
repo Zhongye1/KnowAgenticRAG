@@ -1,4 +1,4 @@
-import { Wrench } from '@phosphor-icons/react';
+import { Wrench } from 'lucide-react';
 
 import { KnowledgeEmptyState } from '@/features/knowledge/components/shared/knowledge-empty-state';
 import { KnowledgeToolbar } from '@/features/knowledge/components/shared/knowledge-toolbar';

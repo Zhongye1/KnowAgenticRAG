@@ -1,9 +1,5 @@
-import {
-  ArrowSquareOut,
-  GearSix,
-  GithubLogo,
-  Question,
-} from '@phosphor-icons/react';
+import { GitHubLogoIcon } from '@radix-ui/react-icons';
+import { CircleHelp, ExternalLink, Settings } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { Link, useMatches } from 'react-router';
 
@@ -48,7 +44,7 @@ function SettingsDrawer() {
         <TooltipTrigger asChild>
           <DrawerTrigger asChild>
             <Button variant="ghost" size="icon-sm" aria-label="打开设置">
-              <GearSix className="size-4" />
+                  <Settings className="size-4" />
             </Button>
           </DrawerTrigger>
         </TooltipTrigger>
@@ -122,7 +118,7 @@ function HelpDrawer() {
         <TooltipTrigger asChild>
           <DrawerTrigger asChild>
             <Button variant="ghost" size="icon-sm" aria-label="打开帮助">
-              <Question className="size-4" />
+              <CircleHelp className="size-4" />
             </Button>
           </DrawerTrigger>
         </TooltipTrigger>
@@ -150,7 +146,7 @@ function HelpDrawer() {
                   {link.description}
                 </span>
               </div>
-              <ArrowSquareOut className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
+              <ExternalLink className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
             </a>
           ))}
         </div>
@@ -220,7 +216,7 @@ export function AppHeadbar() {
                 aria-label="GitHub 项目仓库"
               >
                 <a href={GITHUB_URL} target="_blank" rel="noreferrer">
-                  <GithubLogo className="size-4" weight="fill" />
+                  <GitHubLogoIcon className="size-4" />
                 </a>
               </Button>
             </TooltipTrigger>

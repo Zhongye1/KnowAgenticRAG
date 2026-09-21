@@ -1,4 +1,4 @@
-import { CheckCircle, CloudArrowUp, WarningCircle } from '@phosphor-icons/react'
+import { CircleAlert, CircleCheck, CloudUpload } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
 import { isAxiosError } from 'axios'
 import { nanoid } from 'nanoid'
@@ -166,7 +166,7 @@ export function DocumentUploadDialog({
           onDragLeave={() => setDragging(false)}
           onDrop={handleDrop}
         >
-          <CloudArrowUp
+          <CloudUpload
             className="mb-1 size-6 text-muted-foreground"
             aria-hidden="true"
           />
@@ -196,7 +196,7 @@ export function DocumentUploadDialog({
                 {task.state === 'uploading' ? (
                   <Spinner className="size-3.5 shrink-0 text-primary-6" />
                 ) : task.state === 'success' ? (
-                  <CheckCircle
+                  <CircleCheck
                     className="size-4 shrink-0 text-success-6"
                     aria-label="上传成功"
                   />
@@ -205,7 +205,7 @@ export function DocumentUploadDialog({
                     排队中
                   </span>
                 ) : (
-                  <WarningCircle
+                  <CircleAlert
                     className="size-4 shrink-0 text-danger-6"
                     aria-label="上传失败"
                   />

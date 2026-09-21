@@ -1,12 +1,12 @@
 import {
-  CopyIcon,
-  DotsThreeVerticalIcon,
-  FilesIcon,
-  ImageSquareIcon,
-  PencilSimpleIcon,
-  TextTIcon,
-  TrashSimpleIcon,
-} from '@phosphor-icons/react';
+  Copy,
+  Files,
+  Image,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  Type,
+} from 'lucide-react';
 import { useState } from 'react';
 import { Link } from 'react-router';
 
@@ -117,7 +117,7 @@ function KnowledgeCard({ kb }: { kb: KnowledgeBase }) {
                   aria-label={`${kb.display_name} 更多操作`}
                   title="更多操作"
                 >
-                  <DotsThreeVerticalIcon />
+            <MoreVertical />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -129,7 +129,7 @@ function KnowledgeCard({ kb }: { kb: KnowledgeBase }) {
                     void handleCopyId();
                   }}
                 >
-                  <CopyIcon />
+                  <Copy />
                   复制知识库 ID
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -137,7 +137,7 @@ function KnowledgeCard({ kb }: { kb: KnowledgeBase }) {
                     setEditOpen(true);
                   }}
                 >
-                  <PencilSimpleIcon />
+                  <Pencil />
                   编辑知识库
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -146,7 +146,7 @@ function KnowledgeCard({ kb }: { kb: KnowledgeBase }) {
                     setDeleteOpen(true);
                   }}
                 >
-                  <TrashSimpleIcon />
+                  <Trash2 />
                   删除知识库
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -166,7 +166,7 @@ function KnowledgeCard({ kb }: { kb: KnowledgeBase }) {
           <div className="mt-auto flex flex-wrap items-center gap-1.5 border-t border-border/60 pt-3">
             <Badge variant="outline" className={statBadgeClassName}>
               <span className="contents">
-                <FilesIcon className="size-3.5 opacity-80" aria-hidden="true" />
+              <Files className="size-3.5 opacity-80" aria-hidden="true" />
               </span>
               <span className="font-semibold tabular-nums text-foreground">
                 {kb.documents ?? 0}
@@ -175,7 +175,7 @@ function KnowledgeCard({ kb }: { kb: KnowledgeBase }) {
             </Badge>
             <Badge variant="outline" className={statBadgeClassName}>
               <span className="contents">
-                <TextTIcon className="size-3.5 opacity-80" aria-hidden="true" />
+              <Type className="size-3.5 opacity-80" aria-hidden="true" />
               </span>
               <span className="font-semibold tabular-nums text-foreground">
                 {kb.text_vectors ?? 0}
@@ -184,7 +184,7 @@ function KnowledgeCard({ kb }: { kb: KnowledgeBase }) {
             </Badge>
             <Badge variant="outline" className={statBadgeClassName}>
               <span className="contents">
-                <ImageSquareIcon
+                <Image
                   className="size-3.5 opacity-80"
                   aria-hidden="true"
                 />

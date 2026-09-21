@@ -1,4 +1,4 @@
-import { BookOpen } from '@phosphor-icons/react';
+import { BookOpen } from 'lucide-react';
 import { useState } from 'react';
 
 import { Spinner } from '@/components/ui/spinner';

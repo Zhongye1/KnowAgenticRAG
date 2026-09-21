@@ -1,10 +1,4 @@
-import {
-  Database,
-  Files,
-  ImageSquare,
-  TextT,
-  type Icon,
-} from '@phosphor-icons/react';
+import { Database, Files, Image, Type, type LucideIcon } from 'lucide-react';
 
 import type { KnowledgeBaseOverview } from '../../api/types';
 
@@ -15,12 +9,12 @@ type KnowledgeOverviewProps = {
 const STATS: ReadonlyArray<{
   key: keyof KnowledgeBaseOverview;
   label: string;
-  icon: Icon;
+  icon: LucideIcon;
 }> = [
   { key: 'total_kbs', label: '知识库', icon: Database },
   { key: 'total_documents', label: '文档', icon: Files },
-  { key: 'total_text_vectors', label: '文本向量', icon: TextT },
-  { key: 'total_visual_vectors', label: '视觉向量', icon: ImageSquare },
+  { key: 'total_text_vectors', label: '文本向量', icon: Type },
+  { key: 'total_visual_vectors', label: '视觉向量', icon: Image },
 ];
 
 export function KnowledgeOverview({ data }: KnowledgeOverviewProps) {

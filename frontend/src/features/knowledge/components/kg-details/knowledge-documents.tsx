@@ -1,10 +1,10 @@
 import {
   ArrowLeft,
-  ArrowsClockwise,
   Files,
-  TrashSimple,
-  UploadSimple,
-} from '@phosphor-icons/react';
+  RefreshCw,
+  Trash2,
+  Upload,
+} from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -261,7 +261,7 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
             disabled={documentsQuery.isFetching}
             onClick={() => void documentsQuery.refetch()}
           >
-            <ArrowsClockwise
+            <RefreshCw
               className={cn(
                 'size-4',
                 documentsQuery.isFetching && 'animate-spin',
@@ -269,7 +269,7 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
             />
           </Button>
           <Button size="sm" onClick={() => setUploadOpen(true)}>
-            <UploadSimple className="size-4" />
+            <Upload className="size-4" />
             上传文档
           </Button>
         </div>
@@ -349,7 +349,7 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
               disabled={batchDeleting}
               onClick={() => setBatchDeleteOpen(true)}
             >
-              <TrashSimple className="size-3.5" />
+                  <Trash2 className="size-3.5" />
               {batchDeleting ? '删除中…' : '批量删除'}
             </Button>
           </div>
@@ -380,7 +380,7 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
             >
               {!hasFilter ? (
                 <Button size="sm" onClick={() => setUploadOpen(true)}>
-                  <UploadSimple className="size-4" />
+              <Upload className="size-4" />
                   上传第一个文档
                 </Button>
               ) : (

@@ -1,4 +1,4 @@
-import { PencilSimple, TrashSimple, UploadSimple } from '@phosphor-icons/react'
+import { Pencil, Trash2, Upload } from 'lucide-react'
 import { useRef, useState, type ChangeEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -134,7 +134,7 @@ export function DocumentActions({
         disabled={disabled || !canReplace || replaceMutation.isPending}
         onClick={() => fileInputRef.current?.click()}
       >
-        <UploadSimple className="size-4" />
+            <Upload className="size-4" />
       </Button>
 
       <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
@@ -146,7 +146,7 @@ export function DocumentActions({
             aria-label={`重命名 ${doc.name}`}
             disabled={disabled}
           >
-            <PencilSimple className="size-4" />
+            <Pencil className="size-4" />
           </Button>
         </DialogTrigger>
         <DialogContent>
@@ -190,7 +190,7 @@ export function DocumentActions({
             aria-label={`删除 ${doc.name}`}
             disabled={disabled || !canDelete}
           >
-            <TrashSimple className="size-4" />
+            <Trash2 className="size-4" />
           </Button>
         </DialogTrigger>
         <DialogContent>

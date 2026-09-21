@@ -1,14 +1,14 @@
 import {
   BookOpen,
+  Box,
   Code,
-  Cube,
   Database,
   Files,
   Images,
   Notebook,
-  TextT,
-  type Icon,
-} from '@phosphor-icons/react';
+  Type,
+  type LucideIcon,
+} from 'lucide-react';
 
 export type KnowledgeThemeKey = 'blue' | 'green' | 'orange' | 'purple' | 'red';
 
@@ -78,16 +78,16 @@ export const isKnowledgeTheme = (
 ): value is KnowledgeThemeKey =>
   Boolean(value && value in KNOWLEDGE_THEME_ACCENTS);
 
-const KNOWLEDGE_ICONS: Record<string, Icon> = {
+const KNOWLEDGE_ICONS: Record<string, LucideIcon> = {
   database: Database,
   book: BookOpen,
   code: Code,
-  cube: Cube,
+  cube: Box,
   files: Files,
   images: Images,
   notebook: Notebook,
-  text: TextT,
+  text: Type,
 };
 
-export const getKnowledgeIcon = (icon: string | null | undefined): Icon =>
+export const getKnowledgeIcon = (icon: string | null | undefined): LucideIcon =>
   KNOWLEDGE_ICONS[icon ?? ''] ?? Database;

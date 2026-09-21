@@ -1,9 +1,9 @@
 import {
-  DownloadSimple,
+  Download,
   FileText,
-  TrashSimple,
-  UploadSimple,
-} from '@phosphor-icons/react'
+  Trash2,
+  Upload,
+} from 'lucide-react'
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -235,7 +235,7 @@ export function DocumentDetailDrawer({
             }
             onClick={() => fileInputRef.current?.click()}
           >
-            <UploadSimple className="size-4" />
+            <Upload className="size-4" />
             替换文件
           </Button>
           {previewUrl ? (
@@ -244,7 +244,7 @@ export function DocumentDetailDrawer({
               size="sm"
               onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}
             >
-              <DownloadSimple className="size-4" />
+            <Download className="size-4" />
               下载
             </Button>
           ) : null}
@@ -254,7 +254,7 @@ export function DocumentDetailDrawer({
             disabled={!canDeleteDocument(doc.status)}
             onClick={() => setDeleteOpen(true)}
           >
-            <TrashSimple className="size-4" />
+            <Trash2 className="size-4" />
             删除
           </Button>
         </DrawerFooter>
