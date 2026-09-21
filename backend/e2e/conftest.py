@@ -187,16 +187,20 @@ def require_worker(request: pytest.FixtureRequest) -> None:
 
 @pytest.fixture
 async def make_kb(client: AsyncClient, identities: dict[str, Identity]) -> AsyncIterator[Callable[..., Awaitable[str]]]:
-    """函数级独立 KB 工厂：``e2e_{uuid}`` 命名 + teardown 级联删除。"""
-    created: list[str] = []
-    owner_headers = identities['owner'].headers
+    """函数级独立 KB 工厂：``e2e_{uuid}`` 命名 + teardown 级联删除。
+
+    ``as_persona=<key>`` 可用其它主体的身份建库（跨租户可见性用例需要两个 owner）；
+    删除一律用**建库者**的凭据（删除要求资源级 owner）。
+    """
+    created: list[tuple[str, str]] = []
 
     async def _make(**overrides: Any) -> str:
+        persona = str(overrides.pop('as_persona', 'owner'))
         kb_name = str(overrides.pop('kb_name', None) or f'e2e_{uuid4().hex[:8]}')
-        await seed.create_kb(client, owner_headers, kb_name, **overrides)
-        created.append(kb_name)
+        await seed.create_kb(client, identities[persona].headers, kb_name, **overrides)
+        created.append((persona, kb_name))
         return kb_name
 
     yield _make
-    for kb_name in created:
-        await seed.delete_kb_quiet(client, owner_headers, kb_name)
+    for persona, kb_name in created:
+        await seed.delete_kb_quiet(client, identities[persona].headers, kb_name)
