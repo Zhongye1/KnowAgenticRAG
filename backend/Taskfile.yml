@@ -51,6 +51,15 @@ tasks:
       - task: env-check
       - '{{.VENV_PY}} -m celery -A backend.src.app.task.celery:celery_app worker --loglevel=INFO'
 
+  worker:test:
+    # e2e 的 chain 用例：API 侧在进程内切到 ragf_test，Worker 是独立进程必须一起切，
+    # 否则它在 dev 库找不到文档行（摄取必然失败）。库名 = `{DATABASE_SCHEMA}_test`。
+    desc: 启动指向测试库（ragf_test）的 Celery Worker——接口 e2e chain 用例专用
+    dir: '..'
+    cmds:
+      - task: env-check
+      - 'DATABASE_SCHEMA=ragf_test {{.VENV_PY}} -m celery -A backend.src.app.task.celery:celery_app worker --loglevel=INFO'
+
   beat:
     desc: 启动 Celery Beat（定时任务调度器）
     dir: '..'
