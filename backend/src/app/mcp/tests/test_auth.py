@@ -19,7 +19,14 @@ from backend.src.app.mcp.auth import (
     normalize_scopes,
     require_perms,
 )
-from backend.src.app.mcp.schemas import PERM_KB_LIST, PERM_KB_READ, PERM_KB_SEARCH, READ_SCOPES, UserContext
+from backend.src.app.mcp.schemas import (
+    PERM_KB_LIST,
+    PERM_KB_READ,
+    PERM_KB_SEARCH,
+    READ_SCOPES,
+    McpToolItem,
+    UserContext,
+)
 from backend.src.common.exception import errors
 from backend.src.core.config import settings
 
@@ -156,12 +163,22 @@ def test_require_perms() -> None:
         require_perms(ctx, frozenset({PERM_KB_SEARCH, PERM_KB_LIST}))
 
 
+def _tool(name: str, *perms: str) -> McpToolItem:
+    """目录项样本（tools/list 与 REST 目录共用同一模型）。"""
+    return McpToolItem(
+        name=name,
+        description=f'{name} 工具',
+        inputSchema={'type': 'object', 'properties': {}},
+        required_permissions=list(perms),
+    )
+
+
 def test_filter_tools_by_scp() -> None:
     tools = [
-        {'name': 'list_knowledge_bases', 'required_permissions': [PERM_KB_LIST]},
-        {'name': 'search_knowledge', 'required_permissions': [PERM_KB_SEARCH]},
-        {'name': 'read_document_chunks', 'required_permissions': [PERM_KB_READ]},
+        _tool('list_knowledge_bases', PERM_KB_LIST),
+        _tool('search_knowledge', PERM_KB_SEARCH),
+        _tool('read_document_chunks', PERM_KB_READ),
     ]
     ctx = UserContext(sub='u', tenant='core', scp=frozenset({PERM_KB_SEARCH}))
-    names = [item['name'] for item in filter_tools(ctx, tools)]
+    names = [item.name for item in filter_tools(ctx, tools)]
     assert names == ['search_knowledge']

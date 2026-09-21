@@ -250,8 +250,10 @@ def test_tools_catalog_filtered_by_scp() -> None:
     async def _catalog() -> Any:
         return await mcp_router.mcp_tools_catalog(user=user)  # type: ignore[arg-type]
 
-    items = asyncio.run(_catalog())
-    assert [item['name'] for item in items] == ['list_knowledge_bases']
+    envelope = asyncio.run(_catalog())
+    # 平台侧 REST 路由：套统一信封（协议面 POST /mcp 才是裸 JSON-RPC 帧）
+    assert envelope.code == 200
+    assert [item.name for item in envelope.data] == ['list_knowledge_bases']
 
 
 def test_tools_call_denied_without_scope() -> None:
