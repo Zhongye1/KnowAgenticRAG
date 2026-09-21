@@ -13,6 +13,7 @@ from backend.src.common.log import log
 from backend.src.common.security.jwt import jwt_authentication
 from backend.src.core.config import settings
 from backend.src.utils.serializers import MsgSpecJSONResponse
+from backend.src.utils.trace_id import get_request_trace_id
 
 
 class AuthenticationError(StarletteAuthenticationError):
@@ -51,6 +52,9 @@ class JwtAuthMiddleware(AuthenticationBackend):
         :return:
         """
         content = {'code': exc.code, 'msg': exc.msg, 'data': None}
+        # 统一错误信封包含 trace_id（其余出口由 exception_handler 补齐）；鉴权失败是最常见的
+        # 错误，缺 trace_id 会让客户端与日志无法对齐，故这里与其它出口保持一致。
+        content.update(trace_id=get_request_trace_id())
         ctx.__request_authentication_exception__ = content
         return MsgSpecJSONResponse(content=content, status_code=exc.code or 401)
 

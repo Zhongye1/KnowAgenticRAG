@@ -49,6 +49,12 @@ L2 与 L3 的差别不是「快慢」，而是**断言对象**：L2 断言单个
 - **必须先起依赖栈**：`import backend.main` 会走插件发现，Redis 不可达时 `RedisCli.init` 直接 `sys.exit`（框架 fail-fast）。这不是可跳过项。
 - `backend/e2e/conftest.py` 幂等 bootstrap（DB 不存在则建 → `create_all` → 种子数据），不依赖 `task init-db`。
 - **不连 dev 库**：避免 e2e 污染 `ragf`，也避免与单测争抢同一份数据。
+- **默认数据源在导入期重指到 `ragf_test`**（`_repoint_default_datasource_to_test_db`）：请求侧走
+  `override_get_db`，但 **JWT 中间件加载用户**（`jwt.get_jwt_user`）、lifespan 的 `create_tables` 与
+  schema 迁移走的是 app 全局默认引擎（dev 库 `ragf`）。一条路径两个库的后果是：身份工厂造在
+  `ragf_test` 的用户查不到 → 带鉴权请求一律 401，且 lifespan 反向污染 dev 库。重指按**对象身份**
+  改写 `sys.modules` 里所有仍绑定旧对象的模块属性（`from ... import async_db_session` 是模块级导入，
+  只改 `database.db` 的属性不够）；业务常量（如 `instance_namespace`）仍来自 settings，不参与重指。
 
 `backend/pyproject.toml` 的 `[tool.pytest.ini_options]` 把 `testpaths` 限定为 `src`：裸 `pytest`（`task backend:test`）不会误跑 e2e；e2e 需显式传路径。
 
@@ -106,6 +112,13 @@ L2 与 L3 的差别不是「快慢」，而是**断言对象**：L2 断言单个
 | PG 不可达 / `ragf_test` 建不出来 | 整包 `skip`，附原因 |
 | lifespan 起不来（Milvus/MinIO/PG 异常） | 整包 `skip`，附原因 |
 | Celery Worker 不可达（`inspect().ping()` 无响应） | 仅跳过 `chain` 用例 |
+
+**跳过只覆盖环境缺失，不掩盖代码缺陷**：bootstrap 里 `AttributeError` / `ImportError` / `KeyError` /
+`NameError` / `TypeError` 一律上抛（`_skip_or_raise`），不转成 `skip`——这类异常是桩代码写错，
+转 skip 会让整套「绿」着跑完却什么都没测。
+
+**出口一致性**：错误信封统一带 `trace_id`，鉴权失败路径也不例外（`jwt_authentication_middleware` 的
+`auth_exception_handler` 与其它出口同形），否则前端按 trace 排查时会漏掉 401。
 
 ## 4. 权限控制测试矩阵（重点）
 

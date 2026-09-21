@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -32,7 +33,7 @@ from httpx import ASGITransport, AsyncClient
 
 from backend.e2e.support import identity, seed
 from backend.src.core.config import settings
-from backend.src.tests.utils.db import async_test_db_session
+from backend.src.tests.utils.db import async_test_db_session, async_test_engine
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Awaitable, Callable
@@ -43,6 +44,44 @@ if TYPE_CHECKING:
 
 _E2E_DIR = Path(__file__).resolve().parent
 _SEED_SQL = Path(__file__).resolve().parents[1] / 'src' / 'sql' / 'postgresql' / 'init_test_data.sql'
+
+
+def _repoint_default_datasource_to_test_db() -> None:
+    """把 app 的「默认数据源」重指到 ``ragf_test``（必须在 lifespan 之前执行）。
+
+    为什么必须重指：请求路径走 ``override_get_db``（``get_database_url(unittest=True)``
+    → ``ragf_test``），但 **JWT 中间件加载用户**（``jwt.get_jwt_user``）、lifespan 的
+    ``create_tables`` / schema 迁移走的是 app 全局默认引擎（``DATABASE_SCHEMA`` →
+    dev 库 ``ragf``）。两个库不同的后果是：身份工厂造在 ``ragf_test`` 的用户查不到，
+    所有带鉴权的请求一律 401，而且 lifespan 会往 dev 库写表——与本套件「不连 dev 库」
+    的约定正好相反。
+
+    实现细节：``from backend.src.database.db import async_db_session`` 在多个模块是
+    **模块级导入**（Celery 任务、ingest 服务等），只改 ``database.db`` 里的属性不够，
+    因此按对象身份把 ``sys.modules`` 里仍指向旧对象的模块属性一并改写。
+    """
+    from backend.src.database import db as db_line
+
+    stale_engine = db_line.async_engine
+    stale_session = db_line.async_db_session
+    if stale_engine is async_test_engine:
+        return
+
+    db_line.async_engine = async_test_engine
+    db_line.async_db_session = async_test_db_session
+    db_line._database_engines['default'] = async_test_engine
+    for module in list(sys.modules.values()):
+        if getattr(module, 'async_engine', None) is stale_engine:
+            module.async_engine = async_test_engine  # type: ignore[attr-defined]
+        if getattr(module, 'async_db_session', None) is stale_session:
+            module.async_db_session = async_test_db_session  # type: ignore[attr-defined]
+
+    assert db_line.async_engine is async_test_engine, '默认数据源重指失败：app 仍会打 dev 库'
+
+
+# 导入期执行：`backend.main` 已由 rootdir 的 ``backend/conftest.py`` 导入，消费方可能
+# 已绑定旧对象，所以在模块导入时（而非 fixture 里）完成重指。
+_repoint_default_datasource_to_test_db()
 
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
@@ -94,7 +133,10 @@ async def _ensure_schema() -> None:
 
     get_app_models()
     async with async_test_db_session.begin() as session:
-        await session.run_sync(MappedBase.metadata.create_all)
+        # 必须走 connection：AsyncSession.run_sync 传给回调的是 sync Session，
+        # metadata.create_all 需要 connection（否则 AttributeError: _run_ddl_visitor）
+        conn = await session.connection()
+        await conn.run_sync(MappedBase.metadata.create_all)
 
 
 async def _ensure_seed() -> None:
@@ -111,6 +153,17 @@ async def _ensure_seed() -> None:
         await conn.close()
 
 
+# 基建自身的编程错误绝不能被 skip 吞掉：skip 只用于「依赖不可达」，写错的 bootstrap
+# 必须让整包报错——否则用例静默跳过而套件看起来是绿的，这是最坏的失败模式。
+_INFRA_BUG_ERRORS = (AttributeError, ImportError, KeyError, NameError, TypeError)
+
+
+def _skip_or_raise(exc: Exception, reason: str) -> None:
+    if isinstance(exc, _INFRA_BUG_ERRORS):
+        raise exc
+    pytest.skip(f'{reason}，跳过 e2e：{exc!r}')
+
+
 @asynccontextmanager
 async def _running_app() -> AsyncIterator[FastAPI]:
     """进入 lifespan；依赖不可达一律 skip（本地未起 docker compose 时不失败）。"""
@@ -121,14 +174,14 @@ async def _running_app() -> AsyncIterator[FastAPI]:
         await _ensure_database()
         await _ensure_schema()
         await _ensure_seed()
-    except Exception as exc:  # pragma: no cover - 环境相关
-        pytest.skip(f'ragf_test 不可用（PG 未启动或不可达），跳过 e2e：{exc!r}')
+    except Exception as exc:
+        _skip_or_raise(exc, 'ragf_test 不可用（PG 未启动或不可达）')
 
     lifespan = app.router.lifespan_context(app)
     try:
         await lifespan.__aenter__()
-    except Exception as exc:  # pragma: no cover - 环境相关
-        pytest.skip(f'应用 lifespan 启动失败（PG/Redis/Milvus/MinIO 不可达），跳过 e2e：{exc!r}')
+    except Exception as exc:
+        _skip_or_raise(exc, '应用 lifespan 启动失败（PG/Redis/Milvus/MinIO 不可达）')
     try:
         yield app
     finally:
