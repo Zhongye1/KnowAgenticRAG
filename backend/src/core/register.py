@@ -95,12 +95,17 @@ async def register_init(app: FastAPI) -> AsyncGenerator[None, None]:
     await milvus_client.init()
 
     # 初始化多租户 Milvus 连接池（按域绑定 Database）与基础集合
+    # 文本/视觉集合各自单一归属：ragf_text → milvus_kb_ops；ragf_visual → milvus_visual_ops
+    # （两者的索引名不同但落在同一 field 上，谁都不许替对方补索引，否则 Milvus 报
+    #   creating multiple indexes on same field is not supported）
     from backend.src.database.milvus_kb_ops import ensure_base_collections, ensure_ragf_template_collection
     from backend.src.database.milvus_pool import get_milvus_pool
+    from backend.src.database.milvus_visual_ops import ensure_visual_collection
 
     milvus_pool = get_milvus_pool()
     milvus_pool.ensure_database()
     ensure_base_collections()
+    ensure_visual_collection()
     ensure_ragf_template_collection()
 
     # 幂等确保默认模型供应商（D11/D16 演进：仅内置 dashscope 千问平台通道；
