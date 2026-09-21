@@ -369,6 +369,8 @@ async def test_transfer_is_gated_only_by_functional_code(
     # 旧 owner 的 owner 条目被回收且无其他条目 → 同形态 404
     err(await client.get(f'{API}/knowledge_bases/{kb}', headers=identities['owner'].headers), 404)
     ok_data(await client.get(f'{API}/knowledge_bases/{kb}', headers=target.headers))
+    # 库已易主：清理必须用新 owner 的凭据
+    await seed.delete_kb(client, target.headers, kb)
 
 
 async def test_transfer_to_current_owner_is_409(
@@ -399,6 +401,7 @@ async def test_owner_can_transfer_ownership(
     )
     assert data['owner_id'] == str(target.user_id)
     ok_data(await client.get(f'{API}/knowledge_bases/{kb}', headers=target.headers))
+    await seed.delete_kb(client, target.headers, kb)
 
 
 async def test_superuser_is_not_exempt_from_resource_perm(
