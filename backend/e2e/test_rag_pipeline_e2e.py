@@ -186,7 +186,5 @@ async def test_duplicate_content_is_409_after_successful_ingest(
     body = err(second, 409)
     assert '已存在' in str(body['msg']), body
 
-    other = ok_data(
-        await seed.upload_document(client, headers, kb, filename='e2e-other.md', content='# 另一份\n'.encode())
-    )
+    other = await seed.upload_document(client, headers, kb, filename='e2e-other.md', content='# 另一份\n'.encode())
     assert other['document_id'] != document_id
