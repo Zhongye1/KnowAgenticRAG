@@ -729,6 +729,10 @@ def update_ragf_document_acl(
         ]
         try:
             client.upsert(collection_name=collection, data=new_rows)
+            # 封存段：upsert = 删旧 + 插新，默认 Bounded 一致性下紧接着的检索会读到
+            # **写入前**的视图（表现为刚授权却检索不到、刚撤销却仍可见）。ACL 是授权
+            # 语义，读后写必须立即可见，故这里同步 flush（变更低频，代价可接受）。
+            client.flush(collection_name=collection)
         except Exception as exc:
             logger.warning('ACL 传播 upsert 失败 coll=%s kb=%s doc=%s: %s', collection, kb_name, document_id, exc)
             continue

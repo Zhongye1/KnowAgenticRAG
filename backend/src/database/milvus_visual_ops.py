@@ -367,6 +367,8 @@ def update_visual_document_acl(
     ]
     try:
         client.upsert(collection_name=collection, data=new_rows)
+        # 与文本集合同规：封存段后 ACL 读后写才立即可见（默认 Bounded 一致性会读到写入前视图）
+        client.flush(collection_name=collection)
     except Exception as exc:
         logger.warning('视觉集合 ACL 传播 upsert 失败 coll=%s doc=%s: %s', collection, document_id, exc)
         return 0
