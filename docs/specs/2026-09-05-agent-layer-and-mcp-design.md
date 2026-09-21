@@ -215,7 +215,7 @@ backend/src/
 - **stdio 回落**：薄本地桥接进程转发远程 HTTP，不是“本地部署 RAGF server”；不扩大数据面与密钥暴露。
 - **audience（D31）**：JWT 直通仅限自家 host——A 同信任域直通（iss/签名/exp，aud 同域放宽）+ `scp` claim 承载权限点；演进 C：Token Exchange（RFC 8693）换 `aud=mcp-rag` 下游 token。PAT / OAuth 无 aud 问题。
 - **RBAC 数据源（D32）**：tenant + 角色进 token，细粒度权限点查服务端缓存（30–60s）；权限点命名直接映射既有 RBAC（`rag:kb:search` 等），一个用户一套体系两个消费方。
-- **强制检查点（D33）**：tool handler 内 `require_perms`（每工具声明所需权限点）；`tools/list` 按权限动态过滤（缩小 LLM 可见工具面 = 注入防线）；参数级校验 `kb_id` 归属（防工具版 IDOR）。
+- **强制检查点（D33）**：tool handler 内 `require_perms`（每工具声明所需权限点）；`tools/list` 按权限动态过滤（缩小 LLM 可见工具面 = 注入防线）；参数级校验 `kb_id` 归属——租户归属 + **KB ACL 求值**（与 HTTP 面共用 `resolve_kb_perm` / `resolve_visible_kbs`，default deny；防工具版 IDOR）；`kb_names` 混入无权库整体拒绝，不静默收窄。
 - **校验实现（签发）**：密钥签发沿用 fba 现有方案（HS256 共享密钥，MCP server 与签发方同域可本地验证；PAT 走服务端查库/缓存）；RS256/JWKS（kid 匹配 + 定期后台拉取）仅在 Keycloak DCR 落地后作为 IdP 通道引入；算法白名单防 alg 混淆。
 - **内部与运维**：MCP server → Milvus/TEI 不做用户级鉴权，靠网络隔离（K8s NetworkPolicy 或 service token）兜底；`sub` 以 `X-User-Id` 向内传播仅作审计，不再是鉴权依据；撤销：TTL ≤15min 纯本地校验足够，若 JWT 小时级长寿命则挂共享黑名单/introspection 且只对敏感写路径强制查（读路径容忍 TTL 窗口）；审计日志不打全量 claims（PII 最小化）。
 
@@ -275,7 +275,7 @@ SSE 事件行（对齐 D25，`text/event-stream`）：
 | --- | --- |
 | 只验签名不验 iss/aud | 内部任意签发的 token 都能打；必须校验 iss/签名/exp，算法白名单写死（防 alg 混淆/none 攻击） |
 | aud 处理不当 | 首发直通模式明确“同域放宽”，不是漏配；演进 C 才收紧到 `aud=mcp-rag` |
-| `kb_id` 只当参数不校验归属 | 工具版 IDOR；tool handler 内做参数级租户归属校验（D33） |
+| `kb_id` 只当参数不校验归属 | 工具版 IDOR；tool handler 内做参数级归属校验：租户 + KB ACL 求值（D33） |
 | 鉴权只在 Agent 端 / tools/list 不过滤 | LLM 可被 prompt injection 诱导调未授权工具；权限检查必须在 MCP server 强制，`tools/list` 按权限动态过滤 |
 | 内部服务裸奔当隔离 | MCP server → Milvus 等必须网络策略/service token 兜底；`X-User-Id` 只作审计不作鉴权依据 |
 | MCP client 不实现 401→refresh | 用户 token 过期后工具静默全挂；自家 host 必须实现 401 refresh 重试一次 |

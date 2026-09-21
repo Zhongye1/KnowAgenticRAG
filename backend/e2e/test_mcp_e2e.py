@@ -8,10 +8,10 @@
 claim 与服务端解析的域一致；``scp`` 缺省回退 ``RAGF_MCP_DEFAULT_SCOPES``（读面四点）。
 API 面不产生 ``scp`` claim，故本模块用 ``identity.mint_token(sub, scp=[...])`` 补签。
 
-**待修缺口**：工具体当前只做租户归属校验，不参与 KB ACL 求值——``get_document`` /
-``read_document_chunks`` / ``list_knowledge_bases`` 会把同租户但无权访问的 KB（及其文档
-元数据、片段）交出去。这些用 ``xfail(strict=True)`` 钉住：一旦修复会 XPASS 进而失败，
-强制回头更新 spec §8，不允许静默变更。
+参数级授权（D33）：工具面的 ``kb_name`` / ``document_id`` 与 HTTP 面共用同一套 KB ACL 求值
+（``resolve_kb_perm`` / ``resolve_visible_kbs``，default deny）。口径与 HTTP 面刻意不同的一点：
+工具面只回稳定业务码——在本租户但无权 → ``PERMISSION_DENIED``（不是 404/403），
+不在本租户或不存在 → 同形 ``KB_NOT_FOUND``；``kb_names`` 混入无权库**整体拒绝**，不静默收窄。
 """
 
 from __future__ import annotations
@@ -339,32 +339,31 @@ async def test_read_document_chunks_returns_empty_window_before_ingest(
     assert (data['offset'], data['version_id']) == (0, 1)
 
 
-# --------------------------------------------------------------------------- 4. KB ACL 缺口（strict xfail）
+# --------------------------------------------------------------------------- 4. KB ACL 求值（D33 参数级授权）
 
 
-@pytest.mark.xfail(strict=True, reason='工具体不参与 ACL 求值：列出整租户 KB（含无权库）')
-async def test_list_knowledge_bases_is_not_acl_filtered(
+async def test_list_knowledge_bases_is_acl_filtered(
     client: AsyncClient, identities: dict[str, Identity], make_kb: MakeKb
 ) -> None:
-    """D21 元数据写明「列出当前身份**可见** KB」，实现是 ``list_all(tenant)``。
+    """D21 元数据写「列出当前身份**可见** KB」：按可见集合过滤，与 ``GET /knowledge_bases`` 同口径。
 
-    这是同租户内的元数据泄露（库名/展示名/文档数），对无权主体不可见是 ``/knowledge_bases``
-    列表的既有口径（``resolve_visible_kbs``）。修复后本用例应转为正例。
+    库名/展示名/文档数都算元数据，无权主体一律不可见；owner 自己仍要能看见，
+    免得写成「一律空列表」的假绿。
     """
     kb = await make_kb()
-    data = await _call(client, await _as(identities['mate'].user_id, [PERM_KB_LIST]), 'list_knowledge_bases', {})
-    names = {item['kb_name'] for item in data['knowledge_bases']}
-    assert kb not in names, f'无权主体看到了 KB 元数据: {names!r}'
+    hidden = await _call(client, await _as(identities['mate'].user_id, [PERM_KB_LIST]), 'list_knowledge_bases', {})
+    assert kb not in {item['kb_name'] for item in hidden['knowledge_bases']}, '无权主体看到了 KB 元数据'
+
+    mine = await _call(client, await _as(identities['owner'].user_id, [PERM_KB_LIST]), 'list_knowledge_bases', {})
+    assert kb in {item['kb_name'] for item in mine['knowledge_bases']}, 'owner 看不到自己的库：过滤过宽'
 
 
-@pytest.mark.xfail(strict=True, reason='工具体不参与 ACL 求值：get_document 只校验租户归属')
-async def test_get_document_ignores_kb_acl(
+async def test_get_document_denies_kb_without_acl(
     client: AsyncClient, identities: dict[str, Identity], make_kb: MakeKb
 ) -> None:
-    """D33 要求「``kb_id``/``document_id`` 校验归属（防工具版 IDOR）」，实现只校验租户。
+    """D33 「``kb_id``/``document_id`` 校验归属」：同租户但无 ACL 条目 → ``PERMISSION_DENIED``。
 
-    后果：同租户任意用户凭读面 ``scp``（而且是**默认** scp）即可拉到无权 KB 的文档元数据；
-    ``read_document_chunks`` 同源，可直接读到正文。这是本套件发现的最高优先级缺口。
+    读面 ``scp`` 是**默认**权限点，不能顺带越过 KB ACL（default deny）。
     """
     kb = await make_kb()
     uploaded = await seed.upload_document(client, identities['owner'].headers, kb)
@@ -374,14 +373,13 @@ async def test_get_document_ignores_kb_acl(
         'get_document',
         {'kb_name': kb, 'document_id': uploaded['document_id']},
     )
-    assert error['data']['code'] in {'KB_NOT_FOUND', 'PERMISSION_DENIED'}, '无权主体读到了文档元数据'
+    assert error['data']['code'] == 'PERMISSION_DENIED', '无权主体读到了文档元数据'
 
 
-@pytest.mark.xfail(strict=True, reason='工具体不参与 ACL 求值：read_document_chunks 只校验租户归属')
-async def test_read_document_chunks_ignores_kb_acl(
+async def test_read_document_chunks_denies_kb_without_acl(
     client: AsyncClient, identities: dict[str, Identity], make_kb: MakeKb
 ) -> None:
-    """同上，但落在正文（chunk content）上——泄露面比元数据更大。"""
+    """正文（chunk content）比元数据更敏感，走同一道闸门。"""
     kb = await make_kb()
     uploaded = await seed.upload_document(client, identities['owner'].headers, kb)
     error = await _call_error(
@@ -390,17 +388,48 @@ async def test_read_document_chunks_ignores_kb_acl(
         'read_document_chunks',
         {'kb_name': kb, 'document_id': uploaded['document_id']},
     )
-    assert error['data']['code'] in {'KB_NOT_FOUND', 'PERMISSION_DENIED'}, '无权主体读到了文档片段'
+    assert error['data']['code'] == 'PERMISSION_DENIED', '无权主体读到了文档片段'
 
 
-@pytest.mark.xfail(strict=True, reason='混合 kb_names 静默收窄而非拒绝（HTTP 面同场景是 403）')
-async def test_mixed_kb_names_is_narrowed_not_denied(
+async def test_kb_acl_read_grant_allows_document_read(
     client: AsyncClient, identities: dict[str, Identity], make_kb: MakeKb
 ) -> None:
-    """``search_knowledge`` 用集合求交，越权库被静默丢弃；``/rag/search`` 同场景报 403。
+    """反证：显式授予 ``read`` 后同一调用成功——闸门读的是 ACL，不是「一律拒绝」。
 
-    调用方（LLM/宿主 Agent）以为自己检索了全部 ``kb_names``，实际只搜了有权子集，
-    缺数据却无任何错误信号——D33 的参数级归属校验要求逐库拒绝。
+    与上面两条共用同一 KB 形态，差别只在有没有那条 ACL 条目（授权本身走 ``PUT /{kb}/acl``，
+    也是被测路径）。
+    """
+    kb = await make_kb()
+    uploaded = await seed.upload_document(client, identities['owner'].headers, kb)
+    await seed.grant_kb_acl(
+        client,
+        identities['owner'].headers,
+        kb,
+        [
+            {
+                'principal_type': 'user',
+                'principal_id': str(identities['reader'].user_id),
+                'perm': 'read',
+                'effect': 'allow',
+            }
+        ],
+    )
+    data = await _call(
+        client,
+        await _as(identities['reader'].user_id, [PERM_KB_READ]),
+        'get_document',
+        {'kb_name': kb, 'document_id': uploaded['document_id']},
+    )
+    assert data['document_id'] == uploaded['document_id'], f'授予 read 后仍读不到: {data!r}'
+
+
+async def test_mixed_kb_names_is_denied_not_narrowed(
+    client: AsyncClient, identities: dict[str, Identity], make_kb: MakeKb
+) -> None:
+    """``kb_names`` 混入无权库 → 整体 ``PERMISSION_DENIED``（不再静默丢弃该库）。
+
+    静默收窄的危险在于：调用方（LLM/宿主 Agent）以为自己检索了全部 ``kb_names``，于是
+    「缺数据」被伪装成「检索成功」，没有任何错误信号——D33 的参数级归属校验要求逐库拒绝。
     """
     readable = await make_kb()
     await seed.grant_kb_acl(
