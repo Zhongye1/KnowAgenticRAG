@@ -75,9 +75,13 @@ async def test_stream_validates_body_before_streaming(
 
 
 async def test_stream_empty_result_contract(
-    client: AsyncClient, identities: dict[str, Identity], make_kb: Callable[..., Awaitable[str]], require_worker: None
+    client: AsyncClient, identities: dict[str, Identity], make_kb: Callable[..., Awaitable[str]]
 ) -> None:
-    """无命中短路：hit_count=0、无引用、delta 是约定文案、reason=empty_result（不调用模型）。"""
+    """无命中短路：hit_count=0、无引用、delta 是约定文案、reason=empty_result（不调用模型）。
+
+    空库不触发检索，因此不依赖 Celery Worker（也不需要 Knowhere key）——这是本模块里
+    唯一能在无语义解析环境下跑的 SSE 用例。
+    """
     kb = await make_kb()
     resp = await client.post(
         f'{API}/knowledge_bases/{kb}/chat/stream',
@@ -99,6 +103,7 @@ async def test_stream_empty_result_contract(
     assert deltas == [EMPTY_RESULT_MESSAGE]
 
 
+@pytest.mark.chain
 async def test_stream_protocol_with_hits(
     client: AsyncClient,
     identities: dict[str, Identity],
@@ -137,6 +142,7 @@ async def test_stream_protocol_with_hits(
     assert '【片段1】' in model.prompt_text
 
 
+@pytest.mark.chain
 async def test_stream_reports_model_error_as_event(
     client: AsyncClient,
     identities: dict[str, Identity],
