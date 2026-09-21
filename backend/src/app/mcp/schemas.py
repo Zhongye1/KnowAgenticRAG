@@ -7,7 +7,7 @@ tool 层强制检查只依赖 ``scp``，凭证形态不外泄（D33）。
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import ConfigDict, Field
 
@@ -32,6 +32,7 @@ __all__ = [
     'AnswerArgs',
     'GetDocumentArgs',
     'ListArgs',
+    'McpToolItem',
     'ReadChunksArgs',
     'SearchArgs',
     'ToolMethod',
@@ -65,6 +66,18 @@ class ListArgs(SchemaBase):
     """list_knowledge_bases：无参数。"""
 
     model_config = ConfigDict(extra='forbid')
+
+
+class McpToolItem(SchemaBase):
+    """工具目录项（``tools/list`` 与 ``GET /mcp/tools`` 同一份数据，D33 元数据）。"""
+
+    # inputSchema 是 MCP 协议字段名（camelCase），序列化用别名，构造时按字段名
+    model_config = ConfigDict(populate_by_name=True)
+
+    name: str = Field(description='工具名（``tools/call`` 的 name）')
+    description: str = Field(description='工具用途（进 LLM 上下文，直接影响调用决策）')
+    input_schema: dict[str, Any] = Field(alias='inputSchema', description='入参 JSON Schema')
+    required_permissions: list[str] = Field(description='调用所需权限点（scp 判定，D33）')
 
 
 class SearchArgs(SchemaBase):

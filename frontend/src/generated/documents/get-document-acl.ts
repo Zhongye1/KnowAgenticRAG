@@ -9,7 +9,7 @@ import { DocAclDetail } from '../types';
  * Regenerate with: pnpm generate:api
  */
 
-/** 查询文档可见性与授权组 */
+/** 查询文档可见性与授权条目 */
 export type GetDocumentAclParams = {
   document_id: string | number;
 };

@@ -305,12 +305,20 @@ export interface DocAclDetail {
   kb_name: string;
   visibility: string;
   owner_id?: string | null;
-  group_ids?: string[];
+  entries?: DocAclEntry[];
+}
+
+export interface DocAclEntry {
+  principal_type?: string;
+  principal_id: string;
+  perm?: string;
+  effect?: string;
+  expires_at?: string | null;
 }
 
 export interface DocAclUpdateParam {
   visibility?: string | null;
-  group_ids?: string[] | null;
+  entries?: DocAclEntry[] | null;
 }
 
 export interface DocumentItem {
@@ -766,11 +774,19 @@ export type JsonValue = unknown;
 
 export interface KBAclDetail {
   kb_name: string;
-  group_ids?: string[];
+  entries?: KBAclEntry[];
+}
+
+export interface KBAclEntry {
+  principal_type?: string;
+  principal_id: string;
+  perm?: string;
+  effect?: string;
+  expires_at?: string | null;
 }
 
 export interface KBAclUpdateParam {
-  group_ids?: string[];
+  entries?: KBAclEntry[];
 }
 
 export interface KBCollectionsItem {
@@ -806,6 +822,8 @@ export interface KBDetail {
   embedding_model: string;
   query_params?: Record<string, unknown>;
   collections_used?: string[];
+  owner_id?: string | null;
+  is_public?: boolean;
   documents?: number;
   text_vectors?: number;
   visual_vectors?: number;
@@ -840,6 +858,8 @@ export interface KBItem {
   embedding_model: string;
   query_params?: Record<string, unknown>;
   collections_used?: string[];
+  owner_id?: string | null;
+  is_public?: boolean;
   documents?: number;
   text_vectors?: number;
   visual_vectors?: number;
@@ -854,6 +874,16 @@ export interface KBOverview {
   total_visual_vectors: number;
 }
 
+export interface KBTransferParam {
+  new_owner_id: string;
+}
+
+export interface KBTransferResult {
+  kb_name: string;
+  previous_owner_id?: string | null;
+  owner_id: string;
+}
+
 export interface KBUpdateParam {
   routing_mode?: string | null;
   display_name?: string | null;
@@ -863,6 +893,14 @@ export interface KBUpdateParam {
   pdf_text_page_ratio?: number | null;
   embedding_model?: string | null;
   query_params?: Record<string, unknown> | null;
+  is_public?: boolean | null;
+}
+
+export interface McpToolItem {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+  required_permissions: string[];
 }
 
 export type MenuType = 0 | 1 | 2 | 3 | 4;

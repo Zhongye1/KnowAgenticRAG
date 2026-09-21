@@ -29,7 +29,7 @@ from fastapi import Depends, Header
 from jose import JWTError, jwt
 
 from backend.src.app.kb.deps import get_current_tenant
-from backend.src.app.mcp.schemas import READ_SCOPES, UserContext
+from backend.src.app.mcp.schemas import READ_SCOPES, McpToolItem, UserContext
 from backend.src.common.exception import errors
 from backend.src.common.log import log
 from backend.src.core.config import settings
@@ -115,14 +115,16 @@ def require_perms(ctx: UserContext, required: frozenset[str]) -> None:
         raise errors.ForbiddenError(msg=f'缺少权限点: {", ".join(sorted(required))}')
 
 
-def filter_tools(ctx: UserContext, tools: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def filter_tools(ctx: UserContext, tools: list[McpToolItem]) -> list[McpToolItem]:
     """tools/list 按调用方权限动态过滤（缩小 LLM 可见工具面 = 注入防线，D33）。"""
-    return [item for item in tools if ctx.has_perms(frozenset(item.get('required_permissions') or []))]
+    return [item for item in tools if ctx.has_perms(frozenset(item.required_permissions))]
 
 
 async def _mcp_user_context(
-    authorization: Annotated[str | None, Header(alias='Authorization')],
     tenant: Annotated[str, Depends(get_current_tenant)],
+    # 必须带默认值：``str | None`` 无默认值时 FastAPI 仍按必填处理，缺凭证会先撞 422
+    # （参数校验面）而不是走到下面的 TokenError（401 + WWW-Authenticate）
+    authorization: Annotated[str | None, Header(alias='Authorization')] = None,
 ) -> UserContext:
     """FastAPI 依赖：解析 bearer 凭证 → UserContext；失败 401。"""
     if not authorization:

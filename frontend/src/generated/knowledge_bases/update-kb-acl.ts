@@ -9,7 +9,7 @@ import { KBAclDetail, KBAclUpdateParam } from '../types';
  * Regenerate with: pnpm generate:api
  */
 
-/** 更新知识库授权组（全量替换） */
+/** 更新知识库授权条目（全量替换，仅 Owner） */
 export type UpdateKbAclParams = {
   kb_name: string | number;
   data: KBAclUpdateParam;

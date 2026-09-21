@@ -9,7 +9,7 @@ import { KBItem, PageData } from '../types';
  * Regenerate with: pnpm generate:api
  */
 
-/** 知识库列表 */
+/** 知识库列表（仅含当前用户可见库，default deny） */
 export type GetKnowledgeBasesParams = {
   query?: string | null;
   sort?: string;

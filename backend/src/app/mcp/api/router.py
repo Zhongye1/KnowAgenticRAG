@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import time
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 from fastapi import APIRouter, Request, Response
 from fastapi.security.utils import get_authorization_scheme_param
@@ -26,9 +26,11 @@ from backend import __version__
 from backend.src.app.kb.utils.namespace import resolve_namespace
 from backend.src.app.mcp.auth import McpUserContext, authenticate_bearer, filter_tools
 from backend.src.app.mcp.call_log import build_call_log_fields, record_call_log
+from backend.src.app.mcp.schemas import McpToolItem
 from backend.src.app.mcp.service import TOOL_SPECS, ToolError, mcp_toolkit
 from backend.src.common.exception import errors
 from backend.src.common.log import log
+from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
 from backend.src.core.config import settings
 from backend.src.database.db import (
     CurrentSession,  # ruff: ignore[typing-only-first-party-import]  # FastAPI 依赖别名需运行时解析
@@ -57,14 +59,14 @@ _MCP_CALL_DURATION = _METER.create_histogram(
 )
 
 
-def _tool_public(specs: list[Any]) -> list[dict[str, Any]]:
+def _tool_public(specs: list[Any]) -> list[McpToolItem]:
     return [
-        {
-            'name': spec.name,
-            'description': spec.description,
-            'inputSchema': spec.input_schema,
-            'required_permissions': sorted(spec.required),
-        }
+        McpToolItem(
+            name=spec.name,
+            description=spec.description,
+            inputSchema=spec.input_schema,  # pydantic 别名（MCP 协议字段名）
+            required_permissions=sorted(spec.required),
+        )
         for spec in specs
     ]
 
@@ -187,9 +189,16 @@ async def _write_call_log(
 
 
 @router.get(f'{MCP_HTTP_PATH}/tools', summary='MCP 工具静态目录（JSON Schema，按调用方权限过滤）')
-async def mcp_tools_catalog(user: McpUserContext) -> list[dict[str, Any]]:
-    """工具目录：tools/list 同源过滤，供管理页/CLI 展示。"""
-    return filter_tools(user, _tool_public(TOOL_SPECS))
+async def mcp_tools_catalog(user: McpUserContext) -> ResponseSchemaModel[list[McpToolItem]]:
+    """工具目录：tools/list 同源过滤，供管理页/CLI 展示。
+
+    这是平台侧 REST 路由（不是 JSON-RPC 帧），因此与其它端点同形：套统一信封、
+    缺凭证 401 —— 「MCP 不套信封」只针对 ``POST /mcp`` 的协议面。
+    """
+    return cast(
+        'ResponseSchemaModel[list[McpToolItem]]',
+        response_base.success(data=filter_tools(user, _tool_public(TOOL_SPECS))),
+    )
 
 
 @router.post(MCP_HTTP_PATH, summary='MCP Streamable HTTP 端点（JSON-RPC 2.0）')
@@ -287,7 +296,8 @@ async def _dispatch(
     if method == 'ping':
         return _respond(_rpc_result(req_id, {}), sse=sse)
     if method == 'tools/list':
-        return _respond(_rpc_result(req_id, {'tools': filter_tools(user, _tool_public(TOOL_SPECS))}), sse=sse)
+        tools = [item.model_dump(by_alias=True) for item in filter_tools(user, _tool_public(TOOL_SPECS))]
+        return _respond(_rpc_result(req_id, {'tools': tools}), sse=sse)
     if method == 'tools/call':
         return await _call_tool(db, user=user, params=params, req_id=req_id, sse=sse)
     return _respond(_rpc_error(req_id, code=-32601, message=f'Method not found: {method}'), sse=sse)

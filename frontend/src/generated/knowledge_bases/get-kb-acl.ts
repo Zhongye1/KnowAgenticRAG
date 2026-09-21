@@ -9,7 +9,7 @@ import { KBAclDetail } from '../types';
  * Regenerate with: pnpm generate:api
  */
 
-/** 查询知识库授权组列表 */
+/** 查询知识库授权条目 */
 export type GetKbAclParams = {
   kb_name: string | number;
 };

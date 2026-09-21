@@ -2,6 +2,7 @@ import { queryOptions, useQuery } from '@tanstack/react-query';
 
 import { api } from '@/lib/api-client';
 import { QueryConfig } from '@/lib/react-query';
+import { McpToolItem } from '../types';
 
 /**
  * AUTO-GENERATED from backend OpenAPI (apidoc). DO NOT EDIT.
@@ -10,7 +11,7 @@ import { QueryConfig } from '@/lib/react-query';
 
 /** MCP 工具静态目录（JSON Schema，按调用方权限过滤） */
 
-export const mcpToolsCatalogMcpToolsGet = (): Promise<unknown> => {
+export const mcpToolsCatalogMcpToolsGet = (): Promise<McpToolItem[]> => {
   return api.get(`/mcp/tools`).then((res) => res.data);
 };
 
