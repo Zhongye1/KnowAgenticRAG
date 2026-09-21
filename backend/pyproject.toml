@@ -141,6 +141,18 @@ server = [
 python-downloads = "manual"
 default-groups = ["dev", "lint"]
 
+[tool.pytest.ini_options]
+# 默认只收 src/（域内单测/集成测）。接口测试套件在 e2e/（需完整依赖栈：PG/Redis/Milvus/MinIO，
+# 链路用例还需 Celery Worker），显式 `pytest e2e/` 才跑 —— 规范见
+# docs/specs/2026-09-21-backend-api-test-spec.md。显式传路径参数时 testpaths 不生效。
+testpaths = ["src"]
+markers = [
+  "p0: 冒烟：接口基建自检 + 权限控制三层矩阵",
+  "p1: 回归：文档/检索接口行为与 RAG 链路",
+  "p2: 扩展：MCP 工具面、模型供应商",
+  "chain: 需要 Celery Worker 与外部模型供应商的链路用例（worker 不可达时跳过）",
+]
+
 [tool.ruff]
 line-length = 120
 preview = true

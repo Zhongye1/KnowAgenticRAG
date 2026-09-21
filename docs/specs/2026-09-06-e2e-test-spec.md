@@ -1,11 +1,16 @@
 ---
 title: E2E 测试规范
 description: KnowledgeRAG-OGAS 端到端测试方案，覆盖 RAG 核心流程、MCP 工具面、管理功能
-status: 待实现
+status: 已被取代（见 2026-09-21-backend-api-test-spec.md）
 date: 2026-09-06
 ---
 
 # E2E 测试规范（Spec）
+
+> **本规范已被取代。** 实际落地的接口测试规范见
+> [2026-09-21-backend-api-test-spec.md](./2026-09-21-backend-api-test-spec.md)：
+> 该文档修正了本规范的两点（改为进程内 ASGITransport + 单事件循环、补齐权限控制三层矩阵与引用闭环），
+> 且代码位于 `backend/e2e/`。本文件仅作历史留档，不再维护。
 
 ## 0. 文档信息
 
