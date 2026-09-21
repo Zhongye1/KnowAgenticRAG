@@ -12,7 +12,7 @@
 [![Docker](https://img.shields.io/badge/Docker-Compose-2496ed?logo=docker)](https://docs.docker.com/compose/)
 [![License](https://img.shields.io/badge/License-MIT-yellow)](#license)
 
-[快速启动](#-快速开始) · [常用命令](#-常用命令) · [项目结构](#-项目结构) · [文档](#-文档) · [常见问题](#-常见问题)
+[快速启动](#-快速开始) · [常用命令](#-常用命令) · [测试](#-测试) · [项目结构](#-项目结构) · [文档](#-文档) · [常见问题](#-常见问题)
 
 </div>
 
@@ -162,7 +162,35 @@ task dev
 | `task db-init` | 导入数据库初始化数据（可选，幂等） |
 | `task install` | 安装全部依赖 |
 | `task lint` / `task format` | 代码检查 / 格式化 |
-| `task test` | 运行测试 |
+| `task test` | 运行测试（后端域内单测 + 前端 vitest） |
+| `task backend:e2e` | 接口自动化测试（详见 [测试](#-测试)） |
+
+---
+
+## 测试
+
+分两层，都在 `backend/`：
+
+| 命令 | 范围 | 前置 |
+| --- | --- | --- |
+| `cd backend && .venv/bin/pytest src/` | 域内单测 / 集成测（默认 `testpaths=src`，直接 `pytest` 等价） | 无 |
+| `cd backend && .venv/bin/pytest e2e/ -m "not chain"` | 接口自动化：进程内打**真实 ASGI 栈**（中间件链、依赖注入、路由、鉴权全走），不 override 鉴权依赖 | `task deps-up` |
+| `cd backend && .venv/bin/pytest e2e/` | 全量接口用例（含 RAG 链路） | 依赖容器 + `task backend:worker:test` |
+
+Taskfile 等价入口：`task backend:test` / `task backend:e2e`（追加参数走 `--`，如 `task backend:e2e -- -m p0`）。
+
+按优先级筛选：`-m p0` 冒烟（基建自检 + 权限矩阵）、`-m p1` 回归（文档 / 检索 / RAG 链路）、`-m p2` 扩展（MCP 工具面、模型供应商）。
+
+接口测试**不需要单独的 env 文件**：`backend/e2e/conftest.py` 在进程内把默认数据源重指到 `{DATABASE_SCHEMA}_test`（即 `ragf_test`）并幂等建库，dev 库不受影响。
+
+### chain 用例
+
+标了 `@pytest.mark.chain` 的用例跑的是**真实异步链路**：`test_rag_pipeline_e2e.py` 整个文件（上传 → 摄取 → 检索 → 问答 → 引用回查、SSE 与非流式同源、rebuild、`sha256` 去重、文档级 ACL × 召回、三档 visibility 结果集、`ragf_visual` 视觉集合 ACL），加 `test_chat_stream_e2e.py` 两条有命中的 SSE 协议用例。摄取侧由 Celery Worker 真排队执行（真 embedding / 精排，需模型供应商凭据），问答侧用 LLM 替身。
+
+- Worker 必须**指向测试库**：API 侧在进程内切 `ragf_test`，而 Worker 是独立进程、按 `DATABASE_SCHEMA` 连库。用 `task worker` 起的 Worker 读的是 dev 库，找不到测试库里的文档行，chain 用例必然超时失败；因此用 `task backend:worker:test`（内部即 `DATABASE_SCHEMA=ragf_test`）。
+- Worker 不可达时（`inspect().ping()` 无响应）这批用例自动 skip、其余照跑，所以没起 Worker 时也可以直接跑 `pytest e2e/`，不会假失败。
+
+用例矩阵与断言依据见 [接口测试规格](docs/specs/2026-09-21-backend-api-test-spec.md)。
 
 ---
 
