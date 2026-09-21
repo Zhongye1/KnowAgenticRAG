@@ -3,6 +3,11 @@
 工具只编排公开服务契约（retrieval/chat/kb 只读），不直连存储；文档管理类操作
 （上传/删除/版本切换/同步源配置）不在本面，工具不得触发写路径（D30）。
 
+参数级授权（D33）：``kb_name`` / ``document_id`` 一律先过 KB 资源权限求值（与 HTTP 面
+同一个 ``resolve_kb_perm`` / ``resolve_visible_kbs``），默认 deny、不静默收窄——
+「KB 不在本租户」与「KB 不存在」同形（``KB_NOT_FOUND``），「在本租户但无权」是
+``PERMISSION_DENIED``；工具面只认稳定业务码，不搬 HTTP 404/403 的语义。
+
 错误码（JSON-RPC ``data.code``，稳定可重试）：``KB_NOT_FOUND`` /
 ``DOCUMENT_NOT_FOUND`` / ``MODEL_NOT_CONFIGURED`` / ``INVALID_REQUEST`` /
 ``PERMISSION_DENIED`` / ``UNKNOWN_TOOL`` / ``INTERNAL``。
@@ -18,6 +23,7 @@ from pydantic import ValidationError
 from backend.src.app.chat.schema.chat import ChatMessage, ChatParam
 from backend.src.app.chat.service.chat_service import chat_service
 from backend.src.app.kb.crud import document_dao, knowledge_base_dao
+from backend.src.app.kb.service.acl.resolver import Perm, perm_at_least, resolve_kb_perm, resolve_visible_kbs
 from backend.src.app.kb.service.acl.scope import Scope, build_retrieval_scope
 from backend.src.app.kb.service.acl.scope import UserContext as ScopeUserContext
 from backend.src.app.kb.service.chunk_service import chunk_service
@@ -121,6 +127,16 @@ TOOL_SPECS = _tool_specs()
 TOOLS_BY_NAME = {spec.name: spec for spec in TOOL_SPECS}
 
 
+async def _default_perm_resolver(db: AsyncSession, *, user: UserContext, kb_name: str) -> Perm | None:
+    """单库权限求值：与 HTTP 面共用 ``resolve_kb_perm``（MCP 凭证只有 sub，dept/roles 由求值层查库补全）。"""
+    return await resolve_kb_perm(db, user_id=user.sub, dept_id=None, roles=None, kb_name=kb_name)
+
+
+async def _default_visible_kbs_resolver(db: AsyncSession, *, user: UserContext) -> list[str]:
+    """可见 KB 集合：批量求值（列表过滤禁止逐库 N+1）。"""
+    return await resolve_visible_kbs(db, user_id=user.sub, dept_id=None, roles=None)
+
+
 class McpToolkit:
     """只读工具集门面：``call`` 强制权限 + 参数校验 + 稳定错误码（测试可注入依赖）。"""
 
@@ -133,6 +149,8 @@ class McpToolkit:
         retrieval: Any = None,
         chat: Any = None,
         scope_builder: Any = None,
+        perm_resolver: Any = None,
+        visible_kbs_resolver: Any = None,
     ) -> None:
         self._kb_dao = kb_dao or knowledge_base_dao
         self._doc_dao = doc_dao or document_dao
@@ -140,6 +158,8 @@ class McpToolkit:
         self._retrieval = retrieval or retrieval_service
         self._chat = chat or chat_service
         self._scope_builder = scope_builder or self._build_scope
+        self._perm_resolver = perm_resolver or _default_perm_resolver
+        self._visible_kbs_resolver = visible_kbs_resolver or _default_visible_kbs_resolver
 
     # ------------------------------------------------------------------ 分发
     async def call(
@@ -181,10 +201,14 @@ class McpToolkit:
         self, db: AsyncSession, *, user: UserContext, raw_args: dict[str, Any]
     ) -> dict[str, Any]:
         ListArgs.model_validate(raw_args)
+        # 与 GET /knowledge_bases 同口径：default deny 的可见集合（D21「列出当前身份可见 KB」）
+        visible = set(await self._visible_kbs_resolver(db, user=user))
         kbs = await self._kb_dao.list_all(db, plugin_namespace=user.tenant)
         rows = []
         for kb in kbs:
             kb_name = str(getattr(kb, 'kb_name', ''))
+            if kb_name not in visible:
+                continue
             rows.append({
                 'kb_name': kb_name,
                 'display_name': str(getattr(kb, 'display_name', '') or kb_name),
@@ -198,17 +222,18 @@ class McpToolkit:
     ) -> dict[str, Any]:
         args = SearchArgs.model_validate(raw_args)
 
-        # KB 存在性 + 租户归属校验（不存在/跨租户 → KB_NOT_FOUND，不泄漏内容）
+        # KB 归属 + 资源权限逐库校验（D33 参数级授权：越权库拒绝，不静默丢弃）
         for kb_name in args.kb_names:
-            await self._ensure_kb(db, user=user, kb_name=kb_name)
+            await self._require_kb(db, user=user, kb_name=kb_name, threshold=Perm.READ)
 
         # 构建检索范围（scope 构建在服务端，客户端不可传入任何过滤语义）
         scope = await self._scope_builder(db, user=user, kb_names=args.kb_names)
 
-        # kb_names 与 scope.allowed_kbs 求交（防 IDOR）
-        allowed = set(args.kb_names) & set(scope.allowed_kbs)
-        if not allowed:
-            raise ToolError(code='PERMISSION_DENIED', msg='无权访问这些KB')
+        # 二道防线：scope 求交只做「确认」，任何被收窄的库都报错（收窄 = 调用方以为搜了却没搜）
+        allowed = [kb for kb in args.kb_names if kb in set(scope.allowed_kbs)]
+        denied = sorted(set(args.kb_names) - set(allowed))
+        if denied:
+            raise ToolError(code='PERMISSION_DENIED', msg=f'无权访问以下知识库: {denied}')
 
         request: dict[str, Any] = {'query_text': args.query_text}
         if args.top_k is not None:
@@ -223,7 +248,7 @@ class McpToolkit:
         # 检索（带 scope 过滤）
         data = await self._retrieval.search_multi(
             db,
-            kb_names=list(allowed),
+            kb_names=allowed,
             query_text=args.query_text,
             param=request,
             plugin_namespace=user.tenant,
@@ -242,22 +267,23 @@ class McpToolkit:
     ) -> dict[str, Any]:
         args = AnswerArgs.model_validate(raw_args)
 
-        # KB 存在性 + 租户归属校验（不存在/跨租户 → KB_NOT_FOUND，不泄漏内容）
+        # KB 归属 + 资源权限逐库校验（D33 参数级授权：越权库拒绝，不静默丢弃）
         for kb_name in args.kb_names:
-            await self._ensure_kb(db, user=user, kb_name=kb_name)
+            await self._require_kb(db, user=user, kb_name=kb_name, threshold=Perm.READ)
 
         # 构建检索范围（scope 构建在服务端，客户端不可传入任何过滤语义）
         scope = await self._scope_builder(db, user=user, kb_names=args.kb_names)
 
-        # kb_names 与 scope.allowed_kbs 求交（防 IDOR）
-        allowed = set(args.kb_names) & set(scope.allowed_kbs)
-        if not allowed:
-            raise ToolError(code='PERMISSION_DENIED', msg='无权访问这些KB')
+        # 二道防线：scope 求交只做「确认」，任何被收窄的库都报错
+        allowed = [kb for kb in args.kb_names if kb in set(scope.allowed_kbs)]
+        denied = sorted(set(args.kb_names) - set(allowed))
+        if denied:
+            raise ToolError(code='PERMISSION_DENIED', msg=f'无权访问以下知识库: {denied}')
 
         param = ChatParam.model_validate(self._answer_payload(args))
         try:
             return await self._chat.acomplete_multi(
-                db, kb_names=list(allowed), param=param, plugin_namespace=user.tenant, scope=scope
+                db, kb_names=allowed, param=param, plugin_namespace=user.tenant, scope=scope
             )
         except errors.RequestError as exc:
             # acomplete_multi 中 RequestError 仅来自模型未配置（KB 已前置校验）
@@ -311,7 +337,7 @@ class McpToolkit:
         self, db: AsyncSession, *, user: UserContext, raw_args: dict[str, Any]
     ) -> dict[str, Any]:
         args = ReadChunksArgs.model_validate(raw_args)
-        await self._ensure_kb(db, user=user, kb_name=args.kb_name)
+        await self._require_kb(db, user=user, kb_name=args.kb_name, threshold=Perm.READ)
         doc = await self._doc_dao.get(db, args.document_id, kb_name=args.kb_name, plugin_namespace=user.tenant)
         if doc is None:
             raise ToolError(code='DOCUMENT_NOT_FOUND', msg=f'文档不存在: {args.document_id}')
@@ -344,7 +370,7 @@ class McpToolkit:
 
     async def get_document(self, db: AsyncSession, *, user: UserContext, raw_args: dict[str, Any]) -> dict[str, Any]:
         args = GetDocumentArgs.model_validate(raw_args)
-        await self._ensure_kb(db, user=user, kb_name=args.kb_name)
+        await self._require_kb(db, user=user, kb_name=args.kb_name, threshold=Perm.READ)
         doc = await self._doc_dao.get(db, args.document_id, kb_name=args.kb_name, plugin_namespace=user.tenant)
         if doc is None:
             raise ToolError(code='DOCUMENT_NOT_FOUND', msg=f'文档不存在: {args.document_id}')
@@ -363,10 +389,21 @@ class McpToolkit:
         }
 
     # ------------------------------------------------------------------ 内部
-    async def _ensure_kb(self, db: AsyncSession, *, user: UserContext, kb_name: str) -> None:
+    async def _require_kb(self, db: AsyncSession, *, user: UserContext, kb_name: str, threshold: Perm) -> None:
+        """KB 归属 + 资源权限校验（D33 参数级授权；工具版 IDOR 的唯一闸门）。
+
+        - KB 不在本租户 / 不存在 → ``KB_NOT_FOUND``（对外不区分，不泄漏存在性）
+        - 在本租户但权限未达 ``threshold`` → ``PERMISSION_DENIED``（稳定业务码，不搬 HTTP 404/403）
+
+        ``document_id`` 的归属由调用方再叠一层：取文档时带 ``kb_name`` 条件，
+        文档不属于该库即 ``DOCUMENT_NOT_FOUND``。
+        """
         kb = await self._kb_dao.get(db, kb_name, plugin_namespace=user.tenant)
         if kb is None:
             raise ToolError(code='KB_NOT_FOUND', msg=f'知识库不存在: {kb_name}')
+        perm = await self._perm_resolver(db, user=user, kb_name=kb_name)
+        if not perm_at_least(perm, threshold):
+            raise ToolError(code='PERMISSION_DENIED', msg=f'无权访问知识库: {kb_name}')
 
 
 mcp_toolkit = McpToolkit()

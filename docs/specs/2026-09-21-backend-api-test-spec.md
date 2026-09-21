@@ -188,10 +188,12 @@ L2 与 L3 的差别不是「快慢」，而是**断言对象**：L2 断言单个
 - MCP：`tools/list` 只返回 `scp` 允许的工具；`tools/call` 越权返回稳定错误码 `PERMISSION_DENIED`（JSON-RPC error，不是 HTTP 4xx）。
 - 模型供应商：读路由仅需登录态，写路由要求 `sys:model-provider:*` 功能码（只读角色 → 403）。
 
-### 4.5 MCP 工具面（`scp` 是唯一鉴权依据，`test_mcp_e2e.py`）
+### 4.5 MCP 工具面（`scp` 定工具面，KB ACL 定数据面，`test_mcp_e2e.py`）
 
-`/mcp` 不套统一信封、不吃 RBAC 菜单，鉴权与授权全在端点层归一：工具可见性与可调用性
-只由凭证里的 `scp` 决定（D30「不发明第二套权限模型」——`scp` 的值就是 `rag:kb:*` 权限码）。
+`POST /mcp` 的 JSON-RPC 帧不套统一信封、不吃 RBAC 菜单，鉴权与授权全在端点层归一：
+**工具可见性与可调用性**只由凭证里的 `scp` 决定（D30「不发明第二套权限模型」——`scp` 的值就是
+`rag:kb:*` 权限码）；**能碰哪些库/文档**由 KB ACL 求值决定（D33 参数级授权）。两件事都不经 RBAC 菜单。
+`GET /mcp/tools` 是平台侧 REST 路由（不是协议帧），与其它端点同形：套统一信封、缺凭证 401。
 
 | 面 | 口径 | 用例锚点 |
 | --- | --- | --- |
@@ -201,6 +203,13 @@ L2 与 L3 的差别不是「快慢」，而是**断言对象**：L2 断言单个
 | 授权 | `tools/list`/`GET /mcp/tools` 按 `scp` 过滤并回带 `required_permissions`；缺失 → `data.code=PERMISSION_DENIED` | `test_catalog_is_filtered_by_scope` |
 | 工具错误码 | 工具失败**不占 HTTP 状态码**（恒 200），靠 `error.data.code` 表达：`UNKNOWN_TOOL`/`INVALID_REQUEST`/`KB_NOT_FOUND`/`DOCUMENT_NOT_FOUND` | `test_unknown_tool_is_unknown_tool_code` |
 | 工具语义正例 | `get_document`/`read_document_chunks` 在**未摄取**（`pending`）时也可用：元数据可溯源、窗口为空但形状完整 | `test_get_document_returns_registered_document` |
+| 参数级授权（D33） | `kb_name` 逐库求 KB ACL（与 HTTP 面同一个 `resolve_kb_perm`）：在本租户但无权 → `PERMISSION_DENIED`；不在本租户或不存在 → 同形 `KB_NOT_FOUND` | `test_get_document_denies_kb_without_acl`、`test_read_document_chunks_denies_kb_without_acl` |
+| 列表过滤 | `list_knowledge_bases` 按 `resolve_visible_kbs` 过滤（与 `GET /knowledge_bases` 同口径，default deny） | `test_list_knowledge_bases_is_acl_filtered` |
+| 批量拒绝 | `search_knowledge`/`answer_with_citations` 的 `kb_names` 混入无权库 → **整体** `PERMISSION_DENIED`（不静默收窄） | `test_mixed_kb_names_is_denied_not_narrowed` |
+| 授权正例 | 显式授予 `read` 后同一调用成功——闸门读的是 ACL，不是「一律拒绝」 | `test_kb_acl_read_grant_allows_document_read` |
+
+工具面的失败形态与 HTTP 面刻意不同：HTTP 面用 404/403 表达资源权限（D50 不泄露存在性），
+工具面只回稳定业务码——宿主 Agent 在 JSON-RPC 里看不到 HTTP 状态码，**逐库拒绝**才可能被重试逻辑正确处理。
 
 `scp` 由外部 IdP / PAT 桥接产生，API 面不签发，故用 `identity.mint_token(sub, scp=[...])` 补签；
 这与真实调用方的凭证形态一致（Codex/Claude Code 走的就是这条通道），不是「测试专用旁路」。
@@ -289,21 +298,9 @@ markers（注册在 `backend/pyproject.toml`）：
 
 ## 8. 已知缺口
 
-- **MCP 工具体不做 KB ACL 求值（最高优先级）**：`mcp/service.py` 的 `_ensure_kb` 只校验
-  「KB 属于本租户」，`get_document` / `read_document_chunks` 直接取文档，完全不走
-  `build_retrieval_scope`。后果：同租户任意用户凭**默认** `scp`（读面四点）即可读到无权
-  KB 的文档元数据与片段——D33 要求的「`kb_id`/`document_id` 参数级归属校验」只做了一半。
-  三条用例以 `xfail(strict=True)` 钉住（`test_get_document_ignores_kb_acl`、
-  `test_read_document_chunks_ignores_kb_acl`、`test_list_knowledge_bases_is_not_acl_filtered`）。
-- **MCP `list_knowledge_bases` 列整租户**：工具元数据写「列出当前身份可见 KB」（D21），实现是
-  `knowledge_base_dao.list_all(tenant)`，与 `GET /knowledge_bases` 的 `resolve_visible_kbs`
-  口径不一致（库名/展示名/文档数泄露）。
-- **MCP `search_knowledge` 的混合 `kb_names` 静默收窄**：实现用集合求交
-  （`requested ∩ scope.allowed_kbs`），请求里混入无权库时**丢弃**它继续检索；
-  `/rag/search` 同场景是 403。调用方（LLM）因此会在「少搜了库」的情况下拿到看似成功的回答。
-  用例 `test_mixed_kb_names_is_narrowed_not_denied`（`xfail(strict)`）。
-- `xfail(strict=True)` 的用法约定：这些缺口修复后会 XPASS → 用例失败，逼迫同步更新本 §8
-  与 §4.5，不允许静默变更行为。
+- **套件当前无 `xfail`**。`xfail(strict=True)` 的用法约定（保留）：只用来钉住**已确认的缺口**，
+  修复后 XPASS 会让用例失败，逼迫同步更新本 §8 与 §4.5，不允许静默变更行为。曾经钉住的
+  MCP KB ACL 三条缺口已于 2026-09-21 修复并转正例（见 §4.5）。
 - **MCP PAT 通道当前不可用**：`RAGF_MCP_PAT` 默认为空，PAT 分支从未生效（本体是常量时间比对 +
   免会话）。套件只覆盖 JWT 直通；PAT 通道要等桥接进程落地后再补用例（否则测的是配置默认值）。
 - **MCP 限流是每进程共享的 Redis bucket**（`RAGF_MCP_RATE_LIMIT_PER_MINUTE=120`，按

@@ -6,6 +6,7 @@ from typing import Any
 
 import pytest
 
+from backend.src.app.kb.service.acl.resolver import Perm
 from backend.src.app.kb.service.acl.scope import Scope
 from backend.src.app.mcp.schemas import (
     PERM_KB_CHAT,
@@ -187,16 +188,33 @@ async def _fake_scope_builder(db: Any, *, user: UserContext, kb_names: list[str]
     return Scope(namespace=user.tenant, user_id=user.sub, groups=[user.sub], allowed_kbs=list(kb_names or []))
 
 
+async def _fake_perm_resolver(db: Any, *, user: UserContext, kb_name: str) -> Perm | None:  # ruff: ignore[unused-async]
+    """罐头权限求值：租户内的 KB 一律 OWNER（存在性/租户归属由 FakeKbDao 负责）。"""
+    return Perm.OWNER
+
+
+def _visible_resolver_for(kb_dao: FakeKbDao) -> Any:
+    """罐头可见集合：与 FakeKbDao 同源（真实实现是 resolve_visible_kbs 批量求值）。"""
+
+    async def _resolve(db: Any, *, user: UserContext) -> list[str]:
+        return [kb.kb_name for kb in await kb_dao.list_all(db, plugin_namespace=user.tenant)]
+
+    return _resolve
+
+
 def _toolkit(**overrides: Any) -> McpToolkit:
     kb = FakeKb('dev', '研发库', '研发知识')
     doc = FakeDoc(document_id='doc-a', kb_name='dev', name='guide.md', active_version=2, chunk_count=10)
+    kb_dao = FakeKbDao([kb])
     base: dict[str, Any] = {
-        'kb_dao': FakeKbDao([kb]),
+        'kb_dao': kb_dao,
         'doc_dao': FakeDocDao([doc]),
         'chunk_svc': FakeChunkService(),
         'retrieval': FakeRetrieval(),
         'chat': FakeChat(),
         'scope_builder': _fake_scope_builder,
+        'perm_resolver': _fake_perm_resolver,
+        'visible_kbs_resolver': _visible_resolver_for(kb_dao),
     }
     base.update(overrides)
     return McpToolkit(**base)
@@ -264,6 +282,50 @@ def test_kb_outside_scope_denied_on_search() -> None:
     with pytest.raises(ToolError) as exc_info:
         _run('search_knowledge', {'kb_names': ['dev'], 'query_text': '版本差异'}, scope_builder=_narrow_scope)
     assert exc_info.value.code == 'PERMISSION_DENIED'
+
+
+def test_kb_without_acl_entry_is_permission_denied() -> None:
+    """工具版 IDOR（D33）：KB 在本租户但 ACL 求值为 None → PERMISSION_DENIED，不返回内容。"""
+
+    async def _no_perm(db: Any, *, user: UserContext, kb_name: str) -> Perm | None:  # ruff: ignore[unused-async]
+        return None
+
+    for tool, args in (
+        ('search_knowledge', {'kb_names': ['dev'], 'query_text': '版本差异'}),
+        ('get_document', {'kb_name': 'dev', 'document_id': 'doc-a'}),
+        ('read_document_chunks', {'kb_name': 'dev', 'document_id': 'doc-a'}),
+    ):
+        with pytest.raises(ToolError) as exc_info:
+            _run(tool, args, perm_resolver=_no_perm)
+        assert exc_info.value.code == 'PERMISSION_DENIED', f'{tool} 未做资源权限校验'
+
+
+def test_mixed_kb_names_denied_not_silently_narrowed() -> None:
+    """``kb_names`` 混入无权库 → 整体拒绝（服务端不再静默丢弃无权库，D33）。"""
+
+    kb_dao = FakeKbDao([FakeKb('dev'), FakeKb('hidden')])
+
+    async def _mixed_perm(db: Any, *, user: UserContext, kb_name: str) -> Perm | None:  # ruff: ignore[unused-async]
+        return Perm.OWNER if kb_name == 'dev' else None
+
+    with pytest.raises(ToolError) as exc_info:
+        _run(
+            'search_knowledge',
+            {'kb_names': ['dev', 'hidden'], 'query_text': '版本差异'},
+            kb_dao=kb_dao,
+            perm_resolver=_mixed_perm,
+        )
+    assert exc_info.value.code == 'PERMISSION_DENIED'
+
+
+def test_list_knowledge_bases_filters_by_visible_set() -> None:
+    """工具元数据写「列出当前身份**可见** KB」，实现按可见集合过滤（D21）。"""
+
+    async def _nothing_visible(db: Any, *, user: UserContext) -> list[str]:  # ruff: ignore[unused-async]
+        return []
+
+    result = _run('list_knowledge_bases', visible_kbs_resolver=_nothing_visible)
+    assert result['knowledge_bases'] == []
 
 
 def test_cross_tenant_kb_invisible_on_get_document() -> None:
