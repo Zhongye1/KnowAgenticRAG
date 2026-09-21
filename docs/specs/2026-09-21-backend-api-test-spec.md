@@ -373,7 +373,9 @@ Knowhere API 强制 Bearer 鉴权（key 在 Dashboard `http://localhost:13000` �
   `backend/src/.env` 一份。e2e 复用 dev 配置，靠进程内切库（`ragf_test`）隔离，因此
   **凡是独立进程（Celery Worker）都得自己再切一次库**——这是本套件唯一需要人工双份配置的地方，
   已由 `task backend:worker:test` 封装。若将来要跑真·独立测试环境，需要另加 env 档位而不是改这里。
-- `backend/conftest.py` 的 `token_headers` fixture 打的是 `/auth/login/swagger`，该路由在代码中已不存在（仅存在于 `TOKEN_REQUEST_PATH_EXCLUDE` 配置里），fixture 实际失效。本套件不复用它，自带身份工厂。
+- 域内单测的 `token_headers` fixture（`backend/conftest.py`）原先打 `/auth/login/swagger`——该路由已不存在，
+  fixture 恒 404，依赖它的用例在 setup 阶段就报错。已改走真实 `POST /auth/login`（关掉图形验证码），
+  并顺带让 `test_logout` 断言「登出后同一 token 立即失效」。本套件仍不复用它，自带身份工厂（§3.3）。
 - **版本化未实现**：`Document.active_version` 是 Phase 2 占位（`model/document.py` 注释即写明「默认 1」），
   摄取链路从不递增它，重摄取覆盖同一 `version_id`。因此「多版本共存 / 旧版本回查」在接口层无法验证，
   本套件只锁 `chunk_id` 的 `{document_id}:{version_id}:{idx}` 形态与「引用可在 PG 事实源逐字回查」。
