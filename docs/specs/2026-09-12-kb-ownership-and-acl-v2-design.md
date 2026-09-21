@@ -337,6 +337,7 @@ backend/src/app/kb/service/acl/
 
 - DB 是 source-of-truth，Milvus 是镜像（对齐上游 spec）。
 - 文档级变更后按主键 upsert 标量字段；失败不回滚 DB，但**必须**写对账任务（`tasks/`，可挂 `beat`），周期性比对 `documents.visibility/owner_id + rag_doc_acl` 与 Milvus 标量并修复。
+- upsert 后**同步 `flush` 封存段**：upsert = 删旧 + 插新，默认 Bounded 一致性下紧接着的检索会读到写入前视图（刚授权却检索不到、刚撤销却仍可见）。ACL 属授权语义，读后写必须立即可见——这条不变量由 `e2e/test_rag_pipeline_e2e.py::test_document_acl_narrows_recall_inside_shared_kb` 钉住。
 - ACL 巡检任务同时清理 `expires_at` 已过期条目并输出审计。
 
 ## 8. 落地阶段
