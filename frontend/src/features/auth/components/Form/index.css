@@ -286,6 +286,24 @@
   opacity: 0.85;
 }
 
+/* 验证码加载中 / 加载失败占位：与 .captcha-img 同尺寸，避免布局跳动 */
+.captcha-img-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 120px;
+  height: 48px;
+  border-radius: 10px;
+  border: 1px dashed;
+  font-size: 12px;
+  @apply border-color-border-3 bg-color-fill-2 text-color-text-3;
+}
+
+.captcha-img-state-error {
+  @apply border-danger-3 bg-danger-1 text-danger-6;
+}
+
 .success-msg {
   display: none;
   padding: 10px 14px;

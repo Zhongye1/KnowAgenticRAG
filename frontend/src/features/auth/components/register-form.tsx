@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { Eye, EyeOff } from 'lucide-react';
+import { useState } from 'react';
 
-import { getCaptcha } from '@/generated/auth/get-captcha';
-import type { GetCaptchaDetail } from '@/generated/types';
 import { useRegister } from '@/lib/auth';
 
 import { getErrorMessage } from '../api/errors';
+import { useCaptcha } from '../hooks/use-captcha';
+import { CaptchaImage } from './captcha-image';
 import './Form/index.css';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -12,34 +13,6 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 type RegisterFormProps = {
   onSuccess?: () => void;
 };
-
-function EyeIcon({ show }: { show: boolean }) {
-  return show ? (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-      <line x1="1" y1="1" x2="23" y2="23" />
-    </svg>
-  ) : (
-    <svg
-      width="20"
-      height="20"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-    >
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  );
-}
 
 export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const [username, setUsername] = useState('');
@@ -49,9 +22,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const [captcha, setCaptcha] = useState<GetCaptchaDetail | null>(null);
-  const [captchaCode, setCaptchaCode] = useState('');
-  const [captchaRefresh, setCaptchaRefresh] = useState(0);
+  const captcha = useCaptcha();
 
   const [errorMsg, setErrorMsg] = useState('');
   const [usernameError, setUsernameError] = useState(false);
@@ -60,37 +31,11 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const [confirmError, setConfirmError] = useState(false);
   const [captchaError, setCaptchaError] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    getCaptcha()
-      .then((data) => {
-        if (!cancelled) setCaptcha(data);
-      })
-      .catch(() => {
-        if (!cancelled) setCaptcha(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [captchaRefresh]);
-
-  const refreshCaptcha = useCallback(() => {
-    setCaptchaCode('');
-    setCaptchaRefresh((prev) => prev + 1);
-  }, []);
-
-  const captchaEnabled = Boolean(captcha?.is_enabled);
-  const captchaImageSrc = captcha?.image
-    ? captcha.image.startsWith('data:')
-      ? captcha.image
-      : `data:image/png;base64,${captcha.image}`
-    : '';
-
   const register = useRegister({
     onSuccess: () => onSuccess?.(),
     onError: (error) => {
       setErrorMsg(getErrorMessage(error, '注册失败，请稍后重试'));
-      if (captchaEnabled) refreshCaptcha();
+      if (captcha.isVisible) captcha.refresh();
     },
   });
 
@@ -130,7 +75,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       return;
     }
 
-    if (captchaEnabled && !captchaCode.trim()) {
+    if (captcha.isEnabled && !captcha.code.trim()) {
       setCaptchaError(true);
       setErrorMsg('请输入验证码');
       return;
@@ -141,8 +86,8 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       password,
       // nickname: nickname.trim() || undefined,
       email: cleanEmail || undefined,
-      uuid: captchaEnabled ? captcha?.uuid : undefined,
-      captcha: captchaEnabled ? captchaCode.trim() : undefined,
+      uuid: captcha.isEnabled ? captcha.uuid : undefined,
+      captcha: captcha.isEnabled ? captcha.code.trim() : undefined,
     });
   };
 
@@ -233,7 +178,11 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
             onClick={() => setShowPassword((prev) => !prev)}
             aria-label={showPassword ? '隐藏密码' : '显示密码'}
           >
-            <EyeIcon show={showPassword} />
+            {showPassword ? (
+              <EyeOff size={20} aria-hidden="true" />
+            ) : (
+              <Eye size={20} aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>
@@ -265,12 +214,16 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
             onClick={() => setShowPassword((prev) => !prev)}
             aria-label={showPassword ? '隐藏密码' : '显示密码'}
           >
-            <EyeIcon show={showPassword} />
+            {showPassword ? (
+              <EyeOff size={20} aria-hidden="true" />
+            ) : (
+              <Eye size={20} aria-hidden="true" />
+            )}
           </button>
         </div>
       </div>
 
-      {captchaEnabled ? (
+      {captcha.isVisible ? (
         <div className="captcha-row">
           <div className="form-group">
             <label
@@ -283,9 +236,9 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
               <input
                 id="reg-captcha"
                 type="text"
-                value={captchaCode}
+                value={captcha.code}
                 onChange={(event) => {
-                  setCaptchaCode(event.target.value);
+                  captcha.setCode(event.target.value);
                   if (captchaError) setCaptchaError(false);
                 }}
                 placeholder="请输入验证码"
@@ -294,17 +247,13 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
               />
             </div>
           </div>
-          {captchaImageSrc ? (
-            <button
-              type="button"
-              className="captcha-img-wrap"
-              onClick={refreshCaptcha}
-              title="点击刷新验证码"
-              aria-label="刷新验证码"
-            >
-              <img className="captcha-img" src={captchaImageSrc} alt="验证码" />
-            </button>
-          ) : null}
+          <CaptchaImage
+            imageSrc={captcha.imageSrc}
+            isLoading={captcha.isLoading}
+            isFailed={captcha.isFailed}
+            onRefresh={captcha.refresh}
+            onImageError={captcha.onImageError}
+          />
         </div>
       ) : null}
 
