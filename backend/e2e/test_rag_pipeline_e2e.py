@@ -35,11 +35,9 @@ FAKE_MODEL_SPEC = 'e2e:fake-chat'
 
 async def _ingested_doc(client: AsyncClient, headers: dict[str, str], kb: str) -> tuple[str, dict[str, Any]]:
     """两段式跑通：上传 → 触发 → 轮询 ready。返回 (document_id, upload_data)。"""
-    upload = ok_data(
-        await seed.upload_document(client, headers, kb, filename='e2e-deploy.md', content=DOC_TEXT.encode('utf-8'))
-    )
+    upload = await seed.upload_document(client, headers, kb, filename='e2e-deploy.md', content=DOC_TEXT.encode('utf-8'))
     document_id = str(upload['document_id'])
-    queued = ok_data(await seed.trigger_ingest(client, headers, kb, document_id))
+    queued = await seed.trigger_ingest(client, headers, kb, document_id)
     assert queued['queued'] is True
     assert queued['document_id'] == document_id
     status = await seed.wait_ingest(client, headers, kb, document_id)

@@ -31,10 +31,12 @@ _LIST_PARAMS = {'page': 1, 'size': 50}
 
 
 def _files(**overrides: Any) -> dict[str, tuple[str, bytes, str]]:
+    # content 用显式 None 判定：空文件（``b''``）是要被测的输入，不能被 ``or`` 当成缺省值吞掉
+    content = overrides.get('content')
     return {
         'file': (
             str(overrides.get('name') or MD_NAME),
-            overrides.get('content') or MD_BYTES,
+            MD_BYTES if content is None else content,
             str(overrides.get('content_type') or MD_TYPE),
         )
     }
@@ -140,7 +142,7 @@ async def test_documents_list_is_scoped_to_visible_kbs(
 ) -> None:
     """``GET /documents`` 按可见 KB 求交（功能码只有 ``rag:kb:list``，范围由服务端收窄）。"""
     kb = await make_kb()
-    doc = ok_data(await seed.upload_document(client, identities['owner'].headers, kb))
+    doc = await seed.upload_document(client, identities['owner'].headers, kb)
     outsider = await _list_documents(client, identities['outsider'].headers, kb)
     owner = await _list_documents(client, identities['owner'].headers, kb)
     assert outsider == []
@@ -152,7 +154,7 @@ async def test_document_detail_hides_denied_and_absent_identically(
 ) -> None:
     """D50：文档级无权与文档不存在必须同形态（否则接口成了文档 ID 探测器）。"""
     kb = await make_kb()
-    doc = ok_data(await seed.upload_document(client, identities['owner'].headers, kb))
+    doc = await seed.upload_document(client, identities['owner'].headers, kb)
     headers = identities['outsider'].headers
     denied = err(await client.get(f'{API}/documents/{doc["document_id"]}', headers=headers), 404)
     absent = err(await client.get(f'{API}/documents/e2e_absent_doc', headers=headers), 404)
@@ -164,7 +166,7 @@ async def test_chunks_requires_read_perm(
 ) -> None:
     """分块浏览：功能码 ``rag:kb:read`` + 资源级 read；未摄取时是空分页而非 404。"""
     kb = await make_kb()
-    doc = ok_data(await seed.upload_document(client, identities['owner'].headers, kb))
+    doc = await seed.upload_document(client, identities['owner'].headers, kb)
     await seed.grant_kb_acl(
         client,
         identities['owner'].headers,
@@ -193,7 +195,7 @@ async def test_patch_and_delete_document_require_manage(
     """文档写操作要资源级 manage：contribute 同形态 404；manage 改名/删除均生效。"""
     kb = await make_kb()
     owner = identities['owner'].headers
-    doc = ok_data(await seed.upload_document(client, owner, kb))
+    doc = await seed.upload_document(client, owner, kb)
     document_id = doc['document_id']
     await seed.grant_kb_acl(
         client,
@@ -246,7 +248,7 @@ async def test_document_acl_write_rejects_unsupported_combinations(
     """
     kb = await make_kb()
     owner = identities['owner'].headers
-    doc = ok_data(await seed.upload_document(client, owner, kb))
+    doc = await seed.upload_document(client, owner, kb)
     path = f'{API}/documents/{doc["document_id"]}/acl'
     outsider_id = str(identities['outsider'].user_id)
     cases = [
@@ -283,7 +285,7 @@ async def test_document_acl_write_requires_kb_manage(
     """改文档 ACL 要 KB 级 manage（contribute 不够）：同形态 404。"""
     kb = await make_kb()
     owner = identities['owner'].headers
-    doc = ok_data(await seed.upload_document(client, owner, kb))
+    doc = await seed.upload_document(client, owner, kb)
     await seed.grant_kb_acl(
         client,
         owner,
