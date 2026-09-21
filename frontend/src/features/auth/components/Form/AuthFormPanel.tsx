@@ -1,12 +1,12 @@
 import { Eye, EyeOff } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 
-import { getCaptcha } from '@/generated/auth/get-captcha';
 import { getGoogleOauth2Url } from '@/generated/oauth2-google/get-google-oauth2-url';
-import type { GetCaptchaDetail } from '@/generated/types';
 import { useLogin } from '@/lib/auth';
 
 import { getErrorMessage } from '../../api/errors';
+import { useCaptcha } from '../../hooks/use-captcha';
+import { CaptchaImage } from '../captcha-image';
 import { RegisterForm } from '../register-form';
 import './index.css';
 
@@ -19,9 +19,7 @@ function AuthFormPanel() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  const [captcha, setCaptcha] = useState<GetCaptchaDetail | null>(null);
-  const [captchaCode, setCaptchaCode] = useState('');
-  const [captchaRefresh, setCaptchaRefresh] = useState(0);
+  const captcha = useCaptcha({ enabled: mode === 'login' });
 
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
@@ -29,43 +27,19 @@ function AuthFormPanel() {
   const [passwordError, setPasswordError] = useState(false);
   const [captchaError, setCaptchaError] = useState(false);
 
-  useEffect(() => {
-    if (mode !== 'login') return;
-    let cancelled = false;
-    getCaptcha()
-      .then((data) => {
-        if (!cancelled) setCaptcha(data);
-      })
-      .catch(() => {
-        if (!cancelled) setCaptcha(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [mode, captchaRefresh]);
-
-  const refreshCaptcha = useCallback(() => {
-    setCaptchaCode('');
-    setCaptchaRefresh((prev) => prev + 1);
-  }, []);
-
   const login = useLogin({
     // 登录成功后 routes/auth 会监听 user.data 自动跳转到 redirectTo
     onError: (error) => {
       setErrorMsg(getErrorMessage(error, '登录失败，请稍后重试'));
-      if (captcha?.is_enabled) {
-        refreshCaptcha();
-      }
+      if (captcha.isVisible) captcha.refresh();
     },
   });
-
-  const captchaEnabled = Boolean(captcha?.is_enabled);
 
   const switchMode = (next: AuthMode) => {
     setMode(next);
     setErrorMsg('');
     setSuccessMsg('');
-    if (next === 'login') setCaptchaCode('');
+    if (next === 'login') captcha.setCode('');
     setUsernameError(false);
     setPasswordError(false);
     setCaptchaError(false);
@@ -92,7 +66,7 @@ function AuthFormPanel() {
       return;
     }
 
-    if (captchaEnabled && !captchaCode.trim()) {
+    if (captcha.isEnabled && !captcha.code.trim()) {
       setCaptchaError(true);
       setErrorMsg('请输入验证码');
       return;
@@ -101,8 +75,8 @@ function AuthFormPanel() {
     login.mutate({
       username: cleanUsername,
       password,
-      uuid: captchaEnabled ? captcha?.uuid : undefined,
-      captcha: captchaEnabled ? captchaCode.trim() : undefined,
+      uuid: captcha.isEnabled ? captcha.uuid : undefined,
+      captcha: captcha.isEnabled ? captcha.code.trim() : undefined,
     });
   };
 
@@ -197,7 +171,7 @@ function AuthFormPanel() {
               </div>
             </div>
 
-            {captchaEnabled ? (
+            {captcha.isVisible ? (
               <div className="captcha-row">
                 <div className="form-group">
                   <label
@@ -210,9 +184,9 @@ function AuthFormPanel() {
                     <input
                       id="captcha"
                       type="text"
-                      value={captchaCode}
+                      value={captcha.code}
                       onChange={(event) => {
-                        setCaptchaCode(event.target.value);
+                        captcha.setCode(event.target.value);
                         if (captchaError) setCaptchaError(false);
                       }}
                       placeholder="请输入验证码"
@@ -221,25 +195,13 @@ function AuthFormPanel() {
                     />
                   </div>
                 </div>
-                {captcha?.image ? (
-                  <button
-                    type="button"
-                    className="captcha-img-wrap"
-                    onClick={refreshCaptcha}
-                    title="点击刷新验证码"
-                    aria-label="刷新验证码"
-                  >
-                    <img
-                      className="captcha-img"
-                      src={
-                        captcha.image.startsWith('data:')
-                          ? captcha.image
-                          : `data:image/png;base64,${captcha.image}`
-                      }
-                      alt="验证码"
-                    />
-                  </button>
-                ) : null}
+                <CaptchaImage
+                  imageSrc={captcha.imageSrc}
+                  isLoading={captcha.isLoading}
+                  isFailed={captcha.isFailed}
+                  onRefresh={captcha.refresh}
+                  onImageError={captcha.onImageError}
+                />
               </div>
             ) : null}
 
