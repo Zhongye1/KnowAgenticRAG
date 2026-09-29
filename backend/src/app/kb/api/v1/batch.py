@@ -7,13 +7,12 @@
 否则 `batch` 会被当成 document_id 吃掉。
 """
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path
 
 from backend.src.app.kb.crud import document_dao
+from backend.src.app.kb.deps import CurrentKbUser, CurrentNamespace
 from backend.src.app.kb.schema.preview import BatchDocumentParam, BatchItemResult, BatchResult
 from backend.src.app.kb.service.acl.resolver import Perm, perm_at_least, resolve_kb_perm
 from backend.src.app.kb.service.document_service import document_service
@@ -25,9 +24,9 @@ from backend.src.common.security.jwt import DependsJwtAuth
 from backend.src.common.security.permission import RequestPermission
 from backend.src.common.security.rbac import DependsRBAC
 
-if TYPE_CHECKING:
-    from backend.src.app.kb.deps import CurrentKbUser, CurrentNamespace
-    from backend.src.database.db import CurrentSession, CurrentSessionTransaction
+# 运行期导入（不能用 TYPE_CHECKING 包起来）：FastAPI 在生成 OpenAPI 与解析依赖时
+# 需要按名字取到这些别名，放进 TYPE_CHECKING 会变成无法解析的 ForwardRef。
+from backend.src.database.db import CurrentSession, CurrentSessionTransaction
 
 _PERM_INGEST = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_INGEST)), DependsRBAC]
 _PERM_MANAGE = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_MANAGE)), DependsRBAC]
