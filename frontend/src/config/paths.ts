@@ -70,9 +70,35 @@ export const paths = {
       path: 'discussions/:discussionId',
       getHref: (id: string) => `/app/discussions/${id}`,
     },
+    /**
+     * 管理面板（仅超管可进，见 `lib/auth.tsx:useIsSuperuser`）。
+     *
+     * 保留 `/app/users` 路径常量并指向新面板：旧页是 fba 模板遗留（读假接口），
+     * 直接改指可避免既有链接/书签 404。
+     */
     users: {
       path: 'users',
-      getHref: () => '/app/users',
+      getHref: () => '/app/admin/users',
+    },
+    admin: {
+      path: 'admin',
+      getHref: () => '/app/admin',
+      users: {
+        path: 'users',
+        getHref: () => '/app/admin/users',
+      },
+      depts: {
+        path: 'depts',
+        getHref: () => '/app/admin/depts',
+      },
+      roles: {
+        path: 'roles',
+        getHref: () => '/app/admin/roles',
+      },
+      kbAcl: {
+        path: 'kb-acl',
+        getHref: () => '/app/admin/kb-acl',
+      },
     },
     profile: {
       path: 'profile',

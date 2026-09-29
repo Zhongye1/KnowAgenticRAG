@@ -1,5 +1,6 @@
 /** @type {import('dependency-cruiser').IConfiguration} */
 const FEATURES = [
+  'admin',
   'auth',
   'chat',
   'comments',

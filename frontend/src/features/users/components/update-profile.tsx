@@ -59,10 +59,12 @@ export const UpdateProfile = () => {
             }}
             options={{
               defaultValues: {
-                firstName: user.data?.firstName ?? '',
-                lastName: user.data?.lastName ?? '',
+                // 模板遗留：表单字段名基于 fba 脚手架，会话用户已换成后端真实结构，
+                // 故映射到真实字段（整块待被 /app/admin/users 取代）
+                firstName: user.data?.nickname ?? '',
+                lastName: '',
                 email: user.data?.email ?? '',
-                bio: user.data?.bio ?? '',
+                bio: '',
               },
             }}
             schema={updateProfileInputSchema}

@@ -1,4 +1,4 @@
-import { ArrowLeft, Files, PackageOpen, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Files, PackageOpen, RefreshCw, ShieldCheck, Trash2, Upload } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -47,6 +47,7 @@ import {
   DocumentListTable,
   type DocumentRow,
 } from './documents/document-list-table';
+import { AclDialog } from './acl-dialog';
 import { ExportDialog } from './export-dialog';
 import { DocumentUploadDialog } from './documents/document-upload-dialog';
 import {
@@ -77,6 +78,7 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
   );
   const [uploadOpen, setUploadOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false);
+  const [aclOpen, setAclOpen] = useState(false);
   const [detailDoc, setDetailDoc] = useState<DocumentItem | null>(null);
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
@@ -263,6 +265,14 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
                 documentsQuery.isFetching && 'animate-spin',
               )}
             />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAclOpen(true)}
+          >
+            <ShieldCheck className="size-4" />
+            权限
           </Button>
           <Button
             variant="outline"
@@ -476,6 +486,12 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
           onClose={() => setUploadOpen(false)}
         />
       ) : null}
+
+      <AclDialog
+        kbName={kb.kb_name}
+        open={aclOpen}
+        onOpenChange={setAclOpen}
+      />
 
       {/* 导出对话框由自身 open 控制显隐，不作为条件挂载的兄弟节点 */}
       <ExportDialog
