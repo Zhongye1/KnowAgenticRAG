@@ -91,11 +91,14 @@ async def _prepare_schema(engine: AsyncEngine) -> None:
     """幂等补列 + 建表。
 
     `create_all` 只建缺失的表，**不会**给既有的 `documents` 补列；老测试库因此
-    可能缺少 `folder_id`。项目未上线、无迁移层，这里按既有 PG 测试的先例用
+    可能缺少 Phase 1/3 新增的列。项目未上线、无迁移层，这里按既有 PG 测试的先例用
     `ADD COLUMN IF NOT EXISTS` 对齐（同 `test_kb_owner_pg._prepare_schema`）。
     """
     async with engine.begin() as conn:
         await conn.execute(text('ALTER TABLE documents ADD COLUMN IF NOT EXISTS folder_id VARCHAR'))
+        await conn.execute(
+            text("ALTER TABLE documents ADD COLUMN IF NOT EXISTS preview_kind VARCHAR DEFAULT 'unsupported'")
+        )
         await conn.run_sync(MappedBase.metadata.create_all)
 
 

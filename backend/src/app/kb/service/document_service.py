@@ -5,7 +5,15 @@ from uuid import uuid4
 from fastapi import UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.src.app.kb.crud import chunk_dao, dedup_dao, doc_acl_dao, document_dao, keyword_dao, knowledge_base_dao
+from backend.src.app.kb.crud import (
+    chunk_dao,
+    dedup_dao,
+    doc_acl_dao,
+    document_dao,
+    document_preview_dao,
+    keyword_dao,
+    knowledge_base_dao,
+)
 from backend.src.app.kb.crud.crud_dedup import compute_sha256_bytes
 from backend.src.app.kb.model import Document
 from backend.src.app.kb.schema.acl import DocAclEntry
@@ -15,9 +23,11 @@ from backend.src.app.kb.service.document_storage import (
     get_document_url,
     kb_object_key,
     kb_parsed_object_key,
+    kb_preview_objects_by_document,
     upload_document_bytes,
 )
 from backend.src.app.kb.utils.namespace import instance_namespace
+from backend.src.app.kb.utils.preview_kinds import resolve_preview_kind
 from backend.src.common.exception import errors
 from backend.src.common.log import log
 from backend.src.database.milvus_kb_ops import (
@@ -73,6 +83,9 @@ class DocumentService:
                 sha256=sha256,
                 owner_id=owner_id,
             )
+            # 预览类别在登记时按扩展名落库（D55：不信任上传的 Content-Type）
+            doc.preview_kind = resolve_preview_kind(filename)
+            await db.flush()
             # dedup 登记后置到管线成功（spec D9）：失败摄取不残留指纹挡重传
             # 入库打标默认值（agent-layer spec §8.1）：restricted + 上传者直属部门主体
             if owner_id:
@@ -125,6 +138,7 @@ class DocumentService:
         doc = await document_dao.get(db, document_id)
         if doc is None:
             raise errors.NotFoundError(msg='文档不存在')
+        ns = instance_namespace()
 
         filename = (file.filename or doc.name or 'file').strip() or 'file'
         data = await file.read()
@@ -150,11 +164,16 @@ class DocumentService:
             doc.name = filename
             doc.sha256 = sha256
             doc.source_uri = object_key
+            doc.preview_kind = resolve_preview_kind(filename)
             doc.status = 'pending'
             await db.flush()
         except Exception:
             await delete_document_object(object_key)
             raise
+
+        # 内容已变，旧预览产物与转换行一并失效（D55：source_sha256 即失效判据）
+        await document_preview_dao.delete_by_document(db, document_id)
+        await kb_preview_objects_by_document(ns, doc.kb_name, document_id)
 
         if old_key and old_key != object_key:
             await delete_document_object(old_key)
@@ -178,6 +197,7 @@ class DocumentService:
             'keywords': 0,
             'doc_acl': 0,
             'objects': 0,
+            'previews': 0,
         }
         text_coll, _visual_coll = base_collection_names()
         counts['milvus_text'] = delete_vectors_by_document(text_coll, doc.kb_name, document_id, plugin_namespace=ns)
@@ -192,6 +212,9 @@ class DocumentService:
         counts['chunks'] = await chunk_dao.delete_by_document(db, document_id, kb_name=doc.kb_name, plugin_namespace=ns)
 
         await delete_document_object(kb_parsed_object_key(ns, doc.kb_name, document_id))
+        # 预览产物与转换行（D55）：产物在 MinIO，行在 PG，两处都要清
+        await kb_preview_objects_by_document(ns, doc.kb_name, document_id)
+        counts['previews'] = await document_preview_dao.delete_by_document(db, document_id)
         if doc.source_uri:
             await delete_document_object(doc.source_uri)
             counts['objects'] = 1

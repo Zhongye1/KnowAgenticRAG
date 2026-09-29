@@ -84,6 +84,9 @@ def init_celery() -> celery.Celery:
         task_routes['knowhere.*'] = {'queue': settings.RAGF_CELERY_KNOWHERE_QUEUE}
     if settings.RAGF_CELERY_VISUAL_QUEUE:
         task_routes['visual.*'] = {'queue': settings.RAGF_CELERY_VISUAL_QUEUE}
+    # 文档预览转换（D55）：重操作且与摄取竞争资源，独立队列
+    if settings.RAGF_CELERY_PREVIEW_QUEUE:
+        task_routes['kb.preview_convert'] = {'queue': settings.RAGF_CELERY_PREVIEW_QUEUE}
 
     # https://docs.celeryq.dev/en/stable/userguide/configuration.html
     app = celery.Celery(

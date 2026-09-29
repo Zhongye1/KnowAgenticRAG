@@ -1,0 +1,60 @@
+# 文档预览转换服务（kb-落地改造清单 D55 §3E，独立自托管栈）。
+#
+# 与主 docker-compose.yml 分离维护（沿用 docker/knowhere/ 的拆分模式）：本服务是
+# **解析不可信 Office 文件**的组件，按沙盒标准加固，不和 ragf_* 应用容器混部。
+# 由根 Taskfile 接线：
+#   task libreoffice:up / stop / down / ps / logs
+#
+# 隔离要点（D55 §3E）：
+#   - 非 root、rootfs 只读、/tmp 用 tmpfs；
+#   - CPU / 内存 / PID 限额，配合容器内硬超时；
+#   - **不持有任何 MinIO/DB 凭据**：输入输出全部由后端 Celery 任务经请求体转发；
+#   - 能力全剥（cap_drop ALL）+ no-new-privileges + seccomp 默认。
+#
+# **已知缺口（显式记录，不假装已封）**：本服务需要发布端口才能被宿主开发环境
+# （task dev 后端跑宿主机）与 ragf_server 访问，而 Docker 的 `internal: true`
+# 网络不建立 NAT 规则、发布端口会失效，两者互斥。因此**未做网络级出网封锁**。
+# 若后续要求严格无声出网，正解是：本服务改为 internal 网络不发布端口，前面加一层
+# 同网络的转发代理，或落到 K8s NetworkPolicy。
+#
+# 本地开发（后端跑宿主机，task dev 默认形态）直接用 http://localhost:5030。
+
+services:
+  converter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: ragf_libreoffice_converter:latest
+    container_name: ragf_libreoffice_converter
+    env_file:
+      - path: env.defaults
+        required: true
+      - path: .env
+        required: false
+    ports:
+      - "${CONVERTER_HOST_BIND:-127.0.0.1}:${CONVERTER_HOST_PORT:-5030}:5030"
+    networks:
+      - preview_internal
+    read_only: true
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: ${CONVERTER_MEM_LIMIT:-2g}
+    pids_limit: ${CONVERTER_PIDS_LIMIT:-256}
+    cpus: ${CONVERTER_CPUS:-2.0}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:5030/health', timeout=3).status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+networks:
+  # 专用 bridge：与 ragf_* 默认网络分开，避免本服务被默认网络内的其他容器直接访问。
+  # 不用 internal: true —— 它会让下面的 ports 发布失效（见文件头「已知缺口」）。
+  preview_internal:
+    driver: bridge

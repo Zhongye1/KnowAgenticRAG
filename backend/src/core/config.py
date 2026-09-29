@@ -461,6 +461,16 @@ class Settings(BaseSettings):
     RAGF_CELERY_KNOWHERE_QUEUE: str | None = None
     RAGF_CELERY_VISUAL_QUEUE: str | None = None
 
+    # 文档预览（D55）：Office → PDF 走独立 LibreOffice 转换容器（docker/libreoffice/），
+    # 不复用 Knowhere（它是解析服务，且预览是高频读路径、不该排进摄取队列）。
+    RAGF_PREVIEW_ENABLED: bool = True
+    RAGF_PREVIEW_CONVERTER_URL: str = 'http://localhost:5030'
+    RAGF_PREVIEW_CONVERT_TIMEOUT_SECONDS: float = 120.0
+    # Range 代理单次窗口上限（防 `bytes=0-` 一次性拖全量；8 MiB 足够 PDF.js 取块）
+    RAGF_PREVIEW_MAX_RANGE_BYTES: int = 8 * 1024 * 1024
+    # 转换任务独立队列（留空=默认队列 celery；配套 worker 见 docker-compose.yml）
+    RAGF_CELERY_PREVIEW_QUEUE: str | None = None
+
     # ModelProvider（ragf-design D11/D16）
     MODEL_PROVIDER_CACHE_REDIS_PREFIX: str = 'fba:cache:model_provider'
     MODEL_PROVIDER_CACHE_TTL: int = 3600
