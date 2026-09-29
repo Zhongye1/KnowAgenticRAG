@@ -51,7 +51,9 @@ class JwtAuthMiddleware(AuthenticationBackend):
         :param exc: 认证错误对象
         :return:
         """
-        content = {'code': exc.code, 'msg': exc.msg, 'data': None}
+        # msg 恒为字符串（ResponseSchemaModel 契约）：AuthenticationError.msg 允许为 None，
+        # 直接出口会让信封出现 msg: null，前端按文本渲染时只能吃兜底文案
+        content = {'code': exc.code, 'msg': exc.msg or '', 'data': None}
         # 统一错误信封包含 trace_id（其余出口由 exception_handler 补齐）；鉴权失败是最常见的
         # 错误，缺 trace_id 会让客户端与日志无法对齐，故这里与其它出口保持一致。
         content.update(trace_id=get_request_trace_id())

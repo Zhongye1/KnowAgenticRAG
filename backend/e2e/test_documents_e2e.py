@@ -106,15 +106,21 @@ async def test_upload_rejects_oversize_file(
     make_kb: Callable[..., Awaitable[str]],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """限额关口：超限 422 + 结构化 detail（code/reason/suggestion，前端据此提示）。
+    """限额关口：超限 422，可读文案在 msg、结构化 detail 在 data（前端据此提示）。
 
     阈值来自 settings，用例压到 8 字节（不依赖 200MB 默认值，也不受本地开关影响）。
+    信封契约：``msg`` 恒为字符串（``ResponseSchemaModel.msg: str``），
+    结构化的 code/reason/suggestion 走 ``data``（见 middleware §6.3）；
+    ``public`` 标记决定这段文案在 prod 是否放行（限额属用户可自行处置的信息）。
     """
     kb = await make_kb()
     monkeypatch.setattr(settings, 'RAGF_INGEST_LIMITS_ENABLED', True)
     monkeypatch.setattr(settings, 'RAGF_INGEST_MAX_FILE_BYTES', 8)
     body = err(await _upload(client, identities['owner'].headers, kb, content=b'0123456789'), 422)
-    assert body['msg']['code'] == 'file_too_large', body
+    assert isinstance(body['msg'], str), body
+    assert '超过上限' in body['msg'], body
+    assert body['data']['code'] == 'file_too_large', body
+    assert body['data']['suggestion'], body
 
 
 async def test_replace_document_file_updates_fingerprint(

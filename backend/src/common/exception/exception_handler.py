@@ -1,3 +1,8 @@
+import json
+
+from collections.abc import Mapping, Sequence
+from typing import Any
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from pydantic import ValidationError
@@ -35,6 +40,69 @@ def _get_exception_code(status_code: int) -> int:
         return StandardResponseCode.HTTP_400
 
     return status_code
+
+
+# detail 下钻层数上限（envelope → 结构化 detail → reason 这类嵌套）
+_MAX_DETAIL_DEPTH = 3
+
+# detail 里显式声明「对外可见」的键（prod 脱敏口径的例外，见 _is_public_detail）
+_PUBLIC_DETAIL_KEY = 'public'
+
+
+def _is_public_detail(detail: Any) -> bool:
+    """``detail`` 是否显式声明对外可见（prod 放行）。
+
+    prod 的默认口径是脱敏（防信息泄露），但有一类 detail 本来就该给用户看：用户可自行
+    纠正的限额/校验提示（如「PDF 共 250 页，超过上限 200 页」）——藏起来只会让用户收到
+    一句无法行动的通用错误。所以口径反过来：**由抛出方显式标注** ``{'public': True}``，
+    横切层只负责放行，不维护业务错误码白名单（``common`` 不依赖任何业务域）。
+    """
+    return isinstance(detail, Mapping) and detail.get(_PUBLIC_DETAIL_KEY) is True
+
+
+def _pick_detail_text(value: Any, depth: int = 0) -> str | None:
+    """从 ``HTTPException.detail``（任意 JSON 形态）里取出可读片段；取不到返回 None。"""
+    if isinstance(value, str):
+        return value.strip() or None
+    if depth >= _MAX_DETAIL_DEPTH:
+        return None
+
+    if isinstance(value, Mapping):
+        # 结构化业务错误（如摄取限额）优先：reason（+ 纠正建议）
+        reason = _pick_detail_text(value.get('reason'), depth + 1)
+        if reason:
+            suggestion = _pick_detail_text(value.get('suggestion'), depth + 1)
+            return f'{reason}（{suggestion}）' if suggestion else reason
+        for key in ('msg', 'message', 'detail'):
+            text = _pick_detail_text(value.get(key), depth + 1)
+            if text:
+                return text
+        return None
+
+    if isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+        parts = [text for text in (_pick_detail_text(item, depth + 1) for item in value) if text]
+        return '；'.join(parts) or None
+
+    return None
+
+
+def _detail_to_message(detail: Any) -> str:
+    """把 ``HTTPException.detail`` 折叠成单行字符串。
+
+    ``ResponseSchemaModel.msg`` 的契约是 ``str``，而 ``detail`` 可以是任意 JSON
+    （例如摄取限额的 ``{code, reason, suggestion}``）。直接把 detail 当 msg 出口会
+    破坏响应契约：按文本渲染 msg 的客户端会拿到对象，`CreateOperaLogParam.msg`
+    这类文本列也要额外兜底。**可读文案统一放 msg，结构化原样放 data**。
+    """
+    if detail is None:
+        return ''
+    text = _pick_detail_text(detail)
+    if text:
+        return text
+    try:
+        return json.dumps(detail, ensure_ascii=False, default=str)
+    except (TypeError, ValueError):
+        return str(detail)
 
 
 async def _validation_exception_handler(exc: RequestValidationError | ValidationError):
@@ -89,11 +157,16 @@ def register_exception(app: FastAPI) -> None:  # ruff:ignore[complex-structure]
         :param exc: HTTP 异常
         :return:
         """
-        if settings.ENVIRONMENT == 'dev':
+        detail = exc.detail
+        # dev 全量暴露明细；prod 默认脱敏，只放行抛出方显式标注 public 的可展示 detail。
+        # 两个分支信封形状一致（msg: str + data 结构化原文），客户端无需分环境处理。
+        if settings.ENVIRONMENT == 'dev' or _is_public_detail(detail):
+            # msg 恒为字符串（ResponseSchemaModel 契约）：detail 是可读文案就放 msg，
+            # 是结构化载荷（如摄取限额的 code/reason/suggestion）则原样放 data 供客户端分支
             content = {
                 'code': exc.status_code,
-                'msg': exc.detail,
-                'data': None,
+                'msg': _detail_to_message(detail),
+                'data': None if isinstance(detail, str) else detail,
             }
         else:
             res = response_base.fail(res=CustomResponseCode.HTTP_400)
@@ -214,7 +287,7 @@ def register_exception(app: FastAPI) -> None:  # ruff:ignore[complex-structure]
             if isinstance(exc, BaseExceptionError):
                 content = {
                     'code': exc.code,
-                    'msg': exc.msg,
+                    'msg': str(exc.msg),
                     'data': exc.data,
                 }
             else:
