@@ -95,6 +95,16 @@ class KBUpdateParam(SchemaBase):
         return _validate_query_params(value)
 
 
+class SampleQuestionParam(SchemaBase):
+    """示例问题整字段替换参数"""
+
+    questions: list[str] = Field(
+        default_factory=list,
+        max_length=20,
+        description='示例问题列表（≤20 条，单条 ≤200 字，去重去空）',
+    )
+
+
 class KBItem(SchemaBase):
     """知识库列表项（含实时统计）"""
 
@@ -108,6 +118,7 @@ class KBItem(SchemaBase):
     embedding_model: str = Field(description='嵌入模型')
     query_params: dict = Field(default_factory=dict, description='检索默认参数')
     collections_used: list[str] = Field(default_factory=list, description='已写入的集合目录')
+    sample_questions: list[str] = Field(default_factory=list, description='示例问题（Phase 4）')
     owner_id: str | None = Field(default=None, description='库所有者用户 ID')
     is_public: bool = Field(default=False, description='是否公开库')
     documents: int = Field(0, description='文档数')

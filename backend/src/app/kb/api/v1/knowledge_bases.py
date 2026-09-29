@@ -19,11 +19,14 @@ from backend.src.app.kb.schema.knowledge_base import (
     KBTransferParam,
     KBTransferResult,
     KBUpdateParam,
+    SampleQuestionParam,
 )
 from backend.src.app.kb.service.acl.entries import acl_entry_service
 from backend.src.app.kb.service.acl.resolver import resolve_visible_kbs
 from backend.src.app.kb.service.kb_service import kb_service
-from backend.src.app.kb.service.kb_stats_service import kb_stats_service
+from backend.src.app.kb.service.kb_stats_service import kb_stats_service, repair_kb_stats
+from backend.src.app.kb.service.mindmap_service import mindmap_service
+from backend.src.app.kb.service.sample_question_service import sample_question_service
 from backend.src.app.kb.utils.permissions import RAG_KB_CREATE, RAG_KB_LIST, RAG_KB_MANAGE, RAG_KB_TRANSFER
 from backend.src.common.pagination import DependsPagination, PageData
 from backend.src.common.response.response_schema import ResponseSchemaModel, response_base
@@ -191,3 +194,55 @@ async def get_knowledge_base_facets(
     await kb_service.get_detail(db=db, kb_name=kb_name, user=user)
     data = await kb_stats_service.get_facets(db=db, kb_name=kb_name)
     return response_base.success(data=[KBFacetItem.model_validate(item) for item in data])
+
+
+@router.get('/{kb_name}/sample-questions', summary='示例问题（Phase 4）', dependencies=_PERM_LIST)
+async def get_sample_questions(
+    db: CurrentSession,
+    current_namespace: CurrentNamespace,
+    kb_name: Annotated[str, Path(description='知识库标识')],
+    user: CurrentKbUser,
+) -> ResponseSchemaModel[list[str]]:
+    # 复用 get_detail 做资源级断言：无权与不存在同形态 404（D50）
+    await kb_service.get_detail(db=db, kb_name=kb_name, user=user)
+    return response_base.success(data=await sample_question_service.list_questions(db=db, kb_name=kb_name))
+
+
+@router.put('/{kb_name}/sample-questions', summary='设置示例问题（整字段替换）', dependencies=_PERM_MANAGE)
+async def put_sample_questions(
+    db: CurrentSessionTransaction,
+    current_namespace: CurrentNamespace,
+    kb_name: Annotated[str, Path(description='知识库标识')],
+    obj: SampleQuestionParam,
+    user: CurrentKbUser,
+) -> ResponseSchemaModel[list[str]]:
+    await kb_service.get_detail(db=db, kb_name=kb_name, user=user)
+    data = await sample_question_service.replace_questions(db=db, kb_name=kb_name, questions=obj.questions)
+    return response_base.success(data=data)
+
+
+@router.get('/{kb_name}/mindmap', summary='知识导图（由 documents.structure 聚合）', dependencies=_PERM_LIST)
+async def get_knowledge_base_mindmap(
+    db: CurrentSession,
+    current_namespace: CurrentNamespace,
+    kb_name: Annotated[str, Path(description='知识库标识')],
+    user: CurrentKbUser,
+) -> ResponseSchemaModel[dict]:
+    await kb_service.get_detail(db=db, kb_name=kb_name, user=user)
+    return response_base.success(data=await mindmap_service.get_mindmap(db=db, kb_name=kb_name))
+
+
+@router.post('/{kb_name}/stats/repair', summary='统计对账与修复（chunk_count 漂移）', dependencies=_PERM_MANAGE)
+async def post_stats_repair(
+    db: CurrentSession,
+    current_namespace: CurrentNamespace,
+    kb_name: Annotated[str, Path(description='知识库标识')],
+    user: CurrentKbUser,
+) -> ResponseSchemaModel[dict]:
+    """同步执行对账（单库百级文档，秒级完成），不入队。
+
+    向量侧只报告不重建——向量修复必须走重新摄取，静默重建是危险动作。
+    """
+    await kb_service.get_detail(db=db, kb_name=kb_name, user=user)
+    report = await repair_kb_stats(db=db, kb_name=kb_name, plugin_namespace=current_namespace)
+    return response_base.success(data=report)

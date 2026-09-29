@@ -15,14 +15,13 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from backend.src.app.kb.model import KbAcl, KnowledgeBase
 from backend.src.app.kb.service.acl.resolver import Perm, resolve_kb_perm, resolve_visible_kbs
-from backend.src.core.config import settings
-from backend.src.database.db import MappedBase, get_database_url
+from backend.src.app.kb.tests.pg_schema import ensure_test_database, reset_test_schema
+from backend.src.database.db import get_database_url
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncEngine
@@ -46,36 +45,13 @@ def _pg_integration_env() -> Any:
 
 
 async def _ensure_test_db() -> None:
-    import asyncpg
-
-    conn = await asyncpg.connect(
-        host=settings.DATABASE_HOST,
-        port=settings.DATABASE_PORT,
-        user=settings.DATABASE_USER,
-        password=settings.DATABASE_PASSWORD,
-        database='postgres',
-        timeout=3,
-    )
-    try:
-        name = f'{settings.DATABASE_SCHEMA}_test'
-        exists = await conn.fetchval('SELECT 1 FROM pg_database WHERE datname = $1', name)
-        if not exists:
-            await conn.execute(f'CREATE DATABASE "{name}"')
-    finally:
-        await conn.close()
+    """委托共享助手（定义见 `pg_schema.py`）。"""
+    await ensure_test_database()
 
 
 async def _prepare_schema(engine: AsyncEngine) -> None:
-    """测试库 schema 对齐 v2（与 test_kb_owner_pg 同策略）。"""
-    async with engine.begin() as conn:
-        await conn.execute(text('DROP TABLE IF EXISTS rag_kb_acl'))
-        await conn.execute(text('DROP TABLE IF EXISTS rag_doc_acl'))
-        await conn.execute(text('DROP TABLE IF EXISTS rag_acl_audit'))
-        await conn.execute(text('ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS owner_id VARCHAR(64)'))
-        await conn.execute(
-            text('ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE NOT NULL')
-        )
-        await conn.run_sync(MappedBase.metadata.create_all)
+    """委托共享助手：按模型元数据重建全部业务表（见 `pg_schema.py`）。"""
+    await reset_test_schema(engine)
 
 
 def _run_resolve(*, kbs: list[dict[str, Any]], user: dict[str, Any]) -> tuple[dict[str, Perm | None], list[str]]:

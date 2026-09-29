@@ -44,6 +44,9 @@ class KnowledgeBase(MappedBase):
         comment='检索默认参数（D17：search_mode/recall_top_k/final_top_k/similarity_threshold/use_reranker）',
     )
     collections_used: Mapped[list[Any]] = mapped_column(JSON, default=list, comment='已写入的集合目录')
+    sample_questions: Mapped[list[Any]] = mapped_column(
+        JSON, default=list, comment='示例问题（KB 元数据，供前端引导与 Agent 规划参考，Phase 4）'
+    )
     owner_id: Mapped[str | None] = mapped_column(
         String(64), nullable=True, comment='库所有者用户 ID（建库人，资源级角色见 rag_kb_acl perm=owner）'
     )

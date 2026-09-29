@@ -25,9 +25,9 @@ from backend.src.app.kb.service.acl.entries import acl_entry_service
 from backend.src.app.kb.service.acl.resolver import Perm, resolve_kb_perm
 from backend.src.app.kb.service.acl.scope import UserContext
 from backend.src.app.kb.service.kb_service import kb_service
+from backend.src.app.kb.tests.pg_schema import ensure_test_database, reset_test_schema
 from backend.src.common.exception import errors
-from backend.src.core.config import settings
-from backend.src.database.db import MappedBase, get_database_url
+from backend.src.database.db import get_database_url
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncEngine
@@ -52,41 +52,18 @@ def _pg_integration_env() -> Any:
 
 
 async def _ensure_test_db() -> None:
-    """幂等：确保 ragf_test 库存在（与 test_integration_pg 同策略）。"""
-    import asyncpg
-
-    conn = await asyncpg.connect(
-        host=settings.DATABASE_HOST,
-        port=settings.DATABASE_PORT,
-        user=settings.DATABASE_USER,
-        password=settings.DATABASE_PASSWORD,
-        database='postgres',
-        timeout=3,
-    )
-    try:
-        name = f'{settings.DATABASE_SCHEMA}_test'
-        exists = await conn.fetchval('SELECT 1 FROM pg_database WHERE datname = $1', name)
-        if not exists:
-            await conn.execute(f'CREATE DATABASE "{name}"')
-    finally:
-        await conn.close()
+    """委托共享助手（定义见 `pg_schema.py`）。"""
+    await ensure_test_database()
 
 
 async def _prepare_schema(engine: AsyncEngine) -> None:
-    """测试库 schema 对齐 v2：ACL v1 表为破坏性重构，DROP 后由 create_all 重建；
-    knowledge_bases 旧表幂等补列（与 ragf_schema_migrations 对齐）；sys_user 为
-    admin 域表（Base 元数据，不在 MappedBase.create_all 内），建最小结构供
-    Owner 转移的存在性校验使用。"""
+    """委托共享助手重建 schema，再种入 Owner 转移用到的 sys_user 行。
+
+    `sys_user` 属 admin 域（Base 元数据，不在 `MappedBase.create_all` 内），
+    由 `pg_schema.reset_test_schema` 建最小结构，行由本模块自己种。
+    """
+    await reset_test_schema(engine)
     async with engine.begin() as conn:
-        await conn.execute(text('DROP TABLE IF EXISTS rag_kb_acl'))
-        await conn.execute(text('DROP TABLE IF EXISTS rag_doc_acl'))
-        await conn.execute(text('DROP TABLE IF EXISTS rag_acl_audit'))
-        for stmt in (
-            'ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS owner_id VARCHAR(64)',
-            'ALTER TABLE knowledge_bases ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT FALSE NOT NULL',
-        ):
-            await conn.execute(text(stmt))
-        await conn.run_sync(MappedBase.metadata.create_all)
         await conn.execute(
             text(
                 'INSERT INTO sys_user '
