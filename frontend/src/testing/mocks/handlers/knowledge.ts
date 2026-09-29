@@ -47,7 +47,12 @@ const buildPreview = (documentId: string, name: string, offset: number) => {
     };
   }
   if (['docx', 'xlsx', 'pptx'].includes(ext)) {
-    return { document_id: documentId, name, kind: 'office', status: 'converting' };
+    return {
+      document_id: documentId,
+      name,
+      kind: 'office',
+      status: 'converting',
+    };
   }
   if (['png', 'jpg', 'jpeg'].includes(ext)) {
     return {
@@ -71,32 +76,51 @@ const buildPreview = (documentId: string, name: string, offset: number) => {
 };
 
 /** 导出任务的 mock 状态：发起后立即置 success，便于断言「提交 → 拿到下载 URL」这条链路。 */
-let mockExports: Record<string, { export_id: string; status: string; document_count: number; size_bytes: number; error: string | null; created_time: string; url: string | null }> = {};
+let mockExports: Record<
+  string,
+  {
+    export_id: string;
+    status: string;
+    document_count: number;
+    size_bytes: number;
+    error: string | null;
+    created_time: string;
+    url: string | null;
+  }
+> = {};
 
 export const resetKnowledgeExports = () => {
   mockExports = {};
 };
 
 export const knowledgeExportHandlers = [
-  http.post(`${env.API_URL}/api/v1/knowledge_bases/:kbName/export`, async ({ params }) => {
-    await networkDelay();
-    const exportId = `exp-${Object.keys(mockExports).length + 1}`;
-    mockExports[exportId] = {
-      export_id: exportId,
-      status: 'pending',
-      document_count: mockDocuments.length,
-      size_bytes: 0,
-      error: null,
-      created_time: new Date().toISOString(),
-      url: null,
-    };
-    return HttpResponse.json(ok({ export_id: exportId, kb_name: params.kbName, status: 'pending' }));
-  }),
+  http.post(
+    `${env.API_URL}/api/v1/knowledge_bases/:kbName/export`,
+    async ({ params }) => {
+      await networkDelay();
+      const exportId = `exp-${Object.keys(mockExports).length + 1}`;
+      mockExports[exportId] = {
+        export_id: exportId,
+        status: 'pending',
+        document_count: mockDocuments.length,
+        size_bytes: 0,
+        error: null,
+        created_time: new Date().toISOString(),
+        url: null,
+      };
+      return HttpResponse.json(
+        ok({ export_id: exportId, kb_name: params.kbName, status: 'pending' }),
+      );
+    },
+  ),
 
-  http.get(`${env.API_URL}/api/v1/knowledge_bases/:kbName/exports`, async () => {
-    await networkDelay();
-    return HttpResponse.json(ok(Object.values(mockExports)));
-  }),
+  http.get(
+    `${env.API_URL}/api/v1/knowledge_bases/:kbName/exports`,
+    async () => {
+      await networkDelay();
+      return HttpResponse.json(ok(Object.values(mockExports)));
+    },
+  ),
 
   http.get(
     `${env.API_URL}/api/v1/knowledge_bases/:kbName/exports/:exportId`,
@@ -104,13 +128,138 @@ export const knowledgeExportHandlers = [
       await networkDelay();
       const item = mockExports[String(params.exportId)];
       if (!item) {
-        return HttpResponse.json({ code: 404, msg: '导出任务不存在', data: null }, { status: 404 });
+        return HttpResponse.json(
+          { code: 404, msg: '导出任务不存在', data: null },
+          { status: 404 },
+        );
       }
       // 第一次查询即视为打包完成，让前端能一次轮询到终态
       item.status = 'success';
       item.size_bytes = 2048;
       item.url = 'https://example.invalid/export.zip';
       return HttpResponse.json(ok(item));
+    },
+  ),
+];
+
+/** 文件夹树 mock：内存维护 parent_id 关系，覆盖树组装与 CRUD 两条链路。 */
+type MockFolder = {
+  folder_id: string;
+  kb_name: string;
+  plugin_namespace: string;
+  parent_id: string | null;
+  name: string;
+  sort_order: number;
+  document_count: number;
+  created_time: string;
+  updated_time: string | null;
+};
+
+let mockFolders: MockFolder[] = [];
+
+export const seedKnowledgeFolders = (items: Partial<MockFolder>[]) => {
+  mockFolders = items.map((item, index) => ({
+    folder_id: item.folder_id ?? `fld-${index + 1}`,
+    kb_name: item.kb_name ?? 'kb1',
+    plugin_namespace: 'core',
+    parent_id: item.parent_id ?? null,
+    name: item.name ?? `folder-${index + 1}`,
+    sort_order: item.sort_order ?? 0,
+    document_count: item.document_count ?? 0,
+    created_time: new Date().toISOString(),
+    updated_time: null,
+  }));
+};
+
+export const resetKnowledgeFolders = () => {
+  mockFolders = [];
+};
+
+const buildTree = (kbName: string, parentId: string | null = null): unknown[] =>
+  mockFolders
+    .filter(
+      (folder) => folder.kb_name === kbName && folder.parent_id === parentId,
+    )
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((folder) => ({
+      ...folder,
+      children: buildTree(kbName, folder.folder_id),
+    }));
+
+export const knowledgeFolderHandlers = [
+  http.get(
+    `${env.API_URL}/api/v1/knowledge_bases/:kbName/folders/tree`,
+    async ({ params }) => {
+      await networkDelay();
+      return HttpResponse.json(ok(buildTree(String(params.kbName))));
+    },
+  ),
+
+  http.post(
+    `${env.API_URL}/api/v1/knowledge_bases/:kbName/folders`,
+    async ({ params, request }) => {
+      await networkDelay();
+      const body = (await request.json()) as {
+        name: string;
+        parent_id?: string | null;
+      };
+      const folder: MockFolder = {
+        folder_id: `fld-${mockFolders.length + 1}`,
+        kb_name: String(params.kbName),
+        plugin_namespace: 'core',
+        parent_id: body.parent_id ?? null,
+        name: body.name,
+        sort_order: 0,
+        document_count: 0,
+        created_time: new Date().toISOString(),
+        updated_time: null,
+      };
+      mockFolders = [...mockFolders, folder];
+      return HttpResponse.json(ok(folder));
+    },
+  ),
+
+  http.patch(
+    `${env.API_URL}/api/v1/knowledge_bases/:kbName/folders/:folderId`,
+    async ({ params, request }) => {
+      await networkDelay();
+      const body = (await request.json()) as { name?: string };
+      mockFolders = mockFolders.map((folder) =>
+        folder.folder_id === params.folderId
+          ? { ...folder, name: body.name ?? folder.name }
+          : folder,
+      );
+      return HttpResponse.json(
+        ok(mockFolders.find((folder) => folder.folder_id === params.folderId)),
+      );
+    },
+  ),
+
+  http.delete(
+    `${env.API_URL}/api/v1/knowledge_bases/:kbName/folders/:folderId`,
+    async ({ params }) => {
+      await networkDelay();
+      // 与后端一致：删除时子文件夹上浮到被删项的父级，而不是级联删除
+      const target = mockFolders.find(
+        (folder) => folder.folder_id === params.folderId,
+      );
+      const promoted = mockFolders.filter(
+        (folder) => folder.parent_id === params.folderId,
+      );
+      mockFolders = mockFolders
+        .filter((folder) => folder.folder_id !== params.folderId)
+        .map((folder) =>
+          folder.parent_id === params.folderId
+            ? { ...folder, parent_id: target?.parent_id ?? null }
+            : folder,
+        );
+      return HttpResponse.json(
+        ok({
+          folder_id: params.folderId,
+          promoted_folders: promoted.length,
+          promoted_documents: 0,
+        }),
+      );
     },
   ),
 ];
@@ -136,7 +285,8 @@ export const knowledgeHandlers = [
           doc.document_id.toLowerCase().includes(keyword),
       );
     }
-    if (sourceType) items = items.filter((doc) => doc.source_type === sourceType);
+    if (sourceType)
+      items = items.filter((doc) => doc.source_type === sourceType);
     if (status) items = items.filter((doc) => doc.status === status);
 
     const total = items.length;
@@ -161,11 +311,9 @@ export const knowledgeHandlers = [
       const kbName = url.pathname.split('/').at(-2);
       const docs = mockDocuments.filter((doc) => doc.kb_name === kbName);
 
-      const fields: Array<keyof Pick<MockDocument, 'source_type' | 'pipeline' | 'status'>> = [
-        'source_type',
-        'pipeline',
-        'status',
-      ];
+      const fields: Array<
+        keyof Pick<MockDocument, 'source_type' | 'pipeline' | 'status'>
+      > = ['source_type', 'pipeline', 'status'];
       const facets = fields.flatMap((field) => {
         const counts = new Map<string, number>();
         for (const doc of docs) {
@@ -204,33 +352,36 @@ export const knowledgeHandlers = [
   ),
 
   // 两段式入库：上传只做对象存储 + 登记（POST /knowledge_bases/{kb}/documents）
-  http.post(`${env.API_URL}/api/v1/knowledge_bases/:kbName/documents`, async ({ request, params }) => {
-    await networkDelay();
-    const form = await request.formData();
-    const file = form.get('file');
-    const kbName = String(params.kbName ?? '');
-    const sourceType = String(form.get('source_type') ?? 'file');
-    const name =
-      file instanceof File ? file.name : 'mock-upload-' + Date.now();
+  http.post(
+    `${env.API_URL}/api/v1/knowledge_bases/:kbName/documents`,
+    async ({ request, params }) => {
+      await networkDelay();
+      const form = await request.formData();
+      const file = form.get('file');
+      const kbName = String(params.kbName ?? '');
+      const sourceType = String(form.get('source_type') ?? 'file');
+      const name =
+        file instanceof File ? file.name : 'mock-upload-' + Date.now();
 
-    const doc: MockDocument = {
-      document_id: `mock-${Math.random().toString(16).slice(2)}`,
-      kb_name: kbName,
-      plugin_namespace: 'core',
-      name,
-      source_type: sourceType,
-      source_uri: `kb/core/${kbName}/doc/${name}`,
-      pipeline: '',
-      status: 'pending',
-      sha256: null,
-      chunk_count: 0,
-      active_version: 1,
-      created_time: new Date().toISOString(),
-      updated_time: new Date().toISOString(),
-    };
-    mockDocuments = [doc, ...mockDocuments];
-    return HttpResponse.json(ok(doc));
-  }),
+      const doc: MockDocument = {
+        document_id: `mock-${Math.random().toString(16).slice(2)}`,
+        kb_name: kbName,
+        plugin_namespace: 'core',
+        name,
+        source_type: sourceType,
+        source_uri: `kb/core/${kbName}/doc/${name}`,
+        pipeline: '',
+        status: 'pending',
+        sha256: null,
+        chunk_count: 0,
+        active_version: 1,
+        created_time: new Date().toISOString(),
+        updated_time: new Date().toISOString(),
+      };
+      mockDocuments = [doc, ...mockDocuments];
+      return HttpResponse.json(ok(doc));
+    },
+  ),
 
   http.get(
     `${env.API_URL}/api/v1/documents/:documentId`,
@@ -282,7 +433,11 @@ export const knowledgeHandlers = [
         );
       }
       const body = (await request.json()) as Partial<MockDocument>;
-      const updated = { ...doc, ...body, updated_time: new Date().toISOString() };
+      const updated = {
+        ...doc,
+        ...body,
+        updated_time: new Date().toISOString(),
+      };
       mockDocuments = mockDocuments.map((item) =>
         item.document_id === updated.document_id ? updated : item,
       );
@@ -355,7 +510,9 @@ export const knowledgeHandlers = [
         new URL(request.url).searchParams.get('offset'),
         0,
       );
-      return HttpResponse.json(ok(buildPreview(doc.document_id, doc.name, offset)));
+      return HttpResponse.json(
+        ok(buildPreview(doc.document_id, doc.name, offset)),
+      );
     },
   ),
 

@@ -47,6 +47,8 @@ import {
   DocumentListTable,
   type DocumentRow,
 } from './documents/document-list-table';
+import { FolderPanel } from '../folders/folder-panel';
+import { ROOT_FOLDER_KEY } from '../../api/folders';
 import { AclDialog } from './acl-dialog';
 import { ExportDialog } from './export-dialog';
 import { DocumentUploadDialog } from './documents/document-upload-dialog';
@@ -79,6 +81,7 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
   const [uploadOpen, setUploadOpen] = useState(false)
   const [exportOpen, setExportOpen] = useState(false);
   const [aclOpen, setAclOpen] = useState(false);
+  const [folderKey, setFolderKey] = useState<string>(ROOT_FOLDER_KEY);
   const [detailDoc, setDetailDoc] = useState<DocumentItem | null>(null);
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
@@ -119,6 +122,9 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
       query: query || undefined,
       sourceType: sourceType ?? undefined,
       status: status ?? undefined,
+      // 文件夹过滤：根目录用 root_only 表达（后端 folder_id IS NULL），其余按 id 过滤
+      folderId: folderKey === ROOT_FOLDER_KEY ? undefined : folderKey,
+      rootOnly: folderKey === ROOT_FOLDER_KEY,
       page,
       size: pageSize,
     },
@@ -289,7 +295,15 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
+      <div className="flex min-h-0 flex-1 gap-4 overflow-hidden">
+        <aside className="hidden w-52 shrink-0 overflow-y-auto rounded-large border border-color-border-2 p-1 lg:block">
+          <FolderPanel
+            kbName={kb.kb_name}
+            selectedKey={folderKey}
+            onSelect={setFolderKey}
+          />
+        </aside>
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto">
         {/* 筛选与批量操作 */}
         <div className="flex flex-wrap items-center gap-2">
           <KnowledgeSearchInput
@@ -466,6 +480,7 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
             />
           </div>
         )}
+        </div>
       </div>
 
       {rows.length > 0 ? (
