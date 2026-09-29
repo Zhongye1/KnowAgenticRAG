@@ -12,17 +12,17 @@
 ACL 与文档接口同源（``_require_kb_perm``）：未达阈值与不存在同形态 404（D50）。
 """
 
-from __future__ import annotations
-
 import asyncio
 
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Path, Query, Response
 from starlette.responses import StreamingResponse
 
 from backend.src.app.kb.crud import document_dao
+from backend.src.app.kb.deps import CurrentKbUser, CurrentNamespace
 from backend.src.app.kb.schema.preview import PreviewItem
 from backend.src.app.kb.service.acl.resolver import Perm, perm_at_least, resolve_kb_perm
 from backend.src.app.kb.service.document_storage import open_kb_object_range, stat_kb_object
@@ -37,11 +37,9 @@ from backend.src.common.security.permission import RequestPermission
 from backend.src.common.security.rbac import DependsRBAC
 from backend.src.core.config import settings
 
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
-    from backend.src.app.kb.deps import CurrentKbUser, CurrentNamespace
-    from backend.src.database.db import CurrentSession, CurrentSessionTransaction
+# 运行期导入（不能用 TYPE_CHECKING 包起来）：FastAPI 在生成 OpenAPI 与解析依赖时
+# 需要按名字取到这些别名，放进 TYPE_CHECKING 会变成无法解析的 ForwardRef。
+from backend.src.database.db import CurrentSession, CurrentSessionTransaction
 
 _PERM_READ = [DependsJwtAuth, Depends(RequestPermission(RAG_KB_READ)), DependsRBAC]
 
