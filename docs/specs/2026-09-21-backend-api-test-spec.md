@@ -225,7 +225,7 @@ L2 与 L3 的差别不是「快慢」，而是**断言对象**：L2 断言单个
 | 阶段 | 接口 | 断言 |
 | --- | --- | --- |
 | 上传 | `POST /knowledge_bases/{kb}/documents` | `status=pending`、`document_id`、`sha256` 64 位、`source_uri` 非空 |
-| 上传负例 | 同上 | 格式子集外 **415**；空文件 **400**；超限 **422**（结构化 detail，`code=file_too_large`） |
+| 上传负例 | 同上 | 格式子集外 **415**；空文件 **400**；超限 **422**（`msg` 为可读文案字符串，结构化 `code=file_too_large` 在 `data`） |
 | 触发 | `POST /{kb}/documents/{id}/ingest` | `queued=true` |
 | 状态 | `GET /{kb}/documents/{id}/status` | 轮询到 `ready`，状态不回退 |
 | 检索 | `POST /rag/search` | `sources.text` 非空、`route.selected` 含 `text`、`chunk_id` 形如 `{doc}:{ver}:{idx}`、`steps` 含 recall/rerank/hydrate |

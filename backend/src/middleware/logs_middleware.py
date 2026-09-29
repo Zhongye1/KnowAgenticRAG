@@ -26,8 +26,9 @@ def as_message(value: Any) -> str | None:
     """
     归一化落库用的 ``msg``
 
-    错误信封的 ``msg`` 可能是结构化载荷（如摄取限额 422 的 ``{code, reason, suggestion}``），
-    而 ``CreateOperaLogParam.msg`` 是文本列——审计只读，不值得为此放宽 schema，
+    异常处理器已把信封 ``msg`` 收敛为字符串（结构化 detail 改走 ``data``），此处保留兜底：
+    ``getattr(e, 'msg', str(e))`` 仍可能取到任意异常对象上的结构化载荷，而
+    ``CreateOperaLogParam.msg`` 是文本列——审计只读，不值得为此放宽 schema，
     序列化成 JSON 文本落库即可。
 
     :param value: 信封里的 msg（str / dict / None / 其它）
