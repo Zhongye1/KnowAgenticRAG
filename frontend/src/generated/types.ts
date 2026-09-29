@@ -87,6 +87,23 @@ export interface AuthLoginParam {
   captcha?: string | null;
 }
 
+export interface BatchDocumentParam {
+  document_ids: string[];
+}
+
+export interface BatchItemResult {
+  document_id: string;
+  ok: boolean;
+  detail?: string | null;
+}
+
+export interface BatchResult {
+  total: number;
+  succeeded: number;
+  failed: number;
+  items?: BatchItemResult[];
+}
+
 export interface ChatAttachment {
   filename: string;
   content: string;
@@ -333,10 +350,15 @@ export interface DocumentItem {
   sha256?: string | null;
   chunk_count: number;
   active_version: number;
+  folder_id?: string | null;
   ingest_params?: Record<string, unknown>;
   error_message?: string | null;
   created_time: string;
   updated_time?: string | null;
+}
+
+export interface DocumentMoveParam {
+  folder_id?: string | null;
 }
 
 export interface DocumentStatusItem {
@@ -367,6 +389,47 @@ export interface DocumentUploadItem {
   sha256?: string | null;
   source_uri?: string | null;
   created_time: string;
+}
+
+export interface FolderCreateParam {
+  name: string;
+  parent_id?: string | null;
+  sort_order?: number;
+}
+
+export interface FolderItem {
+  folder_id: string;
+  kb_name: string;
+  plugin_namespace: string;
+  parent_id?: string | null;
+  name: string;
+  sort_order: number;
+  document_count?: number;
+  created_time: string;
+  updated_time?: string | null;
+}
+
+export interface FolderMoveParam {
+  parent_id?: string | null;
+  sort_order?: number | null;
+}
+
+export interface FolderTreeNode {
+  folder_id: string;
+  kb_name: string;
+  plugin_namespace: string;
+  parent_id?: string | null;
+  name: string;
+  sort_order: number;
+  document_count?: number;
+  created_time: string;
+  updated_time?: string | null;
+  children?: FolderTreeNode[];
+}
+
+export interface FolderUpdateParam {
+  name?: string | null;
+  sort_order?: number | null;
 }
 
 export interface GetCaptchaDetail {
@@ -822,6 +885,7 @@ export interface KBDetail {
   embedding_model: string;
   query_params?: Record<string, unknown>;
   collections_used?: string[];
+  sample_questions?: string[];
   owner_id?: string | null;
   is_public?: boolean;
   documents?: number;
@@ -858,6 +922,7 @@ export interface KBItem {
   embedding_model: string;
   query_params?: Record<string, unknown>;
   collections_used?: string[];
+  sample_questions?: string[];
   owner_id?: string | null;
   is_public?: boolean;
   documents?: number;
@@ -968,6 +1033,22 @@ export type NoticeType = 0 | 1;
 
 export type PeriodType = 'days' | 'hours' | 'minutes' | 'seconds' | 'microseconds';
 
+export interface PreviewItem {
+  document_id: string;
+  name: string;
+  kind: string;
+  status: string;
+  content_url?: string | null;
+  url?: string | null;
+  content?: string | null;
+  offset?: number;
+  next_offset?: number | null;
+  total_bytes?: number | null;
+  page_count?: number | null;
+  degraded?: boolean;
+  fallback_reason?: string | null;
+}
+
 export interface ProviderConnectivityParam {
   spec: string;
 }
@@ -1058,6 +1139,10 @@ export interface RouteInfoItem {
   selected: string[];
   reason?: string;
   kb_names?: string[];
+}
+
+export interface SampleQuestionParam {
+  questions?: string[];
 }
 
 export type StatusType = 0 | 1;

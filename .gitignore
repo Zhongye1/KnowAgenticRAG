@@ -54,3 +54,5 @@ logs/
 /tmp
 
 **/.obsidian/**
+
+.pnpm-store/
