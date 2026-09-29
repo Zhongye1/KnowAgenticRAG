@@ -391,6 +391,23 @@ export interface DocumentUploadItem {
   created_time: string;
 }
 
+export interface ExportCreated {
+  export_id: string;
+  kb_name: string;
+  status: string;
+}
+
+export interface ExportItem {
+  export_id: string;
+  kb_name?: string | null;
+  status: string;
+  document_count?: number;
+  size_bytes?: number;
+  error?: string | null;
+  created_time?: string | null;
+  url?: string | null;
+}
+
 export interface FolderCreateParam {
   name: string;
   parent_id?: string | null;

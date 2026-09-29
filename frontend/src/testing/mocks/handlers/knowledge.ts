@@ -70,6 +70,51 @@ const buildPreview = (documentId: string, name: string, offset: number) => {
   };
 };
 
+/** 导出任务的 mock 状态：发起后立即置 success，便于断言「提交 → 拿到下载 URL」这条链路。 */
+let mockExports: Record<string, { export_id: string; status: string; document_count: number; size_bytes: number; error: string | null; created_time: string; url: string | null }> = {};
+
+export const resetKnowledgeExports = () => {
+  mockExports = {};
+};
+
+export const knowledgeExportHandlers = [
+  http.post(`${env.API_URL}/api/v1/knowledge_bases/:kbName/export`, async ({ params }) => {
+    await networkDelay();
+    const exportId = `exp-${Object.keys(mockExports).length + 1}`;
+    mockExports[exportId] = {
+      export_id: exportId,
+      status: 'pending',
+      document_count: mockDocuments.length,
+      size_bytes: 0,
+      error: null,
+      created_time: new Date().toISOString(),
+      url: null,
+    };
+    return HttpResponse.json(ok({ export_id: exportId, kb_name: params.kbName, status: 'pending' }));
+  }),
+
+  http.get(`${env.API_URL}/api/v1/knowledge_bases/:kbName/exports`, async () => {
+    await networkDelay();
+    return HttpResponse.json(ok(Object.values(mockExports)));
+  }),
+
+  http.get(
+    `${env.API_URL}/api/v1/knowledge_bases/:kbName/exports/:exportId`,
+    async ({ params }) => {
+      await networkDelay();
+      const item = mockExports[String(params.exportId)];
+      if (!item) {
+        return HttpResponse.json({ code: 404, msg: '导出任务不存在', data: null }, { status: 404 });
+      }
+      // 第一次查询即视为打包完成，让前端能一次轮询到终态
+      item.status = 'success';
+      item.size_bytes = 2048;
+      item.url = 'https://example.invalid/export.zip';
+      return HttpResponse.json(ok(item));
+    },
+  ),
+];
+
 export const knowledgeHandlers = [
   http.get(`${env.API_URL}/api/v1/documents`, async ({ request }) => {
     await networkDelay();
