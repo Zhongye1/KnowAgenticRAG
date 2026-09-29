@@ -21,25 +21,30 @@ const ProfileRoute = () => {
   if (!user.data) return null;
 
   return (
-    <ContentLayout title="Profile">
+    <ContentLayout title="个人信息">
       <div className="overflow-hidden bg-color-bg-2 shadow-2-center sm:rounded-large">
         <div className="px-4 py-5 sm:px-6">
           <div className="flex justify-between">
             <h3 className="text-lg font-medium leading-6 text-color-text-1">
-              User Information
+              账户信息
             </h3>
           </div>
           <p className="mt-1 max-w-2xl text-sm text-color-text-3">
-            Personal details of the user.
+            当前登录账户的资料与权限归属。
           </p>
         </div>
         <div className="border-t border-color-border-2 px-4 py-5 sm:p-0">
           <dl className="sm:divide-y sm:divide-color-border-2">
-            <Entry label="First Name" value={user.data.firstName} />
-            <Entry label="Last Name" value={user.data.lastName} />
-            <Entry label="Email Address" value={user.data.email} />
-            <Entry label="Role" value={user.data.role} />
-            <Entry label="Bio" value={user.data.bio} />
+            <Entry label="用户名" value={user.data.username} />
+            <Entry label="昵称" value={user.data.nickname} />
+            <Entry label="邮箱" value={user.data.email ?? '-'} />
+            <Entry label="手机号" value={user.data.phone ?? '-'} />
+            <Entry label="部门" value={user.data.dept ?? '-'} />
+            <Entry label="角色" value={user.data.roles.join('、') || '-'} />
+            <Entry
+              label="超级管理员"
+              value={user.data.is_superuser ? '是' : '否'}
+            />
           </dl>
         </div>
       </div>

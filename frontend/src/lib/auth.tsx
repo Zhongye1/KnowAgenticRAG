@@ -7,7 +7,7 @@ import { paths } from '@/config/paths';
 import { login } from '@/generated/auth/login';
 import { logout } from '@/generated/auth/logout';
 import { register } from '@/generated/auth/register';
-import type { User } from '@/types/api';
+import type { GetCurrentUserInfoWithRelationDetail } from '@/generated/types';
 
 import { api, setAccessToken } from './api-client';
 
@@ -18,6 +18,15 @@ export const loginInputSchema = z.object({
   username: z.string().min(1, '请输入用户名'),
   password: z.string().min(1, '请输入密码'),
 });
+
+/**
+ * 会话用户 = 后端 `GET /api/v1/sys/users/me` 的返回结构。
+ *
+ * 此前这里用的是 fba 模板遗留的 `types/api.ts:User`（`firstName/lastName/role`），
+ * 与后端根本对不上，只能靠 `as unknown as User` 强转，消费端读到的全是 undefined。
+ * 现在直接对齐生成类型。
+ */
+export type SessionUser = GetCurrentUserInfoWithRelationDetail;
 
 export type LoginInput = z.infer<typeof loginInputSchema> & {
   uuid?: string;
@@ -47,25 +56,23 @@ const authConfig = {
       const body = await api.get(`/api/v1/sys/users/me`, {
         skipAuthErrorHandling: true,
       });
-      // 后端用户结构与 demo 脚手架不同（username/nickname vs firstName/lastName），
-      // 消费端（dashboard/profile 等）仍按旧结构取字段，先做兼容转换。
-      return (body as { data: User }).data as unknown as User;
+      return (body as { data: SessionUser }).data;
     } catch {
       // 未登录/凭证失效视为匿名用户，由 ProtectedRoute 决定是否跳转登录页
-      return null as unknown as User;
+      return null;
     }
   },
   loginFn: async (data: LoginInput) => {
     const res = await login(data);
     // access_token 由前端保存，后续请求经 api-client 注入 Authorization: Bearer
     setAccessToken(res.access_token);
-    return res.user as unknown as User;
+    return res.user as unknown as SessionUser;
   },
   registerFn: async (data: RegisterInput) => {
     // 当前后端注册只落库、不发 token（见 docs/工程治理/auth-flow.md），
     // 不置登录态，注册成功后由表单引导去登录页。
     await register(data);
-    return null as unknown as User;
+    return null;
   },
   logoutFn: async () => {
     await logout();
@@ -107,3 +114,12 @@ export const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
   return children;
 };
+
+/**
+ * 当前用户是否超级管理员（admin 面板准入）。
+ *
+ * **这只是体验级约束**：后端 FastAPI 依赖与 repository 可见性查询才是最终授权边界
+ * （见 `docs/工程治理/` 与 backend/AGENTS.md §5）。前端守卫的价值是别把无权入口摆出来，
+ * 不是替代后端校验。
+ */
+export const useIsSuperuser = () => useUser().data?.is_superuser === true;

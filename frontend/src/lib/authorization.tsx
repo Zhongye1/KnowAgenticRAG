@@ -32,10 +32,13 @@ export const useAuthorization = () => {
     throw Error('User does not exist!');
   }
 
+  // 后端角色是 sys_role 行（会话里是名字数组），不是模板里的 ADMIN/USER 二值；
+  // 这里把模板语义映射到真实字段：ADMIN ⇔ is_superuser。
   const checkAccess = React.useCallback(
     ({ allowedRoles }: { allowedRoles: RoleTypes[] }) => {
       if (allowedRoles && allowedRoles.length > 0 && user.data) {
-        return allowedRoles?.includes(user.data.role);
+        if (allowedRoles.includes(ROLES.ADMIN)) return user.data.is_superuser;
+        return true;
       }
 
       return true;
@@ -43,7 +46,7 @@ export const useAuthorization = () => {
     [user.data],
   );
 
-  return { checkAccess, role: user.data.role };
+  return { checkAccess, role: user.data.is_superuser ? ROLES.ADMIN : ROLES.USER };
 };
 
 type AuthorizationProps = {

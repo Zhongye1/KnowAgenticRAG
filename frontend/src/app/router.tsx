@@ -41,9 +41,45 @@ export const createAppRouter = (queryClient: QueryClient) =>
       ErrorBoundary: AppRootErrorBoundary,
       children: [
         {
+          // 旧模板页（读假接口的 fba 脚手架）已被管理面板取代；路径常量保留并指向新面板，
+          // 此处再兜一层重定向，避免旧链接 404
           path: paths.app.users.path,
-          handle: { title: 'Users' },
-          lazy: () => import('./routes/app/users').then(convert(queryClient)),
+          element: <Navigate to={paths.app.admin.users.getHref()} replace />,
+        },
+        {
+          path: paths.app.admin.path,
+          handle: { title: '管理面板' },
+          lazy: () => import('./routes/app/admin/root').then(convert(queryClient)),
+          children: [
+            {
+              index: true,
+              element: <Navigate to={paths.app.admin.users.getHref()} replace />,
+            },
+            {
+              path: paths.app.admin.users.path,
+              handle: { title: '用户管理' },
+              lazy: () =>
+                import('./routes/app/admin/users').then(convert(queryClient)),
+            },
+            {
+              path: paths.app.admin.depts.path,
+              handle: { title: '部门管理' },
+              lazy: () =>
+                import('./routes/app/admin/depts').then(convert(queryClient)),
+            },
+            {
+              path: paths.app.admin.roles.path,
+              handle: { title: '角色管理' },
+              lazy: () =>
+                import('./routes/app/admin/roles').then(convert(queryClient)),
+            },
+            {
+              path: paths.app.admin.kbAcl.path,
+              handle: { title: '知识库授权' },
+              lazy: () =>
+                import('./routes/app/admin/kb-acl').then(convert(queryClient)),
+            },
+          ],
         },
         {
           path: paths.app.profile.path,

@@ -36,7 +36,8 @@ export const DeleteUser = ({ id }: DeleteUserProps) => {
     },
   });
 
-  if (user.data?.id === id) return null;
+  // 模板 id 是 string，后端用户 id 是 number：显式比较，避免误判（整块待被管理面板取代）
+  if (user.data && String(user.data.id) === String(id)) return null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

@@ -52,8 +52,11 @@ export const CommentsList = ({ discussionId }: CommentsListProps) => {
             className="w-full bg-color-bg-2 p-4 shadow-2-center"
           >
             <Authorization
+              // 模板遗留：评论/讨论功能未挂路由（app/router.tsx 无对应路由），
+              // 其类型仍基于 fba 脚手架的角色模型；会话用户已换成后端真实结构，
+              // 故此处显式经 unknown 桥接。整块属待清理债务，不是本面板的依赖。
               policyCheck={POLICIES['comment:delete'](
-                user.data as User,
+                user.data as unknown as User,
                 comment,
               )}
             >

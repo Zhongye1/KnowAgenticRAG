@@ -6,13 +6,14 @@ import {
   Send,
   LibraryBig,
   MessageSquarePlus,
+  ShieldCheck,
   Sparkles,
   UserRound,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router';
 
 import { paths } from '@/config/paths';
-import { useLogout, useUser } from '@/lib/auth';
+import { useIsSuperuser, useLogout, useUser } from '@/lib/auth';
 import {
   Sidebar,
   SidebarContent,
@@ -50,6 +51,13 @@ const NAV_TABS = [
   },
 ] as const;
 
+// 管理面板入口与业务导航分开声明，便于按角色拼接
+const ADMIN_TAB = {
+  title: '管理面板',
+  url: paths.app.admin.getHref(),
+  icon: ShieldCheck,
+} as const;
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { pathname } = useLocation();
   const user = useUser();
@@ -59,8 +67,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     pathname === url || pathname.startsWith(`${url}/`);
 
   const userName = user.data
-    ? `${user.data.firstName} ${user.data.lastName}`.trim()
+    ? user.data.nickname || user.data.username
     : '';
+  // 管理面板入口只对超管展示（体验级约束，后端权限码才是边界）
+  const navTabs = useIsSuperuser()
+    ? [...NAV_TABS, ADMIN_TAB]
+    : NAV_TABS;
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -84,7 +96,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            {NAV_TABS.map((item) => (
+            {navTabs.map((item) => (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton
                   asChild
