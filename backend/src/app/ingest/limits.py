@@ -1,8 +1,12 @@
 """摄取限额前置校验（双管线摄取 spec D8，EagleRAG ingest/limits.py 迁移）。
 
 在 MinIO 上传 / Celery 派发 / MinerU 与 Knowhere 调用**之前**拒绝超限文件，
-错误结构化（code/reason/suggestion），API 层映射 422 ``detail``。当前上限对齐
-MinerU 精提取 API（200 MiB / 200 页）；Knowhere api 模式底层同为 MinerU。
+错误结构化（code/reason/suggestion + public 标记，见 ``to_detail``），API 层映射
+422 ``detail``。当前上限对齐 MinerU 精提取 API（200 MiB / 200 页）；Knowhere api
+模式底层同为 MinerU。
+
+文案面向终端用户（prod 也放行）：只说用户能行动的信息，引擎名/库报错这类内部细节
+只进服务端日志。
 
 页数统计用仓库既有依赖 pypdfium2（rapidocr 已引入），不新增 pypdf。
 """
@@ -10,6 +14,8 @@ MinerU 精提取 API（200 MiB / 200 页）；Knowhere api 模式底层同为 Mi
 from __future__ import annotations
 
 from typing import Any
+
+from backend.src.common.log import log
 
 __all__ = [
     'IngestLimitError',
@@ -45,8 +51,17 @@ class IngestLimitError(Exception):
         return self.reason
 
     def to_detail(self) -> dict[str, Any]:
-        """422 响应的 JSON ``detail`` 载荷（suggestion 为空时不输出该键）。"""
-        detail: dict[str, Any] = {'code': self.code, 'reason': self.reason}
+        """422 响应的 JSON ``detail`` 载荷（suggestion 为空时不输出该键）。
+
+        ``public: True`` 声明这段文案对外可见：限额原因与纠正建议是**用户自己能处置**的
+        信息，prod 也应当放行（否则线上用户只收到一句无法行动的通用错误）。异常的
+        脱敏策略见 ``common/exception/exception_handler.py``。
+        """
+        detail: dict[str, Any] = {
+            'code': self.code,
+            'reason': self.reason,
+            'public': True,  # 见 docstring：限额对外可见，exception_handler 据此在 prod 放行
+        }
         if self.suggestion is not None:
             detail['suggestion'] = self.suggestion
         return detail
@@ -78,7 +93,7 @@ def check_size_limit(size_bytes: int) -> None:
         return
     raise IngestLimitError(
         'file_too_large',
-        f'文件大小 {size_bytes} 字节，超过上限 {max_bytes} 字节（MinerU 精提取 API 限制）',
+        f'文件大小 {size_bytes} 字节，超过上限 {max_bytes} 字节',
         suggestion='请压缩或拆分文档后重新上传',
     )
 
@@ -90,9 +105,12 @@ def count_pdf_pages(source: bytes | str) -> int:
     try:
         doc = pdfium.PdfDocument(source)
     except Exception as exc:
+        # 原始异常只进服务端日志：它带 PDFium 的内部术语（如 "Data format error"），
+        # 对用户没有行动价值；而 detail 现在 prod 也对外可见，不该混进对外文案。
+        log.warning(f'PDF 页数统计失败（按不可解析处理）: {exc!r}')
         raise IngestLimitError(
             'pdf_unreadable',
-            f'PDF 无法解析（页数校验失败）: {exc}',
+            'PDF 无法解析（页数校验失败）',
             suggestion='请重新导出或修复 PDF 后重试',
         ) from exc
     try:
@@ -112,7 +130,7 @@ def check_pdf_page_limit(page_count: int) -> None:
         return
     raise IngestLimitError(
         'pdf_too_many_pages',
-        f'PDF 共 {page_count} 页，超过上限 {max_pages} 页（MinerU 精提取 API 限制）',
+        f'PDF 共 {page_count} 页，超过上限 {max_pages} 页',
         suggestion=f'请将 PDF 拆分为不超过 {max_pages} 页的多个文件分别摄取',
     )
 

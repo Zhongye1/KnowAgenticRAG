@@ -121,6 +121,7 @@ async def test_upload_rejects_oversize_file(
     assert '超过上限' in body['msg'], body
     assert body['data']['code'] == 'file_too_large', body
     assert body['data']['suggestion'], body
+    assert body['data']['public'] is True, '限额文案要能在 prod 放行，detail 必须带 public 标记'
 
 
 async def test_replace_document_file_updates_fingerprint(
