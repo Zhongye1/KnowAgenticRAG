@@ -471,6 +471,10 @@ class Settings(BaseSettings):
     # 转换任务独立队列（留空=默认队列 celery；配套 worker 见 docker-compose.yml）
     RAGF_CELERY_PREVIEW_QUEUE: str | None = None
 
+    # 整库导出（§9.2）：异步打包 ZIP 落 MinIO，产物按字节封顶防打满磁盘/对象存储
+    RAGF_EXPORT_MAX_BYTES: int = 2 * 1024 * 1024 * 1024
+    RAGF_CELERY_EXPORT_QUEUE: str | None = None
+
     # ModelProvider（ragf-design D11/D16）
     MODEL_PROVIDER_CACHE_REDIS_PREFIX: str = 'fba:cache:model_provider'
     MODEL_PROVIDER_CACHE_TTL: int = 3600

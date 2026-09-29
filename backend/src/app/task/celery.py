@@ -87,6 +87,9 @@ def init_celery() -> celery.Celery:
     # 文档预览转换（D55）：重操作且与摄取竞争资源，独立队列
     if settings.RAGF_CELERY_PREVIEW_QUEUE:
         task_routes['kb.preview_convert'] = {'queue': settings.RAGF_CELERY_PREVIEW_QUEUE}
+    # 整库导出：同样是重 IO 操作，独立队列避免挤占摄取
+    if settings.RAGF_CELERY_EXPORT_QUEUE:
+        task_routes['kb.export_build'] = {'queue': settings.RAGF_CELERY_EXPORT_QUEUE}
 
     # https://docs.celeryq.dev/en/stable/userguide/configuration.html
     app = celery.Celery(

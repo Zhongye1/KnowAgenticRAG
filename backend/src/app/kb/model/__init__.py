@@ -6,5 +6,6 @@ from backend.src.app.kb.model.document import Document as Document
 from backend.src.app.kb.model.document_dedup import DocumentDedup as DocumentDedup
 from backend.src.app.kb.model.document_keyword import DocumentKeyword as DocumentKeyword
 from backend.src.app.kb.model.document_preview import DocumentPreview as DocumentPreview
+from backend.src.app.kb.model.export import KbExport as KbExport
 from backend.src.app.kb.model.folder import KbFolder as KbFolder
 from backend.src.app.kb.model.knowledge_base import KnowledgeBase as KnowledgeBase
