@@ -19,6 +19,9 @@ vars:
   # Knowhere 自托管解析栈（独立 compose 项目：app + 专用 postgres/redis/localstack，
   # 见 docker/knowhere/compose.yaml；解析凭据在 docker/knowhere/.env 配置）
   KNOWHERE_DIR: ./docker/knowhere
+  # 文档预览转换栈（独立 compose 项目：LibreOffice headless 转换服务，见
+  # docker/libreoffice/compose.yaml；加固参数在 compose 内，可选覆盖见其 .env.example）
+  LIBREOFFICE_DIR: ./docker/libreoffice
 
 tasks:
   dev:
@@ -41,18 +44,21 @@ tasks:
       - sh -c '[ -f .env ] || { echo "缺少根 .env，请先创建：cp .env.example .env（填写 POSTGRES_*/RABBITMQ_* 等）"; exit 1; }'
       - docker compose up -d --wait {{.DEPS_SERVICES}}
       - task: knowhere:up
+      - task: libreoffice:up
 
   deps-down:
     desc: 停止 Docker 依赖
     cmds:
       - docker compose stop {{.DEPS_SERVICES}}
       - task: knowhere:stop
+      - task: libreoffice:stop
 
   deps-status:
     desc: 查看 Docker 依赖运行状态
     cmds:
       - docker compose ps {{.DEPS_SERVICES}}
       - task: knowhere:ps
+      - task: libreoffice:ps
 
   deps-logs:
     desc: 跟踪 Docker 依赖日志（Knowhere 栈日志另用 task knowhere:logs）
@@ -98,6 +104,40 @@ tasks:
     dir: '{{.KNOWHERE_DIR}}'
     cmds:
       - sh -c 'unset POSTGRES_PASSWORD APP_ENV; docker compose logs -f --tail=100'
+
+  # ==================== 文档预览转换栈（独立 compose 项目，D55） ====================
+  # LibreOffice headless 转换服务（:5030）：Office → 线性化 PDF。
+  # 加固（非 root / rootfs 只读 / cap_drop ALL / tmpfs / 资源上限）见 compose 内注释；
+  # 网络级出网封锁未做，原因与替代方案同样记在该文件头部。
+  libreoffice:up:
+    desc: 拉起预览转换服务（首次构建镜像较慢）
+    dir: '{{.LIBREOFFICE_DIR}}'
+    cmds:
+      - sh -c 'docker compose up -d --build --wait --wait-timeout 240 || echo "⚠️ 转换服务尚未健康，Office 预览会走降级梯（解析产物 Markdown）；task libreoffice:ps 查看"'
+
+  libreoffice:stop:
+    desc: 停止预览转换服务（保留镜像，重启更快）
+    dir: '{{.LIBREOFFICE_DIR}}'
+    cmds:
+      - docker compose stop
+
+  libreoffice:down:
+    desc: 移除预览转换服务容器
+    dir: '{{.LIBREOFFICE_DIR}}'
+    cmds:
+      - docker compose down
+
+  libreoffice:ps:
+    desc: 查看预览转换服务状态
+    dir: '{{.LIBREOFFICE_DIR}}'
+    cmds:
+      - docker compose ps
+
+  libreoffice:logs:
+    desc: 跟踪预览转换服务日志
+    dir: '{{.LIBREOFFICE_DIR}}'
+    cmds:
+      - docker compose logs -f --tail=100
 
   worker:
     desc: 启动 Celery Worker（消息队列消费者）

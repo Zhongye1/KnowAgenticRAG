@@ -10,6 +10,7 @@ import io
 
 from datetime import timedelta
 from pathlib import PurePosixPath
+from typing import Any
 
 from backend.src.common.log import log
 from backend.src.core.config import settings
@@ -21,6 +22,10 @@ __all__ = [
     'get_document_url',
     'kb_object_key',
     'kb_parsed_object_key',
+    'kb_preview_object_key',
+    'kb_preview_objects_by_document',
+    'open_kb_object_range',
+    'stat_kb_object',
     'upload_document_bytes',
 ]
 
@@ -111,3 +116,43 @@ async def kb_tile_objects_by_document(
     except Exception as exc:
         log.warning('枚举 tile 对象失败 prefix={}: {}', prefix, exc)
         return 0
+
+
+def kb_preview_object_key(plugin_namespace: str, kb_name: str, document_id: str) -> str:
+    """预览转换产物对象键（``.../preview/converted.pdf``，D55）。"""
+    return f'kb/{plugin_namespace}/{kb_name}/{document_id}/preview/converted.pdf'
+
+
+async def kb_preview_objects_by_document(
+    plugin_namespace: str,
+    kb_name: str,
+    document_id: str,
+) -> int:
+    """删除文档预览产物（``.../preview/`` 前缀，尽力而为）。"""
+    prefix = f'kb/{plugin_namespace}/{kb_name}/{document_id}/preview/'
+    try:
+        objects = await asyncio.to_thread(
+            list, minio_client.list_objects(settings.MINIO_KB_BUCKET, prefix=prefix, recursive=True)
+        )
+        for obj in objects:
+            if obj.object_name:
+                await delete_document_object(obj.object_name)
+        return len(objects)
+    except Exception as exc:
+        log.warning('枚举 preview 对象失败 prefix={}: {}', prefix, exc)
+        return 0
+
+
+def stat_kb_object(object_key: str) -> tuple[int, str]:
+    """返回 (字节数, etag)。Range 代理需要 size 才能算 Content-Range。"""
+    info = minio_client.stat_object(settings.MINIO_KB_BUCKET, object_key)
+    return int(info.size or 0), str(info.etag or '').strip('"')
+
+
+def open_kb_object_range(object_key: str, offset: int = 0, length: int = 0) -> Any:
+    """打开对象的字节区间流（**调用方负责 close + release_conn**）。
+
+    MinIO SDK 的 ``get_object(offset, length)`` 原生映射为 HTTP Range，无需整段读入
+    内存——大 PDF 的按需分页靠它，不能被 ``download_document_bytes`` 的全量 read 替代。
+    """
+    return minio_client.get_object(settings.MINIO_KB_BUCKET, object_key, offset=offset, length=length)

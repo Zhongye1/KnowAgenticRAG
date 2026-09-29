@@ -364,6 +364,12 @@ services:
   # 也可 task knowhere:up 单独运维）。容器部署时让 ragf_server/worker 加入外部网络
   # knowhere-net（docker network create knowhere-net），经 http://knowhere:5005 访问。
 
+  # 文档预览转换服务（D55）同样不在本 compose 定义：独立栈见 docker/libreoffice/compose.yaml
+  # （LibreOffice headless + qpdf + CJK 字体；task deps-up 经根 Taskfile 自动拉起，
+  # 也可 task libreoffice:up 单独运维）。它按沙盒加固（非 root / rootfs 只读 /
+  # cap_drop ALL / tmpfs / 资源上限），且**不持有任何 MinIO/DB 凭据**——输入输出全部由
+  # kb.preview_convert 任务经请求体转发。后端经 RAGF_PREVIEW_CONVERTER_URL 访问。
+
   ragf_celery_beat:
     build:
       context: .

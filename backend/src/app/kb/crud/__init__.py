@@ -4,6 +4,7 @@ from backend.src.app.kb.crud.crud_acl_audit import acl_audit_dao as acl_audit_da
 from backend.src.app.kb.crud.crud_chunk import chunk_dao as chunk_dao
 from backend.src.app.kb.crud.crud_dedup import dedup_dao as dedup_dao
 from backend.src.app.kb.crud.crud_document import document_dao as document_dao
+from backend.src.app.kb.crud.crud_document_preview import document_preview_dao as document_preview_dao
 from backend.src.app.kb.crud.crud_folder import folder_dao as folder_dao
 from backend.src.app.kb.crud.crud_keyword import keyword_dao as keyword_dao
 from backend.src.app.kb.crud.crud_knowledge_base import (

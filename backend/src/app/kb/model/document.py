@@ -36,6 +36,11 @@ class Document(MappedBase):
         Text, default='pending', comment='状态（pending/parsing/indexing/ready/parsing_failed/indexing_failed/failed）'
     )
     sha256: Mapped[str | None] = mapped_column(Text, nullable=True, comment='文件指纹')
+    preview_kind: Mapped[str] = mapped_column(
+        Text,
+        default='unsupported',
+        comment='预览类别（markdown/image/text/pdf/office/unsupported）——服务端按扩展名判定并持久化（D55）',
+    )
     chunk_count: Mapped[int] = mapped_column(BigInteger, default=0, comment='文本块数')
     active_version: Mapped[int] = mapped_column(BigInteger, default=1, comment='当前版本（Phase 2 版本化占位，默认 1）')
     folder_id: Mapped[str | None] = mapped_column(
