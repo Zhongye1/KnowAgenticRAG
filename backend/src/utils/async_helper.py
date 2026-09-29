@@ -59,6 +59,24 @@ class _TaskRunner:
 
 _runner_map = weakref.WeakValueDictionary()
 
+# 每线程常驻事件循环（无运行中循环时的同步调用用）。
+# 不能每次调用都新建 loop：复用同一连接池/客户端的对象会把连接绑在首次使用的
+# loop 上，第二个 loop 再驱动它就报 "got Future attached to a different loop"。
+# 典型触发点：src/plugin/core.py 用同一个 RedisCli 连续 run_await 两次
+# （init 一次、delete_by_prefix 一次），导致 conftest 导入期即失败。
+_loop_map: dict[int, asyncio.AbstractEventLoop] = {}
+
+
+def _thread_loop() -> asyncio.AbstractEventLoop:
+    """取本线程的常驻事件循环；没有或已关闭则新建并登记。"""
+    key = threading.get_ident()
+    loop = _loop_map.get(key)
+    if loop is None or loop.is_closed():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        _loop_map[key] = loop
+    return loop
+
 
 def run_await[T](coro: Callable[..., Awaitable[T]] | Callable[..., Coroutine[Any, Any, T]]) -> Callable[..., T]:
     """将协程包装在函数中，直到它执行完为止"""
@@ -77,13 +95,8 @@ def run_await[T](coro: Callable[..., Awaitable[T]] | Callable[..., Coroutine[Any
                 _runner_map[name] = _TaskRunner()
             return _runner_map[name].run(inner)
         except RuntimeError:
-            # 如果没有，则创建一个新的事件循环
-            try:
-                loop = asyncio.get_running_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-            return loop.run_until_complete(inner)
+            # 没有运行中的循环：复用本线程的常驻循环（而非每次新建）
+            return _thread_loop().run_until_complete(inner)
 
     wrapped.__doc__ = coro.__doc__
     return wrapped
