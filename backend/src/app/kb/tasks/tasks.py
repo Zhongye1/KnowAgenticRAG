@@ -7,6 +7,8 @@
 - ``kb.stats_repair``：KB 级统计对账（Phase 4 / 4.3）——修正 ``documents.chunk_count``
   与 PG chunks 实际行数的漂移，并**只报告**向量行数与分块数的偏差（向量修复要走
   重新摄取，不在本任务职责内，避免「静默重建」这种危险动作）。
+- ``kb.export_build``：整库导出 ZIP（§9.2）——异步打包原文件 + 解析产物 + manifest
+  落 MinIO，前端轮询状态后走预签名下载。
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ from backend.src.app.kb.service.document_storage import (
     kb_preview_object_key,
     upload_document_bytes,
 )
+from backend.src.app.kb.service.export_service import ExportService
 from backend.src.app.kb.service.kb_stats_service import repair_kb_stats
 from backend.src.app.kb.service.preview_converter import PreviewConversionError, convert_office_to_pdf
 from backend.src.app.kb.utils.namespace import instance_namespace
@@ -34,7 +37,7 @@ from backend.src.database.milvus_kb_ops import read_ragf_document_acl, update_ra
 from backend.src.database.milvus_visual_ops import read_visual_document_acl, update_visual_document_acl
 from backend.src.utils.timezone import timezone
 
-__all__ = ['acl_reconcile_task', 'preview_convert_task', 'stats_repair_task']
+__all__ = ['acl_reconcile_task', 'export_build_task', 'preview_convert_task', 'stats_repair_task']
 
 
 def _mirror_mismatch(actual: dict[str, Any] | None, expected: dict[str, Any]) -> bool:
@@ -175,3 +178,17 @@ async def stats_repair_task(kb_name: str, plugin_namespace: str | None = None) -
     """KB 统计对账任务（Phase 4 / 4.3）——薄封装，逻辑在 `kb_stats_service.repair_kb_stats`。"""
     async with async_db_session.begin() as db:
         return await repair_kb_stats(db=db, kb_name=kb_name, plugin_namespace=plugin_namespace)
+
+
+@celery_app.task(name='kb.export_build')
+async def export_build_task(export_id: str, plugin_namespace: str | None = None) -> dict[str, Any]:
+    """整库导出 ZIP（§9.2）——薄封装，逻辑在 `kb/service/export_service.py`。
+
+    任务体自身不抛：失败一律落 `kb_exports.status=failed` + 原因，由前端展示，
+    不让 broker 反复重投一个必然失败的导出。
+    """
+    try:
+        return await ExportService.run_export(export_id, plugin_namespace)
+    except Exception as exc:  # pragma: no cover - 兜底，正常路径已在 run_export 内处理
+        log.error('导出任务异常 export={}: {}', export_id, exc)
+        return {'export_id': export_id, 'status': 'failed', 'error': str(exc)}
