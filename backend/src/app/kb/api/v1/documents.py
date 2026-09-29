@@ -9,8 +9,10 @@ from backend.src.app.kb.deps import CurrentKbUser, CurrentNamespace
 from backend.src.app.kb.model import Document
 from backend.src.app.kb.schema.chunk import ChunkItem
 from backend.src.app.kb.schema.document import DocumentItem, DocumentUpdateParam
+from backend.src.app.kb.schema.folder import DocumentMoveParam
 from backend.src.app.kb.service.acl.resolver import Perm, perm_at_least, resolve_kb_perm, resolve_visible_kbs
 from backend.src.app.kb.service.document_service import document_service
+from backend.src.app.kb.service.folder_service import folder_service
 from backend.src.app.kb.utils.permissions import RAG_KB_INGEST, RAG_KB_LIST, RAG_KB_MANAGE, RAG_KB_READ
 from backend.src.common.exception import errors
 from backend.src.common.pagination import DependsPagination, PageData, paging_data
@@ -53,6 +55,7 @@ def _doc_to_dict(doc: Document) -> dict:
         'sha256': doc.sha256,
         'chunk_count': doc.chunk_count,
         'active_version': doc.active_version,
+        'folder_id': doc.folder_id,
         'ingest_params': doc.ingest_params or {},
         'error_message': doc.error_message,
         'created_time': doc.created_time,
@@ -91,10 +94,13 @@ async def get_documents(
     db: CurrentSession,
     current_namespace: CurrentNamespace,
     user: CurrentKbUser,
+    *,
     kb_name: Annotated[str | None, Query(description='知识库标识')] = None,
     query: Annotated[str | None, Query(description='搜索关键词')] = None,
     source_type: Annotated[str | None, Query(description='来源类型')] = None,
     status: Annotated[str | None, Query(description='状态')] = None,
+    folder_id: Annotated[str | None, Query(description='文件夹 ID（D51）')] = None,
+    root_only: Annotated[bool, Query(description='只取根目录文档（与 folder_id 互斥，优先）')] = False,
 ) -> ResponseSchemaModel[PageData[DocumentItem]]:
     visible = await resolve_visible_kbs(db, user_id=user.user_id, dept_id=user.dept_id, roles=user.roles)
     stmt = await document_dao.get_select(
@@ -103,6 +109,8 @@ async def get_documents(
         source_type=source_type,
         status=status,
         kb_names=visible,
+        folder_id=folder_id,
+        root_only=root_only,
     )
     data = await paging_data(db, stmt)
     data['items'] = [DocumentItem.model_validate(_doc_to_dict(item)) for item in data['items']]
@@ -169,6 +177,25 @@ async def delete_document(
     await _require_kb_perm(db, doc.kb_name, user, Perm.MANAGE)
     counts = await document_service.delete(db=db, document_id=document_id)
     return response_base.success(data=counts)
+
+
+@router.post('/{document_id}/move', summary='移动文档到文件夹（D51）', dependencies=_PERM_INGEST)
+async def move_document(
+    db: CurrentSessionTransaction,
+    current_namespace: CurrentNamespace,
+    document_id: Annotated[str, Path(description='文档 ID')],
+    obj: DocumentMoveParam,
+    user: CurrentKbUser,
+) -> ResponseSchemaModel[DocumentItem]:
+    doc = await document_dao.get(db, document_id)
+    if doc is None:
+        raise errors.NotFoundError(msg='文档不存在')
+    await _require_kb_perm(db, doc.kb_name, user, Perm.CONTRIBUTE)
+    await folder_service.move_document(db=db, kb_name=doc.kb_name, document_id=document_id, folder_id=obj.folder_id)
+    doc = await document_dao.get(db, document_id)
+    if doc is None:
+        raise errors.NotFoundError(msg='文档不存在')
+    return response_base.success(data=DocumentItem.model_validate(_doc_to_dict(doc)))
 
 
 @router.get('/{document_id}', summary='文档详情', dependencies=_PERM_READ)

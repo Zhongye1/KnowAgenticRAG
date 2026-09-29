@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Select, delete, false, func, or_, select
+from sqlalchemy import Select, delete, false, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.app.kb.crud.base import TenantScopedCrud, result_rowcount
@@ -74,10 +74,13 @@ class CRUDDocument(TenantScopedCrud[Document]):
         source_type: str | None = None,
         status: str | None = None,
         kb_names: Sequence[str] | None = None,
+        folder_id: str | None = None,
+        root_only: bool = False,
     ) -> Select:
         """构造文档列表查询（供分页器使用）。
 
         kb_names 为资源权限求值后的可见集合：传 None = 不过滤；传空序列 = 空集。
+        folder_id 为文件夹过滤；root_only=True 时只取根目录（D51）。
         """
         ns = instance_namespace(plugin_namespace)
         stmt: Select = select(Document).where(Document.plugin_namespace == ns)
@@ -85,6 +88,10 @@ class CRUDDocument(TenantScopedCrud[Document]):
             stmt = stmt.where(Document.kb_name.in_(kb_names)) if kb_names else stmt.where(false())
         if kb_name:
             stmt = stmt.where(Document.kb_name == kb_name)
+        if root_only:
+            stmt = stmt.where(Document.folder_id.is_(None))
+        elif folder_id is not None:
+            stmt = stmt.where(Document.folder_id == folder_id)
         if query:
             stmt = stmt.where(or_(Document.name.ilike(f'%{query}%'), Document.document_id.ilike(f'%{query}%')))
         if source_type:
@@ -265,6 +272,69 @@ class CRUDDocument(TenantScopedCrud[Document]):
         result = await db.execute(stmt)
         await db.flush()
         return result_rowcount(result)
+
+    async def move_to_folder(
+        self,
+        db: AsyncSession,
+        document_id: str,
+        folder_id: str | None,
+        *,
+        kb_name: str,
+        plugin_namespace: str | None = None,
+    ) -> int:
+        """把单篇文档挂到目标文件夹（``folder_id=None`` 表示移到根目录）。"""
+        ns = instance_namespace(plugin_namespace)
+        result = await db.execute(
+            update(Document)
+            .where(
+                Document.document_id == document_id,
+                Document.kb_name == kb_name,
+                Document.plugin_namespace == ns,
+            )
+            .values(folder_id=folder_id)
+        )
+        await db.flush()
+        return result_rowcount(result)
+
+    async def reparent_by_folder(
+        self,
+        db: AsyncSession,
+        from_folder_id: str,
+        to_folder_id: str | None,
+        *,
+        kb_name: str,
+        plugin_namespace: str | None = None,
+    ) -> int:
+        """把某文件夹下的全部文档改挂到新父级（删除文件夹时子项上浮，D51）。"""
+        ns = instance_namespace(plugin_namespace)
+        result = await db.execute(
+            update(Document)
+            .where(
+                Document.folder_id == from_folder_id,
+                Document.kb_name == kb_name,
+                Document.plugin_namespace == ns,
+            )
+            .values(folder_id=to_folder_id)
+        )
+        await db.flush()
+        return result_rowcount(result)
+
+    async def count_by_folder(
+        self,
+        db: AsyncSession,
+        *,
+        kb_name: str,
+        plugin_namespace: str | None = None,
+    ) -> dict[str, int]:
+        """按文件夹统计文档数（树渲染用；根目录归入 ``''`` 键）。"""
+        ns = instance_namespace(plugin_namespace)
+        stmt = (
+            select(Document.folder_id, func.count())
+            .where(Document.kb_name == kb_name, Document.plugin_namespace == ns)
+            .group_by(Document.folder_id)
+        )
+        rows = await db.execute(stmt)
+        return {(row[0] or ''): int(row[1]) for row in rows.all()}
 
     async def format_distribution(
         self,
