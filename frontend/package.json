@@ -51,6 +51,7 @@
     "lucide-react": "^1.38.0",
     "marked": "^12.0.2",
     "nanoid": "^5.0.7",
+    "pdfjs-dist": "^6.3.289",
     "radix-ui": "^1.6.7",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",

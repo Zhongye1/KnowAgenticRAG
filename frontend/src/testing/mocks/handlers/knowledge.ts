@@ -29,6 +29,47 @@ const pickNumber = (value: string | null, fallback: number): number => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+/**
+ * 预览描述 mock（D55）：按扩展名给几种代表态，覆盖前端的分支渲染——
+ * pdf 走 Range 代理、office 停在 converting（异步转换轮询）、markdown 带续读游标。
+ * 判定表只服务于 mock，真实判定权在后端（按扩展名且不信任 Content-Type）。
+ */
+const buildPreview = (documentId: string, name: string, offset: number) => {
+  const ext = name.split('.').pop()?.toLowerCase() ?? '';
+  if (ext === 'pdf') {
+    return {
+      document_id: documentId,
+      name,
+      kind: 'pdf',
+      status: 'ready',
+      content_url: `/api/v1/documents/${documentId}/preview/content`,
+      total_bytes: 1024,
+    };
+  }
+  if (['docx', 'xlsx', 'pptx'].includes(ext)) {
+    return { document_id: documentId, name, kind: 'office', status: 'converting' };
+  }
+  if (['png', 'jpg', 'jpeg'].includes(ext)) {
+    return {
+      document_id: documentId,
+      name,
+      kind: 'image',
+      status: 'ready',
+      url: 'https://example.invalid/preview.png',
+    };
+  }
+  return {
+    document_id: documentId,
+    name,
+    kind: 'markdown',
+    status: 'ready',
+    content: `# ${name}\n\n窗口 offset=${offset}`,
+    offset,
+    next_offset: offset === 0 ? 16 : null,
+    total_bytes: 32,
+  };
+};
+
 export const knowledgeHandlers = [
   http.get(`${env.API_URL}/api/v1/documents`, async ({ request }) => {
     await networkDelay();
@@ -249,6 +290,42 @@ export const knowledgeHandlers = [
         );
       }
       return HttpResponse.json(ok({ deleted: 1 }));
+    },
+  ),
+  // ---- 预览（D55）：描述 + Range 内容 ----
+  http.get(
+    `${env.API_URL}/api/v1/documents/:documentId/preview`,
+    async ({ params, request }) => {
+      await networkDelay();
+      const doc = mockDocuments.find(
+        (item) => item.document_id === params.documentId,
+      );
+      if (!doc) {
+        return HttpResponse.json(
+          { code: 404, msg: '文档不存在', data: null },
+          { status: 404 },
+        );
+      }
+      const offset = pickNumber(
+        new URL(request.url).searchParams.get('offset'),
+        0,
+      );
+      return HttpResponse.json(ok(buildPreview(doc.document_id, doc.name, offset)));
+    },
+  ),
+
+  // Range 代理：MSW 不便模拟 206 分段，这里只回整体内容，用于断言前端会带鉴权头
+  // 去取（206/416 的分段语义由后端单测覆盖）。
+  http.get(
+    `${env.API_URL}/api/v1/documents/:documentId/preview/content`,
+    async () => {
+      await networkDelay();
+      return new HttpResponse('%PDF-1.7 mock', {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Accept-Ranges': 'bytes',
+        },
+      });
     },
   ),
 ];

@@ -1,10 +1,5 @@
-import {
-  Download,
-  FileText,
-  Trash2,
-  Upload,
-} from 'lucide-react'
-import { useEffect, useRef, useState, type ChangeEvent } from 'react'
+import { Download, Trash2, Upload } from 'lucide-react'
+import { useRef, useState, type ChangeEvent } from 'react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -25,7 +20,6 @@ import {
   DrawerTitle,
 } from '@/components/ui/drawer'
 import { useNotifications } from '@/components/ui/notifications'
-import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
 
 import {
@@ -34,37 +28,21 @@ import {
   useReplaceDocumentFile,
 } from '../../../api/documents'
 import type { DocumentItem } from '../../../api/types'
+import { useDocumentPreviewWindow } from '../../../hooks/use-document-preview-window'
+import { DocumentPreview } from '../../preview/document-preview'
+import { DegradedNotice } from '../../preview/preview-frame'
 import {
   canDeleteDocument,
   canReplaceDocument,
   documentStatusMeta,
 } from '../../../utils/document-policy'
 import { DocumentFileIcon } from '../../../utils/file-icon'
-import {
-  formatDate,
-  getFileExtension,
-  getSourceTypeLabel,
-} from '../../../utils/file-utils'
+import { formatDate, getSourceTypeLabel } from '../../../utils/file-utils'
 
 type DocumentDetailDrawerProps = {
   doc: DocumentItem | null
   kbName: string
   onOpenChange: (open: boolean) => void
-}
-
-type PreviewKind = 'image' | 'pdf' | 'html' | 'text' | 'none'
-
-const previewKindOf = (name: string): PreviewKind => {
-  const extension = getFileExtension(name)
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(extension)) {
-    return 'image'
-  }
-  if (extension === 'pdf') return 'pdf'
-  if (['html', 'htm'].includes(extension)) return 'html'
-  if (['txt', 'md', 'markdown', 'csv', 'json'].includes(extension)) {
-    return 'text'
-  }
-  return 'none'
 }
 
 const MetaRow = ({ label, value }: { label: string; value?: string | null }) => (
@@ -83,31 +61,12 @@ export function DocumentDetailDrawer({
 }: DocumentDetailDrawerProps) {
   const { addNotification } = useNotifications()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-  const [previewLoading, setPreviewLoading] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   const open = Boolean(doc)
-
-  useEffect(() => {
-    if (!doc) return
-    setPreviewUrl(null)
-    setPreviewLoading(true)
-    let cancelled = false
-    getDocumentDownloadUrl(doc.document_id)
-      .then(({ url }) => {
-        if (!cancelled) setPreviewUrl(url)
-      })
-      .catch(() => {
-        if (!cancelled) setPreviewUrl(null)
-      })
-      .finally(() => {
-        if (!cancelled) setPreviewLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [doc])
+  // 预览走服务端 Range 代理与异步转换链路（D55），不再取预签名 URL：
+  // 预签名 URL 签发后即绕过 ACL，而预览需要在每次请求上校验资源权限。
+  const preview = useDocumentPreviewWindow(doc?.document_id ?? '', open)
 
   const deleteMutation = useDeleteDocument({
     mutationConfig: {
@@ -150,8 +109,6 @@ export function DocumentDetailDrawer({
   if (!doc) return null
 
   const statusMeta = documentStatusMeta(doc.status)
-  const previewKind = previewKindOf(doc.name)
-  const canPreview = previewKind !== 'none'
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange} direction="right">
@@ -176,36 +133,14 @@ export function DocumentDetailDrawer({
         </DrawerHeader>
 
         <div className="flex-1 space-y-4 overflow-y-auto px-4 pb-4">
-          {previewLoading ? (
-            <div className="flex h-32 items-center justify-center">
-              <Spinner />
-            </div>
-          ) : previewUrl && canPreview ? (
-            <div className="overflow-hidden rounded-large border border-border/70 bg-color-bg-1">
-              {previewKind === 'image' ? (
-                <img
-                  src={previewUrl}
-                  alt={doc.name}
-                  className="max-h-72 w-full object-contain"
-                />
-              ) : (
-                <iframe
-                  src={previewUrl}
-                  title={`${doc.name} 预览`}
-                  className="h-72 w-full"
-                />
-              )}
-            </div>
-          ) : (
-            <div className="flex h-24 flex-col items-center justify-center gap-1 rounded-large border border-dashed border-color-border-2 text-muted-foreground">
-              <FileText className="size-5 opacity-60" aria-hidden="true" />
-              <p className="text-[11px]">
-                {previewUrl
-                  ? '该类型暂不支持内嵌预览，可下载查看'
-                  : '预览地址获取失败，可下载查看'}
-              </p>
-            </div>
-          )}
+          {preview.isDegraded ? (
+            <DegradedNotice reason={preview.preview?.fallback_reason} />
+          ) : null}
+          <DocumentPreview
+            preview={preview.preview}
+            onLoadMore={preview.loadMore}
+            isFetchingMore={preview.isFetchingMore}
+          />
 
           <dl className="divide-y divide-border/60 text-xs">
             <MetaRow label="文档 ID" value={doc.document_id} />
@@ -238,16 +173,18 @@ export function DocumentDetailDrawer({
             <Upload className="size-4" />
             替换文件
           </Button>
-          {previewUrl ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')}
-            >
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              void getDocumentDownloadUrl(doc.document_id).then(({ url }) =>
+                window.open(url, '_blank', 'noopener,noreferrer'),
+              )
+            }}
+          >
             <Download className="size-4" />
-              下载
-            </Button>
-          ) : null}
+            下载
+          </Button>
           <Button
             variant="destructive"
             size="sm"
