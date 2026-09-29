@@ -3,6 +3,7 @@ import Axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useNotifications } from '@/components/ui/notifications';
 import { env } from '@/config/env';
 import { paths } from '@/config/paths';
+import { getApiErrorMessage } from '@/lib/api-error';
 
 const ACCESS_TOKEN_KEY = 'access_token';
 
@@ -90,13 +91,12 @@ const redirectToLogin = () => {
 };
 
 const handleRequestError = (error: AxiosError) => {
-  const data = error.response?.data as
-    { message?: string; msg?: string } | undefined;
-  const message = data?.message || data?.msg || error.message;
+  // 一律走统一提取器：后端 msg 可能是结构化对象（dev 下的 HTTPException），
+  // 直接透传会让通知中心渲染非字符串而崩掉整棵组件树。
   useNotifications.getState().addNotification({
     type: 'error',
     title: 'Error',
-    message,
+    message: getApiErrorMessage(error),
   });
 
   if (error.response?.status === 401) {

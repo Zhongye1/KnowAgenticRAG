@@ -1,6 +1,5 @@
 import { CircleAlert, CircleCheck, CloudUpload } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { isAxiosError } from 'axios'
 import { nanoid } from 'nanoid'
 import { useEffect, useRef, useState, type DragEvent } from 'react'
 
@@ -14,12 +13,14 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Spinner } from '@/components/ui/spinner'
+import { getApiErrorMessage } from '@/lib/api-error'
 import { cn } from '@/lib/utils'
 
 import { uploadDocumentFile } from '../../../api/documents'
 import {
   MAX_UPLOAD_CONCURRENCY,
   MAX_UPLOAD_FILE_SIZE_MB,
+  MAX_UPLOAD_PDF_PAGES,
   getUploadValidationError,
 } from '../../../utils/upload-limits'
 
@@ -33,14 +34,6 @@ type UploadTask = {
 type DocumentUploadDialogProps = {
   kbName: string
   onClose: () => void
-}
-
-const getErrorMessage = (error: unknown): string => {
-  if (isAxiosError(error)) {
-    const message = (error.response?.data as { msg?: string } | undefined)?.msg
-    return message || '上传失败，请稍后重试'
-  }
-  return '上传失败，请稍后重试'
 }
 
 export function DocumentUploadDialog({
@@ -124,7 +117,9 @@ export function DocumentUploadDialog({
         if (mountedRef.current) {
           updateTask(nextQueued.uid, {
             state: 'error',
-            errorMessage: getErrorMessage(error),
+            // 服务端限额/校验原因（如 PDF 超页数）要如实展示给用户，
+            // 不能再退化成笼统的「上传失败」。
+            errorMessage: getApiErrorMessage(error, '上传失败，请稍后重试'),
           })
         }
       })
@@ -172,7 +167,8 @@ export function DocumentUploadDialog({
           />
           <span className="text-xs font-medium">点击选择或拖拽文件到此处</span>
           <span className="text-[11px] text-muted-foreground">
-            单个文件 ≤ {MAX_UPLOAD_FILE_SIZE_MB}MB
+            单个文件 ≤ {MAX_UPLOAD_FILE_SIZE_MB}MB · PDF ≤{' '}
+            {MAX_UPLOAD_PDF_PAGES} 页
           </span>
         </button>
         <input
@@ -188,32 +184,34 @@ export function DocumentUploadDialog({
             {tasks.map((task) => (
               <li
                 key={task.uid}
-                className="flex items-center gap-2 rounded-medium bg-muted/40 px-2 py-1.5"
+                className="flex flex-col gap-0.5 rounded-medium bg-muted/40 px-2 py-1.5"
               >
-                <span className="min-w-0 flex-1 truncate text-xs">
-                  {task.file.name}
-                </span>
-                {task.state === 'uploading' ? (
-                  <Spinner className="size-3.5 shrink-0 text-primary-6" />
-                ) : task.state === 'success' ? (
-                  <CircleCheck
-                    className="size-4 shrink-0 text-success-6"
-                    aria-label="上传成功"
-                  />
-                ) : task.state === 'queued' ? (
-                  <span className="shrink-0 text-[11px] text-muted-foreground">
-                    排队中
+                <div className="flex items-center gap-2">
+                  <span className="min-w-0 flex-1 truncate text-xs">
+                    {task.file.name}
                   </span>
-                ) : (
-                  <CircleAlert
-                    className="size-4 shrink-0 text-danger-6"
-                    aria-label="上传失败"
-                  />
-                )}
+                  {task.state === 'uploading' ? (
+                    <Spinner className="size-3.5 shrink-0 text-primary-6" />
+                  ) : task.state === 'success' ? (
+                    <CircleCheck
+                      className="size-4 shrink-0 text-success-6"
+                      aria-label="上传成功"
+                    />
+                  ) : task.state === 'queued' ? (
+                    <span className="shrink-0 text-[11px] text-muted-foreground">
+                      排队中
+                    </span>
+                  ) : (
+                    <CircleAlert
+                      className="size-4 shrink-0 text-danger-6"
+                      aria-label="上传失败"
+                    />
+                  )}
+                </div>
                 {task.state === 'error' && task.errorMessage ? (
-                  <span className="max-w-40 truncate text-[11px] text-danger-6">
+                  <p className="text-[11px] break-words text-danger-6">
                     {task.errorMessage}
-                  </span>
+                  </p>
                 ) : null}
               </li>
             ))}

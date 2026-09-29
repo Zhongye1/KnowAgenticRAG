@@ -1,8 +1,12 @@
 /**
  * 上传限制常量。
  *
- * 服务端暂未做扩展名/大小强校验（M6 缺口），此处为前端软限制，
- * 与后端打通后应读取服务端支持清单（原系统的 supported-types 等价物）。
+ * 后端才是硬关口：格式子集 415（`ingest/api/v1/router.py`）、大小/PDF 页数
+ * 422（`ingest/limits.py`）。超限时信封 `msg` 是可读文案（原因 + 纠正建议），
+ * 结构化的 `{ code, reason, suggestion }` 落在 `data`
+ * （见 docs/工程治理/中间件与异常处理.md §6.3）。
+ * 这里只做同口径的**前端软校验**，让用户在选择文件时就能拿到反馈，
+ * 不必等一次注定失败的往返。数值需与后端 Settings 保持一致。
  */
 
 import { getFileExtension } from './file-utils'
@@ -11,6 +15,9 @@ export const MAX_UPLOAD_CONCURRENCY = 4
 
 export const MAX_UPLOAD_FILE_SIZE_MB = 200
 export const MAX_UPLOAD_FILE_SIZE_BYTES = MAX_UPLOAD_FILE_SIZE_MB * 1024 * 1024
+
+/** 与后端 `RAGF_INGEST_MAX_PDF_PAGES` 对齐（MinerU 精提取 API 限制，超限 422）。 */
+export const MAX_UPLOAD_PDF_PAGES = 200
 
 export const DEFAULT_ALLOWED_EXTENSIONS = [
   'pdf',
