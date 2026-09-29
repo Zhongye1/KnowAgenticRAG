@@ -1,10 +1,4 @@
-import {
-  ArrowLeft,
-  Files,
-  RefreshCw,
-  Trash2,
-  Upload,
-} from 'lucide-react';
+import { ArrowLeft, Files, PackageOpen, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
@@ -53,6 +47,7 @@ import {
   DocumentListTable,
   type DocumentRow,
 } from './documents/document-list-table';
+import { ExportDialog } from './export-dialog';
 import { DocumentUploadDialog } from './documents/document-upload-dialog';
 import {
   buildDocumentPollSignature,
@@ -80,7 +75,8 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
   const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(
     new Set(),
   );
-  const [uploadOpen, setUploadOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false)
+  const [exportOpen, setExportOpen] = useState(false);
   const [detailDoc, setDetailDoc] = useState<DocumentItem | null>(null);
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
   const [batchDeleting, setBatchDeleting] = useState(false);
@@ -267,6 +263,14 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
                 documentsQuery.isFetching && 'animate-spin',
               )}
             />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setExportOpen(true)}
+          >
+            <PackageOpen className="size-4" />
+            导出
           </Button>
           <Button size="sm" onClick={() => setUploadOpen(true)}>
             <Upload className="size-4" />
@@ -472,6 +476,13 @@ export function KnowledgeDocuments({ kb, onBack }: KnowledgeDocumentsProps) {
           onClose={() => setUploadOpen(false)}
         />
       ) : null}
+
+      {/* 导出对话框由自身 open 控制显隐，不作为条件挂载的兄弟节点 */}
+      <ExportDialog
+        kbName={kb.kb_name}
+        open={exportOpen}
+        onOpenChange={setExportOpen}
+      />
 
       <DocumentDetailDrawer
         doc={detailDoc}
