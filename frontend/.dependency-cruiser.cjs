@@ -1,15 +1,5 @@
 /** @type {import('dependency-cruiser').IConfiguration} */
-const FEATURES = [
-  'admin',
-  'auth',
-  'chat',
-  'comments',
-  'discussions',
-  'home',
-  'knowledge',
-  'teams',
-  'users',
-];
+const FEATURES = ['admin', 'auth', 'chat', 'home', 'knowledge', 'users'];
 
 module.exports = {
   forbidden: [
