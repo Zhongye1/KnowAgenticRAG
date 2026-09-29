@@ -52,14 +52,14 @@ export const authHandlers = [
 
       const user = db.user.create({
         username: body.username,
-        // nickname: body.nickname ?? body.username,
+        nickname: body.nickname ?? body.username,
         email: body.email ?? '',
         password: hash(body.password),
-        firstName: body.username,
-        lastName: '',
-        role: 'USER',
-        teamId: '',
-        bio: '',
+        avatar: '',
+        phone: '',
+        dept: '',
+        roles: ['测试'],
+        is_superuser: false,
       });
 
       await persistDb('user');
@@ -176,7 +176,15 @@ export const authHandlers = [
     await networkDelay();
 
     try {
-      const { user } = requireAuth(request.headers.get('Authorization'));
+      const { user, error } = requireAuth(request.headers.get('Authorization'));
+      // requireAuth 用返回值而不是抛错表达「未登录」，不显式判一下就会变成
+      // 「200 + data: null」——前端只会看到「读不到账号」而不是跳登录页
+      if (error || !user) {
+        return HttpResponse.json(
+          { code: 401, msg: error || 'Unauthorized', data: null },
+          { status: 401 },
+        );
+      }
       return HttpResponse.json({ data: user });
     } catch (error: any) {
       return HttpResponse.json(

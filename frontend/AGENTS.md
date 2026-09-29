@@ -49,14 +49,14 @@ frontend/
     ├── app/                 # 组装层：index.tsx（入口）、provider.tsx（QueryClient/Helmet/
     │                        #   ErrorBoundary/Notifications）、router.tsx（路由表 + loader 注入）、
     │                        #   routes/（每页一个文件，全部 lazy）
-    ├── features/            # 业务功能切片（互不依赖）：auth、chat、knowledge、users、
-    │                        #   teams、comments、discussions、home；每切片自含
+    ├── features/            # 业务功能切片（互不依赖）：admin、auth、chat、home、
+    │                        #   knowledge、users（个人空间）；每切片自含
     │                        #   api/（React Query 薄封装）、components/、hooks/、stores/、lib/
     ├── components/          # 跨 feature 共享 UI：ui/（shadcn 基元 30+）、layouts/、
     │                        #   AppSidebar/、Navbars/、assistant-ui/elements/（.aui.tsx 聊天元素 kit）、
     │                        #   errors/、seo/
     ├── lib/                 # 核心基础设施：api-client.ts（axios + Bearer + 401 单飞刷新）、
-    │                        #   auth.tsx（react-query-auth + ProtectedRoute）、authorization.tsx（RBAC 策略）、
+    │                        #   auth.tsx（react-query-auth + ProtectedRoute + is_superuser）、
     │                        #   react-query.ts（全局 queryConfig）、utils.ts（cn）
     ├── generated/           # OpenAPI 产物（勿手改）：types.ts + 每端点一个模块
     │                        #   = axios 函数 + queryOptions + useXxx hook
@@ -74,20 +74,20 @@ frontend/
 ```text
 app/（组装：Provider 树 + Router + 页面路由）
   ↓
-features/（业务切片：auth / chat / knowledge / users / teams / …）
+features/（业务切片：admin / auth / chat / home / knowledge / users）
   ↓
 共享层（components / lib / hooks / generated / config / utils）
 ```
 
 - 依赖只能向下，由 dependency-cruiser 强制；共享能力下沉到共享层，feature 之间需要复用时先下沉再引用。
-- 全部 8 个 feature（含 `chat`）都在 `.dependency-cruiser.cjs` 的 `FEATURES` 守护列表内，**新增 feature 时同步把名字加进该数组**。
+- 全部 6 个 feature（含 `chat`）都在 `.dependency-cruiser.cjs` 的 `FEATURES` 守护列表内，**新增 feature 时同步把名字加进该数组**。
 - `generated/` 是叶子节点：feature 的 `api/` 只做薄封装（默认参数、缓存失效、派生 hook），不重写请求逻辑。
 
 ## 6. 关键链路
 
 **流式问答（SSE）**：`ChatRuntimeProvider`（`features/chat/lib/chat-runtime.tsx`，挂在 `/app` 根，侧边栏「最近对话」与聊天页共享同一 runtime）→ 每线程 `useLocalRuntime(chatAdapter)` → `chat-adapter.ts` 用 fetch POST `/api/v1/knowledge_bases/{kbName}/chat/stream`，`d25-sse.ts` 手工解析事件行协议（`step` / `meta` / `citation` / `delta` / `usage` / `done` / `error`，`: ping` 保活）→ delta 累积后以全量文本 yield（assistant-ui 要求累计态），`meta/citation/usage` 写入 zustand run-store（按 messageId，上限 100 条）→ `answer-markdown.tsx` 把正文 `[n]` 标注替换为引用角标，`message-sources.tsx` 渲染参考来源。**无 WebSocket**；文档摄取状态用轮询（`use-document-polling`，指数退避 10s→30s）。会话标题由 `chat-thread-list-adapter.ts` 覆写 `generateTitle`（取首条用户消息）。
 
-**认证**：`lib/auth.tsx` 的 `configureAuth`（userFn/loginFn/logoutFn/registerFn）+ `ProtectedRoute` 包裹 `/app`；token 存 localStorage，`api-client.ts` 请求拦截器注入 Bearer，401 触发**单飞刷新**（独立 raw axios 实例 POST `/api/v1/auth/refresh`，避免递归）后重试一次；RBAC 策略对象在 `lib/authorization.tsx`（POLICIES）。
+**认证**：`lib/auth.tsx` 的 `configureAuth`（userFn/loginFn/logoutFn/registerFn）+ `ProtectedRoute` 包裹 `/app`；token 存 localStorage，`api-client.ts` 请求拦截器注入 Bearer，401 触发**单飞刷新**（独立 raw axios 实例 POST `/api/v1/auth/refresh`，避免递归）后重试一次。会话用户即 `GET /sys/users/me`（`useUser()`，写操作成功后 refetch 它即可同步全站），超管判定用 `useIsSuperuser()`；权限的最终边界在后端（`Depends(RequestPermission)` + `DependsRBAC` + repository 可见性），前端守卫只是体验级。
 
 **接口代码生成**：后端起在 8000 → `pnpm generate:api` → `scripts/generate-api.mjs` 拉 `/openapi` → 生成 `src/generated/types.ts` + `src/generated/<feature>/<operation>.ts`（每端点 = axios 函数 + queryOptions + hook，含后端 ApiResponse/PageData 泛型解析）。
 
@@ -120,7 +120,8 @@ features/（业务切片：auth / chat / knowledge / users / teams / …）
 pnpm install                 # 或仓库根 task install
 pnpm dev                     # Vite 开发服务器（端口 5000）；仓库根 task dev 一键起全栈
 pnpm build                   # tsc && vite build
-pnpm test                    # Vitest；pnpm test-e2e = mock-server + Playwright
+pnpm test                    # Vitest（**环境里若已有 NODE_ENV=production，必须显式 NODE_ENV=test**，见 §10）；
+                             #   pnpm test-e2e = mock-server + Playwright
 pnpm lint / lint:fix         # oxlint
 pnpm check-types             # tsc --noEmit
 pnpm arch:check              # dependency-cruiser 分层规则
@@ -134,6 +135,9 @@ pnpm storybook               # Storybook 8（端口 6006）
 
 ## 10. 已知债务与文档索引
 
+- **vitest 必须在 `NODE_ENV=test` 下跑**：若外层环境已有 `NODE_ENV=production`，React 会解析到生产构建（没有 `React.act`），Testing Library 的 `render` 直接抛 `React.act is not a function`，看起来像几十个测试一起坏了。用 `NODE_ENV=test pnpm test`。
+- **表单错误提示依赖 `components/ui/form`**：`Form` 内部订阅了 `useFormState` 并把新的 `formState` 传给 render-prop（React Compiler 会 memo 掉身份不变的 `children(methods)`，故必须传会变身份的对象）。改这个文件时别把这两点去掉，否则全站表单会「拦住了提交但一个错误都不显示」。
+- 仍然红的测试（与业务无关，待各自负责人处理）：`features/chat/__tests__/attachment-adapter.test.ts`（`@assistant-ui/react` 版本 API 不匹配，同 `check-types` 的 6 个错误）、`features/auth/components/__tests__/register-form.test.tsx`（用例仍在找已被注释掉的「昵称」输入框）、`features/home/components/__tests__/home-page.test.tsx`（CTA 文案漂移）。
 - `docs/frontend/前端架构设计.md` 过时（app-shell/Jotai/otp-auth 与现状不符），不要按它改代码。
 - `/app/agents`、`/app/overview` 为占位页（PagePlaceholder）。
 - 前端整体设计背景可参考 `docs/specs/2026-09-02-frontend-backend-architecture-spec.md`。

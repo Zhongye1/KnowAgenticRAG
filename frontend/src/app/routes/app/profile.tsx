@@ -1,55 +1,11 @@
-import { ContentLayout } from '@/components/layouts';
-import { useUser } from '@/lib/auth';
+import { Navigate } from 'react-router';
 
-type EntryProps = {
-  label: string;
-  value: string;
-};
+import { paths } from '@/config/paths';
 
-const Entry = ({ label, value }: EntryProps) => (
-  <div className="py-4 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6 sm:py-5">
-    <dt className="text-sm font-medium text-color-text-3">{label}</dt>
-    <dd className="mt-1 text-sm text-color-text-1 sm:col-span-2 sm:mt-0">
-      {value}
-    </dd>
-  </div>
-);
-
-const ProfileRoute = () => {
-  const user = useUser();
-
-  if (!user.data) return null;
-
-  return (
-    <ContentLayout title="个人信息">
-      <div className="overflow-hidden bg-color-bg-2 shadow-2-center sm:rounded-large">
-        <div className="px-4 py-5 sm:px-6">
-          <div className="flex justify-between">
-            <h3 className="text-lg font-medium leading-6 text-color-text-1">
-              账户信息
-            </h3>
-          </div>
-          <p className="mt-1 max-w-2xl text-sm text-color-text-3">
-            当前登录账户的资料与权限归属。
-          </p>
-        </div>
-        <div className="border-t border-color-border-2 px-4 py-5 sm:p-0">
-          <dl className="sm:divide-y sm:divide-color-border-2">
-            <Entry label="用户名" value={user.data.username} />
-            <Entry label="昵称" value={user.data.nickname} />
-            <Entry label="邮箱" value={user.data.email ?? '-'} />
-            <Entry label="手机号" value={user.data.phone ?? '-'} />
-            <Entry label="部门" value={user.data.dept ?? '-'} />
-            <Entry label="角色" value={user.data.roles.join('、') || '-'} />
-            <Entry
-              label="超级管理员"
-              value={user.data.is_superuser ? '是' : '否'}
-            />
-          </dl>
-        </div>
-      </div>
-    </ContentLayout>
-  );
-};
-
-export default ProfileRoute;
+/**
+ * 旧的「个人信息」只读页已并入个人空间（`/app/space`）。
+ * 保留该路由做重定向，避免既有链接 404——与 `/app/users → /app/admin/users` 同一处理方式。
+ */
+export default function ProfileRoute() {
+  return <Navigate to={paths.app.space.getHref()} replace />;
+}

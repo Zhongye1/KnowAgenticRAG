@@ -1,5 +1,5 @@
-import { PagePlaceholder } from '@/components/layouts';
+import { SpacePage } from '@/features/users/components/space-page';
 
 export default function SpaceRoute() {
-  return <PagePlaceholder title="个人空间" />;
+  return <SpacePage />;
 }

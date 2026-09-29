@@ -1,25 +1,20 @@
-import {
-  randCompanyName,
-  randUserName,
-  randEmail,
-  randParagraph,
-  randUuid,
-  randPassword,
-  randCatchPhrase,
-} from '@ngneat/falso';
+import { randEmail, randPassword, randUserName } from '@ngneat/falso';
 
+/**
+ * 会话用户生成器：字段对齐后端 `GET /sys/users/me`（GetCurrentUserInfoWithRelationDetail）。
+ * 需要别的取值时用 `createUser({ ... })` 覆写，不要在这里堆业务分支。
+ */
 const generateUser = () => ({
-  id: randUuid() + Math.random(),
+  id: randUserName({ withAccents: false }),
   username: randUserName({ withAccents: false }),
   nickname: randUserName({ withAccents: false }),
-  firstName: randUserName({ withAccents: false }),
-  lastName: randUserName({ withAccents: false }),
+  avatar: '',
   email: randEmail(),
+  phone: '',
   password: randPassword(),
-  teamId: randUuid(),
-  teamName: randCompanyName(),
-  role: 'ADMIN',
-  bio: randParagraph(),
+  dept: '',
+  roles: ['测试'] as string[],
+  is_superuser: false,
   createdAt: Date.now(),
 });
 
@@ -27,52 +22,4 @@ export const createUser = <T extends Partial<ReturnType<typeof generateUser>>>(
   overrides?: T,
 ) => {
   return { ...generateUser(), ...overrides };
-};
-
-const generateTeam = () => ({
-  id: randUuid(),
-  name: randCompanyName(),
-  description: randParagraph(),
-  createdAt: Date.now(),
-});
-
-export const createTeam = <T extends Partial<ReturnType<typeof generateTeam>>>(
-  overrides?: T,
-) => {
-  return { ...generateTeam(), ...overrides };
-};
-
-const generateDiscussion = () => ({
-  id: randUuid(),
-  title: randCatchPhrase(),
-  body: randParagraph(),
-  createdAt: Date.now(),
-});
-
-export const createDiscussion = <
-  T extends Partial<ReturnType<typeof generateDiscussion>>,
->(
-  overrides?: T & {
-    authorId?: string;
-    teamId?: string;
-  },
-) => {
-  return { ...generateDiscussion(), ...overrides };
-};
-
-const generateComment = () => ({
-  id: randUuid(),
-  body: randParagraph(),
-  createdAt: Date.now(),
-});
-
-export const createComment = <
-  T extends Partial<ReturnType<typeof generateComment>>,
->(
-  overrides?: T & {
-    authorId?: string;
-    discussionId?: string;
-  },
-) => {
-  return { ...generateComment(), ...overrides };
 };

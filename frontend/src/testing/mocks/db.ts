@@ -2,37 +2,19 @@ import { factory, primaryKey } from '@mswjs/data';
 import { nanoid } from 'nanoid';
 
 const models = {
+  // 字段对齐后端 `GET /sys/users/me`（GetCurrentUserInfoWithRelationDetail）：
+  // 会话用户是所有登录后页面的底座，mock 少了字段页面在测试里就渲染成空壳。
   user: {
     id: primaryKey(nanoid),
     username: String,
-    firstName: String,
-    lastName: String,
+    nickname: String,
+    avatar: String,
     email: String,
+    phone: String,
     password: String,
-    teamId: String,
-    role: String,
-    bio: String,
-    createdAt: Date.now,
-  },
-  team: {
-    id: primaryKey(nanoid),
-    name: String,
-    description: String,
-    createdAt: Date.now,
-  },
-  discussion: {
-    id: primaryKey(nanoid),
-    title: String,
-    body: String,
-    authorId: String,
-    teamId: String,
-    createdAt: Date.now,
-  },
-  comment: {
-    id: primaryKey(nanoid),
-    body: String,
-    authorId: String,
-    discussionId: String,
+    dept: String,
+    roles: () => [] as string[],
+    is_superuser: Boolean,
     createdAt: Date.now,
   },
 };

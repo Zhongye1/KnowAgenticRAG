@@ -62,14 +62,6 @@ export const paths = {
       path: 'overview',
       getHref: () => '/app/overview',
     },
-    discussions: {
-      path: 'discussions',
-      getHref: () => '/app/discussions',
-    },
-    discussion: {
-      path: 'discussions/:discussionId',
-      getHref: (id: string) => `/app/discussions/${id}`,
-    },
     /**
      * 管理面板（仅超管可进，见 `lib/auth.tsx:useIsSuperuser`）。
      *
@@ -100,9 +92,13 @@ export const paths = {
         getHref: () => '/app/admin/kb-acl',
       },
     },
+    /**
+     * 旧「个人信息」页已并入个人空间（见 `app/routes/app/profile.tsx` 的重定向）。
+     * 路径常量保留并指向新地址，避免既有引用 404。
+     */
     profile: {
       path: 'profile',
-      getHref: () => '/app/profile',
+      getHref: () => '/app/space',
     },
   },
 } as const;

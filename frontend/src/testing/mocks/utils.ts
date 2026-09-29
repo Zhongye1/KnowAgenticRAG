@@ -3,21 +3,29 @@ import { delay } from 'msw';
 
 import { db } from './db';
 
-export const encode = (obj: any) => {
-  const btoa =
-    typeof window === 'undefined'
-      ? (str: string) => Buffer.from(str, 'binary').toString('base64')
-      : window.btoa;
-  return btoa(JSON.stringify(obj));
-};
+/**
+ * mock token 的编解码必须按 **UTF-8** 走。
+ *
+ * `btoa`/`atob` 只认 latin1：用户信息里只要出现中文（例如角色名「测试」），
+ * 编码时会被截断成控制字符，解码端 `JSON.parse` 直接抛错——而 `requireAuth` 把这个
+ * 异常吞成「未登录」，表现就是接口 200 + `data: null`，很难查。用 Buffer/TextCodec
+ * 显式转 UTF-8，中文英文都安全。
+ */
+const toBase64 = (text: string) =>
+  typeof Buffer === 'undefined'
+    ? btoa(String.fromCharCode(...new TextEncoder().encode(text)))
+    : Buffer.from(text, 'utf8').toString('base64');
 
-export const decode = (str: string) => {
-  const atob =
-    typeof window === 'undefined'
-      ? (str: string) => Buffer.from(str, 'base64').toString('binary')
-      : window.atob;
-  return JSON.parse(atob(str));
-};
+const fromBase64 = (base64: string) =>
+  typeof Buffer === 'undefined'
+    ? new TextDecoder().decode(
+        Uint8Array.from(atob(base64), (char) => char.charCodeAt(0)),
+      )
+    : Buffer.from(base64, 'base64').toString('utf8');
+
+export const encode = (obj: any) => toBase64(JSON.stringify(obj));
+
+export const decode = (str: string) => JSON.parse(fromBase64(str));
 
 export const hash = (str: string) => {
   let hash = 5381,
@@ -116,11 +124,5 @@ export function requireAuth(
     return { user: sanitizeUser(user) };
   } catch (err: any) {
     return { error: 'Unauthorized', user: null };
-  }
-}
-
-export function requireAdmin(user: any) {
-  if (user.role !== 'ADMIN') {
-    throw Error('Unauthorized');
   }
 }
