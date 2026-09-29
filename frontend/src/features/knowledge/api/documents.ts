@@ -24,9 +24,6 @@ export type UseDocumentsParams = {
   query?: string | null
   sourceType?: string | null
   status?: string | null
-  /** 文件夹过滤：null = 全部；ROOT 语义由 rootOnly 表达 */
-  folderId?: string | null
-  rootOnly?: boolean
   page?: number
   size?: number
 }
@@ -47,8 +44,6 @@ export const useDocuments = (
       query: params.query || undefined,
       source_type: params.sourceType || undefined,
       status: params.status || undefined,
-      folder_id: params.folderId || undefined,
-      root_only: params.rootOnly,
       page: params.page ?? 1,
       size: params.size ?? DOCUMENTS_PAGE_SIZE,
     },

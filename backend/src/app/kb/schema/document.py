@@ -21,7 +21,6 @@ class DocumentItem(SchemaBase):
     sha256: str | None = Field(None, description='文件指纹')
     chunk_count: int = Field(description='文本块数')
     active_version: int = Field(description='当前版本')
-    folder_id: str | None = Field(None, description='所属文件夹 ID（null = 根目录，D51）')
     ingest_params: dict = Field(default_factory=dict, description='本次摄取参数指纹')
     error_message: str | None = Field(None, description='最近一次失败原因')
     created_time: datetime = Field(description='创建时间')

@@ -28,7 +28,6 @@ _EXPECTED_PATHS = (
     '/api/v1/documents/{document_id}/preview/content',
     '/api/v1/documents/batch',
     '/api/v1/documents/batch/reindex',
-    '/api/v1/knowledge_bases/{kb_name}/folders/tree',
 )
 
 

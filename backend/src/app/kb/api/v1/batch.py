@@ -45,7 +45,7 @@ def _item(document_id: str, *, ok: bool, detail: str | None = None) -> BatchItem
     """构造逐条结果。
 
     用 `model_validate` 而非构造器：`SchemaBase` 子类的 `Field(None, ...)` 默认值
-    pyright 推断不出（仓库既有限制，`test_folder_pg` 同样规避）。
+    pyright 推断不出（仓库既有限制，`test_export_pure` 同样规避）。
     """
     return BatchItemResult.model_validate({'document_id': document_id, 'ok': ok, 'detail': detail})
 

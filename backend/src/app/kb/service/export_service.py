@@ -227,7 +227,6 @@ class ExportService:
                 'source_type': doc.source_type,
                 'visibility': doc.visibility,
                 'owner_id': doc.owner_id,
-                'folder_id': doc.folder_id,
                 'created_time': _iso(doc.created_time),
                 'updated_time': _iso(doc.updated_time),
                 'acl': per_doc_acl,

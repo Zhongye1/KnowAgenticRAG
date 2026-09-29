@@ -1,7 +1,7 @@
 """整库导出纯函数测试（kb-落地改造清单 §9.2）。
 
 本域无 pytest-asyncio（`pyproject.toml` 未配 asyncio mode），故按既有写法用
-同步用例 + `asyncio.run` 驱动协程（同 `test_folder_pg.py`）。
+同步用例 + `asyncio.run` 驱动协程。
 
 覆盖两块不依赖 DB/网络的逻辑：
 1. `build_manifest` —— 清单结构与 ACL 携带（导入侧靠它重建授权）；

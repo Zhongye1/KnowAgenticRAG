@@ -2,7 +2,7 @@
 
 **为什么重建而不是逐列 `ADD COLUMN IF NOT EXISTS`**：项目未上线、schema 由启动时
 `create_all` 负责，而 `create_all` **只建缺失的表、不给既有表补列**。于是每加一列
-（`documents.folder_id`、`documents.preview_kind`、`knowledge_bases.sample_questions`…）
+（`documents.preview_kind`、`knowledge_bases.sample_questions`…）
 所有 PG 测试就会同时红，而逐个补 ALTER 是一份**必然滞后**的重复清单。测试库没有
 需要保留的数据，按模型重建即永远与模型一致。
 

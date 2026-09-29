@@ -350,15 +350,10 @@ export interface DocumentItem {
   sha256?: string | null;
   chunk_count: number;
   active_version: number;
-  folder_id?: string | null;
   ingest_params?: Record<string, unknown>;
   error_message?: string | null;
   created_time: string;
   updated_time?: string | null;
-}
-
-export interface DocumentMoveParam {
-  folder_id?: string | null;
 }
 
 export interface DocumentStatusItem {
@@ -406,47 +401,6 @@ export interface ExportItem {
   error?: string | null;
   created_time?: string | null;
   url?: string | null;
-}
-
-export interface FolderCreateParam {
-  name: string;
-  parent_id?: string | null;
-  sort_order?: number;
-}
-
-export interface FolderItem {
-  folder_id: string;
-  kb_name: string;
-  plugin_namespace: string;
-  parent_id?: string | null;
-  name: string;
-  sort_order: number;
-  document_count?: number;
-  created_time: string;
-  updated_time?: string | null;
-}
-
-export interface FolderMoveParam {
-  parent_id?: string | null;
-  sort_order?: number | null;
-}
-
-export interface FolderTreeNode {
-  folder_id: string;
-  kb_name: string;
-  plugin_namespace: string;
-  parent_id?: string | null;
-  name: string;
-  sort_order: number;
-  document_count?: number;
-  created_time: string;
-  updated_time?: string | null;
-  children?: FolderTreeNode[];
-}
-
-export interface FolderUpdateParam {
-  name?: string | null;
-  sort_order?: number | null;
 }
 
 export interface GetCaptchaDetail {
