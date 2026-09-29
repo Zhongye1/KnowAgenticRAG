@@ -11,7 +11,6 @@ import { teamsHandlers } from './teams';
 import { usersHandlers } from './users';
 import {
   knowledgeExportHandlers,
-  knowledgeFolderHandlers,
   knowledgeHandlers,
 } from './knowledge';
 import { chatHandlers } from './chat';
@@ -24,7 +23,6 @@ export const handlers = [
   ...usersHandlers,
   ...knowledgeHandlers,
   ...knowledgeExportHandlers,
-  ...knowledgeFolderHandlers,
   ...chatHandlers,
   http.get(`${env.API_URL}/healthcheck`, async () => {
     await networkDelay();

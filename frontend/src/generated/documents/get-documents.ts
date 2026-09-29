@@ -15,15 +15,13 @@ export type GetDocumentsParams = {
   query?: string | null;
   source_type?: string | null;
   status?: string | null;
-  folder_id?: string | null;
-  root_only?: boolean;
   page?: number;
   size?: number;
 };
 
 export const getDocuments = (params: GetDocumentsParams): Promise<PageData<DocumentItem>> => {
-  const { kb_name, query, source_type, status, folder_id, root_only, page, size } = params;
-  return api.get(`/api/v1/documents`, { params: { kb_name, query, source_type, status, folder_id, root_only, page, size } }).then((res) => res.data);
+  const { kb_name, query, source_type, status, page, size } = params;
+  return api.get(`/api/v1/documents`, { params: { kb_name, query, source_type, status, page, size } }).then((res) => res.data);
 };
 
 export const getDocumentsQueryOptions = (params: GetDocumentsParams) => {
