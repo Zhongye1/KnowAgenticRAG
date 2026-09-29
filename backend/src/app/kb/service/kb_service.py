@@ -80,6 +80,7 @@ class KnowledgeBaseService:
             'embedding_model': kb.embedding_model,
             'query_params': kb.query_params or {},
             'collections_used': kb.collections_used,
+            'sample_questions': list(kb.sample_questions or []),
             'owner_id': kb.owner_id,
             'is_public': kb.is_public,
             'created_time': kb.created_time,

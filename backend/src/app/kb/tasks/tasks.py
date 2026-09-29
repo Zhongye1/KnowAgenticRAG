@@ -4,6 +4,9 @@
   Milvus 镜像漂移（DB 始终是 source-of-truth，镜像最终一致，D48/D49）。
 - ``kb.preview_convert``：Office 文档 → PDF 预览产物（D55 §3B）——惰性触发，
   转换失败落 ``failed`` 由预览接口走降级梯，不自动重试（重试入口 = 再次请求预览）。
+- ``kb.stats_repair``：KB 级统计对账（Phase 4 / 4.3）——修正 ``documents.chunk_count``
+  与 PG chunks 实际行数的漂移，并**只报告**向量行数与分块数的偏差（向量修复要走
+  重新摄取，不在本任务职责内，避免「静默重建」这种危险动作）。
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from backend.src.app.kb.service.document_storage import (
     kb_preview_object_key,
     upload_document_bytes,
 )
+from backend.src.app.kb.service.kb_stats_service import repair_kb_stats
 from backend.src.app.kb.service.preview_converter import PreviewConversionError, convert_office_to_pdf
 from backend.src.app.kb.utils.namespace import instance_namespace
 from backend.src.app.task.celery import celery_app
@@ -30,7 +34,7 @@ from backend.src.database.milvus_kb_ops import read_ragf_document_acl, update_ra
 from backend.src.database.milvus_visual_ops import read_visual_document_acl, update_visual_document_acl
 from backend.src.utils.timezone import timezone
 
-__all__ = ['acl_reconcile_task', 'preview_convert_task']
+__all__ = ['acl_reconcile_task', 'preview_convert_task', 'stats_repair_task']
 
 
 def _mirror_mismatch(actual: dict[str, Any] | None, expected: dict[str, Any]) -> bool:
@@ -164,3 +168,10 @@ async def _preview_failed(ns: str, document_id: str, error: str) -> dict[str, An
     except Exception as exc:  # pragma: no cover - 环境相关
         log.error('预览失败态落库失败 doc={}: {}', document_id, exc)
     return {'document_id': document_id, 'status': 'failed', 'error': error}
+
+
+@celery_app.task(name='kb.stats_repair')
+async def stats_repair_task(kb_name: str, plugin_namespace: str | None = None) -> dict[str, Any]:
+    """KB 统计对账任务（Phase 4 / 4.3）——薄封装，逻辑在 `kb_stats_service.repair_kb_stats`。"""
+    async with async_db_session.begin() as db:
+        return await repair_kb_stats(db=db, kb_name=kb_name, plugin_namespace=plugin_namespace)
