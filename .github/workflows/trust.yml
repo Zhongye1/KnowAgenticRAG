@@ -1,0 +1,27 @@
+name: Engineering Trust Contracts
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: Owner-local decisions and gate wiring
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Verify owner-local engineering contracts
+        run: python3 scripts/verify_engineering_contracts.py
+      - name: Exercise verifier negative controls
+        run: python3 -m unittest scripts.test_verify_engineering_contracts
+      - name: Verify dependency update policy
+        run: python3 -m unittest scripts.test_dependency_update_policy

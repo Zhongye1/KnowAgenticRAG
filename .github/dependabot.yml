@@ -1,0 +1,45 @@
+version: 2
+updates:
+  - package-ecosystem: uv
+    directory: /backend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: uv
+    directory: /packages/ars-cli
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: npm
+    directory: /docs
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: docker
+    directories:
+      - /docker
+      - /docker/sandbox_provisioner
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0

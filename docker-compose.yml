@@ -1,588 +1,453 @@
-networks:
-  ragf_network:
-    name: ragf_network
-    driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.10.10.0/24
-
-
-volumes:
-  ragf_postgres:
-    name: ragf_postgres
-  ragf_redis:
-    name: ragf_redis
-  ragf_static:
-    name: ragf_static
-  ragf_static_upload:
-    name: ragf_static_upload
-  ragf_rabbitmq:
-    name: ragf_rabbitmq
-  ragf_minio_data:
-    name: ragf_minio_data
-  ragf_etcd_data:
-    name: ragf_etcd_data
-  ragf_milvus_data:
-    name: ragf_milvus_data
-  ragf_loki_data:
-    name: ragf_loki_data
-  ragf_prometheus_data:
-    name: ragf_prometheus_data
-  ragf_tempo_data:
-    name: ragf_tempo_data
+x-api-worker-env: &api-worker-env
+  HOST_IP: ${HOST_IP:-}
+  LITE_MODE: ${LITE_MODE:-false}
+  RUNNING_IN_DOCKER: "true"
+  ARS_ENV: development
+  API_KEY_DERIVATION_SECRET: ${API_KEY_DERIVATION_SECRET:?Set API_KEY_DERIVATION_SECRET in .env [v0.7.2+], or rerun `bash scripts/init.sh`.}
+  NLTK_DATA: /home/ars/nltk_data
+  RAPIDOCR_MODEL_DIR: /home/ars/.cache/rapidocr/models
+  # DBs and other services
+  POSTGRES_URL: ${POSTGRES_URL:-postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ars}}
+  REDIS_URL: ${REDIS_URL:-redis://redis:6379/0}
+  NEO4J_URI: ${NEO4J_URI:-bolt://graph:7687}
+  NEO4J_USERNAME: ${NEO4J_USERNAME:-neo4j}
+  NEO4J_PASSWORD: ${NEO4J_PASSWORD:-0123456789}
+  MILVUS_URI: ${MILVUS_URI:-http://milvus:19530}
+  MILVUS_DB_NAME: ${MILVUS_DB_NAME:-default}
+  MILVUS_TOKEN: ${MILVUS_TOKEN:-}
+  MINIO_URI: ${MINIO_URI:-http://minio:9000}
+  # 文档解析
+  MINERU_API_URI: ${MINERU_API_URI:-http://mineru-api:30001}
+  PADDLEX_URI: ${PADDLEX_URI:-http://paddlex:8080}
+  # Sandbox related
+  SANDBOX_PROVIDER: ${SANDBOX_PROVIDER:-provisioner}
+  SANDBOX_PROVISIONER_URL: ${SANDBOX_PROVISIONER_URL:-http://sandbox-provisioner:8002}
+  SANDBOX_PROVISIONER_TOKEN: ${SANDBOX_PROVISIONER_TOKEN:?Set SANDBOX_PROVISIONER_TOKEN in .env [v0.7.1+], or rerun `bash scripts/init.sh`.}
+  SANDBOX_VIRTUAL_PATH_PREFIX: ${SANDBOX_VIRTUAL_PATH_PREFIX:-/home/gem/user-data}
+  SANDBOX_EXEC_TIMEOUT_SECONDS: ${SANDBOX_EXEC_TIMEOUT_SECONDS:-180}
+  SANDBOX_MAX_OUTPUT_BYTES: ${SANDBOX_MAX_OUTPUT_BYTES:-262144}
+  # Model request timeouts
+  EMBEDDING_TIMEOUT: ${EMBEDDING_TIMEOUT:-600}
+  LLM_TIMEOUT: ${LLM_TIMEOUT:-600}
+  TASKER_DEFAULT_TIMEOUT_SECONDS: ${TASKER_DEFAULT_TIMEOUT_SECONDS:-21600}
+  # Agent run
+  RUN_CANCEL_KEY_TTL_SECONDS: ${RUN_CANCEL_KEY_TTL_SECONDS:-1800}
+  RUN_EVENTS_STREAM_TTL_SECONDS: ${RUN_EVENTS_STREAM_TTL_SECONDS:-7200}
+  READINESS_PROBE_TIMEOUT_SECONDS: ${READINESS_PROBE_TIMEOUT_SECONDS:-2}
+  READINESS_CACHE_TTL_SECONDS: ${READINESS_CACHE_TTL_SECONDS:-1}
+  ARS_CORS_ORIGINS: ${ARS_CORS_ORIGINS:-}
+  ARS_DATASET_PERSIST_BATCH_SIZE: ${ARS_DATASET_PERSIST_BATCH_SIZE:-1}
+  ARS_SKILL_DATA_DIR: /app/skill-sources
+  ARS_SKILL_PROJECTION_DIR: /app/skill-projections
+  # 其他环境变量
+  NO_PROXY: localhost,127.0.0.1,milvus,graph,minio,milvus-etcd-dev,etcd,mineru,paddlex,sandbox-provisioner,api.siliconflow.cn
+  no_proxy: localhost,127.0.0.1,milvus,graph,minio,milvus-etcd-dev,etcd,mineru,paddlex,sandbox-provisioner,api.siliconflow.cn
 
 services:
-  # 后端API
-  ragf_server:
+  api:
     build:
       context: .
-      dockerfile: Dockerfile
-    image: ragf_server:latest
+      dockerfile: docker/api.Dockerfile
+    image: ars-api:${ARS_VERSION:-0.7.2.beta1}
+    container_name: api-dev
+    working_dir: /app
+    user: "1000:1000"
+    volumes:
+      - ./backend/server:/app/server
+      - ./backend/package:/app/package
+      - ./docker/volumes/ars/threads:/app/user-data
+      - ./docker/volumes/ars/skill-sources:/app/skill-sources
+      - ./docker/volumes/ars/skill-projections:/app/skill-projections
+      - ./backend/test:/app/test
+      - ./backend/scripts:/app/scripts
+      - ./docker/sandbox_provisioner:/app/docker/sandbox_provisioner:ro
+      - nltk_data:/home/ars/nltk_data
     ports:
-      - "${DOCKER_MAP_SERVER_PORT:-8001}:8001"
-    container_name: ragf_server
-    restart: always
+      - "5050:5050"
+    networks:
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
+    # region api_envs
     environment:
-      - TZ=Asia/Shanghai
+      <<: *api-worker-env
+      ARS_RUNTIME_DIR: /app/runtime/api
+      ARS_USER_DATA_DIR: /app/user-data
+    # endregion api_envs
+    command: uv run --no-sync --no-dev uvicorn server.main:app --host 0.0.0.0 --port 5050 --reload --reload-dir /app/server --reload-dir /app/package --timeout-graceful-shutdown 5
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5050/api/system/ready || exit 1"]
+      interval: 30s
+      timeout: 15s
+      retries: 8
+      start_period: 180s
     depends_on:
-      ragf_postgres:
+      postgres:
         condition: service_healthy
-      ragf_redis:
+      redis:
         condition: service_healthy
-      ragf_rabbitmq:
+      minio:
         condition: service_healthy
-      ragf_minio:
+      sandbox-provisioner:
         condition: service_healthy
-      ragf_milvus:
-        condition: service_healthy
-    volumes:
-      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
-      - ragf_static:/ragf/backend/src/static
-      - ragf_static_upload:/ragf/backend/src/static/upload
-      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
-    networks:
-      - ragf_network
+      storage-migrator:
+        condition: service_completed_successfully
 
-  ragf_postgres:
-    image: postgres:16
-    ports:
-      - "${DOCKER_MAP_POSTGRES_PORT:-5432}:5432"
-    container_name: ragf_postgres
-    restart: always
+  worker:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    image: ars-api:${ARS_VERSION:-0.7.2.beta1}
+    container_name: worker-dev
+    working_dir: /app
+    user: "1000:1000"
+    volumes:
+      - ./backend/server:/app/server
+      - ./backend/package:/app/package
+      - ./docker/volumes/ars/threads:/app/user-data
+      - ./docker/volumes/ars/skill-sources:/app/skill-sources
+      - ./docker/volumes/ars/skill-projections:/app/skill-projections
+      - ./backend/test:/app/test
+      - ./backend/scripts:/app/scripts
+      - ./docker/sandbox_provisioner:/app/docker/sandbox_provisioner:ro
+      - ./backend/pyproject.toml:/app/pyproject.toml
+      - ./backend/uv.lock:/app/uv.lock
+    networks:
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      TZ: Asia/Shanghai
+      <<: *api-worker-env
+      ARS_RUNTIME_DIR: /app/runtime/worker
+      ARS_USER_DATA_DIR: /app/user-data
+    command: watchfiles --filter python "arq server.worker_main.WorkerSettings" /app/server /app/package
+    restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    volumes:
-      - ragf_postgres:/var/lib/postgresql/data
-    networks:
-      - ragf_network
-
-  ragf_redis:
-    image: redis:latest
-    ports:
-      - "${DOCKER_MAP_REDIS_PORT:-6379}:6379"
-    container_name: ragf_redis
-    restart: always
-    environment:
-      - TZ=Asia/Shanghai
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    volumes:
-      - ragf_redis:/data
-    networks:
-      - ragf_network
-
-  # 【后端专用】
-  # 如果使用此容器，意味着你只需部署后端 API 服务，不需要前端
-  # 这与下面的 ragf_ui 容器冲突，如果你选择使用 ragf_ui 容器，你应该注释或删除 ragf_nginx 容器脚本
-  ragf_nginx:
-    image: nginx:latest
-    ports:
-      - "${DOCKER_MAP_NGINX_PORT:-8000}:80"
-    container_name: ragf_nginx
-    restart: always
-    depends_on:
-      ragf_server:
-        condition: service_started
-    volumes:
-      - ./deploy/backend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
-      - ragf_static:/www/ragf_server/backend/static:ro
-      - ragf_static_upload:/www/ragf_server/backend/static/upload:ro
-    networks:
-      - ragf_network
-
-  #  # 如果服务器内存小于 4GB，CPU 小于四个内核
-  #  # 建议通过前端工程单独构建此容器或在本地进行构建
-  #  ragf_ui:
-  #    build:
-  #      context: /root/fastapi_best_architecture_ui
-  #      dockerfile: Dockerfile
-  #    image: ragf_ui:latest
-  #    ports:
-  #      - "80:80"
-  #      - "443:443"
-  #    container_name: ragf_ui
-  #    restart: always
-  #    depends_on:
-  #      - ragf_server
-  #    command:
-  #      - nginx
-  #      - -g
-  #      - daemon off;
-  #    volumes:
-  #      # nginx https conf
-  #      # 通过 docker 进行部署时，需要打开此配置项并确保<挂载到容器内的证书文件路径>配置
-  #      # 与 nginx conf 中的 ssl 证书文件路径配置一致，如果你直接将 ssl 证书文件 cp
-  #      # 到了 docker 容器内，则无需挂载证书文件，直接将它们注释或删除即可
-  #      # local_ssl_pem_path：你在服务器存放 ssl pem 证书文件的路径，自行修改
-  #      # local_ssl_key_path: 你在服务器存放 ssl key 证书文件的路径，自行修改
-  #      # /etc/ssl/xxx.pem：挂载到容器内 ssl pem 证书文件的路径，自行修改
-  #      # /etc/ssl/xxx.key：挂载到容器内 ssl key 证书文件的路径，自行修改
-  #      - local_ssl_pem_path:/etc/ssl/xxx.pem
-  #      - local_ssl_key_path:/etc/ssl/xxx.key
-  #      - ragf_static:/www/ragf_server/backend/static
-  #      - ragf_static_upload:/www/ragf_server/backend/static/upload
-  #    networks:
-  #      - ragf_network
-
-  ragf_rabbitmq:
-    hostname: ragf_rabbitmq
-    image: rabbitmq:3.13.7-management
-    ports:
-      - "${DOCKER_MAP_RABBITMQ_UI_PORT:-15672}:15672"
-      - "${DOCKER_MAP_RABBITMQ_PORT:-5672}:5672"
-    container_name: ragf_rabbitmq
-    restart: always
-    environment:
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-guest}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASSWORD:-guest}
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: ["CMD-SHELL", "uv run --no-sync --no-dev arq --check server.worker_main.WorkerSettings"]
       interval: 10s
       timeout: 10s
-      retries: 12
-    volumes:
-      - ragf_rabbitmq:/var/lib/rabbitmq
-    networks:
-      - ragf_network
+      retries: 6
+      start_period: 180s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      sandbox-provisioner:
+        condition: service_healthy
+      storage-migrator:
+        condition: service_completed_successfully
 
-  ragf_minio:
-    image: minio/minio:latest
-    ports:
-      - "${DOCKER_MAP_MINIO_API_PORT:-9000}:9000"
-      - "${DOCKER_MAP_MINIO_CONSOLE_PORT:-9001}:9001"
-    container_name: ragf_minio
-    restart: always
+  storage-migrator:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    image: ars-api:${ARS_VERSION:-0.7.2.beta1}
+    working_dir: /app
+    user: "0:0"
+    volumes:
+      - ./backend/package:/app/package:ro
+      - ./docker/volumes/ars:/app/legacy-saves
+      - ./docker/volumes/ars/threads:/app/user-data
+      - ./docker/volumes/ars/skill-sources:/app/skill-sources
+      - ./docker/volumes/ars/skill-projections:/app/skill-projections
+      - nltk_data:/home/ars/nltk_data
+    networks:
+      - app-network
+    env_file:
+      - .env
     environment:
-      - TZ=Asia/Shanghai
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER:-minioadmin}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD:-minioadmin123}
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 5s
-      timeout: 5s
-      retries: 12
-    command: server /data --console-address ":9001"
-    volumes:
-      - ragf_minio_data:/data
-    networks:
-      ragf_network:
-        # MinIO 会校验 HTTP Host 头，下划线主机名会被拒绝（invalid hostname），
-        # 因此 Milvus 与后端应用统一通过不带下划线的别名访问
-        aliases:
-          - ragf-minio
+      <<: *api-worker-env
+      ARS_RUNTIME_DIR: /app/runtime/storage-migrator
+      ARS_LEGACY_STORAGE_DIR: /app/legacy-saves
+      ARS_USER_DATA_DIR: /app/user-data
+    command: uv run --no-sync --no-dev python -m ars.storage_migration
+    restart: "no"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
-  # Milvus standalone 的元数据后端
-  ragf_etcd:
-    image: quay.io/coreos/etcd:v3.5.18
-    container_name: ragf_etcd
-    restart: always
+  sandbox-provisioner:
+    build:
+      context: ./docker/sandbox_provisioner
+      dockerfile: Dockerfile
+    image: ars-sandbox-provisioner:${ARS_VERSION:-0.7.2.beta1}
+    container_name: sandbox-provisioner
+    volumes:
+      - ./docker/volumes/ars/threads:/app/user-data
+      - ./docker/volumes/ars/skill-projections:/app/skill-projections
+      - ./docker/sandbox_provisioner/app.py:/app/app.py:ro
+      - ./docker/sandbox_provisioner/sandbox.env:/app/sandbox.env:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - "127.0.0.1:8002:8002"
+    networks:
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Common provisioner settings
+      - PROVISIONER_BACKEND=${SANDBOX_PROVISIONER_BACKEND:-docker}
+      - PROVISIONER_PUBLIC_URL=${SANDBOX_PROVISIONER_URL:-http://sandbox-provisioner:8002}
+      - SANDBOX_PROVISIONER_TOKEN=${SANDBOX_PROVISIONER_TOKEN:?Set SANDBOX_PROVISIONER_TOKEN in .env}
+      - SANDBOX_IMAGE=${SANDBOX_IMAGE:-enterprise-public-cn-beijing.cr.volces.com/vefaas-public/all-in-one-sandbox:latest}
+      - SANDBOX_CONTAINER_PORT=${SANDBOX_CONTAINER_PORT:-8080}
+      - MEMORY_SANDBOX_URL_TEMPLATE=${MEMORY_SANDBOX_URL_TEMPLATE:-http://agent-sandbox:8000}
+      - SANDBOX_HEALTH_TIMEOUT_SECONDS=${SANDBOX_HEALTH_TIMEOUT_SECONDS:-300}
+      - SANDBOX_IDLE_TIMEOUT_SECONDS=${SANDBOX_IDLE_TIMEOUT_SECONDS:-120}
+      - SANDBOX_IDLE_CHECK_INTERVAL_SECONDS=${SANDBOX_IDLE_CHECK_INTERVAL_SECONDS:-10}
+      - SANDBOX_EXEC_TIMEOUT_SECONDS=${SANDBOX_EXEC_TIMEOUT_SECONDS:-180}
+      # Optional proxy for sandbox-provisioner container
+      - HTTP_PROXY=${SANDBOX_HTTP_PROXY:-}
+      - HTTPS_PROXY=${SANDBOX_HTTPS_PROXY:-}
+      - NO_PROXY=localhost,127.0.0.1,host.docker.internal
+      # Docker backend only
+      - DOCKER_NETWORK_PREFIX=${SANDBOX_DOCKER_NETWORK_PREFIX:-ars-know-sandbox}
+      - DOCKER_USER_DATA_HOST_PATH=${SANDBOX_DOCKER_USER_DATA_HOST_PATH:-}
+      - DOCKER_SKILL_PROJECTIONS_HOST_PATH=${SANDBOX_DOCKER_SKILL_PROJECTIONS_HOST_PATH:-}
+      - DOCKER_SANDBOX_PREFIX=${SANDBOX_DOCKER_SANDBOX_PREFIX:-ars-sandbox}
+      # Kubernetes backend only
+      - K8S_NAMESPACE=${SANDBOX_K8S_NAMESPACE:-ars-know}
+      - NODE_HOST=${SANDBOX_NODE_HOST:-host.docker.internal}
+      - KUBECONFIG_PATH=${KUBECONFIG_PATH:-}
+      - USER_DATA_PVC=${USER_DATA_PVC:-ars-user-data}
+      - SKILLS_PVC=${SKILLS_PVC:-ars-skills}
+    command: >
+      sh -lc "python -c 'import docker' >/dev/null 2>&1 || pip install --no-cache-dir 'docker>=7.1.0';
+      uvicorn app:app --host 0.0.0.0 --port 8002"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+    depends_on:
+      storage-migrator:
+        condition: service_completed_successfully
+
+  # web 服务本期移除：前端阶段另行立项（web/ 未导入，保留该服务会导致 compose 引用不存在的挂载路径）。
+  # 前端阶段恢复时，从上游 docker-compose.yml 取回本段即可。
+
+  # region neo4j
+  graph:
+    image: neo4j:5.26.29
+    container_name: graph
+    ports:
+      - "127.0.0.1:7474:7474"
+      - "127.0.0.1:7687:7687"
+    volumes:
+      - ./docker/volumes/neo4j/data:/data
+      - ./docker/volumes/neo4j/logs:/var/lib/neo4j/logs
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -a bolt://localhost:7687 -u ${NEO4J_USERNAME:-neo4j} -p ${NEO4J_PASSWORD:-0123456789} 'RETURN 1;' >/dev/null || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    environment:
+      - NEO4J_AUTH=${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-0123456789}
+      - NEO4J_server_bolt_listen__address=0.0.0.0:7687
+      - NEO4J_server_http_listen__address=0.0.0.0:7474
+      - ENTITY_EMBEDDING=true
+    networks:
+      - app-network
+    restart: unless-stopped
+  # endregion neo4j
+
+  etcd:
+    container_name: milvus-etcd-dev
+    image: quay.io/coreos/etcd:v3.5.5
     environment:
       - ETCD_AUTO_COMPACTION_MODE=revision
       - ETCD_AUTO_COMPACTION_RETENTION=1000
       - ETCD_QUOTA_BACKEND_BYTES=4294967296
-    command:
-      - etcd
-      - -advertise-client-urls=http://ragf_etcd:2379
-      - -listen-client-urls=http://0.0.0.0:2379
-      - --data-dir=/etcd
+      - ETCD_SNAPSHOT_COUNT=50000
     volumes:
-      - ragf_etcd_data:/etcd
+      - ./docker/volumes/milvus/etcd:/etcd
+    command: etcd -advertise-client-urls=http://etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
     networks:
-      - ragf_network
+      - app-network
+    restart: unless-stopped
 
-  # Milvus standalone（对象存储复用 ragf_minio，通过 MINIO_ADDRESS 指向）
-  ragf_milvus:
-    image: milvusdb/milvus:v2.5.12
-    ports:
-      - "${DOCKER_MAP_MILVUS_PORT:-19530}:19530"
-      - "${DOCKER_MAP_MILVUS_METRICS_PORT:-9091}:9091"
-    container_name: ragf_milvus
-    restart: always
+  minio:
+    container_name: minio
+    image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     environment:
-      - TZ=Asia/Shanghai
-      - ETCD_ENDPOINTS=ragf_etcd:2379
-      - COMMON_STORAGETYPE=remote
-      - MINIO_ADDRESS=ragf-minio:9000
-      - MINIO_ACCESSKEYID=${MINIO_ROOT_USER:-minioadmin}
-      - MINIO_SECRETACCESSKEY=${MINIO_ROOT_PASSWORD:-minioadmin123}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - ./docker/volumes/milvus/minio:/minio_data
+      - ./docker/volumes/milvus/minio_config:/root/.minio
+    command: minio server /minio_data --address 0.0.0.0:9000 --console-address 0.0.0.0:9001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  milvus:
+    image: milvusdb/milvus:v2.5.6
+    container_name: milvus
+    command: ["milvus", "run", "standalone"]
+    security_opt:
+      - seccomp:unconfined
+    environment:
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+      MINIO_ACCESS_KEY_ID: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_SECRET_ACCESS_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+      MILVUS_LOG_LEVEL: error
+    volumes:
+      - ./docker/volumes/milvus/milvus:/var/lib/milvus
+      - ./docker/volumes/milvus/logs:/var/lib/milvus/logs
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
-      interval: 10s
-      timeout: 10s
+      interval: 60s
+      start_period: 120s
+      timeout: 30s
+      retries: 5
+    ports:
+      - "127.0.0.1:19530:19530"
+      - "127.0.0.1:9091:9091"
+    depends_on:
+      - "etcd"
+      - "minio"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    ports:
+      - "127.0.0.1:5432:5432"
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-ars}
+      - TZ=${TZ:-Asia/Shanghai}
+    volumes:
+      - ./docker/volumes/postgresql:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ars} || exit 1"]
+      interval: 5s
+      timeout: 3s
       retries: 30
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:7.4.10-alpine
+    container_name: redis
+    ports:
+      - "127.0.0.1:6379:6379"
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - ./docker/volumes/redis:/data
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # lastest version: wget https://gcore.jsdelivr.net/gh/opendatalab/MinerU@master/docker/compose.yaml
+  mineru-api:
+    build:
+      context: .
+      dockerfile: docker/mineru.Dockerfile
+    image: mineru-vllm:latest
+    container_name: mineru-api
+    profiles:
+      - all
+    env_file:
+      - .env
+    ports:
+      - 127.0.0.1:30001:30001
+    environment:
+      MINERU_MODEL_SOURCE: local
+      VLLM_USE_V1: "1"
+    entrypoint: mineru-api
+    command:
+      --host 0.0.0.0
+      --port 30001
+      # --allow-public-http-client  # Disabled by default; when binding to 0.0.0.0 or ::, this re-enables *-http-client backends and server_url. Enable only if you accept the SSRF risk.
+      # parameters for vllm-engine
+      # --gpu-memory-utilization 0.5  # If encountering VRAM shortage, reduce the KV cache size by this parameter; if VRAM issues persist, try lowering it further to `0.4` or below.
+    ulimits:
+      memlock: -1
+      stack: 67108864
+    ipc: host
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:30001/health || exit 1"]
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ["0"]  # Modify for multiple GPUs: ["0", "1"]
+              capabilities: [gpu]
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  paddlex:
+    build:
+      context: .
+      dockerfile: docker/paddlex.Dockerfile
+    image: paddlex:latest
+    container_name: paddlex-ocr
+    profiles:
+      - all
+    volumes:
+      - ./docker/volumes/paddlex:/paddlex
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
       start_period: 60s
-    command: ["milvus", "run", "standalone"]
-    depends_on:
-      ragf_minio:
-        condition: service_healthy
-      ragf_etcd:
-        condition: service_started
-    volumes:
-      - ragf_milvus_data:/var/lib/milvus
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
     networks:
-      - ragf_network
+      - app-network
+    restart: unless-stopped
 
-  ragf_celery_worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - SERVER_TYPE=ragf_celery_worker
-    image: ragf_celery_worker:latest
-    # 如果你需要分布式部署 Worker，则必须移除此 container_name 配置
-    container_name: ragf_celery_worker
-    restart: always
-    environment:
-      - TZ=Asia/Shanghai
-    depends_on:
-      ragf_rabbitmq:
-        condition: service_healthy
-      ragf_minio:
-        condition: service_healthy
-      ragf_milvus:
-        condition: service_healthy
-    volumes:
-      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
-      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
-    networks:
-      - ragf_network
+volumes:
+  nltk_data:
 
-  # RAGF M8 拆分演练（ragf-design §10）：ingest.* 独立 worker，profile 显式启用。
-  # 用法：.env.server 设置 RAGF_CELERY_INGEST_QUEUE=ingest 后执行
-  #   docker compose --profile ragf-ingest up -d
-  ragf_celery_ingest_worker:
-    profiles: ["ragf-ingest"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - SERVER_TYPE=ragf_celery_ingest_worker
-    image: ragf_celery_ingest_worker:latest
-    restart: always
-    environment:
-      - TZ=Asia/Shanghai
-    depends_on:
-      ragf_rabbitmq:
-        condition: service_healthy
-      ragf_minio:
-        condition: service_healthy
-      ragf_milvus:
-        condition: service_healthy
-    volumes:
-      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
-      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
-    networks:
-      - ragf_network
-
-  # RAGF 评估（RAG 清单 Phase 4 / D61）：评估 worker（-Q eval，并发 16）。
-  # 用法：.env.server 设置 RAGF_CELERY_EVAL_QUEUE=eval 后
-  #   docker compose --profile ragf-eval up -d ragf_celery_eval_worker
-  # 与摄取分队列：一次评估是 N 题 ×（检索 + 生成 + Judge）的重任务，抢 worker 会
-  # 拖慢用户可见的摄取。
-  ragf_celery_eval_worker:
-    profiles: ["ragf-eval"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - SERVER_TYPE=ragf_celery_eval_worker
-    image: ragf_celery_eval_worker:latest
-    restart: always
-    environment:
-      - TZ=Asia/Shanghai
-    depends_on:
-      ragf_rabbitmq:
-        condition: service_healthy
-      ragf_minio:
-        condition: service_healthy
-      ragf_milvus:
-        condition: service_healthy
-    volumes:
-      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
-      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
-    networks:
-      - ragf_network
-
-  # RAGF 双管线摄取（spec D4）：Knowhere 解析 worker（-Q knowhere）。
-  # 用法：.env.server 设置 RAGF_CELERY_KNOWHERE_QUEUE=knowhere 后
-  #   docker compose --profile ragf-ingest up -d ragf_celery_knowhere_worker
-  ragf_celery_knowhere_worker:
-    profiles: ["ragf-ingest"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - SERVER_TYPE=ragf_celery_knowhere_worker
-    image: ragf_celery_knowhere_worker:latest
-    restart: always
-    environment:
-      - TZ=Asia/Shanghai
-    depends_on:
-      ragf_rabbitmq:
-        condition: service_healthy
-      ragf_minio:
-        condition: service_healthy
-      ragf_milvus:
-        condition: service_healthy
-    volumes:
-      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
-      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
-    networks:
-      - ragf_network
-
-  # RAGF Agent Run 执行 worker（agent 层设计 D66：-Q agent）。
-  # 用法：.env.server 设置 RAGF_CELERY_AGENT_QUEUE=agent 后
-  #   docker compose --profile ragf-agent up -d ragf_celery_agent_worker
-  # 为什么要独立队列：Run 是分钟级长任务且**持有数据库租约**，被摄取/转换任务挤在
-  # 一起会让「谁的租约先过期」变成随机事件；独立队列也让 agent 侧能单独扩缩容。
-  ragf_celery_agent_worker:
-    profiles: ["ragf-agent"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - SERVER_TYPE=ragf_celery_agent_worker
-    image: ragf_celery_agent_worker:latest
-    restart: always
-    environment:
-      - TZ=Asia/Shanghai
-    depends_on:
-      ragf_rabbitmq:
-        condition: service_healthy
-      ragf_redis:
-        condition: service_healthy
-      ragf_minio:
-        condition: service_healthy
-      ragf_milvus:
-        condition: service_healthy
-    volumes:
-      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
-      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
-    networks:
-      - ragf_network
-
-  # RAGF 双管线摄取（spec D4/D7）：视觉 worker（-Q visual，并发=1：
-  # Qwen3-VL 编码 / DashScope 限流 / pixelrag_render 渲染均为重资源，串行消费）。
-  ragf_celery_visual_worker:
-    profiles: ["ragf-ingest"]
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - SERVER_TYPE=ragf_celery_visual_worker
-    image: ragf_celery_visual_worker:latest
-    restart: always
-    environment:
-      - TZ=Asia/Shanghai
-    depends_on:
-      ragf_rabbitmq:
-        condition: service_healthy
-      ragf_minio:
-        condition: service_healthy
-      ragf_milvus:
-        condition: service_healthy
-    volumes:
-      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
-      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
-    networks:
-      - ragf_network
-
-  # Knowhere 解析服务不在本 compose 定义：独立自托管栈见 docker/knowhere/compose.yaml
-  # （app + 专用 postgres/redis/localstack；task dev / task deps-up 经根 Taskfile 自动拉起，
-  # 也可 task knowhere:up 单独运维）。容器部署时让 ragf_server/worker 加入外部网络
-  # knowhere-net（docker network create knowhere-net），经 http://knowhere:5005 访问。
-
-  # 文档预览转换服务（D55）同样不在本 compose 定义：独立栈见 docker/libreoffice/compose.yaml
-  # （LibreOffice headless + qpdf + CJK 字体；task deps-up 经根 Taskfile 自动拉起，
-  # 也可 task libreoffice:up 单独运维）。它按沙盒加固（非 root / rootfs 只读 /
-  # cap_drop ALL / tmpfs / 资源上限），且**不持有任何 MinIO/DB 凭据**——输入输出全部由
-  # kb.preview_convert 任务经请求体转发。后端经 RAGF_PREVIEW_CONVERTER_URL 访问。
-
-  ragf_celery_beat:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - SERVER_TYPE=ragf_celery_beat
-    image: ragf_celery_beat:latest
-    container_name: ragf_celery_beat
-    restart: always
-    environment:
-      - TZ=Asia/Shanghai
-    depends_on:
-      ragf_rabbitmq:
-        condition: service_healthy
-      ragf_minio:
-        condition: service_healthy
-      ragf_milvus:
-        condition: service_healthy
-      ragf_celery_worker:
-        condition: service_started
-    volumes:
-      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
-      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
-    networks:
-      - ragf_network
-
-  ragf_celery_flower:
-    build:
-      context: .
-      dockerfile: Dockerfile
-      args:
-        - SERVER_TYPE=ragf_celery_flower
-    image: ragf_celery_flower:latest
-    ports:
-      - "${DOCKER_MAP_CELERY_FLOWER_PORT:-8555}:8555"
-    container_name: ragf_celery_flower
-    restart: always
-    environment:
-      - TZ=Asia/Shanghai
-    depends_on:
-      ragf_rabbitmq:
-        condition: service_healthy
-      ragf_celery_worker:
-        condition: service_started
-    volumes:
-      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
-      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
-    networks:
-      - ragf_network
-
-  ragf_celery_exporter:
-    image: danihodovic/celery-exporter:latest
-    restart: always
-    ports:
-      - "${DOCKER_MAP_CELERY_EXPORTER_PORT:-9808}:9808"
-    container_name: ragf_celery_exporter
-    environment:
-      - CE_BROKER_URL=amqp://${RABBITMQ_USER:-guest}:${RABBITMQ_PASSWORD:-guest}@ragf_rabbitmq:5672//
-    depends_on:
-      ragf_rabbitmq:
-        condition: service_healthy
-    networks:
-      - ragf_network
-
-  ragf_loki:
-    image: grafana/loki:latest
-    restart: always
-    ports:
-      - "${DOCKER_MAP_LOKI_PORT:-3100}:3100"
-    container_name: ragf_loki
-    volumes:
-      - ragf_loki_data:/tmp/loki
-    networks:
-      - ragf_network
-    command: -config.file=/etc/loki/local-config.yaml
-
-  ragf_prometheus:
-    image: prom/prometheus:latest
-    restart: always
-    ports:
-      - "${DOCKER_MAP_PROMETHEUS_PORT:-9090}:9090"
-    container_name: ragf_prometheus
-    depends_on:
-      - ragf_loki
-    volumes:
-      - ./deploy/backend/grafana/ragf_prometheus.yml:/workspace/ragf_prometheus.yml
-      - ragf_prometheus_data:/prometheus
-    networks:
-      - ragf_network
-    command:
-      - --web.enable-remote-write-receiver
-      - --enable-feature=exemplar-storage
-      - --config.file=/workspace/ragf_prometheus.yml
-
-  ragf_alloy:
-    image: grafana/alloy:latest
-    restart: always
-    ports:
-      - "${DOCKER_MAP_ALLOY_GRPC_PORT:-4317}:4317"
-      - "${DOCKER_MAP_ALLOY_HTTP_PORT:-4318}:4318"
-      - "${DOCKER_MAP_ALLOY_UI_PORT:-12345}:12345"
-    container_name: ragf_alloy
-    depends_on:
-      - ragf_loki
-      - ragf_prometheus
-      - ragf_tempo
-      - ragf_server
-      - ragf_celery_exporter
-    volumes:
-      - ./deploy/backend/grafana/ragf_config.alloy:/etc/alloy/ragf_config.alloy
-    networks:
-      - ragf_network
-    command:
-      - run
-      - --server.http.listen-addr=0.0.0.0:12345
-      - /etc/alloy/ragf_config.alloy
-
-  ragf_tempo:
-    image: grafana/tempo:latest
-    restart: always
-    ports:
-      - "${DOCKER_MAP_TEMPO_PORT:-3200}:3200"
-    expose:
-      - 4317
-      - 4318
-    container_name: ragf_tempo
-    depends_on:
-      - ragf_loki
-      - ragf_prometheus
-    volumes:
-      - ./deploy/backend/grafana/ragf_tempo.yml:/etc/tempo/ragf_tempo.yml
-      - ragf_tempo_data:/tmp
-    networks:
-      - ragf_network
-    command:
-      - --config.file=/etc/tempo/ragf_tempo.yml
-
-  ragf_grafana:
-    image: grafana/grafana:latest
-    restart: always
-    ports:
-      - "${DOCKER_MAP_GRAFANA_PORT:-3000}:3000"
-    container_name: ragf_grafana
-    depends_on:
-      - ragf_loki
-      - ragf_prometheus
-      - ragf_tempo
-    volumes:
-      - ./deploy/backend/grafana/ragf_grafana.ini:/etc/grafana/grafana.ini
-      - ./deploy/backend/grafana/dashboards/ragf_celery.json:/etc/grafana/dashboards/ragf_celery.json
-      - ./deploy/backend/grafana/dashboards/ragf_server.json:/etc/grafana/dashboards/ragf_server.json
-      - ./deploy/backend/grafana/dashboards/ragf_agent.json:/etc/grafana/dashboards/ragf_agent.json
-      - ./deploy/backend/grafana/ragf_dashboards.yml:/etc/grafana/provisioning/dashboards/ragf_dashboards.yml
-      - ./deploy/backend/grafana/ragf_datasource.yml:/etc/grafana/provisioning/datasources/ragf_datasource.yml
-    networks:
-      - ragf_network
+networks:
+  app-network:
+    driver: bridge
+    name: ${APP_DOCKER_NETWORK:-ars-know_app-network}

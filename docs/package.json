@@ -1,10 +1,24 @@
 {
   "scripts": {
-    "dev": "vitepress dev --port 6632",
+    "dev": "vitepress dev",
     "build": "vitepress build",
     "preview": "vitepress preview"
   },
+  "dependencies": {
+    "markdown-it-task-checkbox": "^1.0.6",
+    "vitepress": "^1.6.4"
+  },
   "devDependencies": {
-    "vitepress": "2.0.0-alpha.17"
-  }
+    "esbuild": "0.28.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "esbuild": "0.28.2",
+      "nanoid": "3.3.18",
+      "postcss": "8.5.26",
+      "vitepress>@vitejs/plugin-vue": "6.0.6",
+      "vitepress>vite": "8.0.16"
+    }
+  },
+  "packageManager": "pnpm@10.11.0"
 }

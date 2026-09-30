@@ -1,0 +1,79 @@
+name: Real Provider Agent Probe
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: real-provider-agent-probe
+  cancel-in-progress: false
+
+jobs:
+  real-provider-probe:
+    name: Shipping Agent path against SiliconFlow
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      LITE_MODE: 'true'
+      JWT_SECRET_KEY: probe-jwt-secret-at-least-thirty-two-characters
+      API_KEY_DERIVATION_SECRET: probe-api-key-derivation-secret-at-least-32-chars
+      SANDBOX_PROVISIONER_TOKEN: probe-sandbox-token-at-least-thirty-two-characters
+      E2E_USERNAME: real_probe_admin
+      E2E_PASSWORD: real-probe-password-at-least-eight
+      SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Require real-provider credential
+        run: |
+          if [ -z "$SILICONFLOW_API_KEY" ]; then
+            echo "SILICONFLOW_API_KEY repository secret is required for this manual probe." >&2
+            exit 1
+          fi
+      - name: Prepare isolated Compose environment
+        run: |
+          cp .env.template .env
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+
+          path = Path(".env")
+          replacements = {
+              "JWT_SECRET_KEY": os.environ["JWT_SECRET_KEY"],
+              "API_KEY_DERIVATION_SECRET": os.environ["API_KEY_DERIVATION_SECRET"],
+              "SANDBOX_PROVISIONER_TOKEN": os.environ["SANDBOX_PROVISIONER_TOKEN"],
+              "SILICONFLOW_API_KEY": os.environ["SILICONFLOW_API_KEY"],
+          }
+          lines = [
+              line
+              for line in path.read_text(encoding="utf-8").splitlines()
+              if line.split("=", 1)[0] not in replacements
+          ]
+          lines.extend(f"{key}={value}" for key, value in replacements.items())
+          path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          PY
+      - name: Start shipping topology
+        run: docker compose up -d --build postgres redis minio sandbox-provisioner api worker
+      - name: Wait for readiness
+        run: |
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://localhost:5050/api/system/ready >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+      - name: Initialize isolated probe administrator
+        run: |
+          curl -fsS -X POST http://localhost:5050/api/auth/initialize \
+            -H 'Content-Type: application/json' \
+            --data "{\"uid\":\"${E2E_USERNAME}\",\"password\":\"${E2E_PASSWORD}\"}" >/dev/null
+      - name: Run real-provider Agent probe
+        run: docker compose exec -T -e E2E_USERNAME -e E2E_PASSWORD api uv run --no-sync --no-dev pytest test/e2e/test_agent_async_e2e.py -q
+      - name: Runtime logs on failure
+        if: failure()
+        run: docker compose logs api worker --tail 300
+      - name: Stop probe topology
+        if: always()
+        run: docker compose down -v

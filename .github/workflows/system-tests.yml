@@ -1,0 +1,163 @@
+name: Runtime System Tests
+
+on:
+  pull_request:
+    paths:
+      - '.env.template'
+      - 'backend/package/ars/**'
+      - 'backend/server/**'
+      - 'backend/test/integration/**'
+      - 'backend/test/e2e/**'
+      - 'backend/test/support/**'
+      - 'docker/**'
+      - 'docker-compose.yml'
+      - 'docker-compose.prod.yml'
+      - 'scripts/migrate-storage.sh'
+      - '.github/workflows/system-tests.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.env.template'
+      - 'backend/package/ars/**'
+      - 'backend/server/**'
+      - 'backend/test/integration/**'
+      - 'backend/test/e2e/**'
+      - 'backend/test/support/**'
+      - 'docker/**'
+      - 'docker-compose.yml'
+      - 'docker-compose.prod.yml'
+      - 'scripts/migrate-storage.sh'
+      - '.github/workflows/system-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: system-tests-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  system-tests:
+    name: PostgreSQL, readiness and deterministic Agent path
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      LITE_MODE: 'true'
+      JWT_SECRET_KEY: ci-jwt-secret-at-least-thirty-two-characters
+      API_KEY_DERIVATION_SECRET: ci-api-key-derivation-secret-at-least-32-chars
+      SANDBOX_PROVISIONER_TOKEN: ci-sandbox-token-at-least-thirty-two-characters
+      E2E_USERNAME: ci_e2e_admin
+      E2E_PASSWORD: ci-e2e-password-at-least-eight
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare Compose environment
+        run: |
+          cp .env.template .env
+          sed -i "s/^JWT_SECRET_KEY=.*/JWT_SECRET_KEY=${JWT_SECRET_KEY}/" .env
+          sed -i "s/^API_KEY_DERIVATION_SECRET=.*/API_KEY_DERIVATION_SECRET=${API_KEY_DERIVATION_SECRET}/" .env
+          sed -i "s/^SANDBOX_PROVISIONER_TOKEN=.*/SANDBOX_PROVISIONER_TOKEN=${SANDBOX_PROVISIONER_TOKEN}/" .env
+          grep -E "^(JWT_SECRET_KEY|API_KEY_DERIVATION_SECRET|SANDBOX_PROVISIONER_TOKEN)=.+" .env
+      - name: Start focused runtime topology
+        run: docker compose up -d --build postgres redis minio sandbox-provisioner api worker
+      - name: Wait for truthful readiness
+        run: |
+          for attempt in $(seq 1 90); do
+            if curl -fsS http://localhost:5050/api/system/ready >/dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker compose ps
+          docker compose logs api worker sandbox-provisioner --tail 200
+          exit 1
+      - name: Initialize isolated E2E administrator
+        run: |
+          curl -fsS -X POST http://localhost:5050/api/auth/initialize \
+            -H 'Content-Type: application/json' \
+            --data "{\"uid\":\"${E2E_USERNAME}\",\"password\":\"${E2E_PASSWORD}\"}" >/dev/null
+      - name: Start deterministic OpenAI-compatible replay
+        run: |
+          docker compose exec -d api uv run --no-sync --no-dev python test/support/openai_replay_server.py
+          for attempt in $(seq 1 20); do
+            if docker compose exec -T api curl -fsS http://localhost:8765/health >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+      - name: Verify worker shipping health
+        run: docker compose exec -T worker uv run --no-sync --no-dev arq --check server.worker_main.WorkerSettings
+      - name: Verify worker can write personal Skill UserWorkspace
+        run: |
+          docker compose exec -T -e E2E_USERNAME worker uv run --no-sync --no-dev python - <<'PY'
+          import os
+          from pathlib import Path
+
+          skill_root = Path("/app/user-data/shared") / os.environ["E2E_USERNAME"] / "workspace/agents/skills"
+          skill_root.mkdir(parents=True, exist_ok=True)
+          probe = skill_root / ".worker-write-probe"
+          try:
+              probe.write_text("worker-write-ok", encoding="utf-8")
+              assert probe.read_text(encoding="utf-8") == "worker-write-ok"
+          finally:
+              probe.unlink(missing_ok=True)
+          PY
+      - name: Verify worker health leases are expiring runtime facts
+        run: |
+          worker_ttl=$(docker compose exec -T redis redis-cli PTTL ars:worker:health:agent-run-v1)
+          reconciliation_ttl=$(docker compose exec -T redis redis-cli PTTL ars:worker:health:agent-run-v1:lease-reconciliation)
+          test "$worker_ttl" -gt 0 && test "$worker_ttl" -le 6000
+          test "$reconciliation_ttl" -gt 0 && test "$reconciliation_ttl" -le 65000
+      - name: Verify dead worker removes API readiness
+        run: |
+          docker compose pause worker
+          cleanup() { docker compose unpause worker >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          not_ready=false
+          for attempt in $(seq 1 15); do
+            status=$(curl -sS -o /dev/null -w '%{http_code}' http://localhost:5050/api/system/ready)
+            if [ "$status" = "503" ]; then
+              not_ready=true
+              break
+            fi
+            sleep 1
+          done
+          test "$not_ready" = true
+          cleanup
+          trap - EXIT
+          for attempt in $(seq 1 15); do
+            if curl -fsS http://localhost:5050/api/system/ready >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
+      - name: Verify readiness API
+        run: docker compose exec -T api uv run --no-sync --no-dev pytest test/integration/api/test_system_router_api.py::test_health_endpoint_is_public test/integration/api/test_system_router_api.py::test_readiness_endpoint_proves_core_runtime_dependencies test/integration/api/test_system_router_api.py::test_discovery_declares_cli_knowledge_capabilities test/integration/api/test_system_router_api.py::test_lite_startup_does_not_create_knowledge_schema -q
+      - name: Verify versioned Schema migration contract
+        run: docker compose exec -T api uv run --no-sync --no-dev pytest test/integration/services/test_schema_migration_version.py -q
+      - name: Verify queue transaction and recovery
+        run: docker compose exec -T api uv run --no-sync --no-dev pytest test/integration/services/test_agent_request_queue_concurrency.py -q
+      - name: Verify AgentRun lease ownership
+        run: docker compose exec -T api uv run --no-sync --no-dev pytest test/integration/services/test_agent_run_lease.py -q
+      - name: Verify Run result causality
+        run: docker compose exec -T api uv run --no-sync --no-dev pytest test/integration/api/test_agent_run_result_causality.py -q
+      - name: Verify deterministic Agent assembled path
+        run: docker compose exec -T -e E2E_USERNAME -e E2E_PASSWORD api uv run --no-sync --no-dev pytest test/e2e/test_deterministic_agent_path_e2e.py -q
+      - name: Verify identity transaction and replayable secret publication
+        run: docker compose exec -T api uv run --no-sync --no-dev pytest test/integration/services/test_identity_admin_service.py test/integration/services/test_api_key_schema_migration.py test/integration/services/test_api_key_user_lifecycle.py test/integration/api/test_apikey_router.py -q
+      - name: Verify destructive storage migration and Skill authorization
+        run: |
+          docker compose exec -T api uv run --no-sync --no-dev pytest \
+            test/integration/services/test_workdir_user_workspace.py \
+            test/integration/services/test_user_skill_projection.py \
+            test/integration/api/test_skill_artifact_authorization.py -q
+      - name: Verify real Sandbox storage isolation and shared projections
+        run: docker compose exec -T api uv run --no-sync --no-dev pytest test/integration/services/test_project_workdir_provisioner.py -q
+      - name: Runtime logs on failure
+        if: failure()
+        run: docker compose logs api worker sandbox-provisioner --tail 300
+      - name: Stop runtime topology
+        if: always()
+        run: docker compose down -v

@@ -1,0 +1,36 @@
+from __future__ import annotations
+
+from typing import Any
+
+from ars.config.runtime import knowledge_capability_enabled
+
+
+async def resolve_visible_knowledge_bases_for_context(context) -> list[dict[str, Any]]:
+    if not knowledge_capability_enabled():
+        setattr(context, "_visible_knowledge_bases", [])
+        return []
+
+    from ars.knowledge.runtime import knowledge_base
+
+    uid = getattr(context, "uid", None)
+    if not uid:
+        setattr(context, "_visible_knowledge_bases", [])
+        return []
+
+    summaries = await knowledge_base.get_databases_by_uid(str(uid))
+    databases = [
+        {
+            "kb_id": summary.kb_id,
+            "name": summary.name,
+            "description": summary.description,
+            "kb_type": summary.kb_type,
+        }
+        for summary in summaries
+    ]
+    enabled_knowledges = getattr(context, "knowledges", None)
+    if enabled_knowledges is not None:
+        enabled_ids = {str(value).strip() for value in enabled_knowledges if str(value).strip()}
+        databases = [db for db in databases if str(db.get("kb_id") or "").strip() in enabled_ids]
+
+    setattr(context, "_visible_knowledge_bases", databases)
+    return databases
