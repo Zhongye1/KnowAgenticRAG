@@ -77,7 +77,8 @@ export const ChatModelSelector = () => {
   }
 
   return (
-    <ModelSelectorRoot models={models} align="start">
+    // align 是 ModelSelectorContent 的 prop（且默认就是 "start"），不在 Root 上
+    <ModelSelectorRoot models={models}>
       <RegisterModelContext />
       <ModelSelectorTrigger
         variant="ghost"

@@ -137,7 +137,8 @@ pnpm storybook               # Storybook 8（端口 6006）
 
 - **vitest 必须在 `NODE_ENV=test` 下跑**：若外层环境已有 `NODE_ENV=production`，React 会解析到生产构建（没有 `React.act`），Testing Library 的 `render` 直接抛 `React.act is not a function`，看起来像几十个测试一起坏了。用 `NODE_ENV=test pnpm test`。
 - **表单错误提示依赖 `components/ui/form`**：`Form` 内部订阅了 `useFormState` 并把新的 `formState` 传给 render-prop（React Compiler 会 memo 掉身份不变的 `children(methods)`，故必须传会变身份的对象）。改这个文件时别把这两点去掉，否则全站表单会「拦住了提交但一个错误都不显示」。
-- 唯一还红的测试：`features/chat/__tests__/attachment-adapter.test.ts`（`@assistant-ui/react` 版本 API 不匹配，与 `check-types` 那 6 个错误同源，需按新版 API 重写）。满足上一条 `NODE_ENV=test` 前提时全量为 **76 passed / 1 failed**。
+- **`@assistant-ui/react@0.15.18` 有一处上游 .d.ts 自相矛盾**：`InMemoryThreadListAdapter.generateTitle()` 声明为无参，而它实现的 `RemoteThreadListAdapter` 接口是 `(remoteId, messages)` 两参。`features/chat/lib/chat-thread-list-adapter.ts` 用「可选参数 + `async`」同时贴住两边（运行期框架仍传两参）；升级这个库时回看这段注释，能省掉一次重新诊断。
+- 当前全绿（在 `NODE_ENV=test` 前提下）：`check-types` 0 error、`pnpm test` **77 passed / 21 files**、`arch:check` 0 违规。`check:tokens` 仍有 3 处既存违规（`components/ui/{dialog,drawer}.tsx`、`features/auth/components/login-page-content.tsx`）。
 - `docs/frontend/前端架构设计.md` 过时（app-shell/Jotai/otp-auth 与现状不符），不要按它改代码。
 - `/app/agents`、`/app/overview` 为占位页（PagePlaceholder）。
 - 前端整体设计背景可参考 `docs/specs/2026-09-02-frontend-backend-architecture-spec.md`。
