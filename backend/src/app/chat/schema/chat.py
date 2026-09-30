@@ -69,6 +69,8 @@ class ChatParam(SchemaBase):
     )
     vector_weight: float | None = Field(None, ge=0.0, le=1.0, description='weighted 融合的 dense 路权重覆盖')
     bm25_weight: float | None = Field(None, ge=0.0, le=1.0, description='weighted 融合的 sparse 路权重覆盖')
+    use_graph_retrieval: bool | None = Field(None, description='是否附加图检索召回路覆盖（D62）')
+    graph_top_k: int | None = Field(None, ge=1, le=50, description='图检索召回条数上限覆盖')
     include_visual: bool | None = Field(
         None, description='是否附带视觉召回覆盖（ragf_visual；命中经 meta.visual_count 透出，不进引用）'
     )

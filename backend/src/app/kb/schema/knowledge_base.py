@@ -20,6 +20,8 @@ QUERY_PARAM_WHITELIST = frozenset({
     'fusion_mode',
     'vector_weight',
     'bm25_weight',
+    'use_graph_retrieval',
+    'graph_top_k',
 })
 
 
@@ -78,6 +80,8 @@ _QUERY_PARAM_COERCERS: dict[str, Callable[[str, Any], Any]] = {
     'bm25_weight': _unit_float_coercer,
     'use_reranker': _bool_coercer,
     'include_visual': _bool_coercer,
+    'use_graph_retrieval': _bool_coercer,
+    'graph_top_k': _positive_int_coercer,
 }
 
 

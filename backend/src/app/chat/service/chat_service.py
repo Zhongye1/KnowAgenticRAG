@@ -69,6 +69,8 @@ _SEARCH_PARAM_KEYS = frozenset({
     'fusion_mode',
     'vector_weight',
     'bm25_weight',
+    'use_graph_retrieval',
+    'graph_top_k',
     'include_visual',
     'visual_top_k',
     'file_name',

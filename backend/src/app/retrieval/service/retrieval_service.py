@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any
 from opentelemetry import metrics as otel_metrics
 from opentelemetry import trace as otel_trace
 
+from backend.src.app.graph.service.retriever import retrieve_graph_chunks
 from backend.src.app.kb.crud import document_dao, knowledge_base_dao
 from backend.src.app.kb.service.chunk_service import ChunkService
 from backend.src.app.kb.utils.namespace import instance_namespace
@@ -45,6 +46,7 @@ from backend.src.app.retrieval.service.filters import (
 from backend.src.app.retrieval.service.params import merge_search_params, resolve_recall_top_k
 from backend.src.app.retrieval.service.scope import to_milvus_expr
 from backend.src.app.retrieval.service.strategies import RETRIEVE_STRATEGIES
+from backend.src.app.retrieval.service.strategies.fusion import fuse_rrf
 from backend.src.app.retrieval.service.strategies.visual import retrieve_visual
 from backend.src.common.exception import errors
 from backend.src.common.log import log
@@ -72,6 +74,9 @@ _RERANK_DEGRADED = _METER.create_counter(
 )
 _VISUAL_DEGRADED = _METER.create_counter(
     'ragf.retrieval.visual_degraded', unit='1', description='视觉召回失败降级次数（编码/检索异常，D7）'
+)
+_GRAPH_DEGRADED = _METER.create_counter(
+    'ragf.retrieval.graph_degraded', unit='1', description='图检索失败降级次数（D62）'
 )
 _RECALL_CACHE = _METER.create_counter(
     'ragf.retrieval.recall_cache', unit='1', description='召回缓存命中/未命中次数（result=hit/miss，D63）'
@@ -321,6 +326,8 @@ class RetrievalService:
         final_top_k = max(int(merged['final_top_k']), 1)
         use_reranker = bool(merged['use_reranker'])
         include_visual = bool(merged['include_visual'])
+        use_graph = bool(merged['use_graph_retrieval'])
+        graph_top_k = max(int(merged['graph_top_k']), 1)
         visual_top_k = max(int(merged['visual_top_k']), 1)
         recall_top_k = resolve_recall_top_k(
             recall_top_k=merged['recall_top_k'],
@@ -364,6 +371,8 @@ class RetrievalService:
                     'recall_top_k': recall_top_k,
                     'threshold': float(merged['similarity_threshold']),
                     'include_visual': include_visual,
+                    'use_graph_retrieval': use_graph,
+                    'graph_top_k': graph_top_k,
                     **fusion_params,
                 },
             )
@@ -411,6 +420,17 @@ class RetrievalService:
         )
         if cache_key is not None and cached_text is None:
             await store_recall(cache_key, merged_hits)
+        # ④b 图检索召回路（D62，可选）：与文本召回 RRF 融合。
+        # 放在缓存读写之后——缓存存的是**文本召回**，图回路每次重算，两者口径才不会漂
+        if use_graph and merged_hits:
+            merged_hits = await self._fuse_graph_leg(
+                db,
+                kb_names=names,
+                query_text=rerank_query,
+                hits=merged_hits,
+                graph_top_k=graph_top_k,
+                ns=ns,
+            )
         visual_degraded = visual_degraded or visual_recalled
         steps: list[dict[str, str]] = []
         recall_step = {
@@ -660,6 +680,44 @@ class RetrievalService:
                     _VISUAL_DEGRADED.add(1, {'stage': 'recall', 'kb_name': kb_name})
                     log.warning('视觉召回失败，跳过 kb={}: {}', kb_name, exc)
         return merged, visual_merged, visual_degraded
+
+    async def _fuse_graph_leg(
+        self,
+        db: AsyncSession,
+        *,
+        kb_names: list[str],
+        query_text: str,
+        hits: list[dict[str, Any]],
+        graph_top_k: int,
+        ns: str,
+    ) -> list[dict[str, Any]]:
+        """图检索召回路与文本召回做 RRF 融合（D62）。
+
+        **失败与无命中都降级为原结果**：图检索是可选召回路，它的价值是"多一路证据"，
+        不是"必须成功"。未建图的 KB 会返回空列表——那是正常的"没有图证据"，不是错误。
+        """
+        graph_hits: list[dict[str, Any]] = []
+        for kb_name in kb_names:
+            try:
+                found = await retrieve_graph_chunks(
+                    db,
+                    query_text=query_text,
+                    kb_name=kb_name,
+                    top_k=graph_top_k,
+                    plugin_namespace=ns,
+                )
+            except Exception as exc:
+                _GRAPH_DEGRADED.add(1, {'kb_name': kb_name})
+                log.warning('图检索失败，跳过该库的图召回路 kb={}: {}', kb_name, exc)
+                continue
+            for hit in found:
+                hit['kb_name'] = kb_name
+                graph_hits.append(hit)
+        if not graph_hits:
+            return hits
+        fused = fuse_rrf([hits, graph_hits], k=int(settings.RAGF_RETRIEVAL_RRF_K))
+        log.debug('图检索融合 kb={} 文本={} 图={} 融合后={}', kb_names, len(hits), len(graph_hits), len(fused))
+        return fused
 
     async def _rank_hits(
         self,

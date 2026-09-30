@@ -34,6 +34,8 @@ RETRIEVAL_PARAM_KEYS = frozenset({
     'fusion_mode',
     'vector_weight',
     'bm25_weight',
+    'use_graph_retrieval',
+    'graph_top_k',
 })
 SEARCH_MODES = frozenset({'vector', 'keyword', 'hybrid'})
 FUSION_MODES = frozenset({'rrf', 'weighted'})
@@ -52,6 +54,8 @@ def default_search_params() -> dict[str, Any]:
         'fusion_mode': settings.RAGF_RETRIEVAL_FUSION_MODE,
         'vector_weight': float(settings.RAGF_RETRIEVAL_VECTOR_WEIGHT),
         'bm25_weight': float(settings.RAGF_RETRIEVAL_BM25_WEIGHT),
+        'use_graph_retrieval': bool(settings.RAGF_RETRIEVAL_USE_GRAPH),
+        'graph_top_k': int(settings.RAGF_RETRIEVAL_GRAPH_TOP_K),
     }
 
 
@@ -101,11 +105,13 @@ _COERCERS: dict[str, Callable[[Any], Any]] = {
     'recall_top_k': _coerce_positive_int,
     'final_top_k': _coerce_positive_int,
     'visual_top_k': _coerce_positive_int,
+    'graph_top_k': _coerce_positive_int,
     'similarity_threshold': lambda value: _coerce_bounded_float(value, clamp=False),
     'vector_weight': lambda value: _coerce_bounded_float(value, clamp=True),
     'bm25_weight': lambda value: _coerce_bounded_float(value, clamp=True),
     'use_reranker': _coerce_bool,
     'include_visual': _coerce_bool,
+    'use_graph_retrieval': _coerce_bool,
 }
 
 

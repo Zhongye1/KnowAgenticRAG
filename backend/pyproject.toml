@@ -352,7 +352,7 @@ layers = [
 ]
 
 [[tool.importlinter.contracts]]
-name = "业务域互不依赖：admin / kb / task / ingest / retrieval / model_provider / chat / mcp / agent / evaluation（有意依赖需显式豁免）"
+name = "业务域互不依赖：admin / kb / task / ingest / retrieval / model_provider / chat / mcp / agent / evaluation / graph（有意依赖需显式豁免）"
 type = "independence"
 modules = [
     "backend.src.app.admin",
@@ -365,6 +365,7 @@ modules = [
     "backend.src.app.mcp",
     "backend.src.app.agent",
     "backend.src.app.evaluation",
+    "backend.src.app.graph",
 ]
 ignore_imports = [
     # db_log 任务消费 admin 日志服务：有意为之，后续可反转依赖方向
@@ -378,6 +379,9 @@ ignore_imports = [
     "backend.src.app.evaluation.** -> backend.src.app.chat.**",
     # Judge 模型按 run 行上的 spec 快照解析；未配置时退化为只算检索指标
     "backend.src.app.evaluation.** -> backend.src.app.model_provider.**",
+    # graph 复用 kb 的通用多租户设施（TenantScopedCrud / instance_namespace），
+    # 与 evaluation 同一取舍：不为一个新域去改 kb 的既有 crud。
+    "backend.src.app.graph.** -> backend.src.app.kb.**",
     # common.security（JWT/权限）读取 admin 用户/角色数据：跨模块公共层，属已知债务，
     # 后续应将用户查询下沉为独立 auth 模块或端口，届时删除本条豁免
     "backend.src.common.security.** -> backend.src.app.admin.**",
@@ -406,6 +410,11 @@ ignore_imports = [
     "backend.src.app.kb.** -> backend.src.app.task.**",
     # evaluation 的运行编排经 app/task celery 实例派发（同 D10 口径）
     "backend.src.app.evaluation.** -> backend.src.app.task.**",
+    # graph 是图谱域（RAG 清单 Phase 5 / D62）：retrieval 把图检索当**可选召回路**
+    # 融合进结果（`use_graph_retrieval` 开关），故 retrieval → graph 是下游域→基础域
+    # 方向。（ingest → graph 的建图钩子尚未落地，届时再加豁免——import-linter 要求
+    # 豁免必须对应真实导入，空豁免会直接报错。）
+    "backend.src.app.retrieval.** -> backend.src.app.graph.**",
     # agent 为编排域（D34 两层图）：图节点复用 chat 的引用/提示词装配与
     # retrieval 检索门面，工具经 kb 只读契约取文档/分块（D30 工具不直连存储、D37 复用
     # MCP 工具语义）；服务层经 model_provider 解析模型并适配为 LangChain ChatOpenAI

@@ -351,6 +351,10 @@ class Settings(BaseSettings):
     # D63：检索缓存（只缓存召回命中；ACL 与内容信号进 key，无显式失效）。
     # 默认关闭（opt-in）：缓存影响结果新鲜度，先由部署方显式开启并观察命中率与
     # 陈旧窗口，再考虑改默认。关闭时行为与改造前逐位一致
+    # D62：图检索（可选召回路）。默认关闭：它依赖已建图的知识库，未建图时开了也只会
+    # 多一次空查询；建图完成后再按 KB 或请求开启
+    RAGF_RETRIEVAL_USE_GRAPH: bool = False
+    RAGF_RETRIEVAL_GRAPH_TOP_K: int = 10
     RAGF_RETRIEVAL_CACHE_ENABLED: bool = False
     RAGF_RETRIEVAL_CACHE_TTL_SECONDS: int = 300
     # D16：默认精排模型 spec（千问平台 token，dashscope SDK 通道）

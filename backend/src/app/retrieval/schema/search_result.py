@@ -74,6 +74,10 @@ class KBSearchParam(SchemaBase):
     )
     vector_weight: float | None = Field(None, ge=0.0, le=1.0, description='weighted 融合的 dense 路权重（D57）')
     bm25_weight: float | None = Field(None, ge=0.0, le=1.0, description='weighted 融合的 sparse 路权重（D57）')
+    use_graph_retrieval: bool | None = Field(
+        None, description='是否附加图检索召回路（与 chunk 排名 RRF 融合；需 KB 已建图，D62）'
+    )
+    graph_top_k: int | None = Field(None, ge=1, le=50, description='图检索召回条数上限（D62）')
     include_visual: bool | None = Field(
         None, description='是否附带视觉召回（ragf_visual 集合；默认关，命中以 visual_results 独立返回）'
     )
