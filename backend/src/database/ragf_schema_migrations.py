@@ -11,11 +11,16 @@ dev 环境表由 ``MappedBase.metadata.create_all`` 创建，但该路径不会�
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import text
 
 from backend.src.common.log import log
 from backend.src.core.config import settings
 from backend.src.database.db import async_engine
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncEngine
 
 # (表, 列, 列定义)；仅 PostgreSQL（当前 DATABASE_TYPE）
 _RAGF_ADD_COLUMNS: tuple[tuple[str, str, str], ...] = (
@@ -32,15 +37,31 @@ _RAGF_ADD_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ('knowledge_bases', 'routing_mode', "VARCHAR(16) DEFAULT 'auto' NOT NULL"),
     ('documents', 'summary', 'TEXT'),
     ('documents', 'structure', 'JSON'),
+    # Agent 运行态（agent 层设计 D87–D92）：agent_runs 由「终态审计」升级为「Run 状态机」，
+    # 新增租约/归属/父子关系列。表已存在，create_all 不会补列，故必须在此显式 ADD COLUMN。
+    ('agent_runs', 'worker_id', 'TEXT'),
+    ('agent_runs', 'heartbeat_at', 'TIMESTAMP WITH TIME ZONE'),
+    ('agent_runs', 'lease_expires_at', 'TIMESTAMP WITH TIME ZONE'),
+    ('agent_runs', 'parent_run_id', 'TEXT'),
+    ('agent_runs', 'output_message_id', 'TEXT'),
+    ('agent_runs', 'error', 'TEXT'),
+    ('agent_runs', 'updated_time', 'TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL'),
 )
 
 
-async def ensure_ragf_column_migrations() -> None:
-    """为已存在的旧表补充 RAGF 新增列（幂等）。"""
+async def ensure_ragf_column_migrations(engine: AsyncEngine | None = None) -> None:
+    """为已存在的旧表补充 RAGF 新增列（幂等）。
+
+    :param engine: 目标引擎；缺省用全局 ``async_engine``（生产启动路径
+        ``core/register.py`` 即如此调用）。**测试必须显式传入自己的引擎**——
+    单测连的是 ``{schema}_test`` 库，缺省参数会把列补到主库上，
+    于是用例仍以 ``UndefinedColumnError`` 失败。
+    """
     if settings.DATABASE_TYPE != 'postgresql':
         log.warning('[ragf-schema] 当前非 PostgreSQL，跳过幂等 DDL 补充')
         return
-    async with async_engine.begin() as conn:
+    target = engine if engine is not None else async_engine
+    async with target.begin() as conn:
         for table, column, definition in _RAGF_ADD_COLUMNS:
             await conn.execute(text(f'ALTER TABLE "{table}" ADD COLUMN IF NOT EXISTS "{column}" {definition}'))
     log.info('[ragf-schema] 幂等 DDL 补充完成（kb 域演进列）')

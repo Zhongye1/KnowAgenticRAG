@@ -28,6 +28,7 @@ from backend.src.app.agent.service.run_log import (
 from backend.src.app.agent.tests.test_agent_service import _kb_dao, _param, _service
 from backend.src.common.model import MappedBase
 from backend.src.database.db import get_database_url
+from backend.src.database.ragf_schema_migrations import ensure_ragf_column_migrations
 
 
 # --------------------------------------------------------------------- 状态映射
@@ -91,8 +92,18 @@ def test_record_agent_run_never_raises_on_broken_session() -> None:
 
 # --------------------------------------------------------------------- 真实落库
 async def _create_all(engine: AsyncEngine) -> None:
+    """建表 + 补列：与生产启动路径（``core/register.py``）保持一致。
+
+    ``create_all`` 只建**不存在**的表，不会给已存在的 ``agent_runs`` 补新列
+    （agent 层设计 §4.1：该表由「终态审计」升级为「Run 状态机」，新增了
+    worker/lease/parent 等列）。因此这里必须再跑一次幂等 DDL 补充，
+    否则本地旧库会以 ``UndefinedColumnError`` 失败——这正是生产上同一坑的复现。
+    """
     async with engine.begin() as conn:
         await conn.run_sync(MappedBase.metadata.create_all)
+    # 幂等 DDL 必须作用于**同一个（_test）库**：缺省参数会补到主库上，
+    # 用例仍会以 UndefinedColumnError 失败
+    await ensure_ragf_column_migrations(engine)
 
 
 async def _with_session(coro: Any) -> Any:
