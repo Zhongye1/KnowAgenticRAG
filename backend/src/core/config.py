@@ -361,6 +361,9 @@ class Settings(BaseSettings):
     # 单篇文档建图的分块上限（防超大文档把 worker 占死）
     RAGF_GRAPH_MAX_CHUNKS: int = 500
     RAGF_CELERY_GRAPH_QUEUE: str | None = None
+    # Agent 运行态（agent 层设计 D87–D92）：Run 从 HTTP 请求搬进 Celery worker。
+    # 与 ingest/knowhere/visual/preview/export/eval/graph 同模式——独立队列可独立扩缩容
+    RAGF_CELERY_AGENT_QUEUE: str | None = None
     # 摄取完成后自动派发建图（D62）。**默认关闭**：建图会为每块调一次 LLM，开启前应有
     # 明确的成本预期；关闭时摄取链路行为与改造前逐位一致
     RAGF_GRAPH_AUTO_BUILD: bool = False
@@ -398,6 +401,22 @@ class Settings(BaseSettings):
     # act 内层工具循环：节点超时与内层 ReAct 步数上限
     RAGF_AGENT_ACT_TIMEOUT_SECONDS: float = 90.0
     RAGF_AGENT_ACT_RECURSION_LIMIT: int = 12
+
+    # RAGF：Agent 运行态与失败护栏（agent 层设计 §4.2 / D92）
+    # 墙钟语义变更：由「单请求墙钟」改为「Run 墙钟」（Run 迁入 worker 后仍以此兜底）
+    # stall ≠ total（WeKnora 生产常量）：只在**连续无输出**时终止单轮，
+    # 不按总时长杀——「持续输出但耗时长」的轮次（大工具结果、长回答）会被误杀
+    RAGF_AGENT_STALL_SECONDS: float = 120.0
+    # 模型返回空且自然停止 → 重试次数（防 thinking-only 空转）
+    RAGF_AGENT_EMPTY_RETRIES: int = 2
+    # 连续 N 轮回复逐字相同且无工具调用 → 判为卡死，终止
+    RAGF_AGENT_REPEAT_ROUNDS: int = 2
+    # 连续 N 轮被 completion cap 截断 → 终止（防「重发更长调用 → 再截断」烧预算）
+    RAGF_AGENT_LENGTH_ROUNDS: int = 3
+    # Run 租约与心跳：worker 崩溃后由租约过期收敛为 failed，不靠 Celery 的 visibility_timeout
+    RAGF_AGENT_LEASE_SECONDS: int = 900
+    RAGF_AGENT_HEARTBEAT_SECONDS: int = 60
+    RAGF_AGENT_MAX_ATTEMPTS: int = 2
 
     # RAGF：MCP 工具面（agent-layer spec D22/D31-D33/M10）
     # PAT 经桥接进程 env 注入（Codex stdio 桥 / Claude Code 未上 Keycloak 前）；空 = 未启用 PAT 通道

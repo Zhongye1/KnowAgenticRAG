@@ -54,6 +54,38 @@ def find_task_packages() -> list[str]:
     return sorted(packages)
 
 
+def _build_task_routes() -> dict[str, dict[str, str]]:
+    """按配置拼装任务队列路由（配置为空 = 沿用默认队列，行为与拆分前一致）。
+
+    RAGF（ragf-design §10/M8）：ingest.* 可单独分配队列（演进期拆分演练）。
+    默认沿用默认队列（celery），单 worker 拓扑与既有行为不变；显式设置
+    RAGF_CELERY_*_QUEUE 后任务入独立队列，由 -Q <name> 的专用 worker 消费。
+
+    重任务各自独立队列的理由（避免互相挤占、可独立扩缩容）：
+    ingest/knowhere/visual（双管线摄取 spec D4）、preview（D55 转换）、
+    export（整库导出）、evaluation（RAG 清单 Phase 4 / D61）、graph（D62 建图）、
+    agent（agent 层设计 D87–D92：Run 迁入 worker 后单次可达分钟级且持有租约）。
+    """
+    task_routes: dict[str, dict[str, str]] = {}
+    if settings.RAGF_CELERY_INGEST_QUEUE:
+        task_routes['ingest.*'] = {'queue': settings.RAGF_CELERY_INGEST_QUEUE}
+    if settings.RAGF_CELERY_KNOWHERE_QUEUE:
+        task_routes['knowhere.*'] = {'queue': settings.RAGF_CELERY_KNOWHERE_QUEUE}
+    if settings.RAGF_CELERY_VISUAL_QUEUE:
+        task_routes['visual.*'] = {'queue': settings.RAGF_CELERY_VISUAL_QUEUE}
+    if settings.RAGF_CELERY_PREVIEW_QUEUE:
+        task_routes['kb.preview_convert'] = {'queue': settings.RAGF_CELERY_PREVIEW_QUEUE}
+    if settings.RAGF_CELERY_EXPORT_QUEUE:
+        task_routes['kb.export_build'] = {'queue': settings.RAGF_CELERY_EXPORT_QUEUE}
+    if settings.RAGF_CELERY_EVAL_QUEUE:
+        task_routes['evaluation.*'] = {'queue': settings.RAGF_CELERY_EVAL_QUEUE}
+    if settings.RAGF_CELERY_GRAPH_QUEUE:
+        task_routes['graph.*'] = {'queue': settings.RAGF_CELERY_GRAPH_QUEUE}
+    if settings.RAGF_CELERY_AGENT_QUEUE:
+        task_routes['agent.*'] = {'queue': settings.RAGF_CELERY_AGENT_QUEUE}
+    return task_routes
+
+
 def init_celery() -> celery.Celery:
     """初始化 Celery 应用"""
 
@@ -72,31 +104,7 @@ def init_celery() -> celery.Celery:
     if DataBaseType.mysql == settings.DATABASE_TYPE:
         result_backend = result_backend.replace('postgresql+psycopg', 'mysql+pymysql')
 
-    # RAGF（ragf-design §10/M8）：ingest.* 可单独分配队列（演进期拆分演练）。
-    # 默认沿用默认队列（celery），单 worker 拓扑与既有行为不变；显式设置
-    # RAGF_CELERY_INGEST_QUEUE 后任务入独立队列，由 -Q ingest 的
-    # ragf_celery_ingest_worker（compose profile ragf-ingest）消费。
-    # 双管线摄取（spec D4）：knowhere.* / visual.* 同模式各自独立队列。
-    task_routes: dict[str, dict[str, str]] = {}
-    if settings.RAGF_CELERY_INGEST_QUEUE:
-        task_routes['ingest.*'] = {'queue': settings.RAGF_CELERY_INGEST_QUEUE}
-    if settings.RAGF_CELERY_KNOWHERE_QUEUE:
-        task_routes['knowhere.*'] = {'queue': settings.RAGF_CELERY_KNOWHERE_QUEUE}
-    if settings.RAGF_CELERY_VISUAL_QUEUE:
-        task_routes['visual.*'] = {'queue': settings.RAGF_CELERY_VISUAL_QUEUE}
-    # 文档预览转换（D55）：重操作且与摄取竞争资源，独立队列
-    if settings.RAGF_CELERY_PREVIEW_QUEUE:
-        task_routes['kb.preview_convert'] = {'queue': settings.RAGF_CELERY_PREVIEW_QUEUE}
-    # 整库导出：同样是重 IO 操作，独立队列避免挤占摄取
-    if settings.RAGF_CELERY_EXPORT_QUEUE:
-        task_routes['kb.export_build'] = {'queue': settings.RAGF_CELERY_EXPORT_QUEUE}
-    # 评估（RAG 清单 Phase 4 / D61）：逐题「检索 → 生成 → Judge」是重任务，
-    # 与摄取抢 worker 会拖慢用户可见的摄取，故独立队列
-    if settings.RAGF_CELERY_EVAL_QUEUE:
-        task_routes['evaluation.*'] = {'queue': settings.RAGF_CELERY_EVAL_QUEUE}
-    # 建图（D62）：逐块 LLM 抽取，重任务且与摄取、评估争模型配额，独立队列
-    if settings.RAGF_CELERY_GRAPH_QUEUE:
-        task_routes['graph.*'] = {'queue': settings.RAGF_CELERY_GRAPH_QUEUE}
+    task_routes = _build_task_routes()
 
     # https://docs.celeryq.dev/en/stable/userguide/configuration.html
     app = celery.Celery(
