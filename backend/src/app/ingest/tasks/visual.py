@@ -40,5 +40,11 @@ async def visual_parse_task(
         record_ingest_result('skipped')
         log.warning('视觉任务目标不存在 doc={}: {}', document_id, exc)
         return {'document_id': document_id, 'status': 'skipped', 'error': str(exc)}
-    record_ingest_result(str(result.get('status') or 'ready'))
+    status = str(result.get('status') or 'ready')
+    record_ingest_result(status)
+    # D62：就绪后按需派发建图（默认关闭；失败不影响摄取）
+    if status == 'ready':
+        from backend.src.app.ingest.tasks.graph_hook import enqueue_graph_build
+
+        enqueue_graph_build(document_id=document_id, kb_name=kb_name, plugin_namespace=plugin_namespace)
     return result

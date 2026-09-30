@@ -361,6 +361,9 @@ class Settings(BaseSettings):
     # 单篇文档建图的分块上限（防超大文档把 worker 占死）
     RAGF_GRAPH_MAX_CHUNKS: int = 500
     RAGF_CELERY_GRAPH_QUEUE: str | None = None
+    # 摄取完成后自动派发建图（D62）。**默认关闭**：建图会为每块调一次 LLM，开启前应有
+    # 明确的成本预期；关闭时摄取链路行为与改造前逐位一致
+    RAGF_GRAPH_AUTO_BUILD: bool = False
     RAGF_RETRIEVAL_CACHE_ENABLED: bool = False
     RAGF_RETRIEVAL_CACHE_TTL_SECONDS: int = 300
     # D16：默认精排模型 spec（千问平台 token，dashscope SDK 通道）
