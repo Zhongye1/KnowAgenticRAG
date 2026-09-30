@@ -355,6 +355,12 @@ class Settings(BaseSettings):
     # 多一次空查询；建图完成后再按 KB 或请求开启
     RAGF_RETRIEVAL_USE_GRAPH: bool = False
     RAGF_RETRIEVAL_GRAPH_TOP_K: int = 10
+    # 建图（D62）：抽取用的 chat 模型 spec 与逐块并发；空 spec = 需在请求里显式指定
+    RAGF_GRAPH_EXTRACTOR_SPEC: str = ''
+    RAGF_GRAPH_CONCURRENCY: int = 4
+    # 单篇文档建图的分块上限（防超大文档把 worker 占死）
+    RAGF_GRAPH_MAX_CHUNKS: int = 500
+    RAGF_CELERY_GRAPH_QUEUE: str | None = None
     RAGF_RETRIEVAL_CACHE_ENABLED: bool = False
     RAGF_RETRIEVAL_CACHE_TTL_SECONDS: int = 300
     # D16：默认精排模型 spec（千问平台 token，dashscope SDK 通道）

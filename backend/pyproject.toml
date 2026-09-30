@@ -382,6 +382,9 @@ ignore_imports = [
     # graph 复用 kb 的通用多租户设施（TenantScopedCrud / instance_namespace），
     # 与 evaluation 同一取舍：不为一个新域去改 kb 的既有 crud。
     "backend.src.app.graph.** -> backend.src.app.kb.**",
+    # 建图任务经 app/task celery 实例派发、按 spec 解析抽取模型（同 evaluation 口径）
+    "backend.src.app.graph.** -> backend.src.app.task.**",
+    "backend.src.app.graph.** -> backend.src.app.model_provider.**",
     # common.security（JWT/权限）读取 admin 用户/角色数据：跨模块公共层，属已知债务，
     # 后续应将用户查询下沉为独立 auth 模块或端口，届时删除本条豁免
     "backend.src.common.security.** -> backend.src.app.admin.**",

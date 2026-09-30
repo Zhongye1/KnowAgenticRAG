@@ -94,6 +94,9 @@ def init_celery() -> celery.Celery:
     # 与摄取抢 worker 会拖慢用户可见的摄取，故独立队列
     if settings.RAGF_CELERY_EVAL_QUEUE:
         task_routes['evaluation.*'] = {'queue': settings.RAGF_CELERY_EVAL_QUEUE}
+    # 建图（D62）：逐块 LLM 抽取，重任务且与摄取、评估争模型配额，独立队列
+    if settings.RAGF_CELERY_GRAPH_QUEUE:
+        task_routes['graph.*'] = {'queue': settings.RAGF_CELERY_GRAPH_QUEUE}
 
     # https://docs.celeryq.dev/en/stable/userguide/configuration.html
     app = celery.Celery(
