@@ -13,7 +13,7 @@ RAG-F 智能知识管理平台后端：基于 **FastAPI** 的私有知识库 RAG
 3. **ruff 规则严格**：单引号、line-length 120、异步函数内禁止阻塞调用（open/httpx/sleep 等规则已开启）、公共函数必须标注返回类型。提交前 `task lint`。
 4. `model/__init__.py` **必须聚合导出全部模型类**——建表与模型注册依赖它。
 5. **配置一律走 `src/core/config.py` 的 `Settings`**（pydantic-settings），不在业务代码里直接读 `os.environ`；RAGF 业务参数以 `RAGF_` 前缀集中声明。
-6. 新表结构变更走 Alembic 迁移（`src/alembic/`），不要手工改库。
+6. **表结构变更**：未上线期直接改 ORM 模型 + 启动时 `MappedBase.metadata.create_all`（`src/database/db.py`），`src/alembic/versions/` 目前**只有占位 README、不维护迁移脚本**；已存在表的**改形**（加列/改类型）`create_all` 覆盖不到，需在 `src/database/ragf_schema_migrations.py` 里显式处理。**上线前**须补首个基线并切到 `alembic upgrade head`（见 `src/alembic/versions/README.md`）。
 
 ## 3. 技术栈与选型
 
