@@ -102,6 +102,7 @@ export default defineConfig({
                     { text: "RAG API 设计与落地路线", link: "/specs/2026-08-25-rag-api设计与落地路线" },
                     { text: "Agentic RAG 落地改造清单", link: "/specs/2026-09-12-agentic-rag-落地改造清单" },
                     { text: "知识库角色与 ACL v2", link: "/specs/2026-09-12-kb-ownership-and-acl-v2-design" },
+                    { text: "产品形态定义与路线选型（Mira 对照）", link: "/specs/2026-09-30-产品形态与路线选型" },
                     { text: "① 知识库落地改造清单", link: "/specs/2026-09-29-kb-落地改造清单" },
                     { text: "② RAG 检索链路落地改造清单", link: "/specs/2026-09-29-rag-落地改造清单" },
                     { text: "③ 智能体运行时落地改造清单", link: "/specs/2026-09-29-agent-落地改造清单" },

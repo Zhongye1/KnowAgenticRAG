@@ -1,6 +1,6 @@
 ---
 title: 技能与 MCP 落地改造清单
-description: RAG-F 技能（Skills）与 MCP 补齐清单：全形态技能（含沙盒投影、脚本执行、渐进式披露、工具门控）、MCP 双向（服务端保留 + 客户端接入）；含 Yuxi 借鉴项的移植性标注与目标文件结构树
+description: RAG-F 技能（Skills）与 MCP 补齐清单：技能（内容存储、上下文注入、渐进式披露、工具门控）、MCP 双向（服务端保留 + 客户端接入）；含 Yuxi 借鉴项的移植性标注与目标文件结构树（2026-09-30 修订：D86 去沙盒，技能不含脚本执行）
 ---
 
 # 技能与 MCP 落地改造清单（Spec）
@@ -15,12 +15,28 @@ description: RAG-F 技能（Skills）与 MCP 补齐清单：全形态技能（�
 | 范围     | **新增 `skills` 独立域**；`app/mcp` 扩展为双向；门控中间件落 `app/agent/middlewares/skills.py`                                                                                                                                                                               |
 | 参照实现 | Yuxi（MIT）`backend/package/yuxi/agents/{skills,mcp,middlewares/skills.py,toolkits}/**`                                                                                                                                                                                      |
 | 上游文档 | [2026-09-05-agent-layer-and-mcp-design.md](./2026-09-05-agent-layer-and-mcp-design.md)（D18/D24/D25/D30/D33）、[2026-09-12-agentic-rag-落地改造清单.md](./2026-09-12-agentic-rag-落地改造清单.md)（D39 不引 DeepAgents——**保持**）                                           |
-| 联动文档 | [2026-09-29-agent-落地改造清单.md](./2026-09-29-agent-落地改造清单.md)（**Phase 0 工作区/沙盒 + Phase 3.6 工具注册表是本清单硬前置**）、[2026-09-29-kb-落地改造清单.md](./2026-09-29-kb-落地改造清单.md)、[2026-09-29-rag-落地改造清单.md](./2026-09-29-rag-落地改造清单.md) |
+| 联动文档 | [2026-09-29-agent-落地改造清单.md](./2026-09-29-agent-落地改造清单.md)（**Phase 3.6 工具注册表是本清单硬前置**；原「Phase 0 工作区/沙盒」前置已由 D86 取消）、[2026-09-30-产品形态与路线选型.md](./2026-09-30-产品形态与路线选型.md)（D86）、[2026-09-29-kb-落地改造清单.md](./2026-09-29-kb-落地改造清单.md)、[2026-09-29-rag-落地改造清单.md](./2026-09-29-rag-落地改造清单.md) |
 | 代码基线 | `refactor/ORCA`；Skills 后端零实现；MCP 服务端 5 只读工具已上线                                                                                                                                                                                                              |
 
 ### 0.1 全局前置约束
 
 同 [知识库清单 §0.1](./2026-09-29-kb-落地改造清单.md)：**未上线、无迁移层兼容**（`create_all`、不回填、不双写、不灰度、前端 `generated/` 全量重生成）。
+
+### 0.2 修订记录（2026-09-30）
+
+**[产品形态与路线选型 D86](./2026-09-30-产品形态与路线选型.md) 决定：不引入代码执行沙盒。** 本清单据此修订如下条目（技能形态从「沙盒投影 + 脚本执行」降为「**上下文注入 + 显式激活 + 工具门控**」），其余结论（尤其 D73 权限、D74/D76/D78 门控、D77 transport 白名单）**全部不变**：
+
+| 原条目                                        | 修订后                                                                                     |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| §1.2 目标 1「数据模型 + 宿主文件系统 + 沙盒投影」 | 改为「数据模型 + **内容存储 + 上下文注入 + 显式激活工具** + 依赖工具门控 + 安装 + 权限」    |
+| **D75**（技能投影 = 沙盒内 bind-mount）        | **由 D86 取代**：技能**不再投影到任何文件系统**；SKILL.md 正文按需注入上下文（渐进式披露保留） |
+| Phase 1.7 `projection.py`（生成沙盒挂载清单）  | **删除**（无挂载可生成）                                                                    |
+| Phase 2.1 `skill_tools.py`（沙盒内 `cd` 执行脚本） | 改为 **`activate_skill(slug)` 激活工具**（读库内 SKILL.md → 写回 `activated_skills`）    |
+| Phase 2.4（`read_file` 命中 SKILL.md 触发激活） | **删除**（无沙盒文件工具；激活改走 Phase 2.1 的显式工具）                                    |
+| Phase 3.2 远程安装（无凭据沙盒执行）           | **列入非目标**（无沙盒即无法安全执行第三方代码；D77 的 transport 白名单继续生效）            |
+| §3 差距表「沙盒内脚本执行」行                  | 删除；新增一行「**脚本型技能**」= **明确不支持**（代价见 D86）                              |
+
+**保留的硬前置**：[智能体清单] **Phase 3.6 工具注册表**（D76 门控前置）。原「Phase 0 工作区/沙盒」前置**不再成立**。
 
 ---
 
@@ -34,18 +50,18 @@ description: RAG-F 技能（Skills）与 MCP 补齐清单：全形态技能（�
 
 ### 1.2 目标
 
-1. 建立**全形态技能体系**：数据模型 + 宿主文件系统 + 沙盒投影 + 渐进式披露 + 依赖工具门控 + 安装（本地上传 / 远程）+ 权限 + 前端管理面；
+1. 建立**技能体系**：数据模型 + 内容存储 + **上下文注入与显式激活** + 渐进式披露 + 依赖工具门控 + 安装（本地上传）+ 权限 + 前端管理面（**无文件系统投影、无脚本执行**，见 §0.2/D86）；
 2. 把现有 4 个只读工具收进**技能依赖**，使 `knowledge-base` 成为一个真正的 Skill（对齐 Yuxi 的形态），而不是硬编码工具集；
 3. MCP 补**客户端接入**：外部 MCP server 的注册/测试/工具发现/开关，工具进 Agent 工具面且受技能门控；
 4. 保留并扩展**服务端暴露**：随知识库能力补齐（导图、版本、导出）同步扩展对外工具面。
 
 ### 1.3 非目标
 
-- **不引入 DeepAgents**：延续 D39。Yuxi 的 `SkillsMiddleware` 复用 deepagents 的 `SKILLS_SYSTEM_PROMPT` 与 `read_file` 语义，本项目**自研等价逻辑**（提示词自己写、激活通道挂在自己的沙盒文件工具上）；
+- **不引入 DeepAgents**：延续 D39。Yuxi 的 `SkillsMiddleware` 复用 deepagents 的 `SKILLS_SYSTEM_PROMPT` 与 `read_file` 语义，本项目**自研等价逻辑**（提示词自己写、**激活通道改为显式 `activate_skill` 工具**——D86 后无沙盒文件工具）；
 - **不做 Skill 市场 / 版本共存 / 回滚**：Yuxi 的 `version` / `content_hash` 只服务内置同步，本项目同样只做「内置同步 + 用户自装」，不做多版本并存；
 - **不做 MCP 服务端的批量请求与 GET 长连接会话协商**：延续既有 MVP 边界（`mcp/api/router.py` 文档字符串）；
-- **不搬 Yuxi 的 `sandbox-provisioner` 与远程安装的沙盒供应商路径**（依赖本项目没有的基础设施）；
-- **不做技能的写工具自授权**：技能带来的写工具（文件写、命令执行）必须过审批闸（[智能体清单] Phase 2.2），技能不能自行豁免。
+- **不搬 Yuxi 的 `sandbox-provisioner` 与远程安装的沙盒供应商路径**（依赖本项目没有的基础设施；**D86 后连本项目自己的沙盒也不做**）；
+- **不做技能脚本执行与远程安装**（[产品形态与路线选型 D86](./2026-09-30-产品形态与路线选型.md)）：技能 = 方法论文本 + 工具依赖声明，不含可执行代码；远程安装列为非目标；
 
 ---
 
@@ -83,10 +99,10 @@ description: RAG-F 技能（Skills）与 MCP 补齐清单：全形态技能（�
 
 | 维度           | 现状            | 目标                                | 缺口性质                  |
 | -------------- | --------------- | ----------------------------------- | ------------------------- |
-| Skills 存在性  | 零              | 全形态（存储/投影/披露/门控/安装）  | 从零建设                  |
+| Skills 存在性  | 零              | 技能体系（存储/注入/披露/门控/安装） | 从零建设                  |
 | 工具可见性     | 固定 4 个恒可见 | 基础工具 + 被技能门控的工具         | 机制缺失                  |
 | 工具与技能关系 | 硬编码          | 三类显式依赖（tool/mcp/skill）      | 模型缺失                  |
-| 沙盒内脚本执行 | 无              | 技能目录可 `cd` + 执行脚本          | 依赖 [智能体清单] Phase 0 |
+| 沙盒内脚本执行 | 无              | **明确不支持**（D86）               | 能力放弃                  |
 | 安装           | 无              | ZIP 上传 + 远程安装（零信任）       | 能力缺失                  |
 | 技能权限       | 无              | 复用 ACL v2                         | 需定决策                  |
 | MCP 方向       | 仅服务端        | 双向                                | 能力缺失                  |
@@ -101,7 +117,7 @@ description: RAG-F 技能（Skills）与 MCP 补齐清单：全形态技能（�
 | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **D73** | 技能权限**复用本项目 ACL v2**（`rag_kb_acl` 同构的 `rag_skill_acl` + 同一 `resolver`），**不引 Yuxi 的 `share_config` 三级模型**                                                              | 备选：照搬 Yuxi 的 `share_config`（`access_level: global/department/user` + 角色上限，`permissions/resource_permission.py:43,61-84`）。否决理由：本项目 ACL v2 已是更强模型（allow/deny 双语义、`expires_at`、主体四类含 group、append-only 审计、default deny），再引一套三级权限会导致同一平台两套授权语义、两套前端 UI、两套审计；且技能与知识库的共享范围天然同构，共用一个 resolver 才是收敛方向                                                                                                                                   |
 | **D74** | 工具门控采用**注册与可见性两步解耦**：技能依赖工具在构建期**全量注册**进 ToolNode，可见性由中间件在**每次模型调用前**按 `gated − activated` 过滤 `request.tools`                              | 备选：只在激活时把工具加入。否决理由：模型激活技能后发起的调用要靠 ToolNode 执行，若未注册会报 `not a valid tool`（Yuxi 已在 `toolkits/service.py:138-151` 用注释显式记录这个坑）。备选：不做门控，工具恒可见。否决理由：那就丢掉了 Skills 的核心价值——按需加载、减少提示词与工具选择的干扰、降低误调用                                                                                                                                                                                                                                 |
-| **D75** | 技能文件系统投影 = **沙盒内 bind-mount**：共享/内置技能以**只读**挂载到沙盒 `/skills/{slug}`，个人技能以**读写**挂载到 `/user-skills/{slug}`；**不做** Yuxi 式的宿主侧差量复制 + 虚拟路径映射 | 备选：照搬 Yuxi 的复制投影（`skills/service.py:341-432`：临时目录 → `skill_dirs_equal` 差量 → rename → 逐 uid 文件锁 + PG advisory lock）。否决理由：那套机制的存在前提是**沙盒在远端、无法 bind-mount 宿主目录**（Yuxi 的 provisioner 架构）；本项目一期沙盒是本地受限子进程（[智能体清单] D68），bind-mount 直接在挂载点呈现授权视图，省掉整个复制/差量/锁/一致性校验层。**代价**：内置 SKILL.md 里的路径引用要改写（Yuxi 写 `cd /home/gem/skills/mysql-reporter`，本项目写 `cd /skills/mysql-reporter`），移植内置技能时必须逐份校对 |
+| **D75** | 技能**不投影到任何文件系统**（**原「沙盒内 bind-mount」由 [D86](./2026-09-30-产品形态与路线选型.md) 取代**）：SKILL.md 正文按需注入上下文实现渐进式披露，激活走显式 `activate_skill(slug)` 工具 | 原备选（Yuxi 的复制投影 / 本项目 D68 的 bind-mount）**双双作废**——两者都以「存在一个可读写文件系统的执行环境」为前提，D86 取消沙盒后该前提不存在。**收益**：省掉投影、差量、锁、一致性校验与路径改写五件事；**代价**：脚本型技能（`mysql-reporter` 等）**明确不支持** |
 | **D76** | 技能的依赖工具**必须启动期可枚举**（工具注册表 + 装饰器收集），运行期动态生成的工具不纳入门控                                                                                                 | 备选：允许运行期注册。否决理由：门控要在「构建 ToolNode」时就注册全部潜在工具，运行期才知道的工具无法被预注册，会退化成 D74 的 `not a valid tool` 问题。这是移植门控机制的**硬约束**，也是 [智能体清单] Phase 3.6 必须是前置的原因                                                                                                                                                                                                                                                                                                      |
 | **D77** | MCP 客户端 **transport 白名单**：用户创建的 MCP server 仅允许 `sse` / `streamable_http`；`stdio` **仅限代码内置**的 server                                                                    | 备选：允许用户建 stdio。否决理由：stdio 意味着在服务端进程里执行用户提交的命令行，等价于 RCE。Yuxi 同样禁止（`agents/mcp/service.py:429-430,483-484`「用户创建的 MCP 仅支持 sse 或 streamable_http，不允许启动 stdio 本地进程」），且它更进一步在启动时**禁用历史 stdio 配置**（`mcp/service.py:78-80,113-123`）                                                                                                                                                                                                                        |
 | **D78** | MCP 工具**不无条件进模型可见集**：由技能的 `mcp_dependencies` 决定，未激活技能对应的 MCP 工具对模型不可见；MCP 工具与本地工具**同源同门控**                                                   | 备选：所有已启用 MCP 工具恒可见。否决理由：与 D74 的门控语义不一致（本地工具按需、MCP 工具全给），会让模型面对一个随部署环境漂移的大工具集；且 MCP 工具数量不可控，全给会挤占上下文并放大误调用面。备选：MCP 工具完全独立于技能体系。否决理由：那技能就无法编排「用图表 MCP 画图」这类跨来源能力，而 `mysql-reporter` 这类技能正是靠它成立的                                                                                                                                                                                            |
@@ -120,7 +136,7 @@ description: RAG-F 技能（Skills）与 MCP 补齐清单：全形态技能（�
 | 1.4  | `app/skills/service/repository.py`（🆕） | 仓储门面                                                                                                                                                                                                                    | —                            |
 | 1.5  | `app/skills/service/service.py`（🆕）    | SKILL.md frontmatter 解析（`name`/`slug`/`description` 必填校验）、`content_hash` 计算、ZIP 解压安全（拒绝对路径与 `..` 穿越）、导入/导出                                                                                   | 恶意 ZIP 被拒的单测          |
 | 1.6  | `app/skills/service/runtime.py`（🆕）    | `RuntimeSkill` 构建（slug → `{path, tools, mcps, skills}`）、依赖闭包 DFS + **环检测**、预加载内容读取（拒符号链接）                                                                                                        | 环形依赖被拒；闭包正确性单测 |
-| 1.7  | `app/skills/service/projection.py`（🆕） | 生成沙盒挂载清单（授权技能 → 挂载点映射），交由 `workspace.sandbox` 执行（D75）                                                                                                                                             | 未授权技能不出现             |
+| 1.7  | ~~`app/skills/service/projection.py`~~ | **删除**（D86：技能不投影文件系统，无挂载清单可生成）                                                                                                                                             | —             |
 | 1.8  | `app/skills/buildin/**`（🆕）            | 内置技能目录 + 启动时同步（`init_builtin_skills`）；**SKILL.md 路径引用按 D75 改写**                                                                                                                                        | 启动后库内有 5 条内置        |
 | 1.9  | `app/skills/api/v1/skills.py`（🆕）      | 列表 / 详情 / 启停 / 文件树 / 文件读写 / 依赖配置 / 共享配置 / 导出                                                                                                                                                         | OpenAPI 可见                 |
 | 1.10 | `app/router.py` + `pyproject.toml`       | 挂载 skills 域；independence 加 `skills`，`agent → skills` 豁免（注明 D74/D78）                                                                                                                                             | `lint-imports` 0 broken      |
@@ -129,11 +145,11 @@ description: RAG-F 技能（Skills）与 MCP 补齐清单：全形态技能（�
 
 | 编号 | 落点                                              | 改动                                                                                                                                                                     | 验收                              |
 | ---- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
-| 2.1  | `app/agent/toolkits/buildin/skill_tools.py`（🆕） | 已激活技能的脚本入口工具（在沙盒内 `cd /skills/{slug}` 执行）                                                                                                            | 脚本可执行且受沙盒约束            |
+| 2.1  | `app/agent/toolkits/buildin/skill_tools.py`（🆕） | **`activate_skill(slug)` 激活工具**：按授权校验 → 读库内 SKILL.md 正文注入上下文 → 写回 `activated_skills`（D75 修订后形态）                                                                                                            | 未授权技能不可激活；激活后其依赖工具可见            |
 | 2.2  | `app/agent/middlewares/skills.py`（🆕）           | 提示段注入（懒加载技能只给 `slug + description`；预加载技能给完整正文）、`activated_skills` state、依赖展开、`gated − activated` 过滤 `request.tools`、动态 MCP 工具挂载 | 未激活技能的工具对模型不可见      |
 | 2.3  | `app/agent/graph/builder.py`                      | 装配 skills 中间件；构建期**全量注册**依赖工具（D74）                                                                                                                    | 激活后调用不报 `not a valid tool` |
-| 2.4  | 沙盒文件工具                                      | `read_file` 命中 `/skills/{slug}/SKILL.md` → 写回 `activated_skills`（动态激活）                                                                                         | 模型读 SKILL.md 即激活            |
-| 2.5  | `app/agent/middlewares/approval.py`               | 技能带来的写工具纳入审批 `interrupt_on`                                                                                                                                  | 技能不能自行豁免审批              |
+| 2.4  | ~~沙盒文件工具~~                                  | **删除**（D86：无沙盒文件工具；激活改由 2.1 的 `activate_skill` 承担）                                                                                                     | —            |
+| 2.5  | `app/agent/middlewares/approval.py`               | 技能依赖的**外部 MCP 写工具**纳入审批 `interrupt_on`（D86 后无本地写工具）                                                                                              | 技能不能自行豁免审批              |
 | 2.6  | `knowledge-base` Skill（🆕）                      | 把现有 4 只读工具（`agent/graph/tools.py:87-237`）收进 `knowledge-base` 技能的 `tool_dependencies`；新建库元数据工具（导图/示例问题，依赖 [知识库清单] Phase 4）         | 未激活时 4 工具不可见             |
 
 ### Phase 3 — 安装（D73/D77）
@@ -141,7 +157,7 @@ description: RAG-F 技能（Skills）与 MCP 补齐清单：全形态技能（�
 | 编号 | 落点                                                | 改动                                                                                                 | 验收                                     |
 | ---- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | 3.1  | `app/skills/service/install.py`（🆕）               | **本地上传**：ZIP 校验（路径穿越、大小、文件数、扩展名白名单）→ 落宿主技能目录 → 登记 ACL            | 恶意 ZIP 全部被拒                        |
-| 3.2  | `app/skills/service/remote_install.py`（🆕）        | **远程安装**：强制 HTTPS + host 白名单 + 一次性**无凭据**沙盒执行（`inherit_env=False`）+ 仅回传产物 | 非白名单 host 被拒；沙盒内不可见平台凭据 |
+| 3.2  | ~~`app/skills/service/remote_install.py`~~          | **列入非目标**（D86：无沙盒即无法安全执行第三方代码；不做「尽力而为」的执行）                          | —                                        |
 | 3.3  | `app/agent/toolkits/buildin/install_skill.py`（🆕） | `install_skill` 工具（模型可发起安装）；**子智能体内禁用**                                           | 子智能体调用被拒                         |
 | 3.4  | `app/skills/api/v1/install.py`（🆕）                | 安装草稿 → 确认落库的两阶段接口                                                                      | 草稿 TTL 过期                            |
 
@@ -184,14 +200,14 @@ description: RAG-F 技能（Skills）与 MCP 补齐清单：全形态技能（�
 | 预加载正文读取（拒符号链接）                 | `agents/skills/runtime.py:134-151`                                                                | **改写**           | `open_regular_file_fd` 的 no-follow 语义可用；本项目的 no-follow 原语在 `workspace/service/filesystem.py`（[智能体清单] 0.3），复用它而非另起一套                                                                                                                 |
 | **工具门控（注册与可见性解耦）**             | `agents/middlewares/skills.py:100-139` + `toolkits/service.py:138-151`                            | **改写**           | **这是唯一不可省略的机制**（D74）。门控判定逻辑（`gated − activated` → 过滤 `request.tools`）可整体搬；但 Yuxi 的中间件继承 LangChain `AgentMiddleware` 并复用 deepagents 的 `SKILLS_SYSTEM_PROMPT`，本项目须自研提示词与 `read_file` 激活通道（不引 DeepAgents） |
 | 提示段注入（懒加载仅摘要 / 预加载给正文）    | `agents/middlewares/skills.py:71-89,286-297`                                                      | **改写**           | 分段策略（懒加载只给 `slug + description`，预加载给完整 SKILL.md）可直接照用；提示词文本自己写                                                                                                                                                                    |
-| 动态激活（`read_file` 命中 SKILL.md）        | `agents/middlewares/skills.py:203-220,254-269`                                                    | **改写**           | 触发时机与 state 写回语义可照搬；依赖本项目的沙盒文件工具（[智能体清单] Phase 0）                                                                                                                                                                                 |
-| 共享技能只读投影（差量复制 + 双锁）          | `agents/skills/service.py:341-432`                                                                | **不可搬**         | 存在前提是远端沙盒无法 bind-mount；本项目改用沙盒内 bind-mount（D75），整个复制/差量/一致性层不需要                                                                                                                                                               |
+| 动态激活（`read_file` 命中 SKILL.md）        | `agents/middlewares/skills.py:203-220,254-269`                                                    | **改写**           | 「何时激活、state 如何写回」的语义可照搬；**触发通道换成显式 `activate_skill(slug)` 工具**（Yuxi 靠沙盒 `read_file` 命中，D86 后本项目无文件工具）                                                                                                                |
+| 共享技能只读投影（差量复制 + 双锁）          | `agents/skills/service.py:341-432`                                                                | **不可搬（D86）**   | 存在前提是「有一个可读写文件系统的执行环境」；D86 后本项目技能**根本不投影**，整个复制/差量/锁/一致性层与 bind-mount 方案一并作废                                                                                                                                |
 | 个人技能存 UserWorkspace                     | `agents/skills/service.py:76,862-866`                                                             | **改写**           | 「个人技能不入库、只活在用户工作区」的取舍可沿用；落点换成本项目 `workspace` 域的 UserWorkspace                                                                                                                                                                   |
 | 内置技能同步（PG advisory lock）             | `agents/skills/service.py:1717-1784`、`server/utils/lifespan.py:90-102`                           | **改写**           | 「启动时以代码定义为准同步 DB 行 + 替换磁盘目录」的语义可用；本项目用 lifespan 钩子（`common/lifespan.py` 已有机制）+ 单实例部署，advisory lock 可保留但非必需                                                                                                    |
-| 5 个内置 SKILL.md 正文                       | `agents/skills/buildin/*/SKILL.md`                                                                | **改写**           | `knowledge-base` / `deep-research` / `html-preview` / `image-gen` / `mysql-reporter` 的方法论正文可直接用；**必须改写沙盒路径引用**（`/home/gem/skills/...` → `/skills/...`，D75）与工具名（对齐本项目命名）                                                      |
-| `mysql-reporter` 脚本                        | `agents/skills/buildin/mysql-reporter/scripts/*.py`                                               | **直接搬**         | 三个只读脚本（list/describe/query）原样可用                                                                                                                                                                                                                       |
-| 远程安装（HTTPS + host 白名单 + 无凭据沙盒） | `agents/skills/remote_install.py:55-57,102-143,213-217`                                           | **不可搬（一期）** | 依赖一次性沙盒供应商路径；一期只做「执行命令于受限沙盒」的等价物（D68 的受限子进程），若无法保证无凭据则**降级为不支持远程安装**并显式报错，不做不安全实现                                                                                                        |
-| `install_skill` 工具（含子智能体禁用）       | `agents/toolkits/buildin/install_skill.py:82-92,119-214`                                          | **改写**           | 「子智能体内禁用安装」这条红线照搬；来源类型（沙盒路径 / Git）按一期能力裁剪                                                                                                                                                                                      |
+| 5 个内置 SKILL.md 正文                       | `agents/skills/buildin/*/SKILL.md`                                                                | **改写**           | `knowledge-base` / `deep-research` / `html-preview` / `image-gen` 的方法论正文可直接用，**但须删去脚本执行与文件路径段落**；`mysql-reporter` 因依赖脚本执行**整体放弃**（D86）；工具名对齐本项目命名                                                      |
+| `mysql-reporter` 脚本                        | `agents/skills/buildin/mysql-reporter/scripts/*.py`                                               | **不可搬（D86）**   | 需在沙盒内执行 Python；D86 后无执行环境，该技能不上架                                                                                                                                                                                                             |
+| 远程安装（HTTPS + host 白名单 + 无凭据沙盒） | `agents/skills/remote_install.py:55-57,102-143,213-217`                                           | **不可搬（D86）**   | 依赖一次性无凭据沙盒执行；D86 后**列入非目标**，不做「尽力而为」的不安全实现                                                                                                                                                                                      |
+| `install_skill` 工具（含子智能体禁用）       | `agents/toolkits/buildin/install_skill.py:82-92,119-214`                                          | **改写**           | 「子智能体内禁用安装」这条红线照搬；来源类型只剩**本地上传 ZIP**（沙盒路径 / Git 两类随 D86 去掉）                                                                                                                                                                |
 | `share_config` 三级权限                      | `permissions/resource_permission.py:43,61-84`                                                     | **不可搬**         | 用 ACL v2 替代（D73）                                                                                                                                                                                                                                             |
 | 存储迁移                                     | `storage_migrations/v071_skills.py`                                                               | **不可搬**         | 本项目未上线，无迁移层（§0.1）                                                                                                                                                                                                                                    |
 
@@ -217,14 +233,14 @@ description: RAG-F 技能（Skills）与 MCP 补齐清单：全形态技能（�
 | 本清单项                         | 依赖                                                                                                               | 被依赖                      |
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------ | --------------------------- |
 | Phase 1 技能本体                 | —                                                                                                                  | Phase 2 门控                |
-| **Phase 2 门控与激活**           | **[智能体清单] Phase 0**（沙盒 bind-mount、文件工具）+ **Phase 3.6**（工具注册表，D76）+ Phase 2.2（写工具审批闸） | `knowledge-base` 等内置技能 |
+| **Phase 2 门控与激活**           | **[智能体清单] Phase 3.6**（工具注册表，D76）+ Phase 2.2（**外部 MCP 写工具**审批闸，D86 后无本地写工具） | `knowledge-base` 等内置技能 |
 | Phase 2.6 `knowledge-base` Skill | [知识库清单] Phase 4（示例问题/导图工具）+ [RAG 清单] Phase 3（章节摘要）                                          | —                           |
-| Phase 3 安装                     | Phase 1；远程安装额外依赖沙盒无凭据能力                                                                            | —                           |
+| Phase 3 安装                     | Phase 1（**D86 后不含远程安装**）                                                                                  | —                           |
 | Phase 4 MCP 双向                 | [智能体清单] Phase 3.6（工具注册表）+ Phase 2.2（审批）                                                            | —                           |
 | Phase 4.7 服务端工具扩展         | [知识库清单] Phase 2/4（版本、导图）                                                                               | —                           |
 | Phase 5 前端                     | Phase 1–4                                                                                                          | —                           |
 
-**关键路径**：`[智能体清单] Phase 0 + Phase 3.6` → 本清单 Phase 1 → Phase 2。**技能不能先于工作区/沙盒与工具注册表开工。**
+**关键路径**：`[智能体清单] Phase 3.6` → 本清单 Phase 1 → Phase 2。**技能不能先于工具注册表开工**（D86 后不再依赖工作区/沙盒）。
 
 ---
 
@@ -246,15 +262,14 @@ backend/src/app/skills/                    🆕 独立域
 │   ├── repository.py                      仓储门面
 │   ├── service.py                         frontmatter 解析 / ZIP 校验 / 导入导出 / 内置同步
 │   ├── runtime.py                         RuntimeSkill / 依赖闭包 / 预加载读取
-│   ├── projection.py                      沙盒挂载清单（D75）
-│   ├── install.py                         本地上传安装
-│   └── remote_install.py                  远程安装（零信任）
-└── buildin/                               内置技能（SKILL.md 路径引用按 D75 改写）
+│   ├── install.py                         本地上传安装（ZIP + SKILL.md 校验）
+│   └── ~~projection.py~~ / ~~remote_install.py~~   已删除（D86）
+└── buildin/                               内置技能（**不含脚本**；SKILL.md 去掉路径与执行段落，D86）
     ├── knowledge-base/SKILL.md            ⚠️ 依赖 4 只读工具 + 导图/示例问题
     ├── deep-research/SKILL.md             依赖子智能体（[智能体清单] Phase 3.8）
     ├── html-preview/SKILL.md
-    ├── image-gen/SKILL.md
-    └── mysql-reporter/{SKILL.md,scripts/{list_tables,describe_table,query}.py}
+    └── image-gen/SKILL.md
+    ~~└── mysql-reporter/~~                 已放弃（依赖脚本执行，D86）
 
 backend/src/app/mcp/                       ✏️ 扩展为双向
 ├── api/
@@ -276,7 +291,7 @@ backend/src/app/agent/
     ├── service.py                         🆕 工具枚举与元数据
     └── buildin/
         ├── tools.py                       ✏️ 现有 4 只读工具收编
-        ├── skill_tools.py                 🆕 技能脚本执行入口
+        ├── skill_tools.py                 🆕 activate_skill(slug) 激活工具（D75 修订后形态）
         └── install_skill.py               🆕 安装工具（子智能体禁用）
 
 backend/src/app/router.py                  ✏️ 挂载 skills 域
