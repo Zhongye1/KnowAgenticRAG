@@ -251,6 +251,35 @@ class CRUDGraph(TenantScopedCrud[GraphEntity]):
         )
         return list((await db.execute(stmt)).scalars().all())
 
+    async def search_entities_in_text(
+        self,
+        db: AsyncSession,
+        *,
+        kb_name: str,
+        normalized_text: str,
+        plugin_namespace: str | None = None,
+        limit: int = 20,
+    ) -> list[GraphEntity]:
+        """实体**归一名称是给定文本的子串**（查询侧种子定位）。
+
+        方向是「实体名出现在查询里」而非反向：后者会把 ``apple`` 匹配到 ``pineapple``，
+        给 PPR 引入噪声种子。
+
+        调用方须先保证 ``normalized_text`` 非空——``strpos(x, '')`` 恒为 1，会把全部
+        实体当种子（等于关掉个性化）。
+        """
+        ns = instance_namespace(plugin_namespace)
+        stmt = (
+            select(GraphEntity)
+            .where(
+                GraphEntity.plugin_namespace == ns,
+                GraphEntity.kb_name == kb_name,
+                func.strpos(normalized_text, GraphEntity.normalized_name) > 0,
+            )
+            .limit(max(int(limit), 1))
+        )
+        return list((await db.execute(stmt)).scalars().all())
+
     async def list_mentions(
         self,
         db: AsyncSession,
