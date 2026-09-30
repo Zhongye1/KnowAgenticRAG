@@ -41,6 +41,7 @@ class EvalDatasetGenerateParam(SchemaBase):
     description: str = Field('', max_length=512, description='描述')
     item_count: int = Field(20, ge=1, description='生成题目数（受服务端上限约束）')
     sample_size: int = Field(200, ge=1, description='参与采样的分块数上限')
+    model: str = Field('', max_length=128, description='生成模型 spec；空=用 RAGF_CHAT_MODEL_SPEC')
 
 
 class EvalDatasetItemDetail(SchemaBase):

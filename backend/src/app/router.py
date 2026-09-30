@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from backend.src.app.admin.api.router import v1 as admin_v1
 from backend.src.app.agent.api.router import v1 as agent_v1
 from backend.src.app.chat.api.router import v1 as chat_v1
+from backend.src.app.evaluation.api.router import v1 as evaluation_v1
 from backend.src.app.ingest.api.router import v1 as ingest_v1
 from backend.src.app.kb.api.v1.router import v1 as kb_v1
 from backend.src.app.mcp.api.router import router as mcp_router
@@ -21,3 +22,4 @@ router.include_router(chat_v1)
 router.include_router(agent_v1)
 router.include_router(model_provider_v1)
 router.include_router(mcp_router)
+router.include_router(evaluation_v1)

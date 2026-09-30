@@ -96,6 +96,10 @@ RUN mkdir -p /var/log/ragf
 CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
 # === Celery Beat image ===
+FROM base_server AS ragf_celery_eval_worker
+COPY deploy/backend/supervisor/ragf_celery_eval_worker.conf /etc/supervisor/conf.d/
+CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
 FROM base_server AS ragf_celery_beat
 
 COPY deploy/backend/supervisor/ragf_celery_beat.conf /etc/supervisor/conf.d/

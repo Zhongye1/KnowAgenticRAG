@@ -306,6 +306,35 @@ services:
     networks:
       - ragf_network
 
+  # RAGF 评估（RAG 清单 Phase 4 / D61）：评估 worker（-Q eval，并发 16）。
+  # 用法：.env.server 设置 RAGF_CELERY_EVAL_QUEUE=eval 后
+  #   docker compose --profile ragf-eval up -d ragf_celery_eval_worker
+  # 与摄取分队列：一次评估是 N 题 ×（检索 + 生成 + Judge）的重任务，抢 worker 会
+  # 拖慢用户可见的摄取。
+  ragf_celery_eval_worker:
+    profiles: ["ragf-eval"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SERVER_TYPE=ragf_celery_eval_worker
+    image: ragf_celery_eval_worker:latest
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      ragf_rabbitmq:
+        condition: service_healthy
+      ragf_minio:
+        condition: service_healthy
+      ragf_milvus:
+        condition: service_healthy
+    volumes:
+      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
+      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
+    networks:
+      - ragf_network
+
   # RAGF 双管线摄取（spec D4）：Knowhere 解析 worker（-Q knowhere）。
   # 用法：.env.server 设置 RAGF_CELERY_KNOWHERE_QUEUE=knowhere 后
   #   docker compose --profile ragf-ingest up -d ragf_celery_knowhere_worker
