@@ -180,6 +180,29 @@ class CRUDDocument(TenantScopedCrud[Document]):
         """统计域内文档总数。"""
         return await self.count_scoped(db, plugin_namespace=plugin_namespace)
 
+    async def content_signal_by_kb(
+        self,
+        db: AsyncSession,
+        kb_name: str,
+        *,
+        plugin_namespace: str | None = None,
+    ) -> str:
+        """KB 内容信号（D63）：ready 文档数与最近更新时间的稳定摘要。
+
+        用作检索缓存键的「内容变了缓存即失效」条件。取聚合而非逐文档 ``sha256``
+        集合——后者每次检索都要拉全表指纹，大库上开销可能超过检索本身；这里是
+        一次廉价聚合。粒度是「该 KB 内容有变」，对缓存失效而言足够。
+        """
+        ns = instance_namespace(plugin_namespace)
+        stmt = select(func.count(), func.max(Document.updated_time)).where(
+            Document.plugin_namespace == ns,
+            Document.kb_name == kb_name,
+            Document.status == 'ready',
+        )
+        count, latest = (await db.execute(stmt)).one()
+        latest_token = latest.isoformat() if latest is not None else ''
+        return f'{int(count or 0)}:{latest_token}'
+
     async def count_by_kbs(
         self,
         db: AsyncSession,

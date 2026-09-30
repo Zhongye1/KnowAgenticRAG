@@ -1,5 +1,6 @@
 """知识库 DTO（EagleRAG api/schemas/knowledge_bases.py 迁移）。"""
 
+from collections.abc import Callable
 from datetime import datetime
 from typing import Any
 
@@ -16,6 +17,9 @@ QUERY_PARAM_WHITELIST = frozenset({
     'use_reranker',
     'include_visual',
     'visual_top_k',
+    'fusion_mode',
+    'vector_weight',
+    'bm25_weight',
 })
 
 
@@ -29,27 +33,60 @@ def _validate_query_params(value: dict | None) -> dict | None:
     return {key: _coerce_query_param(key, val) for key, val in value.items()}
 
 
+def _choice_coercer(allowed: frozenset[str], message: str) -> Callable[[str, Any], Any]:
+    """白名单取值强转器（越界抛 ValueError）。"""
+
+    def coerce(key: str, val: Any) -> Any:
+        if val not in allowed:
+            raise ValueError(message)
+        return val
+
+    return coerce
+
+
+def _positive_int_coercer(key: str, val: Any) -> Any:
+    coerced = int(val)
+    if coerced < 1:
+        raise ValueError(f'{key} 必须 >= 1')
+    return coerced
+
+
+def _unit_float_coercer(key: str, val: Any) -> Any:
+    coerced = float(val)
+    if not 0 <= coerced <= 1:
+        raise ValueError(f'{key} 必须在 0~1')
+    return coerced
+
+
+def _bool_coercer(key: str, val: Any) -> Any:
+    if not isinstance(val, bool):
+        raise TypeError(f'{key} 必须是布尔值')
+    return val
+
+
+# 键 → 强转器（与 retrieval 的 RETRIEVAL_PARAM_KEYS 由 parity 测试锁定，防漂移）
+_QUERY_PARAM_COERCERS: dict[str, Callable[[str, Any], Any]] = {
+    'search_mode': _choice_coercer(
+        frozenset({'vector', 'keyword', 'hybrid'}), 'search_mode 只能是 vector / keyword / hybrid'
+    ),
+    'fusion_mode': _choice_coercer(frozenset({'rrf', 'weighted'}), 'fusion_mode 只能是 rrf 或 weighted'),
+    'recall_top_k': _positive_int_coercer,
+    'final_top_k': _positive_int_coercer,
+    'visual_top_k': _positive_int_coercer,
+    'similarity_threshold': _unit_float_coercer,
+    'vector_weight': _unit_float_coercer,
+    'bm25_weight': _unit_float_coercer,
+    'use_reranker': _bool_coercer,
+    'include_visual': _bool_coercer,
+}
+
+
 def _coerce_query_param(key: str, val: Any) -> Any:
     """按键做类型/范围强制，非法值抛 ValueError（FastAPI 422）。"""
-    if key == 'search_mode':
-        if val not in {'vector', 'hybrid'}:
-            raise ValueError('search_mode 只能是 vector 或 hybrid')
-        return val
-    if key in {'recall_top_k', 'final_top_k', 'visual_top_k'}:
-        coerced = int(val)
-        if coerced < 1:
-            raise ValueError(f'{key} 必须 >= 1')
-        return coerced
-    if key == 'similarity_threshold':
-        coerced = float(val)
-        if not 0 <= coerced <= 1:
-            raise ValueError('similarity_threshold 必须在 0~1')
-        return coerced
-    if key in {'use_reranker', 'include_visual'}:
-        if not isinstance(val, bool):
-            raise TypeError(f'{key} 必须是布尔值')
-        return val
-    raise ValueError(f'query_params 非法键: {key}')
+    coercer = _QUERY_PARAM_COERCERS.get(key)
+    if coercer is None:
+        raise ValueError(f'query_params 非法键: {key}')
+    return coercer(key, val)
 
 
 class KBCreateParam(SchemaBase):

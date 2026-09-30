@@ -15,7 +15,7 @@ import logging
 from typing import Any, cast
 
 from pymilvus import CollectionSchema, DataType, FieldSchema, Function, FunctionType, MilvusClient
-from pymilvus.client.abstract import AnnSearchRequest, RRFRanker
+from pymilvus.client.abstract import AnnSearchRequest, RRFRanker, WeightedRanker
 from pymilvus.milvus_client.index import IndexParams
 
 from backend.src.core.config import settings
@@ -559,6 +559,9 @@ def search_ragf_kb(
     rrf_k: int = 60,
     nprobe: int = 10,
     bm25_drop_ratio_search: float = 0.0,
+    fusion_mode: str = 'rrf',
+    vector_weight: float = 0.7,
+    bm25_weight: float = 0.3,
     expr: str | None = None,
     plugin_namespace: str | None = None,
 ) -> list[dict]:
@@ -566,8 +569,10 @@ def search_ragf_kb(
 
     - ``vector``：dense 路（COSINE + nprobe），返回 top-``recall_top_k``；
     - ``keyword``：仅 sparse（BM25）单路，输入原始查询文本，**不需要查询向量**；
-    - ``hybrid``：dense + sparse（BM25）双路，服务端 ``RRFRanker(k)`` 融合取
-      top-``recall_top_k``（两路 limit 均 = recall_top_k，防 RRF 尾段截断）。
+    - ``hybrid``：dense + sparse（BM25）双路，服务端融合取 top-``recall_top_k``
+      （两路 limit 均 = recall_top_k，防融合尾段截断）。``fusion_mode`` 为
+      ``rrf`` 时用 ``RRFRanker(rrf_k)``（默认，对分数尺度不敏感），为
+      ``weighted`` 时用 ``WeightedRanker(vector_weight, bm25_weight)``。
 
     过滤表达式统一由本模块注入（调用方只传 kb_name 之外的可选子句）；COSINE
     阈值过滤属检索服务层语义（vector 模式），不在此处执行。
@@ -576,6 +581,8 @@ def search_ragf_kb(
         raise ValueError(f'search_mode 必须是 vector/keyword/hybrid: {search_mode}')
     if search_mode != 'keyword' and not query_embedding:
         raise ValueError('vector/hybrid 检索必须提供 query_embedding')
+    if fusion_mode not in {'rrf', 'weighted'}:
+        raise ValueError(f'fusion_mode 必须是 rrf/weighted: {fusion_mode}')
     collection = ensure_ragf_template_collection(dim=int(dim), plugin_namespace=plugin_namespace)
     filter_expr = _and_expr(_kb_expr(kb_name), expr)
     limit = max(int(recall_top_k), 1)
@@ -620,10 +627,16 @@ def search_ragf_kb(
             limit=limit,
             expr=filter_expr,
         )
+        # D57：融合方式默认 rrf（行为与改造前逐位一致）；weighted 需真实评估数据定权重
+        ranker = (
+            RRFRanker(k=int(rrf_k))
+            if fusion_mode == 'rrf'
+            else WeightedRanker(float(vector_weight), float(bm25_weight))
+        )
         results = client.hybrid_search(
             collection_name=collection,
             reqs=[dense_req, sparse_req],
-            ranker=RRFRanker(k=int(rrf_k)),
+            ranker=ranker,
             limit=limit,
             output_fields=_RAGF_SEARCH_OUTPUT_FIELDS,
         )

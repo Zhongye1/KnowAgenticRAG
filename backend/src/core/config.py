@@ -337,12 +337,22 @@ class Settings(BaseSettings):
     RAGF_BM25_ANALYZER_TYPE: str = 'chinese'  # Milvus 内建中文（jieba）；等价自定义写法 'jieba'
 
     # 检索默认值（出厂默认；KB 级 query_params 持久化可覆盖，ragf-design §6.4/D17）
-    RAGF_RETRIEVAL_SEARCH_MODE: Literal['vector', 'hybrid'] = 'hybrid'
+    RAGF_RETRIEVAL_SEARCH_MODE: Literal['vector', 'keyword', 'hybrid'] = 'hybrid'
     RAGF_RETRIEVAL_RECALL_TOP_K: int = 20
     RAGF_RETRIEVAL_FINAL_TOP_K: int = 5
     RAGF_RETRIEVAL_SIMILARITY_THRESHOLD: float = 0.2
     RAGF_RETRIEVAL_USE_RERANKER: bool = True
     RAGF_RETRIEVAL_RRF_K: int = 60
+    # D57：hybrid 双路融合方式。默认 rrf（对分数尺度不敏感、无需调参）；
+    # weighted 需真实评估数据定权重，经 KB query_params / 请求逐层开启
+    RAGF_RETRIEVAL_FUSION_MODE: Literal['rrf', 'weighted'] = 'rrf'
+    RAGF_RETRIEVAL_VECTOR_WEIGHT: float = 0.7  # weighted 模式 dense 路权重
+    RAGF_RETRIEVAL_BM25_WEIGHT: float = 0.3  # weighted 模式 sparse 路权重
+    # D63：检索缓存（只缓存召回命中；ACL 与内容信号进 key，无显式失效）。
+    # 默认关闭（opt-in）：缓存影响结果新鲜度，先由部署方显式开启并观察命中率与
+    # 陈旧窗口，再考虑改默认。关闭时行为与改造前逐位一致
+    RAGF_RETRIEVAL_CACHE_ENABLED: bool = False
+    RAGF_RETRIEVAL_CACHE_TTL_SECONDS: int = 300
     # D16：默认精排模型 spec（千问平台 token，dashscope SDK 通道）
     RAGF_RETRIEVAL_RERANK_SPEC: str = 'dashscope:qwen3.7-text-rerank'
     # 视觉召回（ragf_visual 集合，双管线摄取 spec D7 查询侧）：默认关闭，

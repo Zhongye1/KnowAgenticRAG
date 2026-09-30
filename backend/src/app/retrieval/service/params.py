@@ -6,11 +6,16 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from backend.src.core.config import settings
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 __all__ = [
+    'FUSION_MODES',
+    'SEARCH_MODES',
     'apply_similarity_threshold',
     'build_document_expr',
     'default_search_params',
@@ -26,8 +31,12 @@ RETRIEVAL_PARAM_KEYS = frozenset({
     'use_reranker',
     'include_visual',
     'visual_top_k',
+    'fusion_mode',
+    'vector_weight',
+    'bm25_weight',
 })
 SEARCH_MODES = frozenset({'vector', 'keyword', 'hybrid'})
+FUSION_MODES = frozenset({'rrf', 'weighted'})
 
 
 def default_search_params() -> dict[str, Any]:
@@ -40,33 +49,70 @@ def default_search_params() -> dict[str, Any]:
         'use_reranker': bool(settings.RAGF_RETRIEVAL_USE_RERANKER),
         'include_visual': bool(settings.RAGF_RETRIEVAL_USE_VISUAL),
         'visual_top_k': int(settings.RAGF_RETRIEVAL_VISUAL_TOP_K),
+        'fusion_mode': settings.RAGF_RETRIEVAL_FUSION_MODE,
+        'vector_weight': float(settings.RAGF_RETRIEVAL_VECTOR_WEIGHT),
+        'bm25_weight': float(settings.RAGF_RETRIEVAL_BM25_WEIGHT),
     }
 
 
-def _coerce_param(key: str, value: Any) -> Any:
-    """按键轻量强转；非法值返回 None 表示「放弃该层覆盖」。"""
-    if key == 'search_mode':
-        return value if value in SEARCH_MODES else None
-    if key in {'recall_top_k', 'final_top_k', 'visual_top_k'}:
-        try:
-            return max(int(value), 1)
-        except (TypeError, ValueError):
-            return None
-    if key == 'similarity_threshold':
-        try:
-            coerced = float(value)
-        except (TypeError, ValueError):
-            return None
-        return coerced if 0.0 <= coerced <= 1.0 else None
-    if key in {'use_reranker', 'include_visual'}:
-        if isinstance(value, bool):
-            return value
-        if isinstance(value, str) and value.strip().lower() in {'true', 'false'}:
-            return value.strip().lower() == 'true'
-        if isinstance(value, int) and value in {0, 1}:
-            return bool(value)
+def _coerce_choice(allowed: frozenset[str]) -> Callable[[Any], Any]:
+    """白名单取值：不在集合内返回 None（放弃该层覆盖）。"""
+
+    def coerce(value: Any) -> Any:
+        return value if value in allowed else None
+
+    return coerce
+
+
+def _coerce_positive_int(value: Any) -> int | None:
+    """正整数（下限 1）；不可转换返回 None。"""
+    try:
+        return max(int(value), 1)
+    except (TypeError, ValueError):
         return None
+
+
+def _coerce_bounded_float(value: Any, *, clamp: bool) -> float | None:
+    """[0,1] 浮点；``clamp`` 为真时截断越界值，否则判为非法。"""
+    try:
+        coerced = float(value)
+    except (TypeError, ValueError):
+        return None
+    if clamp:
+        return min(max(coerced, 0.0), 1.0)
+    return coerced if 0.0 <= coerced <= 1.0 else None
+
+
+def _coerce_bool(value: Any) -> bool | None:
+    """布尔（接受 bool / 'true'|'false' / 0|1）；其余返回 None。"""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str) and value.strip().lower() in {'true', 'false'}:
+        return value.strip().lower() == 'true'
+    if isinstance(value, int) and value in {0, 1}:
+        return bool(value)
     return None
+
+
+# 键 → 强转器（D17 单一事实源；新增检索参数只需在此登记）
+_COERCERS: dict[str, Callable[[Any], Any]] = {
+    'search_mode': _coerce_choice(SEARCH_MODES),
+    'fusion_mode': _coerce_choice(FUSION_MODES),
+    'recall_top_k': _coerce_positive_int,
+    'final_top_k': _coerce_positive_int,
+    'visual_top_k': _coerce_positive_int,
+    'similarity_threshold': lambda value: _coerce_bounded_float(value, clamp=False),
+    'vector_weight': lambda value: _coerce_bounded_float(value, clamp=True),
+    'bm25_weight': lambda value: _coerce_bounded_float(value, clamp=True),
+    'use_reranker': _coerce_bool,
+    'include_visual': _coerce_bool,
+}
+
+
+def _coerce_param(key: str, value: Any) -> Any:
+    """按键强转；非法值返回 None 表示「放弃该层覆盖」。"""
+    coercer = _COERCERS.get(key)
+    return coercer(value) if coercer else None
 
 
 def merge_search_params(

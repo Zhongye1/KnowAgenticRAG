@@ -30,6 +30,11 @@ from backend.src.app.kb.service.chunk_service import ChunkService
 from backend.src.app.kb.utils.namespace import instance_namespace
 from backend.src.app.model_provider.service.provider_service import normalize_model_spec, provider_service
 from backend.src.app.retrieval.schema.search_result import KBSearchParam
+from backend.src.app.retrieval.service.cache import (
+    build_recall_cache_key,
+    get_cached_recall,
+    store_recall,
+)
 from backend.src.app.retrieval.service.filters import (
     MAX_DOC_FILTER_MATCH,
     coerce_document_ids,
@@ -67,6 +72,9 @@ _RERANK_DEGRADED = _METER.create_counter(
 )
 _VISUAL_DEGRADED = _METER.create_counter(
     'ragf.retrieval.visual_degraded', unit='1', description='视觉召回失败降级次数（编码/检索异常，D7）'
+)
+_RECALL_CACHE = _METER.create_counter(
+    'ragf.retrieval.recall_cache', unit='1', description='召回缓存命中/未命中次数（result=hit/miss，D63）'
 )
 
 
@@ -317,18 +325,61 @@ class RetrievalService:
         )
         request_data = self._request_data(param)
         filters, version_id = self._filters_from(request_data)
+        # D57：融合参数随 ctx 下发策略（默认 rrf，行为与改造前一致）
+        fusion_params = {
+            'fusion_mode': str(merged['fusion_mode']),
+            'vector_weight': float(merged['vector_weight']),
+            'bm25_weight': float(merged['bm25_weight']),
+        }
 
-        # ② embedding（核心能力，失败上抛不伪装成功；按 embedding 模型分组复用）
-        # keyword 模式只做词面召回：跳过编码，但仍解析 dense 维度定位集合（D58/B2）
-        embed_groups = await self._load_embeddings(
+        # ②a 文档过滤解析（D63：缓存键与召回共用；必须早于 embedding，
+        #     否则缓存命中仍要付一次编码，缓存就失去意义）
+        kb_filters = await self._resolve_kb_filters(
             db,
-            kbs=kbs,
             names=names,
-            query_texts=texts,
-            encode=mode != 'keyword',
+            ns=ns,
+            request_data=request_data,
+            version_id=version_id,
+            scope=scope,
         )
 
-        # ②b 视觉编码（可选能力，失败降级为纯文本检索；整次查询编码一次）
+        # ②b 召回缓存查询（D63）：只缓存召回命中，精排与来源补全照跑
+        cache_key: str | None = None
+        cached_text: list[dict[str, Any]] | None = None
+        if settings.RAGF_RETRIEVAL_CACHE_ENABLED and kb_filters:
+            cache_key = build_recall_cache_key(
+                namespace=ns,
+                query_texts=texts,
+                kb_exprs=[(kb_name, expr) for kb_name, _doc_ids, expr in kb_filters],
+                content_signals=[
+                    (kb_name, await self._doc_dao.content_signal_by_kb(db, kb_name, plugin_namespace=ns))
+                    for kb_name, _doc_ids, _expr in kb_filters
+                ],
+                params={
+                    'mode': mode,
+                    'recall_top_k': recall_top_k,
+                    'threshold': float(merged['similarity_threshold']),
+                    'include_visual': include_visual,
+                    **fusion_params,
+                },
+            )
+            cached_text = await get_cached_recall(cache_key)
+            _RECALL_CACHE.add(1, {'result': 'hit' if cached_text is not None else 'miss'})
+
+        # ③ embedding（核心能力，失败上抛不伪装成功；按 embedding 模型分组复用）
+        # keyword 模式只做词面召回：跳过编码，但仍解析 dense 维度定位集合（D58/B2）
+        # 缓存命中时文本路已就绪，无需任何编码
+        embed_groups: dict[str, dict[str, Any]] | None = None
+        if cached_text is None:
+            embed_groups = await self._load_embeddings(
+                db,
+                kbs=kbs,
+                names=names,
+                query_texts=texts,
+                encode=mode != 'keyword',
+            )
+
+        # ③b 视觉编码（可选能力，失败降级为纯文本检索；整次查询编码一次）
         visual_vector: list[float] | None = None
         visual_degraded = False
         if include_visual:
@@ -339,29 +390,30 @@ class RetrievalService:
                 _VISUAL_DEGRADED.add(1, {'stage': 'encode', 'kb_name': names[0]})
                 log.warning('视觉召回编码失败，降级为纯文本检索: {}', exc)
 
-        # ③ 文档级过滤解析 + 逐 KB 召回（带 scope 过滤；可选视觉召回）
+        # ④ 逐 KB 召回（带 scope 过滤；可选视觉召回）
         merged_hits, visual_hits, visual_recalled = await self._recall_kbs(
-            db,
-            names=names,
-            kbs=kbs,
+            kb_filters=kb_filters,
             ns=ns,
             query_texts=texts,
             mode=mode,
             recall_top_k=recall_top_k,
             threshold=float(merged['similarity_threshold']),
-            version_id=version_id,
-            request_data=request_data,
             embed_groups=embed_groups,
             scope=scope,
+            fusion_params=fusion_params,
+            cached_text=cached_text,
             visual_vector=visual_vector,
             visual_top_k=visual_top_k,
         )
+        if cache_key is not None and cached_text is None:
+            await store_recall(cache_key, merged_hits)
         visual_degraded = visual_degraded or visual_recalled
         steps: list[dict[str, str]] = []
         recall_step = {
             'name': 'recall',
             'detail': (
-                f'text={len(merged_hits)} visual={len(visual_hits)} recall_top_k={recall_top_k} queries={len(texts)}'
+                f'text={len(merged_hits)} visual={len(visual_hits)} recall_top_k={recall_top_k} '
+                f'queries={len(texts)} cache={"hit" if cached_text is not None else "miss"}'
             ),
         }
         steps.append(recall_step)
@@ -497,38 +549,29 @@ class RetrievalService:
             raise errors.RequestError(msg='视觉编码返回为空')
         return list(vector)
 
-    async def _recall_kbs(
+    async def _resolve_kb_filters(
         self,
         db: AsyncSession,
         *,
         names: list[str],
-        kbs: dict[str, Any],
         ns: str,
-        query_texts: list[str],
-        mode: str,
-        recall_top_k: int,
-        threshold: float,
-        version_id: int | None,
         request_data: dict[str, Any],
-        embed_groups: dict[str, dict[str, Any]],
-        scope: Scope | None = None,
-        visual_vector: list[float] | None = None,
-        visual_top_k: int = 5,
-    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], bool]:
-        """逐 KB 文档过滤解析 + 策略化召回；结果打上 kb_name 归属。
+        version_id: int | None,
+        scope: Scope | None,
+    ) -> list[tuple[str, list[str] | None, str | None]]:
+        """逐 KB 解析文档过滤与召回表达式（D63：编码/缓存键/召回共用同一份）。
 
-        scope: 检索范围（ACL 过滤），用于生成 Milvus 过滤表达式。
-        visual_vector: 视觉查询向量（None = 不做视觉召回）；视觉命中独立于文本
-        命中返回（tile 无 PG chunks，不进精排/引用），召回失败降级不阻塞文本。
+        返回 ``(kb_name, doc_ids | None, Milvus 表达式 | None)``；``doc_ids`` 为
+        None 表示无条件（检索整库），为 ``[]`` 表示有条件但无命中——后者直接跳过，
+        与改造前 `_recall_kbs` 内的短路语义一致。
         """
-        merged: list[dict[str, Any]] = []
-        visual_merged: list[dict[str, Any]] = []
-        visual_degraded = False
         # document_ids 直推（RAG 查询面）：跳过 PG 解析，直接作为 doc_id 集
         try:
             direct_doc_ids = coerce_document_ids(request_data.get('document_ids'))
         except (TypeError, ValueError) as exc:
             raise errors.RequestError(msg=str(exc)) from exc
+
+        resolved: list[tuple[str, list[str] | None, str | None]] = []
         for kb_name in names:
             if direct_doc_ids is not None:
                 doc_ids = direct_doc_ids
@@ -536,32 +579,67 @@ class RetrievalService:
                 doc_ids = await self._resolve_doc_ids(db, kb_name=kb_name, ns=ns, request_data=request_data)
             if doc_ids == []:
                 continue
-
-            # 构建 Milvus 过滤表达式：组合 doc_ids 过滤 + scope 过滤
             expr = self._compose_kb_expr(doc_ids=doc_ids, version_id=version_id, scope=scope)
+            resolved.append((kb_name, doc_ids, expr))
+        return resolved
 
-            group = next(item for item in embed_groups.values() if kb_name in item['kb_names'])
-            ctx: dict[str, Any] = {
-                'kb_name': kb_name,
-                # 单查询字段保留：自定义/存量策略仍可只读 query_text/query_embedding
-                'query_text': query_texts[0],
-                'query_embedding': group['query_embeddings'][0],
-                # D41：多子查询逐路召回（策略内并行 + RRF 融合）
-                'query_texts': list(query_texts),
-                'query_embeddings': list(group['query_embeddings']),
-                'dim': group['dim'],
-                'recall_top_k': recall_top_k,
-                'similarity_threshold': threshold,
-                'expr': expr,
-                'plugin_namespace': ns,
-            }
-            strategy = self._strategies.get(mode) or self._strategies['hybrid']
-            for hit in await strategy(ctx):
-                hit['kb_name'] = kb_name
-                merged.append(hit)
+    async def _recall_kbs(
+        self,
+        *,
+        kb_filters: list[tuple[str, list[str] | None, str | None]],
+        ns: str,
+        query_texts: list[str],
+        mode: str,
+        recall_top_k: int,
+        threshold: float,
+        embed_groups: dict[str, dict[str, Any]] | None = None,
+        fusion_params: dict[str, Any] | None = None,
+        scope: Scope | None = None,
+        cached_text: list[dict[str, Any]] | None = None,
+        visual_vector: list[float] | None = None,
+        visual_top_k: int = 5,
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], bool]:
+        """逐 KB 文本召回 + 可选视觉召回；结果打上 kb_name 归属。
 
-            # 视觉召回（可选；表达式同构但无版本标量，视觉行不区分版本）
-            if visual_vector is not None:
+        ``kb_filters`` 为 ``(kb_name, doc_ids, Milvus 表达式)``，由调用方在
+        **编码之前**解析（缓存键与召回共用同一份，避免缓存命中仍付一次编码）。
+        ``cached_text`` 非 None 表示缓存命中：跳过文本召回与编码，视觉召回照跑。
+        scope: 检索范围（ACL 过滤），用于生成视觉召回表达式。
+        visual_vector: 视觉查询向量（None = 不做视觉召回）；视觉命中独立于文本
+        命中返回（tile 无 PG chunks，不进精排/引用），召回失败降级不阻塞文本。
+        """
+        # 文本路：命中缓存直接用，否则逐 KB 走策略
+        if cached_text is not None:
+            merged: list[dict[str, Any]] = [dict(hit) for hit in cached_text]
+        else:
+            merged = []
+            for kb_name, _doc_ids, expr in kb_filters:
+                group = next(item for item in (embed_groups or {}).values() if kb_name in item['kb_names'])
+                ctx: dict[str, Any] = {
+                    'kb_name': kb_name,
+                    # 单查询字段保留：自定义/存量策略仍可只读 query_text/query_embedding
+                    'query_text': query_texts[0],
+                    'query_embedding': group['query_embeddings'][0],
+                    # D41：多子查询逐路召回（策略内并行 + RRF 融合）
+                    'query_texts': list(query_texts),
+                    'query_embeddings': list(group['query_embeddings']),
+                    'dim': group['dim'],
+                    'recall_top_k': recall_top_k,
+                    'similarity_threshold': threshold,
+                    'expr': expr,
+                    'plugin_namespace': ns,
+                    **(fusion_params or {}),
+                }
+                strategy = self._strategies.get(mode) or self._strategies['hybrid']
+                for hit in await strategy(ctx):
+                    hit['kb_name'] = kb_name
+                    merged.append(hit)
+
+        # 视觉路（可选；表达式同构但无版本标量，视觉行不区分版本）
+        visual_merged: list[dict[str, Any]] = []
+        visual_degraded = False
+        if visual_vector is not None:
+            for kb_name, doc_ids, _expr in kb_filters:
                 visual_ctx: dict[str, Any] = {
                     'kb_name': kb_name,
                     'query_visual_embedding': visual_vector,
