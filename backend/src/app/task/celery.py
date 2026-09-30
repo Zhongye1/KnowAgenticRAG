@@ -90,6 +90,10 @@ def init_celery() -> celery.Celery:
     # 整库导出：同样是重 IO 操作，独立队列避免挤占摄取
     if settings.RAGF_CELERY_EXPORT_QUEUE:
         task_routes['kb.export_build'] = {'queue': settings.RAGF_CELERY_EXPORT_QUEUE}
+    # 评估（RAG 清单 Phase 4 / D61）：逐题「检索 → 生成 → Judge」是重任务，
+    # 与摄取抢 worker 会拖慢用户可见的摄取，故独立队列
+    if settings.RAGF_CELERY_EVAL_QUEUE:
+        task_routes['evaluation.*'] = {'queue': settings.RAGF_CELERY_EVAL_QUEUE}
 
     # https://docs.celeryq.dev/en/stable/userguide/configuration.html
     app = celery.Celery(

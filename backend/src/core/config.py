@@ -485,6 +485,19 @@ class Settings(BaseSettings):
     RAGF_EXPORT_MAX_BYTES: int = 2 * 1024 * 1024 * 1024
     RAGF_CELERY_EXPORT_QUEUE: str | None = None
 
+    # 评估体系（RAG 清单 Phase 4 / D61）：逐题跑「检索 → 生成 → Judge」，是重任务，
+    # 独立队列避免与用户可见的摄取抢 worker
+    RAGF_CELERY_EVAL_QUEUE: str | None = None
+    # Judge LLM 的 spec（provider:model）；空 = 必须由评估请求显式指定
+    RAGF_EVAL_JUDGE_SPEC: str = ''
+    # 逐题评估并发上限（每题含一次问答 + 一次 Judge，控制对模型侧的瞬时压力）
+    RAGF_EVAL_CONCURRENCY: int = 4
+    # 单次评估最多跑多少题（防误建超大数据集把 worker 占死）
+    RAGF_EVAL_MAX_ITEMS: int = 500
+    # 数据集生成：单次从 KB chunks 采样生成的上限与并发
+    RAGF_EVAL_GENERATION_MAX_ITEMS: int = 100
+    RAGF_EVAL_GENERATION_CONCURRENCY: int = 4
+
     # ModelProvider（ragf-design D11/D16）
     MODEL_PROVIDER_CACHE_REDIS_PREFIX: str = 'fba:cache:model_provider'
     MODEL_PROVIDER_CACHE_TTL: int = 3600
