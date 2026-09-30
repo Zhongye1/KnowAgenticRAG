@@ -558,22 +558,24 @@ def search_ragf_kb(
     recall_top_k: int = 20,
     rrf_k: int = 60,
     nprobe: int = 10,
+    bm25_drop_ratio_search: float = 0.0,
     expr: str | None = None,
     plugin_namespace: str | None = None,
 ) -> list[dict]:
     """RAGF 模板集合检索（ragf-design §5.7/§A.3，纯服务端召回）。
 
     - ``vector``：dense 路（COSINE + nprobe），返回 top-``recall_top_k``；
+    - ``keyword``：仅 sparse（BM25）单路，输入原始查询文本，**不需要查询向量**；
     - ``hybrid``：dense + sparse（BM25）双路，服务端 ``RRFRanker(k)`` 融合取
       top-``recall_top_k``（两路 limit 均 = recall_top_k，防 RRF 尾段截断）。
 
     过滤表达式统一由本模块注入（调用方只传 kb_name 之外的可选子句）；COSINE
     阈值过滤属检索服务层语义（vector 模式），不在此处执行。
     """
-    if search_mode not in {'vector', 'hybrid'}:
-        raise ValueError(f'search_mode 必须是 vector/hybrid: {search_mode}')
-    if search_mode == 'vector' and not query_embedding:
-        raise ValueError('vector 检索必须提供 query_embedding')
+    if search_mode not in {'vector', 'keyword', 'hybrid'}:
+        raise ValueError(f'search_mode 必须是 vector/keyword/hybrid: {search_mode}')
+    if search_mode != 'keyword' and not query_embedding:
+        raise ValueError('vector/hybrid 检索必须提供 query_embedding')
     collection = ensure_ragf_template_collection(dim=int(dim), plugin_namespace=plugin_namespace)
     filter_expr = _and_expr(_kb_expr(kb_name), expr)
     limit = max(int(recall_top_k), 1)
@@ -588,6 +590,20 @@ def search_ragf_kb(
             limit=limit,
             output_fields=_RAGF_SEARCH_OUTPUT_FIELDS,
             search_params={'metric_type': 'COSINE', 'params': {'nprobe': int(nprobe)}},
+        )
+    elif search_mode == 'keyword':
+        # 纯词面召回：只打稀疏字段，输入原始文本（Milvus 侧 BM25 打分）
+        results = client.search(
+            collection_name=collection,
+            data=[query_text],
+            anns_field='content_sparse',
+            filter=filter_expr or '',
+            limit=limit,
+            output_fields=_RAGF_SEARCH_OUTPUT_FIELDS,
+            search_params={
+                'metric_type': 'BM25',
+                'params': {'drop_ratio_search': float(bm25_drop_ratio_search)},
+            },
         )
     else:
         dense_req = AnnSearchRequest(

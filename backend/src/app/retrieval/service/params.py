@@ -1,7 +1,7 @@
 """检索参数解析纯函数（ragf-design §5.7/D17：request > KB query_params > settings）。
 
 纯函数、无 IO，单测直接覆盖；``similarity_threshold`` 的“余弦低于阈值丢弃”
-语义只作用于 vector 模式（hybrid 为 RRF 秩分，不适用）。
+语义只作用于 vector 模式（hybrid 为 RRF 秩分、keyword 为 BM25 词面分，均不适用）。
 """
 
 from __future__ import annotations
@@ -27,7 +27,7 @@ RETRIEVAL_PARAM_KEYS = frozenset({
     'include_visual',
     'visual_top_k',
 })
-SEARCH_MODES = frozenset({'vector', 'hybrid'})
+SEARCH_MODES = frozenset({'vector', 'keyword', 'hybrid'})
 
 
 def default_search_params() -> dict[str, Any]:

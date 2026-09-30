@@ -6,6 +6,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from backend.src.app.retrieval.service.strategies.hybrid import retrieve_hybrid
+from backend.src.app.retrieval.service.strategies.keyword import retrieve_keyword
 from backend.src.app.retrieval.service.strategies.vector import retrieve_vector
 
 __all__ = ['RETRIEVE_STRATEGIES']
@@ -14,5 +15,6 @@ RetrieveStrategy = Callable[[dict[str, Any]], Awaitable[list[dict[str, Any]]]]
 
 RETRIEVE_STRATEGIES: dict[str, RetrieveStrategy] = {
     'vector': retrieve_vector,
+    'keyword': retrieve_keyword,
     'hybrid': retrieve_hybrid,
 }

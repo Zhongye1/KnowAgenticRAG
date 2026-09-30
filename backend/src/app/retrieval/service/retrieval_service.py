@@ -1,8 +1,9 @@
 """同步检索编排门面（Yuxi ``knowledge/implementations/milvus.py:aquery`` 重写，
 ragf-design §5.7/§7/§14.4/§A.3-A.5；agent-layer spec §5.3/D26/D27/M11 扩展）。
 
-编排：KB/参数装配 → embedding 向量化 → 策略化召回（vector/hybrid，服务端 RRF，
-支持单 KB 与多 KB 聚合，M11；可选视觉召回 ragf_visual，独立 visual_results）
+编排：KB/参数装配 → embedding 向量化（keyword 模式跳过，D58）→ 策略化召回
+（vector/keyword/hybrid，服务端 RRF，支持单 KB 与多 KB 聚合，M11；可选视觉召回
+ragf_visual，独立 visual_results）
 → CrossEncoder 精排（可选，失败按召回序降级 + 结构化日志）→ 结构化过滤（文
 档级条件解析为 document_id 集 + 精确 version_id）→ 来源补全（PG 事实源 + 文
 件名 + active_version 收敛）。去 PPR 段（二期）；不出现
@@ -318,7 +319,14 @@ class RetrievalService:
         filters, version_id = self._filters_from(request_data)
 
         # ② embedding（核心能力，失败上抛不伪装成功；按 embedding 模型分组复用）
-        embed_groups = await self._load_embeddings(db, kbs=kbs, names=names, query_texts=texts)
+        # keyword 模式只做词面召回：跳过编码，但仍解析 dense 维度定位集合（D58/B2）
+        embed_groups = await self._load_embeddings(
+            db,
+            kbs=kbs,
+            names=names,
+            query_texts=texts,
+            encode=mode != 'keyword',
+        )
 
         # ②b 视觉编码（可选能力，失败降级为纯文本检索；整次查询编码一次）
         visual_vector: list[float] | None = None
@@ -442,11 +450,16 @@ class RetrievalService:
         kbs: dict[str, Any],
         names: list[str],
         query_texts: list[str],
+        encode: bool = True,
     ) -> dict[str, dict[str, Any]]:
         """按 embedding 模型分组编码（每组一次批量调用；返回 spec → 向量集/维度）。
 
         D41：多子查询在**同一批**内编码（一次调用 N 条），避免 N 次往返；返回的
         ``query_embeddings`` 与 ``query_texts`` 同序。
+
+        ``encode=False``（keyword 模式，D58）：不调用模型，只解析 dense 维度用于
+        定位 ``ragf_<dim>`` 集合；向量位以空列表占位，与 ``query_texts`` 等长以
+        维持既有 ctx 形状。维度未声明时显式失败——既不靠编码反推，也不猜集合。
         """
         groups: dict[str, dict[str, Any]] = {}
         for kb_name in names:
@@ -454,6 +467,14 @@ class RetrievalService:
             groups.setdefault(spec, {'spec': spec, 'kb_names': []})['kb_names'].append(kb_name)
         for group in groups.values():
             embed_client = await self._provider.get_embedding_model(db, group['spec'])
+            if not encode:
+                if not embed_client.dimension:
+                    raise errors.RequestError(
+                        msg=f'keyword 检索需要 embedding 模型 {group["spec"]} 声明 dimension（用于定位集合）'
+                    )
+                group['query_embeddings'] = [[] for _ in query_texts]
+                group['dim'] = int(embed_client.dimension)
+                continue
             vectors = await embed_client.aencode(list(query_texts))
             if len(vectors) != len(query_texts):
                 raise errors.RequestError(
