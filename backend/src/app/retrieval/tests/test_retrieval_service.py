@@ -90,8 +90,9 @@ class FakeProvider:
 
 
 class FakeChunkSource:
-    def __init__(self, active: dict[str, int] | None = None) -> None:
+    def __init__(self, active: dict[str, int] | None = None, sections: dict[str, str] | None = None) -> None:
         self.active = active or {}
+        self.sections = sections or {}
 
     async def hydrate(
         self, db: Any, *, kb_name: str, hits: list[dict[str, Any]], plugin_namespace: str | None = None
@@ -113,7 +114,7 @@ class FakeChunkSource:
             names[document_id] = f'doc-{document_id}.md'
             if document_id not in active:
                 active[document_id] = self.active.get(document_id, int(hit.get('version_id') or 1))
-        return {'chunks': rows, 'doc_names': names, 'active_versions': active}
+        return {'chunks': rows, 'doc_names': names, 'active_versions': active, 'section_summaries': dict(self.sections)}
 
 
 def _hit(document_id: str, kb_name: str, version_id: int = 1, chunk_index: int = 0) -> dict[str, Any]:
@@ -153,6 +154,7 @@ def _service(
     kbs: list[FakeKb] | None = None,
     scopes: dict[str, list[str]] | None = None,
     active: dict[str, int] | None = None,
+    sections: dict[str, str] | None = None,
     provider: FakeProvider | None = None,
     use_reranker_request: bool | None = None,
 ) -> tuple[RetrievalService, FakeStrategies, FakeDocDao]:
@@ -162,7 +164,7 @@ def _service(
     if use_reranker_request is not None:
         request['use_reranker'] = use_reranker_request
     service = RetrievalService(
-        chunk_source=FakeChunkSource(active or {}),
+        chunk_source=FakeChunkSource(active or {}, sections),
         kb_dao=FakeKbDao(kbs or [FakeKb('dev'), FakeKb('ops')]),
         doc_dao=doc_dao,
         provider=provider or FakeProvider(),
@@ -191,6 +193,34 @@ def test_single_search_basic_shape() -> None:
     assert data['results'][0]['chunk_id'] == 'doc-a:2:0'
     assert data['results'][0]['kb_name'] == 'dev'
     assert strategies.ctxs[0]['expr'] is None
+
+
+def test_section_summary_is_attached_to_hits() -> None:
+    """Phase 3.1：命中 chunk 带出其最近祖先章节摘要（parent-doc 上下文补充）。"""
+    service, _, _ = _service(sections={'doc-a:2:0': '模型架构章节摘要'})
+    data = _run(
+        service.search(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            query_text='版本差异',
+            param={'use_reranker': False},
+        )
+    )
+    assert data['results'][0]['metadata']['section_summary'] == '模型架构章节摘要'
+
+
+def test_section_summary_absent_when_no_section() -> None:
+    """无章节结构时字段为 None，不影响命中返回（不加章节的文档照常可检索）。"""
+    service, _, _ = _service()
+    data = _run(
+        service.search(
+            None,  # type: ignore[arg-type]
+            kb_name='dev',
+            query_text='版本差异',
+            param={'use_reranker': False},
+        )
+    )
+    assert data['results'][0]['metadata']['section_summary'] is None
 
 
 def test_multi_query_recall_batches_embeddings_and_reranks_once() -> None:

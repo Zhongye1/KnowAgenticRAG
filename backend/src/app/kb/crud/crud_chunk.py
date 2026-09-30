@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.src.app.kb.crud.base import TenantScopedCrud, result_rowcount
 from backend.src.app.kb.model import Chunk
+from backend.src.app.kb.model.chunk import CHUNK_META_TYPE_KEY, CHUNK_TYPE_SECTION_SUMMARY
 from backend.src.app.kb.utils.namespace import instance_namespace
 
 
@@ -102,6 +103,33 @@ class CRUDChunk(TenantScopedCrud[Chunk]):
             return []
         ns = instance_namespace(plugin_namespace)
         stmt = select(Chunk).where(Chunk.chunk_id.in_(ids), Chunk.plugin_namespace == ns)
+        if kb_name:
+            stmt = stmt.where(Chunk.kb_name == kb_name)
+        result = await db.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_section_summaries(
+        self,
+        db: AsyncSession,
+        document_ids: list[str],
+        *,
+        kb_name: str | None = None,
+        plugin_namespace: str | None = None,
+    ) -> list[Chunk]:
+        """按文档批量读取**章节摘要行**（Phase 3.1：parent-doc 下钻用）。
+
+        摘要与内容 chunk 同表存放，以 ``meta.chunk_type='section_summary'`` 区分；
+        与内容行的归属关系由 ``meta.path`` 前缀决定。
+        """
+        ids = sorted({str(item) for item in document_ids if item})
+        if not ids:
+            return []
+        ns = instance_namespace(plugin_namespace)
+        stmt = select(Chunk).where(
+            Chunk.document_id.in_(ids),
+            Chunk.plugin_namespace == ns,
+            Chunk.meta[CHUNK_META_TYPE_KEY].astext == CHUNK_TYPE_SECTION_SUMMARY,
+        )
         if kb_name:
             stmt = stmt.where(Chunk.kb_name == kb_name)
         result = await db.execute(stmt)

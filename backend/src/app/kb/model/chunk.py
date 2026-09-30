@@ -10,6 +10,13 @@ from sqlalchemy.orm import Mapped, mapped_column
 from backend.src.common.model import MappedBase, TimeZone
 from backend.src.utils.timezone import timezone
 
+# ``meta`` 的两轴契约（ragf-design D9：chunks 数据 Owner = kb 域，写入方 ingest 复用
+# 同一常量，避免「同表两种事实」）。路径轴 ``meta.path`` 为章节层级路径，章节摘要行
+# 与内容行**共享前缀**，Phase 3.1 的 parent-doc 下钻即据此匹配。
+CHUNK_TYPE_SECTION_SUMMARY = 'section_summary'
+CHUNK_META_PATH_KEY = 'path'
+CHUNK_META_TYPE_KEY = 'chunk_type'
+
 
 class Chunk(MappedBase):
     """文档分块元数据表"""

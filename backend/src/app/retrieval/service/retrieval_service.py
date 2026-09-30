@@ -112,6 +112,10 @@ class PgChunkSource:
             'chunks': {chunk.chunk_id: chunk for chunk in chunks},
             'doc_names': {doc.document_id: doc.name for doc in documents},
             'active_versions': {doc.document_id: int(getattr(doc, 'active_version', 1) or 1) for doc in documents},
+            # Phase 3.1：命中 chunk 的最近祖先章节摘要（parent-doc 上下文补充）
+            'section_summaries': await ChunkService.resolve_section_summaries(
+                db, chunks, kb_name=kb_name, plugin_namespace=plugin_namespace
+            ),
         }
 
 
@@ -730,6 +734,8 @@ class RetrievalService:
                     'score': float(hit.get('score') or 0.0),
                     'rerank_score': hit.get('rerank_score'),
                     'token_count': row.token_count if row is not None else None,
+                    # Phase 3.1：最近祖先章节摘要（无章节结构时为 None，不报错）
+                    'section_summary': source['section_summaries'].get(str(hit.get('chunk_id') or '')),
                 },
             })
         return results
@@ -748,6 +754,7 @@ class RetrievalService:
         chunks: dict[str, Any] = {}
         doc_names: dict[str, str] = {}
         active_versions: dict[str, int] = {}
+        section_summaries: dict[str, str] = {}
         for kb_name, group_hits in by_kb.items():
             source = await self._chunk_source.hydrate(
                 db, kb_name=kb_name, hits=group_hits, plugin_namespace=plugin_namespace
@@ -755,7 +762,13 @@ class RetrievalService:
             chunks.update(source.get('chunks') or {})
             doc_names.update(source.get('doc_names') or {})
             active_versions.update(source.get('active_versions') or {})
-        return {'chunks': chunks, 'doc_names': doc_names, 'active_versions': active_versions}
+            section_summaries.update(source.get('section_summaries') or {})
+        return {
+            'chunks': chunks,
+            'doc_names': doc_names,
+            'active_versions': active_versions,
+            'section_summaries': section_summaries,
+        }
 
     async def _resolve_doc_ids(
         self,
