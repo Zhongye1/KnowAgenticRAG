@@ -67,6 +67,7 @@ dependencies = [
     "langgraph>=1.2,<2",
     "langchain>=1.4,<2",
     "langchain-openai>=1.6,<2",
+    "json-repair>=0.63.5",
 ]
 
 # 千问平台 / 双管线摄取引擎依赖（spec D1/D7/D11）为主依赖，代码侧模块顶层直接导入：
