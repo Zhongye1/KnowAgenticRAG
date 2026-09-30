@@ -21,6 +21,19 @@ if (typeof window !== 'undefined' && !window.localStorage) {
   };
 }
 
+// jsdom 这个版本没有 Blob/File 的 text()（浏览器有），而随问附件 adapter 依赖它；
+// 用 jsdom 支持的 FileReader 兜一层，避免为了测试环境把产品代码改成老写法。
+if (typeof Blob !== 'undefined' && typeof Blob.prototype.text !== 'function') {
+  Blob.prototype.text = function text(this: Blob) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ''));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(this);
+    });
+  };
+}
+
 beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 afterAll(() => server.close());
 beforeEach(() => {
