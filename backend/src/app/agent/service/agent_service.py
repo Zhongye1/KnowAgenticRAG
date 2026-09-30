@@ -253,7 +253,7 @@ class AgentService:
     ) -> AsyncIterator[AgentEvent]:
         """装配 → 驱动图执行；墙钟预算在此兜底（D36）。"""
         try:
-            prepared = await self._prepare(
+            prepared = await self.prepare(
                 db, kb_name=kb_name, param=param, plugin_namespace=plugin_namespace, scope=scope
             )
         except errors.NotFoundError as exc:
@@ -282,7 +282,7 @@ class AgentService:
             yield self._error_event('INTERNAL', f'Agent 执行失败: {exc}')
 
     # ------------------------------------------------------------------ 装配
-    async def _prepare(
+    async def prepare(
         self,
         db: AsyncSession,
         *,
@@ -291,7 +291,11 @@ class AgentService:
         plugin_namespace: str | None,
         scope: Scope | None,
     ) -> PreparedAgent:
-        """KB 归属预检 → 模型装配 → 预算解析 → 建图（失败抛语义异常）。"""
+        """KB 归属预检 → 模型装配 → 预算解析 → 建图（失败抛语义异常）。
+
+        公开而非私有：**HTTP 路径与 worker 路径必须用同一套装配**，否则「请求内直跑」
+        与「worker 执行」会悄悄漂移（预算口径、工具上下文、事件面各不相同）。
+        """
         kb = await knowledge_base_dao.get(db, kb_name, plugin_namespace=plugin_namespace)
         if kb is None:
             raise errors.NotFoundError(msg=f'知识库不存在: {kb_name}')

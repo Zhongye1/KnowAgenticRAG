@@ -17,6 +17,12 @@ def get_local_beat_schedule() -> dict[str, dict[str, Any]]:
             'task': 'kb.acl_reconcile',
             'schedule': TzAwareCrontab('0', '*'),
         },
+        # Run 对账（agent 层设计 §4.1）：Celery 消息会丢、worker 会崩，两者的兜底都在这里。
+        # 用 schedule(120) 而不是 crontab：对账的价值在于「尽快」，不需要对齐整点。
+        'Agent Run 对账：租约过期收敛与投递兜底': {
+            'task': 'agent.reconcile_waiting',
+            'schedule': schedule(120),
+        },
         '测试同步任务': {
             'task': 'task_demo',
             'schedule': schedule(30),

@@ -95,6 +95,15 @@ RUN mkdir -p /var/log/ragf
 
 CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
 
+# === Celery Agent Worker image（agent 层设计 D66：-Q agent 独立消费 Run 执行） ===
+FROM base_server AS ragf_celery_agent_worker
+
+COPY deploy/backend/supervisor/ragf_celery_agent_worker.conf /etc/supervisor/conf.d/
+
+RUN mkdir -p /var/log/ragf
+
+CMD ["supervisord", "-c", "/etc/supervisor/supervisord.conf"]
+
 # === Celery Beat image ===
 FROM base_server AS ragf_celery_eval_worker
 COPY deploy/backend/supervisor/ragf_celery_eval_worker.conf /etc/supervisor/conf.d/

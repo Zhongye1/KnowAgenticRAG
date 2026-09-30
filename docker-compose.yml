@@ -362,6 +362,37 @@ services:
     networks:
       - ragf_network
 
+  # RAGF Agent Run 执行 worker（agent 层设计 D66：-Q agent）。
+  # 用法：.env.server 设置 RAGF_CELERY_AGENT_QUEUE=agent 后
+  #   docker compose --profile ragf-agent up -d ragf_celery_agent_worker
+  # 为什么要独立队列：Run 是分钟级长任务且**持有数据库租约**，被摄取/转换任务挤在
+  # 一起会让「谁的租约先过期」变成随机事件；独立队列也让 agent 侧能单独扩缩容。
+  ragf_celery_agent_worker:
+    profiles: ["ragf-agent"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SERVER_TYPE=ragf_celery_agent_worker
+    image: ragf_celery_agent_worker:latest
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    depends_on:
+      ragf_rabbitmq:
+        condition: service_healthy
+      ragf_redis:
+        condition: service_healthy
+      ragf_minio:
+        condition: service_healthy
+      ragf_milvus:
+        condition: service_healthy
+    volumes:
+      - ./deploy/backend/docker-compose/.env.server:/ragf/backend/src/.env:ro
+      - ${DOCKER_RAGF_SERVER_LOG:-./logs/ragf}:/var/log/ragf
+    networks:
+      - ragf_network
+
   # RAGF 双管线摄取（spec D4/D7）：视觉 worker（-Q visual，并发=1：
   # Qwen3-VL 编码 / DashScope 限流 / pixelrag_render 渲染均为重资源，串行消费）。
   ragf_celery_visual_worker:

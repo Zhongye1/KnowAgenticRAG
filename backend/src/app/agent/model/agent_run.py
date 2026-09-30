@@ -67,6 +67,10 @@ class AgentRun(MappedBase):
     query: Mapped[str] = mapped_column(UniversalText, comment='原始问句（截断留存）')
     status: Mapped[str] = mapped_column(Text, default='queued', comment='八态：' + '/'.join(AGENT_RUN_STATUSES))
     model_spec: Mapped[str | None] = mapped_column(Text, nullable=True, comment='实际生效模型 spec')
+    #: 提交快照：worker 与 API 进程不共享内存，执行所需的一切（kb/param/用户身份）必须落行
+    payload: Mapped[dict] = mapped_column(JSON, default=dict, comment='提交快照（kb_name/param/用户上下文）')
+    #: 终态产物：非流式响应与 GET /runs/{id} 都从这里读，取消时是**已收集部分的合成结果**（D92）
+    result: Mapped[dict] = mapped_column(JSON, default=dict, comment='终态产物快照（done 负载 / 取消合成）')
     steps: Mapped[list] = mapped_column(JSON, default=list, comment='过程轨迹（D25 step 事件序列）')
     tool_call_count: Mapped[int] = mapped_column(BigInteger, default=0, comment='内层工具循环调用次数')
     rewrite_count: Mapped[int] = mapped_column(BigInteger, default=0, comment='T3 自省改写次数')
@@ -81,7 +85,10 @@ class AgentRun(MappedBase):
         Text, nullable=True, comment='父 Run（审批/索引恢复起的新 Run 指向原 Run，D71）'
     )
     output_message_id: Mapped[str | None] = mapped_column(Text, nullable=True, comment='产出的助手消息 ID')
-    error: Mapped[str | None] = mapped_column(Text, nullable=True, comment='失败原因（failed 时）')
+    error: Mapped[str | None] = mapped_column(Text, nullable=True, comment='失败原因（failed 时，给人看）')
+    error_code: Mapped[str | None] = mapped_column(
+        Text, nullable=True, comment='失败码（给机器看：KB_NOT_FOUND/MODEL_NOT_CONFIGURED/TIMEOUT/INTERNAL）'
+    )
     created_time: Mapped[datetime] = mapped_column(TimeZone, default=timezone.now, comment='创建时间')
     updated_time: Mapped[datetime] = mapped_column(
         TimeZone, default=timezone.now, onupdate=timezone.now, comment='更新时间（状态流转/心跳）'

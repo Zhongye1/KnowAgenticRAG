@@ -46,6 +46,12 @@ _RAGF_ADD_COLUMNS: tuple[tuple[str, str, str], ...] = (
     ('agent_runs', 'output_message_id', 'TEXT'),
     ('agent_runs', 'error', 'TEXT'),
     ('agent_runs', 'updated_time', 'TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL'),
+    # Run 迁入 worker 后「提交进程」与「执行进程」不是同一个：执行所需的一切必须落行。
+    # payload = 提交快照（kb_name/param/用户上下文）；result = 终态产物快照（非流式响应与
+    # GET /runs/{id} 的数据源，取消时是已收集部分的合成结果，D92）；error_code = 机器码。
+    ('agent_runs', 'payload', "JSON DEFAULT '{}'::json NOT NULL"),
+    ('agent_runs', 'result', "JSON DEFAULT '{}'::json NOT NULL"),
+    ('agent_runs', 'error_code', 'TEXT'),
 )
 
 

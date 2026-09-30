@@ -24,7 +24,7 @@ from langgraph.config import get_stream_writer
 from backend.src.common.log import log
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator, Callable
+    from collections.abc import AsyncGenerator, Callable
 
 __all__ = [
     'AgentEvent',
@@ -175,7 +175,7 @@ async def run_agent_stream(
     *,
     config: dict[str, Any] | None = None,
     extra_done: dict[str, Any] | None = None,
-) -> AsyncIterator[AgentEvent]:
+) -> AsyncGenerator[AgentEvent, None]:
     """驱动图执行并直出 D25 事件序列（末尾必为 ``done``）。
 
     只用两种流模式，避免内层 ReAct 的中间 token 混入答案流：

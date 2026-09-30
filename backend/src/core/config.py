@@ -417,6 +417,17 @@ class Settings(BaseSettings):
     RAGF_AGENT_LEASE_SECONDS: int = 900
     RAGF_AGENT_HEARTBEAT_SECONDS: int = 60
     RAGF_AGENT_MAX_ATTEMPTS: int = 2
+    # Run 的 Redis 通道（D66：只承载派发/取消/事件，事实源仍在 PG）
+    RAGF_AGENT_REDIS_PREFIX: str = 'ragf:agent'
+    # 取消标记 TTL：一次性信号，持久状态在 agent_runs.status=cancel_requested
+    RAGF_AGENT_CANCEL_TTL_SECONDS: int = 3600
+    # 事件流 TTL 与上限（D89）：超 TTL 的进行中内容不可补齐，是有意的成本取舍
+    RAGF_AGENT_EVENT_TTL_SECONDS: int = 3600
+    RAGF_AGENT_EVENT_MAX: int = 5000
+    # SSE 中继的轮询间隔（D89：无 seq，全量重放 + 轮询增量）
+    RAGF_AGENT_EVENT_POLL_SECONDS: float = 0.2
+    # agent.reconcile_waiting 认为「已派发但没人接」的超时（秒）：Celery 消息丢失的兜底
+    RAGF_AGENT_DISPATCH_TIMEOUT_SECONDS: int = 120
 
     # RAGF：MCP 工具面（agent-layer spec D22/D31-D33/M10）
     # PAT 经桥接进程 env 注入（Codex stdio 桥 / Claude Code 未上 Keycloak 前）；空 = 未启用 PAT 通道

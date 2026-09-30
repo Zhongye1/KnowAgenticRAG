@@ -12,16 +12,19 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sqlalchemy import select
 
 from backend.src.app.agent.model.agent_run import AgentRun
 from backend.src.app.agent.model.agent_run_request import AgentRunRequest
 from backend.src.app.agent.service.run_log import RUN_QUERY_MAX, new_run_id
+from backend.src.app.agent.service.run_payload import parse_run_payload
 from backend.src.common.log import log
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from sqlalchemy.ext.asyncio import AsyncSession
 
 __all__ = ['RunSubmissionService', 'get_run_submission_service']
@@ -37,26 +40,31 @@ class RunSubmissionService:
         self,
         db: AsyncSession,
         *,
-        query: str,
-        kb_names: list[str],
+        payload: Mapping[str, Any],
         uid: str,
-        plugin_namespace: str | None = None,
         agent_slug: str = 'default',
         thread_id: str | None = None,
     ) -> tuple[str, bool]:
         """创建一次 Run 并入队，返回 ``(run_id, 是否立即派发)``。
 
+        ``payload`` 是**提交快照**（见 ``run_payload``）：worker 只按 ``run_id``
+        重建执行，所以快照必须在这里一次性写全，而不是留给执行期再补。
+        问句与知识库列从快照派生，避免「快照说 A、列表说 B」的双份事实。
+
         调用方（API 层）拿到 ``run_id`` 后即可返回或开始 SSE 订阅；
         ``是否立即派发`` 为 False 表示排在别人后面，前端应展示排队状态。
         """
+        snapshot = dict(payload)
+        parsed = parse_run_payload(snapshot)
         run_id = new_run_id()
         db.add(
             AgentRun(
                 run_id=run_id,
-                kb_names=[str(item) for item in kb_names],
-                plugin_namespace=str(plugin_namespace or 'core'),
-                query=str(query or '')[:RUN_QUERY_MAX],
+                kb_names=[parsed.kb_name],
+                plugin_namespace=str(parsed.namespace or 'core'),
+                query=parsed.query[:RUN_QUERY_MAX],
                 status='queued',
+                payload=snapshot,
             )
         )
         request = AgentRunRequest(
@@ -64,7 +72,7 @@ class RunSubmissionService:
             uid=str(uid),
             agent_slug=str(agent_slug or 'default'),
             thread_id=thread_id,
-            plugin_namespace=str(plugin_namespace or 'core'),
+            plugin_namespace=str(parsed.namespace or 'core'),
             status='pending',
         )
         db.add(request)
@@ -149,12 +157,21 @@ class RunSubmissionService:
         status: str = 'done',
     ) -> None:
         """Run 收尾：把排队记录置为终态（`done`/`cancelled`），使后续提交能立即派发。"""
-        row = (
-            await db.execute(select(AgentRunRequest).where(AgentRunRequest.run_id == run_id))
-        ).scalars().first()
+        row = (await db.execute(select(AgentRunRequest).where(AgentRunRequest.run_id == run_id))).scalars().first()
         if row is not None:
             row.status = str(status)
         await db.commit()
+
+    async def wake_next(self, db: AsyncSession, *, run_id: str) -> str | None:
+        """按某个 Run 的排队键唤醒队头，返回**待投递**的 run_id（无排队者返回 None）。
+
+        收尾与取消之后都必须调用：同一排队键里的后续 Run 等的是「前一个结束」，
+        而唤醒这件事没有别的执行者——漏掉它，队列就静默卡死（不报错，只是不动）。
+        """
+        row = (await db.execute(select(AgentRunRequest).where(AgentRunRequest.run_id == run_id))).scalars().first()
+        if row is None:
+            return None
+        return await self.promote_next(db, uid=row.uid, agent_slug=row.agent_slug, thread_id=row.thread_id)
 
 
 _service: RunSubmissionService | None = None

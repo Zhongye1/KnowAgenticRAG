@@ -426,6 +426,10 @@ ignore_imports = [
     "backend.src.app.agent.** -> backend.src.app.retrieval.**",
     "backend.src.app.agent.** -> backend.src.app.kb.**",
     "backend.src.app.agent.** -> backend.src.app.model_provider.**",
+    # agent 的任务代码域内归属（`agent/tasks/tasks.py`），派发仍走框架 celery 实例；
+    # 与 ingest/kb/evaluation/graph 同一条 D10 口径，也是 D66（复用既有 Celery +
+    # RabbitMQ，只新增 `agent` 队列）落地的必要条件
+    "backend.src.app.agent.** -> backend.src.app.task.**",
     # 测试模块豁免：测试可自由组合被测模块
     "backend.src.app.*.tests.** -> backend.src.app.**",
     # 测试装配完整应用（backend.main → 全域路由/中间件链）驱动 TestClient，

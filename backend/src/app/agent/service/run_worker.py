@@ -77,7 +77,8 @@ class RunWorker:
 
         lease_expires = timezone.now() + timedelta(seconds=int(settings.RAGF_AGENT_LEASE_SECONDS))
         result = await db.execute(
-            sa.update(AgentRun)
+            sa
+            .update(AgentRun)
             .where(AgentRun.run_id == run_id, AgentRun.status == 'queued')
             .values(
                 status='running',
@@ -102,7 +103,8 @@ class RunWorker:
         """
         lease_expires = timezone.now() + timedelta(seconds=int(settings.RAGF_AGENT_LEASE_SECONDS))
         result = await db.execute(
-            sa.update(AgentRun)
+            sa
+            .update(AgentRun)
             .where(
                 AgentRun.run_id == run_id,
                 AgentRun.worker_id == self.worker_id,
@@ -135,16 +137,42 @@ class RunWorker:
         if status not in AGENT_RUN_TERMINAL_STATUSES:
             raise ValueError(f'finalize 只接受终态，收到 {status!r}')
         result = await db.execute(
-            sa.update(AgentRun)
+            sa
+            .update(AgentRun)
             .where(AgentRun.run_id == run_id, AgentRun.worker_id == self.worker_id)
             .values(status=status, lease_expires_at=None, **fields)
         )
         if _rowcount(result):
             await db.execute(
-                sa.update(AgentRunAttempt)
+                sa
+                .update(AgentRunAttempt)
                 .where(AgentRunAttempt.run_id == run_id, AgentRunAttempt.worker_id == self.worker_id)
                 .values(status=attempt_status or ('succeeded' if status == 'completed' else 'failed'))
             )
+        await db.commit()
+        return bool(_rowcount(result))
+
+    # ------------------------------------------------------------------ 放弃排队
+    async def abandon_queued(
+        self,
+        db: AsyncSession,
+        *,
+        run_id: str,
+        error: str,
+        error_code: str | None = None,
+    ) -> bool:
+        """放弃一个**从未被取租约**的排队 Run（对账用）。
+
+        与 :meth:`finalize` 的区别是 CAS 条件：收尾要求「我是持有者」，而这里根本没有
+        持有者（``worker_id`` 为空），条件必须是 ``status='queued'`` —— 一旦有人抢到
+        租约，这次放弃就落空，由正常的执行路径负责收尾。
+        """
+        result = await db.execute(
+            sa
+            .update(AgentRun)
+            .where(AgentRun.run_id == run_id, AgentRun.status == 'queued')
+            .values(status='failed', error=str(error), error_code=error_code, lease_expires_at=None)
+        )
         await db.commit()
         return bool(_rowcount(result))
 
@@ -157,25 +185,31 @@ class RunWorker:
         """
         now = timezone.now()
         rows = (
-            await db.execute(
-                select(AgentRun.run_id)
-                .where(
-                    AgentRun.status == 'running',
-                    AgentRun.lease_expires_at.is_not(None),
-                    AgentRun.lease_expires_at < now,
+            (
+                await db.execute(
+                    select(AgentRun.run_id)
+                    .where(
+                        AgentRun.status == 'running',
+                        AgentRun.lease_expires_at.is_not(None),
+                        AgentRun.lease_expires_at < now,
+                    )
+                    .limit(int(limit))
                 )
-                .limit(int(limit))
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         if not rows:
             return []
         await db.execute(
-            sa.update(AgentRun)
+            sa
+            .update(AgentRun)
             .where(AgentRun.run_id.in_(list(rows)), AgentRun.status == 'running')
             .values(status='failed', error='租约过期：worker 失联', lease_expires_at=None)
         )
         await db.execute(
-            sa.update(AgentRunAttempt)
+            sa
+            .update(AgentRunAttempt)
             .where(AgentRunAttempt.run_id.in_(list(rows)), AgentRunAttempt.status == 'running')
             .values(status='lost', error='租约过期：worker 失联')
         )

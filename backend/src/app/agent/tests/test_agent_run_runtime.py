@@ -24,6 +24,8 @@ from sqlalchemy.pool import NullPool
 from backend.src.app.agent.model.agent_run import AgentRun
 from backend.src.app.agent.model.agent_run_attempt import AgentRunAttempt
 from backend.src.app.agent.model.agent_run_request import AgentRunRequest
+from backend.src.app.agent.schema.agent import AgentParam
+from backend.src.app.agent.service.run_payload import build_run_payload
 from backend.src.app.agent.service.run_submission_service import RunSubmissionService
 from backend.src.app.agent.service.run_worker import RunWorker
 from backend.src.common.model import MappedBase
@@ -80,12 +82,11 @@ def _pg_available() -> Any:
 async def _submit(
     svc: RunSubmissionService, session: AsyncSession, *, thread: str, query: str = '问'
 ) -> tuple[str, bool]:
+    payload = build_run_payload(kb_name='kb-a', param=AgentParam.model_validate({'query_text': query}), namespace=_NS)
     return await svc.submit(
         session,
-        query=query,
-        kb_names=['kb-a'],
+        payload=payload,
         uid=_UID,
-        plugin_namespace=_NS,
         agent_slug='default',
         thread_id=thread,
     )
@@ -142,9 +143,9 @@ def test_promote_next_returns_earliest_enqueued() -> None:
                 assert promoted == second, '队头是第二条（第一条已 dispatched）'
                 again = await svc.promote_next(session, uid=_UID, agent_slug='default', thread_id='t-fifo')
                 assert again == third
-                assert (
-                    await svc.promote_next(session, uid=_UID, agent_slug='default', thread_id='t-fifo')
-                ) is None, '队空返回 None'
+                assert (await svc.promote_next(session, uid=_UID, agent_slug='default', thread_id='t-fifo')) is None, (
+                    '队空返回 None'
+                )
                 assert first != second != third
             finally:
                 await _cleanup(session)
@@ -190,9 +191,7 @@ def test_only_lease_holder_can_finalize() -> None:
                     session, run_id=run_id, status='completed'
                 )
                 assert intruder_done is False
-                done_row = await holder.finalize(
-                    session, run_id=run_id, status='completed', steps=[{'node': 'plan'}]
-                )
+                done_row = await holder.finalize(session, run_id=run_id, status='completed', steps=[{'node': 'plan'}])
                 assert done_row is True
                 # 重复收尾不覆盖（状态已非 holding，但 CAS 仍按 worker_id 命中 → 允许改写终态需避免）
                 row = (await session.execute(select(AgentRun).where(AgentRun.run_id == run_id))).scalars().first()
@@ -239,8 +238,10 @@ def test_reconcile_expired_is_idempotent() -> None:
                 row = (await session.execute(select(AgentRun).where(AgentRun.run_id == run_id))).scalars().first()
                 assert row is not None and row.status == 'failed' and row.error is not None
                 attempts = (
-                    await session.execute(select(AgentRunAttempt).where(AgentRunAttempt.run_id == run_id))
-                ).scalars().all()
+                    (await session.execute(select(AgentRunAttempt).where(AgentRunAttempt.run_id == run_id)))
+                    .scalars()
+                    .all()
+                )
                 assert [a.status for a in attempts] == ['lost']
 
                 # 幂等：终态不再被二次收敛
