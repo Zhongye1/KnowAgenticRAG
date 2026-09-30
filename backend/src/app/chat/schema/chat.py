@@ -57,11 +57,18 @@ class ChatParam(SchemaBase):
     )
     temperature: float | None = Field(None, ge=0.0, le=2.0, description='采样温度（缺省 settings 默认）')
     max_tokens: int | None = Field(None, ge=1, le=32768, description='单轮最大生成 token')
-    search_mode: Literal['vector', 'hybrid'] | None = Field(None, description='检索模式覆盖')
+    search_mode: Literal['vector', 'keyword', 'hybrid'] | None = Field(
+        None, description='检索模式覆盖（vector 语义 / keyword 词面 BM25 / hybrid 双路融合）'
+    )
     recall_top_k: int | None = Field(None, ge=1, le=200, description='召回候选数覆盖')
     final_top_k: int | None = Field(None, ge=1, le=50, description='最终返回条数覆盖')
     similarity_threshold: float | None = Field(None, ge=0.0, le=1.0, description='vector 模式余弦阈值覆盖')
     use_reranker: bool | None = Field(None, description='是否精排覆盖')
+    fusion_mode: Literal['rrf', 'weighted'] | None = Field(
+        None, description='hybrid 双路融合方式覆盖（rrf 默认 / weighted 需配权重，D57）'
+    )
+    vector_weight: float | None = Field(None, ge=0.0, le=1.0, description='weighted 融合的 dense 路权重覆盖')
+    bm25_weight: float | None = Field(None, ge=0.0, le=1.0, description='weighted 融合的 sparse 路权重覆盖')
     include_visual: bool | None = Field(
         None, description='是否附带视觉召回覆盖（ragf_visual；命中经 meta.visual_count 透出，不进引用）'
     )

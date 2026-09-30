@@ -60,8 +60,8 @@ class KBSearchParam(SchemaBase):
     model_config = ConfigDict(extra='forbid')
 
     query_text: str = Field(min_length=1, max_length=2000, description='检索文本（混合模式下同时用于 BM25 原文）')
-    search_mode: Literal['vector', 'hybrid'] | None = Field(
-        None, description='检索模式（缺省走 KB query_params / settings，默认 hybrid）'
+    search_mode: Literal['vector', 'keyword', 'hybrid'] | None = Field(
+        None, description='检索模式（vector 语义 / keyword 词面 BM25 / hybrid 双路融合；缺省走 KB query_params）'
     )
     recall_top_k: int | None = Field(None, ge=1, le=200, description='召回候选数（精排输入）')
     final_top_k: int | None = Field(None, ge=1, le=50, description='最终返回条数')
@@ -69,6 +69,11 @@ class KBSearchParam(SchemaBase):
         None, ge=0.0, le=1.0, description='vector 模式余弦相似度阈值（低于阈值丢弃，Yuxi 语义）'
     )
     use_reranker: bool | None = Field(None, description='是否精排（默认开，D16）')
+    fusion_mode: Literal['rrf', 'weighted'] | None = Field(
+        None, description='hybrid 双路融合方式（rrf 默认 / weighted 需配权重，D57）'
+    )
+    vector_weight: float | None = Field(None, ge=0.0, le=1.0, description='weighted 融合的 dense 路权重（D57）')
+    bm25_weight: float | None = Field(None, ge=0.0, le=1.0, description='weighted 融合的 sparse 路权重（D57）')
     include_visual: bool | None = Field(
         None, description='是否附带视觉召回（ragf_visual 集合；默认关，命中以 visual_results 独立返回）'
     )
