@@ -49,7 +49,11 @@ repos:
     hooks:
       - id: architecture-backend
         name: 'architecture: import-linter（backend 分层/独立性契约）'
-        entry: bash -c 'cd backend && ./.venv/bin/import-linter lint'
+        # PYTHONPATH 必须显式指向仓库根：`backend` 是以**非可编辑副本**装进
+        # site-packages 的，不设 PYTHONPATH 时 `root_packages=["backend"]` 会解析到
+        # 那份副本——即上次 `uv sync` 的快照，源码树里的新增/改动文件一概看不见，
+        # 契约检查形同虚设（2026-09-30 实测：新增 `kb -> retrieval` 违规未被拦下）。
+        entry: bash -c 'cd backend && PYTHONPATH="$(git rev-parse --show-toplevel)" ./.venv/bin/import-linter lint'
         language: system
         pass_filenames: false
         always_run: true
