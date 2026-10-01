@@ -144,3 +144,52 @@ tasks:
     cmds:
       - cd backend && UV_PYTHON={{.BACKEND_PYTHON}} uv run --isolated --no-dev --with pip-licenses pip-licenses --from mixed --format markdown
       - cd packages/ars-cli && uv run --isolated --no-dev --with pip-licenses pip-licenses --from mixed --format markdown
+
+  # ==================== 前端（web/） ====================
+  # 容器内开发是默认路径（R3 全面容器化）；容器未起时可在 web/ 下直接 pnpm run dev。
+  web:install:
+    desc: 容器内安装前端依赖
+    cmds:
+      - docker compose exec -T web pnpm install --frozen-lockfile
+
+  web:dev:
+    desc: 查看前端开发服务器状态（服务由 docker compose 托管）
+    cmds:
+      - sh -c '{{.CLEAN_ENV}} docker compose up -d web && docker compose ps web'
+
+  web:logs:
+    desc: 前端开发服务器日志
+    cmds:
+      - docker compose logs -f web
+
+  web:lint:
+    desc: 前端 lint（只读）
+    cmds:
+      - docker compose exec -T web pnpm run lint:check
+
+  web:test:
+    desc: 前端单元测试
+    cmds:
+      - docker compose exec -T web pnpm run test:unit
+
+  web:build:
+    desc: 前端生产构建
+    cmds:
+      - docker compose exec -T web pnpm run build
+
+  web:verify:
+    desc: 前端全部门禁（lint / 单测 / 设计 token / 分层 / 契约漂移 / 构建）
+    cmds:
+      - docker compose exec -T web pnpm run lint:check
+      - docker compose exec -T web pnpm run test:unit
+      - docker compose exec -T web pnpm run check:tokens
+      - docker compose exec -T web pnpm run arch:check
+      - docker compose exec -T web pnpm run lint:fsd
+      - docker compose exec -T web pnpm run api:check
+      - docker compose exec -T web pnpm run build
+
+  web:api:
+    desc: 刷新契约快照并重新生成客户端（后端改动后执行）
+    cmds:
+      - docker compose exec -T web pnpm run api:snapshot
+      - docker compose exec -T web pnpm run api:gen

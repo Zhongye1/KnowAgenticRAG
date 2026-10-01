@@ -2,7 +2,7 @@
 
 状态：implemented
 类型：bug-fix
-Owner：web/src/components/AgentPanel.vue
+Owner：docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-design.md
 
 ## 问题
 
@@ -26,6 +26,8 @@ AgentPanel 同时预览 Viewer Workdir scope、UserWorkspace scope 和跨 Projec
 ## 后果
 
 每种预览来源保持自身路径身份和缓存键，来源切换不再产生"旧来源残留读错接口"的缺陷类。用户可在同一文件树 Section 中浏览和搜索当前对话 Workdir 或个人 Workspace，切换不会重置两棵树的展开状态。空闲、隐藏和离页状态不再持续扫描 Workdir；运行中的 Viewer 文件仍按秒检测元数据变化，Run 结束或中断后文件树读取最终持久字节。AgentPanel 继续保持挂载，子智能体 Section 的 SSE 生命周期不受文件轮询启停影响。
+
+本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../proposed/2026-10-01-web-react-migration-design.md)在 `web/` 重建。
 
 ## 验证
 

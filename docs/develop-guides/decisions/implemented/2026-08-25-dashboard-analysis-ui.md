@@ -2,7 +2,7 @@
 
 状态：implemented
 类型：feature
-Owner：web/src/components/dashboard/DashboardMetricCard.vue
+Owner：docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-design.md
 
 ## 问题
 
@@ -47,3 +47,6 @@ Owner：web/src/components/dashboard/DashboardMetricCard.vue
 - 方格图按接口返回的数据渲染，仓储补齐 120 个连续自然日；旧响应或空数组不会把缺失天数伪装成活跃记录。
 - 现有 ECharts 连续图表和运行能力分支保持不变。
 - Compose 内 `uv run --no-sync` 执行 Dashboard、Chat HTTP integration；Office 转换、状态面板超限滚动和纯触屏等未构造状态仍保留为未验证范围。
+
+
+本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../proposed/2026-10-01-web-react-migration-design.md)在 `web/` 重建。

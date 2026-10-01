@@ -2,7 +2,7 @@
 
 状态：implemented
 类型：feature
-Owner：web/src/views/HomeView.vue
+Owner：docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-design.md
 
 ## 问题
 
@@ -26,6 +26,8 @@ Owner：web/src/views/HomeView.vue
 ## 后果
 
 前端新增局部流式缓冲状态和知识库片段弹窗，但不增加后端 API、持久化字段或 SSE 配置。大块历史文本优先恢复可读终态，小块实时文本保持平滑；同名知识库文件不会串组。视觉更新继续服从浅色、深色和窄屏 token。
+
+本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../proposed/2026-10-01-web-react-migration-design.md)在 `web/` 重建。
 
 ## 验证
 

@@ -526,14 +526,25 @@ jobs:
 
     def test_web_api_literal_outside_api_owner_is_rejected(self) -> None:
         self._write(
-            "web/src/components/InvalidComponent.vue",
-            "<script>fetch('/api/users')</script>\n",
+            "web/src/pages/home/ui/home-page.tsx",
+            "export const load = () => fetch('/api/users');\n",
         )
 
         self.assertTrue(
             any(
-                "web/src/apis 外不得拥有 /api 路径" in error for error in self._errors()
+                "web/src 的 api 段之外不得拥有 /api 路径" in error
+                for error in self._errors()
             )
+        )
+
+    def test_web_api_literal_inside_api_segment_is_allowed(self) -> None:
+        self._write(
+            "web/src/entities/session/api/session-api.ts",
+            "export const login = () => fetch('/api/auth/token');\n",
+        )
+
+        self.assertFalse(
+            any("不得拥有 /api 路径" in error for error in self._errors())
         )
 
     def test_service_workspace_host_path_bypasses_are_rejected(self) -> None:

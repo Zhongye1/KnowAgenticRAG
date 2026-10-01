@@ -1,44 +1,25 @@
-/* 导入项目的颜色变量 */
-@import url('../../../web/src/assets/css/base.css');
-@import url('../../../web/src/assets/css/base.dark.css');
+/* 导入前端设计 Token（:root 为亮色，.dark 为暗色，随 html.dark 生效） */
+@import url('../../../web/src/styles/tokens.css');
 
-/* VitePress 主题色覆盖 */
+/*
+ * VitePress 品牌色跟随前端主色刻度。Token 存 RGB 三元组，必须用 rgb() 求值；
+ * 亮暗两套取值由 tokens.css 的 .dark 块提供，这里只写一次。
+ */
 :root {
-  /* 覆盖 VitePress 的主题色，使用项目中定义的 main-color */
-  --vp-c-brand-1: var(--main-color);
-  --vp-c-brand-2: var(--main-bright);
-  --vp-c-brand-3: var(--main-700);
-  --vp-c-brand-4: var(--main-800);
-  --vp-c-brand-5: var(--main-900);
-  --vp-c-brand-6: var(--main-1000);
+  --vp-c-brand-1: rgb(var(--primary-6));
+  --vp-c-brand-2: rgb(var(--primary-5));
+  --vp-c-brand-3: rgb(var(--primary-4));
+  --vp-c-brand-4: rgb(var(--primary-3));
+  --vp-c-brand-5: rgb(var(--primary-2));
+  --vp-c-brand-6: rgb(var(--primary-1));
 
-  /* 浅色模式下的文本颜色 */
-  --vp-c-brand-light: var(--main-color);
-  --vp-c-brand-lighter: var(--main-bright);
-  --vp-c-brand-lightest: var(--main-400);
+  --vp-c-brand-light: rgb(var(--primary-5));
+  --vp-c-brand-lighter: rgb(var(--primary-4));
+  --vp-c-brand-lightest: rgb(var(--primary-3));
 
-  /* 深色模式下的文本颜色 */
-  --vp-c-brand-dark: var(--main-300);
-  --vp-c-brand-darker: var(--main-200);
-  --vp-c-brand-darkest: var(--main-100);
-}
+  --vp-c-brand-dark: rgb(var(--primary-7));
+  --vp-c-brand-darker: rgb(var(--primary-7));
+  --vp-c-brand-darkest: rgb(var(--primary-7));
 
-/* 深色模式覆盖 */
-.dark {
-  --vp-c-brand-1: var(--main-color);
-  --vp-c-brand-2: var(--main-bright);
-  --vp-c-brand-3: var(--main-700);
-  --vp-c-brand-4: var(--main-800);
-  --vp-c-brand-5: var(--main-900);
-  --vp-c-brand-6: var(--main-1000);
-
-  /* 浅色模式下的文本颜色 */
-  --vp-c-brand-light: var(--main-color);
-  --vp-c-brand-lighter: var(--main-bright);
-  --vp-c-brand-lightest: var(--main-400);
-
-  /* 深色模式下的文本颜色 */
-  --vp-c-brand-dark: var(--main-300);
-  --vp-c-brand-darker: var(--main-200);
-  --vp-c-brand-darkest: var(--main-100);
+  --vp-c-brand-soft: rgb(var(--primary-6) / 0.14);
 }

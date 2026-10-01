@@ -2,7 +2,7 @@
 
 状态：implemented
 类型：feature
-Owner：web/src/components/AgentChatComponent.vue
+Owner：docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-design.md
 
 ## 问题
 
@@ -25,6 +25,8 @@ Owner：web/src/components/AgentChatComponent.vue
 ## 后果
 
 消息调试视图与聊天展示视图拥有不同的前端投影，但共享同一个后端历史事实源。AgentPanel 新增一个只在显式开启后存在的 section；JSON 树和剪贴板降级成为可复用的轻量前端工具。Debug 模式仍是超级管理员体验入口，不构成后端授权边界。
+
+本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../proposed/2026-10-01-web-react-migration-design.md)在 `web/` 重建。
 
 ## 验证
 

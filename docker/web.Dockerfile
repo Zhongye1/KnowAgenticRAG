@@ -4,7 +4,7 @@ WORKDIR /app
 ENV TZ=Asia/Shanghai
 
 # 安装 pnpm（版本与 package.json 的 packageManager 字段对齐，避免 pnpm@latest 与旧 lockfile 不兼容）
-RUN npm install -g pnpm@10.11.0
+RUN npm install -g pnpm@12.5.1
 
 # 复制 package.json 和 pnpm-lock.yaml
 COPY ./web/package*.json ./
@@ -26,7 +26,7 @@ FROM node:24-alpine AS build-stage
 WORKDIR /app
 
 # 安装 pnpm
-RUN npm install -g pnpm@10.11.0
+RUN npm install -g pnpm@12.5.1
 
 # 复制依赖文件
 COPY ./web/package*.json ./

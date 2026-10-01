@@ -96,6 +96,33 @@ services:
       storage-migrator:
         condition: service_completed_successfully
 
+  # 前端开发服务器：浏览器只访问 5173，/api 与 /minio 由 vite 代理转发到 api 与 minio。
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: development
+    image: ars-web:${ARS_VERSION:-0.7.2.beta1}
+    container_name: web-dev
+    working_dir: /app
+    volumes:
+      - ./web/src:/app/src
+      - ./web/public:/app/public
+      - ./web/index.html:/app/index.html
+      - ./web/vite.config.ts:/app/vite.config.ts
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+    networks:
+      - app-network
+    environment:
+      NODE_ENV: development
+      VITE_API_URL: http://api:5050
+      VITE_MINIO_URL: http://minio:9000
+    command: pnpm run dev
+    restart: unless-stopped
+
   worker:
     build:
       context: .

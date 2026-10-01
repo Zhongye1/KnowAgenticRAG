@@ -1,0 +1,280 @@
+/* ============================================================================
+ * Arco Design 设计 Token（来源：组件库「设计变量」表）
+ * ----------------------------------------------------------------------------
+ * 使用规范：
+ *  - 业务代码一律通过 Tailwind 工具类引用本文件 Token，禁止硬编码颜色，
+ *    禁止使用 Tailwind 默认调色板类（gray-xxx /
+blue-xxx 等）。
+ *  - 颜色 Token 存 RGB 三元组（空格分隔），便于叠加透明度：
+ *      bg-primary-6        -> rgb(var(--primary-6))
+ *      bg-primary-6/50     -> rgb(var(--primary-6) / 0.5)
+ *  - 常用工具类前缀：
+ *      primary-* / success-* / warning-* / danger-* / link-*  -> 语义色
+ *      data-*              -> 图表数据色
+ *      color-border-*      -> 边框   color-fill-* -> 填充
+ *      color-text-*        -> 文字   color-bg-*   -> 背景
+ *      color-white / color-black -> 基础黑白
+ *      text-body-* / text-title-* / text-display-* / text-caption -> 字号
+ *      font-weight-*       -> 字重   size-* -> 尺寸   border-1/2/3 -> 边框宽度
+ *      rounded-small/medium/large/circle -> 圆角
+ *      shadow-special / shadow-1-center / shadow-2-center / shadow-3-center -> 阴影
+ * 校验：pnpm check:tokens
+ * ========================================================================== */
+
+/* Light 主题 */
+:root {
+  --primary-1: 232 243 255;
+  --primary-2: 190 218 255;
+  --primary-3: 148 191 255;
+  --primary-4: 106 161 255;
+  --primary-5: 64 128 255;
+  --primary-6: 22 93 255;
+  --primary-7: 14 66 210;
+  --success-1: 232 255 234;
+  --success-2: 175 240 181;
+  --success-3: 123 225 136;
+  --success-4: 76 210 99;
+  --success-5: 35 195 67;
+  --success-6: 0 180 42;
+  --success-7: 0 154 41;
+  --warning-1: 255 247 232;
+  --warning-2: 255 228 186;
+  --warning-3: 255 207 139;
+  --warning-4: 255 182 93;
+  --warning-5: 255 154 46;
+  --warning-6: 255 125 0;
+  --warning-7: 210 95 0;
+  --danger-1: 255 236 232;
+  --danger-2: 253 205 197;
+  --danger-3: 251 172 163;
+  --danger-4: 249 137 129;
+  --danger-5: 247 101 96;
+  --danger-6: 245 63 63;
+  --danger-7: 203 39 45;
+  --link-1: 232 243 255;
+  --link-2: 190 218 255;
+  --link-3: 148 191 255;
+  --link-4: 106 161 255;
+  --link-5: 64 128 255;
+  --link-6: 22 93 255;
+  --link-7: 14 66 210;
+  --data-1: 64 128 255;
+  --data-2: 190 218 255;
+  --data-3: 85 197 253;
+  --data-4: 156 220 252;
+  --data-5: 255 125 0;
+  --data-6: 255 207 139;
+  --data-7: 76 210 99;
+  --data-8: 175 240 181;
+  --data-9: 168 113 227;
+  --data-10: 221 190 246;
+  --data-11: 247 186 30;
+  --data-12: 250 220 109;
+  --data-13: 159 219 29;
+  --data-14: 201 233 104;
+  --data-15: 249 121 183;
+  --data-16: 251 157 199;
+  --data-17: 20 201 201;
+  --data-18: 137 233 224;
+  --data-19: 232 101 223;
+  --data-20: 247 186 239;
+  --color-border-1: 242 243 245;
+  --color-border-2: 229 230 235;
+  --color-border-3: 201 205 212;
+  --color-border-4: 134 144 156;
+  --color-fill-1: 247 248 250;
+  --color-fill-2: 242 243 245;
+  --color-fill-3: 229 230 235;
+  --color-fill-4: 201 205 212;
+  --color-text-1: 29 33 41;
+  --color-text-2: 78 89 105;
+  --color-text-3: 134 144 156;
+  --color-text-4: 201 205 212;
+  --color-bg-1: 255 255 255;
+  --color-bg-2: 255 255 255;
+  --color-bg-3: 255 255 255;
+  --color-bg-4: 255 255 255;
+  --color-bg-5: 255 255 255;
+  --color-bg-white: 255 255 255;
+  --color-white: 255 255 255;
+  --color-black: 0 0 0;
+
+  /* 字号 */
+  --font-size-body-3: 14px;
+  --font-size-body-2: 13px;
+  --font-size-body-1: 12px;
+  --font-size-caption: 12px;
+  --font-size-title-1: 16px;
+  --font-size-title-2: 20px;
+  --font-size-title-3: 24px;
+  --font-size-display-1: 36px;
+  --font-size-display-2: 48px;
+  --font-size-display-3: 56px;
+
+  /* 字重 */
+  --font-weight-100: 100;
+  --font-weight-200: 200;
+  --font-weight-300: 300;
+  --font-weight-400: 400;
+  --font-weight-500: 500;
+  --font-weight-600: 600;
+  --font-weight-700: 700;
+  --font-weight-800: 800;
+  --font-weight-900: 900;
+
+  /* 尺寸（(4 * N)px） */
+  --size-1: 4px;
+  --size-2: 8px;
+  --size-3: 12px;
+  --size-4: 16px;
+  --size-5: 20px;
+  --size-6: 24px;
+  --size-7: 28px;
+  --size-8: 32px;
+  --size-9: 36px;
+  --size-10: 40px;
+  --size-11: 44px;
+  --size-12: 48px;
+  --size-13: 52px;
+  --size-14: 56px;
+  --size-15: 60px;
+  --size-16: 64px;
+  --size-17: 68px;
+  --size-18: 72px;
+  --size-19: 76px;
+  --size-20: 80px;
+  --size-21: 84px;
+  --size-22: 88px;
+  --size-23: 92px;
+  --size-24: 96px;
+  --size-25: 100px;
+  --size-26: 104px;
+  --size-27: 108px;
+  --size-28: 112px;
+  --size-29: 116px;
+  --size-30: 120px;
+  --size-31: 124px;
+  --size-32: 128px;
+  --size-33: 132px;
+  --size-34: 136px;
+  --size-35: 140px;
+  --size-36: 144px;
+  --size-37: 148px;
+  --size-38: 152px;
+  --size-39: 156px;
+  --size-40: 160px;
+  --size-41: 164px;
+  --size-42: 168px;
+  --size-43: 172px;
+  --size-44: 176px;
+  --size-45: 180px;
+  --size-46: 184px;
+  --size-47: 188px;
+  --size-48: 192px;
+  --size-49: 196px;
+  --size-50: 200px;
+
+  /* 组件尺寸 */
+  --size-mini: var(--size-6);
+  --size-small: var(--size-7);
+  --size-default: var(--size-8);
+  --size-large: var(--size-9);
+
+  /* 边框宽度 */
+  --border-none: 0;
+  --border-1: 1px;
+  --border-2: 2px;
+  --border-3: 3px;
+
+  /* 边框圆角 */
+  --border-radius-none: 0;
+  --border-radius-small: 2px;
+  --border-radius-medium: 4px;
+  --border-radius-large: 8px;
+  --border-radius-circle: 50%;
+
+  /* 阴影 */
+  --shadow-special: 0 0 1px rgba(0, 0, 0, 0.3);
+  --shadow-1-center: 0 -2px 5px rgba(0, 0, 0, 0.1);
+  --shadow-2-center: 0 0 10px rgba(0, 0, 0, 0.1);
+  --shadow-3-center: 0 0 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark 主题 */
+.dark {
+  --primary-1: 0 13 77;
+  --primary-2: 4 27 121;
+  --primary-3: 14 50 166;
+  --primary-4: 29 77 210;
+  --primary-5: 48 111 255;
+  --primary-6: 60 126 255;
+  --primary-7: 104 159 255;
+  --success-1: 0 77 28;
+  --success-2: 4 102 37;
+  --success-3: 10 128 45;
+  --success-4: 18 154 55;
+  --success-5: 29 180 64;
+  --success-6: 39 195 70;
+  --success-7: 80 210 102;
+  --warning-1: 77 27 0;
+  --warning-2: 121 48 4;
+  --warning-3: 166 75 10;
+  --warning-4: 210 105 19;
+  --warning-5: 255 141 31;
+  --warning-6: 255 150 38;
+  --warning-7: 255 179 87;
+  --danger-1: 77 0 10;
+  --danger-2: 119 6 17;
+  --danger-3: 161 22 31;
+  --danger-4: 203 46 52;
+  --danger-5: 245 78 78;
+  --danger-6: 247 105 101;
+  --danger-7: 249 141 134;
+  --link-1: 0 13 77;
+  --link-2: 4 27 121;
+  --link-3: 14 50 166;
+  --link-4: 29 77 210;
+  --link-5: 48 111 255;
+  --link-6: 60 126 255;
+  --link-7: 104 159 255;
+  --data-1: 48 111 255;
+  --data-2: 14 50 166;
+  --data-3: 70 154 250;
+  --data-4: 19 76 163;
+  --data-5: 255 150 38;
+  --data-6: 166 75 10;
+  --data-7: 18 154 55;
+  --data-8: 10 128 45;
+  --data-9: 90 37 176;
+  --data-10: 62 19 143;
+  --data-11: 249 204 68;
+  --data-12: 204 150 31;
+  --data-13: 184 226 75;
+  --data-14: 132 183 35;
+  --data-15: 203 43 136;
+  --data-16: 161 23 108;
+  --data-17: 63 212 207;
+  --data-18: 17 131 139;
+  --data-19: 176 27 182;
+  --data-20: 101 3 112;
+  --color-border-1: 46 46 48;
+  --color-border-2: 72 72 73;
+  --color-border-3: 95 95 96;
+  --color-border-4: 146 146 147;
+  --color-fill-1: 23 23 26;
+  --color-fill-2: 46 46 48;
+  --color-fill-3: 72 72 73;
+  --color-fill-4: 95 95 96;
+  --color-text-1: 246 246 246;
+  --color-text-2: 197 197 197;
+  --color-text-3: 146 146 147;
+  --color-text-4: 95 95 96;
+  --color-bg-1: 23 23 26;
+  --color-bg-2: 35 35 36;
+  --color-bg-3: 42 42 43;
+  --color-bg-4: 49 49 50;
+  --color-bg-5: 55 55 57;
+  --color-bg-white: 246 246 246;
+  --color-white: 255 255 255;
+  --color-black: 0 0 0;
+}

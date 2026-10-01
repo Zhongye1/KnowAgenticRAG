@@ -5,9 +5,8 @@ default_language_version:
 # 不参与任何钩子（格式化/JSON/YAML/TOML 校验/ruff），避免被本地规则改写。
 exclude: ^\.agents/
 
-# 前端（frontend/）本期冻结，不在任何钩子范围内；其门禁在前端阶段另行立项。
-# 架构契约钩子（import-linter / dependency-cruiser）随 fba 后端与 React 前端一并移除，
-# 后端分层契约改由 scripts/verify_engineering_contracts.py 承担。
+# 前端门禁由 web/ 自己拥有：lint / 单测 / 设计 token / 分层 / 契约漂移。
+# 这些钩子只在改动命中 web/ 时运行，避免无关提交被 Node 工具链拖慢。
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
@@ -44,3 +43,39 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
+
+      # web/ 的只读门禁。`lint` 与 `format` 允许本地自动修复，钩子里只用只读形态。
+      - id: web-lint
+        name: 'web: oxlint（只读）'
+        entry: bash -c 'cd web && pnpm run lint:check'
+        language: system
+        files: ^web/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: web-types
+        name: 'web: tsc 类型检查'
+        entry: bash -c 'cd web && pnpm run check-types'
+        language: system
+        files: ^web/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: web-tokens
+        name: 'web: 设计 Token 校验'
+        entry: bash -c 'cd web && pnpm run check:tokens'
+        language: system
+        files: ^web/src/.*\.(ts|tsx|css)$
+        pass_filenames: false
+
+      - id: web-fsd
+        name: 'web: Steiger FSD 结构校验'
+        entry: bash -c 'cd web && pnpm run lint:fsd'
+        language: system
+        files: ^web/src/.*\.(ts|tsx)$
+        pass_filenames: false
+
+      - id: web-arch
+        name: 'web: dependency-cruiser 分层校验'
+        entry: bash -c 'cd web && pnpm run arch:check'
+        language: system
+        files: ^web/src/.*\.(ts|tsx)$
+        pass_filenames: false

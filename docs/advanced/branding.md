@@ -49,38 +49,31 @@ footer:
 
 ### 显示规则
 
-- 当 `user_agreement_url` 和 `privacy_policy_url` 都有值时，登录页会显示协议勾选项。
-- 任一字段为空时，登录页不显示协议勾选项。
-- 未勾选协议时，提交登录/初始化会通过消息提示用户先同意协议。
+后端通过 `GET /api/system/info` 把 `footer` 交给前端，是否展示协议勾选项由前端决定：两个字段都有值时显示，任一为空时不显示，未勾选时提示用户先同意协议。当前负责展示的登录页位于 `web/`，协议勾选尚未随迁移落地。
 
 ### 协议模板文件
 
-系统默认提供两个 HTML 模板文件：
-
-- `web/public/protocols/user-agreement.template.html`
-- `web/public/protocols/privacy-policy.template.html`
-
-你可以直接编辑这两个文件中的协议内容，并替换占位符（如 `{{ORG_NAME}}`、`{{PRODUCT_NAME}}`、`{{EFFECTIVE_DATE}}`）。
-
-如果你有自己的协议页面，也可以将 `user_agreement_url` 和 `privacy_policy_url` 指向自定义路径或外部链接。
+默认配置指向 `/protocols/user-agreement.template.html` 与 `/protocols/privacy-policy.template.html`，这两个文件由部署方提供：放进前端静态目录 `web/public/protocols/`（构建后位于站点根路径），或把上面两个字段改成自己的路径与外部链接。仓库内的 `web/public/` 只保留目录占位，不含协议正文。
 
 ### Icon 定制
 
-系统预设了多种 Icon，如需更多图标，可以从 `lucide-vue-next` 中引入。
+前端图标来自 `lucide-react`，按需引入并保持尺寸一致。
 
 ## 样式定制
 
-系统支持完整的主题色定制。配置文件位于 `web/src/assets/css/base.css`，以及 `web/src/assets/css/base.dark.css`：
+前端的颜色、字号、圆角与阴影集中在 `web/src/styles/tokens.css`：`:root` 是亮色取值，`.dark` 是暗色取值，随 `html.dark` 生效。主色刻度是 `--primary-1`（最浅）到 `--primary-7`（最深），`--primary-6` 是主色基准值。
+
+颜色 Token 存的是 RGB 三元组而不是颜色字符串，因此引用时要包一层 `rgb()`：
 
 ```css
 :root {
-  --main-color: #1890ff;        /* 主色调 */
-  --main-1000: #f0f2f5;          /* 色板 */
-  --main-900: #e6f7ff;           /* 色板 */
-  /* ... 其他色板 */
+  --primary-6: 22 93 255;      /* 主色基准，等价于 #165DFF */
+  --color-text-1: 29 33 41;    /* 正文主色 */
 }
 ```
 
-修改配色变量后，界面会实时更新，无需重启服务。
+替换品牌色时改 `tokens.css` 里的 `--primary-*` 刻度，并保持三元组格式；业务代码只引用 Token，不写颜色字面量，`pnpm run check:tokens` 会拒绝硬编码颜色与 Tailwind 默认调色板类。
 
-此外，`web/src/stores/theme.js` 中的 `colorPrimary` 也需要同步修改。
+品牌标识里不随主题变化的固定配色（如第三方登录图标）放在 `web/src/styles/brand.css`，该校验脚本默认豁免该文件。
+
+文档站的品牌色与主色刻度联动：`docs/.vitepress/theme/custom.css` 直接导入 `tokens.css` 并用 `rgb(var(--primary-6))` 等形式映射到 VitePress 变量。

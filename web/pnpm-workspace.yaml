@@ -1,0 +1,4 @@
+# pnpm 12 默认拒绝执行依赖的构建脚本，这里显式放行必要的几个。
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true

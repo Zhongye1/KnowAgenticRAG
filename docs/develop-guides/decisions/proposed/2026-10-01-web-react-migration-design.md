@@ -1,0 +1,252 @@
+---
+title: ARS 前端 React 迁移设计
+description: 把上游 Vue 前端实现迁移到 React 的目标架构、契约流水线、迁移规则与分片验收标准
+---
+
+# ARS 前端 React 迁移设计
+
+状态：proposed
+类型：architecture
+Owner：docs/develop-guides/design.md
+
+## 问题
+
+后端已经整体替换为 `ars` 实现（`/api`，无版本段、无响应信封），`web/` 尚不存在，`frontend/` 处于冻结状态：它调用旧后端的 `/api/v1/*` 与统一信封，任何页面都取不到数据。上游 Vue 实现（`Yuxi` 仓库的 `web/`，一次性参照，导入后不建立跟踪关系）是当前唯一完整的前端形态。
+
+需要在这套参照之上重新落地一个 React 前端，并同时回答五个问题：组件库走哪条路线、API 契约如何与 257 个端点保持同步、聊天流式谁来拥有、JavaScript 到 TypeScript 怎么收敛、新目录与既有工程门禁如何对齐。
+
+`frontend/FROZEN.md` 记录的既定后续是「导入上游 `web/`（Vue 3 + Vite）并全量改名」。本文替换该计划，前端技术栈改为 React。
+
+## 提案
+
+### W1 目标形态
+
+新前端落在 `web/`。仓库壳已经为该目录预留了位置：`scripts/verify_engineering_contracts.py` 为 `web/AGENTS.md` 设了 1000 字符预算、为 `.github/workflows/web.yml` 设了工作流契约（要求 `web/**` 存在并执行 `pnpm run lint:check && pnpm run test:unit && pnpm run build`）、`_validate_web_api_boundary` 约束 `web/src/apis` 之外的 API 字面量，根 `AGENTS.md` 的前端证据行链接 `web/AGENTS.md`。
+
+`frontend/` 在 S5 结束后删除，`docs/develop-guides/design.md` 的「技术栈约束」在同一变更中改写。
+
+### W2 组件库路线
+
+全量采用 shadcn/Radix + Tailwind 4，直接继承 `frontend/` 的组件底座与工程设施。上游的 ant-design-vue 不引入 React 对应版本。
+
+上游的 antd 用量决定了这条路的成本主体：65 个文件 import、模板中 946 处 `<a-*>`、`Modal.confirm` 26 次调用分布在 19 个文件，并且上游没有 antd 二次封装层，调用点无法从单一位置拦截。
+
+全量直方图已完成，946 处分三档：
+
+| 档 | 处数 | 占比 | 内容 |
+| --- | --- | --- | --- |
+| 有 shadcn 对位 | 725 | 76.6% | button 239、input 74、tooltip 54、modal 44、tag 42、select-option 33、menu-item 33、spin 29、select 26、dropdown 22、textarea 18、switch 15、menu 13、col 13、checkbox 12、tab-pane 11、space 8、row 7、divider 7、tabs 5、card 5、badge 3、popover 1、pagination 1、drawer 1、skeleton-button 1、config-provider 1 |
+| 需要组合或自研 | 200 | 21.1% | form-item 88、empty 22、input-number 18、form 18、alert 16、input-password 12、segmented 7、result 5、progress 5、collapse 4、popconfirm 2 等 |
+| 重量级 | 21 | 2.2% | table 12、upload 6、tree 1、tree-select 1、date-picker 1 |
+
+两个发现压低了这条路的估算。其一，上游没有使用 antd 的校验引擎：`validateFields` 调用 0 次、`:rules=` 绑定 10 处、`:model=` 绑定 8 处、`formRef.value.*` 调用 2 处，因此那 107 处 `a-form` / `a-form-item` 承担的是 label 与错误文案的布局，校验逻辑位于下游的纯 JS 工具。其二，`message.*` 的真实调用为 445 次（`error` 253、`success` 125、`warning` 48、`info` 13、`destroy` 4、`loading` 2），一个通知中心即可全部承接；原始 grep 的 493 次命中里有约 48 次是聊天消息对象的属性访问。
+
+重量级组件集中且可点名：`a-table` 出现在 10 个文件、周边代码 8495 行，`a-upload` 出现在 6 个文件、周边 6220 行，`a-tree` / `a-tree-select` / `a-date-picker` 各 1 处且集中在 `FileTreeComponent`、`FileUploadModal`、`ApiKeyManagementComponent` 三个文件。这 16 个文件按文件估算，不按标签数估算。
+
+组件映射按类别推进，逐调用点重写：
+
+| 上游用法 | 目标 |
+| --- | --- |
+| `a-button` / `a-tag` / `a-tooltip` / `a-dropdown` / `a-spin` | shadcn Button / Badge / Tooltip / DropdownMenu / Spinner |
+| `a-modal` + `Modal.confirm` | shadcn Dialog + 自研命令式 confirm |
+| `a-input` / `a-textarea` / `a-input-number` / `a-form` / `a-form-item` | shadcn Form + react-hook-form + zod |
+| `a-select` / `a-select-option` | shadcn Select |
+| `a-menu-item` | DropdownMenu / Sidebar |
+| `a-empty` | 自研 Empty（含「下一步做什么」文案） |
+| `message.*` | 通知中心（zustand store） |
+| `a-table` | `@tanstack/react-table` 9.2.4 + 自研样式（排序、固定列、展开） |
+| `a-upload` | 自研 Upload（上游对应 `FileUploadModal.vue` 2012 行） |
+
+### W3 「样式不变」的定义
+
+上游的项目自有样式只有 2023 行（12 个文件），最大一个 `extensions.less` 838 行；颜色、间距、圆角由 `base.css`（149 条变量）与 `base.dark.css`（145 条覆盖）承载，组件视觉主要由 antd 提供。
+
+因此本次迁移承诺的「样式不变」限定为三条：设计 token 不变、布局与信息层级不变、交互语义不变。组件级视觉重新实现，验收以上游同页截图对照。
+
+token 迁移路径：`base.css` / `base.dark.css` 的 CSS 变量映射进 `web/src/styles/tokens.css` 与 `web/src/index.css`，沿用 `frontend/` 已有的结构（`tokens.css` 236 条变量、`index.css` 81 个颜色映射与 `@theme` 声明）。`scripts/check-design-tokens.mjs` 的规则继续生效：禁止硬编码 HEX、禁止非 `var()` 的 `rgb()/hsl()`、禁止 Tailwind 默认调色板类。
+
+### W4 API 分层与契约流水线
+
+生成物垫在手写分层之下：
+
+```text
+web/src/apis/
+├── generated/                  # 生成物，入库；diff 即契约变更记录
+│   ├── types.gen.ts
+│   ├── sdk.gen.ts
+│   └── @tanstack/react-query.gen.ts
+├── base.ts                     # 手写：client 实例、token 注入、401 处理、错误文案
+├── auth.ts                     # 手写：登录、当前用户、能力投影
+└── agent_api.ts                # 手写薄层：业务语义（提交 run、标题生成 prompt 等）
+```
+
+生成器选 `@hey-api/openapi-ts`，钉死 0.99.0。已核实：其插件（`@hey-api/typescript`、`@hey-api/sdk`、`@hey-api/schemas`、`@hey-api/transformers`、`@tanstack/react-query`）内置于主包，不发布同名独立包；独立包只有客户端 `@hey-api/client-fetch`（0.13.1，本次采用）与 `@hey-api/client-axios`（0.9.1）。运行要求 `node>=22.18.0`，TypeScript peer 为 `>=5.5.3 || >=6.0.0`。
+
+client 实例与拦截器同住 `base.ts`：生成物导出的实例在这里 `setConfig({ baseUrl: '' })` 并挂上拦截器（生成器把 baseUrl 默认成输入文件名，必须改回同源相对路径），request 拦截器注入 `Authorization: Bearer`，response 拦截器负责 401 处理与错误文案。生成的 SDK 函数默认使用生成物的 client 实例，配置与拦截器集中挂在这一个实例上；生成物保持默认的 `fields` 返回风格（`{ data, error }`），手写层负责解这层包装并在 `error` 存在时抛 `ApiError`。
+
+鉴权沿用后端契约：只认 `Authorization` 头，JWT 有效期 7 天，API Key 以 `arskey_` 前缀走同一头。新后端没有 refresh 端点，因此 401 的处理是清除凭据并回到登录页，不做重放。
+
+契约源与门禁：
+
+```text
+web/openapi.json         # 后端契约快照，入库
+openapi-ts.config.ts     # 生成配置
+pnpm run api:gen         # 从快照重新生成
+```
+
+两条门禁检查两类不同的漂移：生成物漂移（改了契约或后端却忘记重新生成）用 `pnpm run api:gen && git diff --exit-code web/src/apis/generated`；后端漂移（后端改了接口而快照未更新）在 CI 中启动 api 容器 dump `/openapi.json` 后与 `web/openapi.json` 比对。已核实新后端暴露 `/openapi.json`，共 257 个端点、217 条路径。
+
+### W5 LITE 模式的能力降级
+
+`/openapi.json` 的路由面受 `LITE_MODE` 影响：`server/routers/__init__.py` 通过 `knowledge_capability_enabled()` 门控知识库、图谱、评估、知识域 Dashboard、`external_kb` 与工作区知识视图六组路由。
+
+因此规范是：契约快照与生成一律使用非 LITE 的全量面；运行时的能力降级只读 `/api/system/discovery` 的 `capabilities.features.knowledge`，不得用 404 或请求失败作为能力信号。这与根 `AGENTS.md` 的 LITE 不变量一致：该模式不得导入知识解析重运行时。
+
+### W6 聊天 runtime
+
+移植上游手写状态机，保留其全部流式语义，不引入 `@assistant-ui`：
+
+| 上游 composable | 行数 | 目标 |
+| --- | --- | --- |
+| `useAgentRunStream` | 533 | `web/src/features/chat/hooks/use-run-stream.ts` |
+| `useAgentStreamHandler` | 288 | `use-stream-event-handler.ts` |
+| `useStreamSmoother` | 347 | `use-stream-smoother.ts` |
+| `useAgentRequestQueue` | 179 | `use-request-queue.ts` |
+| `useAgentThreadState` | 126 | `context/thread-state.tsx` |
+
+保留的语义：`fetch` + `ReadableStream` 手工分帧（事件名与后端一致，已逐项核对 11 个：`init`、`loading`、`stream_event`、`error`、`agent_state`、`finished`、`interrupted`、`warning`、`context_compression`、`ask_user_question_required`、`human_approval_required`）、`Last-Event-ID` 续传、500ms 重连前先 `getAgentRun` 判定终态、每 run 一个 AbortController、`localStorage['active_run:<threadId>']` 快照（TTL 1 小时）。
+
+唯一需要重新设计的部分是状态宿主。上游依赖 Vue 的细粒度响应式，`ref` 逐字译为 `useState` 会让高频 `delta` 按帧重渲消息树。做法是保留逻辑、替换宿主：流式碎片写入外部 store，组件通过 `useSyncExternalStore` 订阅。`frontend/` 的 `chat-run-store.ts` 已实现同类结构（按 `messageId` 分片、`MAX_RUNS=100`、`MAX_STEPS=50`）。
+
+路由缓存：上游 7 条路由声明 `keepAlive`，由 `<keep-alive>` 实现。React 19.2 提供 `<Activity>`（已核实 `react@19.2.8` 导出该符号），用它保活并隐藏。
+
+### W7 渲染管线复用
+
+以下依赖与框架无关，直接沿用，只重写挂载壳（ref + `useEffect`，并确保 destroy）：
+
+- Markdown：`markdown-it` + `shiki` + `katex` + `dompurify` + `js-yaml`，上游集中在 `utils/markdown_preview.js`（261 行）一个文件，消费组件 `MarkdownPreview.vue` 1129 行。
+- 图谱：`@antv/g6`，上游用于 `GraphCanvas.vue`。
+- 统计图：`echarts`，上游 5 个 dashboard 组件。
+- 思维导图：`markmap-lib` + `markmap-view`。
+- PDF：`pdfjs-dist`，worker 引入方式跟随 bundler。
+- 单独高亮：`highlight.js`（上游用于文件预览）。
+
+### W8 迁移规则
+
+逐文件直译，规则如下：
+
+| 上游 | 目标 |
+| --- | --- |
+| `ref` / `reactive` | `useState` / `useReducer`，高频流式数据走外部 store |
+| `computed` | `useMemo` |
+| `watch` | `useEffect` |
+| `onMounted` / `onUnmounted` | `useEffect` 的挂载与清理 |
+| `defineProps` / `defineEmits` | props 类型 / 回调 props |
+| `defineExpose` | `useImperativeHandle` |
+| `defineModel` / `v-model` | 受控 props + `onChange` |
+| `<slot>` / `<template #name>` | `children` / 具名 props |
+| provide / inject | React Context |
+| `keep-alive` | `<Activity>` |
+| `lucide-vue-next` | `lucide-react` |
+| `@vueuse/core` | `navigator.clipboard` 与自写节流 |
+
+需要机械映射的规模：Vue API 具名导入 474 次（`computed` 131、`ref` 109、`watch` 58、`onMounted` 50、`reactive` 32、`nextTick` 26、`onUnmounted` 24、`h` 13、`inject` 6、`provide` 2 等）、`defineProps` 124、`defineEmits` 56、`defineExpose` 28、`defineModel` 3、`v-model` 271、`<template #name>` 265、`<slot>` 63、`<component :is>` 37、Transition 12、Teleport 6。
+
+TypeScript 化逐文件进行，允许临时宽松类型；迁移期对新增代码打开 `oxlint` 的 `no-explicit-any`（当前为 `off`），分片结束时收敛。
+
+### W9 治理接口
+
+| 位置 | 动作 |
+| --- | --- |
+| `scripts/verify_engineering_contracts.py` 的 `_validate_web_api_boundary` | 扫描后缀补 `.tsx`；当前只覆盖 `.js` / `.ts` / `.vue`，React 组件里的 `/api` 字面量会漏检 |
+| `.github/workflows/web.yml` | 按既有契约恢复，脚本名沿用 `lint:check` / `test:unit` / `build` |
+| `web/AGENTS.md` | 新建，沿用上游同文件的约定结构，改写为 React 与本文的规则 |
+| `Taskfile.yml` | 新增 `web:*` 目标（容器内 lint / 单测 / 契约刷新 / 全量门禁） |
+| `docker-compose.yml` | 恢复 `web` 服务：开发模式挂源码、暴露 5173，代理目标指向服务名 |
+| `.pre-commit-config.yaml` | 把「前端本期冻结，门禁另行立项」替换为真实的 lint / typecheck / token 检查钩子 |
+| `docs/develop-guides/design.md` | 改写「技术栈约束」三条（样式语言、图标库、UI 基础） |
+| `frontend/FROZEN.md` | 随 `frontend/` 删除；其「后续」章节由本文取代 |
+| 浏览器级验证 | 本次不引入 Playwright；`frontend/` 的 e2e 配置随该目录删除，新前端的 e2e 在业务分片落地时另立 |
+
+`web/src/apis` 之外不得出现 API 字面量的既有规则与本文的分层天然一致，生成物不拼路径。
+
+### W11 分层规范（Feature-Sliced Design）
+
+`web/` 采用 FSD 的分层约定，规则由 [web/ARCHITECTURE.md](https://github.com/Zhongye1/KnowledgeRAG-OGAS/blob/main/web/ARCHITECTURE.md)拥有：`app`、`pages`、`widgets`、`features`、`entities`、`shared` 六层，其中 `widgets` 在出现真实跨页面复用之前不建目录，`processes` 不使用。切片按业务域划分，段按技术目的划分（`ui` / `model` / `api` / `lib` / `config`），依赖只能向下，同层不同切片互不引用，跨切片只走对方的 `index.ts`。
+
+采纳的时机是这次的窗口期：手写代码约 5,200 行、33 个文件，目录归位可以在一次改动内完成；等到业务切片落地再迁移，成本会随代码量上升。
+
+结构规则的执法由两个检查器分担：Steiger（`steiger` 0.7.0 + `@feature-sliced/steiger-plugin` 0.8.0，要求 node >=22.18，实测二次运行 1.2 秒）负责 FSD 结构规则——层间方向、同层切片隔离、跨切片只走 public API、段名与层名；dependency-cruiser 保留循环依赖与契约生成物的两条边界。Steiger 的 19 条规则覆盖了现有手写的三条 FSD 近似规则，后者在同一改动中删除，避免两套引擎对同一件事各报一次。实测当前树只有两条 Steiger 错误（`src/apis` 的层名、`src/app/provider.tsx` 的段名），正好是这次要改的两处。
+
+目录迁移、检查器规则与豁免路径必须同一次完成——`scripts/verify_engineering_contracts.py` 的 API 边界检查把 `shared/api` 当作唯一豁免子树，`web/steiger.config.ts` 的忽略项与 `web/.dependency-cruiser.cjs` 的规则路径也要同步，任何一处不同步都会让对应检查静默失效。
+
+### W10 分片计划
+
+| 片 | 范围 | 验收 |
+| --- | --- | --- |
+| S0 | 决策记录、`design.md` 技术栈约束改写、`web/` 骨架与门禁恢复 | `python3 scripts/verify_engineering_contracts.py` 中 web 相关检查从缺失变为通过 |
+| S1 | 外壳：vite proxy（`/api` 与 `/minio/public/`）、token 体系、布局导航、路由骨架、鉴权、契约流水线 | 登录成功；空壳页面可导航；257 端点客户端可用；两条漂移门禁生效 |
+| F0 | 目录归位到 FSD 分层（`shared` / `entities/session` / `widgets`）；接入 Steiger 并把手写的 FSD 近似规则从 dep-cruiser 迁出；门禁与文档同步 | `pnpm run lint:fsd` 在 `./src` 上零错误；`pnpm run arch:check` 仍拦循环依赖与生成物边界；全部前端门禁保持通过 |
+| S2 | 聊天：1,473 行状态机、消息渲染、审批与提问交互、队列与取消 | 与上游页面逐屏对照；断线续传与取消行为一致 |
+| S3 | 知识库：列表、详情（上游 1754 行）、文件表（1916 行）、上传（2012 行）；含 a-table 与 a-upload 涉及的 16 个文件 | 真实上传与解析链路可观测 |
+| S4 | 图谱与评估：图 canvas、评估面板（2155 行）、调试面板（2388 行） | 图谱渲染与主题联动 |
+| S5 | 管理台与扩展：模型供应商、Skill 列表、Dashboard 图表 | 全站截图对照；删除 `frontend/` |
+
+不搬迁的旧表面（上游实测 0 引用）：`sigma`、`@sigma/*`、`graphology`、`graphology-generators`、`d3`（`'d3-force'` 只是 G6 的布局名）以及仅被 `main.css` import 的 `sigma.css`。
+
+## 替代方案
+
+**方案 1：React + antd 保真优先。** 用 antd 的 React 版本承接上游组件语义，Radix 只用于浮层。放弃这条路的依据有两层。其一是保真度：`antd` 当前为 6.6.5（peer `react >=18`，原生支持 React 19），视觉与上游的 `ant-design-vue` 4.2 属于不同代，要贴近上游需钉 `antd@5`（5.29.3）并引入 `@ant-design/v5-patch-for-react-19` 兼容包。其二是收益面：重量级组件只有 21 处，其余 925 处都能由 shadcn 覆盖，而代价是 antd 的 CSS-in-JS token 与 Tailwind 的 CSS 变量两套主题机制长期并存，`design.md` 关于「新增 UI 必须使用 CSS 变量」的约束适用范围会裂成两半。
+
+**方案 3：分层混合。** 原语走 Radix/shadcn，数据密集组件走 TanStack，最重的表单、日期与上传保留 antd。直方图完成后的结论是：`a-form` / `a-form-item` 共 107 处没有使用 antd 校验引擎，`a-tree` / `a-tree-select` / `a-date-picker` 各 1 处，混合能省下的只有 `a-table` 与 `a-upload` 两个组件的自研量，不足以支撑两套设计语言的长期映射维护。
+
+**方案 4：导入上游 Vue 并改名（原冻结计划）。** 零移植成本，与上游 1:1，既有 `web.yml` 契约的脚本名直接可用。放弃 React 技术栈的诉求。
+
+**方案 5：Next.js。** 兼容性成立（Next 16.3.8 的 peer 覆盖 React 19，`babel-plugin-react-compiler` 在 peer 内，Tailwind 4 与 shadcn 以 Next 为首发环境）。落在这个仓的部署契约上有两条路，都需要改契约：`output: 'export'` 的静态导出会改变产物目录（`out/`，`web.Dockerfile` 的 COPY 路径要改），同时 Next 的 route handlers、middleware、ISR、server actions 与图片优化全部不可用；完整 `next start` 需要把 `web.Dockerfile` 的生产段从 nginx 静态托管改为常驻 Node 进程，并把 `docker/nginx/default.conf` 的 `location /` 从 `root` + `try_files` 改为反向代理。SSR 在本应用缺少施展空间：数据都在 `Authorization: Bearer` 之后，token 存于 `localStorage`，服务端无法取得身份，首屏只能渲染空壳；22 条路由中 `/app` 整体受 `ProtectedRoute` 保护，公开文档站已由 VitePress 承担。迁移到 Next 还会失去 `vite-plugin-dev-inspector`（无对应实现），并需要重做 `import.meta.env` → `process.env.NEXT_PUBLIC_*`、`createBrowserRouter` → 文件路由、vitest 与 Storybook 的 framework。重新评估的触发条件是出现需要 SEO 的公开页面、鉴权改为 cookie session 并需要服务端首屏，或团队把 Next 定为标准栈。
+
+**生成式客户端的两条备选路径。** 其一是不引入生成器，257 个端点手写类型化客户端；其二是只在测试与 mock 层使用 `orval`，生产代码手写。两者都放弃了「diff 生成物即契约变更」这条评审入口。
+
+## 验收标准
+
+| 验收主张 | 失败面 | 语义 Owner | 直接证据 / 命令 | 负向案例 | 当前结果 |
+| --- | --- | --- | --- | --- | --- |
+| `web/` 落地后门禁恢复 | 目录缺失使门禁空转 | `scripts/verify_engineering_contracts.py` | `python3 scripts/verify_engineering_contracts.py` | 删除 `web/AGENTS.md`、`.github/workflows/web.yml`，或在 api 段之外写 `/api` 字面量时，对应检查必须报错 | Passed |
+| 生成物与契约同步 | 后端改字段后前端静默失配 | `web/src/shared/api/generated`、`web/openapi.json` | `pnpm run api:check` | 改一个后端字段定义而不重新生成，比对必须失败 | Passed |
+| 后端契约快照不漂移 | 快照落后于真实接口 | `web/openapi.json` | `pnpm run api:snapshot` 后 `git diff --exit-code openapi.json` | 给路由新增一个响应字段后跑 `api:snapshot`，`openapi.json` 必须产生 diff | Not run |
+| LITE 降级不依赖 404 | 能力关闭被当成故障 | `backend/server/routers/__init__.py`、`web/src/entities/session/model/capabilities.ts` | `LITE_MODE=true` 起栈后检查侧边栏与能力投影 | LITE 下扩展入口必须消失，页面不得停在请求失败的空白态 | Inspected |
+| 流式语义与上游一致 | 断线丢事件、取消失效 | `web/src/features/chat/model/run-stream.ts`、`web/src/features/chat/lib/sse.ts` | 真实 run 的 SSE 事件序列、`Last-Event-ID` 续传、`AbortController` 取消 | 中途断网后重连必须按 `getAgentRun` 的终态判定，禁止对已终态 run 重放 | Not run |
+| 线程可建可续 | 未带线程进入对话页无法发送、重试产生多条空线程 | `web/src/features/chat/api/agent-api.ts`、`web/src/features/chat/model/chat-runtime.ts`、`web/src/pages/chat/ui/chat-page.tsx` | 真实 HTTP：`POST /api/chat/thread` 得到 `id`，随后 `createRun` 返回 `status=dispatched`（此前同一线程直接报「对话线程不存在」）；同一 `request_id` 重放返回同一条线程。页面接线与失败/离开分支由 `test/unit/pages/chat-page.test.tsx` 与 `queue-runtime.test.ts` 覆盖：无线程时先建再发、有线程时不建、建线程失败保留输入、建线程期间离开则放弃发送、失败重试沿用同一 `request_id` | 建线程请求里的 `agent_id` 传 agent 数字 id 时后端返回「智能体不存在」；并发调用 `createThread` 只产生一次请求；页面级行为无浏览器验证（未接入 Playwright） | Passed |
+| 队列语义以后端为准 | 排队请求被当已执行、取消越权、失败原因丢失、队列条不推进 | `backend/package/ars/services/agent_request_queue_service.py`、`web/src/features/chat/api/agent-api.ts`、`web/src/features/chat/model/chat-runtime.ts` | 真实 HTTP：同一线程连续两次 `createRun`，第二条 `status=queued`、`queue_position=1`；`POST /api/agent/requests/{id}/steer` 返回 `queue_policy=steer`；订阅 `GET /api/agent/requests/{id}/events` 实测收到 `queued`（含 `position`）、`: heartbeat`、`run_created`（含 `run_id`）、`cancelled` 四类帧；`pnpm run test:unit` 用 curl 实测的 409 响应体断言 `ApiError.message` 等于后端业务文案 | 从 `/requests/continue` 的 query 去掉 `agent_slug` 必须 422；对仍有活跃 Run 的 steer 请求调 cancel 必须 409（实测 `{"detail":{"code":"steer_in_progress",…}}`）；`paused_reason` 用后端不存在的取值时队列条必须原样展示而不是套用错误文案；删除订阅去重、线程作用域、终态状态收窄三处 guard 时对应用例必须失败（已做变异验证） | Passed |
+| 队列条与上游同判定 | 提升或取消按钮出现在不该出现的请求上 | `web/src/features/chat/lib/queue-view.ts`、`web/src/features/chat/ui/queue-bar.tsx` | `describeQueueRow` 与上游 `canSteerQueuedRequest` / `canCancelQueuedRequest` 逐条对应；`pnpm run test:unit` 的 `queue-bar.test.tsx` 覆盖引导、取消、`引导 · 下一条执行`、等待说明、暂停与继续、无文案兜底六种分支 | 引导请求在运行中不出现取消按钮、`hasPendingSteer` 时不再出现引导按钮；真实页面截图仍未提供（未接入浏览器验证） | Inspected |
+| 设计 token 与暗色一致 | 硬编码颜色破坏暗色 | `docs/develop-guides/design.md` | `pnpm run check:tokens` 与浅/深两套截图 | 新增组件使用 Tailwind 默认调色板类必须被门禁拒绝 | Inspected |
+| 组件库单一来源 | 两套主题机制并存 | `docs/develop-guides/design.md`、`web/package.json` | 依赖清单中不存在 `antd`，且 `pnpm run check:tokens` 覆盖全部组件 | 任何 `web/src` 文件 import `antd` 或其样式必须被依赖检查拒绝 | Passed |
+| 视觉基线可对照 | 逐页评审无客观依据 | `docs/develop-guides/design.md` | 上游同页与迁移页的截图对照记录 | 缺件组件（Empty、命令式 confirm、Upload、复杂表格）未实现时页面必须显式降级，不得静默空白 | Not run |
+| 依赖方向约束生效 | 跨切片与反向引用无人拦 | `web/ARCHITECTURE.md`、`web/steiger.config.ts`、`web/.dependency-cruiser.cjs` | `pnpm run lint:fsd && pnpm run arch:check` | 人为让两个切片互相 import、或让 `shared` 引用上层时必须报错 | Passed |
+
+## 风险
+
+**组件重写是工作量的主体，且缺少自动 oracle。** 946 处 antd 调用点没有拦截层，其中命令式 confirm、上传、以及表格的排序与固定列需要从零实现。视觉一致性只能靠人工截图对照，S0 需要把「每页对照清单」作为交付物，否则评审会缺少客观依据。
+
+**`AgentChatComponent.vue` 5467 行不可整体直译。** 该文件是上游最大的单文件，包含消息列表、输入框、队列条、审批、提问、工具调用、思考块与用量统计。S2 必须先做功能切分再逐块迁移，切分边界本身需要评审。
+
+**重量级组件的估算要按文件而非按标签。** `a-table` 只有 12 个标签，但分布在 10 个文件、周边代码 8495 行；`a-upload` 6 个标签分布在 6 个文件、周边 6220 行。列定义、排序状态、分页请求与展开逻辑才是成本所在，按标签数估算会显著低估 S3。
+
+**契约快照的后端漂移检查尚未接进 CI。** 命令已具备（`pnpm run api:snapshot` 后 `git diff --exit-code`），但没有 workflow 会在后端变更时执行它；前后端同时改动时快照可能滞后，直到有人本地跑一次才发现。
+
+**Steiger 处于 0.x 活跃期。** `steiger` 0.7.0 与 `@feature-sliced/steiger-plugin` 0.8.0 之间没有声明 peer 约束，配置格式在 0.5.0 变过一次。接入时钉死两个版本，升级视同契约变更：重跑规则、复核报错差异后再提交。
+
+**生成器仍是 0.x 版本。** `@hey-api/openapi-ts` 0.99.0 的插件配置在小版本间会变，升级需要重跑契约流水线并复核生成物差异。
+
+**双轨期的误引用。** `frontend/` 在 S5 前仍存在于仓库中，其组件与工具函数对新代码是可 import 的，而它的 API 客户端与旧契约绑定。`web/` 的 builder 配置与 lint 范围需要阻止跨目录引用。
+
+**文档站里仍有指向上游仓库的链接。** `docs/` 是从上游整站导入的，多处 GitHub 链接指向 `xerrors/ARS` 而不是本仓 origin，其中一部分描述的是上游 Vue 前端的实现。迁移收尾前要按「本仓事实 vs 上游参考」逐页核对，不能靠替换域名一次性处理：`web/` 之外的源码路径在本仓可能根本不存在。
+
+**页面侧的上游语义只覆盖了一部分。** 上游 `threadCreation.js` 的 `accepted` 守卫同时比较 agent、project 与 thread；当前页面只比较「是否仍在页面上」与路由线程，因为 project 切换尚未移植。输入草稿（`thread_draft.js`）与页面级浏览器验证也还没有。
+
+**静默收流后的订阅有取舍。** 事件流在没有终态帧的情况下结束（后端连接上限或网络切断）时，只有存活超过 60 秒的订阅会重新建立，短命流只做一次状态同步：否则「静默结束 → 重新订阅 → 又静默结束」会互相触发成热循环（已用探针实测，改用会重订阅的路径会直接挂死）。代价是短命流之后该请求要等下一次发送或切换线程才会重新自动推进。同步读取与订阅共用一个按线程的读取序号，两者竞争时那一轮都不订阅，属可接受窗口。
+
+**排队期间的界面语义只覆盖了一部分。** 排队请求在派发前不出现在历史接口里（后端把 `delivery_status` 为 `queued` 的用户消息过滤掉），界面也不插入乐观消息，所以等待期间只能看到队列条上的 `content`；上游的 `insertOptimisticHumanMessage` 未移植。上游在页面重新可见时会 `resumeActiveRunForThread` + 重新订阅队列，这条路径本仓也没有实现：长时间后台的标签恢复后要等下一次发送或切换线程才会重新同步。
+
+**未发送的输入还没有草稿。** 上游用 `thread_draft.js` 把「新建对话」页面上未发送的输入与附件绑定到一条草稿线程，建线程后再迁移选择。当前实现只在第一次发送时建线程，离开 `/agent` 会丢掉未发送的输入。
+
+**未验证范围。** 组件映射表、迁移页与上游页的视觉差异、以及各分片的工期都属于未验证主张；工作量为多片工程，单片的估算误差会累积。

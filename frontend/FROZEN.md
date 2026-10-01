@@ -14,4 +14,4 @@
 
 ## 后续
 
-前端阶段另行立项：将导入上游 `web/`（Vue 3 + Vite）并全量改名，同时移除本目录、恢复对应的构建与质量门禁。
+前端阶段已在 [`web/`](../web/) 另行立项：新前端是 React + Vite，信息架构对齐上游实现，计划见[前端 React 迁移设计](../docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-design.md)。本目录保留到迁移收尾，作为旧信息架构与交互细节的对照参考，届时整体删除。

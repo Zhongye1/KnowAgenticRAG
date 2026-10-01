@@ -63,11 +63,10 @@ docker compose exec api uv run --group test pytest test/unit -m "not slow"
 
 ### 前端
 
-- 使用 `pnpm`
-- API 接口统一放在 `web/src/apis`
-- 优先使用 `lucide-vue-next` 图标
-- 样式使用 `less`
-- 非特殊情况优先复用 [web/src/assets/css/base.css](web/src/assets/css/base.css) 中的颜色变量
+- 使用 `pnpm`，版本见 `web/package.json` 的 `packageManager`
+- 分层与依赖方向见 [web/ARCHITECTURE.md](web/ARCHITECTURE.md)，API 路径只允许出现在 `api` 段
+- 优先使用 `lucide-react` 图标
+- 样式使用 Tailwind 与 [tokens.css](web/src/styles/tokens.css) 中的 CSS 变量，不用 `less`
 
 ## Pull Request 建议
 

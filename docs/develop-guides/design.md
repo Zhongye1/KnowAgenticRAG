@@ -25,70 +25,66 @@ ARS 是知识库、知识图谱与 Agent 开发平台，界面应保持克制、
 
 ## 2. 颜色与 Token
 
-颜色必须优先使用 `web/src/assets/css/base.css` 和 `web/src/assets/css/base.dark.css` 中定义的 CSS 变量。不要在组件中随意新增硬编码色值；确需新增全局色值时，先补充 token 并说明用途。
+颜色必须优先使用 `web/src/styles/tokens.css` 中定义的 CSS 变量：`:root` 是亮色值，`.dark` 覆盖同名 token。这些变量由 `web/src/index.css` 的 `@theme inline` 映射为 Tailwind 工具类，组件里写 `bg-color-bg-1`、`text-color-text-2` 这类语义类名。不要在组件中新增硬编码色值；确需新增全局色值时，先补充 token 并说明用途。`web/scripts/check-design-tokens.mjs` 禁止硬编码 HEX、非 `var()` 的 `rgb()`/`hsl()` 与 Tailwind 默认调色板类。
 
 ### 主色
 
-`--main-*` 和 `--main-color` 用于品牌主色与关键交互：
+`--primary-1` 到 `--primary-7` 是品牌主色刻度，1 最浅、7 最深：
 
 | Token | 使用场景 |
 | --- | --- |
-| `--main-color` | 主按钮、选中态、重点链接、关键图标 |
-| `--main-700` / `--main-600` / `--main-500` | 主色文字、hover、active、强调状态 |
-| `--main-50` / `--main-30` / `--main-10` | 主色浅背景、选中行背景、轻量提示背景 |
+| `--primary-6` / `--primary-7` | 主按钮、选中态、重点链接、关键图标 |
+| `--primary-5` / `--primary-4` | hover、active 与强调状态 |
+| `--primary-1` / `--primary-2` | 主色浅背景、选中行背景、轻量提示背景 |
 
-主色只用于表达“当前选择、主要操作、关键入口”。不要把主色当作普通装饰色铺在卡片或大面积背景上。
-
-### 辅助色
-
-`--second-*` 是暖金色辅助色系（基准 `--second-500`），刻度与 `--main-*` 对齐，`--second-color` 为语义入口。辅助色只用于少量点缀（徽标、装饰性视觉元素），不能替代主色表达交互状态，也不与语义色混用。
+主色只用于表达「当前选择、主要操作、关键入口」。不要把主色当作普通装饰色铺在卡片或大面积背景上。
 
 ### 中性色
 
-`--gray-*` 是默认界面骨架，用于背景、文本、边框和分割线：
+`--color-bg-*`、`--color-text-*`、`--color-border-*`、`--color-fill-*` 是默认界面骨架，刻度数字越大表示层级越靠前或越深：
 
 | Token | 使用场景 |
 | --- | --- |
-| `--gray-0` | 页面和卡片主背景 |
-| `--gray-10` / `--gray-25` / `--gray-50` | 次级背景、hover 背景、弱分区背景 |
-| `--gray-100` / `--gray-150` / `--gray-200` | 分割线、输入框边框、卡片边框 |
-| `--gray-900` / `--gray-1000` | 标题和主要正文 |
-| `--gray-600` / `--gray-500` / `--gray-400` | 辅助说明、占位文本、禁用文本 |
+| `--color-bg-1` / `--color-bg-white` | 页面和卡片主背景 |
+| `--color-bg-2` 到 `--color-bg-5` | 次级背景、hover 背景、弱分区背景 |
+| `--color-border-1` / `--color-border-2` | 分割线、卡片边框、输入框边框 |
+| `--color-text-1` / `--color-text-2` | 标题和主要正文 |
+| `--color-text-3` / `--color-text-4` | 辅助说明、占位文本、禁用文本 |
+| `--color-fill-1` 到 `--color-fill-4` | 填充块、标签底色、骨架占位 |
 
-文本也可以使用 Ant Design 兼容语义变量：`--color-text`、`--color-text-secondary`、`--color-text-tertiary`。组件内优先选语义变量；需要更细层级时再使用 `--gray-*`。
+组件内优先选语义变量；需要更细层级时再使用数字更大的刻度。同一层级不要混用 `--color-bg-*` 与 `--color-fill-*`。
 
 ### 语义色
 
-语义色只用于状态和反馈，不用于装饰：
+语义色只用于状态和反馈，不用于装饰。每个族同样是 1 到 7 的刻度（1 最浅、7 最深）：
 
 | Token 组 | 使用场景 |
 | --- | --- |
-| `--color-success-*` | 成功、已完成、连接正常 |
-| `--color-error-*` | 错误、危险操作、删除、失败 |
-| `--color-warning-*` | 警告、待处理、需要注意但未失败 |
-| `--color-info-*` | 信息提示、说明性状态 |
-| `--color-accent-*` | 少量辅助强调，不能替代主色 |
+| `--success-*` | 成功、已完成、连接正常 |
+| `--danger-*` | 错误、危险操作、删除、失败 |
+| `--warning-*` | 警告、待处理、需要注意但未失败 |
+| `--link-*` | 可点击的文本链接 |
 
-状态标签建议使用浅背景 + 深文字，例如 `background: var(--color-success-50); color: var(--color-success-700);`。不要只依靠颜色传达状态，必要时配合文字或图标。
+状态标签建议使用浅背景 + 深文字，例如 `background: var(--success-1); color: var(--success-7);`。不要只依靠颜色传达状态，必要时配合文字或图标。
 
 ### 图表色
 
-图表和统计可视化优先使用 `--chart-palette-*`。不要复用错误色、警告色做普通图表分类，避免与状态反馈混淆。
+图表和统计可视化使用 `--data-1` 到 `--data-20`。不要复用错误色、警告色做普通图表分类，避免与状态反馈混淆。
 
 ### 暗色模式
 
-ARS 通过 `:root.dark` 覆盖同名 token。新增 UI 必须使用 CSS 变量，禁止固定浅色值，并检查浅色、暗色两套表现。
+ARS 通过 `html.dark` 覆盖同名 token，切换入口是 `web/src/components/ui/DayNightSwitcher`。新增 UI 必须使用 CSS 变量，禁止固定浅色值，并检查浅色、暗色两套表现。
 
 新增组件时至少检查：
 
 - 背景、卡片、输入框不出现纯白硬编码导致的暗色穿帮。
 - 文本和边框在暗色模式下仍有足够对比度。
 - hover、focus、disabled、selected、error 等状态在暗色模式下可辨认。
-- 图表、代码块和第三方组件需要显式传入 theme 时，使用 `useThemeStore()` 的现有模式。
+- 图表、代码块和第三方组件需要显式传入 theme 时，读取 `html.dark` 或复用同一份 token。
 
 ## 3. 字体与文本层级
 
-全局字体栈定义在 `web/src/assets/css/main.css`，新增组件不要私自引入新字体。代码、命令、路径和技术标识可使用 monospace，优先复用现有 `@mono-font` 或系统 monospace 栈。
+全局字体栈定义在 `web/src/index.css`（`--font-sans` 与 `--font-mono`），等宽字体由 `@fontsource-variable/jetbrains-mono` 自托管。新增组件不要私自引入新字体。代码、命令、路径和技术标识使用等宽字体栈。
 
 建议层级：
 
@@ -113,11 +109,12 @@ ARS 通过 `:root.dark` 覆盖同名 token。新增 UI 必须使用 CSS 变量�
 
 ### 技术栈约束
 
+- 框架：React 19 + Vite，信息架构对齐上游实现
 - 包管理器：`pnpm`
-- 图标库：优先使用 `lucide-vue-next`
-- 样式语言：LESS
-- 颜色变量：使用 `base.css` / `base.dark.css` 中的 CSS 变量
-- UI 基础：复用 Ant Design Vue 和项目现有组件模式，避免为单次需求封装新组件体系
+- 图标库：`lucide-react`
+- 样式语言：Tailwind CSS 4（CSS-first，主题配置在 `web/src/index.css`）
+- 颜色变量：使用 `web/src/styles/tokens.css` 中的 CSS 变量，由 `pnpm run check:tokens` 强制
+- UI 基础：`web/src/components/ui` 下的 shadcn/ui 组件（Radix 基座）。不为单次需求封装新组件体系，也不引入第二套组件库：两套主题机制并存会让本节的颜色约束失效
 
 ### 按钮
 
@@ -125,10 +122,10 @@ ARS 通过 `:root.dark` 覆盖同名 token。新增 UI 必须使用 CSS 变量�
 
 | 类型 | 使用场景 | 样式规则 |
 | --- | --- | --- |
-| 主按钮 | 页面主操作、确认提交 | 使用主色背景或 Ant Design primary，不在同一区域放多个主按钮 |
+| 主按钮 | 页面主操作、确认提交 | 使用主色背景（`--primary-6`），不在同一区域放多个主按钮 |
 | 次按钮 | 返回、取消、普通操作 | 使用中性边框和浅背景，hover 只增强边框或背景 |
 | 文本/链接按钮 | 表格行内操作、轻量入口 | 保持轻量，不扩大视觉权重 |
-| 危险按钮 | 删除、撤销、清空等不可逆操作 | 使用 error 语义色，并配合确认弹窗或明确文案 |
+| 危险按钮 | 删除、撤销、清空等不可逆操作 | 使用 `--danger-*` 语义色，并配合确认弹窗或明确文案 |
 | 图标按钮 | 工具栏、折叠、刷新、复制 | 使用 `lucide-icon-btn` 保证图标与文本居中 |
 
 交互状态：
@@ -142,10 +139,10 @@ ARS 通过 `:root.dark` 覆盖同名 token。新增 UI 必须使用 CSS 变量�
 
 表单用于配置和管理任务，优先保证可读性和错误可恢复：
 
-- 输入框背景使用 `--gray-0` 或 Ant Design 默认容器色。
-- 边框使用 `--gray-150` / `--gray-200`，focus 使用主色或框架默认 focus ring。
+- 输入框背景使用 `--color-bg-1`。
+- 边框使用 `--color-border-2`，focus 使用主色或组件默认 focus ring。
 - label 必须稳定显示，helper text 放在输入框下方。
-- 错误信息使用 `--color-error-*`，并写清楚修复方式。
+- 错误信息使用 `--danger-*`，并写清楚修复方式。
 - 多字段表单按逻辑分组，避免把无关设置塞进同一行。
 - 参数名称应说明业务含义和单位；非显然参数补充调整影响、推荐范围或示例。
 - 只允许用户修改真正属于业务配置的值。官方端点、内部枚举和部署参数由系统管理，不伪装成普通输入项。
@@ -154,8 +151,8 @@ ARS 通过 `:root.dark` 覆盖同名 token。新增 UI 必须使用 CSS 变量�
 
 ARS 的信息界面以配置卡片、列表和表格为主，默认使用轻量分层：
 
-- 普通卡片：`background: var(--gray-0); border: 1px solid var(--gray-150); border-radius: 8px;`
-- 次级区域：可使用 `var(--gray-10)` / `var(--gray-25)` 做轻背景。
+- 普通卡片：`background: var(--color-bg-1); border: 1px solid var(--color-border-1); border-radius: 8px;`
+- 次级区域：可使用 `var(--color-bg-2)` / `var(--color-bg-3)` 做轻背景。
 - 点击态列表行：hover 只改变背景或边框，不使用 `transform`。
 - 表格行内操作保持紧凑，避免每行出现多个高权重按钮。
 - 空状态要说明“当前没有什么”和“下一步可以做什么”，不要只显示图标。
@@ -180,11 +177,11 @@ ARS 的信息界面以配置卡片、列表和表格为主，默认使用轻量�
 
 | 状态 | 推荐 token |
 | --- | --- |
-| 成功/正常 | `--color-success-50` + `--color-success-700` |
-| 失败/错误 | `--color-error-50` + `--color-error-700` |
-| 警告/待处理 | `--color-warning-50` + `--color-warning-900` |
-| 信息/运行中 | `--color-info-50` + `--color-info-700` |
-| 普通/未知 | `--gray-100` + `--gray-600` |
+| 成功/正常 | `--success-1` + `--success-7` |
+| 失败/错误 | `--danger-1` + `--danger-7` |
+| 警告/待处理 | `--warning-1` + `--warning-7` |
+| 信息/运行中 | `--link-1` + `--link-7` |
+| 普通/未知 | `--color-fill-2` + `--color-text-3` |
 
 标签可以使用 pill 圆角，但不要把 pill 形状扩散到所有按钮和卡片。
 
@@ -192,7 +189,7 @@ ARS 的信息界面以配置卡片、列表和表格为主，默认使用轻量�
 
 - 常规图标尺寸使用 16px、18px 或 20px。
 - 图标颜色默认继承文本色；需要强调时使用语义 token。
-- 图标按钮添加 `lucide-icon-btn`，避免图标与文本或按钮中心线错位。
+- 图标按钮使用 `Button` 的 `size="icon"`，图标与按钮的中心线由组件保证。
 - 不为同一概念混用多个图标；相同操作在不同页面保持一致。
 
 ## 5. 布局与间距
@@ -222,11 +219,11 @@ ARS 默认采用“背景 + 边框”的轻量层级：
 
 | 层级 | 处理方式 | 使用场景 |
 | --- | --- | --- |
-| 页面背景 | `var(--gray-0)` 或布局已有背景 | 主页面 |
-| 次级背景 | `var(--gray-10)` / `var(--gray-25)` | 分区、弱提示、列表 hover |
-| 卡片边界 | `1px solid var(--gray-150)`，8px 圆角 | 配置卡片、内容块 |
+| 页面背景 | `var(--color-bg-1)` 或布局已有背景 | 主页面 |
+| 次级背景 | `var(--color-bg-2)` / `var(--color-bg-3)` | 分区、弱提示、列表 hover |
+| 卡片边界 | `1px solid var(--color-border-1)`，8px 圆角 | 配置卡片、内容块 |
 | 浮层 | 框架默认阴影或轻量 `--shadow-*` | 弹窗、抽屉、dropdown、tooltip |
-| 焦点 | 主色 outline / Ant Design focus ring | 键盘可达控件 |
+| 焦点 | 主色 outline / 组件默认 focus ring | 键盘可达控件 |
 
 不要在普通内容卡片上使用重阴影。只有当元素真实覆盖其他内容、需要表达浮层关系时，才允许使用阴影。
 
@@ -234,11 +231,11 @@ ARS 默认采用“背景 + 边框”的轻量层级：
 
 ### Do
 
-- 使用 `base.css` 和 `base.dark.css` 中的 token。
+- 使用 `web/src/styles/tokens.css` 中的 token。
 - 为新增交互补齐 hover、focus、disabled、loading、empty、error 等必要状态。
 - 用背景、边框、字号、间距建立层级。
 - 保持浅色和暗色模式一致可用。
-- 复用 `lucide-vue-next`、Ant Design Vue 和项目已有组件模式。
+- 复用 `lucide-react` 与 `web/src/components/ui` 已有组件模式。
 - 在复杂配置区保留简短说明，帮助用户理解设置影响。
 
 ### Don't
@@ -278,12 +275,12 @@ AI agent 修改或生成 ARS UI 时，优先按这一节执行。
 
 ### Quick Reference
 
-- 页面背景：`var(--gray-0)`
-- 次级背景：`var(--gray-10)` / `var(--gray-25)`
-- 主要文本：`var(--color-text)` 或 `var(--gray-900)`
-- 次级文本：`var(--color-text-secondary)` 或 `var(--gray-600)`
-- 边框：`var(--gray-150)` / `var(--gray-200)`
-- 主色：`var(--main-color)`
+- 页面背景：`var(--color-bg-1)`
+- 次级背景：`var(--color-bg-2)` / `var(--color-bg-3)`
+- 主要文本：`var(--color-text-1)`
+- 次级文本：`var(--color-text-3)`
+- 边框：`var(--color-border-1)` / `var(--color-border-2)`
+- 主色：`var(--primary-6)`
 - 卡片圆角：`8px`
 - 小控件圆角：`4px` / `6px`
 - 状态标签圆角：`999px`
@@ -296,19 +293,19 @@ AI agent 修改或生成 ARS UI 时，优先按这一节执行。
 实现配置卡片：
 
 ```text
-实现一个 ARS 风格的配置卡片：背景使用 var(--gray-0)，边框 1px solid var(--gray-150)，圆角 8px，不加阴影。标题使用 var(--color-text)，说明文字使用 var(--color-text-secondary)。hover 只轻微改变边框或背景，不使用 transform。
+实现一个 ARS 风格的配置卡片：背景使用 var(--color-bg-1)，边框 1px solid var(--color-border-1)，圆角 8px，不加阴影。标题使用 var(--color-text-1)，说明文字使用 var(--color-text-3)。hover 只轻微改变边框或背景，不使用 transform。
 ```
 
 实现工具栏按钮：
 
 ```text
-实现一个工具栏按钮：优先使用 lucide-vue-next 图标，图标尺寸 16px，按钮添加 lucide-icon-btn。默认使用中性色，hover 时使用 var(--main-color) 或 var(--main-10) 强化，不位移、不放大。
+实现一个工具栏按钮：使用 lucide-react 图标，图标尺寸 16px，按钮使用 size="icon"。默认使用中性色，hover 时使用 var(--primary-6) 或 var(--primary-1) 强化，不位移、不放大。
 ```
 
 实现状态标签：
 
 ```text
-实现状态标签：成功使用 var(--color-success-50) 背景和 var(--color-success-700) 文字；错误使用 var(--color-error-50) 背景和 var(--color-error-700) 文字；警告使用 var(--color-warning-50) 背景和 var(--color-warning-900) 文字。圆角使用 999px，文字保持 12px。
+实现状态标签：成功使用 var(--success-1) 背景和 var(--success-7) 文字；错误使用 var(--danger-1) 背景和 var(--danger-7) 文字；警告使用 var(--warning-1) 背景和 var(--warning-7) 文字。圆角使用 999px，文字保持 12px。
 ```
 
 ### 实现检查清单
@@ -322,13 +319,13 @@ AI agent 修改或生成 ARS UI 时，优先按这一节执行。
 - hover、focus、disabled、loading、empty、error 状态符合场景。
 - 没有使用 hover 位移、放大、旋转或装饰性动画。
 - 普通卡片没有使用重阴影。
-- 图标来自 `lucide-vue-next`，尺寸和对齐符合现有模式。
+- 图标来自 `lucide-react`，尺寸和对齐符合现有模式。
 - API 接口、组件位置、样式语言符合前端开发规范。
 - 已在真实页面和关键响应式宽度截图验收，而不只依赖构建通过。
 
 ## 参考资料
 
-- `web/src/assets/css/base.css`：浅色模式 token
-- `web/src/assets/css/base.dark.css`：暗色模式 token
-- `web/src/assets/css/main.css`：全局字体、布局基础样式和 `lucide-icon-btn`
+- `web/src/styles/tokens.css`：亮色与暗色 token（`:root` / `.dark`）
+- `web/src/index.css`：Tailwind 主题映射、字体栈与全局基础样式
+- `web/src/components/ui`：shadcn/ui 组件源码
 - [Awesome DESIGN.md](https://github.com/VoltAgent/awesome-design-md)：面向 AI agent 的 `DESIGN.md` 样例集合

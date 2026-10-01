@@ -2,7 +2,7 @@
 
 状态：implemented
 类型：feature
-Owner：web/src/components/AgentInputArea.vue
+Owner：docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-design.md
 
 ## 问题
 
@@ -34,6 +34,8 @@ Owner：web/src/components/AgentInputArea.vue
 - 新建弹窗默认加载 Workspace 根目录。手动创建只能提交已选 linked 路径；仅 Workspace 根目录不可选，`agents/`、`projects/` 和已被其他 Project 使用的目录均可选择。
 - `WorkspacePathPicker` 只拥有目录导航、选择和新建文件夹交互；可选文件类型和业务提交仍由各 consumer 决定。
 - `/projects` 下匿名、未被选择的目录由后端统一 tree 可见性契约过滤；前端不按目录名或 UUID 外观猜测。
+
+本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../proposed/2026-10-01-web-react-migration-design.md)在 `web/` 重建。
 
 ## 验证
 

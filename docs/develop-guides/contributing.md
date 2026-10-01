@@ -136,12 +136,12 @@ Compose 服务 `api` 和 `web` 对应的容器名分别为 `api-dev` 和 `web-de
 
 前端代码位于 `web/`，请遵循以下约束：
 
-- 使用 `pnpm` 管理依赖。
-- API 接口统一定义在 `web/src/apis`。
-- Icon 优先使用 `lucide-vue-next`，并保持尺寸一致。
-- 样式使用 `less`。
-- 非特殊情况使用 [base.css](../../web/src/assets/css/base.css) 中已有的颜色变量。
-- 遵循 [界面设计规范](./design.md)，保持现有交互和视觉语言一致。
+- 使用 `pnpm` 管理依赖，版本由 `package.json` 的 `packageManager` 钉死。
+- 分层与依赖方向见 [web/ARCHITECTURE.md](https://github.com/Zhongye1/KnowledgeRAG-OGAS/blob/main/web/ARCHITECTURE.md)：API 路径只允许出现在各切片的 `api` 段与 `web/src/shared/api`。
+- 接口客户端由 `pnpm run api:gen` 从契约生成，不手改 `web/src/shared/api/generated/`。
+- Icon 优先使用 `lucide-react`，并保持尺寸一致。
+- 样式使用 Tailwind 与 `web/src/styles/tokens.css` 的 CSS 变量，细读[界面设计规范](./design.md)后再动手。
+- 颜色、字号、圆角、阴影只用 Token 与对应的语义工具类，`pnpm run check:tokens` 会拒绝硬编码颜色与 Tailwind 默认调色板类。
 
 不要在没有必要的情况下引入新的前端依赖。如果确实需要新增依赖，请在 PR 中说明用途和替代方案。
 

@@ -519,9 +519,9 @@ open http://localhost:5173</code></pre>
 .yx-home {
   --yx-max: 1152px;
   --yx-gap: 24px;
-  --yx-brand: var(--main-700);
-  --yx-brand-hover: var(--main-bright);
-  --yx-brand-soft: rgba(4, 106, 130, .12);
+  --yx-brand: rgb(var(--primary-6));
+  --yx-brand-hover: rgb(var(--primary-5));
+  --yx-brand-soft: rgb(var(--primary-6) / .12);
   --yx-lime: #c6f43a;
   --yx-lime-strong: #6f9300;
   --yx-lime-soft: rgba(198, 244, 58, .24);

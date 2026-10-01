@@ -914,9 +914,10 @@ def _validate_web_api_boundary(root: Path, errors: list[str]) -> int:
     source_root = root / "web/src"
     checked = 0
     for path in sorted(source_root.rglob("*")):
-        if not path.is_file() or path.suffix not in {".js", ".ts", ".vue"}:
+        if not path.is_file() or path.suffix not in {".js", ".ts", ".tsx", ".vue"}:
             continue
-        if (source_root / "apis") in path.parents:
+        # FSD 的等价约束：API 路径只允许出现在 api 段（shared/api 或各切片的 api/）
+        if (source_root / "shared" / "api") in path.parents or "api" in path.parts:
             continue
         checked += 1
         for line_number, line in enumerate(
@@ -924,7 +925,7 @@ def _validate_web_api_boundary(root: Path, errors: list[str]) -> int:
         ):
             if DIRECT_WEB_API_LITERAL.search(line):
                 errors.append(
-                    f"web/src/apis 外不得拥有 /api 路径：{path.relative_to(root)}:{line_number}"
+                    f"web/src 的 api 段之外不得拥有 /api 路径：{path.relative_to(root)}:{line_number}"
                 )
     return checked
 
