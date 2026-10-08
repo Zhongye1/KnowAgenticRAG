@@ -8,6 +8,7 @@
 import type { StreamChunk } from '../lib/stream-smoother';
 import { extractPendingInterrupt } from '../lib/pending-interrupt';
 import { hasPendingInterruptPayload } from '../lib/tool-approval';
+import { invalidateAgentStateReads } from './agent-state';
 import { notifyThreadRuntime, type ThreadRuntimeState } from './thread-runtime-store';
 
 /** 工具参数序列化：字符串原样，空值给空串，其余 JSON。 */
@@ -81,7 +82,7 @@ export function loadingMessageChunk(chunk: Record<string, unknown>): StreamChunk
  */
 export function toolFinishedMessage(
   chunk: Record<string, unknown>,
-): StreamChunk | null {
+): (StreamChunk & { id: string }) | null {
   const streamEvent = chunk?.event as Record<string, unknown> | undefined;
   if (!streamEvent || streamEvent.method !== 'tools') return null;
 
@@ -91,9 +92,12 @@ export function toolFinishedMessage(
   const output = data.output as Record<string, unknown> | undefined;
   if (!output || typeof output !== 'object') return null;
 
+  // 与上游同序：优先 ToolMessage 自己的 id，消费侧再按 tool_call_id 兜底匹配
   const id = output.id || output.tool_call_id || data.tool_call_id;
   if (!id) return null;
-  return { ...output, type: 'tool', id: String(id) } as StreamChunk;
+  return { ...output, type: 'tool', id: String(id) } as StreamChunk & {
+    id: string;
+  };
 }
 
 export type StreamNotice = {
@@ -122,7 +126,16 @@ export function createStreamHandler(options: StreamHandlerOptions) {
 
   const push = (chunk: StreamChunk | null, threadId: string) => {
     if (!chunk) return;
-    streamSmoother?.pushChunk?.(chunk, threadId);
+    if (streamSmoother?.pushChunk) {
+      streamSmoother.pushChunk(chunk, threadId);
+      return;
+    }
+    // 没有平滑层时直接落到分片表；与上游同兜底，也让分片处理可以单独测
+    const runtime = getThreadRuntime(threadId);
+    if (!runtime || !chunk.id) return;
+    const chunks = runtime.onGoingConv.msgChunks[chunk.id];
+    if (chunks) chunks.push(chunk);
+    else runtime.onGoingConv.msgChunks[chunk.id] = [chunk];
   };
 
   const handleStreamChunk = (
@@ -144,10 +157,15 @@ export function createStreamHandler(options: StreamHandlerOptions) {
         }
         const msg = chunk.msg as Record<string, unknown> | undefined;
         if (resolvedRequestId && msg && msg.type !== 'system') {
+          // 后端下发的就是发送时那条消息，正文与本地占位完全相同：同键追加会把
+          // 两者拼成两遍正文，因此先清空该请求的分片，再写下后端这条权威消息。
+          // 消息自带 id 时写在它自己的键上，被清空的那个键不会渲染出空消息。
+          const humanId = (msg.id as string) || resolvedRequestId;
+          runtime.onGoingConv.msgChunks[resolvedRequestId] = [];
           push(
             {
               ...(msg as StreamChunk),
-              id: (msg.id as string) || resolvedRequestId,
+              id: humanId,
               type: 'human',
             },
             threadId,
@@ -159,12 +177,20 @@ export function createStreamHandler(options: StreamHandlerOptions) {
 
       case 'loading':
         push(loadingMessageChunk(chunk), threadId);
-        push(toolFinishedMessage(chunk), threadId);
         return false;
 
-      case 'stream_event':
-        push(streamEventToMessageChunk(chunk.stream_event), threadId);
+      case 'stream_event': {
+        // 工具结果不走 messages 流，直接写进分片表：它没有正文可平滑，
+        // 且必须立刻按 tool_call_id 与发起它的 AI 消息关联
+        const toolMessage = toolFinishedMessage(chunk);
+        if (toolMessage) {
+          const chunks = runtime.onGoingConv.msgChunks[toolMessage.id];
+          if (chunks) chunks.push(toolMessage);
+          else runtime.onGoingConv.msgChunks[toolMessage.id] = [toolMessage];
+          notifyThreadRuntime(threadId);
+        }
         return false;
+      }
 
       case 'error':
         streamSmoother?.flushThread(threadId);
@@ -216,6 +242,18 @@ export function createStreamHandler(options: StreamHandlerOptions) {
         notifyThreadRuntime(threadId);
         if (chunkMessage) onNotice?.({ level: 'info', message: chunkMessage });
         return true;
+      }
+
+      // agent_state 承载线程的 todos / files / token_usage 快照；用量卡片只读 token_usage
+      case 'agent_state': {
+        const agentState = chunk.agent_state as Record<string, unknown> | undefined;
+        if (agentState) {
+          // 先作废在途读取：否则旧响应稍后落地会把卡片回退到上一份快照
+          invalidateAgentStateReads(threadId);
+          runtime.agentState = agentState;
+          notifyThreadRuntime(threadId);
+        }
+        return false;
       }
 
       case 'context_compression': {

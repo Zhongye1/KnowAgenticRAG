@@ -6,11 +6,17 @@ import {
   LayoutGrid,
   LibraryBig,
   MessageSquarePlus,
+  Search,
   Sparkles,
   UserRound,
 } from 'lucide-react';
-import { Link, useLocation } from 'react-router';
+import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
+import {
+  ConversationList,
+  GlobalSearchModal,
+  useThreadList,
+} from '@/features/chat';
 import { paths } from '@/shared/config';
 import { useIsSuperuser, useLogout, useUser } from '@/entities/session';
 import { useKnowledgeEnabled } from '@/entities/session';
@@ -19,17 +25,24 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  useSidebar,
 } from '@/shared/ui/sidebar';
 
 import { NavUser } from './user-menu';
 
+const NEW_CHAT_TAB = {
+  title: '新建对话',
+  url: paths.app.chat.getHref(),
+  icon: MessageSquarePlus,
+} as const;
+
 const NAV_TABS = [
-  { title: '新建对话', url: paths.app.chat.getHref(), icon: MessageSquarePlus },
   { title: '个人空间', url: paths.app.workspace.getHref(), icon: UserRound },
   { title: '智能体管理', url: paths.app.agentManage.getHref(), icon: Bot },
 ] as const;
@@ -47,8 +60,28 @@ const DASHBOARD_TAB = {
   icon: LayoutGrid,
 } as const;
 
+/** 与上游同节奏的低频同步：12 秒一次，折叠或页面不可见时跳过。 */
+const THREAD_STATUS_SYNC_INTERVAL_MS = 12 * 1000;
+
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { threadId } = useParams<{ threadId?: string }>();
+  const { state: sidebarState, isMobile } = useSidebar();
+  const syncStatuses = useThreadList((store) => store.syncStatuses);
+  const threads = useThreadList((store) => store.threads);
+  const upsertThread = useThreadList((store) => store.upsert);
+  const [searchOpen, setSearchOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      // 移动端的 state 只是桌面开合状态，抽屉收起不代表列表不可见
+      if (sidebarState === 'collapsed' && !isMobile) return;
+      void syncStatuses();
+    }, THREAD_STATUS_SYNC_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [isMobile, sidebarState, syncStatuses]);
   const user = useUser();
   const logout = useLogout();
   const knowledgeEnabled = useKnowledgeEnabled();
@@ -57,6 +90,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     pathname === url || pathname.startsWith(`${url}/`);
 
   const navTabs = [
+    NEW_CHAT_TAB,
     ...NAV_TABS,
     // LITE 模式不注册知识域路由，入口随之隐藏；取不到投影时按可用处理，避免首屏闪烁
     ...(knowledgeEnabled === false ? [] : [EXTENSIONS_TAB]),
@@ -81,9 +115,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              tooltip="搜索会话"
+              onClick={() => setSearchOpen(true)}
+            >
+              <Search className="size-4" aria-hidden />
+              <span>搜索会话</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
+        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel>历史会话</SidebarGroupLabel>
+          <ConversationList currentThreadId={threadId} />
+        </SidebarGroup>
         <SidebarGroup>
           <SidebarMenu>
             {navTabs.map((item) => (
@@ -112,6 +159,22 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           onLogout={() => logout.mutate(undefined)}
         />
       </SidebarFooter>
+
+      <GlobalSearchModal
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
+        recentThreads={threads}
+        onSelectThread={(thread) => {
+          if (!thread) {
+            navigate(paths.app.chat.getHref());
+            return;
+          }
+          // 先写回列表：跳转后侧边栏立刻能看到这条，不必等下一次拉取
+          upsertThread(thread);
+          navigate(paths.app.chat.getHref(thread.id));
+        }}
+      />
+
       <SidebarRail />
     </Sidebar>
   );

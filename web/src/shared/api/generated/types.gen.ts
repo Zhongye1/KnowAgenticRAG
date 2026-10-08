@@ -2579,6 +2579,8 @@ export type ThreadResponse = {
 
 /**
  * ThreadSearchItem
+ *
+ * 搜索结果条目：只需要定位与片段，工作目录由会话详情接口提供。
  */
 export type ThreadSearchItem = {
   /**
@@ -2608,7 +2610,7 @@ export type ThreadSearchItem = {
   /**
    * Workdir Path
    */
-  workdir_path: string;
+  workdir_path?: string | null;
   /**
    * Created At
    */

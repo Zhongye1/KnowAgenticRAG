@@ -34,6 +34,10 @@ export function setAccessToken(token: string | null): void {
  */
 function describeDetail(detail: unknown): string | null {
   if (typeof detail === 'string' && detail) return detail;
+  // 客户端超时：给一句用户能据此行动的话，而不是通用失败文案
+  if (detail instanceof Error && detail.name === 'TimeoutError') {
+    return '请求超时，请重试。';
+  }
   if (!detail || typeof detail !== 'object' || detail instanceof Error) {
     return null;
   }

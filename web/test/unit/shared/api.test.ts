@@ -117,6 +117,13 @@ describe('ApiError 文案', () => {
     expect(new ApiError(422, { detail: '字段缺失' }).message).toBe('字段缺失');
   });
 
+  it('客户端超时给出可行动的文案', () => {
+    const timeout = new Error('signal timed out');
+    timeout.name = 'TimeoutError';
+
+    expect(new ApiError(0, timeout).message).toBe('请求超时，请重试。');
+  });
+
   it('没有可读文案时退回状态码文案，不把对象塞进 message', () => {
     expect(new ApiError(500, { code: 'boom' }).message).toBe(
       '请求失败（HTTP 500）',

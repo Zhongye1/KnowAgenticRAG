@@ -5,8 +5,13 @@ const steerMock = vi.fn();
 const cancelMock = vi.fn();
 const continueMock = vi.fn();
 const createThreadMock = vi.fn();
+const uploadMock = vi.fn();
+const searchThreadsMock = vi.fn();
 
 vi.mock('@/shared/api/generated/sdk.gen', () => ({
+  uploadImageApiChatImageUploadPost: (...args: unknown[]) => uploadMock(...args),
+  searchThreadsApiChatThreadsSearchGet: (...args: unknown[]) =>
+    searchThreadsMock(...args),
   listThreadRequestsApiAgentThreadThreadIdRequestsGet: (...args: unknown[]) =>
     listMock(...args),
   steerRequestApiAgentRequestsRequestIdSteerPost: (...args: unknown[]) =>
@@ -235,5 +240,55 @@ describe('agentRunApi 队列接口', () => {
         metadata: { tool_approval_mode: 'always_trust' },
       },
     });
+  });
+
+  it('上传图片时把文件按 file 字段交给生成物', async () => {
+    uploadMock.mockResolvedValue({
+      data: { success: true, image_content: 'iVBORw0KGgoAAA' },
+      error: undefined,
+    });
+    const file = new File(['x'], 'a.png', { type: 'image/png' });
+
+    const response = await agentRunApi.uploadImage(file);
+
+    expect(uploadMock).toHaveBeenCalledWith({ body: { file } });
+    expect(response.image_content).toBe('iVBORw0KGgoAAA');
+  });
+
+  it('上传失败时按 ApiError 抛出后端的 detail', async () => {
+    uploadMock.mockResolvedValue({
+      data: undefined,
+      error: { detail: '图片文件过大，请上传小于10MB的图片' },
+      response: new Response(null, { status: 400 }),
+    });
+
+    await expect(
+      agentRunApi.uploadImage(new File(['x'], 'a.png', { type: 'image/png' })),
+    ).rejects.toThrow('图片文件过大，请上传小于10MB的图片');
+  });
+
+  it('搜索会话只发 q/limit/offset，不带 agent_id', async () => {
+    searchThreadsMock.mockResolvedValue({
+      data: { items: [], has_more: false, limit: 20, offset: 0 },
+      error: undefined,
+    });
+
+    await chatThreadApi.searchThreads({ query: '队列', limit: 20, offset: 40 });
+
+    // 搜索范围是当前用户全部会话：传 agent_id 会把范围缩到单个智能体
+    expect(searchThreadsMock).toHaveBeenCalledWith({
+      query: { q: '队列', limit: 20, offset: 40 },
+    });
+  });
+
+  it('不传 limit 与 offset 时请求里也不出现它们', async () => {
+    searchThreadsMock.mockResolvedValue({
+      data: { items: [], has_more: false, limit: 20, offset: 0 },
+      error: undefined,
+    });
+
+    await chatThreadApi.searchThreads({ query: '队列' });
+
+    expect(searchThreadsMock).toHaveBeenCalledWith({ query: { q: '队列' } });
   });
 });

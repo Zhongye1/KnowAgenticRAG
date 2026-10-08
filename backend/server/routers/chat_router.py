@@ -154,6 +154,9 @@ class ThreadSearchSnippet(BaseModel):
 
 
 class ThreadSearchItem(ThreadResponse):
+    """搜索结果条目：只需要定位与片段，工作目录由会话详情接口提供。"""
+
+    workdir_path: str | None = None
     thread_id: str
     matched_count: int
     message_id: int | None = None

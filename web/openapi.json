@@ -20038,7 +20038,14 @@
             "title": "Project Id"
           },
           "workdir_path": {
-            "type": "string",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "title": "Workdir Path"
           },
           "created_at": {
@@ -20102,13 +20109,13 @@
           "id",
           "uid",
           "agent_id",
-          "workdir_path",
           "created_at",
           "updated_at",
           "thread_id",
           "matched_count"
         ],
-        "title": "ThreadSearchItem"
+        "title": "ThreadSearchItem",
+        "description": "搜索结果条目：只需要定位与片段，工作目录由会话详情接口提供。"
       },
       "ThreadSearchResponse": {
         "properties": {

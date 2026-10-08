@@ -7,18 +7,22 @@ import * as React from 'react';
 
 import { processRunSseResponse } from '../lib/sse';
 import { createStreamSmoother } from '../lib/stream-smoother';
-import { readToolApprovalModePreference } from '../lib/tool-approval';
+import type { ToolApprovalMode } from '../lib/tool-approval';
 import {
   agentRunApi,
   chatThreadApi,
+  type ChatThread,
   type CreateRunResult,
 } from '../api/agent-api';
+import { invalidateAgentStateReads } from './agent-state';
 import { createRunStream } from './run-stream';
 import { createStreamHandler, type StreamNotice } from './stream-handler';
 import {
   IDLE_QUEUE_SNAPSHOT,
   abortRunStream,
   getThreadRuntime,
+  getThreadRuntimeOrNull,
+  hasThreadRuntime,
   notifyThreadRuntime,
   resetOnGoingConv,
   setRunController,
@@ -51,18 +55,24 @@ export type ChatRuntimeOptions = {
   fetchAgentState: (agentId: string | undefined, threadId: string) => void;
   onNotice?: (notice: StreamNotice) => void;
   onScrollToBottom?: () => void;
+  /** 一次 run 走到终态或中断时回调；页面据此标记已读。 */
+  onRunSettled?: (threadId: string) => void;
 };
 
 export type ChatRuntime = {
   /** 进入线程时加载权威消息历史；已加载过则跳过。 */
   loadHistory: (threadId: string, options?: { force?: boolean }) => Promise<void>;
   /**
-   * 页面还没有线程时创建一条，返回新线程 id。
+   * 页面还没有线程时创建一条，返回后端落库的线程（含 id 与标题）。
    *
    * 同一时刻只允许一次创建：并发调用复用同一个 `request_id`，
    * 后端据此幂等，不会留下多条空线程。
    */
-  createThread: (agentSlug: string) => Promise<string>;
+  createThread: (
+    agentSlug: string,
+    title?: string,
+    toolApprovalMode?: ToolApprovalMode | null,
+  ) => Promise<ChatThread>;
   /** 同步线程队列（排队请求与队列状态）。 */
   refreshQueue: (threadId: string, agentSlug: string) => Promise<void>;
   /** 把一条排队请求提升为下一条执行。 */
@@ -93,6 +103,10 @@ export type ChatRuntime = {
     threadId: string;
     agentSlug: string;
     query: string;
+    /** 随消息一起发送的图片（裸 base64）；上游只支持一张。 */
+    imageContent?: string | null;
+    /** 本次生效的工具审批模式；上游同字段随请求下发。 */
+    toolApprovalMode?: ToolApprovalMode | null;
     meta?: Record<string, unknown>;
   }) => Promise<void>;
   cancelRun: (threadId: string) => Promise<void>;
@@ -104,7 +118,8 @@ export type ChatRuntime = {
 /** 装配一次聊天运行时。页面用 `useChatRuntime` 拿到实例。 */
 export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
   const smoother = createStreamSmoother({
-    getThreadState: (threadId) => getThreadRuntime(threadId),
+    // 只读读取：线程被删（运行时已清）时不再为它排帧，也不会把它复活
+    getThreadState: (threadId) => getThreadRuntimeOrNull(threadId),
   });
 
   const handler = createStreamHandler({
@@ -133,7 +148,7 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
   const queueGenerations = new Map<string, number>();
 
   /** 建线程的单飞状态。 */
-  let threadCreation: { agentSlug: string; promise: Promise<string> } | null =
+  let threadCreation: { agentSlug: string; promise: Promise<ChatThread> } | null =
     null;
   /** 失败后按 agent 保留同一个幂等键，供下一次重试复用。 */
   let failedCreation: { agentSlug: string; requestId: string } | null = null;
@@ -150,13 +165,19 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
     // 一次 run 收尾会把队头派发出去，队列内容随之变化。
     onTerminalDetected: ({ threadId }) => {
       void refreshQueue(threadId, options.currentAgentId() ?? '');
+      options.onRunSettled?.(threadId);
     },
     onInterruptDetected: ({ threadId }) => {
       void refreshQueue(threadId, options.currentAgentId() ?? '');
+      options.onRunSettled?.(threadId);
     },
   });
 
-  const createThread: ChatRuntime['createThread'] = (agentSlug) => {
+  const createThread: ChatRuntime['createThread'] = (
+    agentSlug,
+    title,
+    toolApprovalMode,
+  ) => {
     if (threadCreation?.agentSlug === agentSlug) return threadCreation.promise;
 
     // 响应丢失后的重试要带同一个 request_id，后端据此返回同一条线程而不是新建；
@@ -166,19 +187,19 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
       retryKey?.agentSlug === agentSlug
         ? retryKey.requestId
         : createClientRequestId();
-    const toolApprovalMode = readToolApprovalModePreference();
+    // 只有调用方显式给出的模式才写进线程 metadata：null 表示交回后端按智能体配置解析
+    const mode = toolApprovalMode ?? null;
 
     const promise = chatThreadApi
       .createThread({
         agentSlug,
+        title,
         requestId,
-        metadata: toolApprovalMode
-          ? { tool_approval_mode: toolApprovalMode }
-          : {},
+        metadata: mode ? { tool_approval_mode: mode } : {},
       })
       .then((thread) => {
         failedCreation = null;
-        return thread.id;
+        return thread;
       })
       .catch((error: unknown) => {
         failedCreation = { agentSlug, requestId };
@@ -229,18 +250,44 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
     threadId,
     agentSlug,
     query,
+    imageContent,
+    toolApprovalMode,
     meta,
   }) => {
     const runtime = getThreadRuntime(threadId);
     runtime.replyLoadingVisible = true;
+
+    // 先放一条本地用户消息：排队期间后端不会把它放进历史（过滤 delivery_status=queued），
+    // 没有这条占位，用户发完消息会看不到自己说了什么。请求 id 交给后端复用，
+    // init 分片到达时按同一个键换成后端下发的权威消息。
+    const requestId = createClientRequestId();
+    runtime.onGoingConv.msgChunks[requestId] = [
+      {
+        id: requestId,
+        type: 'human',
+        content: query,
+        ...(imageContent ? { image_content: imageContent } : {}),
+      },
+    ];
     notifyThreadRuntime(threadId);
 
-    const created = await agentRunApi.createRun({
-      query,
-      agent_slug: agentSlug,
-      thread_id: threadId,
-      meta,
-    });
+    let created;
+    try {
+      created = await agentRunApi.createRun({
+        query,
+        agent_slug: agentSlug,
+        thread_id: threadId,
+        image_content: imageContent ?? null,
+        tool_approval_mode: toolApprovalMode ?? null,
+        meta: { ...meta, request_id: requestId },
+      });
+    } catch (error) {
+      // 发送失败时撤掉占位，避免留下一条没有对应请求的消息
+      delete runtime.onGoingConv.msgChunks[requestId];
+      runtime.replyLoadingVisible = false;
+      notifyThreadRuntime(threadId);
+      throw error;
+    }
 
     await handleCreatedRequest(threadId, agentSlug, created, {
       steerable: true,
@@ -258,7 +305,9 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
   const stopRequestStreams: ChatRuntime['stopRequestStreams'] = (threadId) => {
     // 作废在途的队列读取：否则离开线程后响应才回来，会为已离开的线程重新订阅
     queueGenerations.set(threadId, (queueGenerations.get(threadId) ?? 0) + 1);
-    const runtime = getThreadRuntime(threadId);
+    // 只读读取：清理路径不能顺手把运行时创建出来（会话被删时会被复活）
+    const runtime = getThreadRuntimeOrNull(threadId);
+    if (!runtime) return;
     for (const requestId of Object.keys(runtime.requestStreams)) {
       stopRequestStream(threadId, requestId);
     }
@@ -389,6 +438,9 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
     if (!threadId || !agentSlug) return false;
     const generation = (queueGenerations.get(threadId) ?? 0) + 1;
     queueGenerations.set(threadId, generation);
+    // 正常路径需要时创建运行时；但读取期间线程可能被删（运行时被清掉），
+    // 那时不能再写回，否则会把已删会话重新造出来
+    const runtime = getThreadRuntime(threadId);
     try {
       const { requests, queue } = await agentRunApi.listThreadRequests(
         threadId,
@@ -396,7 +448,7 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
       );
       // 连续操作会让多个读取并发，只接受最后一次发起的结果。
       if (queueGenerations.get(threadId) !== generation) return false;
-      const runtime = getThreadRuntime(threadId);
+      if (!hasThreadRuntime(threadId)) return false;
       runtime.queuedRequests = requests ?? [];
       runtime.queueSnapshot = queue ?? { ...IDLE_QUEUE_SNAPSHOT };
       notifyThreadRuntime(threadId);
@@ -463,6 +515,8 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
     interruptedRunId = null,
   }) => {
     const runtime = getThreadRuntime(threadId);
+    // 用户已经处理了这次中断：作废在途的 state 读取，别让它把审批再弹回来
+    invalidateAgentStateReads(threadId);
     const previousInterrupt = runtime.pendingInterrupt;
     runtime.pendingInterrupt = null;
     runtime.replyLoadingVisible = true;
@@ -539,6 +593,8 @@ export function useChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
           optionsRef.current.fetchAgentState(agentId, threadId),
         onNotice: (notice) => optionsRef.current.onNotice?.(notice),
         onScrollToBottom: () => optionsRef.current.onScrollToBottom?.(),
+        onRunSettled: (threadId) =>
+          optionsRef.current.onRunSettled?.(threadId),
       }),
     [],
   );

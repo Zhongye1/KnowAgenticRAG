@@ -5,6 +5,9 @@
  * 整棵消息树。组件用 `useThreadRuntime` 订阅版本号，读到的仍是可变对象本身。
  *
  * AbortController 与「正在收流的线程」不进入订阅面，避免仅因控制句柄变化触发渲染。
+ *
+ * `useThreadRuntime` 上的 `'use no memo'` 是必需的：React Compiler 会把「读这两个可变
+ * Map」的表达式按参数缓存住，重新渲染时仍返回上一次的值，界面就再也看不到流式更新。
  */
 import * as React from 'react';
 
@@ -94,6 +97,18 @@ export function getThreadRuntime(threadId: string): ThreadRuntimeState {
   return runtime;
 }
 
+/** 取线程运行时；不存在时返回 null，不创建。清理与只读路径用它，避免把已删线程复活。 */
+export function getThreadRuntimeOrNull(
+  threadId: string,
+): ThreadRuntimeState | null {
+  return runtimes.get(threadId) ?? null;
+}
+
+/** 线程运行时是否还在。 */
+export function hasThreadRuntime(threadId: string): boolean {
+  return runtimes.has(threadId);
+}
+
 /** 写入线程消息历史（权威来源覆盖本地缓存）。 */
 export function setThreadMessages(
   threadId: string,
@@ -120,6 +135,9 @@ function subscribe(listener: () => void): () => void {
 export function useThreadRuntime(
   threadId: string | undefined,
 ): ThreadRuntimeState | null {
+  // React Compiler 会把「读可变 Map」的表达式按 threadId 缓存住，导致重新渲染时
+  // 仍然返回上一次的值；这里显式退出编译优化，订阅语义由下面的版本号负责。
+  'use no memo';
   React.useSyncExternalStore(
     subscribe,
     () => (threadId ? (versions.get(threadId) ?? 0) : 0),

@@ -101,9 +101,18 @@ Steiger 的 19 条规则覆盖了 `.dependency-cruiser.cjs` 中手写的三条 F
 
 分层与门禁已就位，业务内容按分片推进：
 
-- `features/chat` 已可用：线程历史、流式订阅与续传、Markdown 渲染（含公式与代码高亮）、
+- `features/chat` 已可用：线程历史、流式订阅与续传、消息渲染（思维链、工具调用与过程折叠）、
+  Markdown 渲染（含公式与代码高亮）、
   审批与提问交互、排队请求的插队/取消、队列继续与逐条请求的事件流订阅（派发后自动切到 run
-  流），以及 `/agent` 首次发送时的惰性建线程；`pages/chat` 是它的消费方。
+  流），以及 `/agent` 首次发送时的惰性建线程；另外还有输入草稿（按线程落 localStorage）、
+  图片发送（`image_content`，服务端压缩）、工具审批模式选择（线程 metadata 与本地偏好）、
+  会话列表的运行态与未读（12 秒低频同步 + 标记已读）、全局会话搜索（侧边栏入口）与
+  上下文用量卡片（消费 `agent_state` 与线程 state）。
+  `pages/chat`、`widgets/app-sidebar` 与侧边栏的历史会话列表是它的消费方。
+  读可变外部状态的订阅 hook（`useThreadRuntime`、`useStreamingMessages`）必须标注
+  `'use no memo'`：React Compiler 会把「容器身份不变、内容就地变」的派生冻结在首帧。
+- 测试设施在 `web/test/setup-tests.ts` 里补了 jsdom 缺的 `matchMedia` 与 `ResizeObserver`：
+  侧边栏按钮带 tooltip，缺后者会让一次点击抛错并卸载整棵树。
 - 其余页面（登录页为真实实现，工作台、扩展、数据总览、智能体管理）仍是占位。
 - `features` 的其余切片与新的 `entities` 随业务分片落地。
 

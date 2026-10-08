@@ -187,7 +187,7 @@ TypeScript 化逐文件进行，允许临时宽松类型；迁移期对新增代
 | S0 | 决策记录、`design.md` 技术栈约束改写、`web/` 骨架与门禁恢复 | `python3 scripts/verify_engineering_contracts.py` 中 web 相关检查从缺失变为通过 |
 | S1 | 外壳：vite proxy（`/api` 与 `/minio/public/`）、token 体系、布局导航、路由骨架、鉴权、契约流水线 | 登录成功；空壳页面可导航；257 端点客户端可用；两条漂移门禁生效 |
 | F0 | 目录归位到 FSD 分层（`shared` / `entities/session` / `widgets`）；接入 Steiger 并把手写的 FSD 近似规则从 dep-cruiser 迁出；门禁与文档同步 | `pnpm run lint:fsd` 在 `./src` 上零错误；`pnpm run arch:check` 仍拦循环依赖与生成物边界；全部前端门禁保持通过 |
-| S2 | 聊天：1,473 行状态机、消息渲染、审批与提问交互、队列与取消 | 与上游页面逐屏对照；断线续传与取消行为一致 |
+| S2 | 聊天：1,473 行状态机、消息渲染、审批与提问交互、队列与取消；外围已补输入草稿、图片发送、工具审批模式选择、会话列表未读与运行态、全局会话搜索、上下文用量卡片 | 与上游页面逐屏对照；断线续传与取消行为一致。仍未移植：智能体/模型选择、知识库范围选择、引用来源、欢迎页、工具专用渲染、子代理线程视图、文件附件通道、页面重新可见时的队列重订阅 |
 | S3 | 知识库：列表、详情（上游 1754 行）、文件表（1916 行）、上传（2012 行）；含 a-table 与 a-upload 涉及的 16 个文件 | 真实上传与解析链路可观测 |
 | S4 | 图谱与评估：图 canvas、评估面板（2155 行）、调试面板（2388 行） | 图谱渲染与主题联动 |
 | S5 | 管理台与扩展：模型供应商、Skill 列表、Dashboard 图表 | 全站截图对照；删除 `frontend/` |
@@ -218,6 +218,8 @@ TypeScript 化逐文件进行，允许临时宽松类型；迁移期对新增代
 | 线程可建可续 | 未带线程进入对话页无法发送、重试产生多条空线程 | `web/src/features/chat/api/agent-api.ts`、`web/src/features/chat/model/chat-runtime.ts`、`web/src/pages/chat/ui/chat-page.tsx` | 真实 HTTP：`POST /api/chat/thread` 得到 `id`，随后 `createRun` 返回 `status=dispatched`（此前同一线程直接报「对话线程不存在」）；同一 `request_id` 重放返回同一条线程。页面接线与失败/离开分支由 `test/unit/pages/chat-page.test.tsx` 与 `queue-runtime.test.ts` 覆盖：无线程时先建再发、有线程时不建、建线程失败保留输入、建线程期间离开则放弃发送、失败重试沿用同一 `request_id` | 建线程请求里的 `agent_id` 传 agent 数字 id 时后端返回「智能体不存在」；并发调用 `createThread` 只产生一次请求；页面级行为无浏览器验证（未接入 Playwright） | Passed |
 | 队列语义以后端为准 | 排队请求被当已执行、取消越权、失败原因丢失、队列条不推进 | `backend/package/ars/services/agent_request_queue_service.py`、`web/src/features/chat/api/agent-api.ts`、`web/src/features/chat/model/chat-runtime.ts` | 真实 HTTP：同一线程连续两次 `createRun`，第二条 `status=queued`、`queue_position=1`；`POST /api/agent/requests/{id}/steer` 返回 `queue_policy=steer`；订阅 `GET /api/agent/requests/{id}/events` 实测收到 `queued`（含 `position`）、`: heartbeat`、`run_created`（含 `run_id`）、`cancelled` 四类帧；`pnpm run test:unit` 用 curl 实测的 409 响应体断言 `ApiError.message` 等于后端业务文案 | 从 `/requests/continue` 的 query 去掉 `agent_slug` 必须 422；对仍有活跃 Run 的 steer 请求调 cancel 必须 409（实测 `{"detail":{"code":"steer_in_progress",…}}`）；`paused_reason` 用后端不存在的取值时队列条必须原样展示而不是套用错误文案；删除订阅去重、线程作用域、终态状态收窄三处 guard 时对应用例必须失败（已做变异验证） | Passed |
 | 队列条与上游同判定 | 提升或取消按钮出现在不该出现的请求上 | `web/src/features/chat/lib/queue-view.ts`、`web/src/features/chat/ui/queue-bar.tsx` | `describeQueueRow` 与上游 `canSteerQueuedRequest` / `canCancelQueuedRequest` 逐条对应；`pnpm run test:unit` 的 `queue-bar.test.tsx` 覆盖引导、取消、`引导 · 下一条执行`、等待说明、暂停与继续、无文案兜底六种分支 | 引导请求在运行中不出现取消按钮、`hasPendingSteer` 时不再出现引导按钮；真实页面截图仍未提供（未接入浏览器验证） | Inspected |
+| 会话列表可切换 | 用户看不到也回不到历史会话；失败时显示别的智能体的会话 | `web/src/features/chat/model/thread-list-store.ts`、`web/src/features/chat/ui/conversation-list.tsx`、`web/src/widgets/app-sidebar` | `pnpm run test:unit`：store 16 例（并发 initialize 只发一轮请求、解析失败不拉列表且保留原因、加载失败保留旧列表、后发请求覆盖先发、upsert 插入位置与字段合并、重命名/置顶/删除的成功与失败路径）+ 组件 12 例（加载中与空态互斥、解析期间不闪空态、失败原因、置顶标记、当前会话 `aria-current`、重命名提交、置顶切换、删除二次确认、删除当前会话回到新建对话路由） | 用未置顶线程断言插入位置（置顶会被排序掩盖）；文案互换、`load` 去掉代次、`upsert` 改为追加到末尾时对应用例必须失败（已做变异验证）；真实页面截图仍未提供 | Inspected |
+| 消息渲染与上游同结构 | 思维链、工具调用与中间过程无处展示；流式工具结果无法并回；派生被编译器冻结导致正文不刷新 | `web/src/features/chat/lib/message-grouping.ts`、`web/src/features/chat/lib/message-processor.ts`、`web/src/features/chat/model/stream-handler.ts`、`web/src/features/chat/model/streamed-messages.ts`、`web/src/features/chat/model/thread-runtime-store.ts`、`web/src/pages/chat/ui/chat-page.tsx`、`web/src/features/chat/ui/message-list.tsx` | `pnpm run test:unit`：纯逻辑 40 例（含 `<think>` 提取、独立 tool 消息过滤、隐藏工具过滤、跨用户消息不合并、折叠守卫、分片拆分与结果并回）+ 组件 11 例（多轮切分、工具逐层展开、已收尾折叠、正在输出不折叠、思考中思维链自动展开、角色区分、有正文时的 error_type、流式追加）+ 渲染链 2 例（真 `useStreamingMessages` + 真 `MessageList`：就地追加的分片要出现在正文里、工具结果到达后工具行离开「进行中」） | 工具结果分支挪回 `loading`、结果表键只用分片表 id、首分片角色恢复硬编码 `ai`、`error_type` 要求正文为空、去掉 `thread-runtime-store.ts` 或 `streamed-messages.ts` 里的 `'use no memo'`；去掉两处 `'use no memo'` 中任意一处时都必须有用例失败（已做变异验证）；真实页面截图仍未提供 | Inspected |
 | 设计 token 与暗色一致 | 硬编码颜色破坏暗色 | `docs/develop-guides/design.md` | `pnpm run check:tokens` 与浅/深两套截图 | 新增组件使用 Tailwind 默认调色板类必须被门禁拒绝 | Inspected |
 | 组件库单一来源 | 两套主题机制并存 | `docs/develop-guides/design.md`、`web/package.json` | 依赖清单中不存在 `antd`，且 `pnpm run check:tokens` 覆盖全部组件 | 任何 `web/src` 文件 import `antd` 或其样式必须被依赖检查拒绝 | Passed |
 | 视觉基线可对照 | 逐页评审无客观依据 | `docs/develop-guides/design.md` | 上游同页与迁移页的截图对照记录 | 缺件组件（Empty、命令式 confirm、Upload、复杂表格）未实现时页面必须显式降级，不得静默空白 | Not run |
@@ -243,10 +245,28 @@ TypeScript 化逐文件进行，允许临时宽松类型；迁移期对新增代
 
 **页面侧的上游语义只覆盖了一部分。** 上游 `threadCreation.js` 的 `accepted` 守卫同时比较 agent、project 与 thread；当前页面只比较「是否仍在页面上」与路由线程，因为 project 切换尚未移植。输入草稿（`thread_draft.js`）与页面级浏览器验证也还没有。
 
+**两处与上游同源的表现偏差。** 折叠行的耗时取该轮最后一条助手消息的 run timing，提问恢复产生的单轮里有两次 run 时只反映最后一次；`<think>` 解析只处理第一个块，正文里再出现一次标签会残留。两者都与上游一致，暂按同行为处理。
+
+**React Compiler 会把「依赖表达式身份不变、内容就地变」的派生冻结住。** 本仓有两处这种写法，都已显式标注 `'use no memo'`：`useThreadRuntime`（版本号做快照 + 直接读模块级 Map）与 `useStreamingMessages`（直接读就地追加的分片表）。判据是「派生依赖的容器身份在一次流内不变」；`useThreadList`（切片整体替换）与 `useIsDarkMode`（`useState`）不受影响。新增订阅式代码若读可变外部状态，需要同样处理，并补一条真渲染链的用例——只测 hook 层守不住消费侧。
+
+**思考中自动展开思维链是有意偏离上游的。** 上游实现在 [AgentMessageComponent.vue](https://github.com/xerrors/Yuxi/blob/main/web/src/components/AgentMessageComponent.vue)（`isReasoningActive` 依赖的 `status === 'reasoning'` 在整站没有赋值点，其激活分支只显示「Thinking...」），本仓按交互要求改成「还没有正文时自动展开且不可收起」，并在 `message-list.test.tsx` 里固定下来。
+
+**工具渲染只做了通用形态。** 上游为 28 个工具各写了专用渲染（`ToolCallingResult/tools/*`），本仓目前统一用「图标 + 说明 + 参数与结果」的通用行；子智能体类工具的富化（按 run/thread 关联子代理）也没有移植，`display_label` 暂时无人填充。工具结果里的结构化视图（表格、图片、思维导图）会退化成 JSON 文本。
+
 **静默收流后的订阅有取舍。** 事件流在没有终态帧的情况下结束（后端连接上限或网络切断）时，只有存活超过 60 秒的订阅会重新建立，短命流只做一次状态同步：否则「静默结束 → 重新订阅 → 又静默结束」会互相触发成热循环（已用探针实测，改用会重订阅的路径会直接挂死）。代价是短命流之后该请求要等下一次发送或切换线程才会重新自动推进。同步读取与订阅共用一个按线程的读取序号，两者竞争时那一轮都不订阅，属可接受窗口。
 
-**排队期间的界面语义只覆盖了一部分。** 排队请求在派发前不出现在历史接口里（后端把 `delivery_status` 为 `queued` 的用户消息过滤掉），界面也不插入乐观消息，所以等待期间只能看到队列条上的 `content`；上游的 `insertOptimisticHumanMessage` 未移植。上游在页面重新可见时会 `resumeActiveRunForThread` + 重新订阅队列，这条路径本仓也没有实现：长时间后台的标签恢复后要等下一次发送或切换线程才会重新同步。
+**会话列表还差批量加载更多。** 列表固定拉 100 条以内的首屏。全局会话搜索（`GET /api/chat/threads/search`，返回按消息命中的片段）已移植对话模式：侧边栏入口、防抖 240ms、每页 20、滚到底加载更多、请求序号丢弃过期响应、↑/↓ 与回车导航、未输入时的「新对话 + 最近会话」默认视图；上游的 file 模式（挂在 Workspace 与 AgentPanel）留给 S3/S5。三处有意偏离：搜索失败给出文案与重试按钮（上游只 `console.warn`，界面与「没有结果」不可区分）；状态重置放在关闭路径而不是打开时的 watch；防抖在定时器回调里发起请求而不是在 effect 体内直接发。搜索响应里的 `thread_status` 是模型默认值 `done`，因此选中结果写回列表时不带该字段，避免抹掉运行中 / 未读标记。`thread_status`（正在运行 / 有新回复）已按上游渲染，并在侧边栏展开且页面可见时每 12 秒同步一次；代价是后台线程开始时最多晚 12 秒才出现「正在运行」标记（上游在 run 开始时还会本地置一次 `loading`，本仓没移植）。
 
-**未发送的输入还没有草稿。** 上游用 `thread_draft.js` 把「新建对话」页面上未发送的输入与附件绑定到一条草稿线程，建线程后再迁移选择。当前实现只在第一次发送时建线程，离开 `/agent` 会丢掉未发送的输入。
+**排队期间的界面语义只覆盖了一部分。** 排队请求在派发前不出现在历史接口里（后端把 `delivery_status` 为 `queued` 的用户消息过滤掉），界面对此在发送时插入一条本地用户消息占位（请求 id 交给后端复用，init 分片到达时用后端下发的权威消息整体替换该键），但这条占位不带附件预览。上游在页面重新可见时会 `resumeActiveRunForThread` + 重新订阅队列，这条路径本仓没有实现：长时间后台的标签恢复后要等下一次发送或切换线程才会重新同步。
+
+**上下文用量卡片已移植，含四处有意偏离。** 卡片按上游同结构渲染占比、构成条、当前对话累计与缓存命中率，展开后是按模型分桶的调用统计；`token_usage` 缺失时整段不渲染（与上游的 `v-if` 一致），单个字段缺失显示 `--` 或「未上报」。四处偏离：1) 进度条改用原生 `<progress>`（语义元素，`accent-color` 着色），上游是 `span + role="progressbar"`；2) 头部在只有 `context_window` 时也显示 `上限`，让它与进度条同源（上游只显示总数）；3) 该拉取在没有线程运行时不发请求，且不复活已删会话的运行时——上游的 `getThreadState` 是 create-on-read，本仓的只读路径不建状态；4) 恢复中断与收到 `agent_state` 分片前会作废在途的读取，避免过期响应把审批弹回或把用量回退。明细列表的占比分母包含被压缩的 token，构成条的宽度分母是上下文上限，两者不是同一个数（与上游相同）。
+
+**工具审批模式只在用户显式选择时下发，且显示与下发同源。** 后端解析一次 run 的模式是 `请求值 ?? 智能体配置 ?? 默认值`，从不读线程 metadata，因此线程级选择能生效靠的是前端每次把它带上。规则是：下发的值取「线程 metadata 里的合法模式，否则本地保存的偏好」，两者都没有时留空，交回后端按智能体配置解析——把界面的回退值一起发出去会静默覆盖管理员配置的模式。选择器显示同一个值：只有当线程自己带了合法模式时才算「线程级选择」，否则按本地偏好显示，避免出现界面写着「请求审批」而实际按完全信任执行的相反结果。仍有一处不可消除的差异：`tool_approval_mode` 在智能体配置里是 admin 级字段，普通用户在 `/api/agent/default` 拿不到，因此管理员把它设成完全信任、用户又没有显式选择时，界面显示「请求审批」而实际按完全信任执行；要消除这一处需要后端把生效模式暴露到线程或 run 响应里。
+
+**S2 外围六项已落地，逐屏对照与浏览器验证仍未做。** 输入草稿、图片通道、工具审批模式、会话列表未读与运行态、全局会话搜索、上下文用量卡片各自独立提交，各自的有意偏离写在对应模块的注释与本文件的相邻段落里。这六项的证据是单元测试、组件测试与变异验证，**没有真实页面的截图对照**（本机没有可用测试凭据，仓库也未接入 Playwright），因此「与上游页面逐屏对照」这条验收对它们仍是 `Not run`；`web/AGENTS.md` 要求 UI 改动提供真实页面验证，这一条要由有环境的人补做。
+
+**图片通道只做粘贴与按钮两条入口。** 上游的拖拽走文件附件通道（`/api/chat/attachments/*`），本项不做；上传中的反馈是发送按钮禁用加按钮内 spinner，而不是上游的 loading toast，因为通知中心只有新增与关闭、没有更新接口。这两条已由 `web/src/features/chat/lib/image-upload.ts` 与 `web/src/pages/chat/ui/chat-page.tsx` 的注释拥有，逐屏对照时按本仓行为验收。
+
+**未发送的输入只做文本草稿。** 上游用 `thread_draft.js` 把「新建对话」页面上未发送的输入与附件绑定到一条草稿线程，建线程后再迁移选择。当前实现按线程 ID 持久化文本（附件与图片不入草稿，与上游一致）；未发送的图片在切换线程时被清空，这一点有意偏离上游（上游的 `currentImage` 不随线程切换清空，会把 A 线程选的图发给 B）。
 
 **未验证范围。** 组件映射表、迁移页与上游页的视觉差异、以及各分片的工期都属于未验证主张；工作量为多片工程，单片的估算误差会累积。

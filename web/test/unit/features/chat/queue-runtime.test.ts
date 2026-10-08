@@ -11,7 +11,7 @@ const { api, threadApi, runStreamMock, captured } = vi.hoisted(() => ({
     getAgentHistory: vi.fn(),
     streamRequestEvents: vi.fn(),
   },
-  threadApi: { createThread: vi.fn() },
+  threadApi: { createThread: vi.fn(), getAgentState: vi.fn() },
   runStreamMock: {
     startRunStream: vi.fn(),
     stopRunStreamSubscription: vi.fn(),
@@ -172,6 +172,53 @@ describe('队列运行时', () => {
     );
   });
 
+  it('恢复中断后，在途的 state 读取不会把审批再弹回来', async () => {
+    let resolveState!: (value: unknown) => void;
+    threadApi.getAgentState.mockReturnValue(
+      new Promise((resolve) => {
+        resolveState = resolve;
+      }),
+    );
+    const { fetchAgentState } = await import(
+      '@/features/chat/model/agent-state'
+    );
+    const { getThreadRuntime } = await import(
+      '@/features/chat/model/thread-runtime-store'
+    );
+    const runtime = getThreadRuntime(THREAD);
+    const pending = fetchAgentState(THREAD);
+
+    api.createRun.mockResolvedValue({
+      request_id: 'req-resume',
+      status: 'queued',
+      thread_id: THREAD,
+    });
+    const chat = createRuntime();
+    await chat.submitInterrupt({
+      threadId: THREAD,
+      agentSlug: SLUG,
+      resume: { type: 'approve' },
+      interruptedRunId: 'run-1',
+    });
+
+    resolveState({
+      agent_state: {},
+      interrupt: {
+        status: 'human_approval_required',
+        thread_id: THREAD,
+        run_id: 'run-1',
+        approval: {
+          action_requests: [{ name: 'execute', args: {} }],
+          review_configs: [{}],
+        },
+      },
+    });
+    await pending;
+
+    // 用户已经批准过：这次响应是过期的，不能把审批面板弹回来
+    expect(runtime.pendingInterrupt).toBeNull();
+  });
+
   it('run 收尾与中断都会触发一次队列同步', async () => {
     api.listThreadRequests.mockResolvedValue(snapshot('队头已派发'));
     createRuntime();
@@ -329,6 +376,76 @@ describe('队列运行时', () => {
 
     expect(aborted).toBe(true);
     expect(getThreadRuntime(THREAD).requestStreams['req-2']).toBeUndefined();
+  });
+
+  it('发送时先插入本地用户消息，并把请求 id 交给后端复用', async () => {
+    api.createRun.mockResolvedValue({
+      request_id: 'req-9',
+      status: 'dispatched',
+      run_id: 'run-9',
+      thread_id: THREAD,
+    });
+    const runtime = createRuntime();
+
+    const sending = runtime.sendMessage({
+      threadId: THREAD,
+      agentSlug: SLUG,
+      query: '你好',
+    });
+    // 占位消息在请求返回前就已经能渲染
+    const seeded = Object.values(getThreadRuntime(THREAD).onGoingConv.msgChunks);
+    expect(seeded.flat()).toContainEqual(
+      expect.objectContaining({ type: 'human', content: '你好' }),
+    );
+
+    await sending;
+
+    const requestId = api.createRun.mock.calls[0][0].meta.request_id;
+    expect(typeof requestId).toBe('string');
+    expect(api.createRun.mock.calls[0][0].meta).toMatchObject({
+      request_id: requestId,
+    });
+  });
+
+  it('带图发送时本地占位就带上图片，用户不必等历史刷新才看到', async () => {
+    api.createRun.mockResolvedValue({
+      request_id: 'req-img',
+      status: 'dispatched',
+      run_id: 'run-img',
+      thread_id: THREAD,
+    });
+    const runtime = createRuntime();
+
+    await runtime.sendMessage({
+      threadId: THREAD,
+      agentSlug: SLUG,
+      query: '',
+      imageContent: 'iVBORw0KGgoAAA',
+    });
+
+    const seeded = Object.values(getThreadRuntime(THREAD).onGoingConv.msgChunks).flat();
+    expect(seeded).toContainEqual(
+      expect.objectContaining({
+        type: 'human',
+        image_content: 'iVBORw0KGgoAAA',
+      }),
+    );
+    // 图片必须真的发给后端，不能只留在界面上
+    expect(api.createRun).toHaveBeenCalledWith(
+      expect.objectContaining({ image_content: 'iVBORw0KGgoAAA' }),
+    );
+  });
+
+  it('发送失败时撤掉本地用户消息，不留孤儿', async () => {
+    api.createRun.mockRejectedValue(new Error('对话线程不存在'));
+    const runtime = createRuntime();
+
+    await expect(
+      runtime.sendMessage({ threadId: THREAD, agentSlug: SLUG, query: '你好' }),
+    ).rejects.toThrow('对话线程不存在');
+
+    expect(getThreadRuntime(THREAD).onGoingConv.msgChunks).toEqual({});
+    expect(getThreadRuntime(THREAD).replyLoadingVisible).toBe(false);
   });
 
   it('发送被排队时不订阅 run，也不留着加载态', async () => {
@@ -568,8 +685,8 @@ describe('队列运行时', () => {
     const second = runtime.createThread(SLUG);
     pending.resolve({ id: 'thread-新' });
 
-    await expect(first).resolves.toBe('thread-新');
-    await expect(second).resolves.toBe('thread-新');
+    await expect(first).resolves.toMatchObject({ id: 'thread-新' });
+    await expect(second).resolves.toMatchObject({ id: 'thread-新' });
     expect(threadApi.createThread).toHaveBeenCalledTimes(1);
   });
 
@@ -580,10 +697,14 @@ describe('队列运行时', () => {
     await expect(runtime.createThread(SLUG)).rejects.toThrow('创建对话失败');
 
     threadApi.createThread.mockResolvedValueOnce({ id: 'thread-新' });
-    await expect(runtime.createThread(SLUG)).resolves.toBe('thread-新');
+    await expect(runtime.createThread(SLUG)).resolves.toMatchObject({
+      id: 'thread-新',
+    });
 
     threadApi.createThread.mockResolvedValueOnce({ id: 'thread-新2' });
-    await expect(runtime.createThread(SLUG)).resolves.toBe('thread-新2');
+    await expect(runtime.createThread(SLUG)).resolves.toMatchObject({
+      id: 'thread-新2',
+    });
 
     const [failed, retried, next] = threadApi.createThread.mock.calls;
     // 重试必须复用幂等键，否则响应丢失时后端会留下两条空线程

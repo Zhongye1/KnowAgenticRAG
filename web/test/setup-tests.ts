@@ -16,3 +16,17 @@ if (!window.matchMedia) {
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 }
+
+/**
+ * jsdom 也没有实现 ResizeObserver，而侧边栏的 `SidebarMenuButton` 带 tooltip 时会挂
+ * Radix Tooltip（内部用 react-popper 测量尺寸）。缺了它，一次点击就会抛错并卸载整棵树。
+ */
+if (!('ResizeObserver' in globalThis)) {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  (globalThis as { ResizeObserver?: unknown }).ResizeObserver =
+    ResizeObserverStub;
+}

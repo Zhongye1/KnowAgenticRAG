@@ -10,10 +10,15 @@ import io
 import uuid
 from pathlib import PurePosixPath
 
+import asyncpg
 import pytest
 from PIL import Image
 
-from test.live_api_cleanup import make_test_conversation_metadata, make_test_conversation_title
+from test.live_api_cleanup import (
+    _postgres_dsn,
+    make_test_conversation_metadata,
+    make_test_conversation_title,
+)
 
 pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
@@ -479,3 +484,42 @@ async def test_save_thread_artifact_to_workspace_rejects_invalid_paths(test_clie
         headers=headers,
     )
     assert directory_response.status_code == 400, directory_response.text
+
+
+async def _seed_user_message(thread_id: str, content: str) -> None:
+    """直接写一条用户消息：搜索只按消息内容匹配，不必真的起一次 Run。"""
+
+    conn = await asyncpg.connect(_postgres_dsn())
+    try:
+        conversation_id = await conn.fetchval(
+            "SELECT id FROM conversations WHERE thread_id = $1",
+            thread_id,
+        )
+        assert conversation_id is not None, thread_id
+        await conn.execute(
+            "INSERT INTO messages (conversation_id, role, content, message_type, delivery_status) "
+            "VALUES ($1, 'user', $2, 'text', 'complete')",
+            conversation_id,
+            content,
+        )
+    finally:
+        await conn.close()
+
+
+async def test_search_threads_matches_chinese_query(test_client, admin_headers):
+    """中文查询要能命中：此前搜索结果缺 workdir_path，任何有命中的搜索都会 500。"""
+
+    thread_id = await _create_thread_for_user(test_client, admin_headers)
+    query = f"中文搜索回归{uuid.uuid4().hex[:8]}"
+    await _seed_user_message(thread_id, query)
+
+    response = await test_client.get(
+        "/api/chat/threads/search",
+        params={"q": query},
+        headers=admin_headers,
+    )
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    matched = [item for item in payload["items"] if item["thread_id"] == thread_id]
+    assert matched, payload
+    assert matched[0]["snippets"]
