@@ -3,8 +3,10 @@ import { describe, expect, it } from 'vitest';
 import {
   normalizeCodeLanguage,
   normalizeMarkdownTheme,
+  renderCodeBlock,
   renderMarkdown,
 } from '@/shared/markdown';
+import { resolvePlugin } from '@/shared/markdown/render';
 
 describe('normalizeCodeLanguage', () => {
   it('把常见别名映射成 shiki 认的名字', () => {
@@ -80,5 +82,46 @@ describe('renderMarkdown', () => {
     const second = await renderMarkdown('缓存**检查**');
 
     expect(second).toBe(first);
+  });
+});
+
+describe('resolvePlugin', () => {
+  const plugin = () => undefined;
+
+  it('Node 与浏览器两种形状都吃', () => {
+    // Node：默认导入就是函数
+    expect(resolvePlugin(plugin)).toBe(plugin);
+    // 浏览器（Vite 对 CJS 的 interop）：{ default: fn }
+    expect(resolvePlugin({ default: plugin })).toBe(plugin);
+  });
+});
+
+describe('renderCodeBlock', () => {
+  it('认得出语言时给出高亮结果', async () => {
+    const html = await renderCodeBlock('print(1)', 'py');
+
+    expect(html).toContain('shiki');
+    expect(html).toContain('print');
+  });
+
+  it('认不出语言或没有语言时返回空串，由调用方按纯文本渲染', async () => {
+    expect(await renderCodeBlock('print(1)', '')).toBe('');
+    expect(await renderCodeBlock('print(1)', 'not-a-language-xyz')).toBe('');
+    expect(await renderCodeBlock('', 'python')).toBe('');
+  });
+});
+
+describe('renderMarkdown', () => {
+  it('正文照常渲染，公式插件不会拖垮整段', async () => {
+    const html = await renderMarkdown('# 标题\n\n$E=mc^2$\n');
+
+    expect(html).toContain('<h1>');
+    expect(html).toContain('标题');
+  });
+
+  it('围栏代码走到高亮', async () => {
+    const html = await renderMarkdown('```python\nprint(1)\n```\n');
+
+    expect(html).toContain('shiki');
   });
 });

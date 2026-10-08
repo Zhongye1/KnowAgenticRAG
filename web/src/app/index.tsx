@@ -5,6 +5,7 @@ import { ErrorBoundary } from 'react-error-boundary';
 import { HelmetProvider } from 'react-helmet-async';
 
 import { queryConfig } from '@/shared/lib';
+import { ConfirmDialogHost } from '@/shared/ui/confirm-dialog-host';
 import { Notifications } from '@/shared/ui/notifications';
 import { Spinner } from '@/shared/ui/spinner';
 import { MainErrorFallback } from '@/shared/ui/error-fallback';
@@ -12,7 +13,7 @@ import { MainErrorFallback } from '@/shared/ui/error-fallback';
 import { AppRouter } from './routing/router';
 
 /**
- * 应用外壳：装配全局 provider（查询客户端、错误边界、head 管理、通知中心）。
+ * 应用外壳：装配全局 provider（查询客户端、错误边界、head 管理、通知中心、命令式确认框）。
  */
 const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [queryClient] = React.useState(
@@ -35,6 +36,7 @@ const AppProvider = ({ children }: { children: React.ReactNode }) => {
           <QueryClientProvider client={queryClient}>
             {import.meta.env.DEV && <ReactQueryDevtools />}
             <Notifications />
+            <ConfirmDialogHost />
             {children}
           </QueryClientProvider>
         </HelmetProvider>

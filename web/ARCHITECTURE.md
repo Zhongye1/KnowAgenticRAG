@@ -61,7 +61,7 @@ src/
 │   ├── main.tsx             createRoot 入口
 │   ├── index.tsx            全局 provider（查询客户端、错误边界、通知）
 │   ├── layouts/app-shell.tsx
-│   └── routing/{router.tsx, protected-route.tsx}
+│   └── routing/{router.tsx, guards.tsx, protected-route.tsx}
 ├── pages/                   页面切片，各带 index.ts
 │   ├── login/  {index.ts, ui/login-page.tsx}
 │   └── chat/   {index.ts, ui/chat-page.tsx}
@@ -111,9 +111,52 @@ Steiger 的 19 条规则覆盖了 `.dependency-cruiser.cjs` 中手写的三条 F
   `pages/chat`、`widgets/app-sidebar` 与侧边栏的历史会话列表是它的消费方。
   读可变外部状态的订阅 hook（`useThreadRuntime`、`useStreamingMessages`）必须标注
   `'use no memo'`：React Compiler 会把「容器身份不变、内容就地变」的派生冻结在首帧。
-- 测试设施在 `web/test/setup-tests.ts` 里补了 jsdom 缺的 `matchMedia` 与 `ResizeObserver`：
-  侧边栏按钮带 tooltip，缺后者会让一次点击抛错并卸载整棵树。
-- 其余页面（登录页为真实实现，工作台、扩展、数据总览、智能体管理）仍是占位。
+- 测试设施在 `web/test/setup-tests.ts` 里补了 jsdom 缺的 `matchMedia`、`ResizeObserver` 与
+  指针捕获/`scrollIntoView`：前者服务侧边栏 tooltip（缺了会让一次点击抛错并卸载整棵树），
+  后者服务 Radix 的 Select（缺了在测试里点不开下拉）。
+- `features/knowledge-base` 承载知识库管理：列表、新建/编辑表单、详情页的文件表（目录进入与
+  面包屑、状态筛选、当前页按列排序、服务端分页、刷新与空态）与文件名搜索弹窗，以及查询层
+  （`api` 段按 `backend/server/utils/knowledge_response.py` 的序列化形状手写类型，因为后端这些
+  端点没有 response_model）。`pages/extensions` 与 `pages/knowledge-base` 是它的消费方。
+- 文件表的目录位置有两种：实体目录用 `parent_id`，虚拟目录（来源路径的投影，没有实体记录）用
+  「父目录 id + `path_prefix`」，把虚拟目录当实体目录发给后端会被拒（400）。面包屑每一节都要
+  自带这两个字段，否则回到虚拟层时会掉回它的父目录。
+- 文件表的位置、状态筛选与页码由页面持有（`model/file-view.ts` 的 `openLocation`），表格通过
+  `onViewChange` 上报：搜索命中也会改位置，页码留在表格内部会带着上一层的页码去查新目录。
+  切目录或翻页期间表格保留上一份数据（`keepPreviousData`），因此必须同时显示加载态并禁用行内
+  入口，否则旧行会被当成新目录的内容。
+- 状态筛选是跨目录查询：后端在 `status` 不为 `all` 时忽略 `parent_id` 与 `path_prefix`，因此
+  筛选态用「跨全部目录筛选」替换路径导航，并在改状态、改位置时互相归位，避免界面显示的路径与
+  列表内容矛盾。
+- 表格是 `@tanstack/react-table` v9（无头表格，对应上游的 `a-table`）：v9 把排序这类可选能力
+  做成「特性槽」，不注册 `rowSortingFeature` 就没有排序状态与方法；核心行模型自动存在，
+  v8 的 `getCoreRowModel()` 已移除。
+- 写入口（下载、解析、入库、重新入库、移动、删除与批量）由 `lib/knowledge-files.ts` 的能力
+  矩阵决定（例外：目录的删除只看只读与「有操作在飞行中」，目录没有解析/入库状态），
+  只读知识库不渲染选择列与写入口；有操作在飞行中或表里还是上一个目录的行
+  （`keepPreviousData` 期间）时行内入口一律禁用。选择与它所属的视图键（位置/筛选/页码/页长）
+  绑定，翻页或换目录后自动失效。
+- 移动只写 `parent_id`，因此候选只能是实体目录：虚拟目录是文件名里路径的投影、没有实体记录，
+  选它只会把文件移到它的父目录。目标与当前位置相同时不给确认（后端是幂等更新，会返回成功）。
+- 上传：`ui/file-upload-dialog.tsx` 负责界面与队列，判定与参数组装在 `lib/knowledge-upload.ts`
+  （白名单来自 `/files/supported-types`；需要 OCR 的集合是后端 `OCR_FILE_EXTENSIONS` 去掉 `.pdf`，
+  而 `ocr_engine` 每批都随参数提交——Office 解析需要它），登记走
+  `POST /documents` 的三阶段 ingest。上传成功后新记录由后台任务建立，列表靠查询的函数式
+  `refetchInterval`（处理中的行 + 刚上传后的一分钟窗口）自己刷新，不做上传字节百分比。
+- 检索测试与共享：`ui/query-test-panel.tsx` 用后端 `/query-params` 下发的默认值组装参数，
+  失败（200 + `{status:'failed'}`）在 api 层折成异常后按失败提示；`ui/share-config-dialog.tsx`
+  承载 `share_config` v2 的读/管两个范围，纯规则在 `lib/share-config.ts`，保存走
+  `PUT /databases/{kb_id}`（该端点要求名称与描述齐全）。
+- 文件详情与预览：位置由 `ui/file-detail-dialog.tsx` 持有三个视图（源文件 / 解析结果 / 分块），
+  预览类型以**后端返回的 `preview_type` 为准**（`lib/file-preview.ts` 的按路径判断只在响应没给
+  类型时兜底），二进制预览走 `/api/workspace/knowledge/file` 的 inline 流与 `X-Ars-Preview-Type`。
+  代码高亮与正文共用 `shared/markdown/render.ts` 的高亮器（`renderCodeBlock`）。
+- LITE 模式的能力降级只读 `/api/system/discovery` 的 `capabilities.features.knowledge`：侧边栏与
+  扩展页隐藏入口，知识库深链由 `routing/guards.tsx` 的 `RequireKnowledgeEnabled` 兜底——投影未取到
+  时显示加载态，声明为 `false` 时重定向到 `/agent`。请求失败（没有 `data`）不算能力关闭，
+  页面照常渲染让故障显式暴露；响应形状与契约不符时在渲染期报错并落到应用级错误边界
+  （`entities/session/model/capabilities.ts` 的同一取值在全应用都是这个行为）。
+- 其余页面（登录页与扩展页为真实实现，工作台、数据总览、智能体管理）仍是占位。
 - `features` 的其余切片与新的 `entities` 随业务分片落地。
 
 切片进度与验收证据见[前端 React 迁移设计](../docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-design.md)。

@@ -18,4 +18,10 @@ export default defineConfig([
     files: ['**/features/chat/**'],
     rules: { 'fsd/insignificant-slice': 'off' },
   },
+  {
+    // 知识库切片马上会有第二个消费方（详情页 pages/knowledge-base 随 S3.2 落地），
+    // 列表页与详情页共用的查询、表单与类型都不适合塞进页面，因此同样不并入页面。
+    files: ['**/features/knowledge-base/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
 ]);

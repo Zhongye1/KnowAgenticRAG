@@ -30,3 +30,16 @@ if (!('ResizeObserver' in globalThis)) {
   (globalThis as { ResizeObserver?: unknown }).ResizeObserver =
     ResizeObserverStub;
 }
+
+/**
+ * jsdom 也没有实现指针捕获与滚动 API，而 Radix 的 Select 在 pointerdown 时会调用它们；
+ * 缺了这几项，下拉框在测试里点不开（组件本身没有问题）。
+ */
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false;
+  Element.prototype.setPointerCapture = () => undefined;
+  Element.prototype.releasePointerCapture = () => undefined;
+}
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => undefined;
+}

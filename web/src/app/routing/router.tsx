@@ -1,17 +1,17 @@
 import * as React from 'react';
 import {
-  Navigate,
   Outlet,
   RouterProvider,
   createBrowserRouter,
+  type RouteObject,
 } from 'react-router';
 
 import { DashboardLayout } from '@/app/layouts/app-shell';
 import { PagePlaceholder } from '@/shared/ui/page-placeholder';
 import { NavBar } from '@/widgets/intro-navbar';
 import { paths } from '@/shared/config';
-import { useIsSuperuser } from '@/entities/session';
 
+import { RequireKnowledgeEnabled, RequireSuperuser } from './guards';
 import { ProtectedRoute } from './protected-route';
 
 /** 空白布局：首页与鉴权流程不套后台外壳。 */
@@ -32,12 +32,6 @@ const AppLayout = () => (
   </DashboardLayout>
 );
 
-/** 超管专属区域的体验级守卫；后端权限才是授权边界。 */
-const RequireSuperuser = () => {
-  const isSuperuser = useIsSuperuser();
-  return isSuperuser ? <Outlet /> : <Navigate to={paths.app.chat.getHref()} replace />;
-};
-
 const loginRoute = async () => {
   const { LoginPage } = await import('@/pages/login');
   return { Component: LoginPage };
@@ -48,7 +42,18 @@ const chatRoute = async () => {
   return { Component: ChatPage };
 };
 
-const router = createBrowserRouter([
+const extensionsRoute = async () => {
+  const { ExtensionsPage } = await import('@/pages/extensions');
+  return { Component: ExtensionsPage };
+};
+
+const knowledgeBaseRoute = async () => {
+  const { KnowledgeBasePage } = await import('@/pages/knowledge-base');
+  return { Component: KnowledgeBasePage };
+};
+
+/** 路由表：导出以便按真实树形做接线回归（守卫是否真的包住对应路由）。 */
+export const appRoutes: RouteObject[] = [
   {
     path: paths.home.path,
     element: <BlankLayout />,
@@ -95,11 +100,16 @@ const router = createBrowserRouter([
           },
           {
             path: paths.app.extensions.path,
-            element: <PagePlaceholder title="扩展" />,
+            lazy: extensionsRoute,
           },
           {
-            path: paths.app.extensions.knowledgeBase.path,
-            element: <PagePlaceholder title="知识库" />,
+            element: <RequireKnowledgeEnabled />,
+            children: [
+              {
+                path: paths.app.extensions.knowledgeBase.path,
+                lazy: knowledgeBaseRoute,
+              },
+            ],
           },
           {
             path: paths.app.extensions.mcp.path,
@@ -117,7 +127,9 @@ const router = createBrowserRouter([
     path: '*',
     element: <PagePlaceholder title="404" description="页面不存在。" />,
   },
-]);
+];
+
+const router = createBrowserRouter(appRoutes);
 
 export const AppRouter = () => {
   return <RouterProvider router={router} />;
