@@ -31,7 +31,8 @@ import {
   getV2ModelsApiSystemModelProvidersModelsV2Get,
   updateDatabaseInfoApiKnowledgeDatabasesKbIdPut,
 } from '@/shared/api/generated/sdk.gen';
-import { apiFetch, ApiError } from '@/shared/api';
+import { apiFetch } from '@/shared/api';
+import { describeFailure, unwrap, unwrapQueuedTask } from '@/shared/api';
 import { readFilePreview, type FilePreview } from '../lib/file-preview';
 import type { KnowledgeQueryParams } from '../lib/knowledge-query-params';
 import { parseDownloadFilename } from '../lib/knowledge-files';
@@ -314,36 +315,6 @@ export type UpdateKnowledgeBasePayload = {
   share_config?: ShareConfig | null;
 };
 
-type Unwrap = { data?: unknown; error?: unknown; response?: Response };
-
-const unwrap = <T>(result: Unwrap): T => {
-  if (result.error !== undefined) {
-    throw new ApiError(
-      result.response?.status ?? 0,
-      (result.error as { detail?: unknown })?.detail ?? result.error,
-    );
-  }
-  return result.data as T;
-};
-
-/**
- * 失败文案：只有后端给出的 `detail`（`ApiError`）才算界面文案。
- * 网络层的 `TypeError` 是浏览器英文提示，不作为文案（与 `base.ts` 的约定一致）。
- */
-const describeFailure = (error: unknown, fallback: string): string =>
-  error instanceof ApiError ? error.message : fallback;
-
-/**
- * 后台任务：只有 `queued` 算受理，其余按失败抛出后端给出的原因。
- * 后端在提交异常时返回 200 + `{status:'failed', message}`，不判会静默当成成功。
- */
-const unwrapTask = (result: KnowledgeTaskResult): KnowledgeTaskResult => {
-  if (result.status !== 'queued') {
-    throw new Error(result.message || '任务提交失败。');
-  }
-  return result;
-};
-
 export const knowledgeApi = {
   /**
    * 全部知识库（后端按用户权限过滤；管理员看全部）。
@@ -444,13 +415,14 @@ export const knowledgeApi = {
     fileIds: string[],
     params: Record<string, unknown> = {},
   ): Promise<KnowledgeTaskResult> =>
-    unwrapTask(
+    unwrapQueuedTask(
       unwrap<KnowledgeTaskResult>(
         await parseDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePost({
           path: { kb_id: kbId },
           body: { file_ids: fileIds, params },
         }),
       ),
+      '任务提交失败。',
     ),
 
   /** 提交入库任务。 */
@@ -459,13 +431,14 @@ export const knowledgeApi = {
     fileIds: string[],
     params: Record<string, unknown> = {},
   ): Promise<KnowledgeTaskResult> =>
-    unwrapTask(
+    unwrapQueuedTask(
       unwrap<KnowledgeTaskResult>(
         await indexDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPost({
           path: { kb_id: kbId },
           body: { file_ids: fileIds, params },
         }),
       ),
+      '任务提交失败。',
     ),
 
   /** 移动到另一个目录；`newParentId` 为 `null` 表示移到根目录。 */
@@ -551,13 +524,14 @@ export const knowledgeApi = {
     items: string[],
     params: Record<string, unknown>,
   ): Promise<KnowledgeTaskResult> =>
-    unwrapTask(
+    unwrapQueuedTask(
       unwrap<KnowledgeTaskResult>(
         await addDocumentsApiKnowledgeDatabasesKbIdDocumentsPost({
           path: { kb_id: kbId },
           body: { items, params },
         }),
       ),
+      '任务提交失败。',
     ),
 
   /** 部门列表；共享范围按部门选择时用。 */
@@ -580,7 +554,6 @@ export const knowledgeApi = {
     return result.params ?? { options: [] };
   },
 
-  /** 保存查询参数（整体覆盖，隐藏项由调用方补上）。 */
   /**
    * 检索测试。
    *

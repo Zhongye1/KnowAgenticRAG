@@ -151,6 +151,29 @@ Steiger 的 19 条规则覆盖了 `.dependency-cruiser.cjs` 中手写的三条 F
   预览类型以**后端返回的 `preview_type` 为准**（`lib/file-preview.ts` 的按路径判断只在响应没给
   类型时兜底），二进制预览走 `/api/workspace/knowledge/file` 的 inline 流与 `X-Ars-Preview-Type`。
   代码高亮与正文共用 `shared/markdown/render.ts` 的高亮器（`renderCodeBlock`）。
+- 知识图谱用 G6 v5（`ui/graph-canvas.tsx`）：节点配色从 `tokens.css` 取，token 是通道三元组，
+  因此只能写 `rgb(var(--token))`——直接 `color: var(--token)` 会被 CSS 引擎丢掉（节点全黑）。
+  v5 的 d3-force 选项是**平铺**的（`link` / `manyBody` / `collide` / `center`），上游写在
+  `force: {...}` 里的参数会被静默忽略，布局退化成挤在一起的一团。主题切换时旧实例要在
+  `render()` 落地后再销毁，否则会看到「graph instance has been destroyed」与 `draw` 读未定义；
+  也不能用 `stopLayout()` 收尾——没有布局在跑时它抛错，StrictMode 的双次调用必中。
+  视口用 `fitView({ when: 'overflow' })` 再 `fitCenter()`，对小图只 `fitView()` 会放大到失真。
+- 知识导图用 markmap：实例绑在具体的 `<svg>` 元素上，元素重新挂载就必须换实例，所以元素用
+  state 持有（`ref` 回调只在一侧触发时会出现空白画布）；`markmap-view` 与 `markmap-lib` 走
+  动态 import，知识库分包里不含它们（约 72 kB 的独立分包）。
+- RAG 评估与评估基准（`features/knowledge-base` 的 `evaluation-*`）：11 个端点都返回
+  `{message:'success', data}` 信封，api 段统一解包；下载只在数据集 `completed` 时给，否则后端
+  返回 400。运行列表的进度、耗时与「仅看错误」判定（`score <= 0.5 || recall@k < 0.3`）在
+  `lib/evaluation-view.ts` 里与后端同口径，`null` 与缺字段按「没有数据」处理而不是 0。
+- 调试面板（`features/debug`）的入口只有侧边栏用户菜单一处，且只对超管显示（授权仍由后端
+  `get_admin_user` 兜底）：系统日志、系统配置、用户与会话、本地存储四个页签。凭据不外泄——
+  `readStorageItems` 把 `ars_access_token` 的值清空、预览写成「已隐藏」，复制与导出都跳过它。
+  日志行的 React key 必须带序号：真实日志里同一秒会出现完全相同的整行，只按原文做 key 会
+  触发 React 重复 key（真机实测 75 次告警）。级别多选至少留一个，
+  一个都不选时后端不过滤级别，会白读整份日志而界面全空。配置页与上游一致是只读的：写配置要按
+  `_config_items[key].type` 提交布尔/数组等真实类型，属于后端管理动作。切换身份先二次确认，
+  成功后写回凭据再整页重载，失败时不动当前凭据；后端禁止模拟超管（403），所以其他超管那一行
+  不给入口。
 - LITE 模式的能力降级只读 `/api/system/discovery` 的 `capabilities.features.knowledge`：侧边栏与
   扩展页隐藏入口，知识库深链由 `routing/guards.tsx` 的 `RequireKnowledgeEnabled` 兜底——投影未取到
   时显示加载态，声明为 `false` 时重定向到 `/agent`。请求失败（没有 `data`）不算能力关闭，

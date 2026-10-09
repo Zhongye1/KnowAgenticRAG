@@ -4,6 +4,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+/**
+ * 这套用例逐个靠 userEvent 驱动 Radix 弹窗，全套件并行跑时会超过默认 5 秒预算；
+ * 这里给本文件一个明确预算，不放宽全局配置。
+ */
+vi.setConfig({ testTimeout: 15000 });
+
+/** 这组用例靠 userEvent 驱动 Radix Dialog，并行跑套件时会超过默认 5 秒预算。 */
+const itSlow = (name: string, fn: () => Promise<void>) => it(name, fn, 15000);
+
 const { api } = vi.hoisted(() => ({
   api: { listDocuments: vi.fn(), moveDocument: vi.fn() },
 }));

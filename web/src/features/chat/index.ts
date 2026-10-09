@@ -10,6 +10,11 @@ export type { ThreadRuntimeState } from './model/thread-runtime-store';
 export { agentRunApi } from './api/agent-api';
 export { PendingInterruptPanel } from './ui/pending-interrupt-panel';
 export { QueueBar } from './ui/queue-bar';
+export { MessageDebugPanel } from './ui/message-debug-panel';
+export {
+  mergeMessageDebugMessages,
+  type DebugMessage,
+} from './lib/message-debug';
 export { MessageList } from './ui/message-list';
 export { ConversationList } from './ui/conversation-list';
 export { useThreadList } from './model/thread-list-store';

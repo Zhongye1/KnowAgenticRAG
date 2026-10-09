@@ -6,38 +6,43 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { paths } from '@/shared/config';
 
-const { chat, runtime, notifications, agentRunApi, chatOptions } = vi.hoisted(
-  () => ({
-  chat: {
-    loadHistory: vi.fn(),
-    createThread: vi.fn(),
-    refreshQueue: vi.fn(),
-    sendMessage: vi.fn(),
-    cancelRun: vi.fn(),
-    submitInterrupt: vi.fn(),
-    steer: vi.fn(),
-    cancelQueued: vi.fn(),
-    continueQueue: vi.fn(),
-    stopRequestStreams: vi.fn(),
-  },
-  runtime: {
-    agentState: null as unknown,
-    messages: [] as unknown[],
-    queuedRequests: [] as unknown[],
-    queueSnapshot: null as unknown,
-    continueQueueInFlight: false,
-    isStreaming: false,
-    pendingInterrupt: null as unknown,
-    onGoingConv: { msgChunks: {} },
-  },
-  notifications: { addNotification: vi.fn() },
-  agentRunApi: {
-    getDefaultAgent: vi
-      .fn()
-      .mockResolvedValue({ agent: { slug: 'default-chatbot' } }),
-    uploadImage: vi.fn(),
-  },
-  chatOptions: { current: null as null | Record<string, unknown> },
+const { chat, runtime, notifications, agentRunApi, chatOptions, session } =
+  vi.hoisted(() => ({
+    session: { isSuperuser: true },
+    chat: {
+      loadHistory: vi.fn(),
+      createThread: vi.fn(),
+      refreshQueue: vi.fn(),
+      sendMessage: vi.fn(),
+      cancelRun: vi.fn(),
+      submitInterrupt: vi.fn(),
+      steer: vi.fn(),
+      cancelQueued: vi.fn(),
+      continueQueue: vi.fn(),
+      stopRequestStreams: vi.fn(),
+    },
+    runtime: {
+      agentState: null as unknown,
+      messages: [] as unknown[],
+      queuedRequests: [] as unknown[],
+      queueSnapshot: null as unknown,
+      continueQueueInFlight: false,
+      isStreaming: false,
+      pendingInterrupt: null as unknown,
+      onGoingConv: { msgChunks: {} },
+    },
+    notifications: { addNotification: vi.fn() },
+    agentRunApi: {
+      getDefaultAgent: vi
+        .fn()
+        .mockResolvedValue({ agent: { slug: 'default-chatbot' } }),
+      uploadImage: vi.fn(),
+    },
+    chatOptions: { current: null as null | Record<string, unknown> },
+  }));
+
+vi.mock('@/entities/session', () => ({
+  useIsSuperuser: () => session.isSuperuser,
 }));
 
 vi.mock('@/features/chat', async () => {
@@ -92,8 +97,16 @@ vi.mock('@/features/chat', async () => {
     PendingInterruptPanel: () => null,
     QueueBar: () => null,
     MessageList: () => null,
+    MessageDebugPanel: ({ messages }: { messages: unknown[] }) => (
+      <div data-testid="message-debug-panel">{messages.length} 条</div>
+    ),
+    mergeMessageDebugMessages: (history: unknown[], ongoing: unknown[]) => [
+      ...(history ?? []),
+      ...(ongoing ?? []),
+    ],
     // 对话页只从切片取状态选择器，真正的会话列表 store 单独测
-    useThreadList: (selector: (state: unknown) => unknown) => selector(threadList),
+    useThreadList: (selector: (state: unknown) => unknown) =>
+      selector(threadList),
     ConversationList: () => null,
     useStreamingMessages: () => [],
     useChatRuntime: (options: Record<string, unknown>) => {
@@ -121,7 +134,8 @@ const { threadList } = vi.hoisted(() => ({
 }));
 
 vi.mock('@/features/chat/model/thread-list-store', () => ({
-  useThreadList: (selector: (state: unknown) => unknown) => selector(threadList),
+  useThreadList: (selector: (state: unknown) => unknown) =>
+    selector(threadList),
 }));
 
 vi.mock('@/shared/ui/content-layout', () => ({
@@ -139,18 +153,18 @@ const { ChatPage } = await import('@/pages/chat/ui/chat-page');
 function renderAt(initialPath: string) {
   return render(
     <React.StrictMode>
-    <MemoryRouter initialEntries={[initialPath]}>
-      <Routes>
-        <Route path={paths.app.chat.path} element={<ChatPage />} />
-        <Route
-          path={`${paths.app.chat.path}/:threadId`}
-          element={<ChatPage />}
-        />
-      </Routes>
-      <NewChatLink />
-      <SwitchThreadLink />
-      <BackToThreadALink />
-    </MemoryRouter>
+      <MemoryRouter initialEntries={[initialPath]}>
+        <Routes>
+          <Route path={paths.app.chat.path} element={<ChatPage />} />
+          <Route
+            path={`${paths.app.chat.path}/:threadId`}
+            element={<ChatPage />}
+          />
+        </Routes>
+        <NewChatLink />
+        <SwitchThreadLink />
+        <BackToThreadALink />
+      </MemoryRouter>
     </React.StrictMode>,
   );
 }
@@ -217,9 +231,38 @@ describe('对话页的线程生命周期', () => {
     threadList.markViewed.mockReset().mockResolvedValue(true);
     chatOptions.current = null;
     runtime.agentState = null;
+    session.isSuperuser = true;
+    runtime.messages = [];
     threadList.agentToolApprovalMode = null;
     threadList.threads = [];
     agentRunApi.uploadImage.mockReset();
+  });
+
+  it('超管能打开消息调试面板，面板拿到当前线程的消息', async () => {
+    session.isSuperuser = true;
+    runtime.messages = [
+      { id: 'm-1', type: 'human', content: '你好' },
+      { id: 'm-2', type: 'ai', content: '你好呀' },
+    ];
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: /消息调试/ }),
+    );
+
+    expect(await screen.findByTestId('message-debug-panel')).toHaveTextContent(
+      '2 条',
+    );
+    await userEvent.click(screen.getByRole('button', { name: /关闭调试/ }));
+    expect(screen.queryByTestId('message-debug-panel')).toBeNull();
+  });
+
+  it('非超管看不到消息调试入口', async () => {
+    session.isSuperuser = false;
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await screen.findByRole('button', { name: '发送' });
+    expect(screen.queryByRole('button', { name: /消息调试/ })).toBeNull();
   });
 
   it('地址没有线程时先建线程，再用新线程发送', async () => {
@@ -371,7 +414,9 @@ describe('对话页的线程生命周期', () => {
     );
     await userEvent.click(screen.getByRole('link', { name: '切到 B' }));
     await waitFor(() =>
-      expect(screen.getByLabelText<HTMLInputElement>('消息输入').value).toBe(''),
+      expect(screen.getByLabelText<HTMLInputElement>('消息输入').value).toBe(
+        '',
+      ),
     );
     // 切走不能把 A 的未发送文本写进 B：写串键会让 B 刷新后冒出别人的草稿
     expect(
@@ -419,7 +464,9 @@ describe('对话页的线程生命周期', () => {
     await userEvent.click(screen.getByRole('link', { name: '新建对话' }));
 
     await waitFor(() =>
-      expect(screen.getByLabelText<HTMLInputElement>('消息输入').value).toBe(''),
+      expect(screen.getByLabelText<HTMLInputElement>('消息输入').value).toBe(
+        '',
+      ),
     );
   });
 
@@ -701,7 +748,10 @@ describe('对话页的线程生命周期', () => {
 
     await waitFor(() =>
       expect(chat.sendMessage).toHaveBeenCalledWith(
-        expect.objectContaining({ threadId: 'thread-A', toolApprovalMode: null }),
+        expect.objectContaining({
+          threadId: 'thread-A',
+          toolApprovalMode: null,
+        }),
       ),
     );
   });
@@ -756,7 +806,9 @@ describe('对话页的线程生命周期', () => {
     renderAt(paths.app.chat.getHref());
 
     // 触发器显示的就是当前生效的模式
-    expect(await screen.findByRole('button', { name: '完全信任' })).toBeTruthy();
+    expect(
+      await screen.findByRole('button', { name: '完全信任' }),
+    ).toBeTruthy();
   });
 
   it('打开线程即标记已读，避免侧边栏一直挂着未读点', async () => {

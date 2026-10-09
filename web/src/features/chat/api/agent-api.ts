@@ -20,6 +20,7 @@ import {
   createAgentRunApiAgentRunsPost,
   getAgentRunApiAgentRunsRunIdGet,
   getRequestApiAgentRequestsRequestIdGet,
+  getAgentRunLangfuseLinkRouteApiAgentRunsRunIdLangfuseGet,
   listThreadRequestsApiAgentThreadThreadIdRequestsGet,
   steerRequestApiAgentRequestsRequestIdSteerPost,
   getThreadActiveRunApiAgentThreadThreadIdActiveRunGet,
@@ -30,11 +31,7 @@ import type { ImageUploadResponse } from '@/shared/api/generated/types.gen';
 import type { ToolApprovalMode } from '../lib/tool-approval';
 
 export type RunStatus =
-  | 'running'
-  | 'completed'
-  | 'failed'
-  | 'cancelled'
-  | 'interrupted';
+  'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
 
 export type AgentRun = {
   id: string;
@@ -270,7 +267,9 @@ export const agentRunApi = {
     ),
 
   /** 线程消息历史；进入已有线程时渲染，终态后重新拉取以对齐权威状态。 */
-  getAgentHistory: async (threadId: string): Promise<{ history: ChatMessage[] }> =>
+  getAgentHistory: async (
+    threadId: string,
+  ): Promise<{ history: ChatMessage[] }> =>
     unwrap<{ history: ChatMessage[] }>(
       await getThreadHistoryApiChatThreadThreadIdHistoryGet({
         path: { thread_id: threadId },
@@ -288,6 +287,19 @@ export const agentRunApi = {
         } | null;
       };
     }>(await getDefaultAgentApiAgentDefaultGet({ signal: options.signal })),
+
+  /**
+   * 某次 Run 的 Langfuse 链接；后端没配 Langfuse 时返回 `{available: false}`。
+   * 消息调试面板用它开新窗口，因此这里只把原始载荷交给调用方判安全。
+   */
+  getRunLangfuseLink: async (
+    runId: string,
+  ): Promise<{ available?: boolean; url?: string | null }> =>
+    unwrap<{ available?: boolean; url?: string | null }>(
+      await getAgentRunLangfuseLinkRouteApiAgentRunsRunIdLangfuseGet({
+        path: { run_id: runId },
+      }),
+    ),
 
   /** 线程内排队请求与队列状态。 */
   listThreadRequests: async (

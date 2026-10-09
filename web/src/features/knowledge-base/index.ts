@@ -2,6 +2,10 @@
 export { KnowledgeList } from './ui/knowledge-list';
 export { KnowledgeFormDialog } from './ui/knowledge-form-dialog';
 export { KnowledgeFileTable } from './ui/knowledge-file-table';
+export { KnowledgeGraphPanel } from './ui/knowledge-graph-panel';
+export { KnowledgeMindmapPanel } from './ui/knowledge-mindmap-panel';
+export { EvaluationBenchmarksPanel } from './ui/evaluation-benchmarks-panel';
+export { RagEvaluationPanel } from './ui/rag-evaluation-panel';
 export type { FileCrumb, FileLocation, FileView } from './model/file-view';
 export {
   buildSearchHitLocation,

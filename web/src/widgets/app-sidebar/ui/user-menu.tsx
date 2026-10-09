@@ -1,6 +1,10 @@
 'use client';
 
-import { BadgeCheck, Bell, ChevronsUpDown, LogOut } from 'lucide-react';
+import * as React from 'react';
+import { BadgeCheck, Bell, Bug, ChevronsUpDown, LogOut } from 'lucide-react';
+
+import { useIsSuperuser } from '@/entities/session';
+import { DebugModal } from '@/features/debug';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/avatar';
 import {
@@ -31,6 +35,8 @@ export function NavUser({
   onLogout?: () => void;
 }) {
   const { isMobile } = useSidebar();
+  const isSuperuser = useIsSuperuser();
+  const [debugOpen, setDebugOpen] = React.useState(false);
   const fallback = user.name
     .split(' ')
     .map((part) => part[0])
@@ -89,6 +95,12 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            {isSuperuser ? (
+              <DropdownMenuItem onSelect={() => setDebugOpen(true)}>
+                <Bug />
+                调试
+              </DropdownMenuItem>
+            ) : null}
             <DropdownMenuItem onClick={onLogout}>
               <LogOut />
               Log out
@@ -96,6 +108,7 @@ export function NavUser({
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+      <DebugModal open={debugOpen} onOpenChange={setDebugOpen} />
     </SidebarMenu>
   );
 }

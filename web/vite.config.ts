@@ -90,6 +90,10 @@ export default defineConfig(({ mode }) => {
       environment: 'jsdom',
       setupFiles: './test/setup-tests.ts',
       exclude: ['**/node_modules/**', '**/e2e/**'],
+      // 默认按 CPU 数开满 worker；本机同时跑 docker 栈与浏览器验证时，
+      // 几十个 jsdom 文件互相抢核会把 userEvent 用例顶过 5 秒默认预算（假失败）。
+      // 限到一半核数，换稳定性；用例自身的超时预算不因此放宽。
+      maxWorkers: '50%',
       coverage: {
         include: ['src/**'],
       },

@@ -9,3 +9,4 @@ export {
   setAccessToken,
   toApiError,
 } from './base';
+export { describeFailure, unwrap, unwrapQueuedTask } from './result';

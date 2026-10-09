@@ -24,4 +24,11 @@ export default defineConfig([
     files: ['**/features/knowledge-base/**'],
     rules: { 'fsd/insignificant-slice': 'off' },
   },
+  {
+    // 调试面板的入口只有用户菜单一处（上游同样只有 UserInfoComponent 引用 DebugComponent）。
+    // 日志解析、四个接口与查询装配和弹窗是一体的：并入 widgets/app-sidebar 会让侧边栏同时
+    // 拥有身份切换与系统配置写入，因此保留切片，只关掉「单引用建议合并」这一条。
+    files: ['**/features/debug/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
 ]);

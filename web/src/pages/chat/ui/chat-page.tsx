@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { Bug } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
 
 import {
@@ -13,6 +14,9 @@ import {
   isThreadWaitingForUserAction,
   isToolApprovalMode,
   MessageList,
+  MessageDebugPanel,
+  mergeMessageDebugMessages,
+  type DebugMessage,
   normalizeUploadedImage,
   PendingInterruptPanel,
   QueueBar,
@@ -29,6 +33,7 @@ import {
   writeToolApprovalModePreference,
 } from '@/features/chat';
 import type { ToolApprovalMode, UploadedImage } from '@/features/chat';
+import { useIsSuperuser } from '@/entities/session';
 import { paths } from '@/shared/config';
 import { Button } from '@/shared/ui/button';
 import { ContentLayout } from '@/shared/ui/content-layout';
@@ -111,6 +116,9 @@ export const ChatPage = () => {
   const notifications = useNotifications();
   const runtime = useThreadRuntime(threadId);
   const streamingMessages = useStreamingMessages(threadId);
+  // 消息时序调试：入口只给超管（后端接口自身也要求超管），面板只看当前线程的消息
+  const isSuperuser = useIsSuperuser();
+  const [debugOpen, setDebugOpen] = React.useState(false);
 
   // 审批模式按上游的三级回退解析：有线程看线程 metadata，无线程看本地偏好与智能体默认值
   const agentToolApprovalMode = useThreadList(
@@ -125,7 +133,9 @@ export const ChatPage = () => {
         ?.tool_approval_mode,
   );
   // metadata 是后端可写的自由字段，取值要校验后才当成模式用
-  const threadToolApprovalMode = isToolApprovalMode(storedThreadToolApprovalMode)
+  const threadToolApprovalMode = isToolApprovalMode(
+    storedThreadToolApprovalMode,
+  )
     ? storedThreadToolApprovalMode
     : null;
   const [savedToolApprovalMode, setSavedToolApprovalMode] =
@@ -356,12 +366,37 @@ export const ChatPage = () => {
     <ContentLayout title="智能体对话">
       <div className="flex flex-col gap-4 py-4">
         <div className="flex min-h-40 flex-col gap-4 rounded-large border border-color-border-1 bg-color-bg-1 p-4">
+          {isSuperuser ? (
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-pressed={debugOpen}
+                onClick={() => setDebugOpen((current) => !current)}
+              >
+                <Bug className="size-3.5" />
+                {debugOpen ? '关闭调试' : '消息调试'}
+              </Button>
+            </div>
+          ) : null}
           <MessageList
             messages={messages}
             streamingMessages={streamingMessages}
             isProcessing={isStreaming}
           />
         </div>
+
+        {debugOpen ? (
+          <MessageDebugPanel
+            messages={mergeMessageDebugMessages(
+              messages as unknown as DebugMessage[],
+              streamingMessages as unknown as DebugMessage[],
+              runtime?.activeRunId ?? null,
+            )}
+            fetchLangfuseUrl={(runId) => agentRunApi.getRunLangfuseLink(runId)}
+          />
+        ) : null}
 
         {pendingInterrupt && threadId ? (
           <PendingInterruptPanel

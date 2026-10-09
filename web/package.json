@@ -26,6 +26,7 @@
     "build-storybook": "NODE_ENV=production storybook build"
   },
   "dependencies": {
+    "@antv/g6": "5.1.1",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@hey-api/client-fetch": "^0.13.1",
     "@hookform/resolvers": "^3.3.4",
@@ -44,6 +45,8 @@
     "markdown-it": "^15.0.2",
     "markdown-it-task-lists": "^2.1.1",
     "marked": "^12.0.2",
+    "markmap-lib": "0.18.12",
+    "markmap-view": "0.18.12",
     "nanoid": "^5.0.7",
     "pdfjs-dist": "^6.4.299",
     "radix-ui": "^1.6.7",

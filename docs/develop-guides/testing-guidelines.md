@@ -24,7 +24,10 @@
 
 其他子项目约定：
 
-- 前端单元测试统一放在 `web/test/unit`，通过 `pnpm test:unit` 运行。
+- 前端单元测试统一放在 `web/test/unit`，通过 `pnpm test:unit` 运行（镜像 `web/src` 的目录结构）。
+  该套件在 `web/vite.config.ts` 里把 `maxWorkers` 限到 50%：默认按 CPU 数铺满时，靠
+  `userEvent` 驱动的交互用例会成片假失败；个别重交互文件（表格、评估面板、调试弹窗）用文件级
+  `vi.setConfig({ testTimeout: 15000 })` 自带预算，不放宽全局配置。
 - `packages/ars-cli` 是独立 Python 包，沿用 Python 社区惯例放在 `packages/ars-cli/tests`。
 - 同一个子项目内不要同时创建 `test` 和 `tests` 两个测试根目录。
 

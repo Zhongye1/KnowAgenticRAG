@@ -2,8 +2,8 @@
  * 知识库详情页。
  *
  * 与上游 `DataBaseInfoView.vue` 同结构：顶部名称/类型/描述与统计卡，下面按 tab 分区。
- * 已落地「文件管理」「检索测试」与「共享设置」；知识图谱、知识导图、RAG 评估与评估基准
- * 留给 S4/S5，未落地的 tab 显示占位而不是空白。
+ * 六个分区全部落地（文件管理、检索测试、知识图谱、知识导图、RAG 评估、评估基准），
+ * 另有头部「共享设置」；连接器类型只给检索测试。
  *
  * 只有文档型知识库（上游判定 `kb_type === 'milvus'`）才有文件管理：连接器类型
  * （Dify / Notion）没有文档全文接口，渲染出来只会收到 400 与一个永远失败的重试按钮。
@@ -27,6 +27,10 @@ import {
   formatCount,
   getKbTypeLabel,
   KnowledgeFileTable,
+  KnowledgeGraphPanel,
+  KnowledgeMindmapPanel,
+  EvaluationBenchmarksPanel,
+  RagEvaluationPanel,
   useKnowledgeBase,
 } from '@/features/knowledge-base';
 import { paths } from '@/shared/config';
@@ -45,21 +49,19 @@ const DOCUMENT_KB_TYPES = ['milvus'];
 const DOCUMENT_TABS: Array<{
   key: DetailTab;
   label: string;
-  pendingIn?: string;
 }> = [
   { key: 'files', label: '文件管理' },
   { key: 'query', label: '检索测试' },
-  { key: 'graph', label: '知识图谱', pendingIn: 'S4' },
-  { key: 'mindmap', label: '知识导图', pendingIn: 'S4' },
-  { key: 'evaluation', label: 'RAG 评估', pendingIn: 'S4' },
-  { key: 'benchmarks', label: '评估基准', pendingIn: 'S4' },
+  { key: 'graph', label: '知识图谱' },
+  { key: 'mindmap', label: '知识导图' },
+  { key: 'evaluation', label: 'RAG 评估' },
+  { key: 'benchmarks', label: '评估基准' },
 ];
 
 /** 连接器类型只支持检索测试（上游对非 milvus 只给这一个分区）。 */
 const CONNECTOR_TABS: Array<{
   key: DetailTab;
   label: string;
-  pendingIn?: string;
 }> = [{ key: 'query', label: '检索测试' }];
 
 const StatCard = ({ label, value }: { label: string; value: string }) => (
@@ -231,14 +233,25 @@ const KnowledgeBaseContent = ({ kbId }: { kbId: string }) => {
 
         {visibleTab === 'query' ? <QueryTestPanel kbId={kbId} /> : null}
 
-        {visibleTab === 'files' || visibleTab === 'query' ? null : (
-          <PagePlaceholder
-            title={
-              tabs.find((tab) => tab.key === visibleTab)?.label ?? '知识库'
-            }
-            description={`该分区随 ${tabs.find((tab) => tab.key === visibleTab)?.pendingIn ?? '后续分片'} 接入。`}
+        {visibleTab === 'graph' ? (
+          <KnowledgeGraphPanel kbId={kbId} readOnly={readOnly} />
+        ) : null}
+
+        {visibleTab === 'mindmap' ? (
+          <KnowledgeMindmapPanel kbId={kbId} readOnly={readOnly} />
+        ) : null}
+
+        {visibleTab === 'benchmarks' ? (
+          <EvaluationBenchmarksPanel kbId={kbId} readOnly={readOnly} />
+        ) : null}
+
+        {visibleTab === 'evaluation' ? (
+          <RagEvaluationPanel
+            kbId={kbId}
+            readOnly={readOnly}
+            onGoToBenchmarks={() => setActiveTab('benchmarks')}
           />
-        )}
+        ) : null}
 
         {shareOpen ? (
           <ShareConfigDialog kb={kb} onOpenChange={setShareOpen} />

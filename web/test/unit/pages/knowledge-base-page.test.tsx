@@ -5,6 +5,12 @@ import * as React from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+/**
+ * 这套用例逐个靠 userEvent 驱动 Radix 弹窗，全套件并行跑时会超过默认 5 秒预算；
+ * 这里给本文件一个明确预算，不放宽全局配置。
+ */
+vi.setConfig({ testTimeout: 15000 });
+
 const { api } = vi.hoisted(() => ({
   api: {
     get: vi.fn(),
@@ -34,6 +40,50 @@ vi.mock('@/features/knowledge-base/api/knowledge-api', async () => {
       listDepartments: (...args: unknown[]) => api.departments(...args),
       listUserOptions: (...args: unknown[]) => api.users(...args),
       update: (...args: unknown[]) => api.update(...args),
+    },
+  };
+});
+
+// 评估基准分区会自己拉数据；这里固定成空列表
+vi.mock('@/features/knowledge-base/api/evaluation-api', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/features/knowledge-base/api/evaluation-api')
+  >('@/features/knowledge-base/api/evaluation-api');
+  return {
+    ...actual,
+    evaluationApi: {
+      ...actual.evaluationApi,
+      listDatasets: async () => [],
+      listRuns: async () => [],
+      getDataset: async () => {
+        throw new Error('unused');
+      },
+      resumeDatasetGeneration: async () => ({}),
+      deleteDataset: async () => undefined,
+      downloadDataset: async () => ({ blob: new Blob(), filename: null }),
+    },
+  };
+});
+
+// 导图分区会自己拉数据；这里固定成「还没生成」，让页面用例只验接线
+vi.mock('@/features/knowledge-base/api/mindmap-api', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/features/knowledge-base/api/mindmap-api')
+  >('@/features/knowledge-base/api/mindmap-api');
+  return {
+    ...actual,
+    mindmapApi: {
+      getDocument: async () => ({ mindmap: null, kb_id: 'kb-1' }),
+      generate: async () => ({ mindmap: null }),
+      getDiff: async () => ({
+        has_mindmap: false,
+        tracked_files: [],
+        current_files: [],
+        added_files: [],
+        removed_file_ids: [],
+        unchanged_count: 0,
+        needs_update: false,
+      }),
     },
   };
 });
@@ -139,15 +189,45 @@ describe('知识库详情页', () => {
     );
   });
 
-  it('未落地的分区给出占位说明而不是空白', async () => {
+  it('RAG 评估分区渲染真实面板（没有基准时引导去基准管理）', async () => {
+    renderPage();
+    await screen.findByText('研发知识库');
+
+    await userEvent.click(screen.getByRole('button', { name: 'RAG 评估' }));
+
+    expect(await screen.findByText('暂无可用评估基准')).toBeTruthy();
+    expect(screen.queryByText(/该分区随/)).toBeNull();
+  });
+
+  it('评估基准分区渲染真实面板', async () => {
+    renderPage();
+    await screen.findByText('研发知识库');
+
+    await userEvent.click(screen.getByRole('button', { name: '评估基准' }));
+
+    expect(await screen.findByText(/共 \d+ 个评估基准/)).toBeTruthy();
+    expect(screen.queryByText(/该分区随/)).toBeNull();
+  });
+
+  it('知识导图分区渲染真实面板（空态给生成入口）', async () => {
+    renderPage();
+    await screen.findByText('研发知识库');
+
+    await userEvent.click(screen.getByRole('button', { name: '知识导图' }));
+
+    expect(await screen.findByText('暂无思维导图')).toBeTruthy();
+    expect(screen.queryByText(/该分区随/)).toBeNull();
+  });
+
+  it('知识图谱分区渲染真实面板：工具栏与搜索入口都在', async () => {
     renderPage();
     await screen.findByText('研发知识库');
 
     await userEvent.click(screen.getByRole('button', { name: '知识图谱' }));
-    expect(screen.getByText('该分区随 S4 接入。')).toBeTruthy();
 
-    await userEvent.click(screen.getByRole('button', { name: '评估基准' }));
-    expect(screen.getByText('该分区随 S4 接入。')).toBeTruthy();
+    expect(await screen.findByLabelText('搜索实体')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '图谱设置' })).toBeTruthy();
+    expect(screen.queryByText(/该分区随/)).toBeNull();
   });
 
   it('检索测试分区渲染真实面板', async () => {
@@ -212,7 +292,7 @@ describe('知识库详情页', () => {
     expect(await screen.findByText('列表页')).toBeTruthy();
   });
 
-  itSlow('刷新文件列表时一并刷新详情，统计卡不会停在旧数字', async () => {
+  it('刷新文件列表时一并刷新详情，统计卡不会停在旧数字', async () => {
     renderPage();
     await screen.findByText('研发知识库');
     await waitFor(() =>
@@ -227,7 +307,7 @@ describe('知识库详情页', () => {
     await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
   });
 
-  itSlow('切到其它分区再回来，文件的每页条数不被重置', async () => {
+  it('切到其它分区再回来，文件的每页条数不被重置', async () => {
     api.listDocuments.mockResolvedValue({
       items: [
         {
@@ -286,7 +366,7 @@ describe('知识库详情页', () => {
     );
   });
 
-  itSlow('搜索命中跳目录时回到第一页，不拿上一页页码查新目录', async () => {
+  it('搜索命中跳目录时回到第一页，不拿上一页页码查新目录', async () => {
     api.listDocuments.mockImplementation(
       (_kbId: string, params: { page: number; parentId: string | null }) =>
         Promise.resolve({
@@ -357,56 +437,53 @@ describe('知识库详情页', () => {
     );
   });
 
-  itSlow(
-    '搜索命中在路径投影下时按目录前缀定位，面包屑用真实目录名',
-    async () => {
-      api.searchDocuments.mockResolvedValue({
-        files: [
-          {
-            kb_id: 'kb-1',
-            file_id: 'f-1',
-            filename: 'brief/docs/年度报表.pdf',
-            status: 'indexed',
-            parent_id: null,
-          },
-        ],
-        total: 1,
-        offset: 0,
-        limit: 100,
-        has_more: false,
-      });
-      renderPage();
-      await screen.findByText('研发知识库');
+  it('搜索命中在路径投影下时按目录前缀定位，面包屑用真实目录名', async () => {
+    api.searchDocuments.mockResolvedValue({
+      files: [
+        {
+          kb_id: 'kb-1',
+          file_id: 'f-1',
+          filename: 'brief/docs/年度报表.pdf',
+          status: 'indexed',
+          parent_id: null,
+        },
+      ],
+      total: 1,
+      offset: 0,
+      limit: 100,
+      has_more: false,
+    });
+    renderPage();
+    await screen.findByText('研发知识库');
 
-      await userEvent.click(screen.getByRole('button', { name: /搜索文件/ }));
-      await userEvent.type(screen.getByLabelText('搜索文件名'), '报表');
-      await userEvent.click(
-        await screen.findByRole(
-          'button',
-          { name: /年度报表\.pdf/ },
-          { timeout: 3000 },
-        ),
-      );
+    await userEvent.click(screen.getByRole('button', { name: /搜索文件/ }));
+    await userEvent.type(screen.getByLabelText('搜索文件名'), '报表');
+    await userEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: /年度报表\.pdf/ },
+        { timeout: 3000 },
+      ),
+    );
 
-      await waitFor(() =>
-        expect(api.listDocuments).toHaveBeenLastCalledWith(
-          'kb-1',
-          expect.objectContaining({
-            parentId: null,
-            pathPrefix: 'brief/docs/',
-            status: 'all',
-          }),
-        ),
-      );
-      const nav = await screen.findByRole('navigation', { name: '文件路径' });
-      expect(within(nav).getByRole('button', { name: 'brief' })).toBeTruthy();
-      expect(within(nav).getByRole('button', { name: 'docs' })).toBeTruthy();
-      // 路径投影的每一节都用真实目录名，没有额外的占位节
-      expect(within(nav).getAllByRole('button')).toHaveLength(3);
-    },
-  );
+    await waitFor(() =>
+      expect(api.listDocuments).toHaveBeenLastCalledWith(
+        'kb-1',
+        expect.objectContaining({
+          parentId: null,
+          pathPrefix: 'brief/docs/',
+          status: 'all',
+        }),
+      ),
+    );
+    const nav = await screen.findByRole('navigation', { name: '文件路径' });
+    expect(within(nav).getByRole('button', { name: 'brief' })).toBeTruthy();
+    expect(within(nav).getByRole('button', { name: 'docs' })).toBeTruthy();
+    // 路径投影的每一节都用真实目录名，没有额外的占位节
+    expect(within(nav).getAllByRole('button')).toHaveLength(3);
+  });
 
-  itSlow('搜索命中后切到文件分区并回到它的目录', async () => {
+  it('搜索命中后切到文件分区并回到它的目录', async () => {
     api.searchDocuments.mockResolvedValue({
       files: [
         {
@@ -443,75 +520,72 @@ describe('知识库详情页', () => {
     );
   });
 
-  itSlow(
-    '搜索只给 parent_id 时面包屑用占位节，点它不会掉回根目录',
-    async () => {
-      // 目录不同就返回不同的文件，用界面内容判断表格到底查了哪一层
-      api.listDocuments.mockImplementation(
-        (_kbId: string, params: { parentId: string | null }) =>
-          Promise.resolve(
-            filePage([
-              {
-                file_id: params.parentId ? 'f-in-folder' : 'f-at-root',
-                filename: params.parentId ? '目录内文件.md' : '根目录文件.md',
-                status: 'indexed',
-                file_size: 12,
-                chunk_count: 0,
-                token_count: 0,
-                is_folder: false,
-                has_children: false,
-                children_count: 0,
-                has_original_file: false,
-                has_parsed_markdown: false,
-                is_virtual_folder: false,
-              },
-            ]),
-          ),
-      );
-      api.searchDocuments.mockResolvedValue({
-        files: [
-          {
-            kb_id: 'kb-1',
-            file_id: 'f-1',
-            filename: '年度报表.pdf',
-            status: 'indexed',
-            parent_id: 'folder-9',
-          },
-        ],
-        total: 1,
-        offset: 0,
-        limit: 100,
-        has_more: false,
-      });
-      renderPage();
-      await screen.findByText('研发知识库');
-
-      await userEvent.click(screen.getByRole('button', { name: /搜索文件/ }));
-      await userEvent.type(screen.getByLabelText('搜索文件名'), '报表');
-      await userEvent.click(
-        await screen.findByRole(
-          'button',
-          { name: /年度报表\.pdf/ },
-          { timeout: 3000 },
+  it('搜索只给 parent_id 时面包屑用占位节，点它不会掉回根目录', async () => {
+    // 目录不同就返回不同的文件，用界面内容判断表格到底查了哪一层
+    api.listDocuments.mockImplementation(
+      (_kbId: string, params: { parentId: string | null }) =>
+        Promise.resolve(
+          filePage([
+            {
+              file_id: params.parentId ? 'f-in-folder' : 'f-at-root',
+              filename: params.parentId ? '目录内文件.md' : '根目录文件.md',
+              status: 'indexed',
+              file_size: 12,
+              chunk_count: 0,
+              token_count: 0,
+              is_folder: false,
+              has_children: false,
+              children_count: 0,
+              has_original_file: false,
+              has_parsed_markdown: false,
+              is_virtual_folder: false,
+            },
+          ]),
         ),
-      );
-      await screen.findByText('目录内文件.md');
+    );
+    api.searchDocuments.mockResolvedValue({
+      files: [
+        {
+          kb_id: 'kb-1',
+          file_id: 'f-1',
+          filename: '年度报表.pdf',
+          status: 'indexed',
+          parent_id: 'folder-9',
+        },
+      ],
+      total: 1,
+      offset: 0,
+      limit: 100,
+      has_more: false,
+    });
+    renderPage();
+    await screen.findByText('研发知识库');
 
-      // 只看点击之后的请求：首屏那次根目录查询不算
-      api.listDocuments.mockClear();
-      await userEvent.click(screen.getByRole('button', { name: '…' }));
-      await new Promise((resolve) => setTimeout(resolve, 50));
+    await userEvent.click(screen.getByRole('button', { name: /搜索文件/ }));
+    await userEvent.type(screen.getByLabelText('搜索文件名'), '报表');
+    await userEvent.click(
+      await screen.findByRole(
+        'button',
+        { name: /年度报表\.pdf/ },
+        { timeout: 3000 },
+      ),
+    );
+    await screen.findByText('目录内文件.md');
 
-      // 面包屑缺锚点会退回根目录，届时这里会出现一次 parentId 为空的查询
-      expect(api.listDocuments).not.toHaveBeenCalledWith(
-        'kb-1',
-        expect.objectContaining({ parentId: null }),
-      );
-      expect(screen.getByText('目录内文件.md')).toBeTruthy();
-    },
-  );
+    // 只看点击之后的请求：首屏那次根目录查询不算
+    api.listDocuments.mockClear();
+    await userEvent.click(screen.getByRole('button', { name: '…' }));
+    await new Promise((resolve) => setTimeout(resolve, 50));
 
-  itSlow('搜索命中在根目录时回到根，不伪造面包屑', async () => {
+    // 面包屑缺锚点会退回根目录，届时这里会出现一次 parentId 为空的查询
+    expect(api.listDocuments).not.toHaveBeenCalledWith(
+      'kb-1',
+      expect.objectContaining({ parentId: null }),
+    );
+    expect(screen.getByText('目录内文件.md')).toBeTruthy();
+  });
+
+  it('搜索命中在根目录时回到根，不伪造面包屑', async () => {
     api.searchDocuments.mockResolvedValue({
       files: [
         {

@@ -4,6 +4,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+/**
+ * 这套用例逐个靠 userEvent 驱动 Radix 弹窗，全套件并行跑时会超过默认 5 秒预算；
+ * 这里给本文件一个明确预算，不放宽全局配置。
+ */
+vi.setConfig({ testTimeout: 15000 });
+
 const { api } = vi.hoisted(() => ({
   api: {
     listTypes: vi.fn(),
@@ -116,7 +122,7 @@ describe('知识库表单对话框', () => {
     expect(api.create).not.toHaveBeenCalled();
   });
 
-  itSlow('创建时提交类型、模型与默认共享范围', async () => {
+  it('创建时提交类型、模型与默认共享范围', async () => {
     renderDialog();
 
     await userEvent.type(screen.getByLabelText('知识库名称'), ' 新库 ');
@@ -152,7 +158,7 @@ describe('知识库表单对话框', () => {
     expect(screen.queryByLabelText('嵌入模型')).toBeNull();
   });
 
-  itSlow('创建失败时显示后端原因且不关闭', async () => {
+  it('创建失败时显示后端原因且不关闭', async () => {
     api.create.mockRejectedValue(new Error('知识库名称已存在'));
     const { onOpenChange } = renderDialog();
 

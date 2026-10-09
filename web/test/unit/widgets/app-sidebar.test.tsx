@@ -1,16 +1,31 @@
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { syncStatuses, upsert, session } = vi.hoisted(() => ({
-  syncStatuses: vi.fn().mockResolvedValue(undefined),
-  upsert: vi.fn(),
-  session: {
-    useUser: () => ({ uid: 'u-1', username: 'tester' }),
-    useLogout: () => vi.fn(),
-    useKnowledgeEnabled: () => false,
-    useIsSuperuser: () => false,
+const { syncStatuses, upsert, sessionState, session } = vi.hoisted(() => {
+  const state = { isSuperuser: false, debugOpen: null as boolean | null };
+  return {
+    syncStatuses: vi.fn().mockResolvedValue(undefined),
+    upsert: vi.fn(),
+    sessionState: state,
+    session: {
+      useUser: () => ({
+        data: { uid: 'u-1', username: 'tester', department_name: '平台组' },
+      }),
+      useLogout: () => vi.fn(),
+      useKnowledgeEnabled: () => false,
+      useIsSuperuser: () => state.isSuperuser,
+    },
+  };
+});
+
+/** 调试弹窗自己有一份测试；这里只验证用户菜单的入口是否接线。 */
+vi.mock('@/features/debug', () => ({
+  DebugModal: ({ open }: { open: boolean }) => {
+    sessionState.debugOpen = open;
+    return open ? <span data-testid="debug-modal-open" /> : null;
   },
 }));
 
@@ -58,12 +73,17 @@ const LocationProbe = () => <span data-testid="path">{useLocation().pathname}</s
 
 const renderSidebar = (defaultOpen = true) =>
   render(
-    <MemoryRouter>
-      <SidebarProvider defaultOpen={defaultOpen}>
-        <AppSidebar />
-        <LocationProbe />
-      </SidebarProvider>
-    </MemoryRouter>,
+    // 外壳在真实应用里提供 QueryClient，侧边栏的挂载点（如调试弹窗）依赖它
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <MemoryRouter>
+        <SidebarProvider defaultOpen={defaultOpen}>
+          <AppSidebar />
+          <LocationProbe />
+        </SidebarProvider>
+      </MemoryRouter>
+    </QueryClientProvider>,
   );
 
 /** 推进一个同步周期；回调里的 promise 需要用 act 包住。 */
@@ -177,5 +197,37 @@ describe('侧边栏的会话搜索入口', () => {
 
     expect(upsert).not.toHaveBeenCalled();
     expect(screen.getByTestId('path').textContent).toBe('/agent');
+  });
+});
+
+describe('用户菜单里的调试入口', () => {
+  beforeEach(() => {
+    vi.useRealTimers();
+    sessionState.isSuperuser = false;
+    sessionState.debugOpen = null;
+  });
+
+  afterEach(() => {
+    sessionState.isSuperuser = false;
+  });
+
+  it('非超管看不到调试入口', async () => {
+    renderSidebar();
+
+    await userEvent.click(screen.getByRole('button', { name: /tester/ }));
+
+    expect(screen.queryByRole('menuitem', { name: /调试/ })).toBeNull();
+    expect(sessionState.debugOpen).toBe(false);
+  });
+
+  it('超管的调试入口打开弹窗', async () => {
+    sessionState.isSuperuser = true;
+    renderSidebar();
+
+    await userEvent.click(screen.getByRole('button', { name: /tester/ }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: /调试/ }));
+
+    expect(await screen.findByTestId('debug-modal-open')).toBeInTheDocument();
+    expect(sessionState.debugOpen).toBe(true);
   });
 });

@@ -43,3 +43,28 @@ if (!Element.prototype.hasPointerCapture) {
 if (!Element.prototype.scrollIntoView) {
   Element.prototype.scrollIntoView = () => undefined;
 }
+
+/**
+ * jsdom 也没有实现 `Blob.prototype.text()` / `arrayBuffer()`，而上传前的文件内容校验
+ * （评估基准 JSONL）与二进制预览都要用它们。用 FileReader 补上最小实现。
+ */
+if (!Blob.prototype.text) {
+  Blob.prototype.text = function text(this: Blob) {
+    return new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result ?? ''));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsText(this);
+    });
+  };
+}
+if (!Blob.prototype.arrayBuffer) {
+  Blob.prototype.arrayBuffer = function arrayBuffer(this: Blob) {
+    return new Promise<ArrayBuffer>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(this);
+    });
+  };
+}

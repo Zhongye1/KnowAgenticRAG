@@ -10,6 +10,12 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+/**
+ * 这套用例逐个靠 userEvent 驱动表格与 Radix 菜单，全套件并行跑时会超过默认 5 秒预算；
+ * 这里给本文件一个明确预算，不放宽全局配置。
+ */
+vi.setConfig({ testTimeout: 20000 });
+
 
 const { queryOptions } = vi.hoisted(() => ({
   queryOptions: [] as Array<{ refetchInterval?: number | false }>,
@@ -91,7 +97,6 @@ const { shouldPollFiles } =
   await import('@/features/knowledge-base/ui/knowledge-file-table');
 
 /** 要开下拉、翻页或等异步查询的用例自带预算，并行跑整套时不会被 5 秒上限误伤。 */
-const itSlow = (name: string, fn: () => Promise<void>) => it(name, fn, 15000);
 const { ConfirmDialogHost } = await import('@/shared/ui/confirm-dialog-host');
 
 const file = (id: string, extra: Record<string, unknown> = {}) => ({
@@ -192,7 +197,7 @@ describe('知识库文件表', () => {
     });
   });
 
-  itSlow('渲染文件名、状态、创建人与内容量', async () => {
+  it('渲染文件名、状态、创建人与内容量', async () => {
     api.listDocuments.mockResolvedValue(
       page([
         file('报表', {
@@ -214,7 +219,7 @@ describe('知识库文件表', () => {
     expect(within(row).getByTitle('34 Chunks')).toBeTruthy();
   });
 
-  itSlow('文件夹的内容量与时间留空，虚拟目录不显示创建人', async () => {
+  it('文件夹的内容量与时间留空，虚拟目录不显示创建人', async () => {
     api.listDocuments.mockResolvedValue(
       page([
         file('实体目录', {
@@ -243,7 +248,7 @@ describe('知识库文件表', () => {
     expect(within(virtualFolder).getAllByText('-')).toHaveLength(3);
   });
 
-  itSlow('刷新期间按钮禁用，并在回来时重取列表', async () => {
+  it('刷新期间按钮禁用，并在回来时重取列表', async () => {
     api.listDocuments.mockResolvedValueOnce(page([file('报表')]));
     renderTable();
     await screen.findByTestId('file-row');
@@ -269,7 +274,7 @@ describe('知识库文件表', () => {
     expect(api.listDocuments).toHaveBeenCalledTimes(2);
   });
 
-  itSlow('时间列按上海时区渲染，一年内精确到秒', async () => {
+  it('时间列按上海时区渲染，一年内精确到秒', async () => {
     const recent = new Date(Date.now() - 60_000).toISOString();
     api.listDocuments.mockResolvedValue(
       page([file('新文件', { created_at: recent })]),
@@ -285,7 +290,7 @@ describe('知识库文件表', () => {
     expect(within(row).getByText(expected)).toBeTruthy();
   });
 
-  itSlow('首屏按根目录、全部状态与 100 条/页请求', async () => {
+  it('首屏按根目录、全部状态与 100 条/页请求', async () => {
     renderTable();
     await screen.findByTestId('file-row');
 
@@ -298,7 +303,7 @@ describe('知识库文件表', () => {
     });
   });
 
-  itSlow('筛选状态时把页码回到第一页', async () => {
+  it('筛选状态时把页码回到第一页', async () => {
     api.listDocuments.mockImplementation(
       (_kbId: string, params: { page: number }) =>
         Promise.resolve(
@@ -329,7 +334,7 @@ describe('知识库文件表', () => {
     expect(screen.getByText('跨全部目录筛选')).toBeTruthy();
   });
 
-  itSlow('点文件夹进入它的目录，面包屑点击回到该层', async () => {
+  it('点文件夹进入它的目录，面包屑点击回到该层', async () => {
     api.listDocuments.mockImplementation(
       (_kbId: string, params: { parentId: string | null }) =>
         Promise.resolve(
@@ -389,7 +394,7 @@ describe('知识库文件表', () => {
     );
   });
 
-  itSlow('虚拟目录用父目录 + path_prefix 进入，不把它当实体目录', async () => {
+  it('虚拟目录用父目录 + path_prefix 进入，不把它当实体目录', async () => {
     api.listDocuments.mockImplementation(
       (
         _kbId: string,
@@ -432,7 +437,7 @@ describe('知识库文件表', () => {
     );
   });
 
-  itSlow('从虚拟层点面包屑能回到该虚拟层，而不是它的父目录', async () => {
+  it('从虚拟层点面包屑能回到该虚拟层，而不是它的父目录', async () => {
     api.listDocuments.mockImplementation(
       (
         _kbId: string,
@@ -495,7 +500,7 @@ describe('知识库文件表', () => {
     );
   });
 
-  itSlow('筛选态不显示会与列表矛盾的路径', async () => {
+  it('筛选态不显示会与列表矛盾的路径', async () => {
     api.listDocuments.mockImplementation(
       (_kbId: string, params: { status: string }) =>
         Promise.resolve(
@@ -527,7 +532,7 @@ describe('知识库文件表', () => {
 
   // 后端在 status != all 时会强制 is_folder=false，界面上走不到「筛选态点目录」；
   // 这条钉住的是状态规则：位置一变，筛选就必须归位，否则两者互相矛盾
-  itSlow('改位置时把状态筛选归位，否则跨目录查询会忽略新位置', async () => {
+  it('改位置时把状态筛选归位，否则跨目录查询会忽略新位置', async () => {
     api.listDocuments.mockImplementation(
       (_kbId: string, params: { parentId: string | null; status: string }) =>
         Promise.resolve(
@@ -571,7 +576,7 @@ describe('知识库文件表', () => {
     );
   });
 
-  itSlow(
+  it(
     '切目录期间不把上一个目录的行当成新目录内容，也不谎报空态',
     async () => {
       api.listDocuments.mockResolvedValueOnce(page([]));
@@ -599,7 +604,7 @@ describe('知识库文件表', () => {
     },
   );
 
-  itSlow('切目录期间旧行不能继续下钻', async () => {
+  it('切目录期间旧行不能继续下钻', async () => {
     api.listDocuments.mockResolvedValueOnce(
       page([
         file('目录A', {
@@ -629,7 +634,7 @@ describe('知识库文件表', () => {
     );
   });
 
-  itSlow('没有文件时给出空态', async () => {
+  it('没有文件时给出空态', async () => {
     api.listDocuments.mockResolvedValue(page([]));
     renderTable();
 
@@ -637,7 +642,7 @@ describe('知识库文件表', () => {
     expect(screen.queryByTestId('file-row')).toBeNull();
   });
 
-  itSlow('加载失败时给出原因与重试', async () => {
+  it('加载失败时给出原因与重试', async () => {
     api.listDocuments.mockRejectedValueOnce(new Error('知识库不存在'));
     renderTable();
 
@@ -649,14 +654,14 @@ describe('知识库文件表', () => {
     expect(await screen.findByText('恢复.pdf')).toBeTruthy();
   });
 
-  itSlow('只读知识库给出说明，且不渲染选择列与批量入口', async () => {
+  it('只读知识库给出说明，且不渲染选择列与批量入口', async () => {
     renderTable({ readOnly: true });
     await screen.findByTestId('file-row');
 
     expect(screen.getByText('当前账号对该知识库只有读取权限。')).toBeTruthy();
   });
 
-  itSlow('分页按钮按总数与页长启用，翻页请求带页码', async () => {
+  it('分页按钮按总数与页长启用，翻页请求带页码', async () => {
     api.listDocuments.mockImplementation(
       (_kbId: string, params: { page: number }) =>
         Promise.resolve(
@@ -680,7 +685,7 @@ describe('知识库文件表', () => {
     expect(await screen.findByText('第2页.pdf')).toBeTruthy();
   });
 
-  itSlow('每页条数变更后回到第一页', async () => {
+  it('每页条数变更后回到第一页', async () => {
     api.listDocuments.mockImplementation(
       (_kbId: string, params: { page: number; pageSize: number }) =>
         Promise.resolve(
@@ -709,7 +714,7 @@ describe('知识库文件表', () => {
     );
   });
 
-  itSlow('文件名列排序时文件夹排在文件前面', async () => {
+  it('文件名列排序时文件夹排在文件前面', async () => {
     api.listDocuments.mockResolvedValue(
       page([
         file('报表'),
@@ -731,7 +736,7 @@ describe('知识库文件表', () => {
     expect(rows[0]).toContain('目录');
   });
 
-  itSlow('点搜索入口把打开动作交给页面', async () => {
+  it('点搜索入口把打开动作交给页面', async () => {
     const onOpenSearch = vi.fn();
     renderTable({ onOpenSearch });
     await screen.findByTestId('file-row');
@@ -741,7 +746,7 @@ describe('知识库文件表', () => {
     expect(onOpenSearch).toHaveBeenCalledTimes(1);
   });
 
-  itSlow('排序按钮按状态权重升序排列当前页', async () => {
+  it('排序按钮按状态权重升序排列当前页', async () => {
     api.listDocuments.mockResolvedValue(
       page([
         file('失败件', { status: 'error_parsing' }),
@@ -804,7 +809,7 @@ describe('文件名搜索弹窗', () => {
     return { onSelect };
   };
 
-  itSlow('防抖生效：连续输入期间不请求，停下后才发一次', async () => {
+  it('防抖生效：连续输入期间不请求，停下后才发一次', async () => {
     vi.useFakeTimers();
     try {
       renderModal();
@@ -829,7 +834,7 @@ describe('文件名搜索弹窗', () => {
     }
   });
 
-  itSlow('防抖后按关键词搜索并展示文件名、状态与大小', async () => {
+  it('防抖后按关键词搜索并展示文件名、状态与大小', async () => {
     renderModal();
 
     await userEvent.type(screen.getByLabelText('搜索文件名'), '报表');
@@ -840,7 +845,7 @@ describe('文件名搜索弹窗', () => {
     expect(api.searchDocuments).toHaveBeenCalledWith('kb-1', { query: '报表' });
   });
 
-  itSlow('命中项拆开显示基名与目录名，目录名过长只留尾部', async () => {
+  it('命中项拆开显示基名与目录名，目录名过长只留尾部', async () => {
     const dirname = `brief/${'很长的目录'.repeat(10)}`;
     api.searchDocuments.mockResolvedValue({
       files: [
@@ -871,7 +876,7 @@ describe('文件名搜索弹窗', () => {
     expect(within(hit).getByText('2024-03-05 09:00')).toBeTruthy();
   });
 
-  itSlow('选中一条结果把文件交给调用方', async () => {
+  it('选中一条结果把文件交给调用方', async () => {
     const { onSelect } = renderModal();
 
     await userEvent.type(screen.getByLabelText('搜索文件名'), '报表');
@@ -891,7 +896,7 @@ describe('文件名搜索弹窗', () => {
     expect(screen.queryByText(/共 0 条结果/)).toBeNull();
   });
 
-  itSlow('结果被截断时提示细化关键词', async () => {
+  it('结果被截断时提示细化关键词', async () => {
     api.searchDocuments.mockResolvedValue({
       files: [
         {
@@ -913,7 +918,7 @@ describe('文件名搜索弹窗', () => {
     expect(await screen.findByText(/仅展示前 1 条，请细化关键词/)).toBeTruthy();
   });
 
-  itSlow('没有命中时给出空态', async () => {
+  it('没有命中时给出空态', async () => {
     api.searchDocuments.mockResolvedValue({
       files: [],
       total: 0,
@@ -929,7 +934,7 @@ describe('文件名搜索弹窗', () => {
     expect(screen.getByText('共 0 条结果')).toBeTruthy();
   });
 
-  itSlow('搜索失败时给出原因', async () => {
+  it('搜索失败时给出原因', async () => {
     api.searchDocuments.mockRejectedValue(new Error('只支持检索'));
     renderModal();
 
@@ -963,7 +968,7 @@ describe('文件行内操作', () => {
       await screen.findByRole('button', { name: `文件操作：${filename}.pdf` }),
     );
 
-  itSlow('删除要先确认，确认后调文件级端点并提示成功', async () => {
+  it('删除要先确认，确认后调文件级端点并提示成功', async () => {
     api.deleteDocument.mockResolvedValue({ message: '删除成功' });
     renderTable();
     await screen.findAllByTestId('file-row');
@@ -985,7 +990,7 @@ describe('文件行内操作', () => {
     );
   });
 
-  itSlow('确认框里取消则不删', async () => {
+  it('确认框里取消则不删', async () => {
     renderTable();
     await screen.findAllByTestId('file-row');
 
@@ -997,7 +1002,7 @@ describe('文件行内操作', () => {
     expect(api.deleteDocument).not.toHaveBeenCalled();
   });
 
-  itSlow('删除失败时把后端原因带出来', async () => {
+  it('删除失败时把后端原因带出来', async () => {
     api.deleteDocument.mockRejectedValue(new Error('删除文档失败: 文件被占用'));
     renderTable();
     await screen.findAllByTestId('file-row');
@@ -1016,7 +1021,7 @@ describe('文件行内操作', () => {
     );
   });
 
-  itSlow('解析与入库都提交任务，并把后端原因带回来', async () => {
+  it('解析与入库都提交任务，并把后端原因带回来', async () => {
     api.listDocuments.mockResolvedValue(
       page([
         file('待解析', { status: 'uploaded', file_id: 'f-3' }),
@@ -1049,7 +1054,7 @@ describe('文件行内操作', () => {
     );
   });
 
-  itSlow('下载用行文件名兜底，并把响应头文件名交给浏览器', async () => {
+  it('下载用行文件名兜底，并把响应头文件名交给浏览器', async () => {
     const blob = new Blob(['x']);
     api.downloadDocument.mockResolvedValue({
       blob,
@@ -1105,7 +1110,7 @@ describe('文件批量操作', () => {
       await screen.findByRole('checkbox', { name: `选择 ${name}.pdf` }),
     );
 
-  itSlow('表头全选勾上当前页可选的行，处理中的行勾不动', async () => {
+  it('表头全选勾上当前页可选的行，处理中的行勾不动', async () => {
     renderTable();
     await screen.findAllByTestId('file-row');
 
@@ -1123,7 +1128,7 @@ describe('文件批量操作', () => {
     expect(processing).toHaveAttribute('disabled');
   });
 
-  itSlow('批量条按选中内容启用，解析只提交可解析的行', async () => {
+  it('批量条按选中内容启用，解析只提交可解析的行', async () => {
     api.parseDocuments.mockResolvedValue({ status: 'queued' });
     renderTable();
     await screen.findAllByTestId('file-row');
@@ -1147,7 +1152,7 @@ describe('文件批量操作', () => {
     );
   });
 
-  itSlow('翻页后旧选择不再生效', async () => {
+  it('翻页后旧选择不再生效', async () => {
     api.listDocuments.mockImplementation(
       (_kbId: string, params: { page: number }) =>
         Promise.resolve(
@@ -1171,7 +1176,7 @@ describe('文件批量操作', () => {
     expect(screen.queryByText('已选 1 项')).toBeNull();
   });
 
-  itSlow('批量删除先按可删除行确认，再分批提交并汇总', async () => {
+  it('批量删除先按可删除行确认，再分批提交并汇总', async () => {
     api.batchDeleteDocuments.mockResolvedValue({
       message: '批量删除成功',
       deleted_count: 1,
@@ -1205,7 +1210,7 @@ describe('文件批量操作', () => {
     expect(screen.queryByText(/已选/)).toBeNull();
   });
 
-  itSlow('批量删除部分失败时给出成功与失败数量', async () => {
+  it('批量删除部分失败时给出成功与失败数量', async () => {
     api.batchDeleteDocuments.mockResolvedValue({
       message: '部分删除成功',
       deleted_count: 1,
@@ -1230,7 +1235,7 @@ describe('文件批量操作', () => {
     );
   });
 
-  itSlow('批量删除在飞行中不能重复提交', async () => {
+  it('批量删除在飞行中不能重复提交', async () => {
     let release: (value: unknown) => void = () => {};
     api.batchDeleteDocuments.mockImplementation(
       () =>
@@ -1257,7 +1262,7 @@ describe('文件批量操作', () => {
     });
   });
 
-  itSlow('行内「移动到…」打开移动弹窗', async () => {
+  it('行内「移动到…」打开移动弹窗', async () => {
     renderTable();
     await screen.findAllByTestId('file-row');
 
@@ -1281,7 +1286,7 @@ describe('只读与陈旧态', () => {
     notifications.addNotification.mockReset();
   });
 
-  itSlow('只读知识库不给勾选，也不渲染批量入口', async () => {
+  it('只读知识库不给勾选，也不渲染批量入口', async () => {
     renderTable({ readOnly: true });
     await screen.findAllByTestId('file-row');
 
@@ -1299,7 +1304,7 @@ describe('只读与陈旧态', () => {
     expect(screen.queryByRole('menuitem', { name: /删除文件/ })).toBeNull();
   });
 
-  itSlow('切目录期间行内入口锁掉，不能对上一个目录的行动手', async () => {
+  it('切目录期间行内入口锁掉，不能对上一个目录的行动手', async () => {
     api.listDocuments.mockResolvedValueOnce(
       page([file('报表', { status: 'indexed', file_id: 'f-1' })]),
     );
@@ -1330,7 +1335,7 @@ describe('只读与陈旧态', () => {
     );
   });
 
-  itSlow('响应头没有文件名时用行上的文件名兜底', async () => {
+  it('响应头没有文件名时用行上的文件名兜底', async () => {
     api.downloadDocument.mockResolvedValue({
       blob: new Blob(['x']),
       filename: null,
@@ -1359,7 +1364,7 @@ describe('只读与陈旧态', () => {
     createObjectURL.mockRestore();
   });
 
-  itSlow('表头复选框半选时是 mixed', async () => {
+  it('表头复选框半选时是 mixed', async () => {
     api.listDocuments.mockResolvedValue(
       page([
         file('甲', { status: 'indexed', file_id: 'f-1' }),
@@ -1395,7 +1400,7 @@ describe('打开文件详情', () => {
     });
   });
 
-  itSlow('点文件名打开详情，只有能预览的行才是按钮', async () => {
+  it('点文件名打开详情，只有能预览的行才是按钮', async () => {
     renderTable();
     await screen.findAllByTestId('file-row');
 
@@ -1406,7 +1411,7 @@ describe('打开文件详情', () => {
     expect(api.fileContent).toHaveBeenCalledWith('kb-1', 'f-1');
   });
 
-  itSlow('没有原始文件也没有解析结果的行不给入口', async () => {
+  it('没有原始文件也没有解析结果的行不给入口', async () => {
     api.listDocuments.mockResolvedValue(
       page([
         file('解析中', {

@@ -4,6 +4,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+/**
+ * 这套用例逐个靠 userEvent 驱动 Radix 弹窗，全套件并行跑时会超过默认 5 秒预算；
+ * 与 `knowledge-file-table` 等重交互文件同一口径，给本文件一个明确预算，不放宽全局配置。
+ */
+vi.setConfig({ testTimeout: 15000 });
+
 const { api, notifications } = vi.hoisted(() => ({
   api: {
     list: vi.fn(),
@@ -25,12 +31,9 @@ vi.mock('@/shared/ui/notifications', () => ({
   useNotifications: () => notifications,
 }));
 
-const { KnowledgeList } = await import(
-  '@/features/knowledge-base/ui/knowledge-list'
-);
-const { ConfirmDialogHost } = await import(
-  '@/shared/ui/confirm-dialog-host'
-);
+const { KnowledgeList } =
+  await import('@/features/knowledge-base/ui/knowledge-list');
+const { ConfirmDialogHost } = await import('@/shared/ui/confirm-dialog-host');
 const { useConfirmStore } = await import('@/shared/ui/confirm-dialog');
 
 const database = (id: string, extra: Record<string, unknown> = {}) => ({
@@ -163,7 +166,9 @@ describe('知识库列表', () => {
     await userEvent.click(
       screen.getByRole('button', { name: '知识库操作：库-a' }),
     );
-    await userEvent.click(await screen.findByRole('menuitem', { name: '删除' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: '删除' }),
+    );
     expect(api.remove).not.toHaveBeenCalled();
 
     expect(await screen.findByText('删除知识库「库-a」？')).toBeTruthy();
@@ -172,7 +177,10 @@ describe('知识库列表', () => {
     await waitFor(() => expect(api.remove).toHaveBeenCalledWith('a'));
     await waitFor(() =>
       expect(notifications.addNotification).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'success', message: '已删除「库-a」。' }),
+        expect.objectContaining({
+          type: 'success',
+          message: '已删除「库-a」。',
+        }),
       ),
     );
   });
@@ -184,7 +192,9 @@ describe('知识库列表', () => {
     await userEvent.click(
       screen.getByRole('button', { name: '知识库操作：库-a' }),
     );
-    await userEvent.click(await screen.findByRole('menuitem', { name: '删除' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: '删除' }),
+    );
     await userEvent.click(await screen.findByRole('button', { name: '取消' }));
 
     expect(api.remove).not.toHaveBeenCalled();
@@ -198,7 +208,9 @@ describe('知识库列表', () => {
     await userEvent.click(
       screen.getByRole('button', { name: '知识库操作：库-a' }),
     );
-    await userEvent.click(await screen.findByRole('menuitem', { name: '删除' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: '删除' }),
+    );
     await userEvent.click(await screen.findByRole('button', { name: '删除' }));
 
     await waitFor(() =>
@@ -221,7 +233,9 @@ describe('知识库列表', () => {
       screen.getByRole('button', { name: '知识库操作：库-a' }),
     );
 
-    expect(await screen.findByRole('menuitem', { name: '复制 ID' })).toBeTruthy();
+    expect(
+      await screen.findByRole('menuitem', { name: '复制 ID' }),
+    ).toBeTruthy();
     expect(screen.queryByRole('menuitem', { name: '编辑' })).toBeNull();
     expect(screen.queryByRole('menuitem', { name: '删除' })).toBeNull();
   });
@@ -312,7 +326,9 @@ describe('知识库列表', () => {
     await userEvent.click(
       screen.getByRole('button', { name: '知识库操作：库-a' }),
     );
-    await userEvent.click(await screen.findByRole('menuitem', { name: '编辑' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: '编辑' }),
+    );
 
     expect(await screen.findByTestId('knowledge-form-dialog')).toBeTruthy();
     expect(screen.getByLabelText<HTMLInputElement>('知识库名称').value).toBe(
