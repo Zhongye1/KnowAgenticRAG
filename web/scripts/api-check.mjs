@@ -20,7 +20,10 @@ import {
   OPENAPI_SNAPSHOT,
 } from '../openapi.config.mjs';
 
-const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const rootDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+);
 const committedDir = path.join(rootDir, GENERATED_OUTPUT);
 const tempDir = mkdtempSync(path.join(tmpdir(), 'ars-web-api-check-'));
 
@@ -89,7 +92,8 @@ try {
 
   if (problems.length > 0) {
     console.error('契约生成物已漂移，请执行 `pnpm run api:gen` 后提交：');
-    for (const problem of problems.slice(0, 20)) console.error(`  - ${problem}`);
+    for (const problem of problems.slice(0, 20))
+      console.error(`  - ${problem}`);
     if (problems.length > 20) console.error(`  …共 ${problems.length} 处`);
     process.exitCode = 1;
   } else {

@@ -19,7 +19,10 @@ export const ConfirmDialogHost = () => {
   const options = pending?.options;
 
   return (
-    <Dialog open={Boolean(pending)} onOpenChange={(open) => !open && settle(false)}>
+    <Dialog
+      open={Boolean(pending)}
+      onOpenChange={(open) => !open && settle(false)}
+    >
       <DialogContent data-testid="confirm-dialog">
         <DialogHeader>
           <DialogTitle>{options?.title}</DialogTitle>

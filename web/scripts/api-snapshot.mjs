@@ -8,8 +8,12 @@ import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const source = process.env.ARS_OPENAPI_URL ?? 'http://localhost:5050/openapi.json';
+const rootDir = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+);
+const source =
+  process.env.ARS_OPENAPI_URL ?? 'http://localhost:5050/openapi.json';
 const target = path.join(rootDir, 'openapi.json');
 
 const response = await fetch(source);

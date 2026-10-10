@@ -420,7 +420,7 @@ export const chatThreadApi = {
   /**
    * 按消息内容搜索历史会话。
    *
-   * 不传 `agent_id`：上游的搜索范围就是当前用户的全部会话（与列表接口按智能体过滤不同）。
+   * 不传 `agent_id`：搜索范围是当前用户的全部会话（与列表接口按智能体过滤不同）。
    */
   searchThreads: async (payload: {
     query: string;

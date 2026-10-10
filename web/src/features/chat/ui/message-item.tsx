@@ -1,8 +1,8 @@
 /**
  * 一条对话消息：用户消息、系统提示，或带思维链与错误提示的助手消息。
  *
- * 与上游 `AgentMessageComponent.vue` 同结构：思维链独立折叠，正文走 Markdown，
- * 工具调用由列表层单独渲染（`hide-tool-calls`），避免同一组工具显示两次。
+ * 思维链独立折叠，正文走 Markdown，工具调用由列表层单独渲染（`hide-tool-calls`），
+ * 避免同一组工具显示两次。
  */
 import * as React from 'react';
 import { Brain, ChevronDown, ChevronRight, LoaderCircle } from 'lucide-react';
@@ -28,11 +28,17 @@ type MessageItemProps = {
   isProcessing?: boolean;
 };
 
-export const MessageItem = ({ message, isProcessing = false }: MessageItemProps) => {
+export const MessageItem = ({
+  message,
+  isProcessing = false,
+}: MessageItemProps) => {
   const isDark = useIsDarkMode();
   const [reasoningExpanded, setReasoningExpanded] = React.useState(false);
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
-  const body = React.useMemo(() => parseAssistantMessageBody(message), [message]);
+  const body = React.useMemo(
+    () => parseAssistantMessageBody(message),
+    [message],
+  );
   // 还没有正文时就是在思考：这段时间思维链自动展开且不可收起，之后交给用户
   const thinking = isProcessing && !body.content;
   const showReasoning = thinking || reasoningExpanded;
@@ -81,7 +87,7 @@ export const MessageItem = ({ message, isProcessing = false }: MessageItemProps)
     error_message?: string;
   } | null;
   const errorType = message.error_type ?? metadata?.error_type ?? null;
-  // 上游只要存在 error_type 就提示，正文与提示可以同时出现（半截回答不该看起来像完成）
+  // 只要存在 error_type 就提示，正文与提示可以同时出现（半截回答不该看起来像完成）
   const errorText =
     message.error_message ??
     metadata?.error_message ??

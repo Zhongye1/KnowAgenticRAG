@@ -1,9 +1,8 @@
 /**
  * 图谱详情面板的纯逻辑：属性筛选、取值渲染与「竖排/截断」判定。
  *
- * 上游 `GraphDetailPanel.vue` 的常量与规则照搬（竖排阈值 50、截断 100、重置展开态），
- * 只有一处有意偏离：非原始值（对象/数组）上游渲染成 `[object Object]`，这里用 JSON，
- * 否则属性面板看不出内容。
+ * 竖排阈值 50、截断 100、切换元素时重置展开态。
+ * 非原始值（对象/数组）用 JSON 渲染，否则属性面板看不出内容。
  */
 
 /** 超过这个长度就改成标签在上、值在下的竖排。 */
@@ -26,7 +25,7 @@ export const visibleEdgeProperties = (
 /**
  * 取值渲染成一行文本。
  *
- * 原始值 `String(value)`；对象与数组用 JSON（上游会显示 `[object Object]`）；
+ * 原始值 `String(value)`；对象与数组用 JSON；
  * `null`/`undefined` 与空字符串都渲染成 `-`，避免出现空白行看不出是空值。
  */
 export const formatGraphValue = (value: unknown): string => {

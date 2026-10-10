@@ -1,9 +1,8 @@
 /**
  * 分块的合并规则。
  *
- * 移植上游 `utils/chunkUtils.js` 的 `findOverlap` 与 `mergeChunks`：分块之间常有重叠，
- * 合并时去掉重复部分；被前面内容完全覆盖的分块不再单独列出。详情弹窗的「解析结果」
- * 在服务端没给 Markdown 时用它兜底，「分块」视图展示的也是合并后的列表（上游同）。
+ * 分块之间常有重叠，合并时去掉重复部分；被前面内容完全覆盖的分块不再单独列出。详情弹窗的
+ * 「解析结果」在服务端没给 Markdown 时用它兜底，「分块」视图展示的也是合并后的列表。
  */
 
 /** 参与合并的最小字段；行上的其余字段原样透出。 */
@@ -18,7 +17,7 @@ export type MergedChunk<T extends ChunkRecord = ChunkRecord> = T & {
   endOffset: number;
 };
 
-/** 两个字符串的最长重叠：从最短 11 个字符开始找，太短的重叠不当作重复（上游同）。 */
+/** 两个字符串的最长重叠：从最短 11 个字符开始找，太短的重叠不当作重复。 */
 export const findOverlap = (left: string, right: string): string => {
   if (!left || !right) return '';
   const maxOverlap = Math.min(left.length, right.length);

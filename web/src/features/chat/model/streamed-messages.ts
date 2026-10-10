@@ -5,7 +5,10 @@
  * Compiler 会把「按依赖身份缓存表达式」的派生冻结在空帧上，因此这里与
  * `useThreadRuntime` 一样显式退出编译优化，并且不做记忆化。
  */
-import { attachToolResults, splitStreamedChunks } from '../lib/message-processor';
+import {
+  attachToolResults,
+  splitStreamedChunks,
+} from '../lib/message-processor';
 import type { ConversationMessage } from '../lib/message-processor';
 import type { StreamedChunk } from '../lib/message-processor';
 import { useThreadRuntime } from './thread-runtime-store';

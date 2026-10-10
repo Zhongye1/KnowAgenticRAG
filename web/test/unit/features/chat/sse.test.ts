@@ -18,12 +18,18 @@ describe('processRunSseResponse', () => {
   it('按空行分帧，解析 event / data / id', async () => {
     const onEvent = vi.fn();
     await processRunSseResponse(
-      sseResponse(['event: delta\nid: 5-0\ndata: {"payload":{"text":"hi"}}\n\n']),
+      sseResponse([
+        'event: delta\nid: 5-0\ndata: {"payload":{"text":"hi"}}\n\n',
+      ]),
       onEvent,
     );
 
     expect(onEvent).toHaveBeenCalledTimes(1);
-    expect(onEvent).toHaveBeenCalledWith('delta', { payload: { text: 'hi' } }, '5-0');
+    expect(onEvent).toHaveBeenCalledWith(
+      'delta',
+      { payload: { text: 'hi' } },
+      '5-0',
+    );
   });
 
   it('跨分块拼接未完成的帧', async () => {

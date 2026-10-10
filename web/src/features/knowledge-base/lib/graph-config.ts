@@ -1,14 +1,10 @@
 /**
  * 图谱抽取配置的纯逻辑：表单默认值/回填、模型参数 JSON 解析、提交体组装与校验。
  *
- * 上游 `KnowledgeGraphSection.vue` 的 `graphConfigForm` + `parseModelParams` +
- * `buildExtractorOptions` 三段。
+ * 表单默认值与回填、模型参数 JSON 解析、提交体组装三段。
  *
- * 两处有意偏离：
- * 1) 上游用 `configStore.config.default_model` 兜底模型，目标端没有这份全局配置，
- *    回填只认已锁定的配置；模型必须由用户在弹窗里选。
- * 2) 上游不校验就提交，模型为空时由后端返回 400「LLM 抽取器需要 model_spec」；
- *    这里在提交前拦一次并给出界面自己的说明。
+ * 回填只认已锁定的配置，模型必须由用户在弹窗里选（没有全局默认模型可兜底）；提交前先校验
+ * 模型是否为空，避免把后端的 400「LLM 抽取器需要 model_spec」当成提示。
  */
 import type { GraphBuildConfig, GraphExtractorOptions } from '../api/graph-api';
 
@@ -20,7 +16,7 @@ export type GraphConfigForm = {
   modelParamsText: string;
 };
 
-/** 上游默认并发 50；后端允许 1..1000。 */
+/** 默认并发 50；后端允许 1..1000。 */
 export const DEFAULT_CONCURRENCY = 50;
 
 export const MIN_CONCURRENCY = 1;
@@ -35,7 +31,7 @@ export const DEFAULT_GRAPH_CONFIG_FORM: GraphConfigForm = {
   modelParamsText: '',
 };
 
-/** 抽取器卡片；只有 LLM 可用，「更多」是占位（上游同为 disabled）。 */
+/** 抽取器卡片；只有 LLM 可用，「更多」是占位。 */
 export const EXTRACTOR_TYPE_OPTIONS = [
   {
     value: 'llm',

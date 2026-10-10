@@ -10,9 +10,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  */
 vi.setConfig({ testTimeout: 15000 });
 
-/** 这组用例靠 userEvent 驱动 Radix Dialog，并行跑套件时会超过默认 5 秒预算。 */
-const itSlow = (name: string, fn: () => Promise<void>) => it(name, fn, 15000);
-
 const { api } = vi.hoisted(() => ({
   api: { listDocuments: vi.fn(), moveDocument: vi.fn() },
 }));

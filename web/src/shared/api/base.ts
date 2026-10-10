@@ -75,8 +75,21 @@ export async function toApiError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, detail);
 }
 
-function notifyUnauthorized(response: Response): void {
-  if (response.status !== 401) return;
+/**
+ * 未认证入口。登录是唯一不需要凭据的写接口，带上旧 token 会让「密码错误」的 401
+ * 被当成会话失效（参照实现的登录请求同样不带 token）。
+ */
+const UNAUTHENTICATED_PATHS = ['/api/auth/token'];
+
+const isUnauthenticated = (url: string): boolean =>
+  UNAUTHENTICATED_PATHS.some((path) => url.split('?')[0].endsWith(path));
+
+/**
+ * 401 的语义是凭据被拒。只有携带凭据的请求才谈得上「会话失效」，
+ * 未认证入口的 401 不该清凭据、也不该派发未授权事件。
+ */
+function notifyUnauthorized(response: Response, credentialed: boolean): void {
+  if (response.status !== 401 || !credentialed) return;
   setAccessToken(null);
   window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
 }
@@ -92,7 +105,7 @@ export async function apiFetch(
 
   const response = await fetch(input, { ...init, headers });
   if (!response.ok) {
-    notifyUnauthorized(response);
+    notifyUnauthorized(response, headers.has('Authorization'));
     throw await toApiError(response);
   }
   return response;
@@ -102,13 +115,15 @@ export async function apiFetch(
 client.setConfig({ baseUrl: '' });
 
 client.interceptors.request.use((request) => {
+  if (isUnauthenticated(request.url)) return request;
+
   const token = getAccessToken();
   if (token) request.headers.set('Authorization', `Bearer ${token}`);
   return request;
 });
 
-client.interceptors.response.use((response) => {
-  notifyUnauthorized(response);
+client.interceptors.response.use((response, request) => {
+  notifyUnauthorized(response, request.headers.has('Authorization'));
   return response;
 });
 

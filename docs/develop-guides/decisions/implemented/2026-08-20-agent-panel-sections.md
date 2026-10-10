@@ -2,7 +2,7 @@
 
 状态：implemented
 类型：feature
-Owner：docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-design.md
+Owner：docs/develop-guides/decisions/implemented/2026-10-01-web-react-migration-design.md
 
 ## 问题
 
@@ -22,7 +22,7 @@ AgentPanel 使用扁平一级 Tabs：文件树、每个文件预览和每个子�
 
 每个打开的运行中子智能体 Tab 保持一条 SSE；隐藏 AgentPanel 保持组件挂载，关闭内容 Tab 或切换父线程触发卸载与清理。文件树、文件预览和子智能体共享一级 Tab 条，文件树快捷按钮提供固定返回入口。子线程不进入主线程 Store 或路由。
 
-本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../proposed/2026-10-01-web-react-migration-design.md)在 `web/` 重建。
+本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../implemented/2026-10-01-web-react-migration-design.md)在 `web/` 重建。
 
 ## 验证
 

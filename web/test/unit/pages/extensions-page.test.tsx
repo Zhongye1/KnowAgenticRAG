@@ -10,7 +10,6 @@ const { session, knowledge } = vi.hoisted(() => ({
   },
   knowledge: { onOpen: null as null | ((database: { kb_id: string }) => void) },
   // 面板内容由 features 单独测；这里只验证外壳的接线
-
 }));
 
 vi.mock('@/entities/session', () => ({
@@ -33,17 +32,22 @@ vi.mock('@/features/knowledge-base', () => ({
   },
 }));
 
+vi.mock('@/features/skills', () => ({
+  SkillCardList: () => <div>技能面板</div>,
+}));
+
 vi.mock('@/shared/ui/content-layout', () => ({
   ContentLayout: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
 }));
 
-const { ExtensionsPage } = await import(
-  '@/pages/extensions/ui/extensions-page'
-);
+const { ExtensionsPage } =
+  await import('@/pages/extensions/ui/extensions-page');
 
-const LocationProbe = () => <span data-testid="path">{useLocation().pathname}</span>;
+const LocationProbe = () => (
+  <span data-testid="path">{useLocation().pathname}</span>
+);
 
 const renderPage = () =>
   render(
@@ -65,9 +69,11 @@ describe('扩展页外壳', () => {
 
     expect(screen.getByRole('button', { name: '知识库' })).toBeTruthy();
     expect(screen.getByText('列表占位')).toBeTruthy();
-    expect(screen.getByRole('button', { name: '知识库' }).getAttribute('aria-current')).toBe(
-      'page',
-    );
+    expect(
+      screen
+        .getByRole('button', { name: '知识库' })
+        .getAttribute('aria-current'),
+    ).toBe('page');
   });
 
   it('能力关闭（LITE）时不显示知识库入口，也不发列表请求', () => {
@@ -104,12 +110,14 @@ describe('扩展页外壳', () => {
     expect(screen.queryByRole('button', { name: '知识库' })).toBeNull();
   });
 
-  it('切换 tab 后显示该面板的占位说明，并把 tab 写进地址', async () => {
+  it('切换 tab 后换成该 tab 的面板，并把 tab 写进地址', async () => {
     renderPage();
 
     await userEvent.click(screen.getByRole('button', { name: '技能' }));
 
-    expect(await screen.findByText('该面板随对应分片接入。')).toBeTruthy();
+    // 技能 tab 现在挂真实面板（本文件把面板 mock 掉，只验外壳接线）
+    expect(await screen.findByText('技能面板')).toBeTruthy();
+    expect(screen.queryByText('列表占位')).toBeNull();
     expect(
       screen.getByRole('button', { name: '技能' }).getAttribute('aria-current'),
     ).toBe('page');
@@ -122,7 +130,16 @@ describe('扩展页外壳', () => {
       </MemoryRouter>,
     );
 
+    expect(screen.getByText('技能面板')).toBeTruthy();
     expect(screen.queryByText('列表占位')).toBeNull();
+  });
+
+  it('工具与 MCP 仍是占位说明', async () => {
+    renderPage();
+
+    await userEvent.click(screen.getByRole('button', { name: '工具' }));
+
+    expect(await screen.findByText('该面板随对应分片接入。')).toBeTruthy();
   });
 
   it('选中知识库后跳转到详情地址', async () => {

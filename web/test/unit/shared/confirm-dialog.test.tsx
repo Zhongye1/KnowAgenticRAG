@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { ConfirmDialogHost } from '@/shared/ui/confirm-dialog-host';
 import { confirm, useConfirmStore } from '@/shared/ui/confirm-dialog';
@@ -20,7 +20,9 @@ describe('命令式确认框', () => {
     await userEvent.click(screen.getByRole('button', { name: '确定' }));
 
     await expect(answer).resolves.toBe(true);
-    await waitFor(() => expect(screen.queryByTestId('confirm-dialog')).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByTestId('confirm-dialog')).toBeNull(),
+    );
   });
 
   it('取消后以 false 结束', async () => {

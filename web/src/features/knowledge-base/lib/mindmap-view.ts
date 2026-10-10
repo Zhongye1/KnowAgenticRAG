@@ -1,8 +1,7 @@
 /**
  * 知识导图的纯逻辑：JSON 树 → Markdown、空态与增量入口的判定。
  *
- * 移植上游 `MindMapSection.vue` 的 `jsonToMarkdown` 与两处 computed：markmap 吃 Markdown，
- * 后端给的是 `{content, children}` 树，层级决定标题级别。
+ * markmap 吃 Markdown，而后端给的是 `{content, children}` 树：层级决定标题级别。
  */
 import type { MindmapDiff, MindmapNode } from '../api/mindmap-api';
 
@@ -24,7 +23,7 @@ export const mindmapToMarkdown = (node?: MindmapNode | null): string => {
 export const hasMindmap = (mindmap?: MindmapNode | null): boolean =>
   Boolean(mindmap && typeof mindmap.content === 'string' && mindmap.content);
 
-/** 增量更新入口：只有差异检测说需要更新时才出现（上游 `isIncremental`）。 */
+/** 增量更新入口：只有差异检测说需要更新时才出现。 */
 export const canIncrementalUpdate = (diff?: MindmapDiff | null): boolean =>
   Boolean(diff?.needs_update);
 

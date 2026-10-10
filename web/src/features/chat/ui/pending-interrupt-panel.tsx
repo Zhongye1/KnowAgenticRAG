@@ -21,8 +21,8 @@ type PendingInterruptPanelProps = {
 /**
  * 审批与提问的交互面板。
  *
- * 上游用弹窗承载；这里作为对话流内的一块，语义与提交载荷保持一致：
- * 审批发 `{ decisions }`，提问发「问题 id → 选项」的映射，取消统一发 `'reject'`。
+ * 作为对话流内的一块，语义与提交载荷一致：审批发 `{ decisions }`，提问发「问题 id → 选项」
+ * 的映射，取消统一发 `'reject'`。
  */
 export const PendingInterruptPanel = ({
   interrupt,
@@ -65,7 +65,9 @@ const ToolApprovalPanel = ({
   const [selections, setSelections] = React.useState<
     Record<number, 'approve' | 'reject'>
   >(() =>
-    Object.fromEntries(interrupt.actionRequests.map((_, index) => [index, 'approve'])),
+    Object.fromEntries(
+      interrupt.actionRequests.map((_, index) => [index, 'approve']),
+    ),
   );
 
   const toggle = (index: number) =>
@@ -99,7 +101,10 @@ const ToolApprovalPanel = ({
           disabled={disabled}
           onClick={() =>
             onSubmit(
-              buildToolApprovalResume(selections, interrupt.actionRequests.length),
+              buildToolApprovalResume(
+                selections,
+                interrupt.actionRequests.length,
+              ),
             )
           }
         >
@@ -150,7 +155,10 @@ const QuestionPanel = ({
       : multiSelect
         ? [...current, value]
         : [value];
-    updateSelection(questionId, { ...selectionFor(questionId), selected: next });
+    updateSelection(questionId, {
+      ...selectionFor(questionId),
+      selected: next,
+    });
   };
 
   return (
@@ -168,11 +176,17 @@ const QuestionPanel = ({
                   type="button"
                   size="sm"
                   variant={
-                    selection.selected.includes(option.value) ? 'default' : 'outline'
+                    selection.selected.includes(option.value)
+                      ? 'default'
+                      : 'outline'
                   }
                   disabled={disabled}
                   onClick={() =>
-                    toggleOption(question.questionId, option.value, question.multiSelect)
+                    toggleOption(
+                      question.questionId,
+                      option.value,
+                      question.multiSelect,
+                    )
                   }
                 >
                   {option.label}
@@ -188,7 +202,9 @@ const QuestionPanel = ({
                     updateSelection(question.questionId, {
                       ...selection,
                       selected: selection.otherSelected
-                        ? selection.selected.filter((item) => item !== otherValue)
+                        ? selection.selected.filter(
+                            (item) => item !== otherValue,
+                          )
                         : [...selection.selected, otherValue],
                       otherSelected: !selection.otherSelected,
                     })
@@ -219,7 +235,9 @@ const QuestionPanel = ({
         <Button
           type="button"
           disabled={disabled}
-          onClick={() => onSubmit(buildQuestionAnswers(interrupt.questions, selections))}
+          onClick={() =>
+            onSubmit(buildQuestionAnswers(interrupt.questions, selections))
+          }
         >
           提交
         </Button>
@@ -231,7 +249,12 @@ const QuestionPanel = ({
         >
           跳过
         </Button>
-        <Button type="button" variant="ghost" disabled={disabled} onClick={onCancel}>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={disabled}
+          onClick={onCancel}
+        >
           取消
         </Button>
       </div>

@@ -1,9 +1,8 @@
 /**
  * 流事件里的待审批中断提取。
  *
- * 逐行移植上游 Vue 实现的待审批中断提取逻辑：`extractPendingInterrupt`
- * 与它的两个内部提取函数是纯计算，原样搬到这里；上游的 `useApproval` 依赖 Vue 的
- * `reactive` 与外部回调（读写线程态、拉取消息），属于 UI 组装，不在本模块内。
+ * 纯计算：从流事件里取出待审批中断并归一成面板消费的形状。线程态的读写与消息拉取属于
+ * UI 组装，不在本模块内。
  */
 
 import type { ToolApprovalRequest } from './tool-approval';
@@ -87,9 +86,7 @@ const WRAPPER_OPTION_KEYS = [
 const WRAPPER_QUESTION_KEYS = ['questions', 'items', 'item', 'list', 'data'];
 
 /**
- * 以下 normalizeQuestions 及其辅助函数来自上游的提问工具模块
- * 的内联移植：本仓还没有该模块，而任务限定了改动文件，因此先随本模块携带，
- * 保持与上游同构（含 JSON 字符串解包、包装键、`其他` 选项注入等分支）。
+ * 提问工具的问题归一：JSON 字符串解包、包装键、`其他` 选项注入等分支都在这里判定。
  */
 const normalizeCollection = (
   value: unknown,

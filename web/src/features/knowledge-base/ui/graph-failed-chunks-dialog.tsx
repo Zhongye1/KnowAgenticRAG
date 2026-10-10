@@ -1,11 +1,8 @@
 /**
  * 抽取失败的 Chunk 样例弹窗。
  *
- * 移植上游 `KnowledgeGraphSection.vue` 的「样例 Chunk」弹窗：加载态、空态、每个样例如
- * `Chunk 序号 / file_id / 尝试次数 / 失败原因 / 原文`。
- *
- * 与上游的差异：上游用 `a-tabs` 一条一条切，本仓没有 tab 原语，这里按卡片平铺（后端把
- * `limit` 夹在 1..10，最多十条），省掉自造 tab 组件的成本，读到的东西一样多。
+ * 加载态、空态、每个样例展示 `Chunk 序号 / file_id / 尝试次数 / 失败原因 / 原文`，按卡片平铺
+ * （后端把 `limit` 夹在 1..10，最多十条）。
  */
 import { Spinner } from '@/shared/ui/spinner';
 import {

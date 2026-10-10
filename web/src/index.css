@@ -1,4 +1,19 @@
-@import 'tailwindcss';
+/* ============================================================================
+ * 层叠顺序
+ * ----------------------------------------------------------------------------
+ * `antd` 是 antd 5 的 CSS-in-JS 注入层（由 app/theme/antd-provider.tsx 的
+ * `StyleProvider layer` 指定）；无层注入会压过 Tailwind 工具类与 CSS Modules，
+ * 所以层序必须在这里显式声明。
+ *
+ * Tailwind 只引 theme 与 utilities、跳过 preflight：全局重置由 antd 的
+ * reset.css 主导。reset.css 放进 `base` 层而不是无层引入——无层的作者样式
+ * 会压过任何层内的规则，那样未迁移页面的 font-* / text-* 工具类会集体失效。
+ * ========================================================================== */
+@layer antd, theme, base, components, utilities;
+
+@import 'antd/dist/reset.css' layer(base);
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
 @import '@fontsource-variable/jetbrains-mono';

@@ -4,6 +4,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, useLocation } from 'react-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+/**
+ * 这套用例逐个靠 userEvent 驱动弹窗与表单，全套件并行跑时会超过默认 5 秒预算；
+ * 与 `knowledge-file-table` 等重交互文件同一口径，给本文件一个明确预算，不放宽全局配置。
+ */
+vi.setConfig({ testTimeout: 15000 });
+
 const { syncStatuses, upsert, sessionState, session } = vi.hoisted(() => {
   const state = { isSuperuser: false, debugOpen: null as boolean | null };
   return {
@@ -53,7 +59,10 @@ vi.mock('@/features/chat', () => ({
   }) =>
     open ? (
       <>
-        <button type="button" onClick={() => onSelectThread({ id: 'thread-B' })}>
+        <button
+          type="button"
+          onClick={() => onSelectThread({ id: 'thread-B' })}
+        >
           选中搜索结果
         </button>
         <button type="button" onClick={() => onSelectThread(null)}>
@@ -69,13 +78,17 @@ const { AppSidebar } = await import('@/widgets/app-sidebar');
 const { SidebarProvider } = await import('@/shared/ui/sidebar');
 
 /** 路由探针：选中搜索结果后断言跳转目标。 */
-const LocationProbe = () => <span data-testid="path">{useLocation().pathname}</span>;
+const LocationProbe = () => (
+  <span data-testid="path">{useLocation().pathname}</span>
+);
 
 const renderSidebar = (defaultOpen = true) =>
   render(
     // 外壳在真实应用里提供 QueryClient，侧边栏的挂载点（如调试弹窗）依赖它
     <QueryClientProvider
-      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
     >
       <MemoryRouter>
         <SidebarProvider defaultOpen={defaultOpen}>
@@ -225,7 +238,9 @@ describe('用户菜单里的调试入口', () => {
     renderSidebar();
 
     await userEvent.click(screen.getByRole('button', { name: /tester/ }));
-    await userEvent.click(await screen.findByRole('menuitem', { name: /调试/ }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: /调试/ }),
+    );
 
     expect(await screen.findByTestId('debug-modal-open')).toBeInTheDocument();
     expect(sessionState.debugOpen).toBe(true);

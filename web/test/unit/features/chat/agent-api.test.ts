@@ -9,7 +9,8 @@ const uploadMock = vi.fn();
 const searchThreadsMock = vi.fn();
 
 vi.mock('@/shared/api/generated/sdk.gen', () => ({
-  uploadImageApiChatImageUploadPost: (...args: unknown[]) => uploadMock(...args),
+  uploadImageApiChatImageUploadPost: (...args: unknown[]) =>
+    uploadMock(...args),
   searchThreadsApiChatThreadsSearchGet: (...args: unknown[]) =>
     searchThreadsMock(...args),
   listThreadRequestsApiAgentThreadThreadIdRequestsGet: (...args: unknown[]) =>
@@ -21,12 +22,12 @@ vi.mock('@/shared/api/generated/sdk.gen', () => ({
   continueThreadRequestsApiAgentThreadThreadIdRequestsContinuePost: (
     ...args: unknown[]
   ) => continueMock(...args),
-  createThreadApiChatThreadPost: (...args: unknown[]) => createThreadMock(...args),
+  createThreadApiChatThreadPost: (...args: unknown[]) =>
+    createThreadMock(...args),
 }));
 
-const { agentRunApi, chatThreadApi } = await import(
-  '@/features/chat/api/agent-api'
-);
+const { agentRunApi, chatThreadApi } =
+  await import('@/features/chat/api/agent-api');
 const { ApiError } = await import('@/shared/api/base');
 
 const queuePayload = {
@@ -87,8 +88,14 @@ describe('agentRunApi 队列接口', () => {
   });
 
   it('steer 与 cancel 只带路径参数，不带请求体', async () => {
-    steerMock.mockResolvedValue({ data: { status: 'queued' }, error: undefined });
-    cancelMock.mockResolvedValue({ data: { status: 'cancelled' }, error: undefined });
+    steerMock.mockResolvedValue({
+      data: { status: 'queued' },
+      error: undefined,
+    });
+    cancelMock.mockResolvedValue({
+      data: { status: 'cancelled' },
+      error: undefined,
+    });
 
     await agentRunApi.steerRequest('req-2');
     await agentRunApi.cancelRequest('req-2');
@@ -168,7 +175,9 @@ describe('agentRunApi 队列接口', () => {
   });
 
   it('网络失败没有响应体时状态码退化为 0，且不把浏览器英文文案当提示', async () => {
-    cancelMock.mockResolvedValue(networkFailure(new TypeError('Failed to fetch')));
+    cancelMock.mockResolvedValue(
+      networkFailure(new TypeError('Failed to fetch')),
+    );
 
     let caught: unknown;
     try {

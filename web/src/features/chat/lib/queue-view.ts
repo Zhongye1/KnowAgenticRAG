@@ -65,7 +65,7 @@ export type QueueRowActions = {
   canCancel: boolean;
 };
 
-/** 上游 `canSteerQueuedRequest`：只有运行中、可引导、来源是对话的普通排队请求能被提升。 */
+/** 只有运行中、可引导、来源是对话的普通排队请求能被提升。 */
 export function describeQueueRow(
   request: ThreadRequest,
   context: QueueRowContext,
@@ -78,7 +78,7 @@ export function describeQueueRow(
       request.status === 'queued' &&
       request.queue_policy === 'enqueue' &&
       request.source === 'chat',
-    // 上游 `canCancelQueuedRequest`：引导请求在运行中不可取消
+    // 引导请求在运行中不可取消
     canCancel:
       request.queue_policy !== 'steer' ||
       (!context.isStreaming && context.queueStatus !== 'running'),

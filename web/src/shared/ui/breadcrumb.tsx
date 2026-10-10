@@ -53,6 +53,9 @@ function BreadcrumbPage({ className, ...props }: React.ComponentProps<'span'>) {
   return (
     <span
       data-slot="breadcrumb-page"
+      // 当前页不是链接：role="link" + aria-disabled 保留「可读但不可点」的语义，
+      // 换成 <a> 会给出一个没有目标的链接
+      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- 当前页不是链接
       role="link"
       aria-disabled="true"
       aria-current="page"

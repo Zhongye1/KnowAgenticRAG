@@ -100,8 +100,7 @@ export const useKnowledgeFiles = (
     // 翻页与换目录时保留上一页，避免整张表先卸载再重建
     placeholderData: keepPreviousData,
     // 有文件在处理中时按 10 秒重取，让解析/入库状态自己走到终态；
-    // 页面不可见时 react-query 默认暂停轮询。上游还有「6 轮无进展就停」，
-    // 本仓没做：处理中的行消失后自然停止。
+    // 页面不可见时 react-query 默认暂停轮询；处理中的行消失后轮询自然停止。
     refetchInterval: options.refetchInterval ?? false,
   });
 
@@ -242,7 +241,7 @@ export const useFilePreview = (
 
 /**
  * 分块与解析结果；只在详情弹窗打开、且当前视图确实要看解析内容时才拉
- * （`enabled` 由调用方按视图给，与上游只在可用视图下加载同）。
+ * （`enabled` 由调用方按视图给）。
  */
 export const useFileContent = (
   kbId: string,

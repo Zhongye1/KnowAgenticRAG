@@ -28,7 +28,9 @@ const request = {
   queue_position: 2,
 };
 
-const renderBar = (props: Partial<React.ComponentProps<typeof QueueBar>> = {}) =>
+const renderBar = (
+  props: Partial<React.ComponentProps<typeof QueueBar>> = {},
+) =>
   render(
     <QueueBar
       view={view}
@@ -80,7 +82,9 @@ describe('QueueBar', () => {
     renderBar({ waitingForUserAction: true });
 
     expect(
-      screen.getByText('当前任务正在等待回答或审批，完成后将继续处理后续请求。'),
+      screen.getByText(
+        '当前任务正在等待回答或审批，完成后将继续处理后续请求。',
+      ),
     ).toBeTruthy();
     expect(screen.getByText(/第二条问题/)).toBeTruthy();
   });

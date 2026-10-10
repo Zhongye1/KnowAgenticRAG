@@ -1,12 +1,11 @@
 /**
  * 知识库文件的状态词表、展示规则与能力矩阵。
  *
- * 移植上游 `utils/knowledge_file_policy.js`：状态标签与色调、筛选选项、排序权重，
+ * 状态标签与色调、筛选选项、排序权重，
  * 以及解析/入库/重新入库/下载/删除/多选/预览的能力判定（`FileTable.vue` 的行操作与批量条
  * 按它决定哪些入口可用，文件详情弹窗按预览档位决定初始视图）。
  *
- * 时间与内容量的格式也在这里：上游把它们写在 `FileTable.vue` / `FileSearchModal.vue` 内部，
- * 本仓集中一处，便于脱离组件测时区与进制。
+ * 时间与内容量的格式也集中在这里，便于脱离组件测时区与进制。
  */
 import { parseShanghai } from './knowledge-view';
 
@@ -47,7 +46,7 @@ export const getFileStatusView = (status?: string | null): FileStatusView => {
   };
 };
 
-/** 状态筛选选项；与上游 `FILE_STATUS_FILTER_OPTIONS` 同 7 项。 */
+/** 状态筛选选项，共 7 项。 */
 export const FILE_STATUS_FILTER_OPTIONS = [
   { label: '待解析', value: 'uploaded' },
   { label: '解析中', value: 'parsing' },
@@ -58,7 +57,7 @@ export const FILE_STATUS_FILTER_OPTIONS = [
   { label: '重试入库', value: 'error_indexing' },
 ] as const;
 
-/** 排序权重：已入库 → 处理中 → 待处理 → 失败（上游 `STATUS_SORT_ORDER` 同序）。 */
+/** 排序权重：已入库 → 处理中 → 待处理 → 失败。 */
 const STATUS_SORT_ORDER: Record<string, number> = {
   done: 1,
   indexed: 1,
@@ -76,7 +75,7 @@ const STATUS_SORT_ORDER: Record<string, number> = {
 export const getFileStatusSortWeight = (status?: string | null): number =>
   STATUS_SORT_ORDER[status ?? ''] ?? 99;
 
-/** 处理中（上游 `PROCESSING_STATUSES`）：用于「处理中」提示与轮询判定。 */
+/** 处理中：用于「处理中」提示与轮询判定。 */
 const PROCESSING_STATUSES = new Set([
   'processing',
   'waiting',
@@ -84,16 +83,16 @@ const PROCESSING_STATUSES = new Set([
   'indexing',
 ]);
 
-/** 不能勾选的状态（上游 `TABLE_SELECTION_BLOCKED_STATUSES`）。 */
+/** 不能勾选的状态。 */
 const TABLE_SELECTION_BLOCKED_STATUSES = new Set(['processing', 'waiting']);
 
-/** 不能删除的状态（上游 `DELETE_BLOCKED_STATUSES`）：解析与入库进行中也不行。 */
+/** 不能删除的状态：解析与入库进行中也不行。 */
 const DELETE_BLOCKED_STATUSES = new Set(['processing', 'parsing', 'indexing']);
 
-/** 可以提交解析的状态（上游 `PARSEABLE_STATUSES`）。 */
+/** 可以提交解析的状态。 */
 const PARSEABLE_STATUSES = new Set(['uploaded', 'error_parsing']);
 
-/** 可以提交入库的状态（上游 `INDEXABLE_STATUSES`）。 */
+/** 可以提交入库的状态。 */
 const INDEXABLE_STATUSES = new Set([
   'parsed',
   'error_indexing',
@@ -101,10 +100,10 @@ const INDEXABLE_STATUSES = new Set([
   'indexed',
 ]);
 
-/** 可以重新入库的状态（上游 `REINDEXABLE_STATUSES`）。 */
+/** 可以重新入库的状态。 */
 const REINDEXABLE_STATUSES = new Set(['done', 'indexed']);
 
-/** 有解析结果可看的预览状态（上游 `PARSED_PREVIEW_STATUSES`）。 */
+/** 有解析结果可看的预览状态。 */
 const PARSED_PREVIEW_STATUSES = new Set([
   'done',
   'parsed',
@@ -112,13 +111,13 @@ const PARSED_PREVIEW_STATUSES = new Set([
   'error_indexing',
 ]);
 
-/** 只有源文件可看的预览状态（上游 `SOURCE_ONLY_PREVIEW_STATUSES`）。 */
+/** 只有源文件可看的预览状态。 */
 const SOURCE_ONLY_PREVIEW_STATUSES = new Set(['uploaded', 'error_parsing']);
 
-/** 能看分块的状态（上游 `CHUNK_PREVIEW_STATUSES`）。 */
+/** 能看分块的状态。 */
 const CHUNK_PREVIEW_STATUSES = new Set(['done', 'indexed']);
 
-/** 有原始文件可下载的状态（上游 `DOWNLOADABLE_STATUSES`）。 */
+/** 有原始文件可下载的状态。 */
 const DOWNLOADABLE_STATUSES = new Set([
   'done',
   'indexed',
@@ -136,7 +135,7 @@ export type FileCapabilityTarget = {
   has_parsed_markdown?: boolean;
 };
 
-/** 行内操作的两类动作（上游 `FILE_ACTIONS`）。 */
+/** 行内操作的两类动作。 */
 export const FILE_ACTIONS = {
   PARSE: 'parse',
   INDEX: 'index',
@@ -146,7 +145,7 @@ export type FileActionType = (typeof FILE_ACTIONS)[keyof typeof FILE_ACTIONS];
 
 export type FilePrimaryAction = { type: FileActionType; label: string };
 
-/** 状态 → 该状态下唯一的主操作（上游 `STATUS_ACTION`）。 */
+/** 状态 → 该状态下唯一的主操作。 */
 const STATUS_ACTION: Record<string, FilePrimaryAction> = {
   uploaded: { type: FILE_ACTIONS.PARSE, label: '解析文件' },
   error_parsing: { type: FILE_ACTIONS.PARSE, label: '重试解析' },
@@ -157,7 +156,7 @@ const STATUS_ACTION: Record<string, FilePrimaryAction> = {
 const targetsFile = (file?: FileCapabilityTarget | null): boolean =>
   Boolean(file && !file.is_folder);
 
-/** 主操作：解析或入库；目录与已入库的行没有（上游 `getFilePrimaryAction`）。 */
+/** 主操作：解析或入库；目录与已入库的行没有。 */
 export const getFilePrimaryAction = (
   file?: FileCapabilityTarget | null,
 ): FilePrimaryAction | null => {
@@ -174,7 +173,7 @@ export const canIndexFile = (file?: FileCapabilityTarget | null): boolean =>
 export const canReindexFile = (file?: FileCapabilityTarget | null): boolean =>
   targetsFile(file) && REINDEXABLE_STATUSES.has(file?.status ?? '');
 
-/** 下载要排除 URL 类型：它只有链接，后端也会拒绝（上游同）。 */
+/** 下载要排除 URL 类型：它只有链接，后端也会拒绝。 */
 export const canDownloadFile = (file?: FileCapabilityTarget | null): boolean =>
   targetsFile(file) &&
   file?.file_type !== 'url' &&
@@ -184,8 +183,8 @@ export const isProcessingFile = (file?: FileCapabilityTarget | null): boolean =>
   Boolean(file && PROCESSING_STATUSES.has(file.status ?? ''));
 
 /**
- * 能否勾选：处理中的行不进批量（上游 `TABLE_SELECTION_BLOCKED_STATUSES`）。
- * `locked` 表示有操作在飞行中（上游 `store.state.lock`）。
+ * 能否勾选：处理中的行不进批量。
+ * `locked` 表示有操作在飞行中。
  */
 export const canSelectFile = (
   file?: FileCapabilityTarget | null,
@@ -196,8 +195,8 @@ export const canSelectFile = (
   !TABLE_SELECTION_BLOCKED_STATUSES.has(file?.status ?? '');
 
 /**
- * 能否删除：比可勾选多挡住 `parsing` 与 `indexing`（上游 `DELETE_BLOCKED_STATUSES`）。
- * 上游批量删除用 `canSelectFile` 过滤，会把解析中的文件一起提交删除，这里按本函数过滤。
+ * 能否删除：比可勾选多挡住 `parsing` 与 `indexing`。
+ * 批量删除按本函数过滤：解析与入库中的文件不提交删除。
  */
 export const canDeleteFile = (
   file?: FileCapabilityTarget | null,
@@ -207,14 +206,14 @@ export const canDeleteFile = (
   !locked &&
   !DELETE_BLOCKED_STATUSES.has(file?.status ?? '');
 
-/** 详情弹窗的三种视图（上游同）；可见性由下面的预览判定决定。 */
+/** 详情弹窗的三种视图；可见性由下面的预览判定决定。 */
 export type FileDetailView = 'source' | 'markdown' | 'chunks';
 
 /**
  * 能否看解析后的 Markdown。
  *
  * 行上有 `has_parsed_markdown` 就以它为准（那是后端按 MinIO 对象算出来的事实），
- * 只有列不出来源的记录（例如搜索结果）才按状态兜底，与上游同。
+ * 只有列不出来源的记录（例如搜索结果）才按状态兜底。
  */
 export const canPreviewParsed = (
   file?: FileCapabilityTarget | null,
@@ -226,7 +225,7 @@ export const canPreviewParsed = (
   return PARSED_PREVIEW_STATUSES.has(file?.status ?? '');
 };
 
-/** 能否看源文件：URL 类型没有原始文件（上游同）。 */
+/** 能否看源文件：URL 类型没有原始文件。 */
 export const canPreviewOriginal = (
   file?: FileCapabilityTarget | null,
 ): boolean => {
@@ -249,13 +248,13 @@ export const canOpenFileDetail = (
   (SOURCE_ONLY_PREVIEW_STATUSES.has(file?.status ?? '') &&
     canPreviewOriginal(file));
 
-/** 初始视图：只有源文件时看源文件，否则看解析结果（上游 `getDefaultDetailView`）。 */
+/** 初始视图：只有源文件时看源文件，否则看解析结果。 */
 export const getDefaultDetailView = (
   file?: FileCapabilityTarget | null,
 ): FileDetailView =>
   !canPreviewParsed(file) && canPreviewOriginal(file) ? 'source' : 'markdown';
 
-/** 分页每页条数：与后端允许的上限一致，上游默认给 100。 */
+/** 分页每页条数：与后端允许的上限一致。 */
 export const FILE_PAGE_SIZE_OPTIONS = [100, 300, 500] as const;
 
 /**
@@ -289,8 +288,8 @@ export const parseDownloadFilename = (
 const pad2 = (value: number) => String(value).padStart(2, '0');
 
 /**
- * 文件表的「时间」列（上游 `formatFileTableTime`）：一年内 `MM月DD日 HH:mm:ss`，
- * 更早只到日。上游用 dayjs 的 `subtract(1, 'year')`，这里按上海墙上时间退一年，边界同口径。
+ * 文件表的「时间」列：一年内 `MM月DD日 HH:mm:ss`，
+ * 更早只到日。按上海墙上时间退一年。
  */
 export const formatFileTableTime = (value?: string | null): string => {
   const shanghai = parseShanghai(value);
@@ -313,14 +312,14 @@ export const formatFileTableTime = (value?: string | null): string => {
   );
   const month = pad2(shanghai.getUTCMonth() + 1);
   const day = pad2(shanghai.getUTCDate());
-  // 上游是 `isAfter`：正好落在一年前那个毫秒算更早
+  // 正好落在一年前那个毫秒算更早
   if (shanghai.getTime() > oneYearAgo) {
     return `${month}月${day}日 ${pad2(shanghai.getUTCHours())}:${pad2(shanghai.getUTCMinutes())}:${pad2(shanghai.getUTCSeconds())}`;
   }
   return `${shanghai.getUTCFullYear()}年${month}月${day}日`;
 };
 
-/** 搜索结果里的时间（上游 `formatResultDate`）：当年 `M月D日 HH:mm`，跨年补年份；无效值留空。 */
+/** 搜索结果里的时间：当年 `M月D日 HH:mm`，跨年补年份；无效值留空。 */
 export const formatSearchResultTime = (value?: string | null): string => {
   const shanghai = parseShanghai(value);
   if (!shanghai) return '';
@@ -334,7 +333,7 @@ export const formatSearchResultTime = (value?: string | null): string => {
   return `${shanghai.getUTCFullYear()}-${pad2(month)}-${pad2(day)} ${time}`;
 };
 
-/** 内容量（上游 `formatContentCount`）：k/m 进制，不足千位按本地化千分位。 */
+/** 内容量：k/m 进制，不足千位按本地化千分位。 */
 export const formatContentCount = (value?: number | null): string => {
   const number = Number(value ?? 0);
   const absValue = Math.abs(number);
@@ -343,7 +342,7 @@ export const formatContentCount = (value?: number | null): string => {
   return number.toLocaleString('zh-CN');
 };
 
-/** 搜索命中项的路径（上游 `splitFilename`）：`brief/a.md` → `{basename:'a.md', dirname:'brief'}`。 */
+/** 搜索命中项的路径：`brief/a.md` → `{basename:'a.md', dirname:'brief'}`。 */
 export const splitFilename = (
   filename?: string | null,
 ): { basename: string; dirname: string } => {
@@ -353,7 +352,7 @@ export const splitFilename = (
   return { basename: name.slice(index + 1), dirname: name.slice(0, index) };
 };
 
-/** 过长的目录前缀只留尾部（上游 `formatDirname`，48 字符上限）。 */
+/** 过长的目录前缀只留尾部。 */
 const PATH_PREVIEW_LIMIT = 48;
 
 export const formatDirname = (dirname?: string | null): string => {

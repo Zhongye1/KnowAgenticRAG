@@ -1,8 +1,8 @@
 /**
  * 图谱视图的纯逻辑：后端子图 → 画布数据、类型统计、颜色 token 选择。
  *
- * 上游 `GraphCanvas.vue` 把颜色写死成 17 个 hex，本仓的 `check:tokens` 不允许源码里出现
- * 硬编码颜色，因此这里只产出 `src/styles/tokens.css` 的变量名（`--data-N` 等），
+ * `check:tokens` 不允许源码里出现硬编码颜色，因此这里只产出 `src/styles/tokens.css` 的
+ * 变量名（`--data-N` 等），
  * 由画布层经 `resolveGraphColors` 交给 CSS 引擎解析成具体色值——亮暗两套变量不同，
  * 主题联动因此成立。类型到颜色的映射按标签哈希，同一标签恒定落同一个槽位。
  */
@@ -71,7 +71,7 @@ export const hashLabel = (label: string): number => {
   return hash;
 };
 
-/** 节点展示标签：类型 → 归一类型 → 属性 label → Entity（上游同优先级）。 */
+/** 节点展示标签：类型 → 归一类型 → 属性 label → Entity。 */
 export const describeNodeType = (node: GraphNode): string =>
   node.type ||
   node.normalized?.type ||
@@ -82,7 +82,7 @@ export const describeNodeType = (node: GraphNode): string =>
 export const describeEdgeType = (edge: GraphEdge): string =>
   edge.type || edge.normalized?.type || 'RELATED_TO';
 
-/** 节点描边宽度与半径：度数越高越大，上限 50（上游同公式）。 */
+/** 节点描边宽度与半径：度数越高越大，上限 50。 */
 export const nodeSizeByDegree = (degree: number): number =>
   Math.min(15 + degree * 5, 50);
 
@@ -103,7 +103,7 @@ export const toGraphView = (subgraph: GraphSubgraph): GraphView => {
     const type = describeNodeType(node);
     return {
       id: String(node.id),
-      // 画布上写的是实体名（上游 `labelField` 默认 `name`）；类型只用来挑颜色与统计
+      // 画布上写的是实体名；类型只用来挑颜色与统计
       label: node.name || type,
       type,
       colorToken:

@@ -1,9 +1,8 @@
 /**
  * 上下文用量卡片。
  *
- * 移植上游 `AgentChatComponent.vue` 的「上下文占用」区：占比、构成条、当前对话累计与
- * 缓存命中率，展开后是按模型分桶的调用统计与最近一次调用。`token_usage` 缺失时显示
- * 「未上报」，不假装有数据。
+ * 占比、构成条、当前对话累计与缓存命中率，展开后是按模型分桶的调用统计与最近一次调用。
+ * `token_usage` 缺失时显示「未上报」，不假装有数据。
  */
 import * as React from 'react';
 import { ChevronDown } from 'lucide-react';
@@ -38,7 +37,7 @@ const TONE_ACCENTS: Record<'danger' | 'warning' | 'normal', string> = {
 export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
   const [expanded, setExpanded] = React.useState(false);
 
-  // 没有快照就整段不渲染（与上游 `v-if="currentTokenUsage"` 一致）：
+  // 没有快照就整段不渲染：
   // 空卡片占着输入区上方又没有信息量
   if (!usage) return null;
 
@@ -66,7 +65,9 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
           <strong className="text-sm text-color-text-1">
             上下文占用 {getTokenUsagePercentLabel(ratio)}
           </strong>
-          <span className="text-color-text-3">{getTokenUsageHeadLabel(usage)}</span>
+          <span className="text-color-text-3">
+            {getTokenUsageHeadLabel(usage)}
+          </span>
         </span>
         <ChevronDown
           className={`size-4 text-color-text-3 transition-transform ${expanded ? '' : '-rotate-90'}`}
@@ -91,12 +92,14 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
         <p className="mt-2 flex gap-4 text-color-text-3">
           {threadTotal === null ? null : (
             <span>
-              当前对话累计 <strong className="text-color-text-1">{threadTotal}</strong>
+              当前对话累计{' '}
+              <strong className="text-color-text-1">{threadTotal}</strong>
             </span>
           )}
           {cacheHit === null ? null : (
             <span>
-              累计缓存命中率 <strong className="text-color-text-1">{cacheHit}</strong>
+              累计缓存命中率{' '}
+              <strong className="text-color-text-1">{cacheHit}</strong>
             </span>
           )}
         </p>
@@ -122,9 +125,14 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
           {segments.length > 0 ? (
             <ul className="flex flex-col gap-1">
               {segments.map((segment) => (
-                <li key={segment.key} className="flex items-center justify-between gap-2">
+                <li
+                  key={segment.key}
+                  className="flex items-center justify-between gap-2"
+                >
                   <span className="text-color-text-3">{segment.label}</span>
-                  <span className="text-color-text-2">{segment.valueLabel}</span>
+                  <span className="text-color-text-2">
+                    {segment.valueLabel}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -145,22 +153,30 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
                   </p>
                   <p className="mt-1 flex flex-wrap gap-3 text-color-text-3">
                     <span>
-                      输入 / 输出 <strong className="text-color-text-1">{model.io}</strong>
+                      输入 / 输出{' '}
+                      <strong className="text-color-text-1">{model.io}</strong>
                     </span>
                     {model.cache ? (
                       <span>
-                        缓存 <strong className="text-color-text-1">{model.cache}</strong>
+                        缓存{' '}
+                        <strong className="text-color-text-1">
+                          {model.cache}
+                        </strong>
                       </span>
                     ) : null}
                     {model.reasoning ? (
                       <span>
                         推理{' '}
-                        <strong className="text-color-text-1">{model.reasoning}</strong>
+                        <strong className="text-color-text-1">
+                          {model.reasoning}
+                        </strong>
                       </span>
                     ) : null}
                   </p>
                   {model.responseModel ? (
-                    <p className="mt-1 text-color-text-3">响应 {model.responseModel}</p>
+                    <p className="mt-1 text-color-text-3">
+                      响应 {model.responseModel}
+                    </p>
                   ) : null}
                 </li>
               ))}

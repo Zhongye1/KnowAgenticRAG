@@ -1,10 +1,9 @@
 /**
  * PDF 预览。
  *
- * 移植上游 `components/common/PdfPreview.vue`：把每一页画到 canvas 上，宽度按容器自适应，
- * 并按 `devicePixelRatio` 放大绘制保证清晰。差异：字节直接用预览接口给的 blob（上游按 URL
- * 再取一次，pdfjs 的请求带不上 Authorization）；cmaps 仍取上游那个 jsdelivr CDN，
- * 离线部署要改成自托管，这条记在决策记录里。
+ * 把每一页画到 canvas 上，宽度按容器自适应，并按 `devicePixelRatio` 放大绘制保证清晰。字节直接
+ * 用预览接口给的 blob（pdfjs 按 URL 再取一次带不上 Authorization）；cmaps 与中日韩字体映射走
+ * jsdelivr CDN，离线部署要改成自托管。
  */
 import * as React from 'react';
 import { CircleAlert, LoaderCircle } from 'lucide-react';
@@ -20,7 +19,7 @@ type PdfState =
   | { status: 'ready'; pages: number }
   | { status: 'error'; message: string };
 
-/** 容器左右安全边距，与上游同。 */
+/** 容器左右安全边距。 */
 const HORIZONTAL_PADDING = 32;
 
 export const PdfPreview = ({ blob }: PdfPreviewProps) => {
@@ -45,7 +44,7 @@ export const PdfPreview = ({ blob }: PdfPreviewProps) => {
       const bytes = new Uint8Array(await blob.arrayBuffer());
       const loadingTask = pdfjs.getDocument({
         data: bytes,
-        // 中日韩字符的字体映射走 CDN（与上游同），离线部署要自托管
+        // 中日韩字符的字体映射走 CDN，离线部署要自托管
         cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/cmaps/`,
         cMapPacked: true,
       });

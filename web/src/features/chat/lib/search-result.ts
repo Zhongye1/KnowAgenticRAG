@@ -1,15 +1,14 @@
 /**
  * 会话搜索的展示逻辑。
  *
- * 逐条移植上游 `GlobalSearchModal.vue` 的三个纯函数：片段高亮切片、结果日期格式、
- * 最近会话的时间分组。上游用 dayjs + 上海时区插件，本仓不引日期库，改用固定 +08:00
- * 偏移（上海自 1991 年起没有夏令时）。
+ * 片段高亮切片、结果日期格式、最近会话的时间分组。时间按固定 +08:00 偏移计算，不引日期库
+ * （上海自 1991 年起没有夏令时）。
  */
 import type { ChatThread, ThreadSearchItem } from '../api/agent-api';
 
-/** 与上游一致的默认视图上限。 */
+/** 默认视图上限。 */
 export const RECENT_THREAD_LIMIT = 30;
-/** 每页结果条数，与上游 `CONVERSATION_SEARCH_LIMIT` 一致。 */
+/** 每页结果条数。 */
 export const CONVERSATION_SEARCH_LIMIT = 20;
 
 const SHANGHAI_OFFSET_MS = 8 * 60 * 60 * 1000;
@@ -26,7 +25,7 @@ const toShanghaiDate = (value?: string | null): Date | null => {
 export type SnippetSegment = { text: string; match: boolean };
 
 /**
- * 按查询词切片段，大小写不敏感、纯子串匹配（上游同规则：不分词、不正则、标题不高亮）。
+ * 按查询词切片段，大小写不敏感、纯子串匹配：不分词、不正则、标题不高亮。
  * 空内容或空查询时返回整段非高亮。
  */
 export const splitSnippet = (
@@ -76,7 +75,7 @@ export const formatResultDate = (
   return `${parsed.getUTCFullYear()}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 };
 
-/** 最近会话的时间分组标签（上游同边界：≤7 天、≤30 天、更早）。 */
+/** 最近会话的时间分组标签：≤7 天、≤30 天、更早。 */
 export const getRecentGroupLabel = (
   value?: string | null,
   now: Date = new Date(),
@@ -132,6 +131,6 @@ export const groupRecentThreads = (
   return rows;
 };
 
-/** 结果行要展示的片段：上游只取第一条。 */
+/** 结果行要展示的片段：只取第一条。 */
 export const getResultSnippet = (item: ThreadSearchItem): string =>
   item.snippets?.[0]?.content ?? '';

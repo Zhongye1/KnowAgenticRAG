@@ -33,7 +33,15 @@ describe('describeQueue', () => {
   });
 
   it('后端 run 失败后的暂停：status=paused 且 paused_reason 是 Run 终态', () => {
-    const view = describeQueue({ ...idle, status: 'paused', paused_reason: 'failed', can_continue: true }, []);
+    const view = describeQueue(
+      {
+        ...idle,
+        status: 'paused',
+        paused_reason: 'failed',
+        can_continue: true,
+      },
+      [],
+    );
     expect(view.paused).toBe(true);
     expect(view.visible).toBe(true);
     expect(view.pausedReason).toBe('上一次运行失败');
@@ -46,15 +54,17 @@ describe('describeQueue', () => {
     expect(view.paused).toBe(false);
     expect(view.pausedReason).toBeNull();
 
-    expect(describeQueue({ ...idle, paused_reason: 'cancelled' }, []).pausedReason).toBe(
-      '上一次运行已取消',
-    );
+    expect(
+      describeQueue({ ...idle, paused_reason: 'cancelled' }, []).pausedReason,
+    ).toBe('上一次运行已取消');
   });
 
   it('未知暂停原因原样透出，不吞掉后端新增的码', () => {
     expect(
-      describeQueue({ ...idle, status: 'paused', paused_reason: 'brand_new' }, [])
-        .pausedReason,
+      describeQueue(
+        { ...idle, status: 'paused', paused_reason: 'brand_new' },
+        [],
+      ).pausedReason,
     ).toBe('brand_new');
   });
 
@@ -94,7 +104,8 @@ describe('describeQueueRow', () => {
 
   it('没有在收流、或活跃 run 不可引导时不能引导', () => {
     expect(
-      describeQueueRow(queuedRow, { ...rowContext, isStreaming: false }).canSteer,
+      describeQueueRow(queuedRow, { ...rowContext, isStreaming: false })
+        .canSteer,
     ).toBe(false);
     expect(
       describeQueueRow(queuedRow, { ...rowContext, activeRunSteerable: false })

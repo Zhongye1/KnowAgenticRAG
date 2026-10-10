@@ -11,9 +11,11 @@ import { Spinner } from '@/shared/ui/spinner';
 import { MainErrorFallback } from '@/shared/ui/error-fallback';
 
 import { AppRouter } from './routing/router';
+import { AntdProvider } from './theme/antd-provider';
 
 /**
- * 应用外壳：装配全局 provider（查询客户端、错误边界、head 管理、通知中心、命令式确认框）。
+ * 应用外壳：装配全局 provider（antd 主题与组件基座、查询客户端、错误边界、
+ * head 管理、通知中心、命令式确认框）。
  */
 const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [queryClient] = React.useState(
@@ -24,24 +26,26 @@ const AppProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   return (
-    <React.Suspense
-      fallback={
-        <div className="flex h-screen w-screen items-center justify-center">
-          <Spinner size="xl" />
-        </div>
-      }
-    >
-      <ErrorBoundary FallbackComponent={MainErrorFallback}>
-        <HelmetProvider>
-          <QueryClientProvider client={queryClient}>
-            {import.meta.env.DEV && <ReactQueryDevtools />}
-            <Notifications />
-            <ConfirmDialogHost />
-            {children}
-          </QueryClientProvider>
-        </HelmetProvider>
-      </ErrorBoundary>
-    </React.Suspense>
+    <AntdProvider>
+      <React.Suspense
+        fallback={
+          <div className="flex h-screen w-screen items-center justify-center">
+            <Spinner size="xl" />
+          </div>
+        }
+      >
+        <ErrorBoundary FallbackComponent={MainErrorFallback}>
+          <HelmetProvider>
+            <QueryClientProvider client={queryClient}>
+              {import.meta.env.DEV && <ReactQueryDevtools />}
+              <Notifications />
+              <ConfirmDialogHost />
+              {children}
+            </QueryClientProvider>
+          </HelmetProvider>
+        </ErrorBoundary>
+      </React.Suspense>
+    </AntdProvider>
   );
 };
 

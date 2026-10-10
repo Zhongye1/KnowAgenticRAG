@@ -1,7 +1,6 @@
 /**
  * 进度条。
  *
- * 上游用 `a-progress`（图谱构建、数据集生成、评估运行三处）。这里只保留用得到的形态：
  * 百分比 + 可选文案，颜色走语义 Token，`role="progressbar"` 带上数值给辅助技术。
  */
 import { cn } from '@/shared/lib';
@@ -36,6 +35,9 @@ export const Progress = ({
         <span className="text-xs text-color-text-3">{label}</span>
       ) : null}
       <div
+        // 进度条 DOM 契约由 test/unit/shared/ui-progress.test.tsx 断言（role + aria-valuenow）；
+        // 换成原生 <progress> 要重写内层填充样式，并同步三处断言
+        // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- 语义由测试拥有的 DOM 契约固定
         role="progressbar"
         aria-label={label ?? '进度'}
         aria-valuemin={0}

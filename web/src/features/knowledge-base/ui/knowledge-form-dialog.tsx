@@ -1,13 +1,11 @@
 /**
  * 知识库新建/编辑对话框。
  *
- * 上游是三步向导（类型 → 基础信息 → 嵌入模型与参数），字段与校验集中在
- * `utils/databaseCreateForm.js`。本仓保留同一份默认值、校验与请求体拼装，把三步收成一个
- * 表单；类型专属参数按 `create_params.options` 动态渲染，因此不用 react-hook-form 的静态 schema。
+ * 表单默认值、校验与请求体拼装来自 `lib/knowledge-form`；类型专属参数按
+ * `create_params.options` 动态渲染，因此不用 react-hook-form 的静态 schema。
  *
- * 与上游的差异：分块策略选择器（上游第 2 步，选项来自 `GET /chunk-presets`）与描述的
- * AI 生成（上游用 `AiTextarea`）还没移植，分块策略固定用默认项；编辑只提交名称与描述，
- * 不回写 `additional_params`——列表投影里那份带着 `stats` 与按权限脱敏的副本不是持久化事实。
+ * 分块策略选择器（选项来自 `GET /chunk-presets`）与描述的 AI 生成尚未接入；编辑只提交名称
+ * 与描述，不回写 `additional_params`（列表投影里的副本带 `stats` 且按权限脱敏）。
  */
 import * as React from 'react';
 
@@ -89,8 +87,16 @@ const ParamField = ({
         {field.required ? <span className="text-danger-6"> *</span> : null}
       </span>
       <Input
-        type={field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text'}
-        value={typeof value === 'number' || typeof value === 'string' ? value : ''}
+        type={
+          field.type === 'password'
+            ? 'password'
+            : field.type === 'number'
+              ? 'number'
+              : 'text'
+        }
+        value={
+          typeof value === 'number' || typeof value === 'string' ? value : ''
+        }
         placeholder={field.placeholder}
         aria-label={label}
         min={field.min}
@@ -102,7 +108,9 @@ const ParamField = ({
           }
           // 清空或输入 '-'、'e' 时不要写 NaN 进参数
           const parsed = Number(event.target.value);
-          onChange(event.target.value === '' || !Number.isFinite(parsed) ? '' : parsed);
+          onChange(
+            event.target.value === '' || !Number.isFinite(parsed) ? '' : parsed,
+          );
         }}
       />
       {field.description ? (

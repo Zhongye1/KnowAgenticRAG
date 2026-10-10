@@ -16,7 +16,10 @@ const human = (id: number, content: string): ChatMessage => ({
   content,
 });
 
-const assistant = (id: number, extra: Partial<ChatMessage> = {}): ChatMessage => ({
+const assistant = (
+  id: number,
+  extra: Partial<ChatMessage> = {},
+): ChatMessage => ({
   id,
   type: 'ai',
   content: '',
@@ -54,7 +57,9 @@ describe('parseAssistantMessageBody', () => {
   });
 
   it('普通正文原样返回，思维链为空', () => {
-    expect(parseAssistantMessageBody(assistant(1, { content: ' 你好 ' }))).toEqual({
+    expect(
+      parseAssistantMessageBody(assistant(1, { content: ' 你好 ' })),
+    ).toEqual({
       content: '你好',
       reasoningContent: '',
     });
@@ -76,7 +81,9 @@ describe('toConversations', () => {
     ]);
 
     expect(conversations).toHaveLength(2);
-    expect(conversations[0]?.messages.map((item) => item.id)).toEqual([1, 2, 3]);
+    expect(conversations[0]?.messages.map((item) => item.id)).toEqual([
+      1, 2, 3,
+    ]);
     expect(conversations[0]?.messages[2]?.isLast).toBe(true);
     expect(conversations[0]?.status).toBe('finished');
     expect(conversations[1]?.messages.map((item) => item.id)).toEqual([4, 5]);
@@ -126,7 +133,9 @@ describe('splitStreamedChunks 与 attachToolResults', () => {
         [
           { content: '先执行' },
           {
-            tool_call_chunks: [{ index: 0, id: 'call-1', name: 'bash', args: '{"cmd"' }],
+            tool_call_chunks: [
+              { index: 0, id: 'call-1', name: 'bash', args: '{"cmd"' },
+            ],
           },
           { tool_call_chunks: [{ index: 0, args: ':"ls"}' }] },
         ],
@@ -139,7 +148,9 @@ describe('splitStreamedChunks 与 attachToolResults', () => {
 
     expect(messages).toHaveLength(1);
     expect(messages[0]?.content).toBe('先执行');
-    expect(messages[0]?.tool_calls?.[0]?.function?.arguments).toBe('{"cmd":"ls"}');
+    expect(messages[0]?.tool_calls?.[0]?.function?.arguments).toBe(
+      '{"cmd":"ls"}',
+    );
     expect(toolResults.get('call-1')).toBe('文件列表');
   });
 
@@ -159,8 +170,16 @@ describe('splitStreamedChunks 与 attachToolResults', () => {
         type: 'ai',
         content: '',
         tool_calls: [
-          { index: 0, id: 'call-1', function: { name: 'bash', arguments: '{}' } },
-          { index: 1, id: 'call-2', function: { name: 'grep', arguments: '{}' } },
+          {
+            index: 0,
+            id: 'call-1',
+            function: { name: 'bash', arguments: '{}' },
+          },
+          {
+            index: 1,
+            id: 'call-2',
+            function: { name: 'grep', arguments: '{}' },
+          },
         ],
       },
     ];

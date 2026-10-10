@@ -8,7 +8,7 @@
  * 答案侧聚合出一个 `answer_correctness`，另有综合 `overall_score`。
  *
  * 所有端点都要求管理员（后端 `get_admin_user` + 知识库 read/manage），因此这个分区只在
- * 管理员可见的详情页里出现；上游用的是客户端管理员门（`apiAdmin*`），本仓不复制那道门。
+ * 管理员可见的详情页里出现；前端不做管理员门，授权在后端。
  */
 import {
   deleteEvaluationDatasetApiEvaluationDatasetsDatasetIdDelete,

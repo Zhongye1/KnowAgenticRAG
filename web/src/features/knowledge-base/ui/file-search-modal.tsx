@@ -1,14 +1,8 @@
 /**
  * 文件名搜索弹窗。
  *
- * 移植上游 `modals/FileSearchModal.vue`：命令面板式弹窗、防抖后按文件名搜索、
- * 结果展示状态/大小/更新时间，选中一条后回到它所在的目录。
- *
- * 上游的 placeholder 明确写着「仅匹配文件名，不搜索文件内容」，这里沿用同一句，
- * 免得用户以为能搜正文（正文检索在 Agent 侧）。
- *
- * 一处有意偏离：上游要按回车才搜，这里改成防抖自动搜（与会话搜索一致），
- * 少一次按键；结果条数与截断提示沿用上游文案。
+ * 命令面板式弹窗、防抖后按文件名搜索、结果展示状态/大小/更新时间，选中一条后回到它所在的
+ * 目录；说明文字写明「仅匹配文件名，不搜索文件内容」（正文检索在 Agent 侧）。
  *
  * 输入状态随组件卸载清空：页面只在打开时挂载它，因此不需要「关闭时重置」的 effect；
  * 焦点由 Radix Dialog 的自动聚焦负责。
@@ -37,7 +31,7 @@ import { Empty } from '@/shared/ui/empty';
 import { Input } from '@/shared/ui/input';
 import { Spinner } from '@/shared/ui/spinner';
 
-/** 自动搜索的防抖时长（上游是回车触发，这里改为防抖，见文件头说明）。 */
+/** 自动搜索的防抖时长。 */
 const SEARCH_DEBOUNCE_MS = 240;
 
 type FileSearchModalProps = {

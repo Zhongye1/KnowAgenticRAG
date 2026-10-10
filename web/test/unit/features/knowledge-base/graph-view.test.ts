@@ -15,7 +15,6 @@ import {
   GRAPH_COLOR_TOKENS,
   hashLabel,
   nodeSizeByDegree,
-  GRAPH_PALETTE_TOKENS,
   readPalette,
   resolveGraphColors,
   summarizeGraph,

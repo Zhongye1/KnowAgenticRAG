@@ -1,8 +1,8 @@
 /**
  * 评估视图的纯逻辑：数据集/运行的展示口径、标签、进度与指标格式化。
  *
- * 口径来自上游 `RAGEvaluationTab.vue` 与 `EvaluationBenchmarks.vue` 的 computed 与格式化函数；
- * 三处有意偏离写在各函数注释里（`f1@k` 的显示、错误判定的单一来源、进度缺失时的回退）。
+ * 展示口径与格式化函数集中在这里；`f1@k` 的显示、错误判定的单一来源、进度缺失时的回退
+ * 写在各函数注释里。
  */
 import type {
   DatasetBuildMetadata,
@@ -73,7 +73,7 @@ export const datasetProgress = (
   return Math.min(100, Math.max(0, Math.round(progress)));
 };
 
-/** 生成状态的一句话：后端消息优先，其次状态标签（上游 `getBuildStatusMessage`）。 */
+/** 生成状态的一句话：后端消息优先，其次状态标签。 */
 export const datasetStatusMessage = (
   metadata?: DatasetBuildMetadata | null,
 ): string => {
@@ -99,7 +99,7 @@ export const datasetSourceLabel = (
 
 const RUN_TAG = TAG;
 
-/** 运行状态：上游文案是 运行中/已完成/失败/已暂停。 */
+/** 运行状态文案：运行中 / 已完成 / 失败 / 已暂停。 */
 export const runStatusView = (status?: string | null): View => {
   switch (status) {
     case 'running':
@@ -169,7 +169,7 @@ const toMetricNumber = (value: unknown): number | null => {
 };
 
 /**
- * 运行耗时：两端时间都有才算；运行中显示「进行中」，缺时间给 `-`（上游 `formatDuration`）。
+ * 运行耗时：两端时间都有才算；运行中显示「进行中」，缺时间给 `-`。
  */
 export const runDuration = (
   run: Pick<EvaluationRun, 'status' | 'started_at' | 'completed_at'>,
@@ -207,7 +207,7 @@ export const datasetNameOf = (
 ): string =>
   datasets?.find((item) => item.dataset_id === datasetId)?.name ?? datasetId;
 
-/** 可评估的数据集：只有生成完成的能跑（上游同）。 */
+/** 可评估的数据集：只有生成完成的能跑。 */
 export const evaluableDatasets = <
   T extends { build_metadata?: DatasetBuildMetadata | null },
 >(
@@ -221,7 +221,7 @@ export const formatPercent = (value: unknown, digits = 1): string => {
   return `${(numeric * 100).toFixed(digits)}%`;
 };
 
-/** 指标数值：三位小数；非数字给 `-`（上游 `formatMetricValue`）。 */
+/** 指标数值：三位小数；非数字给 `-`。 */
 export const formatMetricValue = (value: unknown): string => {
   const numeric = toMetricNumber(value);
   if (numeric === null) return '-';
@@ -242,8 +242,8 @@ export const metricTone = (value: unknown): MetricTone | null => {
 /**
  * 检索指标的展示顺序与短名。
  *
- * 上游的过滤条件只认 `recall*|precision*|map|ndcg`，把后端实际产出的 `f1@k` 漏掉了
- * （`metrics.py` 同时算 recall@k 与 f1@k），本仓把 `f1@k` 一并显示。
+ * 后端同时算 recall@k 与 f1@k（`metrics.py`），因此 `f1@k` 一并显示：只认
+ * `recall*|precision*|map|ndcg` 会把 f1 漏掉。
  */
 export const RETRIEVAL_METRIC_ORDER = [
   'recall@1',

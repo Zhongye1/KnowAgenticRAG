@@ -77,12 +77,6 @@ const renderDialog = (
   return { onOpenChange };
 };
 
-/**
- * 要开下拉、选类型再等请求的用例，并行跑整套时会超过默认的 5 秒：
- * 它们自带预算，不依赖全局 `testTimeout`。
- */
-const itSlow = (name: string, fn: () => Promise<void>) => it(name, fn, 15000);
-
 describe('知识库表单对话框', () => {
   beforeEach(() => {
     api.listTypes.mockReset().mockResolvedValue({ milvus: milvusType });

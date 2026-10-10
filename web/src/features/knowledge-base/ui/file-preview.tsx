@@ -1,9 +1,8 @@
 /**
  * 源文件预览的分发。
  *
- * 移植上游 `AgentFilePreview.vue` 的分发部分：按后端给的 `preview_type` 决定怎么渲染
- * （图片 / PDF / Markdown / HTML / 文本与代码），不支持时给出后端的原因。
- * 图片与 PDF 用 objectURL，组件卸载或切换文件时释放。
+ * 按后端给的 `preview_type` 决定怎么渲染（图片 / PDF / Markdown / HTML / 文本与代码），
+ * 不支持时给出后端的原因。图片与 PDF 用 objectURL，组件卸载或切换文件时释放。
  */
 import * as React from 'react';
 

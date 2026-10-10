@@ -3,9 +3,8 @@ version: '3'
 # 项目统一任务入口。执行的事实来源是 docker compose 与各工具的原始命令。
 #
 # 开发拓扑为全容器化（docker compose）：api / worker / storage-migrator /
-# sandbox-provisioner / postgres / redis / minio / milvus / etcd / graph。
-# 前端（frontend/）本期冻结，不在任何任务范围内——上游 Makefile 中的
-# web/pnpm 目标已随之移除。
+# sandbox-provisioner / postgres / redis / minio / milvus / etcd / graph / web。
+# 前端是 web/（React + Vite），任务见本文件末尾的 web:* 分组。
 
 vars:
   BACKEND_PYTHON:

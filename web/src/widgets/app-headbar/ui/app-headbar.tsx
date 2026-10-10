@@ -44,7 +44,7 @@ function SettingsDrawer() {
         <TooltipTrigger asChild>
           <DrawerTrigger asChild>
             <Button variant="ghost" size="icon-sm" aria-label="打开设置">
-                  <Settings className="size-4" />
+              <Settings className="size-4" />
             </Button>
           </DrawerTrigger>
         </TooltipTrigger>

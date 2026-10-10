@@ -1,16 +1,19 @@
 /**
  * 知识库卡片：列表页的一张卡。
  *
- * 上游 `DataBaseView.vue` 的卡片：名称、类型、描述、统计摘要与权限提示，右上角菜单提供
- * 复制 ID、编辑与删除。差异：上游副标题是创建时间与共享范围标签，本仓先展示文件/分块/大小
- * 统计（创建时间与共享范围标签未移植；共享范围在详情页的「共享设置」里改）。
+ * 名称、类型、描述、统计摘要与权限提示，右上角菜单提供复制 ID、编辑与删除；副标题展示
+ * 文件/分块/大小统计（共享范围在详情页的「共享设置」里改）。
  *
  * 「只读」徽标来自 `can_manage`（当前用户的有效权限），不是连接器能力；只读时不给编辑与删除。
  */
 import { Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 
 import type { KnowledgeBase } from '../api/knowledge-api';
-import { formatBytes, formatCount, getKbTypeLabel } from '../lib/knowledge-view';
+import {
+  formatBytes,
+  formatCount,
+  getKbTypeLabel,
+} from '../lib/knowledge-view';
 import { Badge } from '@/shared/ui/badge';
 import { Button } from '@/shared/ui/button';
 import {
@@ -52,7 +55,9 @@ export const KnowledgeCard = ({
             {database.name}
           </button>
           <span className="mt-1 flex items-center gap-2">
-            <Badge variant="secondary">{getKbTypeLabel(database.kb_type)}</Badge>
+            <Badge variant="secondary">
+              {getKbTypeLabel(database.kb_type)}
+            </Badge>
             {database.can_manage === false ? (
               <Badge variant="outline">只读</Badge>
             ) : null}
@@ -102,7 +107,9 @@ export const KnowledgeCard = ({
         </div>
         <div className="flex gap-1">
           <dt>分块</dt>
-          <dd className="text-color-text-2">{formatCount(stats.chunk_count)}</dd>
+          <dd className="text-color-text-2">
+            {formatCount(stats.chunk_count)}
+          </dd>
         </div>
         <div className="flex gap-1">
           <dt>大小</dt>

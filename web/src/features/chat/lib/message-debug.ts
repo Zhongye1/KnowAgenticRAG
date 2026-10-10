@@ -1,9 +1,8 @@
 /**
  * 消息时序调试的纯逻辑。
  *
- * 移植上游 `utils/messageDebug.js`：把原始历史消息（含流式分片）转成调试条目、按连续 run_id
- * 分组、做角色筛选与关键词搜索、格式化 tokens 与 run id，并从后端响应里挑出可安全打开的
- * Langfuse 链接。
+ * 把原始历史消息（含流式分片）转成调试条目、按连续 run_id 分组、做角色筛选与关键词搜索、
+ * 格式化 tokens 与 run id，并从后端响应里挑出可安全打开的 Langfuse 链接。
  *
  * 消息形状按「调试视图看原始载荷」处理：`model`/`usage` 这些字段后端不保证存在，因此入参类型
  * 写成宽松的 Record，读不到就不显示，而不是在类型里假装它们都有。
@@ -97,7 +96,7 @@ const readMetadataString = (
 
 /**
  * 把历史消息与流式消息合成调试列表：历史顺序为准，流式的 AI 消息按 run_id 就地替换，
- * 其余流式消息追加在后面。上游 `mergeMessageDebugMessages` 同口径。
+ * 其余流式消息追加在后面。
  */
 export const mergeMessageDebugMessages = (
   history?: DebugMessage[] | null,

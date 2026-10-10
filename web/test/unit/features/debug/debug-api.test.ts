@@ -44,7 +44,10 @@ describe('取日志', () => {
   });
 
   it('响应缺 log 字段时算空日志，不是错误', async () => {
-    api.logs.mockResolvedValue({ data: { message: 'success' }, error: undefined });
+    api.logs.mockResolvedValue({
+      data: { message: 'success' },
+      error: undefined,
+    });
 
     await expect(debugApi.getLogs()).resolves.toBe('');
   });

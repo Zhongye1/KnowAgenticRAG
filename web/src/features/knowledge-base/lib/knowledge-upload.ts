@@ -1,9 +1,8 @@
 /**
  * 上传的纯逻辑：类型与大小校验、文件夹相对路径、队列并发、落库参数组装。
  *
- * 移植上游 `FileUploadModal.vue` 里与界面无关的那部分。上游的百分比来自
- * `XMLHttpRequest.upload.onprogress`，本仓走生成的 fetch 客户端拿不到字节进度，
- * 因此队列只报告「排队 / 上传中 / 完成 / 失败」四态与计数（用户已确认不做假百分比）。
+ * 百分比来自 `XMLHttpRequest.upload.onprogress`，而这里走生成的 fetch 客户端拿不到字节进度，
+ * 因此队列只报告「排队 / 上传中 / 完成 / 失败」四态与计数，不做假百分比。
  */
 
 /** 后端单文件上限（`MAX_UPLOAD_SIZE_BYTES`），文案与后端一致。 */
@@ -11,7 +10,7 @@ export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
 export const UPLOAD_TOO_LARGE_MESSAGE =
   '文件过大，当前仅支持 100 MB 以内的文件';
 
-/** 队列并发：与上游 `MAX_UPLOAD_CONCURRENCY` 一致。 */
+/** 队列并发。 */
 export const UPLOAD_CONCURRENCY = 10;
 
 /**
@@ -41,7 +40,7 @@ export const DEFAULT_SUPPORTED_TYPES = [
 
 /**
  * 需要 OCR 才能抽文本的图片类型：后端的 `OCR_FILE_EXTENSIONS` 去掉 `.pdf`
- * （PDF 不强制 OCR）。上游界面里只列了 6 个（少了 `.webp`），这里以本集合为准。
+ * （PDF 不强制 OCR）。这里以本集合为准。
  */
 export const OCR_IMAGE_EXTENSIONS = new Set([
   '.png',
@@ -70,8 +69,7 @@ export const needsOcr = (name: string): boolean =>
   OCR_IMAGE_EXTENSIONS.has(getFileExtension(name));
 
 /**
- * 上传时用的文件名：文件夹上传带上相对路径，后端据此投影出目录
- * （上游用 `file.webkitRelativePath`）。
+ * 上传时用的文件名：文件夹上传带上相对路径，后端据此投影出目录。
  */
 export const getUploadFilename = (file: File): string => {
   const relative = (file as File & { webkitRelativePath?: string })
@@ -83,7 +81,7 @@ export const getUploadFilename = (file: File): string => {
  * 按白名单与大小过滤一批待上传文件。
  *
  * 图片是否要 OCR 只影响「能不能提交」的判断，不在这里拒绝：调用方要先把
- * 「检测到图片但没有开 OCR」整批拦下并提示（上游同）。
+ * 「检测到图片但没有开 OCR」整批拦下并提示。
  */
 export const validateUploadBatch = (
   files: ArrayLike<File>,
@@ -171,7 +169,7 @@ export type UploadResult = {
 /**
  * 按并发上限跑一遍上传队列，返回与入参同序的结果。
  *
- * 单个失败不影响其余（上游同：失败的行留在列表里），`onStatus` 用来把状态变化推给界面，
+ * 单个失败不影响其余，`onStatus` 用来把状态变化推给界面，
  * 失败原因通过返回值的 `error` 交给调用方展示。
  */
 export const runUploadPool = async (

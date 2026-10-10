@@ -4,7 +4,7 @@
  * 契约：`backend/server/routers/knowledge_router.py` 的 `mindmap` 四个端点里，这个分区只用三个
  * （取导图 / 生成 / 差异检测），响应类型按 `ars/knowledge/utils/mindmap_utils.py` 手写：
  * `mindmap` 是 `{content, children}` 的树，`diff` 给出新增/删除文件与 `needs_update`。
- * `mindmap/files` 与 `mindmap/databases` 上游这个分区都没用（生成时传空 `file_ids` 表示全部文件），
+ * `mindmap/files` 与 `mindmap/databases` 这个分区用不到（生成时传空 `file_ids` 表示全部文件），
  * 因此不在这里出现。
  */
 import {
@@ -47,7 +47,7 @@ export const mindmapApi = {
   /**
    * 取当前知识库的导图；后端在「还没生成」时返回 `mindmap: null`（不是错误）。
    *
-   * 上游把 404 与「不存在」也当成「还没生成」静默处理，本仓只把**成功响应的 null** 当空态：
+   * 只把**成功响应的 null** 当空态：
    * 知识库不存在之类的 404 是真故障，让它照常抛出来，不在界面上伪装成「去生成一张」。
    */
   async getDocument(kbId: string): Promise<MindmapDocument> {

@@ -1,9 +1,8 @@
 /**
  * 工具审批模式选择器。
  *
- * 逐条移植上游 `ToolApprovalModeSelector.vue`：一个下拉触发器 + 两个互斥选项
- * （请求审批 / 完全信任）。上游用 antd Dropdown，这里换成 shadcn 的 DropdownMenu，
- * 保留 `aria-haspopup` / `aria-expanded` 与选项上的 `menuitemradio` + `aria-checked`。
+ * 一个下拉触发器 + 两个互斥选项（请求审批 / 完全信任），保留 `aria-haspopup` /
+ * `aria-expanded` 与选项上的 `menuitemradio` + `aria-checked`。
  */
 import { Check, ChevronDown, Hand, ShieldAlert } from 'lucide-react';
 

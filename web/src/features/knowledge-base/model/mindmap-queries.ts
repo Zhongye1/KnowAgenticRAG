@@ -1,7 +1,7 @@
 /**
  * 知识导图的 React Query 装配。
  *
- * 差异检测只在已经有一张导图时才拉（上游同）：没有导图时「是否需要更新」没有意义。
+ * 差异检测只在已经有一张导图时才拉：没有导图时「是否需要更新」没有意义。
  * 生成成功后同时让导图与差异失效——后端会重算 `mindmap_file_ids`。
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';

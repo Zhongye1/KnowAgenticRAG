@@ -18,8 +18,7 @@ export type FileCrumb = {
 };
 
 /**
- * 目录位置。虚拟目录没有实体 file_id：用它的父目录 id + `pathPrefix` 定位
- * （上游 `database.js` 的 `file_id`/`path_prefix` 同义）。
+ * 目录位置。虚拟目录没有实体 file_id：用它的父目录 id + `pathPrefix` 定位。
  */
 export type FileLocation = {
   parentId: string | null;
@@ -55,7 +54,7 @@ export const UNKNOWN_DIR_CRUMB = '…';
  * - 实体目录名接口给不出，`parent_id` 非空时在最前面补一节 `…` 占位，等 S3.4 的文件详情补名称；
  * - 没有目录部分又只有 `parent_id` 时，只剩那一节占位；两者都没有就是根目录。
  *
- * 上游在这一步是打开文件详情弹窗（`openFileDetail`），弹窗属于 S3.4；能定位到目录就先定位。
+ * 能定位到目录就先定位；打开文件详情属于文件详情分片。
  */
 export const buildSearchHitLocation = (
   file: Pick<KnowledgeFileSearchItem, 'filename' | 'parent_id'>,

@@ -4,6 +4,7 @@ import {
   ApiError,
   TOKEN_STORAGE_KEY,
   UNAUTHORIZED_EVENT,
+  apiClient,
   apiFetch,
   getAccessToken,
   setAccessToken,
@@ -35,7 +36,9 @@ describe('apiFetch', () => {
 
   it('有凭据时注入 Authorization 头', async () => {
     setAccessToken('ars.token.value');
-    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, { ok: true }));
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { ok: true }));
     vi.stubGlobal('fetch', fetchMock);
 
     await apiFetch('/api/system/health');
@@ -98,6 +101,81 @@ describe('apiFetch', () => {
   });
 });
 
+describe('生成物客户端的凭据与 401 副作用', () => {
+  const requestOf = (fetchMock: ReturnType<typeof vi.fn>): Request =>
+    fetchMock.mock.calls[0][0] as Request;
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    // jsdom 的 Request 不接受相对 URL，测试里给客户端一个绝对 baseUrl
+    apiClient.setConfig({ baseUrl: 'http://localhost' });
+  });
+
+  afterEach(() => {
+    apiClient.setConfig({ baseUrl: '' });
+    vi.unstubAllGlobals();
+  });
+
+  it('未认证入口不携带旧凭据', async () => {
+    setAccessToken('ars.token.stale');
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(jsonResponse(200, { access_token: 'new' }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await apiClient.post({
+      url: '/api/auth/token',
+      body: { username: 'zwj', password: 'pw' },
+    });
+
+    expect(requestOf(fetchMock).headers.get('Authorization')).toBeNull();
+  });
+
+  it('其余请求注入 Bearer', async () => {
+    setAccessToken('ars.token.stale');
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {}));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await apiClient.get({ url: '/api/auth/me' });
+
+    expect(requestOf(fetchMock).headers.get('Authorization')).toBe(
+      'Bearer ars.token.stale',
+    );
+  });
+
+  it('未认证入口的 401 不清凭据，也不派发未授权事件', async () => {
+    setAccessToken('ars.token.stale');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse(401, { detail: '登录标识或密码错误' })),
+    );
+    const listener = vi.fn();
+    window.addEventListener(UNAUTHORIZED_EVENT, listener);
+
+    await apiClient.post({ url: '/api/auth/token', body: {} });
+
+    expect(getAccessToken()).toBe('ars.token.stale');
+    expect(listener).not.toHaveBeenCalled();
+    window.removeEventListener(UNAUTHORIZED_EVENT, listener);
+  });
+
+  it('带凭据请求的 401 清凭据并派发未授权事件', async () => {
+    setAccessToken('ars.token.stale');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(jsonResponse(401, { detail: '无效的凭证' })),
+    );
+    const listener = vi.fn();
+    window.addEventListener(UNAUTHORIZED_EVENT, listener);
+
+    await apiClient.get({ url: '/api/auth/me' });
+
+    expect(getAccessToken()).toBeNull();
+    expect(listener).toHaveBeenCalledTimes(1);
+    window.removeEventListener(UNAUTHORIZED_EVENT, listener);
+  });
+});
+
 describe('ApiError 文案', () => {
   it('字符串 detail 直接作为消息', () => {
     expect(new ApiError(403, '无权访问').message).toBe('无权访问');
@@ -109,7 +187,9 @@ describe('ApiError 文案', () => {
       message: '请求已派发，请通过 run 取消接口取消正在进行的运行',
     });
 
-    expect(error.message).toBe('请求已派发，请通过 run 取消接口取消正在进行的运行');
+    expect(error.message).toBe(
+      '请求已派发，请通过 run 取消接口取消正在进行的运行',
+    );
     expect(error.status).toBe(409);
   });
 

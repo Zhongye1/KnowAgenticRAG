@@ -1,12 +1,9 @@
 /**
  * 文件详情弹窗。
  *
- * 移植上游 `FileDetailModal.vue`：头部是文件信息，下面按视图切换「源文件 / 解析结果 /
- * 分块」。源文件视图（图片、PDF、代码高亮等）随预览渲染接入；本片先落解析结果与分块。
- *
- * 与上游的差异：不再单独请求 `/documents/{doc_id}/basic`，头部直接用表格行上的记录——
- * 行上的 `status` 与 `has_original_file` / `has_parsed_markdown` 已经够决定初始视图，
- * 多一次请求换不到新信息。
+ * 头部是文件信息，下面按视图切换「源文件 / 解析结果 / 分块」。头部直接用表格行上的记录，
+ * 不单独请求 `/documents/{doc_id}/basic`：行上的 `status` 与 `has_original_file` /
+ * `has_parsed_markdown` 已经够决定初始视图，多一次请求换不到新信息。
  */
 import * as React from 'react';
 
@@ -42,7 +39,7 @@ type FileDetailDialogProps = {
   onOpenChange: (open: boolean) => void;
   /** 首屏视图；调用方按能力矩阵决定，用户切换后由弹窗自己持有。 */
   defaultView?: FileDetailView;
-  /** 源文件视图的内容；渲染由调用方提供（预览随下一片接入）。 */
+  /** 源文件视图的内容；渲染由调用方提供。 */
   renderSource?: (file: KnowledgeFileItem) => React.ReactNode;
 };
 
@@ -60,7 +57,7 @@ export const FileDetailDialog = ({
   defaultView = 'markdown',
   renderSource,
 }: FileDetailDialogProps) => {
-  // 可用视图由预览能力决定（上游 availableViewModes 同）：只有源文件的行不该出现
+  // 可用视图由预览能力决定：只有源文件的行不该出现
   // 「解析结果 / 分块」，URL 类型也不该出现「源文件」。
   const availableViews = React.useMemo(() => {
     const views: FileDetailView[] = [];
@@ -88,7 +85,7 @@ export const FileDetailDialog = ({
     () => mergeChunks(content.data?.lines ?? []),
     [content.data?.lines],
   );
-  // 服务端给了解析后的 Markdown 就用它，否则用分块合并兜底（上游同）
+  // 服务端给了解析后的 Markdown 就用它，否则用分块合并兜底
   const markdownContent = content.data?.content || merged.content;
 
   const TAB_LABELS: Record<FileDetailView, string> = {

@@ -144,12 +144,10 @@ describe('消息调试面板', () => {
   });
 
   it('点 Langfuse 用后端给的链接新开窗口', async () => {
-    const fetchUrl = vi
-      .fn()
-      .mockResolvedValue({
-        available: true,
-        url: 'https://lf.example/trace/1',
-      });
+    const fetchUrl = vi.fn().mockResolvedValue({
+      available: true,
+      url: 'https://lf.example/trace/1',
+    });
     render(
       <MessageDebugPanel messages={MESSAGES} fetchLangfuseUrl={fetchUrl} />,
     );

@@ -47,9 +47,24 @@ const extensionsRoute = async () => {
   return { Component: ExtensionsPage };
 };
 
+const agentManageRoute = async () => {
+  const { AgentManagePage } = await import('@/pages/agent-manage');
+  return { Component: AgentManagePage };
+};
+
 const knowledgeBaseRoute = async () => {
   const { KnowledgeBasePage } = await import('@/pages/knowledge-base');
   return { Component: KnowledgeBasePage };
+};
+
+const skillDetailRoute = async () => {
+  const { SkillDetailPage } = await import('@/pages/skill-detail');
+  return { Component: SkillDetailPage };
+};
+
+const dashboardRoute = async () => {
+  const { DashboardPage } = await import('@/pages/dashboard');
+  return { Component: DashboardPage };
 };
 
 /** 路由表：导出以便按真实树形做接线回归（守卫是否真的包住对应路由）。 */
@@ -57,9 +72,7 @@ export const appRoutes: RouteObject[] = [
   {
     path: paths.home.path,
     element: <BlankLayout />,
-    children: [
-      { index: true, element: <HomeRoute /> },
-    ],
+    children: [{ index: true, element: <HomeRoute /> }],
   },
   {
     path: paths.auth.login.path,
@@ -90,13 +103,13 @@ export const appRoutes: RouteObject[] = [
             children: [
               {
                 path: paths.app.dashboard.path,
-                element: <PagePlaceholder title="数据总览" />,
+                lazy: dashboardRoute,
               },
             ],
           },
           {
             path: paths.app.agentManage.path,
-            element: <PagePlaceholder title="智能体管理" />,
+            lazy: agentManageRoute,
           },
           {
             path: paths.app.extensions.path,
@@ -117,7 +130,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: paths.app.extensions.skill.path,
-            element: <PagePlaceholder title="技能" />,
+            lazy: skillDetailRoute,
           },
         ],
       },

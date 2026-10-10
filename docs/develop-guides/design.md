@@ -25,7 +25,7 @@ ARS 是知识库、知识图谱与 Agent 开发平台，界面应保持克制、
 
 ## 2. 颜色与 Token
 
-颜色必须优先使用 `web/src/styles/tokens.css` 中定义的 CSS 变量：`:root` 是亮色值，`.dark` 覆盖同名 token。这些变量由 `web/src/index.css` 的 `@theme inline` 映射为 Tailwind 工具类，组件里写 `bg-color-bg-1`、`text-color-text-2` 这类语义类名。不要在组件中新增硬编码色值；确需新增全局色值时，先补充 token 并说明用途。`web/scripts/check-design-tokens.mjs` 禁止硬编码 HEX、非 `var()` 的 `rgb()`/`hsl()` 与 Tailwind 默认调色板类。
+颜色必须优先使用 CSS 变量：未迁移页面用 `web/src/styles/tokens.css`（`:root` 是亮色值，`.dark` 覆盖同名 token，由 `web/src/index.css` 的 `@theme inline` 映射为 Tailwind 工具类，组件里写 `bg-color-bg-1`、`text-color-text-2` 这类语义类名），迁移到 Yuxi 基座的页面用 `web/src/styles/yuxi-tokens.css` 的 `--main-*`、`--gray-*`、`--color-*`。不要在组件中新增硬编码色值；确需新增全局色值时，先补充 token 并说明用途。`web/scripts/check-design-tokens.mjs` 禁止硬编码 HEX、非 `var()` 的 `rgb()`/`hsl()` 与 Tailwind 默认调色板类。
 
 ### 主色
 
@@ -109,12 +109,13 @@ ARS 通过 `html.dark` 覆盖同名 token，切换入口是 `web/src/components/
 
 ### 技术栈约束
 
-- 框架：React 19 + Vite，信息架构对齐上游实现
+- 框架：React 19 + Vite，信息架构对齐参照实现
 - 包管理器：`pnpm`
 - 图标库：`lucide-react`
-- 样式语言：Tailwind CSS 4（CSS-first，主题配置在 `web/src/index.css`）
-- 颜色变量：使用 `web/src/styles/tokens.css` 中的 CSS 变量，由 `pnpm run check:tokens` 强制
-- UI 基础：`web/src/components/ui` 下的 shadcn/ui 组件（Radix 基座）。不为单次需求封装新组件体系，也不引入第二套组件库：两套主题机制并存会让本节的颜色约束失效
+- UI 基础：antd 5 组件，主题由 `web/src/app/theme/antd-provider.tsx` 提供，全局覆盖写在 `web/src/styles/antd-overrides.css`，页面私有的 `.ant-*` 覆盖写在页面 CSS Modules 的 `:global()` 里。`web/src/shared/ui` 下的 shadcn/ui 组件处于滚动收缩期：只减不增，最后一个使用者消失后删除
+- 样式语言：页面样式用 CSS Modules 与原生 CSS；Tailwind CSS 4 保留给布局与间距工具类，主题配置在 `web/src/index.css`，层叠顺序由该文件顶部的 `@layer` 声明拥有
+- 颜色变量：迁移期有两套来源——`web/src/styles/yuxi-tokens.css`（正在迁移到的 Yuxi 色板：`--main-*`、`--second-*`、`--gray-*`、`--color-*`）与 `web/src/styles/tokens.css`（未迁移页面仍在用的旧色板），两者都由 `pnpm run check:tokens` 强制
+- 图表：统计图表用 `echarts`（按需注册，只在消费它的路由分包里），关系图谱用 `@antv/g6`；两者都不认 `var(--x)`，配色从 token 解析成具体色值后再进画布，主题切换时重建实例
 
 ### 按钮
 
@@ -325,7 +326,9 @@ AI agent 修改或生成 ARS UI 时，优先按这一节执行。
 
 ## 参考资料
 
-- `web/src/styles/tokens.css`：亮色与暗色 token（`:root` / `.dark`）
-- `web/src/index.css`：Tailwind 主题映射、字体栈与全局基础样式
-- `web/src/components/ui`：shadcn/ui 组件源码
+- `web/src/styles/yuxi-tokens.css`：Yuxi 色板（`--main-*` / `--second-*` / `--gray-*` / `--color-*`）
+- `web/src/styles/tokens.css`：未迁移页面仍在用的旧色板（`:root` / `.dark`）
+- `web/src/styles/antd-overrides.css`：antd 的全局 `.ant-*` 覆盖
+- `web/src/index.css`：层叠顺序声明、Tailwind 主题映射、字体栈与全局基础样式
+- `web/src/shared/ui`：shadcn/ui 组件源码（滚动收缩中）
 - [Awesome DESIGN.md](https://github.com/VoltAgent/awesome-design-md)：面向 AI agent 的 `DESIGN.md` 样例集合

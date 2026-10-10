@@ -1,12 +1,11 @@
 /**
  * Token 用量的展示计算。
  *
- * 逐条移植上游 `AgentChatComponent.vue` 的 `tokenUsage*` 计算属性：数值格式化、
- * 上下文构成分段、按模型分桶的调用统计、上下文占比与告警档位。
+ * 数值格式化、上下文构成分段、按模型分桶的调用统计、上下文占比与告警档位。
  * 缺失值一律显示「未上报」/「-」，不猜也不补零。
  */
 
-/** 与上游一致的换算单位。 */
+/** 换算单位。 */
 const K_UNIT = 1024;
 const M_UNIT = K_UNIT * 1000;
 
@@ -45,7 +44,7 @@ export type TokenUsage = Record<string, unknown>;
 
 /**
  * 从线程 state 里取出可用的 `token_usage`；不是非空对象（含数组、字符串）时返回 null。
- * 上游 `currentTokenUsage` 同样排除数组，避免把形状异常的值渲染成 0。
+ * 排除数组形状的值，避免把异常值渲染成 0。
  */
 export const readTokenUsage = (agentState: unknown): TokenUsage | null => {
   const usage = (agentState as { token_usage?: unknown } | null | undefined)
@@ -78,13 +77,18 @@ export type TokenUsageModelItem = {
 const readNumber = (usage: TokenUsage, key: string): number | null =>
   toFiniteNumber(usage[key]);
 
-/** 上下文构成分段；值为 0 的段不展示（上游同规则）。 */
-export const getTokenUsageSegments = (usage: TokenUsage): TokenUsageSegment[] => {
+/** 上下文构成分段；值为 0 的段不展示。 */
+export const getTokenUsageSegments = (
+  usage: TokenUsage,
+): TokenUsageSegment[] => {
   const summaryActive = Boolean(usage.summary_active);
   const summaryTokens = summaryActive
     ? Math.max(readNumber(usage, 'summary_message_tokens') ?? 0, 0)
     : 0;
-  const llmMessageTokens = Math.max(readNumber(usage, 'llm_messages_tokens') ?? 0, 0);
+  const llmMessageTokens = Math.max(
+    readNumber(usage, 'llm_messages_tokens') ?? 0,
+    0,
+  );
   const hasSplitMessageTokens =
     toFiniteNumber(usage.llm_content_message_tokens) !== null ||
     toFiniteNumber(usage.llm_tool_message_tokens) !== null;
@@ -105,7 +109,10 @@ export const getTokenUsageSegments = (usage: TokenUsage): TokenUsageSegment[] =>
     stateMessageTokensBeforeCall - llmMessageTokens,
     0,
   );
-  const llmMessageCount = Math.max(readNumber(usage, 'llm_message_count') ?? 0, 0);
+  const llmMessageCount = Math.max(
+    readNumber(usage, 'llm_message_count') ?? 0,
+    0,
+  );
   const contentMessageCount = hasSplitMessageTokens
     ? Math.max(readNumber(usage, 'llm_content_message_count') ?? 0, 0)
     : Math.max(llmMessageCount - (summaryActive ? 1 : 0), 0);
@@ -128,15 +135,23 @@ export const getTokenUsageSegments = (usage: TokenUsage): TokenUsageSegment[] =>
   const inputTokens = Math.max(readNumber(usage, 'llm_input_tokens') ?? 0, 0);
   const raw = [
     { key: 'system', label: '系统提示', value: systemTokens },
-    { key: 'tools', label: `工具定义 (${readNumber(usage, 'tool_count') ?? 0})`, value: toolsTokens },
+    {
+      key: 'tools',
+      label: `工具定义 (${readNumber(usage, 'tool_count') ?? 0})`,
+      value: toolsTokens,
+    },
     {
       key: 'messages',
-      label: contentMessageCount > 0 ? `内容消息 (${contentMessageCount})` : '内容消息',
+      label:
+        contentMessageCount > 0
+          ? `内容消息 (${contentMessageCount})`
+          : '内容消息',
       value: contentMessageTokens,
     },
     {
       key: 'tool-messages',
-      label: toolMessageCount > 0 ? `工具消息 (${toolMessageCount})` : '工具消息',
+      label:
+        toolMessageCount > 0 ? `工具消息 (${toolMessageCount})` : '工具消息',
       value: toolMessageTokens,
     },
     { key: 'summary', label: '摘要', value: summaryTokens },
@@ -226,7 +241,8 @@ export const getTokenUsageAriaLabel = (usage: TokenUsage): string => {
 
 /** 当前对话的累计 token，缺失为 null。 */
 export const getThreadTotalLabel = (usage: TokenUsage): string | null => {
-  const thread = usage.thread as { total?: { total_tokens?: unknown } } | undefined;
+  const thread = usage.thread as
+    { total?: { total_tokens?: unknown } } | undefined;
   const total = toFiniteNumber(thread?.total?.total_tokens);
   return total === null ? null : formatTokenCount(Math.max(total, 0));
 };
@@ -234,10 +250,13 @@ export const getThreadTotalLabel = (usage: TokenUsage): string | null => {
 /** 累计缓存命中率：没有观测到缓存调用时为 null。 */
 export const getCacheHitLabel = (usage: TokenUsage): string | null => {
   const thread = usage.thread as
-    | { models?: Record<string, Record<string, unknown>> }
-    | undefined;
+    { models?: Record<string, Record<string, unknown>> } | undefined;
   const models = thread?.models;
-  if (!models || typeof models !== 'object' || Object.keys(models).length === 0) {
+  if (
+    !models ||
+    typeof models !== 'object' ||
+    Object.keys(models).length === 0
+  ) {
     return null;
   }
   let observedInputTokens = 0;
@@ -245,19 +264,29 @@ export const getCacheHitLabel = (usage: TokenUsage): string | null => {
   let observedCalls = 0;
   for (const bucket of Object.values(models)) {
     if (!bucket || typeof bucket !== 'object') continue;
-    observedInputTokens += Math.max(toFiniteNumber(bucket.cache_observed_input_tokens) ?? 0, 0);
-    cacheReadTokens += Math.max(toFiniteNumber(bucket.cache_read_input_tokens) ?? 0, 0);
-    observedCalls += Math.max(toFiniteNumber(bucket.cache_observed_call_count) ?? 0, 0);
+    observedInputTokens += Math.max(
+      toFiniteNumber(bucket.cache_observed_input_tokens) ?? 0,
+      0,
+    );
+    cacheReadTokens += Math.max(
+      toFiniteNumber(bucket.cache_read_input_tokens) ?? 0,
+      0,
+    );
+    observedCalls += Math.max(
+      toFiniteNumber(bucket.cache_observed_call_count) ?? 0,
+      0,
+    );
   }
   if (observedCalls <= 0 || observedInputTokens <= 0) return null;
   return formatTokenRatio(cacheReadTokens / observedInputTokens);
 };
 
 /** 按模型分桶的调用统计；桶来自 `token_usage.thread.models`。 */
-export const getModelUsageItems = (usage: TokenUsage): TokenUsageModelItem[] => {
+export const getModelUsageItems = (
+  usage: TokenUsage,
+): TokenUsageModelItem[] => {
   const thread = usage.thread as
-    | { models?: Record<string, Record<string, unknown>> }
-    | undefined;
+    { models?: Record<string, Record<string, unknown>> } | undefined;
   const models = thread?.models;
   if (!models || typeof models !== 'object') return [];
 
@@ -268,7 +297,8 @@ export const getModelUsageItems = (usage: TokenUsage): TokenUsageModelItem[] => 
       ? [
           ...new Set(
             model.response_model_ids.filter(
-              (item): item is string => typeof item === 'string' && item.length > 0,
+              (item): item is string =>
+                typeof item === 'string' && item.length > 0,
             ),
           ),
         ]
@@ -277,10 +307,10 @@ export const getModelUsageItems = (usage: TokenUsage): TokenUsageModelItem[] => 
       (item) => item !== model.configured_model_id,
     );
     const cacheRatio = toFiniteNumber(bucket?.cache_hit_ratio);
-    const cacheObservedCalls = toFiniteNumber(bucket?.cache_observed_call_count) ?? 0;
+    const cacheObservedCalls =
+      toFiniteNumber(bucket?.cache_observed_call_count) ?? 0;
     const outputDetails = modelUsage.output_token_details as
-      | { reasoning?: unknown }
-      | undefined;
+      { reasoning?: unknown } | undefined;
     const reasoning = toFiniteNumber(outputDetails?.reasoning);
 
     return {
@@ -305,13 +335,14 @@ export const getModelUsageItems = (usage: TokenUsage): TokenUsageModelItem[] => 
 
 /** 明细里的补充行：最近一次调用的输入输出。 */
 export const getLatestCallLabel = (usage: TokenUsage): string | null => {
-  const latest = usage.latest as { usage?: Record<string, unknown> } | undefined;
+  const latest = usage.latest as
+    { usage?: Record<string, unknown> } | undefined;
   if (!latest?.usage || typeof latest.usage !== 'object') return null;
   return `输入 ${formatTokenCount(latest.usage.input_tokens)} · 输出 ${formatTokenCount(latest.usage.output_tokens)}`;
 };
 
 /**
- * 构成条的堆叠分段：按上限累计裁剪，剔除被压缩部分与零宽段（与上游 `tokenUsageBarSegments` 同规则）。
+ * 构成条的堆叠分段：按上限累计裁剪，剔除被压缩部分与零宽段。
  *
  * 与 `getTokenUsageSegments` 的 `percent` 不同：那里的分母包含被压缩的 token，
  * 只用于明细列表的占比说明，不能直接当条宽。
@@ -320,7 +351,8 @@ export const getTokenUsageBarSegments = (
   usage: TokenUsage,
 ): Array<TokenUsageSegment & { width: string }> => {
   const limit =
-    getTokenUsageStackLimit(usage) ?? Math.max(getTokenUsageStackTotal(usage), 1);
+    getTokenUsageStackLimit(usage) ??
+    Math.max(getTokenUsageStackTotal(usage), 1);
   let remaining = limit;
   return getTokenUsageSegments(usage)
     .filter((segment) => segment.key !== 'cut')

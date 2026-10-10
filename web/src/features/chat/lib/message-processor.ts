@@ -1,9 +1,8 @@
 /**
  * 历史消息到渲染用的会话分组。
  *
- * 逐条对照上游 `utils/messageProcessor.js` 的 `convertServerHistoryToMessages`
- * 与 `parseAssistantMessageBody`：工具消息已经被后端嵌进 AI 消息的
- * `tool_calls[].tool_call_result`，独立的 `tool` 消息与提问恢复占位消息都要丢掉。
+ * 工具消息已经被后端嵌进 AI 消息的 `tool_calls[].tool_call_result`，独立的 `tool` 消息与
+ * 提问恢复占位消息都要丢掉。
  */
 import type { ChatMessage } from '../api/agent-api';
 
@@ -32,9 +31,12 @@ export type AssistantMessageBody = {
 export function parseAssistantMessageBody(
   message: ChatMessage | null | undefined,
 ): AssistantMessageBody {
-  let content = typeof message?.content === 'string' ? message.content.trim() : '';
+  let content =
+    typeof message?.content === 'string' ? message.content.trim() : '';
   const additional = (
-    message?.extra_metadata as { additional_kwargs?: { reasoning_content?: string } } | null
+    message?.extra_metadata as {
+      additional_kwargs?: { reasoning_content?: string };
+    } | null
   )?.additional_kwargs;
   let reasoningContent = additional?.reasoning_content || '';
 
@@ -52,11 +54,15 @@ export function parseAssistantMessageBody(
 /** 其余角色（如独立的 `tool` 消息）不进入任何一轮：工具结果已经嵌在 AI 消息里。 */
 function isResumePlaceholder(message: ChatMessage): boolean {
   const metadata = message.extra_metadata as { source?: string } | null;
-  return message.type === 'human' && metadata?.source === 'ask_user_question_resume';
+  return (
+    message.type === 'human' && metadata?.source === 'ask_user_question_resume'
+  );
 }
 
 /** 把扁平历史切成「用户消息 + 其后助手消息」的若干轮，并标出每轮最后的助手消息。 */
-export function toConversations(history: ChatMessage[] | null | undefined): Conversation[] {
+export function toConversations(
+  history: ChatMessage[] | null | undefined,
+): Conversation[] {
   const conversations: Conversation[] = [];
   let current: Conversation | null = null;
 
@@ -126,7 +132,7 @@ export type StreamedChunk = {
  * 把一条流式消息的分片拼成可渲染的消息。
  *
  * 工具调用按 `index` 归并（同一次回复可能并行调用多个工具），名称与 id 取首次出现的值，
- * 参数是逐段拼接的字符串；与上游 `mergeMessageChunk` / `_mergeToolCalls` 同规则。
+ * 参数是逐段拼接的字符串。
  */
 export function mergeStreamedMessage(
   id: string,
@@ -215,14 +221,14 @@ export function splitStreamedChunks(
         (chunk) => (chunk as StreamedToolResult).content !== undefined,
       ) as StreamedToolResult | undefined;
       if (result) {
-        // 上游同样先认 tool_call_id：分片表键是 ToolMessage 的 id，不是调用 id
+        // 先认 tool_call_id：分片表键是 ToolMessage 的 id，不是调用 id
         toolResults.set(result.tool_call_id ?? result.id ?? id, result.content);
       }
       continue;
     }
 
     const message = mergeStreamedMessage(id, chunks);
-    // 只有图片没有正文的消息也要留下：上游允许纯图片发送
+    // 只有图片没有正文的消息也要留下：允许纯图片发送
     if (
       message.content ||
       message.image_content ||

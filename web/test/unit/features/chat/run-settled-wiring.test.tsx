@@ -39,14 +39,22 @@ describe('run 收尾回调的接线', () => {
     render(<Probe onSettled={onSettled} />);
 
     act(() => {
-      (runStream.options?.onTerminalDetected as (info: { threadId: string }) => void)({
+      (
+        runStream.options?.onTerminalDetected as (info: {
+          threadId: string;
+        }) => void
+      )({
         threadId: 'thread-A',
       });
     });
     expect(onSettled).toHaveBeenCalledWith('thread-A');
 
     act(() => {
-      (runStream.options?.onInterruptDetected as (info: { threadId: string }) => void)({
+      (
+        runStream.options?.onInterruptDetected as (info: {
+          threadId: string;
+        }) => void
+      )({
         threadId: 'thread-B',
       });
     });

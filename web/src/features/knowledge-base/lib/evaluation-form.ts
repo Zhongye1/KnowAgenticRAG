@@ -1,12 +1,11 @@
 /**
  * 评估表单的纯逻辑：默认名、字段校验、JSONL 校验与启动提示。
  *
- * 口径来自上游 `BenchmarkUploadModal.vue` / `BenchmarkGenerateModal.vue` / `RAGEvaluationTab.vue`；
  * 约束与后端 schema（`knowledge_eval_router.py` 的 `GenerateDatasetRequest`）逐条对齐，
- * 上游把并发上限硬编码成 20，这里同样用后端的 20。
+ * 并发上限用后端的 20。
  */
 
-/** 上传文件的体积上限（上游写 100MB，后端只校验扩展名，体积是界面自己的约束）。 */
+/** 上传文件的体积上限。 */
 export const MAX_BENCHMARK_FILE_BYTES = 100 * 1024 * 1024;
 
 /** 上传校验时只解析前几行，避免大文件在浏览器里整份 parse。 */
@@ -33,7 +32,7 @@ export const buildDefaultEvaluationName = (now = new Date()): string => {
   return `eval-${now.getFullYear()}${two(now.getMonth() + 1)}${two(now.getDate())}-${suffix}`;
 };
 
-/** 基准名称：2..100（上游同，后端 name 是 1..100）。 */
+/** 基准名称：2..100。 */
 export const validateBenchmarkName = (name: string): string | null => {
   const trimmed = name.trim();
   if (!trimmed) return '请输入基准名称。';
@@ -43,7 +42,7 @@ export const validateBenchmarkName = (name: string): string | null => {
   return null;
 };
 
-/** 上传文件：扩展名与体积（上游的 beforeUpload 前两步）。 */
+/** 上传文件：扩展名与体积。 */
 export const validateBenchmarkFile = (
   file: Pick<File, 'name' | 'size'> | null | undefined,
 ): string | null => {
@@ -60,9 +59,8 @@ export const validateBenchmarkFile = (
 /**
  * JSONL 内容：至少一行非空，且前 `JSONL_SAMPLE_LINES` 行都能解析成 JSON 对象。
  *
- * 与上游的三点差异：1) 上游只 trim 后判长度，空文件因为 `''.split('\n').length === 1` 拦不住，
- * 这里按「有没有非空行」判；2) 上游只解析前 5 行，本仓同样只抽样，但要求抽样行是对象
- * （数组或原始值不是合法的评估条目）；3) 错误文案统一成一句，标出首个坏行的行号。
+ * 判空按「有没有非空行」而不是 trim 后的长度；只抽样前 5 行，且要求抽样行是对象
+ * （数组或原始值不是合法的评估条目）；错误文案统一成一句并标出首个坏行的行号。
  */
 export const validateJsonlContent = (content: string): string | null => {
   const lines = content

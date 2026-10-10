@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const discoveryMock = vi.fn();
 
 vi.mock('@/shared/api/generated/sdk.gen', () => ({
-  discoveryApiSystemDiscoveryGet: (...args: unknown[]) => discoveryMock(...args),
+  discoveryApiSystemDiscoveryGet: (...args: unknown[]) =>
+    discoveryMock(...args),
 }));
 
 const { getDiscovery } = await import('@/entities/session');

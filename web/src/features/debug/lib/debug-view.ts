@@ -1,15 +1,11 @@
 /**
  * 调试弹窗的纯逻辑：日志行解析与过滤、配置项归一、本地存储条目与导出。
  *
- * 移植上游 `DebugComponent.vue` 的对应片段（`parseLogLine`、`processedLogs`、
- * `filteredConfigItems`、`loadLocalStorageItems` 等）。
- *
- * 与上游的两点差异：1) 本仓的凭据键是 `ars_access_token`（上游是 `user_token`），
- * 本地存储的「系统键」前缀表按本仓改；2) 上游把 `_config_items` 元数据从配置里过滤掉，
- * 这里把元数据并入条目（类型与说明就是给调试看的），不再让调用方自己去看那层。
+ * 本地存储的凭据键是 `ars_access_token`，其值不展示、不复制、不导出。
+ * 配置项把 `_config_items` 的类型与说明并入条目，调用方不用自己去看那层元数据。
  */
 
-/** 日志级别与展示顺序（上游同四项）。 */
+/** 日志级别与展示顺序。 */
 export const LOG_LEVELS = ['INFO', 'WARNING', 'ERROR', 'DEBUG'] as const;
 
 export type LogLevel = (typeof LOG_LEVELS)[number] | string;
@@ -48,7 +44,7 @@ export const splitLogText = (text: string): string[] =>
 /**
  * 级别 + 关键词过滤。
  *
- * 级别比较用大写（后端偶发小写级别），关键词匹配整行原文（上游口径）。
+ * 级别比较用大写（后端偶发小写级别），关键词匹配整行原文。
  */
 export const filterLogLines = (
   lines: DebugLogLine[],
@@ -139,7 +135,7 @@ export const formatDebugBytes = (bytes: number): string => {
 };
 
 /**
- * 凭据键（上游叫 `user_token`）：值不展示、不复制、不导出，只保留键与字节数用于排查存储占用。
+ * 凭据键：值不展示、不复制、不导出，只保留键与字节数用于排查存储占用。
  */
 export const CREDENTIAL_STORAGE_KEY = 'ars_access_token';
 
@@ -164,7 +160,7 @@ export type StorageItem = {
   masked: boolean;
 };
 
-/** 从 localStorage 读全部条目：系统键优先，其余按 key 排序（上游同）。 */
+/** 从 localStorage 读全部条目：系统键优先，其余按 key 排序。 */
 export const readStorageItems = (
   storage: Pick<Storage, 'length' | 'key' | 'getItem'>,
 ): StorageItem[] => {
@@ -226,7 +222,7 @@ export const buildStorageExport = (
   return { payload, json: JSON.stringify(payload, null, 2) };
 };
 
-/** 日志文件名：`ars-api-log-YYYYMMDD_HHmmss.log`（上游用 yuxi 前缀）。 */
+/** 日志文件名：`ars-api-log-YYYYMMDD_HHmmss.log`。 */
 export const buildLogFileName = (now = new Date()): string => {
   const two = (value: number) => String(value).padStart(2, '0');
   return `ars-api-log-${now.getFullYear()}${two(now.getMonth() + 1)}${two(

@@ -37,7 +37,6 @@ describe('待发送图片预览', () => {
 
     expect(onRemove).toHaveBeenCalledTimes(1);
   });
-
 });
 
 describe('历史消息里的图片', () => {
@@ -69,7 +68,9 @@ describe('历史消息里的图片', () => {
   });
 
   it('没有图片的用户消息不出现查看大图入口', () => {
-    render(<MessageItem message={{ id: 2, type: 'human', content: '纯文本' }} />);
+    render(
+      <MessageItem message={{ id: 2, type: 'human', content: '纯文本' }} />,
+    );
 
     expect(screen.queryByRole('button', { name: '查看大图' })).toBeNull();
   });

@@ -7,7 +7,10 @@
 import { create } from 'zustand';
 
 import { agentRunApi, chatThreadApi, type ChatThread } from '../api/agent-api';
-import { isToolApprovalMode, type ToolApprovalMode } from '../lib/tool-approval';
+import {
+  isToolApprovalMode,
+  type ToolApprovalMode,
+} from '../lib/tool-approval';
 
 /**
  * 列表与智能体解析的请求超时。
@@ -28,7 +31,8 @@ let loadGeneration = 0;
 /** 置顶的排前面，其余保持后端给的 `updated_at` 倒序。 */
 export function sortThreads(threads: ChatThread[]): ChatThread[] {
   return [...threads].sort(
-    (left, right) => Number(right.is_pinned ?? false) - Number(left.is_pinned ?? false),
+    (left, right) =>
+      Number(right.is_pinned ?? false) - Number(left.is_pinned ?? false),
   );
 }
 
@@ -88,7 +92,6 @@ export type ThreadListState = {
   syncStatuses: () => Promise<void>;
   /**
    * 设置线程级工具审批模式：先就地改 metadata，再持久化；失败回滚并留下原因。
-   * 与上游同语义（上游也是先改本地 thread.metadata 再调更新接口）。
    */
   setToolApprovalMode: (
     threadId: string,
@@ -278,9 +281,14 @@ export const useThreadList = create<ThreadListState>((set, get) => ({
       // 与失败分支同一个守卫：期间用户又选过别的模式时，这次响应已经过期
       set((state) => ({
         threads: state.threads.map((item) =>
-          item.id === threadId &&
-          item.metadata?.tool_approval_mode === mode
-            ? { ...item, metadata: updated.metadata ?? { ...previousMetadata, tool_approval_mode: mode } }
+          item.id === threadId && item.metadata?.tool_approval_mode === mode
+            ? {
+                ...item,
+                metadata: updated.metadata ?? {
+                  ...previousMetadata,
+                  tool_approval_mode: mode,
+                },
+              }
             : item,
         ),
       }));
@@ -293,8 +301,7 @@ export const useThreadList = create<ThreadListState>((set, get) => ({
       // 只回滚自己写下的那次值：期间用户又选过别的模式时，那次结果不能被这条旧失败抹掉
       set((state) => ({
         threads: state.threads.map((item) =>
-          item.id === threadId &&
-          item.metadata?.tool_approval_mode === mode
+          item.id === threadId && item.metadata?.tool_approval_mode === mode
             ? { ...item, metadata: previousMetadata }
             : item,
         ),

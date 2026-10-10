@@ -19,7 +19,9 @@ const createFile = (name: string, type: string, size: number): File => {
 describe('图片上传前的校验', () => {
   it('图片且不超过 10MB 时放行', () => {
     expect(
-      validateImageFile(createFile('a.png', 'image/png', MAX_IMAGE_UPLOAD_BYTES)),
+      validateImageFile(
+        createFile('a.png', 'image/png', MAX_IMAGE_UPLOAD_BYTES),
+      ),
     ).toBeNull();
   });
 
@@ -105,7 +107,10 @@ describe('粘贴板取图', () => {
   });
 
   it('files 里只有非图片时返回 null，不把 PDF 当图片拦下', () => {
-    const clipboard = createClipboard([], [createFile('a.pdf', 'application/pdf', 10)]);
+    const clipboard = createClipboard(
+      [],
+      [createFile('a.pdf', 'application/pdf', 10)],
+    );
 
     expect(findClipboardImage(clipboard)).toBeNull();
   });

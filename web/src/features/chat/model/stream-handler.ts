@@ -1,15 +1,17 @@
 /**
  * Run 事件分片到渲染分片的归并。
  *
- * 逐行对照上游 `useAgentStreamHandler.js` 的纯函数部分：把 `stream_event`
- * 语义化成 AI 消息分片、把工具结果转成 `type: 'tool'` 的消息，
- * 其余状态推进线程运行时。
+ * 把 `stream_event` 语义化成 AI 消息分片、把工具结果转成 `type: 'tool'` 的消息，
+ * 其余状态推进线程运行时。子代理线程的 UI 归并尚未实现。子代理线程的 UI 归并尚未实现。
  */
 import type { StreamChunk } from '../lib/stream-smoother';
 import { extractPendingInterrupt } from '../lib/pending-interrupt';
 import { hasPendingInterruptPayload } from '../lib/tool-approval';
 import { invalidateAgentStateReads } from './agent-state';
-import { notifyThreadRuntime, type ThreadRuntimeState } from './thread-runtime-store';
+import {
+  notifyThreadRuntime,
+  type ThreadRuntimeState,
+} from './thread-runtime-store';
 
 /** 工具参数序列化：字符串原样，空值给空串，其余 JSON。 */
 export function serializeToolArgs(args: unknown): string {
@@ -67,7 +69,9 @@ export function streamEventToMessageChunk(
 }
 
 /** `loading` 状态下的分片：优先取语义化结果，其次取 `msg`（事件型 msg 丢弃）。 */
-export function loadingMessageChunk(chunk: Record<string, unknown>): StreamChunk | null {
+export function loadingMessageChunk(
+  chunk: Record<string, unknown>,
+): StreamChunk | null {
   const semantic = streamEventToMessageChunk(chunk?.stream_event);
   if (semantic) return semantic;
 
@@ -92,7 +96,7 @@ export function toolFinishedMessage(
   const output = data.output as Record<string, unknown> | undefined;
   if (!output || typeof output !== 'object') return null;
 
-  // 与上游同序：优先 ToolMessage 自己的 id，消费侧再按 tool_call_id 兜底匹配
+  // 优先 ToolMessage 自己的 id，消费侧再按 tool_call_id 兜底匹配
   const id = output.id || output.tool_call_id || data.tool_call_id;
   if (!id) return null;
   return { ...output, type: 'tool', id: String(id) } as StreamChunk & {
@@ -108,7 +112,10 @@ export type StreamNotice = {
 export type StreamHandlerOptions = {
   getThreadRuntime: (threadId: string) => ThreadRuntimeState | null;
   streamSmoother?: {
-    pushChunk?: (chunk: StreamChunk | null | undefined, threadId: string) => void;
+    pushChunk?: (
+      chunk: StreamChunk | null | undefined,
+      threadId: string,
+    ) => void;
     flushThread: (threadId: string) => void;
   };
   onNotice?: (notice: StreamNotice) => void;
@@ -130,7 +137,7 @@ export function createStreamHandler(options: StreamHandlerOptions) {
       streamSmoother.pushChunk(chunk, threadId);
       return;
     }
-    // 没有平滑层时直接落到分片表；与上游同兜底，也让分片处理可以单独测
+    // 没有平滑层时直接落到分片表：同样的兜底，也让分片处理可以单独测
     const runtime = getThreadRuntime(threadId);
     if (!runtime || !chunk.id) return;
     const chunks = runtime.onGoingConv.msgChunks[chunk.id];
@@ -246,7 +253,8 @@ export function createStreamHandler(options: StreamHandlerOptions) {
 
       // agent_state 承载线程的 todos / files / token_usage 快照；用量卡片只读 token_usage
       case 'agent_state': {
-        const agentState = chunk.agent_state as Record<string, unknown> | undefined;
+        const agentState = chunk.agent_state as
+          Record<string, unknown> | undefined;
         if (agentState) {
           // 先作废在途读取：否则旧响应稍后落地会把卡片回退到上一份快照
           invalidateAgentStateReads(threadId);
@@ -257,14 +265,16 @@ export function createStreamHandler(options: StreamHandlerOptions) {
       }
 
       case 'context_compression': {
-        const compression = chunk.compression as { status?: string } | undefined;
+        const compression = chunk.compression as
+          { status?: string } | undefined;
         runtime.contextCompressing = compression?.status === 'started';
         notifyThreadRuntime(threadId);
         return false;
       }
 
       case 'warning':
-        if (chunkMessage) onNotice?.({ level: 'warning', message: chunkMessage });
+        if (chunkMessage)
+          onNotice?.({ level: 'warning', message: chunkMessage });
         return false;
 
       default:

@@ -6,6 +6,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { paths } from '@/shared/config';
 
+/**
+ * 这套用例逐个靠 userEvent 驱动弹窗与表单，全套件并行跑时会超过默认 5 秒预算；
+ * 与 `knowledge-file-table` 等重交互文件同一口径，给本文件一个明确预算，不放宽全局配置。
+ */
+vi.setConfig({ testTimeout: 15000 });
+
 const { chat, runtime, notifications, agentRunApi, chatOptions, session } =
   vi.hoisted(() => ({
     session: { isSuperuser: true },
@@ -118,7 +124,9 @@ vi.mock('@/features/chat', async () => {
 });
 
 vi.mock('@/shared/ui/notifications', () => ({
-  useNotifications: () => notifications,
+  // 对话页只按选择器取稳定的 addNotification，桩要跟着支持选择器形式
+  useNotifications: (selector?: (state: unknown) => unknown) =>
+    selector ? selector(notifications) : notifications,
 }));
 
 const { threadList } = vi.hoisted(() => ({

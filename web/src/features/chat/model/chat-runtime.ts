@@ -61,7 +61,10 @@ export type ChatRuntimeOptions = {
 
 export type ChatRuntime = {
   /** 进入线程时加载权威消息历史；已加载过则跳过。 */
-  loadHistory: (threadId: string, options?: { force?: boolean }) => Promise<void>;
+  loadHistory: (
+    threadId: string,
+    options?: { force?: boolean },
+  ) => Promise<void>;
   /**
    * 页面还没有线程时创建一条，返回后端落库的线程（含 id 与标题）。
    *
@@ -103,9 +106,9 @@ export type ChatRuntime = {
     threadId: string;
     agentSlug: string;
     query: string;
-    /** 随消息一起发送的图片（裸 base64）；上游只支持一张。 */
+    /** 随消息一起发送的图片（裸 base64）；单槽。 */
     imageContent?: string | null;
-    /** 本次生效的工具审批模式；上游同字段随请求下发。 */
+    /** 本次生效的工具审批模式，随请求下发。 */
     toolApprovalMode?: ToolApprovalMode | null;
     meta?: Record<string, unknown>;
   }) => Promise<void>;
@@ -148,8 +151,10 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
   const queueGenerations = new Map<string, number>();
 
   /** 建线程的单飞状态。 */
-  let threadCreation: { agentSlug: string; promise: Promise<ChatThread> } | null =
-    null;
+  let threadCreation: {
+    agentSlug: string;
+    promise: Promise<ChatThread>;
+  } | null = null;
   /** 失败后按 agent 保留同一个幂等键，供下一次重试复用。 */
   let failedCreation: { agentSlug: string; requestId: string } | null = null;
 
@@ -160,7 +165,8 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
       handler.handleStreamChunk(chunk as Record<string, unknown>, threadId),
     fetchThreadMessages,
     fetchAgentState: options.fetchAgentState,
-    resetOnGoingConv: (threadId, resetOptions) => resetOnGoingConv(threadId, resetOptions),
+    resetOnGoingConv: (threadId, resetOptions) =>
+      resetOnGoingConv(threadId, resetOptions),
     onScrollToBottom: options.onScrollToBottom,
     // 一次 run 收尾会把队头派发出去，队列内容随之变化。
     onTerminalDetected: ({ threadId }) => {
@@ -243,7 +249,12 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
     runtime.pendingRequestId = created.request_id;
     runtime.activeRunId = created.run_id;
     notifyThreadRuntime(threadId);
-    await runStream.startRunStream(threadId, created.run_id, '0-0', streamOptions);
+    await runStream.startRunStream(
+      threadId,
+      created.run_id,
+      '0-0',
+      streamOptions,
+    );
   };
 
   const sendMessage: ChatRuntime['sendMessage'] = async ({
@@ -465,14 +476,21 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
     }
   };
 
-  const refreshQueue: ChatRuntime['refreshQueue'] = async (threadId, agentSlug) => {
+  const refreshQueue: ChatRuntime['refreshQueue'] = async (
+    threadId,
+    agentSlug,
+  ) => {
     if (!(await syncQueue(threadId, agentSlug))) return;
     for (const request of getThreadRuntime(threadId).queuedRequests) {
       void startRequestStream(threadId, request.request_id);
     }
   };
 
-  const steer: ChatRuntime['steer'] = async ({ threadId, agentSlug, requestId }) => {
+  const steer: ChatRuntime['steer'] = async ({
+    threadId,
+    agentSlug,
+    requestId,
+  }) => {
     await agentRunApi.steerRequest(requestId);
     await refreshQueue(threadId, agentSlug);
     void startRequestStream(threadId, requestId);
@@ -497,7 +515,10 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
     runtime.continueQueueInFlight = true;
     notifyThreadRuntime(threadId);
     try {
-      const dispatched = await agentRunApi.continueThreadQueue(threadId, agentSlug);
+      const dispatched = await agentRunApi.continueThreadQueue(
+        threadId,
+        agentSlug,
+      );
       await refreshQueue(threadId, agentSlug);
       if (dispatched?.request_id) {
         void startRequestStream(threadId, dispatched.request_id);
@@ -553,7 +574,10 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
     notifyThreadRuntime(threadId);
   };
 
-  const loadHistory: ChatRuntime['loadHistory'] = async (threadId, loadOptions = {}) => {
+  const loadHistory: ChatRuntime['loadHistory'] = async (
+    threadId,
+    loadOptions = {},
+  ) => {
     const runtime = getThreadRuntime(threadId);
     if (runtime.historyLoaded && !loadOptions.force) return;
     await fetchThreadMessages({ threadId });
@@ -583,18 +607,24 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
 /** 页面侧入口：把运行时绑定到组件生命周期。 */
 export function useChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
   const optionsRef = React.useRef(options);
-  optionsRef.current = options;
+  // 渲染期写 ref 在并发渲染下不安全，改到提交后同步最新 options；
+  // runtime 里的回调只在事件/异步时机读它，提交后读到的一定是最新值
+  React.useEffect(() => {
+    optionsRef.current = options;
+  });
 
   return React.useMemo(
     () =>
+      // createChatRuntime 只保存这些回调，渲染期不会调用它们；optionsRef 只在事件/异步时机被读。
+      // 编译器看不进 createChatRuntime，把「传闭包」保守判成渲染期读 ref，这里显式说明。
+      // oxlint-disable-next-line react/refs -- 构造运行时不读 ref
       createChatRuntime({
         currentAgentId: () => optionsRef.current.currentAgentId(),
         fetchAgentState: (agentId, threadId) =>
           optionsRef.current.fetchAgentState(agentId, threadId),
         onNotice: (notice) => optionsRef.current.onNotice?.(notice),
         onScrollToBottom: () => optionsRef.current.onScrollToBottom?.(),
-        onRunSettled: (threadId) =>
-          optionsRef.current.onRunSettled?.(threadId),
+        onRunSettled: (threadId) => optionsRef.current.onRunSettled?.(threadId),
       }),
     [],
   );

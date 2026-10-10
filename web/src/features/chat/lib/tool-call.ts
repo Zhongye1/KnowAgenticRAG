@@ -1,8 +1,7 @@
 /**
  * 工具调用的纯逻辑：id、显示名、参数与结果的解析，以及隐藏工具的过滤。
  *
- * 逐条对照上游 `components/ToolCallingResult/toolRegistry.js` 的判定分支，
- * 只保留渲染管线需要的部分；子智能体富化随子代理分片补齐。
+ * 只保留渲染管线需要的部分；子智能体富化尚未实现。
  */
 import type { ChatToolCall } from '../api/agent-api';
 
@@ -50,23 +49,27 @@ export const TOOL_NAME_MAP: Record<string, string> = {
 /** 有意不展示的工具调用；分组摘要与渲染共用这一份清单。 */
 export const HIDDEN_TOOL_CALL_IDS = ['present_artifacts'];
 
-export const getToolCallId = (toolCall: ChatToolCall | null | undefined): string =>
-  toolCall?.name || toolCall?.function?.name || '';
+export const getToolCallId = (
+  toolCall: ChatToolCall | null | undefined,
+): string => toolCall?.name || toolCall?.function?.name || '';
 
 export const getToolName = (toolId: string): string =>
   TOOL_NAME_MAP[toolId] || toolId;
 
-export const isHiddenToolCall = (toolCall: ChatToolCall | null | undefined): boolean =>
-  HIDDEN_TOOL_CALL_IDS.includes(getToolCallId(toolCall));
+export const isHiddenToolCall = (
+  toolCall: ChatToolCall | null | undefined,
+): boolean => HIDDEN_TOOL_CALL_IDS.includes(getToolCallId(toolCall));
 
 /** 只有能定位到工具、且带参数或结果的条目才可渲染；无 name/id 的条目会被丢掉。 */
-export const isValidToolCall = (toolCall: ChatToolCall | null | undefined): boolean =>
+export const isValidToolCall = (
+  toolCall: ChatToolCall | null | undefined,
+): boolean =>
   Boolean(
     toolCall &&
-      (toolCall.id || toolCall.name || toolCall.function?.name) &&
-      (toolCall.args !== undefined ||
-        toolCall.function?.arguments !== undefined ||
-        toolCall.tool_call_result !== undefined),
+    (toolCall.id || toolCall.name || toolCall.function?.name) &&
+    (toolCall.args !== undefined ||
+      toolCall.function?.arguments !== undefined ||
+      toolCall.tool_call_result !== undefined),
   );
 
 /** 解析调用参数；对象直接用，字符串按 JSON 解析，失败返回空对象。 */
@@ -107,7 +110,9 @@ export const parseToolCallResultForDisplay = (
 /** 结果展示文案：对象按两空格缩进，其余转成字符串。 */
 export const formatToolCallResult = (data: unknown): string => {
   if (data === null || data === undefined) return '';
-  return typeof data === 'object' ? JSON.stringify(data, null, 2) : String(data);
+  return typeof data === 'object'
+    ? JSON.stringify(data, null, 2)
+    : String(data);
 };
 
 /** 过滤无效与隐藏的调用，供分组与渲染共用。 */

@@ -1,10 +1,8 @@
 /**
  * 查询参数与查询测试的参数组装。
  *
- * 移植上游 `stores/database.js` 的 `loadQueryParams` 与 `SearchConfigPanel.vue`：
- * 后端按知识库类型下发可配置项（`GET /query-params` 的 `params.options`），
- * 界面只改这些键，其余丢弃；`include_distances` 不是用户可改项，但检索测试需要它，
- * 因此固定为 `true` 一起提交（上游同）。
+ * 后端按知识库类型下发可配置项（`GET /query-params` 的 `params.options`），界面只改这些键，
+ * 其余丢弃；`include_distances` 不是用户可改项，但检索测试需要它，因此固定为 `true` 一起提交。
  */
 
 /** 下拉项。 */
@@ -31,7 +29,7 @@ export type KnowledgeQueryParams = {
   options: QueryParamOption[];
 };
 
-/** 序列化里不暴露给用户的键（上游同）。 */
+/** 序列化里不暴露给用户的键。 */
 const HIDDEN_KEYS = new Set(['include_distances']);
 
 /** 按参数类型归一值：布尔要真布尔，数值要真数值，其余按原样。 */
@@ -50,8 +48,7 @@ export const coerceQueryParamValue = (
 /**
  * 组装检索测试/保存用的参数对象。
  *
- * 规则：只保留后端下发的键；已有值优先，缺的用 `default`；`default` 也没有就不带这个键
- * （与上游「先按默认值补齐、只删不受支持的键」等价，但不会把 `undefined` 一起发出去）。
+ * 规则：只保留后端下发的键；已有值优先，缺的用 `default`；`default` 也没有就不带这个键。
  */
 export const buildQueryMeta = (
   params: KnowledgeQueryParams,

@@ -1,7 +1,6 @@
 /**
  * 把一轮对话拆成渲染项，并在已收尾时把中间过程折叠成一行。
  *
- * 逐条对照上游 `utils/messageGrouping.js` 与 `utils/conversationProcessGrouping.js`：
  * 助手消息拆成「正文块」与「工具块」，相邻消息的工具块跨消息合并成一个组。
  */
 import type { ChatToolCall } from '../api/agent-api';
@@ -34,9 +33,7 @@ export type ConversationProcessGroup = {
 };
 
 export type ConversationItem =
-  | ConversationMessageItem
-  | ConversationToolGroup
-  | ConversationProcessGroup;
+  ConversationMessageItem | ConversationToolGroup | ConversationProcessGroup;
 
 /** 「处理过程」的展示文案；拿不到时长时退回中性说法。 */
 export const formatProcessDuration = (durationMs: number): string => {
@@ -54,10 +51,10 @@ function hasVisibleAssistantBody(message: ConversationMessage): boolean {
   const { content, reasoningContent } = parseAssistantMessageBody(message);
   return Boolean(
     content ||
-      reasoningContent ||
-      message.error_type ||
-      (message.extra_metadata as { error_type?: string } | null)?.error_type ||
-      message.isStoppedByUser,
+    reasoningContent ||
+    message.error_type ||
+    (message.extra_metadata as { error_type?: string } | null)?.error_type ||
+    message.isStoppedByUser,
   );
 }
 
@@ -87,7 +84,7 @@ export function collapseConversationProcess(
   if (processStart < 0) return items;
 
   const slice = items.slice(processStart, finalIndex);
-  // 已经折叠过的项不再套一层：与上游一致，遇到非 message / tool-group 就整体放弃
+  // 已经折叠过的项不再套一层：遇到非 message / tool-group 就整体放弃
   if (
     slice.some(
       (item) =>
@@ -101,9 +98,12 @@ export function collapseConversationProcess(
     ConversationMessageItem | ConversationToolGroup
   >;
 
-  const messageCount = processItems.filter((item) => item.type === 'message').length;
+  const messageCount = processItems.filter(
+    (item) => item.type === 'message',
+  ).length;
   const toolCallCount = processItems.reduce(
-    (count, item) => count + (item.type === 'tool-group' ? item.toolCalls.length : 0),
+    (count, item) =>
+      count + (item.type === 'tool-group' ? item.toolCalls.length : 0),
     0,
   );
   if (!messageCount && !toolCallCount) return items;
@@ -114,7 +114,9 @@ export function collapseConversationProcess(
     finalMessage?.run_finished_at || finalMessage?.created_at || '',
   );
   const durationMs =
-    Number.isFinite(startedAt) && Number.isFinite(finishedAt) && finishedAt > startedAt
+    Number.isFinite(startedAt) &&
+    Number.isFinite(finishedAt) &&
+    finishedAt > startedAt
       ? finishedAt - startedAt
       : 0;
 

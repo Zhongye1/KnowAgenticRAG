@@ -16,7 +16,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  */
 vi.setConfig({ testTimeout: 20000 });
 
-
 const { queryOptions } = vi.hoisted(() => ({
   queryOptions: [] as Array<{ refetchInterval?: number | false }>,
 }));
@@ -576,33 +575,28 @@ describe('知识库文件表', () => {
     );
   });
 
-  it(
-    '切目录期间不把上一个目录的行当成新目录内容，也不谎报空态',
-    async () => {
-      api.listDocuments.mockResolvedValueOnce(page([]));
-      let release: (value: unknown) => void = () => {};
-      api.listDocuments.mockImplementationOnce(
-        () =>
-          new Promise((resolve) => {
-            release = resolve;
-          }),
-      );
-      renderTable({ jumpTo: { parentId: 'folder-a', pathPrefix: '' } });
-      await screen.findByText('暂无文件');
+  it('切目录期间不把上一个目录的行当成新目录内容，也不谎报空态', async () => {
+    api.listDocuments.mockResolvedValueOnce(page([]));
+    let release: (value: unknown) => void = () => {};
+    api.listDocuments.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = resolve;
+        }),
+    );
+    renderTable({ jumpTo: { parentId: 'folder-a', pathPrefix: '' } });
+    await screen.findByText('暂无文件');
 
-      await userEvent.click(
-        screen.getByRole('button', { name: '跳到别的目录' }),
-      );
+    await userEvent.click(screen.getByRole('button', { name: '跳到别的目录' }));
 
-      expect(await screen.findByText('正在加载文件…')).toBeTruthy();
-      expect(screen.queryByText('暂无文件')).toBeNull();
+    expect(await screen.findByText('正在加载文件…')).toBeTruthy();
+    expect(screen.queryByText('暂无文件')).toBeNull();
 
-      await act(async () => {
-        release(page([]));
-      });
-      expect(await screen.findByText('暂无文件')).toBeTruthy();
-    },
-  );
+    await act(async () => {
+      release(page([]));
+    });
+    expect(await screen.findByText('暂无文件')).toBeTruthy();
+  });
 
   it('切目录期间旧行不能继续下钻', async () => {
     api.listDocuments.mockResolvedValueOnce(

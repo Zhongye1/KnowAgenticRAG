@@ -1,10 +1,8 @@
 /**
  * Run 事件流的订阅生命周期。
  *
- * 逐行对照上游 `useAgentRunStream.js`：索取事件流、按 `id:` 推进续传游标、
- * 断线前先用 `getRun` 做权威状态判定再决定重连或收尾、以及中断态的快照留存。
- * 上游的响应式状态在这里换成 `entities/thread` 的可变运行时对象，
- * 每次变更后通知订阅者。
+ * 索取事件流、按 `id:` 推进续传游标、断线前先用 `getRun` 做权威状态判定再决定重连或收尾，
+ * 以及中断态的快照留存。状态存放在可变的线程运行时对象里，每次变更后通知订阅者。
  */
 import {
   abortRunStream,
@@ -16,7 +14,11 @@ import {
 } from './thread-runtime-store';
 
 import { agentRunApi, type AgentRun } from '../api/agent-api';
-import { compareRunSeq, normalizeRunSeq, resolveRunResumeAfterSeq } from '../lib/run-seq';
+import {
+  compareRunSeq,
+  normalizeRunSeq,
+  resolveRunResumeAfterSeq,
+} from '../lib/run-seq';
 import { processRunSseResponse } from '../lib/sse';
 import type { StreamSmoother } from '../lib/stream-smoother';
 import { hasPendingInterruptPayload } from '../lib/tool-approval';
@@ -79,16 +81,27 @@ export type RunStreamOptions = {
     delay?: number;
   }) => Promise<unknown>;
   fetchAgentState: (agentId: string | undefined, threadId: string) => void;
-  resetOnGoingConv: (threadId: string, options?: { preserveRequestStreams?: boolean }) => void;
+  resetOnGoingConv: (
+    threadId: string,
+    options?: { preserveRequestStreams?: boolean },
+  ) => void;
   streamSmoother?: StreamSmoother;
   onScrollToBottom?: () => void;
-  onInterruptDetected?: (info: { threadId: string; runId: string; run?: AgentRun | null }) => void;
-  onTerminalDetected?: (info: { threadId: string; runId: string | null; touchedThreadIds: string[] }) => void;
+  onInterruptDetected?: (info: {
+    threadId: string;
+    runId: string;
+    run?: AgentRun | null;
+  }) => void;
+  onTerminalDetected?: (info: {
+    threadId: string;
+    runId: string | null;
+    touchedThreadIds: string[];
+  }) => void;
   onRunStarted?: (info: { threadId: string; runId: string }) => void;
   onStreamError?: (error: unknown) => void;
 };
 
-/** 创建某次会话的 run 流控制器；与上游 composable 的返回面一致。 */
+/** 创建某次会话的 run 流控制器。 */
 export function createRunStream(options: RunStreamOptions) {
   const {
     currentAgentId,
@@ -104,7 +117,11 @@ export function createRunStream(options: RunStreamOptions) {
     onStreamError,
   } = options;
 
-  const saveActiveRunSnapshot = (threadId: string, runId: string, lastSeq = '0-0') => {
+  const saveActiveRunSnapshot = (
+    threadId: string,
+    runId: string,
+    lastSeq = '0-0',
+  ) => {
     if (!threadId || !runId) return;
     const snapshot: ActiveRunSnapshot = {
       run_id: runId,
@@ -115,7 +132,9 @@ export function createRunStream(options: RunStreamOptions) {
     localStorage.setItem(storageKey(threadId), JSON.stringify(snapshot));
   };
 
-  const loadActiveRunSnapshot = (threadId: string): ActiveRunSnapshot | null => {
+  const loadActiveRunSnapshot = (
+    threadId: string,
+  ): ActiveRunSnapshot | null => {
     if (!threadId) return null;
     try {
       const raw = localStorage.getItem(storageKey(threadId));
@@ -144,13 +163,20 @@ export function createRunStream(options: RunStreamOptions) {
     runtime: ThreadRuntimeState | null,
     runId: string,
   ): boolean => {
-    const pending = runtime?.pendingInterrupt as { interruptedRunId?: string } | null;
+    const pending = runtime?.pendingInterrupt as {
+      interruptedRunId?: string;
+    } | null;
     if (!hasPendingInterruptPayload(pending)) return false;
     return !pending?.interruptedRunId || pending.interruptedRunId === runId;
   };
 
-  const hasPendingInterruptInThreads = (threadIds: Set<string>, runId: string) =>
-    [...threadIds].some((id) => hasPendingInterruptForRun(getThreadRuntime(id), runId));
+  const hasPendingInterruptInThreads = (
+    threadIds: Set<string>,
+    runId: string,
+  ) =>
+    [...threadIds].some((id) =>
+      hasPendingInterruptForRun(getThreadRuntime(id), runId),
+    );
 
   const clearPendingInterruptForRun = (threadId: string, runId: string) => {
     const runtime = getThreadRuntime(threadId);
@@ -160,7 +186,11 @@ export function createRunStream(options: RunStreamOptions) {
   };
 
   const resolveRunSteerable = async (run: AgentRun): Promise<boolean> => {
-    if (!run?.request_id || run.status !== 'running' || run.run_type !== 'chat') {
+    if (
+      !run?.request_id ||
+      run.status !== 'running' ||
+      run.run_type !== 'chat'
+    ) {
       return false;
     }
     try {
@@ -175,7 +205,11 @@ export function createRunStream(options: RunStreamOptions) {
     threadId: string,
     runId: string,
     touchedThreadIds: Set<string>,
-    { delay = 200, scroll = false, status = '' }: { delay?: number; scroll?: boolean; status?: string } = {},
+    {
+      delay = 200,
+      scroll = false,
+      status = '',
+    }: { delay?: number; scroll?: boolean; status?: string } = {},
   ) => {
     const runtime = getThreadRuntime(threadId);
     if (runtime.activeRunId !== runId) return;
@@ -200,7 +234,11 @@ export function createRunStream(options: RunStreamOptions) {
     runtime.pendingRequestId = null;
     notifyThreadRuntime(threadId);
 
-    void fetchThreadMessages({ agentId: currentAgentId(), threadId, delay }).finally(() => {
+    void fetchThreadMessages({
+      agentId: currentAgentId(),
+      threadId,
+      delay,
+    }).finally(() => {
       const latest = getThreadRuntime(threadId);
       if (!latest.activeRunId || latest.activeRunId === runId) {
         resetOnGoingConv(threadId, { preserveRequestStreams: true });
@@ -210,7 +248,11 @@ export function createRunStream(options: RunStreamOptions) {
       if (isInterrupted) {
         onInterruptDetected?.({ threadId, runId });
       } else {
-        onTerminalDetected?.({ threadId, runId, touchedThreadIds: [...touchedThreadIds] });
+        onTerminalDetected?.({
+          threadId,
+          runId,
+          touchedThreadIds: [...touchedThreadIds],
+        });
       }
     });
   };
@@ -226,7 +268,9 @@ export function createRunStream(options: RunStreamOptions) {
     streamSmoother?.flushThread(threadId);
     runtime.activeRunId = run.id;
     runtime.activeRunSteerable = false;
-    runtime.runLastSeq = normalizeRunSeq(snapshot?.last_seq || runtime.runLastSeq || '0-0');
+    runtime.runLastSeq = normalizeRunSeq(
+      snapshot?.last_seq || runtime.runLastSeq || '0-0',
+    );
     runtime.lastRetryableJobTry = null;
     runtime.isStreaming = false;
     runtime.replyLoadingVisible = false;
@@ -237,14 +281,22 @@ export function createRunStream(options: RunStreamOptions) {
     try {
       await fetchThreadMessages({ agentId: currentAgentId(), threadId });
     } catch (error) {
-      console.warn('Failed to refresh messages for interrupted run:', threadId, error);
+      console.warn(
+        'Failed to refresh messages for interrupted run:',
+        threadId,
+        error,
+      );
     }
     fetchAgentState(currentAgentId(), threadId);
     onInterruptDetected?.({ threadId, runId: run.id, run });
     return true;
   };
 
-  const scheduleRunReconnect = (threadId: string, runId: string, delay = 500) => {
+  const scheduleRunReconnect = (
+    threadId: string,
+    runId: string,
+    delay = 500,
+  ) => {
     const runtime = getThreadRuntime(threadId);
     if (runtime.activeRunId !== runId) return;
     setTimeout(() => {
@@ -266,7 +318,8 @@ export function createRunStream(options: RunStreamOptions) {
 
     const isSameRun = runtime.activeRunId === runId;
     const initialSteerable =
-      streamOptions.steerable ?? (isSameRun && runtime.activeRunSteerable === true);
+      streamOptions.steerable ??
+      (isSameRun && runtime.activeRunSteerable === true);
     stopRunStreamSubscription(threadId);
 
     const controller = new AbortController();
@@ -284,9 +337,13 @@ export function createRunStream(options: RunStreamOptions) {
     let sawTerminalEvent = false;
 
     try {
-      const response = await agentRunApi.streamRunEvents(runId, runtime.runLastSeq, {
-        signal: controller.signal,
-      });
+      const response = await agentRunApi.streamRunEvents(
+        runId,
+        runtime.runLastSeq,
+        {
+          signal: controller.signal,
+        },
+      );
       if (!response.ok) {
         throw new Error(`SSE response not ok: ${response.status}`);
       }
@@ -309,26 +366,38 @@ export function createRunStream(options: RunStreamOptions) {
         }
 
         const terminalStatus =
-          event === 'end' ? (payload.status as string) : (data.status as string);
+          event === 'end'
+            ? (payload.status as string)
+            : (data.status as string);
         const isRetryableError =
           event === 'error' &&
           ((payload as { retryable?: boolean }).retryable === true ||
-            (payload.chunk as { retryable?: boolean } | undefined)?.retryable === true);
+            (payload.chunk as { retryable?: boolean } | undefined)
+              ?.retryable === true);
         if (isRetryableError) {
           const parsedJobTry = Number.parseInt(
-            String((payload.chunk as { job_try?: unknown } | undefined)?.job_try ?? ''),
+            String(
+              (payload.chunk as { job_try?: unknown } | undefined)?.job_try ??
+                '',
+            ),
             10,
           );
           const retryJobTry = Number.isNaN(parsedJobTry) ? null : parsedJobTry;
-          if (retryJobTry !== null && runtime.lastRetryableJobTry === retryJobTry) {
+          if (
+            retryJobTry !== null &&
+            runtime.lastRetryableJobTry === retryJobTry
+          ) {
             return;
           }
           runtime.lastRetryableJobTry = retryJobTry;
-          console.warn('Run encountered retryable error, waiting for worker retry', {
-            threadId,
-            runId,
-            retryJobTry,
-          });
+          console.warn(
+            'Run encountered retryable error, waiting for worker retry',
+            {
+              threadId,
+              runId,
+              retryJobTry,
+            },
+          );
           return;
         }
 
@@ -352,7 +421,9 @@ export function createRunStream(options: RunStreamOptions) {
         };
 
         if (Array.isArray(payload.items)) {
-          payload.items.forEach((chunk) => routeChunk(chunk as Record<string, unknown>));
+          payload.items.forEach((chunk) =>
+            routeChunk(chunk as Record<string, unknown>),
+          );
         } else if (payload.chunk) {
           routeChunk(payload.chunk as Record<string, unknown>);
         }
@@ -360,9 +431,13 @@ export function createRunStream(options: RunStreamOptions) {
         if (event === 'end') {
           sawTerminalEvent = true;
           if (terminalStatus === RUN_INTERRUPTED_STATUS) {
-            finalizeRunStream(threadId, runId, touchedThreadIds, { status: terminalStatus });
+            finalizeRunStream(threadId, runId, touchedThreadIds, {
+              status: terminalStatus,
+            });
           } else if (RUN_TERMINAL_STATUSES.has(terminalStatus)) {
-            finalizeRunStream(threadId, runId, touchedThreadIds, { status: terminalStatus });
+            finalizeRunStream(threadId, runId, touchedThreadIds, {
+              status: terminalStatus,
+            });
           } else {
             touchedThreadIds.forEach((id) => streamSmoother?.flushThread(id));
             runtime.isStreaming = false;
@@ -372,21 +447,32 @@ export function createRunStream(options: RunStreamOptions) {
 
         if (event === 'error') {
           sawTerminalEvent = true;
-          finalizeRunStream(threadId, runId, touchedThreadIds, { delay: 300, scroll: true });
+          finalizeRunStream(threadId, runId, touchedThreadIds, {
+            delay: 300,
+            scroll: true,
+          });
         }
       });
 
-      if (!sawTerminalEvent && !controller.signal.aborted && runtime.activeRunId === runId) {
+      if (
+        !sawTerminalEvent &&
+        !controller.signal.aborted &&
+        runtime.activeRunId === runId
+      ) {
         try {
           const run = (await agentRunApi.getRun(runId)).run;
           if (run?.status === RUN_INTERRUPTED_STATUS) {
             if (hasPendingInterruptInThreads(touchedThreadIds, run.id)) {
               await preserveInterruptedRun(threadId, run);
             } else {
-              finalizeRunStream(threadId, runId, touchedThreadIds, { status: run.status });
+              finalizeRunStream(threadId, runId, touchedThreadIds, {
+                status: run.status,
+              });
             }
           } else if (run && RUN_TERMINAL_STATUSES.has(run.status)) {
-            finalizeRunStream(threadId, runId, touchedThreadIds, { status: run.status });
+            finalizeRunStream(threadId, runId, touchedThreadIds, {
+              status: run.status,
+            });
           } else {
             scheduleRunReconnect(threadId, runId);
           }
@@ -445,17 +531,28 @@ export function createRunStream(options: RunStreamOptions) {
           clearPendingInterruptForRun(threadId, run.id);
           clearActiveRunSnapshot(threadId);
           notifyThreadRuntime(threadId);
-          onTerminalDetected?.({ threadId, runId: run.id, touchedThreadIds: [threadId] });
+          onTerminalDetected?.({
+            threadId,
+            runId: run.id,
+            touchedThreadIds: [threadId],
+          });
         }
       } catch (error) {
-        console.warn('Failed to refresh active run while stream is open:', threadId, error);
+        console.warn(
+          'Failed to refresh active run while stream is open:',
+          threadId,
+          error,
+        );
       }
       return;
     }
 
     const snapshot = loadActiveRunSnapshot(threadId);
     if (snapshot?.run_id) {
-      if (Date.now() - Number(snapshot.created_at || 0) > ACTIVE_RUN_STORAGE_TTL_MS) {
+      if (
+        Date.now() - Number(snapshot.created_at || 0) >
+        ACTIVE_RUN_STORAGE_TTL_MS
+      ) {
         clearActiveRunSnapshot(threadId);
       } else {
         try {
@@ -468,10 +565,13 @@ export function createRunStream(options: RunStreamOptions) {
               return;
             }
           } else if (run && !RUN_TERMINAL_STATUSES.has(run.status)) {
-            const afterSeq = resolveRunResumeAfterSeq({ snapshot, threadState: runtime });
+            const afterSeq = resolveRunResumeAfterSeq({
+              snapshot,
+              threadState: runtime,
+            });
             if (afterSeq === '0-0') {
-        resetOnGoingConv(threadId, { preserveRequestStreams: true });
-      }
+              resetOnGoingConv(threadId, { preserveRequestStreams: true });
+            }
             await startRunStream(threadId, run.id, afterSeq, {
               steerable: await resolveRunSteerable(run),
             });
@@ -515,8 +615,16 @@ export function createRunStream(options: RunStreamOptions) {
     runtime.pendingInterrupt = null;
     clearActiveRunSnapshot(threadId);
     notifyThreadRuntime(threadId);
-    onTerminalDetected?.({ threadId, runId: null, touchedThreadIds: [threadId] });
+    onTerminalDetected?.({
+      threadId,
+      runId: null,
+      touchedThreadIds: [threadId],
+    });
   };
 
-  return { startRunStream, resumeActiveRunForThread, stopRunStreamSubscription };
+  return {
+    startRunStream,
+    resumeActiveRunForThread,
+    stopRunStreamSubscription,
+  };
 }

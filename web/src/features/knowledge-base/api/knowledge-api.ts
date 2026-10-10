@@ -33,6 +33,7 @@ import {
 } from '@/shared/api/generated/sdk.gen';
 import { apiFetch } from '@/shared/api';
 import { describeFailure, unwrap, unwrapQueuedTask } from '@/shared/api';
+import type { ShareConfig } from '@/shared/lib/share-config';
 import { readFilePreview, type FilePreview } from '../lib/file-preview';
 import type { KnowledgeQueryParams } from '../lib/knowledge-query-params';
 import { parseDownloadFilename } from '../lib/knowledge-files';
@@ -84,20 +85,9 @@ export type KnowledgeBaseDetail = KnowledgeBase & {
 /**
  * version 2 的共享范围；`manage_scope` 为 null 表示不额外授予管理。
  *
- * 部门 id 是**数字**（后端 `_normalize_share_config` 用 `int(department_id)`），
- * 用户是 uid 字符串。
+ * 类型与纯规则由 `shared/lib/share-config.ts` 拥有（知识库、技能安装流与技能详情页共用）。
  */
-export type ShareScope = {
-  access_level: 'global' | 'department' | 'user';
-  department_ids?: number[];
-  user_uids?: string[];
-};
-
-export type ShareConfig = {
-  version: number;
-  read_scope: ShareScope;
-  manage_scope?: ShareScope | null;
-};
+export type { ShareConfig, ShareScope } from '@/shared/lib/share-config';
 
 /** 文件表的一行；字段与 `KnowledgeBaseManager._file_record_list_item` 一一对应。 */
 export type KnowledgeFileItem = {
@@ -112,7 +102,7 @@ export type KnowledgeFileItem = {
   token_count: number;
   created_by?: string | null;
   created_by_name?: string | null;
-  /** 头像地址；界面只显示创建人名称，头像未移植。 */
+  /** 头像地址；界面只显示创建人名称。 */
   created_by_avatar?: string | null;
   is_folder: boolean;
   parent_id?: string | null;
@@ -197,7 +187,7 @@ export type UserAccessOption = {
   department_name?: string | null;
 };
 
-/** 检索测试命中的一个分块；字段与上游 `QuerySection.vue` 渲染的一致。 */
+/** 检索测试命中的一个分块。 */
 export type QueryTestChunk = {
   content: string;
   score?: number | null;

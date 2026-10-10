@@ -202,7 +202,25 @@ services:
       storage-migrator:
         condition: service_completed_successfully
 
-  # web 服务本期移除：前端阶段另行立项（web/ 未导入）。恢复时从上游 docker-compose.prod.yml 取回本段。
+  # 生产前端：nginx 托管 web/dist，同源转发 /api 与 /minio/public（配置见 docker/nginx/）。
+  # tag 带 -prod 后缀，避免覆盖开发镜像 ars-web:<version>（development 阶段）。
+  web:
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+      target: production
+    image: ars-web:${ARS_VERSION:-0.7.2.beta1}-prod
+    container_name: web-prod
+    ports:
+      - "80:80"
+    depends_on:
+      api:
+        condition: service_started
+      minio:
+        condition: service_started
+    networks:
+      - app-network
+    restart: unless-stopped
 
   graph:
     image: neo4j:5.26.29

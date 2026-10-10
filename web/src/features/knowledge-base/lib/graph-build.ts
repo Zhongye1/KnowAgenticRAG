@@ -1,8 +1,8 @@
 /**
  * 图谱构建面板的纯逻辑：状态标签、九个统计格、主操作按钮的取值。
  *
- * 上游 `KnowledgeGraphSection.vue` 把这些判定写在模板的 `v-if` 链里，这里提成函数是为了
- * 能直接对「有失败向量 / 有失败抽取 / 未锁定 / 构建中」这几种组合断言，而不是靠渲染猜。
+ * 判定提成纯函数，便于直接对「有失败向量 / 有失败抽取 / 未锁定 / 构建中」这几种组合断言，
+ * 而不是靠渲染猜。
  */
 import type { GraphBuildStatus } from '../api/graph-api';
 
@@ -16,7 +16,7 @@ const TONE_CLASSES: Record<GraphBuildTone, string> = {
   warning: 'bg-warning-6/10 text-warning-6',
 };
 
-/** 状态标签：构建中 / 执行异常 / 执行完成 / 已配置 / 未配置（上游同文案与配色）。 */
+/** 状态标签：构建中 / 执行异常 / 执行完成 / 已配置 / 未配置。 */
 export const graphBuildStateTag = (
   status?: GraphBuildStatus | null,
 ): { label: string; tone: GraphBuildTone } => {
@@ -59,9 +59,8 @@ export const isGraphBuildRunning = (
 /**
  * 主操作按钮。
  *
- * 与上游的一处差异：上游把「待构建 Chunk 为 0」当成所有分支的禁用条件，
- * 于是「重试失败向量」在 `pending_chunks === 0` 时点不动——而重试向量本来就不需要待构建的
- * Chunk。这里按动作给禁用条件：索引类要 `pending_chunks > 0`，重试向量只看失败数。
+ * 「待构建 Chunk 为 0」只作为索引类动作的禁用条件：重试失败向量本来就不需要待构建的 Chunk，
+ * 因此只看失败数。
  */
 export const graphBuildAction = (
   status?: GraphBuildStatus | null,
@@ -123,7 +122,7 @@ export const graphBuildStats = (
       key: 'vector-failed',
       label: '向量失败',
       // 只有「抽取失败」能点开样例：`graph-build/failed-chunks` 给的是抽取失败的 Chunk，
-      // 向量失败没有对应的样例接口，点了会展示错的数据（上游同样只让抽取失败可点）。
+      // 向量失败没有对应的样例接口，点了会展示错的数据。
       value: status ? (status.vector_counts?.failed ?? 0) : null,
     },
     { key: 'entities', label: '实体', value: status?.entity_count ?? null },

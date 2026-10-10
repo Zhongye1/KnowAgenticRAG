@@ -117,7 +117,7 @@ const ThreadRow = ({
         <span className="min-w-0 flex-1 truncate">
           {thread.title || '未命名会话'}
         </span>
-        {/* 与上游 ConversationNavSection 同判定：运行中显示转圈，有新回复显示圆点，done 不显示 */}
+        {/* 运行中显示转圈，有新回复显示圆点，done 不显示 */}
         {thread.thread_status === 'loading' ? (
           <output
             className="flex size-3 shrink-0 items-center text-color-text-3"

@@ -26,6 +26,8 @@
     "build-storybook": "NODE_ENV=production storybook build"
   },
   "dependencies": {
+    "@ant-design/cssinjs": "^1.24.0",
+    "@ant-design/icons": "^5.6.1",
     "@antv/g6": "5.1.1",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@hey-api/client-fetch": "^0.13.1",
@@ -36,10 +38,13 @@
     "@tanstack/react-query-devtools": "^5.32.0",
     "@tanstack/react-table": "9.2.4",
     "@vscode/markdown-it-katex": "^1.1.2",
+    "antd": "^5.29.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "dayjs": "^1.11.23",
     "dompurify": "^3.1.1",
+    "echarts": "^6.1.0",
     "js-yaml": "^5.4.2",
     "lucide-react": "^1.38.0",
     "markdown-it": "^15.0.2",

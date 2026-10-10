@@ -1,9 +1,0 @@
-{
-  "recommendations": [
-    "oxc.oxc-vscode",
-    "esbenp.prettier-vscode",
-    "dsznajder.es7-react-js-snippets",
-    "mariusalchimavicius.json-to-ts",
-    "bradlc.vscode-tailwindcss"
-  ]
-}

@@ -2,7 +2,7 @@
 
 状态：implemented
 类型：bug-fix
-Owner：docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-design.md
+Owner：docs/develop-guides/decisions/implemented/2026-10-01-web-react-migration-design.md
 
 ## 问题
 
@@ -30,7 +30,7 @@ Owner：docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-de
 
 继续同一子线程时，状态面板只显示最新一项，旧运行不会单独占行；最新调用没有任务描述时会保留同线程已有描述，全部缺失时显示 `child_thread_id`。悬浮面板自然贴合内容，可用最大高度随输入区变化，极低可用高度下优先保证不覆盖输入区。刷新操作在桌面端成为渐进显现的次要操作，在触屏设备上仍保持可见。
 
-本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../proposed/2026-10-01-web-react-migration-design.md)在 `web/` 重建。
+本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../implemented/2026-10-01-web-react-migration-design.md)在 `web/` 重建。
 
 ## 验证
 

@@ -1,9 +1,8 @@
 /**
  * 知识库列表。
  *
- * 与上游 `DataBaseView.vue` 一致：类型筛选 + 名称/描述搜索 + 卡片网格，
- * 「新建知识库」开表单对话框；删除前用命令式确认框；只读知识库不给管理入口。
- * 上游把这一块嵌在 `/extensions?tab=knowledge` 里，本仓同样由页面外壳承载。
+ * 类型筛选 + 名称/描述搜索 + 卡片网格，「新建知识库」开表单对话框；删除前用命令式确认框；
+ * 只读知识库不给管理入口。列表由页面外壳承载。
  */
 import * as React from 'react';
 import { Plus, RefreshCw, Search } from 'lucide-react';
@@ -152,7 +151,9 @@ export const KnowledgeList = ({ onOpen }: KnowledgeListProps) => {
         </Button>
         <Button
           type="button"
-          disabled={!types.isSuccess || Object.keys(types.data ?? {}).length === 0}
+          disabled={
+            !types.isSuccess || Object.keys(types.data ?? {}).length === 0
+          }
           onClick={() => {
             setEditing(null);
             setFormOpen(true);

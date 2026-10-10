@@ -1,8 +1,7 @@
 /**
  * 对话消息列表：历史按轮次分组渲染，流式消息接在最后。
  *
- * 与上游主聊天区同结构：每轮对话拆成渲染项，工具块跨消息合并，已收尾的轮次把
- * 中间过程折成一行「耗时…」。
+ * 每轮对话拆成渲染项，工具块跨消息合并，已收尾的轮次把中间过程折成一行「耗时…」。
  */
 import * as React from 'react';
 import { ChevronDown } from 'lucide-react';
@@ -34,9 +33,7 @@ type MessageListProps = {
 };
 
 /** 已收尾的轮次把中间过程折成一行，正在输出的轮次保持展开。 */
-type ProcessGroupItem =
-  | ConversationMessageItem
-  | ConversationToolGroup;
+type ProcessGroupItem = ConversationMessageItem | ConversationToolGroup;
 
 const ProcessGroup = ({
   items,
@@ -98,13 +95,16 @@ export const MessageList = ({
 
       {conversations.map((conversation, conversationIndex) => {
         const isLast = conversationIndex === conversations.length - 1;
-        // 与上游一致：这一轮不是正在输出的那一轮，且它已经收尾（后面还有一轮，
+        // 这一轮不是正在输出的那一轮，且它已经收尾（后面还有一轮，
         // 或整体已经不再处理）时才把中间过程折起来
         const settled = !isLast || !isProcessing;
-        const displayItems = getConversationDisplayItems(conversation.messages, {
-          collapseIntermediate:
-            conversation.status !== 'streaming' && settled,
-        });
+        const displayItems = getConversationDisplayItems(
+          conversation.messages,
+          {
+            collapseIntermediate:
+              conversation.status !== 'streaming' && settled,
+          },
+        );
         return (
           <div
             key={`conv-${conversationIndex}`}

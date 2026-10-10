@@ -93,7 +93,9 @@ describe('流式工具结果', () => {
     expect(toolResults.get('call_1')).toBe('文件列表');
 
     const [withResult] = attachToolResults(messages, toolResults);
-    const toolCall = withResult?.tool_calls?.find((item) => item.id === 'call_1');
+    const toolCall = withResult?.tool_calls?.find(
+      (item) => item.id === 'call_1',
+    );
 
     // 工具行必须离开「进行中」：结果与状态都要落到调用上
     expect(toolCall?.tool_call_result).toEqual({ content: '文件列表' });

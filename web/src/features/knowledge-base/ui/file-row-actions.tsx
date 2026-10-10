@@ -1,8 +1,7 @@
 /**
  * 文件行的操作菜单。
  *
- * 移植上游 `FileTable.vue` 的 `row-actions` 弹层：按能力矩阵决定有哪些项。
- * 虚拟目录没有任何操作（上游同），目录有移动与删除，文件有下载、解析或入库、
+ * 按能力矩阵决定有哪些项：虚拟目录没有任何操作，目录有移动与删除，文件有下载、解析或入库、
  * 重新入库、移动与删除。动作本身由表格实现（它持有 mutation 与确认框），这里只管呈现。
  */
 import {
@@ -36,7 +35,7 @@ type FileRowActionsProps = {
   file: KnowledgeFileItem;
   /** 只读知识库：只留下载。 */
   readOnly: boolean;
-  /** 有操作在飞行中（上游 `store.state.lock`）：会改状态的入口先关掉。 */
+  /** 有操作在飞行中：会改状态的入口先关掉。 */
   locked: boolean;
   onDownload: (file: KnowledgeFileItem) => void;
   onParse: (file: KnowledgeFileItem) => void;
@@ -55,7 +54,7 @@ export const FileRowActions = ({
   onMove,
   onDelete,
 }: FileRowActionsProps) => {
-  // 虚拟目录没有实体记录，上游也不给操作入口
+  // 虚拟目录没有实体记录，不给操作入口
   if (file.is_virtual_folder) return null;
 
   const primaryAction = getFilePrimaryAction(file);
@@ -83,7 +82,7 @@ export const FileRowActions = ({
             )}
             <DropdownMenuItem
               variant="destructive"
-              // 目录没有解析/入库状态，上游也只看只读标记；批量删除才按能力矩阵过滤
+              // 目录没有解析/入库状态，只看只读标记；批量删除才按能力矩阵过滤
               disabled={readOnly || locked}
               onSelect={() => onDelete(file)}
             >

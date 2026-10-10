@@ -2,7 +2,7 @@
 
 状态：implemented
 类型：feature
-Owner：docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-design.md
+Owner：docs/develop-guides/decisions/implemented/2026-10-01-web-react-migration-design.md
 
 ## 问题
 
@@ -49,4 +49,4 @@ Owner：docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-de
 - Compose 内 `uv run --no-sync` 执行 Dashboard、Chat HTTP integration；Office 转换、状态面板超限滚动和纯触屏等未构造状态仍保留为未验证范围。
 
 
-本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../proposed/2026-10-01-web-react-migration-design.md)在 `web/` 重建。
+本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../implemented/2026-10-01-web-react-migration-design.md)在 `web/` 重建。

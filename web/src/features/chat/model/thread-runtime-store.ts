@@ -146,7 +146,9 @@ export function useThreadRuntime(
   return threadId ? (runtimes.get(threadId) ?? null) : null;
 }
 
-export function getRunController(threadId: string): AbortController | undefined {
+export function getRunController(
+  threadId: string,
+): AbortController | undefined {
   return runControllers.get(threadId);
 }
 

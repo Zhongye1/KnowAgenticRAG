@@ -1,15 +1,13 @@
 /**
  * 工具审批模式与待审批中断的纯逻辑。
  *
- * 逐行移植上游 Vue 实现的工具审批模块：模式枚举、缺失与非法值的
- * 回退顺序、localStorage 读写失败的容错、畸形中断载荷的判定都保持上游分支，
- * 未做“顺手优化”。
+ * 模式枚举、缺失与非法值的回退顺序、localStorage 读写失败的容错、畸形中断载荷的判定。
  */
 
 /** 工具审批模式枚举，顺序即优先级，第一项是回退值。 */
 export const TOOL_APPROVAL_MODES = ['default', 'always_trust'] as const;
 
-/** 审批模式偏好的 localStorage 键名，与上游同键以便复用已有偏好。 */
+/** 审批模式偏好的 localStorage 键名。 */
 export const TOOL_APPROVAL_MODE_STORAGE_KEY = 'ars_tool_approval_mode';
 
 /** 合法的工具审批模式。 */
@@ -81,11 +79,11 @@ export const writeToolApprovalModePreference = (
   }
 };
 
-/** 单个动作的审批决定：通过，或带上游文案的拒绝。 */
+/** 单个动作的审批决定：通过，或带拒绝文案。 */
 export type ToolApprovalDecision =
   { type: 'approve' } | { type: 'reject'; message: string };
 
-/** 逐项选择结果：按动作下标记录 approve 或 reject，上游传的是对象映射。 */
+/** 逐项选择结果：按动作下标记录 approve 或 reject。 */
 export type ToolApprovalSelections = Readonly<Record<number, unknown>>;
 
 /** 按动作数量逐项生成审批决定：选中 approve 的通过，其余一律拒绝。 */
@@ -192,5 +190,7 @@ interface RunInterruptedConflictLike {
  */
 export const isRunInterruptedConflict = (error: unknown): boolean => {
   const conflict = error as RunInterruptedConflictLike | null | undefined;
-  return conflict?.status === 409 && conflict?.detail?.code === 'run_interrupted';
+  return (
+    conflict?.status === 409 && conflict?.detail?.code === 'run_interrupted'
+  );
 };

@@ -118,12 +118,6 @@ const filePage = (items: unknown[] = []) => ({
   has_more: false,
 });
 
-/**
- * 要等防抖查询或渲染整张表加下拉的用例，并行跑整套时单例会长到数秒：
- * 它们自带预算，不依赖全局 `testTimeout`。
- */
-const itSlow = (name: string, fn: () => Promise<void>) => it(name, fn, 15000);
-
 const LocationProbe = () => (
   <span data-testid="path">{useLocation().pathname}</span>
 );

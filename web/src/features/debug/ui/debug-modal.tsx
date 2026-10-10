@@ -1,28 +1,14 @@
 /**
  * 全局调试弹窗。
  *
- * 移植上游 `DebugComponent.vue` 的四个页签：系统日志（级别筛选 / 关键字 / 自动刷新 / 复制 / 下载）、
- * 系统配置（表格与 JSON 两种视图、搜索、复制）、用户与会话（当前登录用户 + 切换身份）、
- * 本地存储（键值浏览、搜索、复制、导出 JSON）。
+ * 四个页签：系统日志（级别筛选 / 关键字 / 自动刷新 / 复制 / 下载）、系统配置（表格与 JSON
+ * 两种视图、搜索、复制）、用户与会话（当前登录用户 + 切换身份）、本地存储（键值浏览、搜索、
+ * 复制、导出 JSON）。
  *
- * 与上游的差异：
- * 1) 凭据不外泄：上游把 Token 脱敏后显示前 12 位与后 6 位，本地存储页还会把原值连同复制、
- *    导出一起给出；本仓的凭据值不展示、不复制、不导出（`readStorageItems` 里直接清空），
- *    用户信息卡也不显示 Token 行。
- * 2) 上游靠 pinia store + 组件内 `checkSuperAdminPermission()`；本仓只在超管可见入口，
- *    授权仍由后端 `get_admin_user` 兜底。
- * 3) 本地存储页只做浏览、复制与导出：上游还有新增/编辑/删除、清空全部与「重载全部 Store」，
- *    改 localStorage 属于危险操作，收益低，需要时再单开。
- * 4) 日志页不做逐行复制、清空本地视图与换行开关（整段复制/下载/刷新已覆盖同样用途）；
- *    自动滚动保留为「跟随最新」开关。
- * 5) 切换身份是危险操作：二次确认里写明「会获得该用户全部权限」，成功后写回凭据并整页重载；
- *    失败时不动当前凭据。
- * 6) 不做全屏与 `Ctrl+Shift+D` 快捷键、不做「对话消息 Debug 模式」开关（后者在本仓是聊天页的
- *    消息时序调试面板）、不做「刷新配置」按钮（配置由 react-query 取一次，改配置在后端做）。
- * 7) 配置页只读，与上游一致（上游此页只调 `getLogs`）；写配置要按 `_config_items[key].type`
- *    提交布尔/数组等真实类型，属于后端管理动作，不在这里顺手加半条路。
- * 8) 当前登录用户卡只列用户名 / uid / 角色 / 部门 / 最近登录：上游还有 User ID、手机号与
- *    isAdmin/isSuperAdmin 两个标志，本仓的 `CurrentUser` 直接给 `role`，不再重复三个同义字段。
+ * 凭据不外泄：本地存储页的凭据值不展示、不复制、不导出，用户信息卡也不显示 Token 行。
+ * 入口只对超管可见，授权由后端 `get_admin_user` 兜底。切换身份是危险操作：二次确认写明
+ * 「会获得该用户全部权限」，成功后写回凭据并整页重载，失败时不动当前凭据。
+ * 配置页只读：写配置要按 `_config_items[key].type` 提交布尔/数组等真实类型，属于后端管理动作。
  */
 import * as React from 'react';
 import {
@@ -161,8 +147,8 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
     const needle = userSearch.trim().toLowerCase();
     if (!needle) return list;
     return list.filter((user) =>
-      [user.username, user.uid, user.role, user.department_name ?? ''].some((field) =>
-        field.toLowerCase().includes(needle),
+      [user.username, user.uid, user.role, user.department_name ?? ''].some(
+        (field) => field.toLowerCase().includes(needle),
       ),
     );
   }, [users.data, userSearch]);
@@ -197,7 +183,9 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
 
   const downloadLogs = () => {
     const text = visibleLogs.map((line) => line.raw).join('\n');
-    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain;charset=utf-8' }));
+    const url = URL.createObjectURL(
+      new Blob([text], { type: 'text/plain;charset=utf-8' }),
+    );
     const link = document.createElement('a');
     link.href = url;
     link.download = buildLogFileName();
@@ -207,7 +195,9 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
 
   const downloadStorage = () => {
     const url = URL.createObjectURL(
-      new Blob([buildStorageExport(storageItems).json], { type: 'application/json' }),
+      new Blob([buildStorageExport(storageItems).json], {
+        type: 'application/json',
+      }),
     );
     const link = document.createElement('a');
     link.href = url;
@@ -226,7 +216,10 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
           </DialogDescription>
         </DialogHeader>
 
-        <nav aria-label="调试分区" className="flex gap-2 border-b border-color-border-1">
+        <nav
+          aria-label="调试分区"
+          className="flex gap-2 border-b border-color-border-1"
+        >
           {TABS.map((item) => {
             const Icon = item.icon;
             const badge =
@@ -343,7 +336,12 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
                     <Copy className="size-3.5" />
                     复制
                   </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={downloadLogs}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={downloadLogs}
+                  >
                     <Download className="size-3.5" />
                     下载
                   </Button>
@@ -353,7 +351,9 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
               {logs.isError ? (
                 <p role="alert" className="text-sm text-danger-6">
                   获取日志失败：
-                  {logs.error instanceof Error ? logs.error.message : '未知错误'}
+                  {logs.error instanceof Error
+                    ? logs.error.message
+                    : '未知错误'}
                 </p>
               ) : (
                 <div
@@ -375,12 +375,21 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
                         data-testid="debug-log-row"
                         className="grid grid-cols-[11rem_5rem_minmax(0,14rem)_1fr] gap-2 whitespace-pre-wrap"
                       >
-                        <span className="text-color-text-3">{line.timestamp}</span>
-                        <span className={logLevelClass(line.level)}>{line.level}</span>
-                        <span className="truncate text-color-text-3" title={line.module}>
+                        <span className="text-color-text-3">
+                          {line.timestamp}
+                        </span>
+                        <span className={logLevelClass(line.level)}>
+                          {line.level}
+                        </span>
+                        <span
+                          className="truncate text-color-text-3"
+                          title={line.module}
+                        >
                           {line.module}
                         </span>
-                        <span className="text-color-text-2">{line.message}</span>
+                        <span className="text-color-text-2">
+                          {line.message}
+                        </span>
                       </div>
                     ))
                   )}
@@ -428,7 +437,9 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => void copy(configJson, '已复制系统配置 JSON。')}
+                    onClick={() =>
+                      void copy(configJson, '已复制系统配置 JSON。')
+                    }
                   >
                     <Copy className="size-3.5" />
                     复制 JSON
@@ -439,7 +450,9 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
               {config.isError ? (
                 <p role="alert" className="text-sm text-danger-6">
                   加载配置失败：
-                  {config.error instanceof Error ? config.error.message : '未知错误'}
+                  {config.error instanceof Error
+                    ? config.error.message
+                    : '未知错误'}
                 </p>
               ) : configView === 'json' ? (
                 <pre
@@ -461,16 +474,25 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
                     </thead>
                     <tbody>
                       {configItems.map((item) => (
-                        <tr key={item.key} className="border-b border-color-border-1 last:border-0">
-                          <td className="px-2 py-1 font-mono text-color-text-1">{item.key}</td>
+                        <tr
+                          key={item.key}
+                          className="border-b border-color-border-1 last:border-0"
+                        >
+                          <td className="px-2 py-1 font-mono text-color-text-1">
+                            {item.key}
+                          </td>
                           <td
                             className="max-w-[280px] truncate px-2 py-1 text-color-text-2"
                             title={formatConfigValue(item.value)}
                           >
                             {formatConfigValue(item.value)}
                           </td>
-                          <td className="px-2 py-1 text-color-text-3">{item.type}</td>
-                          <td className="px-2 py-1 text-color-text-3">{item.description}</td>
+                          <td className="px-2 py-1 text-color-text-3">
+                            {item.type}
+                          </td>
+                          <td className="px-2 py-1 text-color-text-3">
+                            {item.description}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -486,7 +508,9 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
                 data-testid="debug-current-user"
                 className="rounded border border-color-border-1 p-2 text-xs"
               >
-                <h3 className="mb-1 font-medium text-color-text-1">当前登录用户</h3>
+                <h3 className="mb-1 font-medium text-color-text-1">
+                  当前登录用户
+                </h3>
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-color-text-2">
                   <div className="flex gap-1">
                     <dt className="text-color-text-3">用户名</dt>
@@ -494,7 +518,9 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
                   </div>
                   <div className="flex gap-1">
                     <dt className="text-color-text-3">uid</dt>
-                    <dd className="font-mono">{currentUser.data?.uid ?? '-'}</dd>
+                    <dd className="font-mono">
+                      {currentUser.data?.uid ?? '-'}
+                    </dd>
                   </div>
                   <div className="flex gap-1">
                     <dt className="text-color-text-3">角色</dt>
@@ -541,7 +567,9 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
               {users.isError ? (
                 <p role="alert" className="text-sm text-danger-6">
                   加载用户失败：
-                  {users.error instanceof Error ? users.error.message : '未知错误'}
+                  {users.error instanceof Error
+                    ? users.error.message
+                    : '未知错误'}
                 </p>
               ) : (
                 <div className="min-h-0 flex-1 overflow-auto rounded border border-color-border-1">
@@ -559,15 +587,22 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
                       {visibleUsers.map((user) => {
                         const isSelf = user.id === currentUser.data?.id;
                         // 后端禁止模拟超管（`不能模拟超级管理员账户`），只对普通账号给入口
-                        const canImpersonate = !isSelf && user.role !== 'superadmin';
+                        const canImpersonate =
+                          !isSelf && user.role !== 'superadmin';
                         return (
                           <tr
                             key={user.id}
                             className="border-b border-color-border-1 last:border-0"
                           >
-                            <td className="px-2 py-1 text-color-text-1">{user.username}</td>
-                            <td className="px-2 py-1 font-mono text-color-text-2">{user.uid}</td>
-                            <td className="px-2 py-1 text-color-text-2">{user.role}</td>
+                            <td className="px-2 py-1 text-color-text-1">
+                              {user.username}
+                            </td>
+                            <td className="px-2 py-1 font-mono text-color-text-2">
+                              {user.uid}
+                            </td>
+                            <td className="px-2 py-1 text-color-text-2">
+                              {user.role}
+                            </td>
                             <td className="px-2 py-1 text-color-text-3">
                               {user.department_name ?? '-'}
                             </td>
@@ -598,8 +633,13 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
                       })}
                       {visibleUsers.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="px-2 py-4 text-center text-color-text-3">
-                            {users.isLoading ? '正在加载用户列表…' : '没有匹配的用户。'}
+                          <td
+                            colSpan={5}
+                            className="px-2 py-4 text-center text-color-text-3"
+                          >
+                            {users.isLoading
+                              ? '正在加载用户列表…'
+                              : '没有匹配的用户。'}
                           </td>
                         </tr>
                       ) : null}
@@ -634,7 +674,9 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => setStorageItems(readStorageItems(window.localStorage))}
+                    onClick={() =>
+                      setStorageItems(readStorageItems(window.localStorage))
+                    }
                   >
                     <RefreshCw className="size-3.5" />
                     刷新
@@ -644,13 +686,21 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
                     variant="outline"
                     size="sm"
                     onClick={() =>
-                      void copy(buildStorageExport(storageItems).json, '已复制本地存储 JSON。')
+                      void copy(
+                        buildStorageExport(storageItems).json,
+                        '已复制本地存储 JSON。',
+                      )
                     }
                   >
                     <Copy className="size-3.5" />
                     复制 JSON
                   </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={downloadStorage}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={downloadStorage}
+                  >
                     <Download className="size-3.5" />
                     导出
                   </Button>
@@ -663,9 +713,13 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
                     key={item.key}
                     className="flex items-center gap-2 border-b border-color-border-1 px-2 py-1 text-xs last:border-0"
                   >
-                    <span className="font-mono text-color-text-1">{item.key}</span>
+                    <span className="font-mono text-color-text-1">
+                      {item.key}
+                    </span>
                     {item.isSystem ? (
-                      <span className="rounded bg-primary-6/10 px-1 text-primary-6">系统</span>
+                      <span className="rounded bg-primary-6/10 px-1 text-primary-6">
+                        系统
+                      </span>
                     ) : null}
                     <span
                       className="min-w-0 flex-1 truncate text-color-text-3"
@@ -681,7 +735,9 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
                         size="icon"
                         className="size-6"
                         aria-label={`复制 ${item.key}`}
-                        onClick={() => void copy(item.value, '已复制该键的值。')}
+                        onClick={() =>
+                          void copy(item.value, '已复制该键的值。')
+                        }
                       >
                         <Copy className="size-3" />
                       </Button>
@@ -703,7 +759,12 @@ export const DebugModal = ({ open, onOpenChange }: DebugModalProps) => {
             <ChevronDown className="size-3" />
             调试数据只读展示；切换身份会影响真实环境。
           </span>
-          <Button type="button" variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => onOpenChange(false)}
+          >
             关闭
           </Button>
         </footer>

@@ -1,26 +1,11 @@
 /**
  * 知识导图分区：markmap 渲染 + 生成 / 增量更新 / 差异提示。
  *
- * 移植上游 `MindMapSection.vue`：加载态 → 生成中 → 空态（可生成）→ 导图与工具栏
- * （重新生成 / 增量更新 / 适应视图），差异检测决定增量入口是否出现。
+ * 加载态 → 生成中 → 空态（可生成）→ 导图与工具栏（重新生成 / 增量更新 / 适应视图）；差异检测
+ * 决定增量入口是否出现，只把成功响应的 `mindmap: null` 当空态（404 与「不存在」照常报错）。
  *
- * 与上游的差异：
- * 1) 上游为 Safari 写了整套 SVG 文本兜底（自己量文字、断行、画 `<text>`，约 200 行）；
- *    本仓面向 Chromium/Firefox，不移植这套兜底，`foreignObject` 在这些浏览器正常。
- * 2) 上游把 404 与「不存在」也当成「还没生成」静默处理；本仓只把成功响应的 `mindmap: null`
- *    当空态，其它错误照常显示，避免把真故障伪装成「去生成一张」。
- * 3) 主题联动不靠重建：markmap 的配色来自 `--markmap-*` CSS 变量，这里把它们指到
- *    `tokens.css` 的 Token 上，`html.dark` 一换色文字与底色自己跟着变。
- * 4) markmap 实例与 `<svg>` 元素一一对应：effect 依赖「真实元素 + Markdown」两者，元素被
- *    卸载重建（生成中分支会整块替换）后会在新元素上重建实例，旧实例随之销毁。
- *    数据变化是重建实例再 `setData`，不是在同一实例上增量更新——markmap 的实例与元素绑定，
- *    换内容也换不掉这层绑定。
- * 5) 与上游的 markmap 选项差异：不传 `maxWidth`/`nodeMinHeight`/`paddingX`/`spacing*`（用
- *    markmap 默认值），`duration` 用 200ms（上游 300ms），并开启 `autoFit`。
- * 6) 差异检测失败时增量入口静默消失（与上游一致），因为差异只是「要不要给增量按钮」的提示，
- *    不是数据来源；导图本身失败仍会照常报错。
- * 7) markmap 与 markmap-lib 用动态 import：它们只在这个分区渲染时才需要，静态引入会让
- *    「打开任一知识库详情页」都多下 ~150 kB（gzip）。
+ * markmap 配色指到 `tokens.css` 的 Token 上，`html.dark` 一换色就跟着变；实例与 `<svg>` 元素
+ * 一一对应，元素被卸载重建后在新元素上重建实例，数据变化也是重建再 `setData`。
  */
 import * as React from 'react';
 import {
@@ -51,8 +36,8 @@ import { Spinner } from '@/shared/ui/spinner';
 import { useNotifications } from '@/shared/ui/notifications';
 
 /**
- * markmap 自带一套 `--markmap-*` 变量（并且只在系统级暗色偏好下换暗色），这里指到本仓 Token 上：
- * 变量引用变量，`html.dark` 切换时文字与底色自动跟着走，不需要重建实例。
+ * markmap 自带一套 `--markmap-*` 变量（只在系统级暗色偏好下换暗色），把它们指到 `tokens.css`
+ * 的 Token 上：变量引用变量，`html.dark` 切换时文字与底色自动跟着走，不需要重建实例。
  */
 const MARKMAP_VARIABLES: Array<[string, string]> = [
   ['--markmap-text-color', 'rgb(var(--color-text-1))'],

@@ -1,11 +1,10 @@
 /**
  * 知识库详情页。
  *
- * 与上游 `DataBaseInfoView.vue` 同结构：顶部名称/类型/描述与统计卡，下面按 tab 分区。
- * 六个分区全部落地（文件管理、检索测试、知识图谱、知识导图、RAG 评估、评估基准），
- * 另有头部「共享设置」；连接器类型只给检索测试。
+ * 顶部名称/类型/描述与统计卡，下面按 tab 分区：六个分区（文件管理、检索测试、知识图谱、
+ * 知识导图、RAG 评估、评估基准）与头部的「共享设置」。
  *
- * 只有文档型知识库（上游判定 `kb_type === 'milvus'`）才有文件管理：连接器类型
+ * 只有文档型知识库（按 `kb_type === 'milvus'` 判定）才有文件管理：连接器类型
  * （Dify / Notion）没有文档全文接口，渲染出来只会收到 400 与一个永远失败的重试按钮。
  */
 import * as React from 'react';
@@ -43,7 +42,7 @@ import { Spinner } from '@/shared/ui/spinner';
 type DetailTab =
   'files' | 'query' | 'graph' | 'mindmap' | 'evaluation' | 'benchmarks';
 
-/** 文档型知识库才有文件管理；上游同样只认 milvus。 */
+/** 文档型知识库才有文件管理；当前按 `kb_type === 'milvus'` 判定。 */
 const DOCUMENT_KB_TYPES = ['milvus'];
 
 const DOCUMENT_TABS: Array<{
@@ -58,7 +57,7 @@ const DOCUMENT_TABS: Array<{
   { key: 'benchmarks', label: '评估基准' },
 ];
 
-/** 连接器类型只支持检索测试（上游对非 milvus 只给这一个分区）。 */
+/** 连接器类型只支持检索测试。 */
 const CONNECTOR_TABS: Array<{
   key: DetailTab;
   label: string;
@@ -218,7 +217,7 @@ const KnowledgeBaseContent = ({ kbId }: { kbId: string }) => {
         </nav>
 
         {supportsDocuments ? (
-          // 文件分区保持挂载（上游同用 v-show）：每页条数与排序是表格自持的显示偏好，
+          // 文件分区保持挂载：每页条数与排序是表格自持的显示偏好，
           // 切走再回来应当还在，重建会把它们重置成默认值
           <div className={visibleTab === 'files' ? undefined : 'hidden'}>
             <KnowledgeFileTable

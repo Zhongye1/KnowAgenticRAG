@@ -1,16 +1,11 @@
 /**
  * 图谱画布：`@antv/g6` v5 的 React 封装。
  *
- * 与上游 `GraphCanvas.vue` 的差异（有意为之）：
- * 1) 上游一次加载会同时走「deep watch → setData」与「refreshGraph → 销毁重建」两条路径，
- *    同一份数据被渲染两次；这里收敛成一条：数据变更只 `setData`，重建只服务主题切换、
- *    容器尺寸变化与手动刷新。
- * 2) 上游在容器 0×0 时靠 5×200 ms 轮询重试初始化、并监听 `window.resize` 全量重建；
- *    这里由 ResizeObserver 驱动（首帧、尺寸变化都覆盖），不再监听 window。
- * 3) 上游把 `highlighted`/`hidden`/`focus` 当 G6 状态用，但 5.1.1 的内建主题没有这三个
- *    状态样式，属静默空操作；本仓不提供这套假 API，选中态交给 `click-select` 行为。
- * 4) 颜色不写死：`resolveGraphColors` 让 CSS 引擎把 `tokens.css` 的变量算成色值；
- *    G6 在创建时快照样式，因此主题切换时重建实例。
+ * 数据变更只 `setData`（带签名比对，内容没变就不重画），实例重建只服务主题切换；容器尺寸由
+ * ResizeObserver 驱动（首帧与后续变化都覆盖），容器 0×0 时等它出第一帧再建实例。
+ *
+ * 颜色不写死：`resolveGraphColors` 让 CSS 引擎把 `tokens.css` 的变量算成色值；G6 在创建时
+ * 快照样式，因此主题切换必须重建实例。选中态交给 `click-select` 行为。
  */
 import * as React from 'react';
 import { Graph } from '@antv/g6';
@@ -57,16 +52,15 @@ export type GraphCanvasProps = {
   onEdgeClick: (edge: GraphEdge) => void;
   /** 点空白处：关闭详情面板。 */
   onCanvasClick: () => void;
-  /** 每次数据真正画完之后通知调用方（对应上游的 `data-rendered`）。 */
+  /** 每次数据真正画完之后通知调用方。 */
   onDataRendered?: () => void;
 };
 
 /**
- * 力导布局参数：取上游 `GraphCanvas.vue` 的数值，但按 G6 v5 的键名摊平。
+ * 力导布局参数，按 G6 v5 的键名摊平。
  *
- * 上游把它们写在 `force: { center, charge, link, collide }` 里，G6 5.1.1 不认识这个键
- * （合法键是 `link`/`manyBody`/`collide`/`center`），等于整套间距配置没生效、用默认值渲染，
- * 节点会挤成一团。这里给同一组数值配上正确键名：`charge` → `manyBody`。
+ * G6 5.1.1 不认 `force` 这个键（合法键是 `link`/`manyBody`/`collide`/`center`），键名不对
+ * 等于整套间距配置没生效、用默认值渲染，节点会挤成一团：`charge` 要写成 `manyBody`。
  */
 const LAYOUT = {
   type: 'd3-force',
@@ -122,8 +116,7 @@ export const GraphCanvas = ({
   /**
    * 视口收尾：内容超出视口才缩放，随后居中。
    *
-   * 上游从不在画完后自适应，小图会被放大到节点与文字糊在一起；这里用 `when: 'overflow'`
-   * 只在真的放不下时缩，避免两个极端。
+   * 用 `when: 'overflow'` 只在真的放不下时缩，避免小图被放大到节点与文字糊在一起。
    */
   const settleViewport = React.useCallback((instance: Graph) => {
     // 调用点（paint 回调与 ResizeObserver）都已确认实例仍是当前那个，这里不再重复校验
@@ -133,32 +126,35 @@ export const GraphCanvas = ({
   }, []);
 
   /** 只换数据，不重建；G6 的 render 返回 Promise，这里明确不 await（画布自己重绘）。 */
-  const paint = React.useCallback((instance: Graph, next: GraphView) => {
-    instance.setData({
-      nodes: next.nodes.map((node) => ({
-        id: node.id,
-        data: {
-          label: node.label,
-          colorToken: node.colorToken,
-          degree: node.degree,
-        },
-      })),
-      edges: next.edges.map((edge) => ({
-        id: edge.id,
-        source: edge.source,
-        target: edge.target,
-        data: { label: edge.label, colorToken: edge.colorToken },
-      })),
-    });
-    appliedRef.current = signatureOf(next);
-    renderRef.current = instance.render();
-    void renderRef.current.then(() => {
-      // 主题切换 / 卸载会销毁旧实例，销毁后不再碰它（否则 G6 会报已销毁实例或空 context）
-      if (graphRef.current !== instance) return;
-      settleViewport(instance);
-      handlersRef.current.onDataRendered?.();
-    });
-  }, []);
+  const paint = React.useCallback(
+    (instance: Graph, next: GraphView) => {
+      instance.setData({
+        nodes: next.nodes.map((node) => ({
+          id: node.id,
+          data: {
+            label: node.label,
+            colorToken: node.colorToken,
+            degree: node.degree,
+          },
+        })),
+        edges: next.edges.map((edge) => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          data: { label: edge.label, colorToken: edge.colorToken },
+        })),
+      });
+      appliedRef.current = signatureOf(next);
+      renderRef.current = instance.render();
+      void renderRef.current.then(() => {
+        // 主题切换 / 卸载会销毁旧实例，销毁后不再碰它（否则 G6 会报已销毁实例或空 context）
+        if (graphRef.current !== instance) return;
+        settleViewport(instance);
+        handlersRef.current.onDataRendered?.();
+      });
+    },
+    [settleViewport],
+  );
 
   React.useEffect(() => {
     const container = containerRef.current;
@@ -221,7 +217,7 @@ export const GraphCanvas = ({
           'zoom-canvas',
           'drag-canvas',
           'hover-activate',
-          // 与上游同一套：可多选、shift 触发、相邻标 active、其余标 inactive
+          // 可多选、shift 触发，相邻标 active、其余标 inactive
           {
             type: 'click-select',
             multiple: true,

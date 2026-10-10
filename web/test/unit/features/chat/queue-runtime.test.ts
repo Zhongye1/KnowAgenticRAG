@@ -30,10 +30,10 @@ vi.mock('@/features/chat/model/run-stream', () => ({
   },
 }));
 
-const { createChatRuntime } = await import('@/features/chat/model/chat-runtime');
-const { getThreadRuntime, disposeThreadRuntime } = await import(
-  '@/features/chat/model/thread-runtime-store'
-);
+const { createChatRuntime } =
+  await import('@/features/chat/model/chat-runtime');
+const { getThreadRuntime, disposeThreadRuntime } =
+  await import('@/features/chat/model/thread-runtime-store');
 
 const THREAD = 'thread-queue';
 const SLUG = 'default-chatbot';
@@ -49,7 +49,9 @@ type QueuePayload = {
 };
 
 const snapshot = (content: string): QueuePayload => ({
-  requests: [{ request_id: 'req-2', status: 'queued', content, queue_position: 1 }],
+  requests: [
+    { request_id: 'req-2', status: 'queued', content, queue_position: 1 },
+  ],
   queue: {
     status: 'running',
     paused_reason: null,
@@ -76,7 +78,9 @@ function deferred<T>() {
 
 /** 公开面只有队列同步会建立订阅，测试统一走这条路径。 */
 const subscribeThroughQueue = async (
-  runtime: { refreshQueue: (threadId: string, agentSlug: string) => Promise<void> },
+  runtime: {
+    refreshQueue: (threadId: string, agentSlug: string) => Promise<void>;
+  },
   content = '第二条问题',
 ) => {
   api.listThreadRequests.mockResolvedValue(snapshot(content));
@@ -96,7 +100,9 @@ describe('队列运行时', () => {
     threadApi.createThread.mockReset();
     api.getAgentHistory.mockResolvedValue({ history: [] });
     // 每次调用都要新造一个响应体：ReadableStream 只能被读一次
-    api.streamRequestEvents.mockImplementation(() => Promise.resolve(sseResponse('')));
+    api.streamRequestEvents.mockImplementation(() =>
+      Promise.resolve(sseResponse('')),
+    );
     runStreamMock.startRunStream.mockReset();
     disposeThreadRuntime(THREAD);
     // 失败路径按设计会 console.warn，这里只关心用户可见提示
@@ -162,7 +168,11 @@ describe('队列运行时', () => {
     api.steerRequest.mockResolvedValue({});
     api.listThreadRequests.mockResolvedValue(snapshot('第二条问题'));
 
-    await createRuntime().steer({ threadId: THREAD, agentSlug: SLUG, requestId: 'req-2' });
+    await createRuntime().steer({
+      threadId: THREAD,
+      agentSlug: SLUG,
+      requestId: 'req-2',
+    });
 
     expect(api.steerRequest).toHaveBeenCalledWith('req-2');
     expect(api.listThreadRequests).toHaveBeenCalledTimes(1);
@@ -179,12 +189,10 @@ describe('队列运行时', () => {
         resolveState = resolve;
       }),
     );
-    const { fetchAgentState } = await import(
-      '@/features/chat/model/agent-state'
-    );
-    const { getThreadRuntime } = await import(
-      '@/features/chat/model/thread-runtime-store'
-    );
+    const { fetchAgentState } =
+      await import('@/features/chat/model/agent-state');
+    const { getThreadRuntime } =
+      await import('@/features/chat/model/thread-runtime-store');
     const runtime = getThreadRuntime(THREAD);
     const pending = fetchAgentState(THREAD);
 
@@ -232,9 +240,8 @@ describe('队列运行时', () => {
     );
 
     api.listThreadRequests.mockClear();
-    const onInterruptDetected = captured.options?.onInterruptDetected as (info: {
-      threadId: string;
-    }) => void;
+    const onInterruptDetected = captured.options
+      ?.onInterruptDetected as (info: { threadId: string }) => void;
     onInterruptDetected({ threadId: THREAD });
     await vi.waitFor(() =>
       expect(api.listThreadRequests).toHaveBeenCalledWith(THREAD, SLUG),
@@ -245,14 +252,22 @@ describe('队列运行时', () => {
     api.listThreadRequests.mockResolvedValue({ requests: [], queue: null });
     const runtime = createRuntime();
     api.cancelRequest.mockResolvedValue({});
-    await runtime.cancelQueued({ threadId: THREAD, agentSlug: SLUG, requestId: 'req-2' });
+    await runtime.cancelQueued({
+      threadId: THREAD,
+      agentSlug: SLUG,
+      requestId: 'req-2',
+    });
     expect(api.listThreadRequests).toHaveBeenCalledTimes(1);
 
     api.cancelRequest.mockRejectedValue(new Error('请求已派发'));
     api.listThreadRequests.mockClear();
 
     await expect(
-      runtime.cancelQueued({ threadId: THREAD, agentSlug: SLUG, requestId: 'req-1' }),
+      runtime.cancelQueued({
+        threadId: THREAD,
+        agentSlug: SLUG,
+        requestId: 'req-1',
+      }),
     ).rejects.toThrow('请求已派发');
     expect(api.listThreadRequests).not.toHaveBeenCalled();
   });
@@ -270,7 +285,9 @@ describe('队列运行时', () => {
     await subscribeThroughQueue(runtime);
 
     await vi.waitFor(() =>
-      expect(getThreadRuntime(THREAD).queuedRequests[0]?.queue_position).toBe(3),
+      expect(getThreadRuntime(THREAD).queuedRequests[0]?.queue_position).toBe(
+        3,
+      ),
     );
     expect(api.streamRequestEvents).toHaveBeenCalledWith('req-2', {
       signal: expect.anything(),
@@ -393,7 +410,9 @@ describe('队列运行时', () => {
       query: '你好',
     });
     // 占位消息在请求返回前就已经能渲染
-    const seeded = Object.values(getThreadRuntime(THREAD).onGoingConv.msgChunks);
+    const seeded = Object.values(
+      getThreadRuntime(THREAD).onGoingConv.msgChunks,
+    );
     expect(seeded.flat()).toContainEqual(
       expect.objectContaining({ type: 'human', content: '你好' }),
     );
@@ -423,7 +442,9 @@ describe('队列运行时', () => {
       imageContent: 'iVBORw0KGgoAAA',
     });
 
-    const seeded = Object.values(getThreadRuntime(THREAD).onGoingConv.msgChunks).flat();
+    const seeded = Object.values(
+      getThreadRuntime(THREAD).onGoingConv.msgChunks,
+    ).flat();
     expect(seeded).toContainEqual(
       expect.objectContaining({
         type: 'human',
@@ -471,7 +492,11 @@ describe('队列运行时', () => {
     });
     const runtime = createRuntime();
 
-    await runtime.sendMessage({ threadId: THREAD, agentSlug: SLUG, query: '排队' });
+    await runtime.sendMessage({
+      threadId: THREAD,
+      agentSlug: SLUG,
+      query: '排队',
+    });
 
     const thread = getThreadRuntime(THREAD);
     expect(runStreamMock.startRunStream).not.toHaveBeenCalled();
@@ -486,7 +511,9 @@ describe('队列运行时', () => {
 
   it('订阅仍在进行时重复同步，不会为同一条请求再开一条流', async () => {
     // 流一直挂着不结束，模拟队列长时间不动
-    api.streamRequestEvents.mockImplementation(() => new Promise(() => undefined));
+    api.streamRequestEvents.mockImplementation(
+      () => new Promise(() => undefined),
+    );
     const runtime = createRuntime();
     await subscribeThroughQueue(runtime);
     await vi.waitFor(() =>
@@ -520,9 +547,7 @@ describe('队列运行时', () => {
     const runtime = createRuntime();
     await runtime.refreshQueue('thread-A', SLUG);
     await runtime.refreshQueue('thread-B', SLUG);
-    await vi.waitFor(() =>
-      expect(aborted.size).toBe(2),
-    );
+    await vi.waitFor(() => expect(aborted.size).toBe(2));
 
     runtime.stopRequestStreams('thread-A');
 
@@ -738,7 +763,9 @@ describe('队列运行时', () => {
     api.continueThreadQueue.mockRejectedValue(new Error('run_active'));
     const runtime = createRuntime();
 
-    await expect(runtime.continueQueue(THREAD, SLUG)).rejects.toThrow('run_active');
+    await expect(runtime.continueQueue(THREAD, SLUG)).rejects.toThrow(
+      'run_active',
+    );
 
     expect(getThreadRuntime(THREAD).continueQueueInFlight).toBe(false);
   });

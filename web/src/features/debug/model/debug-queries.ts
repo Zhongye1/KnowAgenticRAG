@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import { debugApi } from '../api/debug-api';
 
-/** 自动刷新间隔，与上游一致。 */
+/** 自动刷新间隔。 */
 export const LOG_REFRESH_INTERVAL = 5000;
 
 export const debugKeys = {

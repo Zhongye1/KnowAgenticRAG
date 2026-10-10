@@ -1,14 +1,18 @@
 /**
  * 工具调用组：一行摘要 + 展开后的时间线列表。
  *
- * 摘要文案、名称去重与状态统计与上游 `ToolCallsGroupComponent.vue` 一致；
- * 活跃期间自动展开，活跃结束后收起，避免正文开始输出时还占着屏幕。
+ * 摘要文案、名称去重与状态统计集中在纯逻辑里；活跃期间自动展开，活跃结束后收起，
+ * 避免正文开始输出时还占着屏幕。
  */
 import * as React from 'react';
 import { Atom, ChevronDown } from 'lucide-react';
 
 import type { ChatToolCall } from '../api/agent-api';
-import { getToolCallId, getToolName, normalizeToolCalls } from '../lib/tool-call';
+import {
+  getToolCallId,
+  getToolName,
+  normalizeToolCalls,
+} from '../lib/tool-call';
 import { resolveToolRunState, ToolCallRow } from './tool-call-row';
 
 type ToolCallsGroupProps = {
@@ -24,7 +28,10 @@ export const ToolCallsGroup = ({
   toolCalls,
   isActive = false,
 }: ToolCallsGroupProps) => {
-  const normalized = React.useMemo(() => normalizeToolCalls(toolCalls), [toolCalls]);
+  const normalized = React.useMemo(
+    () => normalizeToolCalls(toolCalls),
+    [toolCalls],
+  );
   // 默认跟随活跃状态：活跃时展开、结束后收起；用户点过之后以他的选择为准
   const [userChoice, setUserChoice] = React.useState<boolean | null>(null);
   const expanded = userChoice ?? isActive;
@@ -34,7 +41,9 @@ export const ToolCallsGroup = ({
   const names = [...new Set(normalized.map(labelOf))].filter(Boolean);
   const visibleNames = names.slice(0, 3);
   const namesMeta = `${visibleNames.join(' · ')}${
-    names.length > visibleNames.length ? ` +${names.length - visibleNames.length}` : ''
+    names.length > visibleNames.length
+      ? ` +${names.length - visibleNames.length}`
+      : ''
   }`;
   const states = normalized.map((toolCall) => resolveToolRunState(toolCall));
   const errorCount = states.filter((state) => state === 'error').length;
@@ -69,7 +78,9 @@ export const ToolCallsGroup = ({
             </>
           ) : null}
           {statusSummary ? (
-            <span className="shrink-0 text-xs text-color-text-3">{statusSummary}</span>
+            <span className="shrink-0 text-xs text-color-text-3">
+              {statusSummary}
+            </span>
           ) : null}
         </span>
 

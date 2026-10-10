@@ -1,7 +1,6 @@
 /**
  * 工具调用图标表。
  *
- * 与上游 `ToolCallingResult/toolRegistry.js` 的 `TOOL_ICON_MAP` 同键，
  * 未命中的工具用通用图标兜底。
  */
 import {

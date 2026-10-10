@@ -6,14 +6,14 @@
 
 FSD 是一套组织代码的约定，不绑定框架。本项目采用其中五层，`widgets` 按需引入，`processes` 不使用。
 
-| 层 | 放什么 | 判定问题 |
-| --- | --- | --- |
-| `app` | 路由配置、providers、入口、全局样式 | 应用跑起来需要它吗 |
-| `pages` | 一个页面或一组高度相似页面的组装 | 它对应一条路由吗 |
-| `widgets` | 跨页面复用的大型自包含 UI 块 | 它在多个页面出现且自成一块吗 |
-| `features` | 用户能做的、可复用的交互 | 这是用户要做的一件事吗 |
-| `entities` | 业务实体及其数据、展示与请求 | 它是业务里的一个名词吗 |
-| `shared` | 与业务无关的底座：UI kit、API 客户端、库、配置 | 换个产品它还能用吗 |
+| 层         | 放什么                                         | 判定问题                     |
+| ---------- | ---------------------------------------------- | ---------------------------- |
+| `app`      | 路由配置、providers、入口、全局样式            | 应用跑起来需要它吗           |
+| `pages`    | 一个页面或一组高度相似页面的组装               | 它对应一条路由吗             |
+| `widgets`  | 跨页面复用的大型自包含 UI 块                   | 它在多个页面出现且自成一块吗 |
+| `features` | 用户能做的、可复用的交互                       | 这是用户要做的一件事吗       |
+| `entities` | 业务实体及其数据、展示与请求                   | 它是业务里的一个名词吗       |
+| `shared`   | 与业务无关的底座：UI kit、API 客户端、库、配置 | 换个产品它还能用吗           |
 
 `widgets` 在出现真实的跨页面复用之前不建目录。不被复用的大块留在所属页面内。
 
@@ -88,10 +88,10 @@ Steiger 曾在这一步抓到一处真实的结构问题：`widgets/app-sidebar`
 
 上一节的规则由两个检查器分工强制，职责不重叠：
 
-| 检查器 | 负责 | 命令 |
-| --- | --- | --- |
-| Steiger（`steiger` 0.7.0 + `@feature-sliced/steiger-plugin` 0.8.0） | FSD 结构规则：层间导入方向、同层切片隔离、跨切片只走 public API、段名与层名 | `pnpm run lint:fsd` |
-| dependency-cruiser | 循环依赖；契约生成物的两条边界（只允许 api 段引用、不得反向引用手写层） | `pnpm run arch:check` |
+| 检查器                                                              | 负责                                                                        | 命令                  |
+| ------------------------------------------------------------------- | --------------------------------------------------------------------------- | --------------------- |
+| Steiger（`steiger` 0.7.0 + `@feature-sliced/steiger-plugin` 0.8.0） | FSD 结构规则：层间导入方向、同层切片隔离、跨切片只走 public API、段名与层名 | `pnpm run lint:fsd`   |
+| dependency-cruiser                                                  | 循环依赖；契约生成物的两条边界（只允许 api 段引用、不得反向引用手写层）     | `pnpm run arch:check` |
 
 Steiger 的 19 条规则覆盖了 `.dependency-cruiser.cjs` 中手写的三条 FSD 近似规则，后者已被删除，避免两套引擎对同一件事各报一次。Steiger 用 `tsconfck` 读取 tsconfig，`@/` 别名能正确解析；配置在 `web/steiger.config.ts`，忽略契约生成物。
 
@@ -179,7 +179,30 @@ Steiger 的 19 条规则覆盖了 `.dependency-cruiser.cjs` 中手写的三条 F
   时显示加载态，声明为 `false` 时重定向到 `/agent`。请求失败（没有 `data`）不算能力关闭，
   页面照常渲染让故障显式暴露；响应形状与契约不符时在渲染期报错并落到应用级错误边界
   （`entities/session/model/capabilities.ts` 的同一取值在全应用都是这个行为）。
-- 其余页面（登录页与扩展页为真实实现，工作台、数据总览、智能体管理）仍是占位。
-- `features` 的其余切片与新的 `entities` 随业务分片落地。
+- 模型供应商（`features/model-providers`，入口 `/agent-manage?tab=providers`，仅管理员）：api 段把
+  后端 `to_dict()` 明文返回的 `api_key` 折成 `has_api_key`，**密钥不回显**；表单留空＝不改动，
+  「清除已配置的 API Key」勾选后才显式下发 `null`（后端只认显式 null）。默认模型的删除/停用/移除
+  保护在前端收口，后端没有这条守卫；系统配置读不到时保护不可验证，删除与停用改为二次确认而不是放行。
+  远端候选折成已启用模型时要带上 `context_length` 与 `supported_parameters`，编辑模型走「原对象 +
+  表单字段」合并——后端 `_normalize_model_item` 保留未知字段，整对象替换会静默抹掉它们，面板的
+  「上下文」列随即变空。上游的品牌图标 CDN 与 models.dev 目录都不引入。
+- 技能（`features/skills`，入口 `/extensions?tab=skills` 与 `/extensions/skill/:slug`）：两个列表端点的
+  字段不同不能混用——卡片投影给 `source_scope` 但没有 `dir_path`，管理投影给 `dir_path` 与
+  `share_config` 但没有 `source_scope`；上游的 `refresh_personal` 后端不认，不发。共享设置的纯规则与
+  表单在 `shared/`（知识库弹窗与技能详情共用），因为 FSD 禁止同层切片互引。代码管理用 `Textarea` +
+  Markdown 预览，不引入编辑器依赖；详情页比上游多一个「删除文件」入口（后端有该端点），根目录
+  `SKILL.md` 不给删除（后端 400）。安装流只保留 `draft` 与 `remote` 两个入口——上游的推荐套件
+  `suite` 是上游品牌内容，未移植；取消与关闭必须丢弃草稿，整份草稿零成功时前端补删一次（后端只在
+  有成功项时清草稿）。批量删除按后端 `max_length=50` 在界面先拦。批量模式下个人技能卡仍渲染但
+  不可选（上游直接隐藏个人组）。依赖候选用常驻复选框而不是下拉。远程安装依赖沙盒与出网，
+  不可用时按失败呈现。
+- 数据总览（`features/dashboard`，`/dashboard`，仅超管；`overview` 与 `threads` 两个视图懒激活）：
+  ECharts 只按需注册 bar/line/pie 与 grid/tooltip/legend/dataZoom + canvas，不引 `echarts-for-react`；
+  产物里它只落在 dashboard 的路由分包里。canvas 不认 `var(--x)`，配色从 `tokens.css` 解析成具体色值；
+  实例由 `ResizeObserver` 在拿到非零尺寸后创建（隐藏视图里的 0 尺寸画布不会自己长回来），主题切换
+  重建实例。知识库统计端点只在知识域启用时注册，面板按能力投影挂载且查询另有 `enabled` 闸，
+  避免 404 被当成页面错误。
+- 其余页面（首页、个人空间、智能体管理的智能体 tab、扩展页的工具与 MCP tab）仍是占位；它们的行为
+  事实还没进本仓。
 
-切片进度与验收证据见[前端 React 迁移设计](../docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-design.md)。
+切片进度与验收证据见[前端 React 迁移设计](../docs/develop-guides/decisions/implemented/2026-10-01-web-react-migration-design.md)。

@@ -1,7 +1,7 @@
 /**
  * 预览类型与代码语言的映射。
  *
- * 移植上游 `utils/file_preview.js`：扩展名 → 预览类型、扩展名 → 代码语言、Content-Type → 类型。
+ * 扩展名 → 预览类型、扩展名 → 代码语言、Content-Type → 类型。
  * 预览类型的**权威来源是后端**（`ars/utils/filepreview.py` 的 `detect_preview_type` 会看扩展名、
  * MIME、二进制签名与能否按 UTF-8 解码），这里的按路径判断只在响应没给类型时兜底。
  */
@@ -75,7 +75,7 @@ const TEXT_EXTENSIONS = new Set([
   '.gitignore',
 ]);
 
-/** 语言别名 → shiki 认的语言名（上游 `CODE_LANGUAGE_ALIASES`）。 */
+/** 语言别名 → shiki 认的语言名。 */
 const CODE_LANGUAGE_ALIASES: Record<string, string> = {
   js: 'javascript',
   ts: 'typescript',
@@ -86,7 +86,7 @@ const CODE_LANGUAGE_ALIASES: Record<string, string> = {
   docker: 'dockerfile',
 };
 
-/** 扩展名 → 语言（上游 `CODE_LANGUAGE_MAP`）。 */
+/** 扩展名 → 语言。 */
 const CODE_LANGUAGE_MAP: Record<string, string> = {
   '.py': 'python',
   '.js': 'javascript',
@@ -143,7 +143,7 @@ export const getPreviewFileExtension = (path?: string | null): string => {
   return fileName.slice(dotIndex);
 };
 
-/** 语言别名归一（上游 `normalizeCodeLanguage`）。 */
+/** 语言别名归一。 */
 export const normalizeCodeLanguage = (language?: string | null): string => {
   const normalized = String(language ?? '')
     .trim()
@@ -168,7 +168,7 @@ export const getPreviewTypeByPath = (path?: string | null): PreviewType => {
 export const getCodeLanguageByPath = (path?: string | null): string =>
   normalizeCodeLanguage(CODE_LANGUAGE_MAP[getPreviewFileExtension(path)] ?? '');
 
-/** 按 Content-Type 猜预览类型（上游 `getPreviewTypeByContentType`）。 */
+/** 按 Content-Type 猜预览类型。 */
 export const getPreviewTypeByContentType = (
   contentType?: string | null,
 ): PreviewType => {

@@ -2,7 +2,7 @@
  * 图谱查询与构建管理的 React Query 装配。
  *
  * 状态轮询沿用文件表的函数式 `refetchInterval`：只有最新一份状态真的是
- * `pending`/`running` 才按 5 秒重取（上游同为 5000 ms），任务收尾后自己停；
+ * `pending`/`running` 才按 5 秒重取，任务收尾后自己停；
  * 页面不可见时 react-query 默认暂停轮询。
  */
 import {

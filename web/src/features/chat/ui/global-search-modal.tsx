@@ -1,14 +1,11 @@
 /**
  * 全局会话搜索。
  *
- * 移植上游 `GlobalSearchModal.vue` 的对话模式：防抖 240ms、每页 20 条、滚到底加载更多、
- * 请求序号丢弃过期响应、↑/↓ 循环选择、Enter 打开、Esc 关闭、未输入时显示「新对话 + 最近会话」。
+ * 防抖 240ms、每页 20 条、滚到底加载更多、请求序号丢弃过期响应、↑/↓ 循环选择、Enter 打开、
+ * Esc 关闭、未输入时显示「新对话 + 最近会话」。搜索范围是当前用户的全部会话，不按智能体过滤。
  *
- * 三处有意偏离上游：
- * 1. 搜索失败给出文案与重试按钮（上游只有 console.warn，界面与「没有结果」不可区分）；
- * 2. 状态重置放在关闭路径而不是打开时的 watch（React 的 effect 里同步 setState 会多渲染一轮）；
- * 3. 防抖用 `setTimeout` 在回调里发起请求，而不是在 effect 体内直接 setState。
- * 搜索范围是当前用户全部会话，与上游一致不传 `agent_id`。
+ * 三处实现取舍：搜索失败给出文案与重试按钮（与「没有结果」可区分）；状态重置放在关闭路径
+ * 而不是打开时（避免在 effect 里同步 setState 多渲染一轮）；防抖在定时器回调里发起请求。
  */
 import * as React from 'react';
 import { MessageCircle, MessageCirclePlus, Search } from 'lucide-react';
@@ -31,9 +28,9 @@ import {
 import { Input } from '@/shared/ui/input';
 import { Spinner } from '@/shared/ui/spinner';
 
-/** 与上游一致的防抖时长。 */
+/** 防抖时长。 */
 const SEARCH_DEBOUNCE_MS = 240;
-/** 距底部多少像素触发加载更多（与上游一致）。 */
+/** 距底部多少像素触发加载更多。 */
 const LOAD_MORE_THRESHOLD_PX = 80;
 
 type GlobalSearchModalProps = {
@@ -57,7 +54,7 @@ type ActionRow =
  * 搜索结果到线程的投影。
  *
  * 不带 `thread_status`：搜索接口的响应里它是模型默认值 `done`，带回去会把侧边栏上
- * 运行中 / 未读的标记抹掉（与上游的 `normalizeSearchThread` 同处理）。
+ * 运行中 / 未读的标记抹掉。
  */
 const toThread = (item: ThreadSearchItem): ChatThread => ({
   id: item.id,
@@ -82,7 +79,7 @@ export const GlobalSearchModal = ({
   const [hasMore, setHasMore] = React.useState(false);
   const [status, setStatus] = React.useState<SearchStatus>('idle');
   const [selectedIndex, setSelectedIndex] = React.useState(0);
-  // 单调递增的请求序号：过期响应直接丢弃（上游不用 AbortController，这里同）
+  // 单调递增的请求序号：过期响应直接丢弃
   const requestSeqRef = React.useRef(0);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const listRef = React.useRef<HTMLDivElement>(null);
@@ -93,7 +90,7 @@ export const GlobalSearchModal = ({
   const waitingForDebounce = trimmedQuery !== activeQuery;
 
   /**
-   * 输入变化：立刻作废在途请求、清空旧结果并回到第一行（上游同行为）。
+   * 输入变化：立刻作废在途请求、清空旧结果并回到第一行。
    * 清空后列表进入骨架态，不会拿着旧关键词的结果去配新的高亮词。
    */
   const onQueryChange = (value: string) => {
@@ -129,7 +126,7 @@ export const GlobalSearchModal = ({
   }, []);
 
   /**
-   * 输入变化后防抖 240ms 再发请求（与上游同）。
+   * 输入变化后防抖 240ms 再发请求。
    * 请求在定时器回调里发起，不在 effect 体内同步 setState。
    */
   React.useEffect(() => {
@@ -143,8 +140,7 @@ export const GlobalSearchModal = ({
   }, [open, query, runSearch]);
 
   /**
-   * 关闭时重置全部状态（上游在打开时重置，本仓放在关闭路径上：
-   * effect 里同步 setState 会多渲染一轮并触发 lint 规则）。
+   * 关闭时重置全部状态：放在关闭路径而不是打开时，避免在 effect 里同步 setState 多渲染一轮。
    * 关闭必须走 `onOpenChange`（Esc、点遮罩、选中结果都走它）；父级直接改 `open`
    * 而不经过回调的关闭不会重置，调用方按受控组件的约定只经回调关闭。
    * 输入框焦点由 Radix Dialog 的自动聚焦负责。
@@ -201,14 +197,12 @@ export const GlobalSearchModal = ({
       | { kind: 'action'; key: string; row: ActionRow; index: number };
 
     if (isSearchMode) {
-      return results.map(
-        (item, index): RenderItem => ({
-          kind: 'action',
-          key: `result-${item.thread_id}`,
-          row: { kind: 'result', item },
-          index,
-        }),
-      );
+      return results.map((item, index): RenderItem => ({
+        kind: 'action',
+        key: `result-${item.thread_id}`,
+        row: { kind: 'result', item },
+        index,
+      }));
     }
 
     const items: RenderItem[] = [
@@ -272,7 +266,7 @@ export const GlobalSearchModal = ({
     }
   };
 
-  // 键盘移动选中项后把它滚进可视区（上游同行为）
+  // 键盘移动选中项后把它滚进可视区
   React.useEffect(() => {
     listRef.current
       ?.querySelector<HTMLElement>(`[data-row-index="${activeIndex}"]`)
@@ -339,7 +333,10 @@ export const GlobalSearchModal = ({
           <span className="line-clamp-2 text-xs text-color-text-3">
             {splitSnippet(snippet, trimmedQuery).map((segment, segmentIndex) =>
               segment.match ? (
-                <mark key={segmentIndex} className="bg-transparent text-primary-6">
+                <mark
+                  key={segmentIndex}
+                  className="bg-transparent text-primary-6"
+                >
                   {segment.text}
                 </mark>
               ) : (

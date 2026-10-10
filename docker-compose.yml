@@ -96,7 +96,13 @@ services:
       storage-migrator:
         condition: service_completed_successfully
 
-  # 前端开发服务器：浏览器只访问 5173，/api 与 /minio 由 vite 代理转发到 api 与 minio。
+  # 前端开发服务器：vite dev（HMR），浏览器只访问 5173；/api 与 /minio/public 由 vite
+  # 代理到 api 与 minio（目标来自 VITE_API_URL / VITE_MINIO_URL，规则在 web/vite.config.ts）。
+  #
+  # 只挂载需要热更新的源码与契约快照；package.json / pnpm-lock.yaml 以及 tsconfig、vite、
+  # oxlint 等工具配置在镜像里（docker/web.Dockerfile 的 development 阶段），改动后要
+  # `docker compose build web` 重建。openapi.json 必须挂载，否则 `task web:api` 写出的契约
+  # 快照只落在容器里，宿主机与 CI 的 api:check 会因快照滞后而失败。
   web:
     build:
       context: .
@@ -110,6 +116,7 @@ services:
       - ./web/public:/app/public
       - ./web/index.html:/app/index.html
       - ./web/vite.config.ts:/app/vite.config.ts
+      - ./web/openapi.json:/app/openapi.json
     ports:
       - "5173:5173"
     depends_on:
@@ -259,9 +266,6 @@ services:
     depends_on:
       storage-migrator:
         condition: service_completed_successfully
-
-  # web 服务本期移除：前端阶段另行立项（web/ 未导入，保留该服务会导致 compose 引用不存在的挂载路径）。
-  # 前端阶段恢复时，从上游 docker-compose.yml 取回本段即可。
 
   # region neo4j
   graph:

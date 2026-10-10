@@ -31,4 +31,18 @@ export default defineConfig([
     files: ['**/features/debug/**'],
     rules: { 'fsd/insignificant-slice': 'off' },
   },
+  {
+    // 供应商面板的入口只有 /agent-manage 一处（上游同样挂在 AgentManageView 的 tab 里）。
+    // api/model/lib/ui 四段与三个对话框是一体的：并入 pages/agent-manage 会让页面直接持有
+    // 供应商写入、模型清单与凭据表单，因此与 features/debug 同口径只关闭这一条。
+    files: ['**/features/model-providers/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
+    // 数据总览的入口只有 /dashboard 一处（上游同样挂在 DashboardView 的两个 tab 里）。
+    // 十一个端点、图表 option 构造、配色解析与两类面板是一体的；并入 pages/dashboard 会让
+    // 页面同时持有超管统计请求装配、canvas 生命周期与审计表筛选，页面就不再只是组装。
+    files: ['**/features/dashboard/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
 ]);

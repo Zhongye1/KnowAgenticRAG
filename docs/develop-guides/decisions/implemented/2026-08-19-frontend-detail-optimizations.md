@@ -2,7 +2,7 @@
 
 状态：implemented
 类型：feature
-Owner：docs/develop-guides/decisions/proposed/2026-10-01-web-react-migration-design.md
+Owner：docs/develop-guides/decisions/implemented/2026-10-01-web-react-migration-design.md
 
 ## 问题
 
@@ -22,7 +22,7 @@ xhome #36 汇总了 HTML 流式预览占位、侧边栏搜索入口、Agent 文�
 
 前端增加局部的过程摘要、面板最大化和知识库向导状态，但不增加后端接口、持久化格式或全局状态。历史对话默认更紧凑，用户仍可展开完整中间过程；知识库创建失败会保留当前弹窗和输入。子智能体多类型 Tab 仍需后续独立决策与实现。
 
-本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../proposed/2026-10-01-web-react-migration-design.md)在 `web/` 重建。
+本记录记的是迁移前上游 Vue 前端的实现，源码不在本仓库，文中 `web/src/…` 指上游工程；本仓对应界面按[前端 React 迁移设计](../implemented/2026-10-01-web-react-migration-design.md)在 `web/` 重建。
 
 ## 验证
 

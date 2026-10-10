@@ -88,7 +88,9 @@ describe('日志过滤', () => {
 
   it('关键字匹配整行原文（含时间与模块），忽略大小写与首尾空格', () => {
     expect(filterLogLines(lines, [...LOG_LEVELS], '  开始 ')).toHaveLength(1);
-    expect(filterLogLines(lines, [...LOG_LEVELS], '2026-10-09 12:00')).toHaveLength(1);
+    expect(
+      filterLogLines(lines, [...LOG_LEVELS], '2026-10-09 12:00'),
+    ).toHaveLength(1);
     expect(filterLogLines(lines, [...LOG_LEVELS], '没有')).toHaveLength(0);
   });
 
@@ -128,9 +130,16 @@ describe('配置项归一', () => {
       _config_items: { B: { type: 'int', des: '说明命中' } },
     });
 
-    expect(filterConfigItems(items, 'xy').map((item) => item.key)).toEqual(['A']);
-    expect(filterConfigItems(items, '说明').map((item) => item.key)).toEqual(['B']);
-    expect(filterConfigItems(items, '  ').map((item) => item.key)).toEqual(['A', 'B']);
+    expect(filterConfigItems(items, 'xy').map((item) => item.key)).toEqual([
+      'A',
+    ]);
+    expect(filterConfigItems(items, '说明').map((item) => item.key)).toEqual([
+      'B',
+    ]);
+    expect(filterConfigItems(items, '  ').map((item) => item.key)).toEqual([
+      'A',
+      'B',
+    ]);
   });
 
   it('值转文本：对象用 JSON，null 与 undefined 显式写出', () => {
@@ -158,12 +167,17 @@ describe('本地存储条目', () => {
       'alpha',
       'zeta',
     ]);
-    expect(items.map((item) => item.isSystem)).toEqual([true, true, false, false]);
+    expect(items.map((item) => item.isSystem)).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
 
     // 主题键是 ars-theme（连字符），前缀表要能命中
-    expect(readStorageItems(fakeStorage({ 'ars-theme': 'dark' }))[0].isSystem).toBe(
-      true,
-    );
+    expect(
+      readStorageItems(fakeStorage({ 'ars-theme': 'dark' }))[0].isSystem,
+    ).toBe(true);
   });
 
   it('值超过 120 字符时预览被截断，但原值保留', () => {
@@ -207,13 +221,22 @@ describe('本地存储条目', () => {
   });
 
   it('搜索覆盖键与值', () => {
-    const items = readStorageItems(fakeStorage({ alpha: '值里有针', beta: '无' }));
+    const items = readStorageItems(
+      fakeStorage({ alpha: '值里有针', beta: '无' }),
+    );
 
-    expect(filterStorageItems(items, 'ALPHA').map((item) => item.key)).toEqual(['alpha']);
-    expect(filterStorageItems(items, '针').map((item) => item.key)).toEqual(['alpha']);
+    expect(filterStorageItems(items, 'ALPHA').map((item) => item.key)).toEqual([
+      'alpha',
+    ]);
+    expect(filterStorageItems(items, '针').map((item) => item.key)).toEqual([
+      'alpha',
+    ]);
     expect(filterStorageItems(items, '')).toHaveLength(2);
     expect(
-      filterStorageItems(readStorageItems(fakeStorage({ ars_access_token: 'x', k: 'v' })), 'access'),
+      filterStorageItems(
+        readStorageItems(fakeStorage({ ars_access_token: 'x', k: 'v' })),
+        'access',
+      ),
     ).toHaveLength(1);
   });
 

@@ -20,7 +20,11 @@ const StreamedChat = () => {
   const streamingMessages = useStreamingMessages(THREAD);
   // 与对话页一致：正在处理时最后一组工具保持展开
   return (
-    <MessageList messages={[]} streamingMessages={streamingMessages} isProcessing />
+    <MessageList
+      messages={[]}
+      streamingMessages={streamingMessages}
+      isProcessing
+    />
   );
 };
 
@@ -72,17 +76,26 @@ describe('流式消息渲染', () => {
     notifyThreadRuntime(THREAD);
 
     await waitFor(
-      () => expect(screen.getByRole('button', { name: /正在调用工具/ })).toBeTruthy(),
+      () =>
+        expect(
+          screen.getByRole('button', { name: /正在调用工具/ }),
+        ).toBeTruthy(),
       { timeout: 5_000 },
     );
 
     runtime.onGoingConv.msgChunks['call_1'] = [
-      { id: 'call_1', type: 'tool', tool_call_id: 'call_1', content: '文件列表' },
+      {
+        id: 'call_1',
+        type: 'tool',
+        tool_call_id: 'call_1',
+        content: '文件列表',
+      },
     ];
     notifyThreadRuntime(THREAD);
 
     await waitFor(
-      () => expect(screen.getByRole('button', { name: /执行完成/ })).toBeTruthy(),
+      () =>
+        expect(screen.getByRole('button', { name: /执行完成/ })).toBeTruthy(),
       { timeout: 5_000 },
     );
   });

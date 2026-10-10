@@ -1,8 +1,7 @@
 /**
  * Run 事件流的 SSE 分帧解析。
  *
- * 逐行对照上游 `useAgentRunStream.js` 的 `processRunSseResponse`：按空行分帧、
- * 支持多行 `data:`、跳过 `:` 开头的注释（心跳）、`id:` 作为续传游标。
+ * 按空行分帧、支持多行 `data:`、跳过 `:` 开头的注释（心跳）、`id:` 作为续传游标。
  */
 
 export type RunSseEvent = {

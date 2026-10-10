@@ -89,8 +89,3 @@ web/src/utils/__tests__/
 .uv-cache/
 .uv-python/
 .pnpm-store/
-# 前端本期冻结（R9）：目录保留但不在任何门禁与构建范围内，
-# 其依赖与构建产物一律不入库。
-frontend/node_modules/
-frontend/dist/
-frontend/.husky/_/

@@ -1,7 +1,7 @@
 /**
  * 知识库创建/编辑表单的纯逻辑。
  *
- * 逐条移植上游 `utils/databaseCreateForm.js`：空表单、类型参数的默认值、
+ * 空表单、类型参数的默认值、
  * 提交前校验、请求体拼装。校验是「前端软校验」，后端仍会独立校验。
  */
 import type {
@@ -11,10 +11,10 @@ import type {
   ShareConfig,
 } from '../api/knowledge-api';
 
-/** 分块策略的默认项；上游 `utils/chunkUtils.js` 同值。 */
+/** 分块策略的默认项。 */
 export const DEFAULT_CHUNK_PRESET_ID = 'general';
 
-/** 默认共享范围：所有登录用户可读，不额外授予管理（上游 `createDefaultShareConfig` 同）。 */
+/** 默认共享范围：所有登录用户可读，不额外授予管理。 */
 export const createDefaultShareConfig = (): ShareConfig => ({
   version: 2,
   read_scope: { access_level: 'global', department_ids: [], user_uids: [] },
@@ -115,7 +115,8 @@ export const buildCreateRequest = (
   const additionalParams: Record<string, unknown> = {};
   for (const field of typeInfo?.create_params?.options ?? []) {
     const value = form.additional_params[field.key];
-    additionalParams[field.key] = typeof value === 'string' ? value.trim() : value;
+    additionalParams[field.key] =
+      typeof value === 'string' ? value.trim() : value;
   }
 
   const request: CreateKnowledgeBasePayload = {
@@ -133,4 +134,3 @@ export const buildCreateRequest = (
   }
   return request;
 };
-

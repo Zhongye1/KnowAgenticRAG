@@ -8,3 +8,4 @@ coverage/
 .env
 .env.local
 .env.*.local
+alembic/

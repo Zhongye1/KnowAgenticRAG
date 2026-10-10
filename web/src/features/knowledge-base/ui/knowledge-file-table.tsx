@@ -1,10 +1,9 @@
 /**
  * 知识库文件表。
  *
- * 移植上游 `FileTable.vue` + 共用的 `FileBrowserTable.vue` 壳：面包屑与目录进入、
- * 状态筛选、按列的客户端排序（上游就是对当前页排序）、服务端分页（100/300/500）、
- * 刷新与空态，行内操作（下载 / 解析或入库 / 重新入库 / 移动 / 删除）与批量操作
- * （批量解析 / 入库 / 删除）。上传与文件详情随后续分片落地。
+ * 面包屑与目录进入、状态筛选、按列的客户端排序（对当前页排序）、服务端分页（100/300/500）、
+ * 刷新与空态，行内操作（下载 / 解析或入库 / 重新入库 / 移动 / 删除）与批量操作（批量解析 /
+ * 入库 / 删除）。
  */
 import * as React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -73,8 +72,8 @@ import {
 import {
   TableBody,
   TableCell,
-  // 注意：`Table` 是本仓的简易表格组件（{data, columns} 形态），
-  // 这里要用 shadcn 的原语 `TableElement`
+  // 注意：同名的 `Table` 是简易表格组件（{data, columns} 形态），
+  // shadcn 的原语是 `TableElement`
   TableElement,
   TableHead,
   TableHeader,
@@ -94,14 +93,14 @@ const fileColumn = createColumnHelper<
   KnowledgeFileItem
 >();
 
-/** 有文件在处理中时的轮询间隔（上游 10 秒起，本仓不做退避）。 */
+/** 有文件在处理中时的轮询间隔（不做退避）。 */
 const PROCESSING_POLL_MS = 10_000;
 
 /**
  * 刚提交完上传后的轮询窗口。
  *
  * 三阶段 ingest 是后台任务，`POST /documents` 返回 `queued` 时文件记录还没建出来，
- * 立刻重取看不到新文件；上游同样用「延迟刷新 + 自动刷新」兜这段空窗。
+ * 立刻重取看不到新文件，这段窗口内保持轮询。
  */
 const UPLOAD_SETTLE_MS = 60_000;
 
@@ -122,7 +121,7 @@ export const shouldPollFiles = (
     : false;
 };
 
-/** 批量删除的分批大小：与上游一致，避免一次请求里塞进整页文件。 */
+/** 批量删除的分批大小：避免一次请求里塞进整页文件。 */
 const BATCH_DELETE_CHUNK_SIZE = 50;
 
 /** 空列表常量：每次渲染新建数组会让表格库的 memo 失效。 */
@@ -208,7 +207,7 @@ export const KnowledgeFileTable = ({
 
   /**
    * 勾选跟着「当前视图」走：翻页或换目录后旧选择不再生效，避免把看不见的行提交出去。
-   * 选择连同它所属的视图键一起存，读到不匹配的键就当作空选择（上游这里会留下幽灵选择）。
+   * 选择连同它所属的视图键一起存，读到不匹配的键就当作空选择。
    */
   const viewKey = `${parentId ?? 'root'}|${pathPrefix}|${status}|${page}|${pageSize}`;
   const [selection, setSelection] = React.useState<{
@@ -233,7 +232,7 @@ export const KnowledgeFileTable = ({
   const removeMany = useDeleteKnowledgeFiles(kbId);
   const parseFiles = useParseKnowledgeFiles(kbId);
   const indexFiles = useIndexKnowledgeFiles(kbId);
-  // 有操作在飞行中时，行内入口先关掉（上游 store.state.lock）
+  // 有操作在飞行中时，行内入口先关掉
   const locked =
     removeOne.isPending ||
     removeMany.isPending ||
@@ -323,8 +322,7 @@ export const KnowledgeFileTable = ({
   );
 
   /**
-   * 刷新：重取当前页，并让详情失效——统计卡里的待解析/待入库数量随解析与入库变化，
-   * 上游的刷新同样会带上详情。
+   * 刷新：重取当前页，并让详情失效——统计卡里的待解析/待入库数量随解析与入库变化。
    */
   const handleRefresh = () => {
     void files.refetch();
@@ -333,7 +331,7 @@ export const KnowledgeFileTable = ({
     });
   };
 
-  /** 当前页可勾选的行：批量条与表头全选都以它为准（上游也是「全选 = 当前页」）。 */
+  /** 当前页可勾选的行：批量条与表头全选都以它为准（全选 = 当前页）。 */
   const selectableOnPage = React.useMemo(
     () => items.filter((item) => canSelectFile(item, locked)),
     [items, locked],
@@ -384,7 +382,7 @@ export const KnowledgeFileTable = ({
   };
 
   /**
-   * 批量删除：按上游语义先确认数量，只提交可删除的行（解析/入库进行中的会被跳过），
+   * 批量删除：先确认数量，只提交可删除的行（解析/入库进行中的会被跳过），
    * 再按 50 个一批提交，单批失败不中断其余批次。
    */
   const onBatchDelete = async () => {
@@ -447,7 +445,7 @@ export const KnowledgeFileTable = ({
   const columns = React.useMemo(
     () =>
       fileColumn.columns([
-        // 只读知识库没有批量入口，选择列也不渲染（上游 tableSelection 在只读时为 null）
+        // 只读知识库没有批量入口，选择列也不渲染
         ...(readOnly
           ? []
           : [
@@ -493,12 +491,12 @@ export const KnowledgeFileTable = ({
             ]),
         fileColumn.accessor('filename', {
           header: '文件名',
-          // 上游 sortDirections 是先升序：首次点击文件夹在前
+          // 首次点击按升序：文件夹在前
           sortDescFirst: false,
           sortFn: (left, right) => {
             const a = left.original;
             const b = right.original;
-            // 文件夹优先，其余按名称本地化比较（与上游同）
+            // 文件夹优先，其余按名称本地化比较
             if (a.is_folder && !b.is_folder) return -1;
             if (!a.is_folder && b.is_folder) return 1;
             return (a.filename || '').localeCompare(b.filename || '');
@@ -533,9 +531,9 @@ export const KnowledgeFileTable = ({
         }),
         fileColumn.accessor('token_count', {
           header: '内容量',
-          // 内容量对文件夹没有意义（上游同显示 `-`），首次点击按升序（上游 sortDirections 同）
+          // 内容量对文件夹没有意义，显示 `-`；首次点击按升序
           sortDescFirst: false,
-          // v9 不注册比较函数会在点表头时告警；与上游同为数值比较
+          // v9 不注册比较函数会在点表头时告警
           sortFn: (left, right) =>
             (left.original.token_count ?? 0) -
             (right.original.token_count ?? 0),
@@ -563,7 +561,7 @@ export const KnowledgeFileTable = ({
           sortFn: (left, right) =>
             getFileStatusSortWeight(left.original.status) -
             getFileStatusSortWeight(right.original.status),
-          // 目录没有解析/入库状态，上游对文件夹不渲染任何内容
+          // 目录没有解析/入库状态，对文件夹不渲染任何内容
           cell: ({ row }) => {
             if (row.original.is_folder) return null;
             const view = getFileStatusView(row.original.status);
@@ -599,7 +597,7 @@ export const KnowledgeFileTable = ({
             new Date(right.original.created_at ?? 0).getTime() -
             new Date(left.original.created_at ?? 0).getTime(),
           cell: ({ row }) =>
-            // 上游只对虚拟目录留空：实体目录有创建时间
+            // 只对虚拟目录留空：实体目录有创建时间
             row.original.is_virtual_folder
               ? '-'
               : formatFileTableTime(row.original.created_at),

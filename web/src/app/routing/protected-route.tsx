@@ -23,7 +23,9 @@ export const ProtectedRoute = () => {
   }
 
   if (!user.data) {
-    return <Navigate to={paths.auth.login.getHref(location.pathname)} replace />;
+    return (
+      <Navigate to={paths.auth.login.getHref(location.pathname)} replace />
+    );
   }
 
   return <Outlet />;

@@ -64,8 +64,7 @@ vi.mock('@/shared/ui/confirm-dialog', () => ({
 }));
 
 const { DebugModal } = await import('@/features/debug');
-const { useSystemLogs } =
-  await import('@/features/debug/model/debug-queries');
+const { useSystemLogs } = await import('@/features/debug/model/debug-queries');
 const { TOKEN_STORAGE_KEY } = await import('@/shared/api');
 
 const LOG_TEXT = [
@@ -164,7 +163,9 @@ describe('系统日志页签', () => {
   it('默认按全部级别取日志并逐行渲染，级别可单独关掉', async () => {
     renderModal();
 
-    await waitFor(() => expect(screen.getByText(/服务启动/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/服务启动/)).toBeInTheDocument(),
+    );
     expect(api.logs).toHaveBeenCalledWith({
       query: { levels: 'INFO,WARNING,ERROR,DEBUG' },
     });
@@ -186,30 +187,42 @@ describe('系统日志页签', () => {
       '2026-10-09 12:00:01,123 - INFO - ars.api - 重复的一行',
     ].join('\n');
     api.logs.mockResolvedValue({ data: { log: duplicated }, error: undefined });
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
 
     renderModal();
 
-    await waitFor(() => expect(screen.getAllByText(/重复的一行/)).toHaveLength(2));
+    await waitFor(() =>
+      expect(screen.getAllByText(/重复的一行/)).toHaveLength(2),
+    );
     expect(
-      consoleError.mock.calls.some((call) => String(call[0]).includes('same key')),
+      consoleError.mock.calls.some((call) =>
+        String(call[0]).includes('same key'),
+      ),
     ).toBe(false);
   });
 
   it('每行按时间 / 级别 / 模块 / 消息分列渲染', async () => {
     renderModal();
-    await waitFor(() => expect(screen.getByText(/服务启动/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/服务启动/)).toBeInTheDocument(),
+    );
 
     const rows = screen.getAllByTestId('debug-log-row');
     expect(rows).toHaveLength(3);
     expect(
-      Array.from(rows[0].querySelectorAll('span')).map((cell) => cell.textContent),
+      Array.from(rows[0].querySelectorAll('span')).map(
+        (cell) => cell.textContent,
+      ),
     ).toEqual(['2026-10-09 12:00:01,123', 'INFO', 'ars.api', '服务启动']);
   });
 
   it('至少留一个级别：点掉最后一个级别不生效，也不会不带级别重取整份日志', async () => {
     renderModal();
-    await waitFor(() => expect(screen.getByText(/服务启动/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/服务启动/)).toBeInTheDocument(),
+    );
 
     for (const level of ['INFO', 'WARN', 'ERROR']) {
       await user.click(screen.getByRole('button', { name: level }));
@@ -235,7 +248,9 @@ describe('系统日志页签', () => {
 
   it('关键字按整行过滤，并在统计里给出命中数', async () => {
     renderModal();
-    await waitFor(() => expect(screen.getByText(/服务启动/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/服务启动/)).toBeInTheDocument(),
+    );
 
     await user.type(screen.getByLabelText('过滤日志关键字'), '队列');
 
@@ -245,7 +260,9 @@ describe('系统日志页签', () => {
 
   it('复制只复制过滤后的日志', async () => {
     renderModal();
-    await waitFor(() => expect(screen.getByText(/服务启动/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/服务启动/)).toBeInTheDocument(),
+    );
 
     await user.type(screen.getByLabelText('过滤日志关键字'), '队列');
     await user.click(screen.getByRole('button', { name: /复制/ }));
@@ -265,7 +282,9 @@ describe('系统日志页签', () => {
       .spyOn(navigator.clipboard, 'writeText')
       .mockRejectedValueOnce(new Error('denied'));
     renderModal();
-    await waitFor(() => expect(screen.getByText(/服务启动/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/服务启动/)).toBeInTheDocument(),
+    );
 
     await user.click(screen.getByRole('button', { name: /复制/ }));
 
@@ -294,7 +313,9 @@ describe('系统日志页签', () => {
       });
 
     renderModal();
-    await waitFor(() => expect(screen.getByText(/服务启动/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(screen.getByText(/服务启动/)).toBeInTheDocument(),
+    );
     await user.click(screen.getByRole('button', { name: /下载/ }));
 
     expect(downloads).toEqual([
@@ -492,8 +513,12 @@ describe('用户与会话页签', () => {
     const table = screen.getByRole('table');
     const opsRow = within(table).getByText('ops').closest('tr');
     expect(opsRow).not.toBeNull();
-    expect(within(opsRow as HTMLElement).getByText('超管不可切换')).toBeInTheDocument();
-    expect(within(table).getAllByRole('button', { name: /切换身份/ })).toHaveLength(1);
+    expect(
+      within(opsRow as HTMLElement).getByText('超管不可切换'),
+    ).toBeInTheDocument();
+    expect(
+      within(table).getAllByRole('button', { name: /切换身份/ }),
+    ).toHaveLength(1);
   });
 
   it('用户列表可搜索', async () => {

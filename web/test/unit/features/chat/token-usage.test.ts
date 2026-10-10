@@ -43,12 +43,12 @@ describe('用量数字格式化', () => {
   });
 
   it('1024 起按 K、按 M 保留三位有效数字，小于 1024 取整', () => {
-    expect(getLatestCallLabel({ latest: { usage: { input_tokens: 999 } } })).toBe(
-      '输入 999 · 输出 -',
-    );
     expect(
-      getTokenUsageSegments({ system_tokens: 1536 })[0]?.valueLabel,
-    ).toBe('1.5K');
+      getLatestCallLabel({ latest: { usage: { input_tokens: 999 } } }),
+    ).toBe('输入 999 · 输出 -');
+    expect(getTokenUsageSegments({ system_tokens: 1536 })[0]?.valueLabel).toBe(
+      '1.5K',
+    );
     expect(
       getTokenUsageSegments({ system_tokens: 1024 * 1000 })[0]?.valueLabel,
     ).toBe('1M');
@@ -60,7 +60,10 @@ describe('用量数字格式化', () => {
       getTokenUsageRatio({ llm_input_tokens: 100, summary_trigger_tokens: 10 }),
     ).toBe(1);
     expect(
-      getTokenUsageRatio({ llm_input_tokens: -10, summary_trigger_tokens: 100 }),
+      getTokenUsageRatio({
+        llm_input_tokens: -10,
+        summary_trigger_tokens: 100,
+      }),
     ).toBe(0);
   });
 
@@ -113,12 +116,12 @@ describe('上下文构成', () => {
       llm_tool_message_tokens: undefined,
     });
 
-    expect(segments.find((segment) => segment.key === 'summary')?.valueLabel).toBe(
-      '512',
-    );
-    expect(segments.find((segment) => segment.key === 'messages')?.valueLabel).toBe(
-      '1K',
-    );
+    expect(
+      segments.find((segment) => segment.key === 'summary')?.valueLabel,
+    ).toBe('512');
+    expect(
+      segments.find((segment) => segment.key === 'messages')?.valueLabel,
+    ).toBe('1K');
   });
 
   it('真实输入大于已归类的部分时补一段「其他」', () => {
@@ -129,9 +132,9 @@ describe('上下文构成', () => {
       llm_messages_tokens: 1024,
     });
 
-    expect(segments.find((segment) => segment.key === 'overhead')?.valueLabel).toBe(
-      '3K',
-    );
+    expect(
+      segments.find((segment) => segment.key === 'overhead')?.valueLabel,
+    ).toBe('3K');
   });
 });
 
@@ -148,7 +151,9 @@ describe('上下文占比与文案', () => {
 
     expect(getTokenUsageRatio(unknown)).toBeNull();
     expect(getTokenUsagePercentLabel(null)).toBe('--');
-    expect(getTokenUsageAriaLabel(unknown)).toBe('上下文上限未知，当前估算 1000');
+    expect(getTokenUsageAriaLabel(unknown)).toBe(
+      '上下文上限未知，当前估算 1000',
+    );
   });
 
   it('占比按上限夹到 1，档位在 75% 与 90% 处分界', () => {
@@ -230,7 +235,9 @@ describe('模型桶与累计指标', () => {
 
   it('最近调用行只在有 latest.usage 时出现', () => {
     expect(
-      getLatestCallLabel({ latest: { usage: { input_tokens: 100, output_tokens: 20 } } }),
+      getLatestCallLabel({
+        latest: { usage: { input_tokens: 100, output_tokens: 20 } },
+      }),
     ).toBe('输入 100 · 输出 20');
     expect(getLatestCallLabel({})).toBeNull();
   });
@@ -247,7 +254,9 @@ describe('构成条分段（相对上限堆叠）', () => {
       'messages',
       'overhead',
     ]);
-    expect(bar.find((segment) => segment.key === 'system')?.width).toBe('12.50%');
+    expect(bar.find((segment) => segment.key === 'system')?.width).toBe(
+      '12.50%',
+    );
     expect(bar.every((segment) => segment.key !== 'cut')).toBe(true);
   });
 

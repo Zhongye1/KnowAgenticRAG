@@ -30,7 +30,12 @@ const difyType: KnowledgeTypeInfo = {
         type: 'text',
         required: true,
       },
-      { key: 'dify_token', label: 'Dify Token', type: 'password', required: true },
+      {
+        key: 'dify_token',
+        label: 'Dify Token',
+        type: 'password',
+        required: true,
+      },
       { key: 'timeout', label: '超时', type: 'number', min: 1, max: 60 },
       { key: 'cache', label: '缓存', type: 'boolean', default: true },
     ],
@@ -115,7 +120,9 @@ describe('提交前校验', () => {
       ),
     };
 
-    expect(validateKnowledgeBaseForm(form, difyType)).toBe('请填写Dify API URL');
+    expect(validateKnowledgeBaseForm(form, difyType)).toBe(
+      '请填写Dify API URL',
+    );
   });
 
   it('数字超出范围时给出边界', () => {
@@ -151,7 +158,11 @@ describe('创建请求体', () => {
   it('只提交该类型声明过的参数，并去除首尾空白', () => {
     const form = {
       ...selectKnowledgeBaseType(
-        { ...createEmptyKnowledgeBaseForm(), name: ' Dify 库 ', description: ' 说明 ' },
+        {
+          ...createEmptyKnowledgeBaseForm(),
+          name: ' Dify 库 ',
+          description: ' 说明 ',
+        },
         'dify',
         difyType,
       ),

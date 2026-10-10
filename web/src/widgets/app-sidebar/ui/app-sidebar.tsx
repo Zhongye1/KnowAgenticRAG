@@ -60,7 +60,7 @@ const DASHBOARD_TAB = {
   icon: LayoutGrid,
 } as const;
 
-/** 与上游同节奏的低频同步：12 秒一次，折叠或页面不可见时跳过。 */
+/** 低频同步：12 秒一次，折叠或页面不可见时跳过。 */
 const THREAD_STATUS_SYNC_INTERVAL_MS = 12 * 1000;
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

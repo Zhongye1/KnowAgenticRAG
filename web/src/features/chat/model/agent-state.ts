@@ -1,9 +1,8 @@
 /**
  * 线程 state 的拉取。
  *
- * 上游 `fetchAgentState`（`AgentChatComponent.vue`）同时做三件事：拉 `/thread/{id}/state`、
- * 用请求版本号丢弃过期响应、在中断仍在当前 run 上时把它恢复成待处理项。
- * 轮询与终态各触发一次，重复的响应不能把界面写回旧状态。
+ * 拉 `/thread/{id}/state`、用请求版本号丢弃过期响应、在中断仍在当前 run 上时把它恢复成
+ * 待处理项。轮询与终态各触发一次，重复的响应不能把界面写回旧状态。
  */
 import { chatThreadApi } from '../api/agent-api';
 import { extractPendingInterrupt } from '../lib/pending-interrupt';
@@ -19,7 +18,7 @@ const readGenerations = new Map<string, number>();
  * 作废某线程在途的 state 读取。
  *
  * 两处必须调用：恢复中断与收到 `agent_state` 分片之前——否则已经过期的响应会把
- * 刚被消费掉的审批弹回界面，或把用量卡片回退到上一份快照（上游 `invalidateAgentStateRequest` 同语义）。
+ * 刚被消费掉的审批弹回界面，或把用量卡片回退到上一份快照。
  */
 export const invalidateAgentStateReads = (threadId: string): void => {
   readGenerations.set(threadId, (readGenerations.get(threadId) ?? 0) + 1);

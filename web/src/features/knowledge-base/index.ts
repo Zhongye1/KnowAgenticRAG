@@ -100,14 +100,16 @@ export {
   canPreviewParsed,
   getDefaultDetailView,
 } from './lib/knowledge-files';
+// 共享范围的纯规则住在 shared（技能安装流与技能详情页共用），这里只做转发，
+// 知识库的消费方（pages/knowledge-base）仍然从本切片的 public API 取。
 export {
   describeShareConfig,
   isManageScopeWithinRead,
   normalizeShareConfig,
   normalizeShareScope,
   validateShareConfig,
-} from './lib/share-config';
-export type { AccessLevel } from './lib/share-config';
+} from '@/shared/lib/share-config';
+export type { AccessLevel } from '@/shared/lib/share-config';
 export { buildQueryMeta } from './lib/knowledge-query-params';
 export type {
   KnowledgeQueryParams,

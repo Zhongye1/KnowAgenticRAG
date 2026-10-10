@@ -1,16 +1,10 @@
 /**
  * 知识图谱分区：搜索与设置工具栏、画布、空态、详情面板与两个弹窗的组装。
  *
- * 移植上游 `KnowledgeGraphSection.vue`。行为口径：
- * - 搜索与「设置」改的是本地参数，点「应用 / 回车」才落到查询参数上（上游同）。
+ * - 搜索与「设置」改的是本地参数，点「应用 / 回车」才落到查询参数上。
  * - 搜索深度只给 1..3：后端 `_query_nodes_sync` 会把 `max_depth` 夹到 3，界面上不给做不到的档位。
- * - 「配置抽取器 / 开始索引 / 重置」只对可管理知识库出现（上游用客户端管理员门，这里按 can_manage，
- *   授权仍在后端）。
+ * - 「配置抽取器 / 开始索引 / 重置」只对可管理知识库出现（按 `can_manage`，授权仍在后端）。
  * - 构建状态自带 5 秒轮询（`useGraphBuildStatus` 只在任务在跑时轮询）。
- *
- * 与上游的差异：上游把「已构建」状态里的高亮/聚焦状态写进 G6（5.1.1 无对应样式，是空操作），
- * 本仓不提供；上游进分区前会 `registerQueuedTask` 登记后台任务，目标端没有任务抽屉，
- * 因此只在通知中心提示受理结果。
  */
 import * as React from 'react';
 import { Database, RefreshCw, Search, Settings } from 'lucide-react';
@@ -43,7 +37,7 @@ import { Spinner } from '@/shared/ui/spinner';
 /** 后端把 `max_depth` 夹在 3，因此界面最大值与它一致。 */
 const MAX_DEPTH = 3;
 
-/** 后端对 `max_nodes` 的约束是 1..1000，界面给 10..1000（与上游的步进一致）。 */
+/** 后端对 `max_nodes` 的约束是 1..1000，界面给 10..1000。 */
 const MIN_NODES = 10;
 const MAX_NODES = 1000;
 

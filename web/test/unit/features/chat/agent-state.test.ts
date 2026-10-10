@@ -6,12 +6,10 @@ vi.mock('@/features/chat/api/agent-api', () => ({
   chatThreadApi: { getAgentState: api.getAgentState },
 }));
 
-const { fetchAgentState, invalidateAgentStateReads } = await import(
-  '@/features/chat/model/agent-state'
-);
-const { disposeThreadRuntime, getThreadRuntime, hasThreadRuntime } = await import(
-  '@/features/chat/model/thread-runtime-store'
-);
+const { fetchAgentState, invalidateAgentStateReads } =
+  await import('@/features/chat/model/agent-state');
+const { disposeThreadRuntime, getThreadRuntime, hasThreadRuntime } =
+  await import('@/features/chat/model/thread-runtime-store');
 
 const THREAD = 'thread-state';
 

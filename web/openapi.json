@@ -7,9 +7,7 @@
   "paths": {
     "/api/system/health": {
       "get": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Health Check",
         "description": "返回 API 进程 liveness，不代表依赖或业务链路就绪。",
         "operationId": "health_check_api_system_health_get",
@@ -27,9 +25,7 @@
     },
     "/api/system/ready": {
       "get": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Readiness Check",
         "description": "验证 API 接流量所需的启动状态与核心依赖。",
         "operationId": "readiness_check_api_system_ready_get",
@@ -47,9 +43,7 @@
     },
     "/api/system/discovery": {
       "get": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Discovery",
         "description": "系统能力发现接口（公开接口）",
         "operationId": "discovery_api_system_discovery_get",
@@ -67,9 +61,7 @@
     },
     "/api/system/config": {
       "get": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Get Config",
         "description": "获取系统配置",
         "operationId": "get_config_api_system_config_get",
@@ -113,9 +105,7 @@
         }
       },
       "post": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Update Config Single",
         "description": "更新单个配置项",
         "operationId": "update_config_single_api_system_config_post",
@@ -175,9 +165,7 @@
     },
     "/api/system/config/update": {
       "post": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Update Config Batch",
         "description": "批量更新配置项",
         "operationId": "update_config_batch_api_system_config_update_post",
@@ -239,9 +227,7 @@
     },
     "/api/system/logs": {
       "get": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Get System Logs",
         "description": "获取当前 API 进程日志。\n\nArgs:\n    levels: 可选的日志级别过滤，多个级别用逗号分隔，如 \"INFO,ERROR,DEBUG,WARNING\"",
         "operationId": "get_system_logs_api_system_logs_get",
@@ -303,9 +289,7 @@
     },
     "/api/system/info": {
       "get": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Get Info Config",
         "description": "获取系统信息配置（公开接口，无需认证）",
         "operationId": "get_info_config_api_system_info_get",
@@ -323,9 +307,7 @@
     },
     "/api/system/info/reload": {
       "post": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Reload Info Config",
         "description": "重新加载信息配置",
         "operationId": "reload_info_config_api_system_info_reload_post",
@@ -371,9 +353,7 @@
     },
     "/api/system/config/options": {
       "get": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Get Config Options",
         "description": "返回系统定义的通用配置表单和值。",
         "operationId": "get_config_options_api_system_config_options_get",
@@ -419,9 +399,7 @@
     },
     "/api/system/config/options/{key}": {
       "put": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Put Config Option",
         "description": "保存一个通用配置项的 JSON 值。",
         "operationId": "put_config_option_api_system_config_options__key__put",
@@ -486,9 +464,7 @@
     },
     "/api/system/ocr/options": {
       "get": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Get Ocr Engine Options",
         "description": "返回所有代码支持的 OCR 方法和默认项。",
         "operationId": "get_ocr_engine_options_api_system_ocr_options_get",
@@ -534,9 +510,7 @@
     },
     "/api/system/ocr/health": {
       "get": {
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "summary": "Get Ocr Health",
         "description": "供登录用户使用当前有效配置检查全部 OCR 方法。",
         "operationId": "get_ocr_health_api_system_ocr_health_get",
@@ -582,9 +556,7 @@
     },
     "/api/auth/token": {
       "post": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Login For Access Token",
         "operationId": "login_for_access_token_api_auth_token_post",
         "requestBody": {
@@ -623,9 +595,7 @@
     },
     "/api/auth/cli/sessions": {
       "post": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Create Cli Session",
         "operationId": "create_cli_session_api_auth_cli_sessions_post",
         "requestBody": {
@@ -664,9 +634,7 @@
     },
     "/api/auth/cli/sessions/{user_code}": {
       "get": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Get Cli Session",
         "operationId": "get_cli_session_api_auth_cli_sessions__user_code__get",
         "parameters": [
@@ -722,9 +690,7 @@
     },
     "/api/auth/cli/sessions/{user_code}/approve": {
       "post": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Approve Cli Session",
         "operationId": "approve_cli_session_api_auth_cli_sessions__user_code__approve_post",
         "parameters": [
@@ -780,9 +746,7 @@
     },
     "/api/auth/cli/sessions/token": {
       "post": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Exchange Cli Session Token",
         "operationId": "exchange_cli_session_token_api_auth_cli_sessions_token_post",
         "requestBody": {
@@ -821,9 +785,7 @@
     },
     "/api/auth/check-first-run": {
       "get": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Check First Run",
         "operationId": "check_first_run_api_auth_check_first_run_get",
         "responses": {
@@ -840,9 +802,7 @@
     },
     "/api/auth/initialize": {
       "post": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Initialize Admin",
         "operationId": "initialize_admin_api_auth_initialize_post",
         "requestBody": {
@@ -881,9 +841,7 @@
     },
     "/api/auth/me": {
       "get": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Read Users Me",
         "description": "获取当前登录用户的个人信息",
         "operationId": "read_users_me_api_auth_me_get",
@@ -931,9 +889,7 @@
     },
     "/api/auth/profile": {
       "put": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Update Profile",
         "description": "更新当前用户的个人资料",
         "operationId": "update_profile_api_auth_profile_put",
@@ -991,9 +947,7 @@
     },
     "/api/auth/users": {
       "post": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Create User",
         "description": "创建新用户（管理员权限）",
         "operationId": "create_user_api_auth_users_post",
@@ -1049,9 +1003,7 @@
         }
       },
       "get": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Read Users",
         "operationId": "read_users_api_auth_users_get",
         "parameters": [
@@ -1122,9 +1074,7 @@
     },
     "/api/auth/users/page": {
       "get": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Read Users Page",
         "description": "分页查询当前管理员可管理的有效用户。",
         "operationId": "read_users_page_api_auth_users_page_get",
@@ -1193,11 +1143,7 @@
             "schema": {
               "anyOf": [
                 {
-                  "enum": [
-                    "superadmin",
-                    "admin",
-                    "user"
-                  ],
+                  "enum": ["superadmin", "admin", "user"],
                   "type": "string"
                 },
                 {
@@ -1250,9 +1196,7 @@
     },
     "/api/auth/users/access-options": {
       "get": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Read User Access Options",
         "operationId": "read_user_access_options_api_auth_users_access_options_get",
         "parameters": [
@@ -1323,9 +1267,7 @@
     },
     "/api/auth/users/{user_id}": {
       "get": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Read User",
         "operationId": "read_user_api_auth_users__user_id__get",
         "parameters": [
@@ -1379,9 +1321,7 @@
         }
       },
       "put": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Update User",
         "operationId": "update_user_api_auth_users__user_id__put",
         "parameters": [
@@ -1445,9 +1385,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Delete User",
         "operationId": "delete_user_api_auth_users__user_id__delete",
         "parameters": [
@@ -1505,9 +1443,7 @@
     },
     "/api/auth/validate-username": {
       "post": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Validate Username And Generate Uid",
         "description": "验证用户名格式并生成可用的user_id",
         "operationId": "validate_username_and_generate_uid_api_auth_validate_username_post",
@@ -1565,9 +1501,7 @@
     },
     "/api/auth/check-uid/{uid}": {
       "get": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Check Uid Availability",
         "description": "检查 uid 是否可用",
         "operationId": "check_uid_availability_api_auth_check_uid__uid__get",
@@ -1622,9 +1556,7 @@
     },
     "/api/auth/upload-avatar": {
       "post": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Upload User Avatar",
         "description": "上传用户头像",
         "operationId": "upload_user_avatar_api_auth_upload_avatar_post",
@@ -1680,9 +1612,7 @@
     },
     "/api/auth/impersonate/{user_id}": {
       "post": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Impersonate User",
         "description": "超级管理员模拟其他用户登录",
         "operationId": "impersonate_user_api_auth_impersonate__user_id__post",
@@ -1739,9 +1669,7 @@
     },
     "/api/auth/oidc/config": {
       "get": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Get Oidc Config",
         "description": "获取 OIDC 配置（供前端使用）",
         "operationId": "get_oidc_config_api_auth_oidc_config_get",
@@ -1761,9 +1689,7 @@
     },
     "/api/auth/oidc/login-url": {
       "get": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Get Oidc Login Url",
         "description": "获取 OIDC 登录 URL",
         "operationId": "get_oidc_login_url_api_auth_oidc_login_url_get",
@@ -1803,9 +1729,7 @@
     },
     "/api/auth/oidc/callback": {
       "get": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Oidc Callback",
         "description": "处理 OIDC 回调 - 重定向到前端 Vue 路由",
         "operationId": "oidc_callback_api_auth_oidc_callback_get",
@@ -1848,9 +1772,7 @@
     },
     "/api/auth/oidc/exchange-code": {
       "post": {
-        "tags": [
-          "authentication"
-        ],
+        "tags": ["authentication"],
         "summary": "Oidc Exchange Code",
         "description": "使用一次性 code 交换 OIDC 登录数据",
         "operationId": "oidc_exchange_code_api_auth_oidc_exchange_code_post",
@@ -1890,9 +1812,7 @@
     },
     "/api/agent/backends": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "List Agent Backends",
         "operationId": "list_agent_backends_api_agent_backends_get",
         "parameters": [
@@ -1937,9 +1857,7 @@
     },
     "/api/agent/backends/{backend_id}": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Get Agent Backend",
         "operationId": "get_agent_backend_api_agent_backends__backend_id__get",
         "parameters": [
@@ -1993,9 +1911,7 @@
     },
     "/api/agent": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "List Agents",
         "operationId": "list_agents_api_agent_get",
         "parameters": [
@@ -2048,9 +1964,7 @@
         }
       },
       "post": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Create Agent",
         "operationId": "create_agent_api_agent_post",
         "parameters": [
@@ -2105,9 +2019,7 @@
     },
     "/api/agent/default": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Get Default Agent",
         "operationId": "get_default_agent_api_agent_default_get",
         "parameters": [
@@ -2152,9 +2064,7 @@
     },
     "/api/agent/{agent_id}": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Get Agent",
         "operationId": "get_agent_api_agent__agent_id__get",
         "parameters": [
@@ -2206,9 +2116,7 @@
         }
       },
       "put": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Update Agent",
         "operationId": "update_agent_api_agent__agent_id__put",
         "parameters": [
@@ -2270,9 +2178,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Delete Agent",
         "operationId": "delete_agent_api_agent__agent_id__delete",
         "parameters": [
@@ -2326,9 +2232,7 @@
     },
     "/api/agent/{agent_id}/set_default": {
       "post": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Set Agent Default",
         "operationId": "set_agent_default_api_agent__agent_id__set_default_post",
         "parameters": [
@@ -2382,9 +2286,7 @@
     },
     "/api/agent/runs": {
       "post": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Create Agent Run",
         "operationId": "create_agent_run_api_agent_runs_post",
         "parameters": [
@@ -2439,9 +2341,7 @@
     },
     "/api/agent/requests/{request_id}": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Get Request",
         "operationId": "get_request_api_agent_requests__request_id__get",
         "parameters": [
@@ -2495,9 +2395,7 @@
     },
     "/api/agent/thread/{thread_id}/requests": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "List Thread Requests",
         "operationId": "list_thread_requests_api_agent_thread__thread_id__requests_get",
         "parameters": [
@@ -2562,9 +2460,7 @@
     },
     "/api/agent/thread/{thread_id}/requests/continue": {
       "post": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Continue Thread Requests",
         "operationId": "continue_thread_requests_api_agent_thread__thread_id__requests_continue_post",
         "parameters": [
@@ -2629,9 +2525,7 @@
     },
     "/api/agent/requests/{request_id}/cancel": {
       "post": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Cancel Request",
         "operationId": "cancel_request_api_agent_requests__request_id__cancel_post",
         "parameters": [
@@ -2685,9 +2579,7 @@
     },
     "/api/agent/requests/{request_id}/steer": {
       "post": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Steer Request",
         "operationId": "steer_request_api_agent_requests__request_id__steer_post",
         "parameters": [
@@ -2741,9 +2633,7 @@
     },
     "/api/agent/requests/{request_id}/events": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Stream Request Events Route",
         "operationId": "stream_request_events_route_api_agent_requests__request_id__events_get",
         "parameters": [
@@ -2797,9 +2687,7 @@
     },
     "/api/agent/runs/{run_id}": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Get Agent Run",
         "operationId": "get_agent_run_api_agent_runs__run_id__get",
         "parameters": [
@@ -2853,9 +2741,7 @@
     },
     "/api/agent/runs/{run_id}/result": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Get Agent Run Result Route",
         "operationId": "get_agent_run_result_route_api_agent_runs__run_id__result_get",
         "parameters": [
@@ -2909,9 +2795,7 @@
     },
     "/api/agent/runs/{run_id}/langfuse": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Get Agent Run Langfuse Link Route",
         "operationId": "get_agent_run_langfuse_link_route_api_agent_runs__run_id__langfuse_get",
         "parameters": [
@@ -2965,9 +2849,7 @@
     },
     "/api/agent/runs/{run_id}/cancel": {
       "post": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Cancel Agent Run",
         "operationId": "cancel_agent_run_api_agent_runs__run_id__cancel_post",
         "parameters": [
@@ -3021,9 +2903,7 @@
     },
     "/api/agent/runs/{run_id}/events": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Stream Run Events",
         "operationId": "stream_run_events_api_agent_runs__run_id__events_get",
         "parameters": [
@@ -3115,9 +2995,7 @@
     },
     "/api/agent/thread/{thread_id}/active_run": {
       "get": {
-        "tags": [
-          "agent"
-        ],
+        "tags": ["agent"],
         "summary": "Get Thread Active Run",
         "operationId": "get_thread_active_run_api_agent_thread__thread_id__active_run_get",
         "parameters": [
@@ -3171,9 +3049,7 @@
     },
     "/api/agent-invocation/agent-call/runs": {
       "post": {
-        "tags": [
-          "agent-invocation"
-        ],
+        "tags": ["agent-invocation"],
         "summary": "Create Agent Call Run",
         "description": "创建 Agent Call，并按 async_mode 决定是否等待最终结果。",
         "operationId": "create_agent_call_run_api_agent_invocation_agent_call_runs_post",
@@ -3229,9 +3105,7 @@
     },
     "/api/agent-invocation/agent-call/runs/result": {
       "post": {
-        "tags": [
-          "agent-invocation"
-        ],
+        "tags": ["agent-invocation"],
         "summary": "Get Agent Call Run Result",
         "description": "读取 Agent Call Run 的 OpenAI-compatible 结果。",
         "operationId": "get_agent_call_run_result_api_agent_invocation_agent_call_runs_result_post",
@@ -3287,9 +3161,7 @@
     },
     "/api/agent-invocation/channel/messages": {
       "post": {
-        "tags": [
-          "agent-invocation"
-        ],
+        "tags": ["agent-invocation"],
         "summary": "Receive Channel Message",
         "description": "处理纯文本 Channel 消息或最小 slash command。",
         "operationId": "receive_channel_message_api_agent_invocation_channel_messages_post",
@@ -3345,9 +3217,7 @@
     },
     "/api/agent-invocation/eval/runs": {
       "post": {
-        "tags": [
-          "agent-invocation"
-        ],
+        "tags": ["agent-invocation"],
         "summary": "Create Agent Eval Run",
         "description": "运行一次评估样例，并阻塞等待最终 AgentRun 结果。",
         "operationId": "create_agent_eval_run_api_agent_invocation_eval_runs_post",
@@ -3403,9 +3273,7 @@
     },
     "/api/chat/call": {
       "post": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Call",
         "description": "调用模型进行简单问答（需要登录）",
         "operationId": "call_api_chat_call_post",
@@ -3461,9 +3329,7 @@
     },
     "/api/chat/thread/{thread_id}/history": {
       "get": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Get Thread History",
         "description": "获取对话历史消息（需要登录）- 包含用户反馈状态",
         "operationId": "get_thread_history_api_chat_thread__thread_id__history_get",
@@ -3518,9 +3384,7 @@
     },
     "/api/chat/thread/{thread_id}/state": {
       "get": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Get Thread State",
         "description": "获取对话当前状态（需要登录）",
         "operationId": "get_thread_state_api_chat_thread__thread_id__state_get",
@@ -3585,9 +3449,7 @@
     },
     "/api/chat/thread": {
       "post": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Create Thread",
         "description": "创建新对话线程 (使用新存储系统)",
         "operationId": "create_thread_api_chat_thread_post",
@@ -3645,9 +3507,7 @@
     },
     "/api/chat/threads": {
       "get": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "List Threads",
         "description": "获取用户的所有对话线程 (使用新存储系统)",
         "operationId": "list_threads_api_chat_threads_get",
@@ -3738,9 +3598,7 @@
     },
     "/api/chat/threads/search": {
       "get": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Search Threads",
         "description": "搜索当前用户的历史对话。",
         "operationId": "search_threads_api_chat_threads_search_get",
@@ -3838,9 +3696,7 @@
     },
     "/api/chat/thread/{thread_id}": {
       "delete": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Delete Thread",
         "description": "删除对话线程 (使用新存储系统)",
         "operationId": "delete_thread_api_chat_thread__thread_id__delete",
@@ -3893,9 +3749,7 @@
         }
       },
       "put": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Update Thread",
         "description": "更新对话线程信息 (使用新存储系统)",
         "operationId": "update_thread_api_chat_thread__thread_id__put",
@@ -3962,9 +3816,7 @@
     },
     "/api/chat/thread/{thread_id}/viewed": {
       "post": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Mark Thread Viewed",
         "description": "记录用户已查看该线程的最新顶层 run，清除侧边栏未读状态。",
         "operationId": "mark_thread_viewed_api_chat_thread__thread_id__viewed_post",
@@ -4021,9 +3873,7 @@
     },
     "/api/chat/attachments/tmp": {
       "post": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Upload Tmp Attachment",
         "description": "上传附件到 MinIO tmp，暂不关联线程。",
         "operationId": "upload_tmp_attachment_api_chat_attachments_tmp_post",
@@ -4081,9 +3931,7 @@
     },
     "/api/chat/attachments/tmp/parse": {
       "post": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Parse Tmp Attachment",
         "description": "解析 tmp 附件并返回解析后的 tmp URL。",
         "operationId": "parse_tmp_attachment_api_chat_attachments_tmp_parse_post",
@@ -4141,9 +3989,7 @@
     },
     "/api/chat/thread/{thread_id}/attachments/confirm": {
       "post": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Confirm Tmp Thread Attachments",
         "description": "将 tmp 附件正式加入线程附件列表。",
         "operationId": "confirm_tmp_thread_attachments_api_chat_thread__thread_id__attachments_confirm_post",
@@ -4210,9 +4056,7 @@
     },
     "/api/chat/thread/{thread_id}/attachments": {
       "get": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "List Thread Attachments",
         "description": "列出当前对话线程的所有附件元信息。",
         "operationId": "list_thread_attachments_api_chat_thread__thread_id__attachments_get",
@@ -4269,9 +4113,7 @@
     },
     "/api/chat/thread/{thread_id}/attachments/{file_id}": {
       "delete": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Delete Thread Attachment",
         "description": "移除指定附件。",
         "operationId": "delete_thread_attachment_api_chat_thread__thread_id__attachments__file_id__delete",
@@ -4335,9 +4177,7 @@
     },
     "/api/chat/thread/{thread_id}/artifacts/{path}": {
       "get": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Get Thread Artifact",
         "description": "下载或预览线程文件。",
         "operationId": "get_thread_artifact_api_chat_thread__thread_id__artifacts__path__get",
@@ -4421,9 +4261,7 @@
     },
     "/api/chat/thread/{thread_id}/artifacts/save": {
       "post": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Save Thread Artifact To Workspace",
         "description": "保存交付物到用户工作区中指定的目录。",
         "operationId": "save_thread_artifact_to_workspace_api_chat_thread__thread_id__artifacts_save_post",
@@ -4490,9 +4328,7 @@
     },
     "/api/chat/message/{message_id}/feedback": {
       "post": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Submit Message Feedback",
         "description": "提交消息反馈（需要登录）",
         "operationId": "submit_message_feedback_api_chat_message__message_id__feedback_post",
@@ -4557,9 +4393,7 @@
         }
       },
       "get": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Get Message Feedback",
         "description": "获取指定消息的用户反馈（需要登录）",
         "operationId": "get_message_feedback_api_chat_message__message_id__feedback_get",
@@ -4614,9 +4448,7 @@
     },
     "/api/chat/image/upload": {
       "post": {
-        "tags": [
-          "chat"
-        ],
+        "tags": ["chat"],
         "summary": "Upload Image",
         "description": "上传并处理图片，返回base64编码的图片数据",
         "operationId": "upload_image_api_chat_image_upload_post",
@@ -4674,9 +4506,7 @@
     },
     "/api/projects": {
       "get": {
-        "tags": [
-          "projects"
-        ],
+        "tags": ["projects"],
         "summary": "List Projects",
         "description": "列出当前用户可选择的 Project。",
         "operationId": "list_projects_api_projects_get",
@@ -4720,9 +4550,7 @@
         }
       },
       "post": {
-        "tags": [
-          "projects"
-        ],
+        "tags": ["projects"],
         "summary": "Create Project",
         "description": "独立创建 managed 或 linked Project。",
         "operationId": "create_project_api_projects_post",
@@ -4778,9 +4606,7 @@
     },
     "/api/projects/history-candidates": {
       "get": {
-        "tags": [
-          "projects"
-        ],
+        "tags": ["projects"],
         "summary": "List History Candidates",
         "description": "列出可作为目录快捷选择的历史 Conversation。",
         "operationId": "list_history_candidates_api_projects_history_candidates_get",
@@ -4860,9 +4686,7 @@
     },
     "/api/dashboard/stats": {
       "get": {
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "summary": "Get Dashboard Stats",
         "description": "获取基础统计指标（超级管理员权限）。",
         "operationId": "get_dashboard_stats_api_dashboard_stats_get",
@@ -4908,9 +4732,7 @@
     },
     "/api/dashboard/stats/users": {
       "get": {
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "summary": "Get User Activity Stats",
         "description": "获取用户活动统计（超级管理员权限）。",
         "operationId": "get_user_activity_stats_api_dashboard_stats_users_get",
@@ -4958,9 +4780,7 @@
     },
     "/api/dashboard/stats/tools": {
       "get": {
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "summary": "Get Tool Call Stats",
         "description": "获取工具调用统计（超级管理员权限）。",
         "operationId": "get_tool_call_stats_api_dashboard_stats_tools_get",
@@ -5008,9 +4828,7 @@
     },
     "/api/dashboard/stats/agents": {
       "get": {
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "summary": "Get Agent Analytics",
         "description": "获取智能体分析（超级管理员权限）。",
         "operationId": "get_agent_analytics_api_dashboard_stats_agents_get",
@@ -5058,9 +4876,7 @@
     },
     "/api/dashboard/stats/calls/timeseries": {
       "get": {
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "summary": "Get Call Timeseries Stats",
         "description": "获取调用分析时间序列统计（超级管理员权限）。",
         "operationId": "get_call_timeseries_stats_api_dashboard_stats_calls_timeseries_get",
@@ -5070,12 +4886,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "enum": [
-                "models",
-                "agents",
-                "tokens",
-                "tools"
-              ],
+              "enum": ["models", "agents", "tokens", "tools"],
               "type": "string",
               "default": "models",
               "title": "Type"
@@ -5086,11 +4897,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "enum": [
-                "14hours",
-                "14days",
-                "14weeks"
-              ],
+              "enum": ["14hours", "14days", "14weeks"],
               "type": "string",
               "default": "14days",
               "title": "Time Range"
@@ -5139,9 +4946,7 @@
     },
     "/api/dashboard/stats/threads": {
       "get": {
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "summary": "Get Thread Analytics Stats",
         "description": "获取会话多维分析统计（超级管理员权限）。",
         "operationId": "get_thread_analytics_stats_api_dashboard_stats_threads_get",
@@ -5151,12 +4956,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "enum": [
-                "7days",
-                "14days",
-                "30days",
-                "90days"
-              ],
+              "enum": ["7days", "14days", "30days", "90days"],
               "type": "string",
               "default": "30days",
               "title": "Time Range"
@@ -5233,9 +5033,7 @@
     },
     "/api/dashboard/feedbacks": {
       "get": {
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "summary": "Get All Feedbacks",
         "description": "获取所有反馈记录（超级管理员权限）。",
         "operationId": "get_all_feedbacks_api_dashboard_feedbacks_get",
@@ -5319,9 +5117,7 @@
     },
     "/api/dashboard/conversations/options": {
       "get": {
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "summary": "Get Conversation Filter Options",
         "description": "获取会话审计用户与 Agent 筛选项（超级管理员权限）。",
         "operationId": "get_conversation_filter_options_api_dashboard_conversations_options_get",
@@ -5369,9 +5165,7 @@
     },
     "/api/dashboard/conversations": {
       "get": {
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "summary": "Get All Conversations",
         "description": "获取所有对话（超级管理员权限）。",
         "operationId": "get_all_conversations_api_dashboard_conversations_get",
@@ -5413,13 +5207,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "enum": [
-                "active",
-                "archived",
-                "deleted",
-                "subagent",
-                "all"
-              ],
+              "enum": ["active", "archived", "deleted", "subagent", "all"],
               "type": "string",
               "default": "all",
               "title": "Status"
@@ -5508,9 +5296,7 @@
     },
     "/api/dashboard/conversations/{thread_id}": {
       "get": {
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "summary": "Get Conversation Detail",
         "description": "获取指定对话详情（超级管理员权限）。",
         "operationId": "get_conversation_detail_api_dashboard_conversations__thread_id__get",
@@ -5567,9 +5353,7 @@
     },
     "/api/departments": {
       "get": {
-        "tags": [
-          "department"
-        ],
+        "tags": ["department"],
         "summary": "Get Departments",
         "description": "获取所有部门列表（管理员可访问）",
         "operationId": "get_departments_api_departments_get",
@@ -5619,9 +5403,7 @@
         }
       },
       "post": {
-        "tags": [
-          "department"
-        ],
+        "tags": ["department"],
         "summary": "Create Department",
         "description": "创建新部门，同时创建该部门的管理员",
         "operationId": "create_department_api_departments_post",
@@ -5679,9 +5461,7 @@
     },
     "/api/departments/{department_id}": {
       "get": {
-        "tags": [
-          "department"
-        ],
+        "tags": ["department"],
         "summary": "Get Department",
         "description": "获取指定部门详情",
         "operationId": "get_department_api_departments__department_id__get",
@@ -5736,9 +5516,7 @@
         }
       },
       "put": {
-        "tags": [
-          "department"
-        ],
+        "tags": ["department"],
         "summary": "Update Department",
         "description": "更新部门信息",
         "operationId": "update_department_api_departments__department_id__put",
@@ -5803,9 +5581,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "department"
-        ],
+        "tags": ["department"],
         "summary": "Delete Department",
         "description": "删除部门",
         "operationId": "delete_department_api_departments__department_id__delete",
@@ -5860,9 +5636,7 @@
     },
     "/api/tasks": {
       "get": {
-        "tags": [
-          "tasks"
-        ],
+        "tags": ["tasks"],
         "summary": "List Tasks",
         "description": "List tasks, optionally filtered by status.",
         "operationId": "list_tasks_api_tasks_get",
@@ -5936,9 +5710,7 @@
     },
     "/api/tasks/{task_id}": {
       "get": {
-        "tags": [
-          "tasks"
-        ],
+        "tags": ["tasks"],
         "summary": "Get Task",
         "description": "Retrieve a single task by id.",
         "operationId": "get_task_api_tasks__task_id__get",
@@ -5991,9 +5763,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "tasks"
-        ],
+        "tags": ["tasks"],
         "summary": "Delete Task",
         "description": "Delete a task by id.",
         "operationId": "delete_task_api_tasks__task_id__delete",
@@ -6048,9 +5818,7 @@
     },
     "/api/tasks/{task_id}/cancel": {
       "post": {
-        "tags": [
-          "tasks"
-        ],
+        "tags": ["tasks"],
         "summary": "Cancel Task",
         "description": "Request cancellation of a task.",
         "operationId": "cancel_task_api_tasks__task_id__cancel_post",
@@ -6105,9 +5873,7 @@
     },
     "/api/system/mcp-servers": {
       "get": {
-        "tags": [
-          "mcp"
-        ],
+        "tags": ["mcp"],
         "summary": "Get Mcp Servers",
         "description": "获取所有 MCP 服务器配置（普通用户仅获取脱敏的基础信息）",
         "operationId": "get_mcp_servers_api_system_mcp_servers_get",
@@ -6151,9 +5917,7 @@
         }
       },
       "post": {
-        "tags": [
-          "mcp"
-        ],
+        "tags": ["mcp"],
         "summary": "Create Mcp Server Route",
         "description": "创建新的 MCP 服务器",
         "operationId": "create_mcp_server_route_api_system_mcp_servers_post",
@@ -6209,9 +5973,7 @@
     },
     "/api/system/mcp-servers/{slug}": {
       "get": {
-        "tags": [
-          "mcp"
-        ],
+        "tags": ["mcp"],
         "summary": "Get Mcp Server Route",
         "description": "获取单个 MCP 服务器配置",
         "operationId": "get_mcp_server_route_api_system_mcp_servers__slug__get",
@@ -6264,9 +6026,7 @@
         }
       },
       "put": {
-        "tags": [
-          "mcp"
-        ],
+        "tags": ["mcp"],
         "summary": "Update Mcp Server Route",
         "description": "更新 MCP 服务器配置",
         "operationId": "update_mcp_server_route_api_system_mcp_servers__slug__put",
@@ -6329,9 +6089,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "mcp"
-        ],
+        "tags": ["mcp"],
         "summary": "Delete Mcp Server Route",
         "description": "删除 MCP 服务器",
         "operationId": "delete_mcp_server_route_api_system_mcp_servers__slug__delete",
@@ -6386,9 +6144,7 @@
     },
     "/api/system/mcp-servers/{slug}/test": {
       "post": {
-        "tags": [
-          "mcp"
-        ],
+        "tags": ["mcp"],
         "summary": "Test Mcp Server",
         "description": "测试 MCP 服务器连接",
         "operationId": "test_mcp_server_api_system_mcp_servers__slug__test_post",
@@ -6443,9 +6199,7 @@
     },
     "/api/system/mcp-servers/{slug}/status": {
       "put": {
-        "tags": [
-          "mcp"
-        ],
+        "tags": ["mcp"],
         "summary": "Update Mcp Server Status Route",
         "description": "更新 MCP 服务器启用状态",
         "operationId": "update_mcp_server_status_route_api_system_mcp_servers__slug__status_put",
@@ -6510,9 +6264,7 @@
     },
     "/api/system/mcp-servers/{slug}/tools": {
       "get": {
-        "tags": [
-          "mcp"
-        ],
+        "tags": ["mcp"],
         "summary": "Get Mcp Server Tools",
         "description": "获取 MCP 服务器的工具列表",
         "operationId": "get_mcp_server_tools_api_system_mcp_servers__slug__tools_get",
@@ -6567,9 +6319,7 @@
     },
     "/api/system/mcp-servers/{slug}/tools/refresh": {
       "post": {
-        "tags": [
-          "mcp"
-        ],
+        "tags": ["mcp"],
         "summary": "Refresh Mcp Server Tools",
         "description": "刷新 MCP 服务器的工具列表（清除缓存重新获取）",
         "operationId": "refresh_mcp_server_tools_api_system_mcp_servers__slug__tools_refresh_post",
@@ -6624,9 +6374,7 @@
     },
     "/api/system/mcp-servers/{slug}/tools/{tool_name}/toggle": {
       "put": {
-        "tags": [
-          "mcp"
-        ],
+        "tags": ["mcp"],
         "summary": "Toggle Mcp Server Tool Route",
         "description": "切换单个工具的启用状态",
         "operationId": "toggle_mcp_server_tool_route_api_system_mcp_servers__slug__tools__tool_name__toggle_put",
@@ -6690,9 +6438,7 @@
     },
     "/api/system/model-providers": {
       "get": {
-        "tags": [
-          "model-providers"
-        ],
+        "tags": ["model-providers"],
         "summary": "List Providers",
         "description": "获取独立模型供应商配置列表。",
         "operationId": "list_providers_api_system_model_providers_get",
@@ -6736,9 +6482,7 @@
         }
       },
       "post": {
-        "tags": [
-          "model-providers"
-        ],
+        "tags": ["model-providers"],
         "summary": "Create Provider",
         "description": "创建独立模型供应商配置。",
         "operationId": "create_provider_api_system_model_providers_post",
@@ -6794,9 +6538,7 @@
     },
     "/api/system/model-providers/{provider_id}": {
       "get": {
-        "tags": [
-          "model-providers"
-        ],
+        "tags": ["model-providers"],
         "summary": "Get Provider",
         "description": "获取单个独立模型供应商配置。",
         "operationId": "get_provider_api_system_model_providers__provider_id__get",
@@ -6849,9 +6591,7 @@
         }
       },
       "put": {
-        "tags": [
-          "model-providers"
-        ],
+        "tags": ["model-providers"],
         "summary": "Update Provider",
         "description": "更新独立模型供应商配置。",
         "operationId": "update_provider_api_system_model_providers__provider_id__put",
@@ -6914,9 +6654,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "model-providers"
-        ],
+        "tags": ["model-providers"],
         "summary": "Delete Provider",
         "description": "删除独立模型供应商配置。",
         "operationId": "delete_provider_api_system_model_providers__provider_id__delete",
@@ -6971,9 +6709,7 @@
     },
     "/api/system/model-providers/{provider_id}/remote-models": {
       "get": {
-        "tags": [
-          "model-providers"
-        ],
+        "tags": ["model-providers"],
         "summary": "Get Remote Models",
         "description": "实时拉取远端 /models，不落库。",
         "operationId": "get_remote_models_api_system_model_providers__provider_id__remote_models_get",
@@ -7028,9 +6764,7 @@
     },
     "/api/system/model-providers/models/cache/refresh": {
       "post": {
-        "tags": [
-          "model-providers"
-        ],
+        "tags": ["model-providers"],
         "summary": "Refresh Model Cache",
         "description": "强制刷新模型缓存，从数据库重新加载所有供应商配置到 Redis。",
         "operationId": "refresh_model_cache_api_system_model_providers_models_cache_refresh_post",
@@ -7076,9 +6810,7 @@
     },
     "/api/system/model-providers/models/v2": {
       "get": {
-        "tags": [
-          "model-providers"
-        ],
+        "tags": ["model-providers"],
         "summary": "Get V2 Models",
         "description": "获取 v2 格式的模型列表，按 provider 分组。\n\nv2 模型 spec 格式: provider_id:model_id（冒号分隔）\n返回数据供前端模型选择器使用。",
         "operationId": "get_v2_models_api_system_model_providers_models_v2_get",
@@ -7134,9 +6866,7 @@
     },
     "/api/system/model-providers/models/status": {
       "get": {
-        "tags": [
-          "model-providers"
-        ],
+        "tags": ["model-providers"],
         "summary": "Get Model Status By Spec",
         "description": "根据 full spec 检查模型状态（自动识别 V1/V2、Chat/Embedding）。",
         "operationId": "get_model_status_by_spec_api_system_model_providers_models_status_get",
@@ -7191,9 +6921,7 @@
     },
     "/api/system/skills": {
       "get": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "List Skills Route",
         "operationId": "list_skills_route_api_system_skills_get",
         "parameters": [
@@ -7238,9 +6966,7 @@
     },
     "/api/system/skills/dependency-options": {
       "get": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Get Skill Dependency Options Route",
         "operationId": "get_skill_dependency_options_route_api_system_skills_dependency_options_get",
         "parameters": [
@@ -7303,9 +7029,7 @@
     },
     "/api/system/skills/builtin": {
       "get": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "List Builtin Skills Route",
         "operationId": "list_builtin_skills_route_api_system_skills_builtin_get",
         "parameters": [
@@ -7350,9 +7074,7 @@
     },
     "/api/system/skills/builtin/sync": {
       "post": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Sync Builtin Skills Route",
         "operationId": "sync_builtin_skills_route_api_system_skills_builtin_sync_post",
         "parameters": [
@@ -7397,9 +7119,7 @@
     },
     "/api/system/skills/{slug}/share-config": {
       "put": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Update Skill Share Config Route",
         "operationId": "update_skill_share_config_route_api_system_skills__slug__share_config_put",
         "parameters": [
@@ -7463,9 +7183,7 @@
     },
     "/api/system/skills/{slug}/enabled": {
       "put": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Update Skill Enabled Route",
         "operationId": "update_skill_enabled_route_api_system_skills__slug__enabled_put",
         "parameters": [
@@ -7529,9 +7247,7 @@
     },
     "/api/system/skills/{slug}/tree": {
       "get": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Get Skill Tree Route",
         "operationId": "get_skill_tree_route_api_system_skills__slug__tree_get",
         "parameters": [
@@ -7585,9 +7301,7 @@
     },
     "/api/system/skills/{slug}/file": {
       "get": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Get Skill File Route",
         "operationId": "get_skill_file_route_api_system_skills__slug__file_get",
         "parameters": [
@@ -7650,9 +7364,7 @@
         }
       },
       "post": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Create Skill File Route",
         "operationId": "create_skill_file_route_api_system_skills__slug__file_post",
         "parameters": [
@@ -7714,9 +7426,7 @@
         }
       },
       "put": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Update Skill File Route",
         "operationId": "update_skill_file_route_api_system_skills__slug__file_put",
         "parameters": [
@@ -7778,9 +7488,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Delete Skill File Route",
         "operationId": "delete_skill_file_route_api_system_skills__slug__file_delete",
         "parameters": [
@@ -7845,9 +7553,7 @@
     },
     "/api/system/skills/{slug}/dependencies": {
       "put": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Update Skill Dependencies Route",
         "operationId": "update_skill_dependencies_route_api_system_skills__slug__dependencies_put",
         "parameters": [
@@ -7911,9 +7617,7 @@
     },
     "/api/system/skills/{slug}/export": {
       "get": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Export Skill Route",
         "operationId": "export_skill_route_api_system_skills__slug__export_get",
         "parameters": [
@@ -7967,9 +7671,7 @@
     },
     "/api/system/skills/{slug}": {
       "delete": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Delete Skill Route",
         "operationId": "delete_skill_route_api_system_skills__slug__delete",
         "parameters": [
@@ -8023,9 +7725,7 @@
     },
     "/api/system/skills/delete-batch": {
       "post": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Delete Skills Batch Route",
         "operationId": "delete_skills_batch_route_api_system_skills_delete_batch_post",
         "parameters": [
@@ -8080,9 +7780,7 @@
     },
     "/api/skills": {
       "get": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "List Skill Cards Route",
         "operationId": "list_skill_cards_route_api_skills_get",
         "parameters": [
@@ -8127,9 +7825,7 @@
     },
     "/api/skills/accessible": {
       "get": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "List Accessible Skills Route",
         "operationId": "list_accessible_skills_route_api_skills_accessible_get",
         "parameters": [
@@ -8174,9 +7870,7 @@
     },
     "/api/skills/import/prepare": {
       "post": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Prepare Skill Upload Route",
         "operationId": "prepare_skill_upload_route_api_skills_import_prepare_post",
         "parameters": [
@@ -8231,9 +7925,7 @@
     },
     "/api/skills/remote/list": {
       "post": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "List Remote Skills Route",
         "operationId": "list_remote_skills_route_api_skills_remote_list_post",
         "parameters": [
@@ -8288,9 +7980,7 @@
     },
     "/api/skills/remote/search": {
       "post": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Search Remote Skills Route",
         "operationId": "search_remote_skills_route_api_skills_remote_search_post",
         "parameters": [
@@ -8345,9 +8035,7 @@
     },
     "/api/skills/remote/prepare": {
       "post": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Prepare Remote Skills Route",
         "operationId": "prepare_remote_skills_route_api_skills_remote_prepare_post",
         "parameters": [
@@ -8402,9 +8090,7 @@
     },
     "/api/skills/install-drafts/{draft_id}/confirm": {
       "post": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Confirm Skill Install Draft Route",
         "operationId": "confirm_skill_install_draft_route_api_skills_install_drafts__draft_id__confirm_post",
         "parameters": [
@@ -8468,9 +8154,7 @@
     },
     "/api/skills/personal/install-drafts/{draft_id}/confirm": {
       "post": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Confirm Personal Skill Install Draft Route",
         "operationId": "confirm_personal_skill_install_draft_route_api_skills_personal_install_drafts__draft_id__confirm_post",
         "parameters": [
@@ -8534,9 +8218,7 @@
     },
     "/api/skills/personal/{slug}/file": {
       "get": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Read Personal Skill File Route",
         "operationId": "read_personal_skill_file_route_api_skills_personal__slug__file_get",
         "parameters": [
@@ -8601,9 +8283,7 @@
     },
     "/api/skills/personal/{slug}": {
       "delete": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Delete Personal Skill Route",
         "operationId": "delete_personal_skill_route_api_skills_personal__slug__delete",
         "parameters": [
@@ -8657,9 +8337,7 @@
     },
     "/api/skills/install-drafts/{draft_id}": {
       "delete": {
-        "tags": [
-          "skills"
-        ],
+        "tags": ["skills"],
         "summary": "Discard Skill Install Draft Route",
         "operationId": "discard_skill_install_draft_route_api_skills_install_drafts__draft_id__delete",
         "parameters": [
@@ -8713,9 +8391,7 @@
     },
     "/api/system/tools": {
       "get": {
-        "tags": [
-          "tools"
-        ],
+        "tags": ["tools"],
         "summary": "List Tools",
         "description": "获取工具列表",
         "operationId": "list_tools_api_system_tools_get",
@@ -8770,9 +8446,7 @@
     },
     "/api/system/tools/options": {
       "get": {
-        "tags": [
-          "tools"
-        ],
+        "tags": ["tools"],
         "summary": "Get Tool Options",
         "description": "获取工具选项（前端下拉框用）",
         "operationId": "get_tool_options_api_system_tools_options_get",
@@ -8818,9 +8492,7 @@
     },
     "/api/user/config": {
       "get": {
-        "tags": [
-          "user"
-        ],
+        "tags": ["user"],
         "summary": "Get User Config",
         "operationId": "get_user_config_api_user_config_get",
         "parameters": [
@@ -8867,9 +8539,7 @@
         }
       },
       "put": {
-        "tags": [
-          "user"
-        ],
+        "tags": ["user"],
         "summary": "Update User Config",
         "operationId": "update_user_config_api_user_config_put",
         "parameters": [
@@ -8928,9 +8598,7 @@
     },
     "/api/user/upload-image": {
       "post": {
-        "tags": [
-          "user"
-        ],
+        "tags": ["user"],
         "summary": "Upload User Image",
         "operationId": "upload_user_image_api_user_upload_image_post",
         "parameters": [
@@ -8989,9 +8657,7 @@
     },
     "/api/user/apikey/": {
       "get": {
-        "tags": [
-          "user"
-        ],
+        "tags": ["user"],
         "summary": "List Api Keys",
         "operationId": "list_api_keys_api_user_apikey__get",
         "parameters": [
@@ -9061,9 +8727,7 @@
         }
       },
       "post": {
-        "tags": [
-          "user"
-        ],
+        "tags": ["user"],
         "summary": "Create Api Key",
         "operationId": "create_api_key_api_user_apikey__post",
         "parameters": [
@@ -9120,9 +8784,7 @@
     },
     "/api/user/apikey/{api_key_id}": {
       "get": {
-        "tags": [
-          "user"
-        ],
+        "tags": ["user"],
         "summary": "Get Api Key",
         "operationId": "get_api_key_api_user_apikey__api_key_id__get",
         "parameters": [
@@ -9178,9 +8840,7 @@
         }
       },
       "put": {
-        "tags": [
-          "user"
-        ],
+        "tags": ["user"],
         "summary": "Update Api Key",
         "operationId": "update_api_key_api_user_apikey__api_key_id__put",
         "parameters": [
@@ -9246,9 +8906,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "user"
-        ],
+        "tags": ["user"],
         "summary": "Delete Api Key",
         "operationId": "delete_api_key_api_user_apikey__api_key_id__delete",
         "parameters": [
@@ -9306,9 +8964,7 @@
     },
     "/api/user/agent-env": {
       "get": {
-        "tags": [
-          "user"
-        ],
+        "tags": ["user"],
         "summary": "Get Agent Env",
         "operationId": "get_agent_env_api_user_agent_env_get",
         "parameters": [
@@ -9353,9 +9009,7 @@
         }
       },
       "put": {
-        "tags": [
-          "user"
-        ],
+        "tags": ["user"],
         "summary": "Update Agent Env",
         "operationId": "update_agent_env_api_user_agent_env_put",
         "parameters": [
@@ -9412,9 +9066,7 @@
     },
     "/api/viewer/filesystem/tree": {
       "get": {
-        "tags": [
-          "viewer-filesystem"
-        ],
+        "tags": ["viewer-filesystem"],
         "summary": "Get Viewer Tree",
         "operationId": "get_viewer_tree_api_viewer_filesystem_tree_get",
         "parameters": [
@@ -9486,9 +9138,7 @@
     },
     "/api/viewer/filesystem/file": {
       "get": {
-        "tags": [
-          "viewer-filesystem"
-        ],
+        "tags": ["viewer-filesystem"],
         "summary": "Get Viewer File",
         "operationId": "get_viewer_file_api_viewer_filesystem_file_get",
         "parameters": [
@@ -9553,9 +9203,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "viewer-filesystem"
-        ],
+        "tags": ["viewer-filesystem"],
         "summary": "Delete Viewer File Route",
         "operationId": "delete_viewer_file_route_api_viewer_filesystem_file_delete",
         "parameters": [
@@ -9626,9 +9274,7 @@
     },
     "/api/viewer/filesystem/directory": {
       "post": {
-        "tags": [
-          "viewer-filesystem"
-        ],
+        "tags": ["viewer-filesystem"],
         "summary": "Create Viewer Directory Route",
         "operationId": "create_viewer_directory_route_api_viewer_filesystem_directory_post",
         "parameters": [
@@ -9687,9 +9333,7 @@
     },
     "/api/viewer/filesystem/upload": {
       "post": {
-        "tags": [
-          "viewer-filesystem"
-        ],
+        "tags": ["viewer-filesystem"],
         "summary": "Upload Viewer Files Route",
         "operationId": "upload_viewer_files_route_api_viewer_filesystem_upload_post",
         "parameters": [
@@ -9748,9 +9392,7 @@
     },
     "/api/viewer/filesystem/search": {
       "get": {
-        "tags": [
-          "viewer-filesystem"
-        ],
+        "tags": ["viewer-filesystem"],
         "summary": "Search Viewer Files Route",
         "operationId": "search_viewer_files_route_api_viewer_filesystem_search_get",
         "parameters": [
@@ -9821,9 +9463,7 @@
     },
     "/api/viewer/filesystem/download": {
       "get": {
-        "tags": [
-          "viewer-filesystem"
-        ],
+        "tags": ["viewer-filesystem"],
         "summary": "Download Viewer",
         "operationId": "download_viewer_api_viewer_filesystem_download_get",
         "parameters": [
@@ -9890,9 +9530,7 @@
     },
     "/api/workspace/tree": {
       "get": {
-        "tags": [
-          "workspace"
-        ],
+        "tags": ["workspace"],
         "summary": "Get Workspace Tree",
         "operationId": "get_workspace_tree_api_workspace_tree_get",
         "parameters": [
@@ -9989,9 +9627,7 @@
     },
     "/api/workspace/search": {
       "get": {
-        "tags": [
-          "workspace"
-        ],
+        "tags": ["workspace"],
         "summary": "Search Workspace Files Route",
         "operationId": "search_workspace_files_route_api_workspace_search_get",
         "parameters": [
@@ -10051,9 +9687,7 @@
     },
     "/api/workspace/file": {
       "get": {
-        "tags": [
-          "workspace"
-        ],
+        "tags": ["workspace"],
         "summary": "Get Workspace File",
         "operationId": "get_workspace_file_api_workspace_file_get",
         "parameters": [
@@ -10107,9 +9741,7 @@
         }
       },
       "put": {
-        "tags": [
-          "workspace"
-        ],
+        "tags": ["workspace"],
         "summary": "Update Workspace File",
         "operationId": "update_workspace_file_api_workspace_file_put",
         "parameters": [
@@ -10166,9 +9798,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "workspace"
-        ],
+        "tags": ["workspace"],
         "summary": "Delete Workspace File Route",
         "operationId": "delete_workspace_file_route_api_workspace_file_delete",
         "parameters": [
@@ -10228,9 +9858,7 @@
     },
     "/api/workspace/directory": {
       "post": {
-        "tags": [
-          "workspace"
-        ],
+        "tags": ["workspace"],
         "summary": "Create Workspace Directory Route",
         "operationId": "create_workspace_directory_route_api_workspace_directory_post",
         "parameters": [
@@ -10289,9 +9917,7 @@
     },
     "/api/workspace/upload": {
       "post": {
-        "tags": [
-          "workspace"
-        ],
+        "tags": ["workspace"],
         "summary": "Upload Workspace Files Route",
         "operationId": "upload_workspace_files_route_api_workspace_upload_post",
         "parameters": [
@@ -10350,9 +9976,7 @@
     },
     "/api/workspace/download": {
       "get": {
-        "tags": [
-          "workspace"
-        ],
+        "tags": ["workspace"],
         "summary": "Download Workspace",
         "operationId": "download_workspace_api_workspace_download_get",
         "parameters": [
@@ -10408,9 +10032,7 @@
     },
     "/api/mention/search": {
       "get": {
-        "tags": [
-          "mention"
-        ],
+        "tags": ["mention"],
         "summary": "Search Mention Files",
         "description": "提及文件模糊搜索接口：未创建 thread 时只搜索用户 workspace；已有 thread 时可搜索当前对话文件。",
         "operationId": "search_mention_files_api_mention_search_get",
@@ -10510,9 +10132,7 @@
     },
     "/api/dashboard/stats/knowledge": {
       "get": {
-        "tags": [
-          "Dashboard"
-        ],
+        "tags": ["Dashboard"],
         "summary": "Read Knowledge Stats",
         "description": "获取知识库统计（超级管理员权限）。",
         "operationId": "read_knowledge_stats_api_dashboard_stats_knowledge_get",
@@ -10560,9 +10180,7 @@
     },
     "/api/knowledge/databases/external": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "List External Databases",
         "description": "列出当前登录用户可见的知识库，供 CLI 选择与展示。",
         "operationId": "list_external_databases_api_knowledge_databases_external_get",
@@ -10608,9 +10226,7 @@
     },
     "/api/knowledge/databases/external/{kb_id}/files": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "List External Files",
         "description": "列出或搜索知识库文件，供 CLI 浏览与定位。",
         "operationId": "list_external_files_api_knowledge_databases_external__kb_id__files_get",
@@ -10722,9 +10338,7 @@
     },
     "/api/knowledge/databases/external/{kb_id}/retrieve": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Retrieve External",
         "description": "对知识库执行检索查询，返回结构化结果。",
         "operationId": "retrieve_external_api_knowledge_databases_external__kb_id__retrieve_post",
@@ -10789,9 +10403,7 @@
     },
     "/api/knowledge/databases/external/{kb_id}/files/{file_id}/open": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Open External File",
         "description": "按行窗口打开文件解析后的 Markdown 内容。",
         "operationId": "open_external_file_api_knowledge_databases_external__kb_id__files__file_id__open_get",
@@ -10882,9 +10494,7 @@
     },
     "/api/knowledge/databases/external/{kb_id}/files/{file_id}/find": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Find External File",
         "description": "在指定文件内做关键词或正则定位，返回匹配窗口。",
         "operationId": "find_external_file_api_knowledge_databases_external__kb_id__files__file_id__find_post",
@@ -10958,9 +10568,7 @@
     },
     "/api/knowledge/databases": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Databases",
         "description": "获取所有知识库（根据用户权限过滤）",
         "operationId": "get_databases_api_knowledge_databases_get",
@@ -11004,9 +10612,7 @@
         }
       },
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Create Database",
         "description": "创建知识库",
         "operationId": "create_database_api_knowledge_databases_post",
@@ -11062,9 +10668,7 @@
     },
     "/api/knowledge/databases/accessible": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Accessible Databases",
         "description": "获取当前用户有权访问的知识库列表（用于智能体配置）",
         "operationId": "get_accessible_databases_api_knowledge_databases_accessible_get",
@@ -11110,9 +10714,7 @@
     },
     "/api/knowledge/mindmap/databases": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Mindmap Databases",
         "description": "获取所有知识库的概览信息，用于思维导图界面选择。",
         "operationId": "get_mindmap_databases_api_knowledge_mindmap_databases_get",
@@ -11158,9 +10760,7 @@
     },
     "/api/knowledge/databases/{kb_id}/mindmap/files": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Database Mindmap Files",
         "description": "获取指定知识库的所有文件列表。",
         "operationId": "get_database_mindmap_files_api_knowledge_databases__kb_id__mindmap_files_get",
@@ -11215,9 +10815,7 @@
     },
     "/api/knowledge/databases/{kb_id}/mindmap/generate": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Generate Mindmap",
         "description": "使用 AI 分析知识库文件，生成思维导图结构。支持增量更新模式。",
         "operationId": "generate_mindmap_api_knowledge_databases__kb_id__mindmap_generate_post",
@@ -11281,9 +10879,7 @@
     },
     "/api/knowledge/databases/{kb_id}/mindmap": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Database Mindmap",
         "description": "获取知识库关联的思维导图。",
         "operationId": "get_database_mindmap_api_knowledge_databases__kb_id__mindmap_get",
@@ -11338,9 +10934,7 @@
     },
     "/api/knowledge/databases/{kb_id}/mindmap/diff": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Mindmap Diff Route",
         "description": "检测思维导图与知识库文件的变更差异。",
         "operationId": "get_mindmap_diff_route_api_knowledge_databases__kb_id__mindmap_diff_get",
@@ -11395,9 +10989,7 @@
     },
     "/api/knowledge/databases/{kb_id}": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Database Info",
         "description": "获取知识库详细信息",
         "operationId": "get_database_info_api_knowledge_databases__kb_id__get",
@@ -11462,9 +11054,7 @@
         }
       },
       "put": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Update Database Info",
         "description": "更新知识库信息",
         "operationId": "update_database_info_api_knowledge_databases__kb_id__put",
@@ -11527,9 +11117,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Delete Database",
         "description": "删除知识库",
         "operationId": "delete_database_api_knowledge_databases__kb_id__delete",
@@ -11584,9 +11172,7 @@
     },
     "/api/knowledge/databases/{kb_id}/stats/repair": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Repair Database Stats",
         "description": "修复知识库历史文件缺失的 Chunk/Token 统计。",
         "operationId": "repair_database_stats_api_knowledge_databases__kb_id__stats_repair_post",
@@ -11641,9 +11227,7 @@
     },
     "/api/knowledge/databases/{kb_id}/graph-build/status": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Graph Build Status",
         "operationId": "get_graph_build_status_api_knowledge_databases__kb_id__graph_build_status_get",
         "parameters": [
@@ -11697,9 +11281,7 @@
     },
     "/api/knowledge/databases/{kb_id}/graph-build/config": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Configure Graph Build",
         "operationId": "configure_graph_build_api_knowledge_databases__kb_id__graph_build_config_post",
         "parameters": [
@@ -11765,9 +11347,7 @@
     },
     "/api/knowledge/databases/{kb_id}/graph-build/index": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Index Graph Build",
         "operationId": "index_graph_build_api_knowledge_databases__kb_id__graph_build_index_post",
         "parameters": [
@@ -11821,9 +11401,7 @@
     },
     "/api/knowledge/databases/{kb_id}/graph-build/failed-chunks": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Graph Build Failed Chunks",
         "operationId": "get_graph_build_failed_chunks_api_knowledge_databases__kb_id__graph_build_failed_chunks_get",
         "parameters": [
@@ -11887,9 +11465,7 @@
     },
     "/api/knowledge/databases/{kb_id}/graph-build/reset": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Reset Graph Build",
         "operationId": "reset_graph_build_api_knowledge_databases__kb_id__graph_build_reset_post",
         "parameters": [
@@ -11961,9 +11537,7 @@
     },
     "/api/knowledge/databases/{kb_id}/graph-build/reconcile": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Reconcile Graph Build",
         "operationId": "reconcile_graph_build_api_knowledge_databases__kb_id__graph_build_reconcile_post",
         "parameters": [
@@ -12035,9 +11609,7 @@
     },
     "/api/knowledge/databases/{kb_id}/export": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Export Database",
         "description": "导出知识库数据",
         "operationId": "export_database_api_knowledge_databases__kb_id__export_get",
@@ -12057,12 +11629,7 @@
             "required": false,
             "schema": {
               "type": "string",
-              "enum": [
-                "csv",
-                "xlsx",
-                "md",
-                "txt"
-              ],
+              "enum": ["csv", "xlsx", "md", "txt"],
               "default": "csv",
               "title": "Format"
             }
@@ -12120,9 +11687,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "List Documents",
         "description": "分页获取知识库文件列表。",
         "operationId": "list_documents_api_knowledge_databases__kb_id__documents_get",
@@ -12262,9 +11827,7 @@
         }
       },
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Add Documents",
         "description": "添加文档到知识库（上传 -> 解析 -> 可选入库）",
         "operationId": "add_documents_api_knowledge_databases__kb_id__documents_post",
@@ -12329,9 +11892,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/search": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Search Documents",
         "description": "按文件名搜索知识库文件（仅匹配文件名，不搜索文件内容）。",
         "operationId": "search_documents_api_knowledge_databases__kb_id__documents_search_get",
@@ -12425,9 +11986,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/exists": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Document File Exists",
         "description": "检查知识库中是否已存在指定文件名或相对路径的文件。",
         "operationId": "document_file_exists_api_knowledge_databases__kb_id__documents_exists_get",
@@ -12494,9 +12053,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/add": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Add Uploaded Documents",
         "description": "将已上传的 MinIO 文件同步添加为知识库文档记录，不解析、不入库。",
         "operationId": "add_uploaded_documents_api_knowledge_databases__kb_id__documents_add_post",
@@ -12561,9 +12118,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/parse": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Parse Documents",
         "description": "手动触发文档解析",
         "operationId": "parse_documents_api_knowledge_databases__kb_id__documents_parse_post",
@@ -12639,9 +12194,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/parse-pending": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Parse Pending Documents",
         "description": "按状态手动触发全部待解析文档解析。",
         "operationId": "parse_pending_documents_api_knowledge_databases__kb_id__documents_parse_pending_post",
@@ -12713,9 +12266,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/index": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Index Documents",
         "description": "手动触发文档入库（Indexing），支持更新参数",
         "operationId": "index_documents_api_knowledge_databases__kb_id__documents_index_post",
@@ -12780,9 +12331,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/index-pending": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Index Pending Documents",
         "description": "按状态手动触发全部待入库文档入库。",
         "operationId": "index_pending_documents_api_knowledge_databases__kb_id__documents_index_pending_post",
@@ -12854,9 +12403,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/{doc_id}": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Document Info",
         "description": "获取文档详细信息（包含基本信息和内容信息）",
         "operationId": "get_document_info_api_knowledge_databases__kb_id__documents__doc_id__get",
@@ -12918,9 +12465,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Delete Document",
         "description": "删除文档或文件夹",
         "operationId": "delete_document_api_knowledge_databases__kb_id__documents__doc_id__delete",
@@ -12984,9 +12529,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/{doc_id}/basic": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Document Basic Info",
         "description": "获取文档基本信息（仅元数据）",
         "operationId": "get_document_basic_info_api_knowledge_databases__kb_id__documents__doc_id__basic_get",
@@ -13050,9 +12593,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/{doc_id}/content": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Document Content",
         "description": "获取文档内容信息（chunks和lines）",
         "operationId": "get_document_content_api_knowledge_databases__kb_id__documents__doc_id__content_get",
@@ -13116,9 +12657,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/batch": {
       "delete": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Batch Delete Documents",
         "description": "批量删除文档或文件夹",
         "operationId": "batch_delete_documents_api_knowledge_databases__kb_id__documents_batch_delete",
@@ -13187,9 +12726,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/{doc_id}/download": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Download Document",
         "description": "下载原始文件",
         "operationId": "download_document_api_knowledge_databases__kb_id__documents__doc_id__download_get",
@@ -13253,9 +12790,7 @@
     },
     "/api/knowledge/databases/{kb_id}/images/{object_path}": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Kb Image",
         "description": "经鉴权代理读取知识库图片（图片存放在私有 bucket，禁止匿名访问）",
         "operationId": "get_kb_image_api_knowledge_databases__kb_id__images__object_path__get",
@@ -13319,9 +12854,7 @@
     },
     "/api/knowledge/databases/{kb_id}/query": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Query Knowledge Base",
         "description": "查询知识库",
         "operationId": "query_knowledge_base_api_knowledge_databases__kb_id__query_post",
@@ -13386,9 +12919,7 @@
     },
     "/api/knowledge/databases/{kb_id}/query-test": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Query Test",
         "description": "测试查询知识库",
         "operationId": "query_test_api_knowledge_databases__kb_id__query_test_post",
@@ -13453,9 +12984,7 @@
     },
     "/api/knowledge/databases/{kb_id}/query-params": {
       "put": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Update Knowledge Base Query Params",
         "description": "更新知识库查询参数配置",
         "operationId": "update_knowledge_base_query_params_api_knowledge_databases__kb_id__query_params_put",
@@ -13520,9 +13049,7 @@
         }
       },
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Knowledge Base Query Params",
         "description": "获取知识库类型特定的查询参数",
         "operationId": "get_knowledge_base_query_params_api_knowledge_databases__kb_id__query_params_get",
@@ -13577,9 +13104,7 @@
     },
     "/api/knowledge/databases/{kb_id}/sample-questions": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Generate Sample Questions",
         "description": "AI生成针对知识库的测试问题。",
         "operationId": "generate_sample_questions_api_knowledge_databases__kb_id__sample_questions_post",
@@ -13644,9 +13169,7 @@
         }
       },
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Sample Questions",
         "description": "获取知识库的测试问题。",
         "operationId": "get_sample_questions_api_knowledge_databases__kb_id__sample_questions_get",
@@ -13701,9 +13224,7 @@
     },
     "/api/knowledge/databases/{kb_id}/folders": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Create Folder",
         "description": "创建文件夹",
         "operationId": "create_folder_api_knowledge_databases__kb_id__folders_post",
@@ -13768,9 +13289,7 @@
     },
     "/api/knowledge/databases/{kb_id}/virtual-folders/detect": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Detect Virtual Folders",
         "description": "检测知识库中的历史路径型虚拟文件夹。",
         "operationId": "detect_virtual_folders_api_knowledge_databases__kb_id__virtual_folders_detect_get",
@@ -13825,9 +13344,7 @@
     },
     "/api/knowledge/databases/{kb_id}/virtual-folders/migrate": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Start Virtual Folder Migration",
         "description": "创建与 SSE 连接生命周期无关的历史目录迁移任务。",
         "operationId": "start_virtual_folder_migration_api_knowledge_databases__kb_id__virtual_folders_migrate_post",
@@ -13882,9 +13399,7 @@
     },
     "/api/knowledge/databases/{kb_id}/virtual-folders/migrations/{task_id}/events": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Stream Virtual Folder Migration",
         "description": "流式返回迁移任务快照，断开连接不取消任务。",
         "operationId": "stream_virtual_folder_migration_api_knowledge_databases__kb_id__virtual_folders_migrations__task_id__events_get",
@@ -13948,9 +13463,7 @@
     },
     "/api/knowledge/databases/{kb_id}/folders/{folder_id}/rename": {
       "put": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Rename Folder",
         "description": "重命名真实文件夹。",
         "operationId": "rename_folder_api_knowledge_databases__kb_id__folders__folder_id__rename_put",
@@ -14024,9 +13537,7 @@
     },
     "/api/knowledge/databases/{kb_id}/documents/{doc_id}/move": {
       "put": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Move Document",
         "description": "移动文件或文件夹",
         "operationId": "move_document_api_knowledge_databases__kb_id__documents__doc_id__move_put",
@@ -14100,9 +13611,7 @@
     },
     "/api/knowledge/files/fetch-url": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Fetch Url",
         "description": "抓取 URL 内容并上传到 MinIO",
         "operationId": "fetch_url_api_knowledge_files_fetch_url_post",
@@ -14158,9 +13667,7 @@
     },
     "/api/knowledge/files/import-workspace": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Import Workspace Files",
         "description": "将当前用户工作区文件导入 MinIO，返回与普通文件上传一致的预处理结果。",
         "operationId": "import_workspace_files_api_knowledge_files_import_workspace_post",
@@ -14216,9 +13723,7 @@
     },
     "/api/knowledge/files/upload": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Upload File",
         "description": "上传文件",
         "operationId": "upload_file_api_knowledge_files_upload_post",
@@ -14290,9 +13795,7 @@
     },
     "/api/knowledge/files/supported-types": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Supported File Types",
         "description": "获取当前支持的文件类型",
         "operationId": "get_supported_file_types_api_knowledge_files_supported_types_get",
@@ -14338,9 +13841,7 @@
     },
     "/api/knowledge/files/markdown": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Mark It Down",
         "description": "调用统一 Parser 将文件解析为 markdown，需要管理员权限",
         "operationId": "mark_it_down_api_knowledge_files_markdown_post",
@@ -14396,9 +13897,7 @@
     },
     "/api/knowledge/types": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Knowledge Base Types",
         "description": "获取支持的知识库类型",
         "operationId": "get_knowledge_base_types_api_knowledge_types_get",
@@ -14444,9 +13943,7 @@
     },
     "/api/knowledge/chunk-presets": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Knowledge Chunk Presets",
         "description": "获取支持的知识库分块策略",
         "operationId": "get_knowledge_chunk_presets_api_knowledge_chunk_presets_get",
@@ -14492,9 +13989,7 @@
     },
     "/api/knowledge/stats": {
       "get": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Get Knowledge Base Statistics",
         "description": "获取知识库统计信息",
         "operationId": "get_knowledge_base_statistics_api_knowledge_stats_get",
@@ -14540,9 +14035,7 @@
     },
     "/api/knowledge/generate-description": {
       "post": {
-        "tags": [
-          "knowledge"
-        ],
+        "tags": ["knowledge"],
         "summary": "Generate Description",
         "description": "使用 LLM 生成或优化知识库描述\n\n根据知识库名称和现有描述，使用 LLM 生成适合作为智能体工具描述的内容。",
         "operationId": "generate_description_api_knowledge_generate_description_post",
@@ -14598,9 +14091,7 @@
     },
     "/api/evaluation/databases/{kb_id}/datasets/upload": {
       "post": {
-        "tags": [
-          "evaluation"
-        ],
+        "tags": ["evaluation"],
         "summary": "Upload Evaluation Dataset",
         "description": "上传评估数据集",
         "operationId": "upload_evaluation_dataset_api_evaluation_databases__kb_id__datasets_upload_post",
@@ -14665,9 +14156,7 @@
     },
     "/api/evaluation/databases/{kb_id}/datasets": {
       "get": {
-        "tags": [
-          "evaluation"
-        ],
+        "tags": ["evaluation"],
         "summary": "List Evaluation Datasets",
         "description": "获取知识库的评估数据集列表",
         "operationId": "list_evaluation_datasets_api_evaluation_databases__kb_id__datasets_get",
@@ -14722,9 +14211,7 @@
     },
     "/api/evaluation/databases/{kb_id}/datasets/{dataset_id}": {
       "get": {
-        "tags": [
-          "evaluation"
-        ],
+        "tags": ["evaluation"],
         "summary": "Get Evaluation Dataset",
         "description": "获取评估数据集详情",
         "operationId": "get_evaluation_dataset_api_evaluation_databases__kb_id__datasets__dataset_id__get",
@@ -14808,9 +14295,7 @@
     },
     "/api/evaluation/datasets/{dataset_id}/download": {
       "get": {
-        "tags": [
-          "evaluation"
-        ],
+        "tags": ["evaluation"],
         "summary": "Download Evaluation Dataset",
         "description": "导出评估数据集 JSONL",
         "operationId": "download_evaluation_dataset_api_evaluation_datasets__dataset_id__download_get",
@@ -14865,9 +14350,7 @@
     },
     "/api/evaluation/datasets/{dataset_id}": {
       "delete": {
-        "tags": [
-          "evaluation"
-        ],
+        "tags": ["evaluation"],
         "summary": "Delete Evaluation Dataset",
         "description": "删除评估数据集",
         "operationId": "delete_evaluation_dataset_api_evaluation_datasets__dataset_id__delete",
@@ -14922,9 +14405,7 @@
     },
     "/api/evaluation/databases/{kb_id}/datasets/generate": {
       "post": {
-        "tags": [
-          "evaluation"
-        ],
+        "tags": ["evaluation"],
         "summary": "Generate Evaluation Dataset",
         "description": "自动生成评估数据集",
         "operationId": "generate_evaluation_dataset_api_evaluation_databases__kb_id__datasets_generate_post",
@@ -14989,9 +14470,7 @@
     },
     "/api/evaluation/databases/{kb_id}/datasets/{dataset_id}/resume": {
       "post": {
-        "tags": [
-          "evaluation"
-        ],
+        "tags": ["evaluation"],
         "summary": "Resume Evaluation Dataset",
         "description": "恢复自动生成评估数据集",
         "operationId": "resume_evaluation_dataset_api_evaluation_databases__kb_id__datasets__dataset_id__resume_post",
@@ -15055,9 +14534,7 @@
     },
     "/api/evaluation/databases/{kb_id}/runs": {
       "post": {
-        "tags": [
-          "evaluation"
-        ],
+        "tags": ["evaluation"],
         "summary": "Run Evaluation",
         "description": "运行RAG评估",
         "operationId": "run_evaluation_api_evaluation_databases__kb_id__runs_post",
@@ -15120,9 +14597,7 @@
         }
       },
       "get": {
-        "tags": [
-          "evaluation"
-        ],
+        "tags": ["evaluation"],
         "summary": "List Evaluation Runs",
         "description": "获取知识库评估运行历史",
         "operationId": "list_evaluation_runs_api_evaluation_databases__kb_id__runs_get",
@@ -15177,9 +14652,7 @@
     },
     "/api/evaluation/databases/{kb_id}/runs/{run_id}": {
       "get": {
-        "tags": [
-          "evaluation"
-        ],
+        "tags": ["evaluation"],
         "summary": "Get Evaluation Run Results",
         "description": "获取评估运行结果",
         "operationId": "get_evaluation_run_results_api_evaluation_databases__kb_id__runs__run_id__get",
@@ -15271,9 +14744,7 @@
         }
       },
       "delete": {
-        "tags": [
-          "evaluation"
-        ],
+        "tags": ["evaluation"],
         "summary": "Delete Evaluation Run",
         "description": "删除评估运行",
         "operationId": "delete_evaluation_run_api_evaluation_databases__kb_id__runs__run_id__delete",
@@ -15337,9 +14808,7 @@
     },
     "/api/graph/list": {
       "get": {
-        "tags": [
-          "graph"
-        ],
+        "tags": ["graph"],
         "summary": "Get Graphs",
         "description": "获取支持图谱能力的 Milvus 知识库列表",
         "operationId": "get_graphs_api_graph_list_get",
@@ -15385,9 +14854,7 @@
     },
     "/api/graph/subgraph": {
       "get": {
-        "tags": [
-          "graph"
-        ],
+        "tags": ["graph"],
         "summary": "Get Subgraph",
         "description": "查询 Milvus 知识库图谱子图",
         "operationId": "get_subgraph_api_graph_subgraph_get",
@@ -15494,9 +14961,7 @@
     },
     "/api/graph/labels": {
       "get": {
-        "tags": [
-          "graph"
-        ],
+        "tags": ["graph"],
         "summary": "Get Graph Labels",
         "description": "获取 Milvus 知识库图谱的所有标签",
         "operationId": "get_graph_labels_api_graph_labels_get",
@@ -15551,9 +15016,7 @@
     },
     "/api/graph/stats": {
       "get": {
-        "tags": [
-          "graph"
-        ],
+        "tags": ["graph"],
         "summary": "Get Graph Stats",
         "description": "获取 Milvus 知识库图谱统计信息",
         "operationId": "get_graph_stats_api_graph_stats_get",
@@ -15608,9 +15071,7 @@
     },
     "/api/workspace/knowledge/tree": {
       "get": {
-        "tags": [
-          "workspace"
-        ],
+        "tags": ["workspace"],
         "summary": "Get Workspace Knowledge Tree",
         "operationId": "get_workspace_knowledge_tree_api_workspace_knowledge_tree_get",
         "parameters": [
@@ -15757,9 +15218,7 @@
     },
     "/api/workspace/knowledge/file": {
       "get": {
-        "tags": [
-          "workspace"
-        ],
+        "tags": ["workspace"],
         "summary": "Get Workspace Knowledge File",
         "operationId": "get_workspace_knowledge_file_api_workspace_knowledge_file_get",
         "parameters": [
@@ -15826,9 +15285,7 @@
     },
     "/api/workspace/knowledge/download": {
       "get": {
-        "tags": [
-          "workspace"
-        ],
+        "tags": ["workspace"],
         "summary": "Download Workspace Knowledge File",
         "operationId": "download_workspace_knowledge_file_api_workspace_knowledge_download_get",
         "parameters": [
@@ -15956,10 +15413,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "request_id",
-          "name"
-        ],
+        "required": ["request_id", "name"],
         "title": "APIKeyCreate"
       },
       "APIKeyCreateResponse": {
@@ -15973,10 +15427,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "api_key",
-          "secret"
-        ],
+        "required": ["api_key", "secret"],
         "title": "APIKeyCreateResponse"
       },
       "APIKeyResponse": {
@@ -16120,9 +15571,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "items"
-        ],
+        "required": ["items"],
         "title": "AddUploadedDocumentsRequest"
       },
       "AgentAnalytics": {
@@ -16279,10 +15728,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "agent_slug",
-          "messages"
-        ],
+        "required": ["agent_slug", "messages"],
         "title": "AgentCallRunCreate",
         "description": "Agent Call 创建请求，兼容 OpenAI 风格消息输入。"
       },
@@ -16307,9 +15753,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "run_id"
-        ],
+        "required": ["run_id"],
         "title": "AgentCallRunResultRequest",
         "description": "Agent Call 结果读取请求。"
       },
@@ -16413,9 +15857,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "title": "AgentCreate"
       },
       "AgentEnvResponse": {
@@ -16440,9 +15882,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "env"
-        ],
+        "required": ["env"],
         "title": "AgentEnvResponse"
       },
       "AgentEnvUpdate": {
@@ -16535,10 +15975,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "query",
-          "agent_slug"
-        ],
+        "required": ["query", "agent_slug"],
         "title": "AgentEvalRunCreate",
         "description": "Agent Eval 创建请求。"
       },
@@ -16681,10 +16118,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "agent_slug",
-          "thread_id"
-        ],
+        "required": ["agent_slug", "thread_id"],
         "title": "AgentRunCreate"
       },
       "AgentUpdate": {
@@ -16790,10 +16224,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "allowed_extensions",
-          "max_size_bytes"
-        ],
+        "required": ["allowed_extensions", "max_size_bytes"],
         "title": "AttachmentLimits"
       },
       "AttachmentListResponse": {
@@ -16810,10 +16241,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "attachments",
-          "limits"
-        ],
+        "required": ["attachments", "limits"],
         "title": "AttachmentListResponse"
       },
       "AttachmentResponse": {
@@ -16925,10 +16353,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "items",
-          "params"
-        ],
+        "required": ["items", "params"],
         "title": "Body_add_documents_api_knowledge_databases__kb_id__documents_post"
       },
       "Body_call_api_chat_call_post": {
@@ -16944,9 +16369,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "query"
-        ],
+        "required": ["query"],
         "title": "Body_call_api_chat_call_post"
       },
       "Body_create_database_api_knowledge_databases_post": {
@@ -17012,10 +16435,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "database_name",
-          "description"
-        ],
+        "required": ["database_name", "description"],
         "title": "Body_create_database_api_knowledge_databases_post"
       },
       "Body_create_folder_api_knowledge_databases__kb_id__folders_post": {
@@ -17037,9 +16457,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "folder_name"
-        ],
+        "required": ["folder_name"],
         "title": "Body_create_folder_api_knowledge_databases__kb_id__folders_post"
       },
       "Body_fetch_url_api_knowledge_files_fetch_url_post": {
@@ -17061,9 +16479,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "url"
-        ],
+        "required": ["url"],
         "title": "Body_fetch_url_api_knowledge_files_fetch_url_post"
       },
       "Body_generate_description_api_knowledge_generate_description_post": {
@@ -17096,9 +16512,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name"
-        ],
+        "required": ["name"],
         "title": "Body_generate_description_api_knowledge_generate_description_post"
       },
       "Body_generate_mindmap_api_knowledge_databases__kb_id__mindmap_generate_post": {
@@ -17157,9 +16571,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file_ids"
-        ],
+        "required": ["file_ids"],
         "title": "Body_index_documents_api_knowledge_databases__kb_id__documents_index_post"
       },
       "Body_login_for_access_token_api_auth_token_post": {
@@ -17215,10 +16627,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "username",
-          "password"
-        ],
+        "required": ["username", "password"],
         "title": "Body_login_for_access_token_api_auth_token_post"
       },
       "Body_mark_it_down_api_knowledge_files_markdown_post": {
@@ -17230,9 +16639,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_mark_it_down_api_knowledge_files_markdown_post"
       },
       "Body_oidc_exchange_code_api_auth_oidc_exchange_code_post": {
@@ -17243,9 +16650,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "code"
-        ],
+        "required": ["code"],
         "title": "Body_oidc_exchange_code_api_auth_oidc_exchange_code_post"
       },
       "Body_prepare_skill_upload_route_api_skills_import_prepare_post": {
@@ -17257,9 +16662,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_prepare_skill_upload_route_api_skills_import_prepare_post"
       },
       "Body_query_knowledge_base_api_knowledge_databases__kb_id__query_post": {
@@ -17275,10 +16678,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "query",
-          "meta"
-        ],
+        "required": ["query", "meta"],
         "title": "Body_query_knowledge_base_api_knowledge_databases__kb_id__query_post"
       },
       "Body_query_test_api_knowledge_databases__kb_id__query_test_post": {
@@ -17294,10 +16694,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "query",
-          "meta"
-        ],
+        "required": ["query", "meta"],
         "title": "Body_query_test_api_knowledge_databases__kb_id__query_test_post"
       },
       "Body_rename_folder_api_knowledge_databases__kb_id__folders__folder_id__rename_put": {
@@ -17308,9 +16705,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "folder_name"
-        ],
+        "required": ["folder_name"],
         "title": "Body_rename_folder_api_knowledge_databases__kb_id__folders__folder_id__rename_put"
       },
       "Body_update_config_single_api_system_config_post": {
@@ -17323,10 +16718,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "key",
-          "value"
-        ],
+        "required": ["key", "value"],
         "title": "Body_update_config_single_api_system_config_post"
       },
       "Body_upload_evaluation_dataset_api_evaluation_databases__kb_id__datasets_upload_post": {
@@ -17347,10 +16739,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file",
-          "name"
-        ],
+        "required": ["file", "name"],
         "title": "Body_upload_evaluation_dataset_api_evaluation_databases__kb_id__datasets_upload_post"
       },
       "Body_upload_file_api_knowledge_files_upload_post": {
@@ -17362,9 +16751,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_upload_file_api_knowledge_files_upload_post"
       },
       "Body_upload_image_api_chat_image_upload_post": {
@@ -17376,9 +16763,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_upload_image_api_chat_image_upload_post"
       },
       "Body_upload_tmp_attachment_api_chat_attachments_tmp_post": {
@@ -17390,9 +16775,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_upload_tmp_attachment_api_chat_attachments_tmp_post"
       },
       "Body_upload_user_avatar_api_auth_upload_avatar_post": {
@@ -17404,9 +16787,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_upload_user_avatar_api_auth_upload_avatar_post"
       },
       "Body_upload_user_image_api_user_upload_image_post": {
@@ -17418,9 +16799,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file"
-        ],
+        "required": ["file"],
         "title": "Body_upload_user_image_api_user_upload_image_post"
       },
       "Body_upload_viewer_files_route_api_viewer_filesystem_upload_post": {
@@ -17446,11 +16825,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "thread_id",
-          "parent_path",
-          "files"
-        ],
+        "required": ["thread_id", "parent_path", "files"],
         "title": "Body_upload_viewer_files_route_api_viewer_filesystem_upload_post"
       },
       "Body_upload_workspace_files_route_api_workspace_upload_post": {
@@ -17471,10 +16846,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "parent_path",
-          "files"
-        ],
+        "required": ["parent_path", "files"],
         "title": "Body_upload_workspace_files_route_api_workspace_upload_post"
       },
       "CLIAuthApproveResponse": {
@@ -17500,10 +16872,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "user_code",
-          "status"
-        ],
+        "required": ["user_code", "status"],
         "title": "CLIAuthApproveResponse"
       },
       "CLIAuthSessionCreate": {
@@ -17609,9 +16978,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "device_code"
-        ],
+        "required": ["device_code"],
         "title": "CLIAuthTokenRequest"
       },
       "CLIAuthTokenResponse": {
@@ -17632,11 +16999,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "api_key",
-          "secret",
-          "user"
-        ],
+        "required": ["api_key", "secret", "user"],
         "title": "CLIAuthTokenResponse"
       },
       "ChannelMessageRequest": {
@@ -17725,20 +17088,13 @@
           },
           "queue_policy": {
             "type": "string",
-            "enum": [
-              "enqueue",
-              "reject",
-              "steer"
-            ],
+            "enum": ["enqueue", "reject", "steer"],
             "title": "Queue Policy",
             "default": "steer"
           }
         },
         "type": "object",
-        "required": [
-          "agent_slug",
-          "message"
-        ],
+        "required": ["agent_slug", "message"],
         "title": "ChannelMessageRequest",
         "description": "Channel 消息信封，承载来源账号、线程与幂等标识。"
       },
@@ -17758,9 +17114,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "text"
-        ],
+        "required": ["text"],
         "title": "ChannelTextMessage",
         "description": "Channel 普通文本消息体。"
       },
@@ -17773,9 +17127,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "value"
-        ],
+        "required": ["value"],
         "title": "ConfigOptionValuePayload",
         "description": "管理员可更新的通用配置值。"
       },
@@ -17993,10 +17345,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "users",
-          "agents"
-        ],
+        "required": ["users", "agents"],
         "title": "ConversationFilterOptionsResponse",
         "description": "会话审计用户与 Agent 筛选项。"
       },
@@ -18143,12 +17492,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "items",
-          "total",
-          "limit",
-          "offset"
-        ],
+        "required": ["items", "total", "limit", "offset"],
         "title": "ConversationListResponse",
         "description": "会话分页列表响应。"
       },
@@ -18258,11 +17602,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "slug",
-          "name",
-          "transport"
-        ],
+        "required": ["slug", "name", "transport"],
         "title": "CreateMcpServerRequest"
       },
       "CreateViewerDirectoryRequest": {
@@ -18281,11 +17621,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "thread_id",
-          "parent_path",
-          "name"
-        ],
+        "required": ["thread_id", "parent_path", "name"],
         "title": "CreateViewerDirectoryRequest"
       },
       "CreateWorkspaceDirectoryRequest": {
@@ -18300,10 +17636,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "parent_path",
-          "name"
-        ],
+        "required": ["parent_path", "name"],
         "title": "CreateWorkspaceDirectoryRequest"
       },
       "DepartmentCreate": {
@@ -18345,11 +17678,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name",
-          "admin_uid",
-          "admin_password"
-        ],
+        "required": ["name", "admin_uid", "admin_password"],
         "title": "DepartmentCreate",
         "description": "创建部门请求"
       },
@@ -18385,11 +17714,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "name",
-          "created_at"
-        ],
+        "required": ["id", "name", "created_at"],
         "title": "DepartmentResponse",
         "description": "部门响应"
       },
@@ -18453,9 +17778,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "patterns"
-        ],
+        "required": ["patterns"],
         "title": "ExternalFindRequest"
       },
       "ExternalRetrieveRequest": {
@@ -18489,9 +17812,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "query"
-        ],
+        "required": ["query"],
         "title": "ExternalRetrieveRequest"
       },
       "FeedbackListItem": {
@@ -18623,10 +17944,7 @@
           },
           "generation_mode": {
             "type": "string",
-            "enum": [
-              "vector",
-              "graph_enhanced"
-            ],
+            "enum": ["vector", "graph_enhanced"],
             "title": "Generation Mode",
             "default": "vector"
           },
@@ -18639,9 +17957,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "llm_model_spec"
-        ],
+        "required": ["llm_model_spec"],
         "title": "GenerateDatasetRequest"
       },
       "HTTPValidationError": {
@@ -18753,9 +18069,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "success"
-        ],
+        "required": ["success"],
         "title": "ImageUploadResponse"
       },
       "InitializeAdmin": {
@@ -18782,10 +18096,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "uid",
-          "password"
-        ],
+        "required": ["uid", "password"],
         "title": "InitializeAdmin"
       },
       "KnowledgeStats": {
@@ -18849,12 +18160,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name",
-          "path",
-          "is_dir",
-          "source"
-        ],
+        "required": ["name", "path", "is_dir", "source"],
         "title": "MentionFileItem",
         "description": "提及文件搜索结果条目"
       },
@@ -18877,9 +18183,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "rating"
-        ],
+        "required": ["rating"],
         "title": "MessageFeedbackRequest"
       },
       "MessageFeedbackResponse": {
@@ -18913,13 +18217,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "message_id",
-          "rating",
-          "reason",
-          "created_at"
-        ],
+        "required": ["id", "message_id", "rating", "reason", "created_at"],
         "title": "MessageFeedbackResponse"
       },
       "ModelProviderPayload": {
@@ -19168,9 +18466,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "new_parent_id"
-        ],
+        "required": ["new_parent_id"],
         "title": "MoveDocumentRequest"
       },
       "OIDCConfigResponse": {
@@ -19204,9 +18500,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "enabled"
-        ],
+        "required": ["enabled"],
         "title": "OIDCConfigResponse",
         "description": "OIDC 配置响应"
       },
@@ -19393,11 +18687,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "request_id",
-          "name",
-          "workdir"
-        ],
+        "required": ["request_id", "name", "workdir"],
         "title": "ProjectCreate",
         "description": "独立 Project 创建请求。"
       },
@@ -19442,10 +18732,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "source",
-          "skills"
-        ],
+        "required": ["source", "skills"],
         "title": "RemoteSkillPrepareRequest"
       },
       "RemoteSkillSearchRequest": {
@@ -19457,9 +18744,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "query"
-        ],
+        "required": ["query"],
         "title": "RemoteSkillSearchRequest"
       },
       "RemoteSkillSourceRequest": {
@@ -19471,9 +18756,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "source"
-        ],
+        "required": ["source"],
         "title": "RemoteSkillSourceRequest"
       },
       "RunEvaluationRequest": {
@@ -19503,9 +18786,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "dataset_id"
-        ],
+        "required": ["dataset_id"],
         "title": "RunEvaluationRequest"
       },
       "SaveThreadArtifactRequest": {
@@ -19527,9 +18808,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "path"
-        ],
+        "required": ["path"],
         "title": "SaveThreadArtifactRequest"
       },
       "SaveThreadArtifactResponse": {
@@ -19552,12 +18831,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name",
-          "source_path",
-          "saved_path",
-          "saved_artifact_url"
-        ],
+        "required": ["name", "source_path", "saved_path", "saved_artifact_url"],
         "title": "SaveThreadArtifactResponse"
       },
       "ShareConfigPayload": {
@@ -19592,9 +18866,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "slugs"
-        ],
+        "required": ["slugs"],
         "title": "SkillBatchDeleteRequest"
       },
       "SkillDependenciesUpdateRequest": {
@@ -19670,9 +18942,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "enabled"
-        ],
+        "required": ["enabled"],
         "title": "SkillEnabledUpdateRequest"
       },
       "SkillFileUpdateRequest": {
@@ -19689,10 +18959,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "path",
-          "content"
-        ],
+        "required": ["path", "content"],
         "title": "SkillFileUpdateRequest"
       },
       "SkillNodeCreateRequest": {
@@ -19723,9 +18990,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "path"
-        ],
+        "required": ["path"],
         "title": "SkillNodeCreateRequest"
       },
       "ThreadAgentStat": {
@@ -19886,9 +19151,7 @@
         },
         "additionalProperties": false,
         "type": "object",
-        "required": [
-          "agent_id"
-        ],
+        "required": ["agent_id"],
         "title": "ThreadCreate",
         "description": "新线程创建请求，只允许在创建时选择 Project。"
       },
@@ -19912,12 +19175,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "date",
-          "new_threads",
-          "active_threads",
-          "message_count"
-        ],
+        "required": ["date", "new_threads", "active_threads", "message_count"],
         "title": "ThreadDailyTrend",
         "description": "每日会话趋势。"
       },
@@ -20140,12 +19398,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "items",
-          "has_more",
-          "limit",
-          "offset"
-        ],
+        "required": ["items", "has_more", "limit", "offset"],
         "title": "ThreadSearchResponse"
       },
       "ThreadSearchSnippet": {
@@ -20178,9 +19431,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "content"
-        ],
+        "required": ["content"],
         "title": "ThreadSearchSnippet"
       },
       "ThreadSummary": {
@@ -20255,10 +19506,7 @@
             "anyOf": [
               {
                 "type": "string",
-                "enum": [
-                  "default",
-                  "always_trust"
-                ]
+                "enum": ["default", "always_trust"]
               },
               {
                 "type": "null"
@@ -20422,9 +19670,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "object_name"
-        ],
+        "required": ["object_name"],
         "title": "TmpAttachmentConfirmItem"
       },
       "TmpAttachmentConfirmRequest": {
@@ -20438,9 +19684,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "attachments"
-        ],
+        "required": ["attachments"],
         "title": "TmpAttachmentConfirmRequest"
       },
       "TmpAttachmentConfirmResponse": {
@@ -20454,9 +19698,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "attachments"
-        ],
+        "required": ["attachments"],
         "title": "TmpAttachmentConfirmResponse"
       },
       "TmpAttachmentParseRequest": {
@@ -20478,9 +19720,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "object_name"
-        ],
+        "required": ["object_name"],
         "title": "TmpAttachmentParseRequest"
       },
       "TmpAttachmentParseResponse": {
@@ -20504,11 +19744,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "parsed_object_name",
-          "parse_method",
-          "status"
-        ],
+        "required": ["parsed_object_name", "parse_method", "status"],
         "title": "TmpAttachmentParseResponse"
       },
       "TmpAttachmentResponse": {
@@ -20554,12 +19790,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "file_name",
-          "file_size",
-          "object_name",
-          "uploaded_at"
-        ],
+        "required": ["file_name", "file_size", "object_name", "uploaded_at"],
         "title": "TmpAttachmentResponse"
       },
       "Token": {
@@ -20713,11 +19944,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "username",
-          "uid",
-          "is_available"
-        ],
+        "required": ["username", "uid", "is_available"],
         "title": "UidGeneration"
       },
       "UpdateDatabaseRequest": {
@@ -20767,10 +19994,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "name",
-          "description"
-        ],
+        "required": ["name", "description"],
         "title": "UpdateDatabaseRequest"
       },
       "UpdateMcpServerRequest": {
@@ -20899,9 +20123,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "enabled"
-        ],
+        "required": ["enabled"],
         "title": "UpdateMcpServerStatusRequest"
       },
       "UpdateWorkspaceFileContentRequest": {
@@ -20916,10 +20138,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "path",
-          "content"
-        ],
+        "required": ["path", "content"],
         "title": "UpdateWorkspaceFileContentRequest"
       },
       "UserAccessOption": {
@@ -20960,11 +20179,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "uid",
-          "username",
-          "role"
-        ],
+        "required": ["uid", "username", "role"],
         "title": "UserAccessOption"
       },
       "UserActivityStats": {
@@ -21054,10 +20269,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "username",
-          "password"
-        ],
+        "required": ["username", "password"],
         "title": "UserCreate"
       },
       "UserPageResponse": {
@@ -21083,12 +20295,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "items",
-          "total",
-          "limit",
-          "offset"
-        ],
+        "required": ["items", "total", "limit", "offset"],
         "title": "UserPageResponse"
       },
       "UserProfileUpdate": {
@@ -21198,13 +20405,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "id",
-          "username",
-          "uid",
-          "role",
-          "created_at"
-        ],
+        "required": ["id", "username", "uid", "role", "created_at"],
         "title": "UserResponse"
       },
       "UserUpdate": {
@@ -21278,9 +20479,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "username"
-        ],
+        "required": ["username"],
         "title": "UsernameValidation"
       },
       "ValidationError": {
@@ -21316,11 +20515,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "loc",
-          "msg",
-          "type"
-        ],
+        "required": ["loc", "msg", "type"],
         "title": "ValidationError"
       },
       "WorkspaceImportRequest": {
@@ -21338,10 +20533,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "kb_id",
-          "paths"
-        ],
+        "required": ["kb_id", "paths"],
         "title": "WorkspaceImportRequest"
       }
     }

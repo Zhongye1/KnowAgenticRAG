@@ -174,7 +174,7 @@ const mergeSkeleton = (
 
   if (stripped.additional_kwargs) {
     controller.skeleton.additional_kwargs = {
-      ...(controller.skeleton.additional_kwargs || {}),
+      ...controller.skeleton.additional_kwargs,
       ...stripped.additional_kwargs,
     };
   }
@@ -245,7 +245,7 @@ export function createStreamSmoother({
 }: CreateStreamSmootherParams): StreamSmoother {
   const resolvedOptions: StreamSmootherOptions = {
     ...DEFAULT_OPTIONS,
-    ...(options || {}),
+    ...options,
   };
 
   const controllersByThread = new Map<string, Map<string, MessageController>>();
@@ -308,7 +308,7 @@ export function createStreamSmoother({
       delta.additional_kwargs?.reasoning_content !== undefined
     ) {
       delta.additional_kwargs = {
-        ...(delta.additional_kwargs || {}),
+        ...delta.additional_kwargs,
         reasoning_content: additionalReasoningPart.emitted,
       };
     }

@@ -1,6 +1,5 @@
 /**
- * 路由常量。信息架构对齐上游 Vue 实现的顶层路由：
- * 首页 / 登录 / OIDC 回调 / CLI 授权 / 智能体 / 个人空间 / 数据总览 / 智能体管理 / 扩展。
+ * 路由常量。对外路径集中在这里，页面与组件只引用它，不手拼字符串。
  */
 export const paths = {
   home: {
@@ -45,7 +44,9 @@ export const paths = {
     },
     extensions: {
       path: '/extensions',
-      getHref: () => '/extensions',
+      /** 不传 tab 时落到扩展页的默认 tab；技能详情返回时必须带 `skills`。 */
+      getHref: (tab?: string) =>
+        tab ? `/extensions?tab=${tab}` : '/extensions',
       knowledgeBase: {
         path: '/extensions/knowledgebase/:kbId',
         getHref: (kbId: string) =>
@@ -53,7 +54,8 @@ export const paths = {
       },
       mcp: {
         path: '/extensions/mcp/:slug',
-        getHref: (slug: string) => `/extensions/mcp/${encodeURIComponent(slug)}`,
+        getHref: (slug: string) =>
+          `/extensions/mcp/${encodeURIComponent(slug)}`,
       },
       skill: {
         path: '/extensions/skill/:slug',

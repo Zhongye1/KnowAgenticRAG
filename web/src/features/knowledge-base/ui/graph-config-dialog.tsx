@@ -1,13 +1,11 @@
 /**
  * 图谱抽取配置弹窗。
  *
- * 移植上游 `KnowledgeGraphSection.vue` 的配置弹窗：抽取器卡片（LLM / 更多占位）、模型选择、
- * Schema 文本域、并发数与模型参数 JSON；修改已锁定配置时给一条「只影响后续构建」的提醒。
+ * 抽取器卡片（LLM / 更多占位）、模型选择、Schema 文本域、并发数与模型参数 JSON；修改已锁定
+ * 配置时给一条「只影响后续构建」的提醒。
  *
- * 与上游的两处差异：模型列表取本仓的 `knowledgeApi.listModels('chat')`
- * （上游用 `ModelSelectorComponent` 与全局 `default_model` 兜底，目标端没有那份配置）；
- * 提交前先校验模型必填与参数 JSON，不再让后端返回 400。弹窗由调用方在打开时挂载，
- * 因此表单状态直接用属性初始化，不需要在 effect 里 setState。
+ * 模型列表取 `knowledgeApi.listModels('chat')`；提交前先校验模型必填与参数 JSON，不让后端
+ * 返回 400。弹窗由调用方在打开时挂载，因此表单状态直接用属性初始化，不需要在 effect 里 setState。
  */
 import * as React from 'react';
 import { BrainCircuit, ScanText } from 'lucide-react';

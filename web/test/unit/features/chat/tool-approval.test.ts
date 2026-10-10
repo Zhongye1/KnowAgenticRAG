@@ -391,7 +391,10 @@ describe('isRunInterruptedConflict', () => {
   it('409 且 detail.code 为 run_interrupted 时判真', () => {
     expect(
       isRunInterruptedConflict(
-        new ApiError(409, { code: 'run_interrupted', message: '线程正在等待用户回答或审批' }),
+        new ApiError(409, {
+          code: 'run_interrupted',
+          message: '线程正在等待用户回答或审批',
+        }),
       ),
     ).toBe(true);
   });
@@ -406,9 +409,9 @@ describe('isRunInterruptedConflict', () => {
 
   it('状态码或错误码不匹配时判否', () => {
     expect(isRunInterruptedConflict(new ApiError(409, {}))).toBe(false);
-    expect(
-      isRunInterruptedConflict(new ApiError(409, { code: 'other' })),
-    ).toBe(false);
+    expect(isRunInterruptedConflict(new ApiError(409, { code: 'other' }))).toBe(
+      false,
+    );
     expect(
       isRunInterruptedConflict(new ApiError(500, { code: 'run_interrupted' })),
     ).toBe(false);

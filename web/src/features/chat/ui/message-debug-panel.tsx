@@ -1,13 +1,12 @@
 /**
  * 消息时序调试面板。
  *
- * 移植上游 `MessageDebugPanel.vue`：顶部按角色筛选（带数量）+ 关键词搜索 + 全部展开/折叠 +
- * 复制全部数据；正文按连续 run_id 分组，每条显示角色、摘要、tokens 与展开后的原始 JSON，
- * 单条可复制；有 run_id 的分组给「Langfuse」按钮，按后端返回的链接新开窗口。
+ * 顶部按角色筛选（带数量）+ 关键词搜索 + 全部展开/折叠 + 复制全部数据；正文按连续 run_id
+ * 分组，每条显示角色、摘要、tokens 与展开后的原始 JSON，单条可复制；有 run_id 的分组给
+ * 「Langfuse」按钮，按后端返回的链接新开窗口。
  *
- * 与上游的差异：1) 上游靠 pinia store 拿数据，这里只吃 `messages` 属性；2) 上游在客户端
- * `checkSuperAdminPermission()`，本仓不复制这道门（入口只对超管显示，后端仍是最终边界）；
- * 3) 复制走 `navigator.clipboard`，失败时给出可读提示而不是静默。
+ * 只吃 `messages` 属性，不引入全局 store；入口只对超管显示，授权由后端兜底；
+ * 复制走 `navigator.clipboard`，失败时给出可读提示而不是静默。
  */
 import * as React from 'react';
 import {

@@ -1,10 +1,9 @@
 /**
  * Markdown 渲染管线。
  *
- * 逐行移植上游 Vue 实现的渲染配置：markdown-it（html/breaks/linkify/typographer）、
- * KaTeX 公式、任务列表、shiki 代码高亮（亮暗两套主题，按需加载语言）、
- * DOMPurify 消毒。上游把 SVG 块与 HTML 预览块的特殊渲染放在同一文件里，
- * 那部分服务于文件预览而非对话文本，未纳入本模块。
+ * markdown-it（html/breaks/linkify/typographer）、KaTeX 公式、任务列表、shiki 代码高亮
+ * （亮暗两套主题，按需加载语言）、DOMPurify 消毒。文件预览里的 SVG 块与 HTML 预览块不在
+ * 本模块，它们服务于文件预览而不是对话文本。
  */
 import DOMPurify from 'dompurify';
 import katexModule from '@vscode/markdown-it-katex';

@@ -1,7 +1,7 @@
 /**
  * RAG 评估的 React Query 装配。
  *
- * 生成中的数据集与运行中的评估各按 3 秒轮询（上游同为 3000ms），轮询条件写成函数式
+ * 生成中的数据集与运行中的评估各按 3 秒轮询，轮询条件写成函数式
  * `refetchInterval`：只有确实在生成/在跑时才重取，结束后自停；页面不可见时 react-query 会暂停。
  */
 import {
@@ -19,7 +19,7 @@ import {
 import { isDatasetGenerating } from '../lib/evaluation-view';
 import { knowledgeKeys } from './knowledge-queries';
 
-/** 上游的轮询间隔。 */
+/** 轮询间隔。 */
 export const EVALUATION_POLL_INTERVAL = 3000;
 
 export const evaluationKeys = {

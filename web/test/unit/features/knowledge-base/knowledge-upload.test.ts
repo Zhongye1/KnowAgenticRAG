@@ -44,11 +44,7 @@ describe('上传文件校验', () => {
 
   it('按白名单与大小分批，超限用后端文案', () => {
     const { accepted, rejected } = validateUploadBatch(
-      [
-        file('ok.md'),
-        file('bad.exe'),
-        file('big.pdf', MAX_UPLOAD_BYTES + 1),
-      ],
+      [file('ok.md'), file('bad.exe'), file('big.pdf', MAX_UPLOAD_BYTES + 1)],
       DEFAULT_SUPPORTED_TYPES,
     );
 

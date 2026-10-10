@@ -36,15 +36,17 @@ describe('isValidToolCall', () => {
     expect(isValidToolCall({ name: 'bash', args: {} })).toBe(true);
     expect(isValidToolCall({ name: 'bash' })).toBe(false);
     expect(isValidToolCall({ args: {} })).toBe(false);
-    expect(isValidToolCall({ id: 't-1', name: 'bash', tool_call_result: {} })).toBe(
-      true,
-    );
+    expect(
+      isValidToolCall({ id: 't-1', name: 'bash', tool_call_result: {} }),
+    ).toBe(true);
   });
 });
 
 describe('parseToolCallArgs', () => {
   it('参数是对象时直接使用', () => {
-    expect(parseToolCallArgs({ name: 'bash', args: { command: 'ls' } })).toEqual({
+    expect(
+      parseToolCallArgs({ name: 'bash', args: { command: 'ls' } }),
+    ).toEqual({
       command: 'ls',
     });
   });
@@ -56,7 +58,9 @@ describe('parseToolCallArgs', () => {
   });
 
   it('解析失败或缺失时返回空对象，不抛给渲染层', () => {
-    expect(parseToolCallArgs({ function: { arguments: '{坏掉的' } })).toEqual({});
+    expect(parseToolCallArgs({ function: { arguments: '{坏掉的' } })).toEqual(
+      {},
+    );
     expect(parseToolCallArgs(null)).toEqual({});
     expect(parseToolCallArgs({ name: 'bash', args: '"文本"' })).toEqual({});
   });
@@ -70,10 +74,14 @@ describe('parseToolCallResultForDisplay', () => {
       }),
     ).toEqual({ rows: 2 });
     expect(
-      parseToolCallResultForDisplay({ tool_call_result: { content: '普通输出' } }),
+      parseToolCallResultForDisplay({
+        tool_call_result: { content: '普通输出' },
+      }),
     ).toBe('普通输出');
     expect(
-      parseToolCallResultForDisplay({ tool_call_result: { content: { ok: true } } }),
+      parseToolCallResultForDisplay({
+        tool_call_result: { content: { ok: true } },
+      }),
     ).toEqual({ ok: true });
     expect(parseToolCallResultForDisplay({})).toBeNull();
   });

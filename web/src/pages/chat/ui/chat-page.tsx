@@ -44,12 +44,11 @@ import { Spinner } from '@/shared/ui/spinner';
 /**
  * 对话页。
  *
- * 覆盖最小闭环：进入线程加载权威历史、发送消息、流式渲染回复、中止运行、
- * 排队请求的插队/取消与队列继续、按线程保存未发送的输入、随消息发送一张图片。
- * 地址里没有线程时，第一次发送会先建线程再跳转（与上游一致），因此 `/agent`
- * 也能直接开始对话。
+ * 进入线程加载权威历史、发送消息、流式渲染回复、中止运行、排队请求的插队/取消与队列继续、
+ * 按线程保存未发送的输入、随消息发送一张图片。地址里没有线程时先建线程再跳转，因此
+ * `/agent` 也能直接开始对话。
  *
- * 子代理线程视图与工具调用渲染随 S2 的后续步骤补齐。
+ * 子代理线程视图尚未实现，子智能体工具只给通用展示。
  */
 export const ChatPage = () => {
   const { threadId: routeThreadId } = useParams<{ threadId: string }>();
@@ -92,7 +91,7 @@ export const ChatPage = () => {
     },
     [draft],
   );
-  // 待发送的单张图片：上游同一位置也是单槽，选新图直接覆盖
+  // 待发送的单张图片：单槽，选新图直接覆盖
   const [image, setImage] = React.useState<UploadedImage | null>(null);
   // 在途上传数：不止一张图时，先回来的那张不能提前放开发送按钮
   const [pendingUploads, setPendingUploads] = React.useState(0);
@@ -113,14 +112,15 @@ export const ChatPage = () => {
   const agentSlug = useThreadList((state) => state.agentSlug) ?? undefined;
   const ensureAgentSlug = useThreadList((state) => state.ensureAgentSlug);
   const upsertThread = useThreadList((state) => state.upsert);
-  const notifications = useNotifications();
+  // 只取稳定的 action，不订阅整个 store：否则每来一条通知都会重建依赖它的回调与 effect
+  const addNotification = useNotifications((state) => state.addNotification);
   const runtime = useThreadRuntime(threadId);
   const streamingMessages = useStreamingMessages(threadId);
   // 消息时序调试：入口只给超管（后端接口自身也要求超管），面板只看当前线程的消息
   const isSuperuser = useIsSuperuser();
   const [debugOpen, setDebugOpen] = React.useState(false);
 
-  // 审批模式按上游的三级回退解析：有线程看线程 metadata，无线程看本地偏好与智能体默认值
+  // 审批模式按三级回退解析：有线程看线程 metadata，无线程看本地偏好与智能体默认值
   const agentToolApprovalMode = useThreadList(
     (state) => state.agentToolApprovalMode,
   );
@@ -183,9 +183,9 @@ export const ChatPage = () => {
 
   const notifyError = React.useCallback(
     (message: string) => {
-      notifications.addNotification({ type: 'error', title: '对话', message });
+      addNotification({ type: 'error', title: '对话', message });
     },
-    [notifications],
+    [addNotification],
   );
 
   /** 上传一张图片到图片槽；校验与文案都在 `image-upload` 里，这里只管状态。 */
@@ -231,7 +231,7 @@ export const ChatPage = () => {
       void markThreadViewed(settledThreadId);
     },
     onNotice: (notice) =>
-      notifications.addNotification({
+      addNotification({
         type: notice.level === 'error' ? 'error' : 'info',
         title: '对话',
         message: notice.message,
@@ -244,16 +244,16 @@ export const ChatPage = () => {
 
   React.useEffect(() => {
     if (!threadId) return;
-    // 打开线程即已读：与上游一致，失败只记录，不影响阅读
+    // 打开线程即已读：失败只记录，不影响阅读
     void markThreadViewed(threadId);
     void chat.loadHistory(threadId).catch(() => {
-      notifications.addNotification({
+      addNotification({
         type: 'error',
         title: '对话',
         message: '加载对话历史失败。',
       });
     });
-  }, [chat, markThreadViewed, threadId]);
+  }, [addNotification, chat, markThreadViewed, threadId]);
 
   React.useEffect(() => {
     // 线程还不存在时没有队列可同步，避免在新建对话入口刷出误导提示
@@ -262,7 +262,7 @@ export const ChatPage = () => {
   }, [agentSlug, chat, threadId]);
 
   React.useEffect(() => {
-    // 离开线程（切线程或卸载）时断开它的排队事件流，与上游一致；
+    // 离开线程（切线程或卸载）时断开它的排队事件流；
     // 回到线程时上面的队列同步会重新订阅。
     if (!threadId) return;
     return () => chat.stopRequestStreams(threadId);
@@ -334,7 +334,7 @@ export const ChatPage = () => {
         await chat.refreshQueue(activeThreadId, agentSlug);
       } catch (error) {
         // 建线程或发送被后端拒绝时静默失败会让用户以为消息已发出
-        notifications.addNotification({
+        addNotification({
           type: 'error',
           title: '对话',
           message: error instanceof Error ? error.message : '发送消息失败。',
@@ -354,7 +354,7 @@ export const ChatPage = () => {
   /** 队列动作的失败原因是后端语义（如「已派发不可取消」），必须如实转达。 */
   const runQueueAction = (action: Promise<unknown>) => {
     void action.catch((error: unknown) => {
-      notifications.addNotification({
+      addNotification({
         type: 'error',
         title: '队列',
         message: error instanceof Error ? error.message : '队列操作失败。',
@@ -470,7 +470,6 @@ export const ChatPage = () => {
             placeholder={agentSlug ? '输入消息' : '正在获取默认智能体…'}
             aria-label="消息输入"
           />
-          {/* 上游此处是图标按钮；这里用同义的文字按钮，交互（选图 / 粘贴）完全一致 */}
           <Button
             type="button"
             variant="outline"

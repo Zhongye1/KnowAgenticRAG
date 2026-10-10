@@ -1,9 +1,8 @@
 /**
  * 空态。
  *
- * 对应上游遍布各页的 `a-empty`：图标 + 说明 + 可选的下一步动作。
- * 上游某些位置只给 `:description`，这里对应 `description`；需要引导用户继续操作时
- * 传 `action`（例如「新建知识库」「上传文件」），不要只留一句“暂无数据”。
+ * 图标 + 说明 + 可选的下一步动作。需要引导用户继续操作时传 `action`（例如「新建知识库」
+ * 「上传文件」），不要只留一句「暂无数据」。
  */
 import type { LucideIcon } from 'lucide-react';
 import { Inbox } from 'lucide-react';

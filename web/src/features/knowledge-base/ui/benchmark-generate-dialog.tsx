@@ -1,9 +1,9 @@
 /**
  * 自动生成评估基准弹窗。
  *
- * 移植上游 `BenchmarkGenerateModal.vue`：名称、说明、生成方式（向量 / 图增强）、LLM 模型、
- * 题目数量、参考 Chunk 数、并发数与图谱扩散数（仅图增强出现）。图增强要求知识库已经构建过
- * 图谱（`indexed_chunks > 0`），这里直接读图谱构建状态判断并禁用该选项。
+ * 名称、说明、生成方式（向量 / 图增强）、LLM 模型、题目数量、参考 Chunk 数、并发数与图谱
+ * 扩散数（仅图增强出现）。图增强要求知识库已经构建过图谱（`indexed_chunks > 0`），这里直接
+ * 读图谱构建状态判断并禁用该选项。
  */
 import * as React from 'react';
 import { Boxes, GitBranch, Sparkles } from 'lucide-react';

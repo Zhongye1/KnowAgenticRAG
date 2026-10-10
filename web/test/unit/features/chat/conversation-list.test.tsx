@@ -23,13 +23,12 @@ vi.mock('@/features/chat/api/agent-api', () => ({
   },
 }));
 
-const { ConversationList } = await import(
-  '@/features/chat/ui/conversation-list'
-);
-const { useThreadList } = await import('@/features/chat/model/thread-list-store');
-const { getThreadRuntime, hasThreadRuntime } = await import(
-  '@/features/chat/model/thread-runtime-store'
-);
+const { ConversationList } =
+  await import('@/features/chat/ui/conversation-list');
+const { useThreadList } =
+  await import('@/features/chat/model/thread-list-store');
+const { getThreadRuntime, hasThreadRuntime } =
+  await import('@/features/chat/model/thread-runtime-store');
 
 const thread = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
@@ -186,7 +185,9 @@ describe('ConversationList', () => {
     await userEvent.click(
       await screen.findByRole('button', { name: '会话操作：旧标题' }),
     );
-    await userEvent.click(await screen.findByRole('menuitem', { name: '重命名' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: '重命名' }),
+    );
 
     const input = screen.getByLabelText('会话标题');
     expect((input as HTMLInputElement).value).toBe('旧标题');
@@ -213,7 +214,9 @@ describe('ConversationList', () => {
     await userEvent.click(
       await screen.findByRole('button', { name: '会话操作：会话一' }),
     );
-    await userEvent.click(await screen.findByRole('menuitem', { name: '置顶' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: '置顶' }),
+    );
 
     await waitFor(() =>
       expect(api.updateThread).toHaveBeenCalledWith('会话一', {
@@ -231,7 +234,9 @@ describe('ConversationList', () => {
     await userEvent.click(
       await screen.findByRole('button', { name: '会话操作：会话一' }),
     );
-    await userEvent.click(await screen.findByRole('menuitem', { name: '删除' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: '删除' }),
+    );
     await userEvent.click(screen.getByRole('button', { name: '删除' }));
 
     await waitFor(() =>
@@ -252,7 +257,9 @@ describe('ConversationList', () => {
     await userEvent.click(
       await screen.findByRole('button', { name: '会话操作：会话二' }),
     );
-    await userEvent.click(await screen.findByRole('menuitem', { name: '删除' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: '删除' }),
+    );
     await userEvent.click(screen.getByRole('button', { name: '删除' }));
 
     await waitFor(() => expect(api.deleteThread).toHaveBeenCalled());
@@ -269,7 +276,9 @@ describe('ConversationList', () => {
     await userEvent.click(
       await screen.findByRole('button', { name: '会话操作：会话一' }),
     );
-    await userEvent.click(await screen.findByRole('menuitem', { name: '删除' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: '删除' }),
+    );
 
     expect(api.deleteThread).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole('button', { name: '删除' }));

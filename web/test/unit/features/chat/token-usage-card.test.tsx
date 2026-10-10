@@ -69,9 +69,9 @@ describe('上下文用量卡片', () => {
       />,
     );
 
-    expect(
-      screen.getByTestId('token-usage-progress').className,
-    ).toContain('accent-danger-6');
+    expect(screen.getByTestId('token-usage-progress').className).toContain(
+      'accent-danger-6',
+    );
   });
 
   it('默认收起明细，展开后显示构成分段与模型统计', async () => {
@@ -84,9 +84,11 @@ describe('上下文用量卡片', () => {
     expect(screen.getByText('系统提示')).toBeTruthy();
     expect(screen.getByText('工具定义 (3)')).toBeTruthy();
     // 构成条用相对上限的堆叠分段，不含被压缩部分
-    expect(screen.getByRole('button', { name: /上下文占用/ }).getAttribute('aria-controls')).toBe(
-      'token-usage-details',
-    );
+    expect(
+      screen
+        .getByRole('button', { name: /上下文占用/ })
+        .getAttribute('aria-controls'),
+    ).toBe('token-usage-details');
     expect(screen.queryByText(/已压缩/)).toBeNull();
     expect(screen.getByText('gpt-4o')).toBeTruthy();
     expect(screen.getByText('3 次调用')).toBeTruthy();

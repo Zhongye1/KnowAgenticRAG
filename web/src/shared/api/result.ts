@@ -12,13 +12,22 @@ import { ApiError } from './base';
 
 type Unwrap = { data?: unknown; error?: unknown; response?: Response };
 
-/** 解包生成客户端的结果；`error` 非空即抛 `ApiError`（带 HTTP 状态与后端 detail）。 */
+/** 生成物失败结果 → `ApiError`：状态取自响应，文案取自后端 `detail`。 */
+export const toResultError = (result: Unwrap): ApiError =>
+  new ApiError(
+    result.response?.status ?? 0,
+    (result.error as { detail?: unknown })?.detail ?? result.error,
+  );
+
+/**
+ * 解包生成客户端的结果；`error` 非空即抛 `ApiError`（带 HTTP 状态与后端 detail）。
+ *
+ * 需要读响应头或状态本身（例如登录的 423 与 `X-Lock-Remaining`）的调用点用
+ * `toResultError` 自己判，`unwrap` 只覆盖「失败即抛」的常见形状。
+ */
 export const unwrap = <T>(result: Unwrap): T => {
   if (result.error !== undefined) {
-    throw new ApiError(
-      result.response?.status ?? 0,
-      (result.error as { detail?: unknown })?.detail ?? result.error,
-    );
+    throw toResultError(result);
   }
   return result.data as T;
 };

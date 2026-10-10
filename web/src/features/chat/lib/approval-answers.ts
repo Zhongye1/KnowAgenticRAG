@@ -1,9 +1,7 @@
 /**
  * 审批与提问的提交载荷构造。
  *
- * 逐行对照上游 `HumanApprovalModal.vue` 的 `buildQuestionAnswer` / `buildAnswer`
- * 与审批提交：提问答案是「问题 id → 选项」的映射，审批是 decisions 数组，
- * 取消统一发 `'reject'`。
+ * 提问答案是「问题 id → 选项」的映射，审批是 decisions 数组，取消统一发 `'reject'`。
  */
 import {
   buildToolApprovalDecisions,
@@ -20,9 +18,7 @@ export type QuestionSelection = {
 };
 
 export type QuestionAnswer =
-  | string
-  | string[]
-  | { type: 'other'; text: string; selected: string[] };
+  string | string[] | { type: 'other'; text: string; selected: string[] };
 
 /** 单题的答案：勾了「其他」时给出结构化对象，多选给数组，单选给单值。 */
 export function buildQuestionAnswer(

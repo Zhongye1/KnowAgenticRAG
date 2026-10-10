@@ -34,21 +34,24 @@ describe('buildQuestionAnswer', () => {
 
   it('多选原样给出数组', () => {
     expect(
-      buildQuestionAnswer(question({ multiSelect: true }), { selected: ['a', 'b'] }),
+      buildQuestionAnswer(question({ multiSelect: true }), {
+        selected: ['a', 'b'],
+      }),
     ).toEqual(['a', 'b']);
   });
 
   it('勾选「其他」时给出结构化对象，并把其他项从已选里剔除', () => {
-    const answer = buildQuestionAnswer(
-      question({ allowOther: true }),
-      {
-        selected: ['a', 'q1__other__'],
-        otherSelected: true,
-        otherText: '  自定义回答  ',
-      },
-    );
+    const answer = buildQuestionAnswer(question({ allowOther: true }), {
+      selected: ['a', 'q1__other__'],
+      otherSelected: true,
+      otherText: '  自定义回答  ',
+    });
 
-    expect(answer).toEqual({ type: 'other', text: '自定义回答', selected: ['a'] });
+    expect(answer).toEqual({
+      type: 'other',
+      text: '自定义回答',
+      selected: ['a'],
+    });
   });
 
   it('允许其他但未勾选时仍按普通选项处理', () => {
@@ -74,7 +77,9 @@ describe('buildQuestionAnswers', () => {
       question({ questionId: 'q2', multiSelect: true }),
     ];
 
-    expect(buildQuestionAnswers(questions, { q1: { selected: ['b'] } })).toEqual({
+    expect(
+      buildQuestionAnswers(questions, { q1: { selected: ['b'] } }),
+    ).toEqual({
       q1: 'b',
       q2: [],
     });

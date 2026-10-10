@@ -20,9 +20,8 @@ vi.mock('@/features/chat/api/agent-api', () => ({
   },
 }));
 
-const { sortThreads, useThreadList } = await import(
-  '@/features/chat/model/thread-list-store'
-);
+const { sortThreads, useThreadList } =
+  await import('@/features/chat/model/thread-list-store');
 
 const reset = () => {
   for (const fn of Object.values(api)) fn.mockReset();
@@ -60,7 +59,9 @@ describe('useThreadList', () => {
   beforeEach(reset);
 
   it('解析默认智能体只请求一次，并发与串行都复用结果', async () => {
-    api.getDefaultAgent.mockResolvedValue({ agent: { slug: 'default-chatbot' } });
+    api.getDefaultAgent.mockResolvedValue({
+      agent: { slug: 'default-chatbot' },
+    });
 
     // 侧边栏与对话页同时挂载：在飞请求也要复用
     const [first, second] = await Promise.all([
@@ -76,7 +77,9 @@ describe('useThreadList', () => {
   it('取不到默认智能体时给出可展示原因，不静默留空', async () => {
     api.getDefaultAgent.mockRejectedValue(new Error('boom'));
 
-    await expect(useThreadList.getState().ensureAgentSlug()).resolves.toBeNull();
+    await expect(
+      useThreadList.getState().ensureAgentSlug(),
+    ).resolves.toBeNull();
 
     expect(useThreadList.getState().error).toBe('获取默认智能体失败。');
   });
@@ -87,7 +90,9 @@ describe('useThreadList', () => {
 
     await useThreadList.getState().load('default-chatbot');
 
-    expect(useThreadList.getState().threads.map((item) => item.id)).toEqual(['a']);
+    expect(useThreadList.getState().threads.map((item) => item.id)).toEqual([
+      'a',
+    ]);
     expect(useThreadList.getState().loading).toBe(false);
     expect(useThreadList.getState().error).toBeNull();
     expect(api.listThreads).toHaveBeenCalledWith(
@@ -161,7 +166,9 @@ describe('useThreadList', () => {
     api.listThreads.mockRejectedValue(new Error('网络不可用'));
     await useThreadList.getState().load('default-chatbot');
 
-    expect(useThreadList.getState().threads.map((item) => item.id)).toEqual(['a']);
+    expect(useThreadList.getState().threads.map((item) => item.id)).toEqual([
+      'a',
+    ]);
     expect(useThreadList.getState().error).toBe('网络不可用');
   });
 
@@ -211,9 +218,9 @@ describe('会话变更动作', () => {
       title: '新标题',
     });
 
-    await expect(useThreadList.getState().rename('a', ' 新标题 ')).resolves.toBe(
-      true,
-    );
+    await expect(
+      useThreadList.getState().rename('a', ' 新标题 '),
+    ).resolves.toBe(true);
 
     expect(api.updateThread).toHaveBeenCalledWith('a', { title: '新标题' });
     expect(useThreadList.getState().threads.map((item) => item.title)).toEqual([
@@ -226,7 +233,9 @@ describe('会话变更动作', () => {
   it('空标题不发请求', async () => {
     useThreadList.setState({ threads: [thread('a')] });
 
-    await expect(useThreadList.getState().rename('a', '   ')).resolves.toBe(false);
+    await expect(useThreadList.getState().rename('a', '   ')).resolves.toBe(
+      false,
+    );
 
     expect(api.updateThread).not.toHaveBeenCalled();
   });
@@ -235,7 +244,9 @@ describe('会话变更动作', () => {
     useThreadList.setState({ threads: [thread('a', { title: '原名' })] });
     api.updateThread.mockRejectedValue(new Error('标题过长'));
 
-    await expect(useThreadList.getState().rename('a', '新名')).resolves.toBe(false);
+    await expect(useThreadList.getState().rename('a', '新名')).resolves.toBe(
+      false,
+    );
 
     expect(useThreadList.getState().threads[0]?.title).toBe('原名');
     expect(useThreadList.getState().error).toBe('标题过长');
@@ -265,11 +276,15 @@ describe('会话变更动作', () => {
     api.deleteThread.mockResolvedValue(undefined);
 
     await expect(useThreadList.getState().remove('a')).resolves.toBe(true);
-    expect(useThreadList.getState().threads.map((item) => item.id)).toEqual(['b']);
+    expect(useThreadList.getState().threads.map((item) => item.id)).toEqual([
+      'b',
+    ]);
 
     api.deleteThread.mockRejectedValue(new Error('会话不存在'));
     await expect(useThreadList.getState().remove('b')).resolves.toBe(false);
-    expect(useThreadList.getState().threads.map((item) => item.id)).toEqual(['b']);
+    expect(useThreadList.getState().threads.map((item) => item.id)).toEqual([
+      'b',
+    ]);
     expect(useThreadList.getState().error).toBe('会话不存在');
   });
 
@@ -318,10 +333,9 @@ describe('会话变更动作', () => {
       }),
     );
 
-    const pending = useThreadList.getState().setToolApprovalMode(
-      'a',
-      'always_trust',
-    );
+    const pending = useThreadList
+      .getState()
+      .setToolApprovalMode('a', 'always_trust');
 
     // 乐观更新：请求还没回来，界面已经显示新选择
     expect(
@@ -346,10 +360,9 @@ describe('会话变更动作', () => {
     });
     api.updateThread.mockRejectedValue(new Error('审批模式保存失败'));
 
-    const ok = await useThreadList.getState().setToolApprovalMode(
-      'a',
-      'always_trust',
-    );
+    const ok = await useThreadList
+      .getState()
+      .setToolApprovalMode('a', 'always_trust');
 
     expect(ok).toBe(false);
     expect(
@@ -363,10 +376,9 @@ describe('会话变更动作', () => {
       thread('missing', { metadata: { tool_approval_mode: 'always_trust' } }),
     );
 
-    const ok = await useThreadList.getState().setToolApprovalMode(
-      'missing',
-      'always_trust',
-    );
+    const ok = await useThreadList
+      .getState()
+      .setToolApprovalMode('missing', 'always_trust');
 
     expect(ok).toBe(true);
     expect(api.updateThread).toHaveBeenCalledWith('missing', {
@@ -388,10 +400,9 @@ describe('会话变更动作', () => {
         thread('a', { metadata: { tool_approval_mode: 'default' } }),
       );
 
-    const first = useThreadList.getState().setToolApprovalMode(
-      'a',
-      'always_trust',
-    );
+    const first = useThreadList
+      .getState()
+      .setToolApprovalMode('a', 'always_trust');
     await useThreadList.getState().setToolApprovalMode('a', 'default');
 
     resolveFirst(
@@ -417,10 +428,9 @@ describe('会话变更动作', () => {
         thread('a', { metadata: { tool_approval_mode: 'default' } }),
       );
 
-    const first = useThreadList.getState().setToolApprovalMode(
-      'a',
-      'always_trust',
-    );
+    const first = useThreadList
+      .getState()
+      .setToolApprovalMode('a', 'always_trust');
     // 用户在第一次请求还没回来时又选了 default，并且这次保存成功
     await useThreadList.getState().setToolApprovalMode('a', 'default');
     expect(
@@ -441,7 +451,11 @@ describe('会话变更动作', () => {
       threads: [thread('a', { title: '本地新标题', is_pinned: true })],
     });
     api.markViewed.mockResolvedValue(
-      thread('a', { title: '服务端旧标题', is_pinned: false, thread_status: 'done' }),
+      thread('a', {
+        title: '服务端旧标题',
+        is_pinned: false,
+        thread_status: 'done',
+      }),
     );
 
     await expect(useThreadList.getState().markViewed('a')).resolves.toBe(true);
@@ -454,7 +468,9 @@ describe('会话变更动作', () => {
   });
 
   it('标记已读失败时保留列表并返回 false', async () => {
-    useThreadList.setState({ threads: [thread('a', { thread_status: 'ready' })] });
+    useThreadList.setState({
+      threads: [thread('a', { thread_status: 'ready' })],
+    });
     api.markViewed.mockRejectedValue(new Error('500'));
 
     await expect(useThreadList.getState().markViewed('a')).resolves.toBe(false);
@@ -499,7 +515,9 @@ describe('会话变更动作', () => {
     });
     api.listThreads.mockRejectedValue(new Error('boom'));
 
-    await expect(useThreadList.getState().syncStatuses()).resolves.toBeUndefined();
+    await expect(
+      useThreadList.getState().syncStatuses(),
+    ).resolves.toBeUndefined();
 
     expect(useThreadList.getState().threads[0]?.thread_status).toBe('loading');
   });

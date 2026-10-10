@@ -1,12 +1,11 @@
 /**
  * 上传弹窗。
  *
- * 移植上游 `FileUploadModal.vue` 的文件与文件夹两条路径：拖拽或选择、按并发上限上传、
- * 全部完成后一次性登记并可选自动入库。上游还有 URL 模式与个人空间导入，两者不在本片。
+ * 文件与文件夹两条路径：拖拽或选择、按并发上限上传、全部完成后一次性登记并可选自动入库。
  *
- * 与上游的差异：不做上传字节百分比——本仓走生成的 fetch 客户端拿不到
- * `XMLHttpRequest.upload.onprogress`，队列只报「排队 / 上传中 / 完成 / 失败」四态与计数；
- * 也不弹上游的分块参数面板，解析与入库按知识库自己的配置提交（`params` 只带必要的键）。
+ * 不做上传字节百分比——生成的 fetch 客户端拿不到 `XMLHttpRequest.upload.onprogress`，队列只报
+ * 「排队 / 上传中 / 完成 / 失败」四态与计数；也不弹分块参数面板，解析与入库按知识库自己的配置
+ * 提交（`params` 只带必要的键）。
  */
 import * as React from 'react';
 import { FolderUp, Upload } from 'lucide-react';

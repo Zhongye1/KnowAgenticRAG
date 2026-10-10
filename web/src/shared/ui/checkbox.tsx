@@ -7,8 +7,7 @@ import { cn } from '@/shared/lib/utils';
 /**
  * 复选框。
  *
- * 上游用 `a-checkbox`（含半选态）；Radix 的 `Checkbox` 用 `checked="indeterminate"` 表达半选，
- * 与 `a-checkbox` 的 `indeterminate` 语义一致。
+ * 半选态用 `checked="indeterminate"` 表达。
  */
 function Checkbox({
   className,

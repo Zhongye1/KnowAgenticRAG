@@ -26,14 +26,14 @@ describe('工具审批模式选择器', () => {
       '完全信任',
     ]);
     expect(
-      screen.getByRole('menuitemradio', { name: '完全信任' }).getAttribute(
-        'aria-checked',
-      ),
+      screen
+        .getByRole('menuitemradio', { name: '完全信任' })
+        .getAttribute('aria-checked'),
     ).toBe('true');
     expect(
-      screen.getByRole('menuitemradio', { name: '请求审批' }).getAttribute(
-        'aria-checked',
-      ),
+      screen
+        .getByRole('menuitemradio', { name: '请求审批' })
+        .getAttribute('aria-checked'),
     ).toBe('false');
   });
 
@@ -61,9 +61,7 @@ describe('工具审批模式选择器', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
 
     await userEvent.keyboard('{Escape}');
-    await waitFor(() =>
-      expect(screen.queryByRole('menu')).toBeNull(),
-    );
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
     expect(trigger.getAttribute('aria-expanded')).toBe('false');
   });
 });

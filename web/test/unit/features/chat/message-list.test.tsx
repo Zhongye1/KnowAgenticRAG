@@ -134,7 +134,10 @@ describe('MessageList', () => {
 
     expect(await findBodyText('助手回答')).toBeTruthy();
     expect(
-      screen.getByText('我的问题').closest('[data-role]')?.getAttribute('data-role'),
+      screen
+        .getByText('我的问题')
+        .closest('[data-role]')
+        ?.getAttribute('data-role'),
     ).toBe('human');
     expect(
       screen
@@ -189,7 +192,9 @@ describe('MessageList', () => {
           human(1, '问题'),
           assistant(2, {
             content: '答案',
-            extra_metadata: { additional_kwargs: { reasoning_content: '推理内容' } },
+            extra_metadata: {
+              additional_kwargs: { reasoning_content: '推理内容' },
+            },
           }),
         ]}
       />,
@@ -223,7 +228,9 @@ describe('MessageList', () => {
     render(
       <MessageList
         messages={[human(1, '问题'), assistant(2, { content: '已落库回答' })]}
-        streamingMessages={[{ id: 'stream-1', type: 'ai', content: '正在输出' }]}
+        streamingMessages={[
+          { id: 'stream-1', type: 'ai', content: '正在输出' },
+        ]}
         isProcessing
       />,
     );
