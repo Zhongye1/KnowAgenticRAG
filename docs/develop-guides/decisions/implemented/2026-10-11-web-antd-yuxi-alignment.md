@@ -51,7 +51,29 @@ React 19 不变，组件基座换成 antd 5；页面样式用 CSS Modules 与原
 - 凭据规则由 `web/src/shared/api/base.ts` 拥有：登录这类未认证入口不携带旧凭据，401 只在请求携带凭据时才清凭据并派发未授权事件。密码错误因此不会清掉已有会话。
 - 登录与初始化成功后删除 `['authenticated-user']` 缓存条目。写入 `null` 会让路由守卫在 staleTime 内复用匿名身份，把刚登录的用户弹回登录页。
 - 协议门禁留在页面：判断内容是「没配置协议就不拦、配置了必须勾选」加一条 toast，没有可独立成单元的领域计算，负向用例由页面测试盯住。
-- 重定向目标默认落到聊天页：本仓 `/` 还是占位页，`sanitizeRedirect` 因此接受调用方给出的兜底路径。
+- 重定向目标默认落到聊天页：`/` 是公开落地页，不承载登录后的工作台入口，`sanitizeRedirect` 因此接受调用方给出的兜底路径。
+
+### 首页的视觉基准
+
+`/` 的视觉基准是 AusVector 首页的克隆产物，参照实现在本机 `/home/zhongye/Desktop/backups/ai-website-template-0.6.1`（AI Website Cloner Template 0.6.1，MIT，JCodesMore；本地副本里是 ausvector.ai 首页的克隆：`src/components/sites/ausvector/**` 约 2100 行 TSX，`src/app/ausvector.css` 2555 行）。
+
+首页是本迁移里唯一不向 Yuxi 对齐的页面。理由是它作为公开落地页不承载业务状态，视觉目标可以与后台页面不同；其余页面仍按 Yuxi 逐页迁移。
+
+落地方式：
+
+- 结构与交互按参照重写，不复制 Next.js 代码：`'use client'`、`next/font`、`next/link`、Tailwind 工具类与 shadcn/Base UI 组件在本仓换成 React 19 加 Vite、`react-router` 的 `Link`、CSS Modules 与原生元素。
+- 色板作为页面级 token 放 `web/src/styles/home-tokens.css`，作用域 `.home-site`，保留参照的取值（`--site-background: #f7f8f3`、`--ink: #0b1320`、`--accent-cyan: #0b2a6f`、`--accent-gold: #855811` 等）。放 `src/styles/**` 是因为 `check-design-tokens.mjs` 只豁免该目录，页面 CSS Modules 里写 hex 会被门禁拒绝。接入面板的语义配色（`nx-*`）以类内取值放 `web/src/styles/home-panels.css`，与 `home.css` 同在豁免范围内。
+- 参照的基色是浅色（`--site-background: #f7f8f3`），它那 39 条 `.dark` 规则是为模板的 shadcn 暗色 token 打的补丁；首页因此固定浅色，不跟随 `html.dark`，也不搬那些补丁。
+- 字体沿用本仓现有字体，不新增字体依赖：参照的 `--font-manrope` 映射到系统 sans 栈，`--font-plex-mono` 映射到已加载的 JetBrains Mono Variable（参照走 `next/font/google` 加载 Manrope 与 IBM Plex Mono）。映射层写在 `home-tokens.css`。
+- 正文文案照搬参照实现的原文（hero 标题与描述、指标条、接口段、接入方式面板、能力段、上下文段、页脚），不做改写。只有顶栏的三处取本仓配置：`organization.name`、`branding.name`、`organization.logo`。
+- 接入方式面板的三张标签页里，API 与 CLI 两页用本仓事实：`POST /api/agent/runs` 配 `Authorization: Bearer arskey_…`（见 `docs/advanced/api-key-integration.md`）、`uv tool install ars-cli`（见 `docs/intro/cli.md`）。接口段运行卡展示的端点串同为 `POST /api/agent/runs`。
+- 外链指向本仓资产：文档站、GitHub、协议页（`/protocols/**`）。参照的三条顶栏链接（Playground、Ausdata Science）与页脚的公司链接在本仓没有对应页面，顶栏换成文档站、仓库与登录入口。
+- 接入方式面板的 MCP 页与身份类字符串（页脚的 `© 2026 Ausdata Science Pty Ltd`、`PRIVATE BETA ACCESS`、`https://mcp.ausvector.ai/mcp`、`YOUR_MATRIX_KEY`）保留参照原文，属于待定稿状态：本仓只有 MCP 客户端，没有对外 MCP 网关，这些串描述的不是本仓的事实，对外发布前必须替换。
+- 参照的内测申请表不做：本仓没有接收它的后端，表单位置留显式占位块（`context-placeholder`）。参照的 3D 数据图（`DataAtlas`）不搬，hero 里换成用户提供的 logo 粒子轮播（`web/src/pages/home/ui/ArkParticleAnimation.tsx`），素材是 `web/public/assets` 下的两张 logo，5 秒自动轮播；组件去掉了缩略图选项栏、深色面板与内置示例 logo，画布尺寸与响应式由 `home-panels.css` 的 `.hero-atlas` 负责；画布对辅助技术隐藏，减少动效时只画一次静态结果、不轮播。
+- 首页是连续滚动的长页，与参照一致；参照按 `window.scrollY` 的接口段压缩态照搬保留。
+- 三态契约与视觉基准无关，照搬：健康检查通过后才加载配置（`useSystemInfo` 的 `enabled`），失败进错误态并可重试。
+- 首页不含副标题轮播：参照的 hero 描述是静态文案，页面不留没有内容来源的轮播。登录入口在顶栏，按 `useUser()` 的登录态给「进入控制台 / 登录」，未登录时带上回到 `/` 的回跳参数。
+- 不搬参照的 `public/` 图片与视频。MIT 只要求保留版权声明，重写后的代码在文件头注明出处与许可。
 
 ### 决定的范围
 
@@ -72,6 +94,8 @@ React 19 不变，组件基座换成 antd 5；页面样式用 CSS Modules 与原
 ## 后果
 
 迁移期两套视觉并存：未迁移页面保持蓝底 shadcn，迁一页变一页，全部迁完前不宣布对齐完成。
+
+首页是唯一不向 Yuxi 对齐的页面，因此全站会有三种视觉来源（未迁移页面的 shadcn、Yuxi 对齐页面、AusVector 基准的首页）。首页的色板只作用于 `.home-site`，不进入 `tokens.css` 或 `yuxi-tokens.css`。
 
 antd 与 Tailwind 的层叠关系是最容易出错的地方：antd 默认无层注入会压过工具类，`StyleProvider layer` 未生效时覆盖关系与预期相反。构建产物里 `@layer` 的首次出现顺序是这条约束的可观察点。
 
@@ -103,8 +127,9 @@ OIDC 回跳目标与一次性标记是参照实现里登录页与回调页共享
 | LoginView 覆盖首次运行、锁定与 OIDC | `web/src/pages/login`、`web/src/entities/session` | `test/unit/pages/login-page.test.tsx`（8 例，含协议门禁负向与默认重定向） | 去掉页面 423 分支或协议门禁时对应用例必须失败（已做变异验证） | Inspected |
 | 登录链路真实可用 | `web/src/pages/login` | 真实页面用 `backend/scripts/seed_initial_users.py` 的账号登录、干净库首次运行、连续错误密码触发 423 倒计时 | 连续错误密码后必须进入 423 倒计时并显示剩余时间 | Not run（`web-dev` 容器镜像的 `node_modules` 早于本次依赖变更，需先 `docker compose build web`） |
 | 搬运后仍满足 FSD 与依赖方向 | `web/ARCHITECTURE.md`、`web/steiger.config.ts` | `pnpm run lint:fsd`、`pnpm run arch:check` | 在 `pages` 里直接引用 `features` 内部文件时 Steiger 必须报错 | Passed |
-| 视觉与参照实现对齐 | `docs/develop-guides/design.md`、`web/alembic/pages/login/report.md` | 浅色 / 暗色 / 窄屏三套截图对照 | 差异必须落在台账的「声明偏离」清单里 | Not run（迁移方执行） |
+| 视觉与参照实现对齐 | `docs/develop-guides/design.md`、`web/alembic/pages/login/report.md` | 除 `/` 外逐页与 Yuxi 做浅色 / 暗色 / 窄屏截图对照；`/` 与 AusVector 参照做同尺寸对照 | 差异必须落在台账的「声明偏离」清单里 | Not run（迁移方执行） |
+| 首页按 AusVector 基准落地 | `web/src/pages/home`、`web/src/styles/home-*.css` | `pnpm run test:unit`（127 文件 / 1449 例）、`pnpm run build`（49.11s），以及 `home-page.test.tsx`、`nexus-console.test.tsx`、`atlas-carousel.test.ts` 与 `system-info.test.ts` 的品牌投影用例 | 去掉配置加载门禁、去掉顶栏的登录态分支、把接入面板的标签绑定换成固定项、把端点复制换成写死的 MCP 端点、把 CLI 的调用形态写回 `STDIO / POSIX`、把轮播下标改成不回绕时对应用例必须失败（已做变异验证） | Inspected（门禁与构建全绿；logo 粒子轮播的观感与轮播时序、文案定稿、与参照的视觉对照与三态真实页面走查由迁移方执行） |
 
 迁移方执行的验证与命令：`docker compose build web && docker compose up -d web`（镜像里的 `node_modules` 早于本次依赖变更）后走查 `/login` 的浅色、暗色与窄屏，并覆盖登录、干净库首次运行、连续错误密码触发 423 三条真实链路；未迁移页面在 antd 基座下的回归截图；`cd web && pnpm remove @ant-design/icons dayjs`；`cd docs && pnpm run build`。逐页台账与截图在 `web/alembic/pages/login/report.md`。
 
-已知未验证范围：其余页面在 antd 基座下的真实浏览器回归、OIDC 真实跳转（本机没有可用的 OIDC 配置）、`@ant-design/icons` 与 `dayjs` 的移除、`design.md` 的完整视觉规范收口。
+已知未验证范围：其余页面在 antd 基座下的真实浏览器回归、OIDC 真实跳转（本机没有可用的 OIDC 配置）、`@ant-design/icons` 与 `dayjs` 的移除、`design.md` 的完整视觉规范收口、首页与 AusVector 参照的视觉对照、首页照搬文案与 MCP 页的定稿、首页 3D 数据图（logo 粒子轮播）的观感与轮播时序、两张 logo 素材的来源与许可。

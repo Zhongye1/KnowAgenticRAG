@@ -61,7 +61,7 @@ Markdown、公式、代码高亮与消毒共用 `web/src/shared/markdown/render.
 
 ### 未迁移面
 
-`/` 首页、`/workspace` 个人空间、`/agent-manage` 的智能体 tab、扩展页的工具与 MCP tab 仍是占位；它们的行为事实仍在参照实现里，本仓尚无对应 Owner。个人技能与共享技能的远程安装依赖沙盒与出网，沙盒不可用时界面给明确失败态而不是伪装成功。
+`/workspace` 个人空间、`/agent-manage` 的智能体 tab、扩展页的工具与 MCP tab 仍是占位；它们的行为事实仍在参照实现里，本仓尚无对应 Owner。`/` 已交付，视觉基准与三态契约见 [web 与 Yuxi 视觉对齐](2026-10-11-web-antd-yuxi-alignment.md)。个人技能与共享技能的远程安装依赖沙盒与出网，沙盒不可用时界面给明确失败态而不是伪装成功。
 
 ## 替代方案
 

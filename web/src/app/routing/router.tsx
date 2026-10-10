@@ -8,7 +8,6 @@ import {
 
 import { DashboardLayout } from '@/app/layouts/app-shell';
 import { PagePlaceholder } from '@/shared/ui/page-placeholder';
-import { NavBar } from '@/widgets/intro-navbar';
 import { paths } from '@/shared/config';
 
 import { RequireKnowledgeEnabled, RequireSuperuser } from './guards';
@@ -17,20 +16,17 @@ import { ProtectedRoute } from './protected-route';
 /** 空白布局：首页与鉴权流程不套后台外壳。 */
 const BlankLayout = () => <Outlet />;
 
-/** 首页：带顶部导航的落地页。 */
-const HomeRoute = () => (
-  <>
-    <NavBar />
-    <PagePlaceholder title="首页" />
-  </>
-);
-
 /** 后台外壳：侧边栏 + 顶栏，所有登录后的页面共用。 */
 const AppLayout = () => (
   <DashboardLayout>
     <Outlet />
   </DashboardLayout>
 );
+
+const homeRoute = async () => {
+  const { HomePage } = await import('@/pages/home');
+  return { Component: HomePage };
+};
 
 const loginRoute = async () => {
   const { LoginPage } = await import('@/pages/login');
@@ -72,7 +68,7 @@ export const appRoutes: RouteObject[] = [
   {
     path: paths.home.path,
     element: <BlankLayout />,
-    children: [{ index: true, element: <HomeRoute /> }],
+    children: [{ index: true, lazy: homeRoute }],
   },
   {
     path: paths.auth.login.path,

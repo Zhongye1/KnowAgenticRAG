@@ -18,7 +18,11 @@ export {
   initializeAdmin,
   login,
 } from './api/session-api';
-export type { SystemInfoData, LoginBranding } from './lib/system-info';
+export type {
+  SystemInfoData,
+  LoginBranding,
+  HomeBranding,
+} from './lib/system-info';
 export { MIN_PASSWORD_LENGTH } from './lib/password';
 export { formatLockRemaining } from './lib/login-lock';
 export {
@@ -29,6 +33,7 @@ export {
 export { useCapabilities, useKnowledgeEnabled } from './model/capabilities';
 export { useLoginLock } from './model/login-lock';
 export {
+  useHomeBranding,
   useLoginBranding,
   useSystemHealth,
   useSystemInfo,

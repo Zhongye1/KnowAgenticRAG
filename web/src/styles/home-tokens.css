@@ -1,0 +1,105 @@
+/* ============================================================================
+ * 首页页面级 token（视觉基准：AusVector 首页克隆）
+ * ----------------------------------------------------------------------------
+ * 取值来自参照实现的 `.ausvector-site` 根块（ausvector.css 第 8–27 行）。
+ * 作用域是 `.home-site`，不进入 tokens.css 或 yuxi-tokens.css：首页是本迁移里
+ * 唯一不向 Yuxi 对齐的页面，色板只服务于它（见 tracked 决策记录）。
+ *
+ * 字体：参照用 next/font/google 加载 Manrope 与 IBM Plex Mono，本仓不新增字体依赖，
+ * 按现有字体映射——正文用系统 sans 栈，等宽用已加载的 JetBrains Mono Variable。
+ * 因此这里的 --font-* 是「参照变量名 → 本仓字体」的映射层，改名要同步改 home.css。
+ *
+ * 放在 src/styles/** 是因为 check-design-tokens.mjs 只豁免该目录。
+ * ========================================================================== */
+
+.home-site {
+  --site-background: #f7f8f3;
+  --site-foreground: #0b1320;
+  --ink: #0b1320;
+  --site-muted: #5b6672;
+  --line: #d2dbd9;
+  --card-bg: #f4f6ef;
+  --card-border: #d2dbd9;
+  --accent-cyan: #0b2a6f;
+  --accent-gold: #855811;
+  /* 鼠标轨迹色：参照 light 模式的轨迹色（画布用，JS 从本变量解析，见 mouse-trail.tsx） */
+  --home-trail: #2563eb;
+  --content-gutter: clamp(36px, 11vw, 220px);
+
+  /* 参照变量名 → 本仓现有字体 */
+  --font-manrope: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC',
+    'HarmonyOS Sans SC', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-plex-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular,
+    Menlo, Monaco, Consolas, monospace;
+  --font-geist-sans: var(--font-manrope);
+  --font-geist-mono: var(--font-plex-mono);
+
+  background: var(--site-background);
+  color: var(--site-foreground);
+  font-family: var(--font-manrope);
+}
+
+/* 文档画布同色，避免过卷时露出后台页面的底色 */
+body:has(.home-site) {
+  background: var(--site-background);
+}
+
+/* ============================================================================
+ * 三态（本仓新增，参照没有加载与错误态）
+ * ----------------------------------------------------------------------------
+ * 参照页面永远渲染正常态；本仓沿用 Yuxi HomeView 的三态契约：先健康检查，
+ * 通过后才加载配置，失败进错误态并可重试。视觉用首页自己的 token 与按钮类。
+ * ========================================================================== */
+
+.home-state {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 40px 24px;
+  text-align: center;
+}
+
+.home-state-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.home-state-message {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--site-muted);
+  line-height: 1.6;
+}
+
+.home-state-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.home-state-spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  animation: home-state-spin 0.8s linear infinite;
+}
+
+@keyframes home-state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-state-spinner {
+    animation: none;
+  }
+}

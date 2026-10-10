@@ -202,7 +202,7 @@ Steiger 的 19 条规则覆盖了 `.dependency-cruiser.cjs` 中手写的三条 F
   实例由 `ResizeObserver` 在拿到非零尺寸后创建（隐藏视图里的 0 尺寸画布不会自己长回来），主题切换
   重建实例。知识库统计端点只在知识域启用时注册，面板按能力投影挂载且查询另有 `enabled` 闸，
   避免 404 被当成页面错误。
-- 其余页面（首页、个人空间、智能体管理的智能体 tab、扩展页的工具与 MCP tab）仍是占位；它们的行为
-  事实还没进本仓。
+- 其余页面（个人空间、智能体管理的智能体 tab、扩展页的工具与 MCP tab）仍是占位；它们的行为事实
+  还没进本仓。
 
 切片进度与验收证据见[前端 React 迁移设计](../docs/develop-guides/decisions/implemented/2026-10-01-web-react-migration-design.md)。

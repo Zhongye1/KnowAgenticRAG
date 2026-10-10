@@ -68,3 +68,19 @@ if (!Blob.prototype.arrayBuffer) {
     });
   };
 }
+
+/**
+ * jsdom 没有实现 canvas 2D 上下文（返回 null 并在控制台报 “Not implemented”），而首页
+ * 的 logo 粒子画布在挂载时就要清屏与逐帧绘制。这里给出最小 2D 上下文桩：图片加载在
+ * jsdom 里不会发生，采样拿不到像素，动画不会真的跑起来，桩只需让初始化不抛错。
+ */
+const canvasContextStub = {
+  clearRect: () => undefined,
+  fillRect: () => undefined,
+  drawImage: () => undefined,
+  getImageData: () => ({ data: new Uint8ClampedArray(0) }),
+  fillStyle: '',
+  globalAlpha: 1,
+};
+HTMLCanvasElement.prototype.getContext = (() =>
+  canvasContextStub) as unknown as HTMLCanvasElement['getContext'];

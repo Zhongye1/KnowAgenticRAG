@@ -9,6 +9,11 @@ import '../styles/yuxi-tokens.css';
 import '../styles/tokens.css';
 import '../styles/brand.css';
 import '../styles/antd-overrides.css';
+// 首页的页面级样式：token 与字体映射一份，参照样式一份，接入面板与上下文段一份
+// （见 tracked 决策记录）
+import '../styles/home-tokens.css';
+import '../styles/home.css';
+import '../styles/home-panels.css';
 import { App } from './index';
 
 const root = document.getElementById('root');

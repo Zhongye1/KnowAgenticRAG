@@ -1,8 +1,8 @@
 /**
- * 系统信息接口返回的品牌投影。
+ * 系统信息接口的返回形状，以及按页面取的品牌投影。
  *
- * 事实源是后端 `info.template.yaml`（可由 `ARS_BRAND_FILE_PATH` 覆盖）；
- * 配置缺失或请求失败时用登录页可用的默认值，不让品牌信息阻塞登录。
+ * 形状的事实源是后端 `info.template.yaml`（可由 `ARS_BRAND_FILE_PATH` 覆盖）；
+ * 配置缺失或请求失败时落到各自的默认值，不让品牌信息阻塞页面。
  */
 
 export type SystemInfoData = {
@@ -39,26 +39,63 @@ export type LoginBranding = {
   showAgreementConsent: boolean;
 };
 
+/** 组织名与品牌名相同时只保留一个；品牌名为空时退化为 `ARS`。 */
+function resolveBrandName(orgName: string, rawBrandName: string): string {
+  const brandName = rawBrandName.trim() || 'ARS';
+  return orgName && orgName !== brandName ? brandName : orgName || brandName;
+}
+
+function resolveCopyright(
+  info: SystemInfoData | undefined,
+  brandName: string,
+  year: number,
+): string {
+  return (
+    info?.footer?.copyright?.trim() ||
+    `© ${year} ${brandName}. All Rights Reserved.`
+  );
+}
+
 /** 组织名与品牌名不同才加分隔点，避免出现「语析 · 语析」。 */
 export function selectLoginBranding(
   info: SystemInfoData | undefined,
   year: number = new Date().getFullYear(),
 ): LoginBranding {
   const orgName = info?.organization?.name?.trim() ?? '';
-  const brandName = info?.branding?.name?.trim() || 'ARS';
+  const brandName = resolveBrandName(orgName, info?.branding?.name ?? '');
   const userAgreementUrl = info?.footer?.user_agreement_url?.trim() ?? '';
   const privacyPolicyUrl = info?.footer?.privacy_policy_url?.trim() ?? '';
 
   return {
     orgName,
-    brandName: orgName && orgName !== brandName ? brandName : orgName || brandName,
+    brandName,
     logo: info?.organization?.logo?.trim() ?? '',
     loginBg: info?.organization?.login_bg?.trim() || '/login-bg.jpg',
     userAgreementUrl,
     privacyPolicyUrl,
-    copyright:
-      info?.footer?.copyright?.trim() ||
-      `© ${year} ${brandName}. All Rights Reserved.`,
+    copyright: resolveCopyright(info, brandName, year),
     showAgreementConsent: Boolean(userAgreementUrl && privacyPolicyUrl),
+  };
+}
+
+export type HomeBranding = {
+  brandName: string;
+  logo: string;
+};
+
+/**
+ * 首页顶栏投影。
+ *
+ * 首页正文照搬参照实现，顶栏只渲染品牌名与 Logo，因此不投影 `organization.name`、
+ * `branding.title` 与 `footer.copyright`：组织名只用于决定品牌名的取值。
+ */
+export function selectHomeBranding(
+  info: SystemInfoData | undefined,
+): HomeBranding {
+  const orgName = info?.organization?.name?.trim() ?? '';
+
+  return {
+    brandName: resolveBrandName(orgName, info?.branding?.name ?? ''),
+    logo: info?.organization?.logo?.trim() ?? '',
   };
 }

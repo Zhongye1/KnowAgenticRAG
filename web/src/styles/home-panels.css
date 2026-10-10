@@ -1,0 +1,420 @@
+/* ============================================================================
+ * 首页的面板样式：NexusConsole、上下文段落，以及标题下划线
+ * ----------------------------------------------------------------------------
+ * 这里放三块从参照实现（ausvector.css）摘出的样式，`home.css` 的搬运脚本丢掉了它们：
+ *
+ * 1. 标题下划线：`h1` / `h2` 悬停时从左展开的金色下划线，`.context-section>h2`
+ *    是它的组成部分，所以随上下文段一起补回。
+ * 2. NexusConsole：参照用 Tailwind 调色板类表达配色（`text-zinc-900`、
+ *    `bg-emerald-500`、`dark:` 变体…），`check-design-tokens.mjs` 禁止调色板类，
+ *    所以落成页面自己的语义类（`nx-*`），取值与参照的调色板一致（白色面板 + zinc
+ *    文字阶 + 红/黄/绿状态点 + 常暗的代码面板）。首页固定浅色，不带 `dark:` 分支。
+ *    自定义滚动条、feature 列表与代码框是参照的结构性样式，按原样保留（`.nexus-*`）。
+ * 3. 上下文段落：标题与说明的版式；表单位置是本仓的占位块，参照没有这个类。
+ *
+ * 面板里的 `.feedback-*` 规则由 `home.css` 提供，这里不重复。
+ * ========================================================================== */
+
+/* 标题下划线：悬停时从左展开 */
+.home-site .hero-copy h1,
+.home-site .endpoint-header-col h2,
+.home-site .section-intro h2,
+.home-site .context-section > h2 {
+  display: table;
+  position: relative;
+}
+
+.home-site .hero-copy h1:after,
+.home-site .endpoint-header-col h2:after,
+.home-site .section-intro h2:after,
+.home-site .context-section > h2:after {
+  background: var(--accent-gold);
+  content: '';
+  transform-origin: 0;
+  width: 100%;
+  height: 2px;
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  position: absolute;
+  bottom: -0.14em;
+  left: 0;
+  transform: scaleX(0);
+}
+
+@media (hover: hover) {
+  .home-site .hero-copy h1:hover:after,
+  .home-site .endpoint-header-col h2:hover:after,
+  .home-site .section-intro h2:hover:after,
+  .home-site .context-section > h2:hover:after {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-site .hero-copy h1:after,
+  .home-site .endpoint-header-col h2:after,
+  .home-site .section-intro h2:after,
+  .home-site .context-section > h2:after {
+    transition: none;
+  }
+}
+
+/* --- NexusConsole：语义配色 ------------------------------------------------- */
+
+.home-site .nx-surface {
+  background: #fff;
+  border-color: var(--line);
+}
+
+.home-site .nx-tabs {
+  background: var(--card-bg);
+  border-color: var(--line);
+}
+
+.home-site .nx-tab {
+  color: var(--site-muted);
+}
+
+.home-site .nx-tab:hover {
+  color: var(--ink);
+}
+
+.home-site .nx-tab-active {
+  background: #fff;
+  border: 1px solid var(--line);
+  color: var(--accent-cyan);
+}
+
+/* 文字阶：ink > strong > body > muted */
+.home-site .nx-ink {
+  color: var(--ink);
+}
+
+.home-site .nx-strong {
+  color: #334155;
+}
+
+.home-site .nx-body {
+  color: #475569;
+}
+
+.home-site .nx-muted {
+  color: #6b7684;
+}
+
+/* 分隔线：nx-line 用于浅分隔，nx-line-soft 更淡 */
+.home-site .nx-line {
+  border-color: var(--line);
+}
+
+.home-site .nx-line-soft {
+  border-color: #e6ebe7;
+}
+
+/* 接入方式的眉标 */
+.home-site .nx-eyebrow {
+  background: #eef4fb;
+  border: 1px solid #cfdff2;
+  color: var(--accent-cyan);
+}
+
+/* 参照用 `!py-2.5 !px-5 !gap-2.5 !text-xs !min-w-0` 压小按钮；那些 Tailwind
+ * important 前缀在本仓的 Tailwind 4 下语义不同，改成显式类。 */
+.home-site .nx-cta {
+  gap: 10px;
+  min-width: 0;
+  padding: 10px 20px;
+  font-size: 12px;
+}
+
+/* 状态点 */
+.home-site .nx-dot-ok {
+  background: #10b981;
+}
+
+.home-site .nx-dot-warn {
+  background: #f59e0b;
+}
+
+.home-site .nx-dot-err {
+  background: #ef4444;
+}
+
+/* 常暗的代码面板（与主题无关，参照在浅色页面上也是深色） */
+.home-site .nx-term {
+  background: #18181b;
+  border-color: #27272a;
+  color: #e4e4e7;
+}
+
+.home-site .nx-term-line {
+  border-color: #27272a;
+}
+
+.home-site .nx-term-soft {
+  color: #d4d4d8;
+}
+
+.home-site .nx-term-faint {
+  color: #a1a1aa;
+}
+
+.home-site .nx-term-deep {
+  background: #09090b;
+  border-color: #27272a;
+}
+
+.home-site .nx-term-accent {
+  color: #60a5fa;
+}
+
+.home-site .nx-term-code {
+  background: #00000066;
+  border-color: #27272a99;
+  color: #d4d4d8;
+}
+
+/* --- NexusConsole：参照的结构性样式 ----------------------------------------- */
+
+.home-site .nexus-console {
+  padding-top: 14px;
+  position: relative;
+}
+
+.home-site .nexus-console:before {
+  background: linear-gradient(
+    90deg,
+    var(--accent-cyan),
+    var(--accent-gold),
+    transparent
+  );
+  content: '';
+  width: 108px;
+  height: 1px;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.home-site .nexus-console .rounded,
+.home-site .nexus-console .rounded-md,
+.home-site .nexus-console .rounded-lg,
+.home-site .nexus-console .rounded-xl {
+  border-radius: 5px;
+}
+
+.home-site .nexus-console .shadow-sm,
+.home-site .nexus-console .shadow-inner {
+  box-shadow: none;
+}
+
+.home-site .nexus-console-feature-list {
+  border-top: 1px solid var(--line);
+  margin-top: 7px;
+  display: grid;
+}
+
+.home-site .nexus-console-feature {
+  border-bottom: 1px solid var(--line);
+  color: #475569;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 8px 7px 17px;
+  line-height: 1.4;
+  transition:
+    background 0.18s,
+    color 0.18s;
+  display: flex;
+  position: relative;
+}
+
+.home-site .nexus-console-feature:before {
+  background: var(--accent-cyan);
+  content: '';
+  width: 4px;
+  height: 4px;
+  position: absolute;
+  left: 3px;
+  transform: rotate(45deg);
+}
+
+.home-site .nexus-console-feature:hover {
+  color: var(--ink);
+  background: #2563eb0b;
+}
+
+.home-site .nexus-code-frame {
+  position: relative;
+}
+
+.home-site .nexus-code-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  padding: 12px 27px 27px 12px;
+}
+
+.home-site .nexus-code-scroll:focus-visible {
+  outline-offset: 2px;
+  outline: 1px solid #38bdf8b3;
+}
+
+.home-site .nexus-code-scroll::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.home-site .nexus-scroll-track {
+  opacity: 0;
+  pointer-events: none;
+  background: #0f172a7a;
+  border: 1px solid #94a3b829;
+  border-radius: 5px;
+  transition: opacity 0.18s;
+  position: absolute;
+}
+
+.home-site
+  .nexus-code-frame[data-vertical-overflow='true']
+  .nexus-scroll-track-y,
+.home-site
+  .nexus-code-frame[data-horizontal-overflow='true']
+  .nexus-scroll-track-x {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.home-site .nexus-scroll-track-y {
+  width: 7px;
+  top: 8px;
+  bottom: 28px;
+  right: 6px;
+}
+
+.home-site .nexus-scroll-track-x {
+  height: 7px;
+  bottom: 6px;
+  left: 8px;
+  right: 28px;
+}
+
+.home-site .nexus-scroll-thumb {
+  cursor: grab;
+  background: #52667c;
+  border: 1px solid #bfdbfe61;
+  border-radius: 5px;
+  display: block;
+  position: absolute;
+}
+
+.home-site .nexus-scroll-thumb:active {
+  cursor: grabbing;
+}
+
+/* thumb 的几何由组件按 `<pre>` 的滚动偏移写成 inline style（参照用未定义的
+ * `--nexus-scroll-*` 变量表达，那几条声明在 computed-value 阶段就失效了，不搬）。 */
+.home-site .nexus-scroll-thumb-y {
+  width: 100%;
+}
+
+.home-site .nexus-scroll-thumb-x {
+  height: 100%;
+}
+
+.home-site .nexus-scroll-thumb:hover {
+  background: #71869d;
+}
+
+/* --- 3D 数据图：hero 文案右侧的 logo 粒子轮播 ------------------------------- */
+
+/* 只保留粒子画布，没有面板；作为 .hero-grid 这一 flex 行的第二个子项，靠右、垂直居中 */
+.home-site .hero-atlas {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  margin-left: auto;
+  pointer-events: auto;
+}
+
+.home-site .hero-atlas canvas {
+  display: block;
+  width: min(480px, 100%);
+  height: auto;
+}
+
+/* 一行放不下文案与画布时换行，粒子落到文案下方居中 */
+@media (max-width: 1023px) {
+  .home-site .hero-grid {
+    flex-wrap: wrap;
+  }
+
+  .home-site .hero-atlas {
+    flex-basis: 100%;
+    margin: 36px 0 0;
+  }
+}
+
+/* --- 上下文段落 ------------------------------------------------------------- */
+
+.home-site .context-section {
+  border-top: 1px solid var(--line);
+  max-width: 900px;
+  padding: 110px 0 125px;
+}
+
+.home-site .context-section h2 {
+  color: #09090b;
+  letter-spacing: -0.02em;
+  margin-bottom: 24px;
+  font-size: clamp(32px, 3.8vw, 56px);
+  font-weight: 600;
+  line-height: 1.05;
+}
+
+.home-site .context-section p:not(.eyebrow) {
+  color: var(--site-muted);
+  max-width: 640px;
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+/* 参照这里放内测申请表，本仓不做表单，位置先留占位块 */
+.home-site .context-placeholder {
+  background: #ffffff73;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 18px 20px;
+}
+
+.home-site .context-placeholder-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--site-muted);
+  font-family: var(--font-plex-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.home-site .context-placeholder-text {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+@media (max-width: 720px) {
+  .home-site .context-section {
+    padding: 64px 0 72px;
+  }
+
+  .home-site .context-section h2 {
+    margin-bottom: 20px;
+    font-size: clamp(20px, 6.1vw, 30px);
+    line-height: 1.12;
+  }
+
+  .home-site .context-section p:not(.eyebrow) {
+    font-size: 15px;
+    line-height: 1.68;
+  }
+}

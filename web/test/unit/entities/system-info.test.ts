@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { selectLoginBranding } from '@/entities/session/lib/system-info';
+import {
+  selectHomeBranding,
+  selectLoginBranding,
+} from '@/entities/session/lib/system-info';
 
 describe('selectLoginBranding', () => {
   it('配置齐备时按后端事实投影', () => {
@@ -76,5 +79,27 @@ describe('selectLoginBranding', () => {
     expect(branding.brandName).toBe('ARS');
     expect(branding.loginBg).toBe('/login-bg.jpg');
     expect(branding.showAgreementConsent).toBe(false);
+  });
+});
+
+describe('selectHomeBranding', () => {
+  it('顶栏用品牌名与 Logo，组织名只参与决定品牌名取值', () => {
+    const branding = selectHomeBranding({
+      organization: { name: '语析', logo: '/favicon.svg' },
+      branding: { name: 'ARS' },
+    });
+
+    expect(branding).toEqual({ brandName: 'ARS', logo: '/favicon.svg' });
+  });
+
+  it('品牌名缺失时落到 ARS', () => {
+    expect(selectHomeBranding({ organization: { name: '语析' } }).brandName).toBe(
+      'ARS',
+    );
+    expect(selectHomeBranding(undefined).brandName).toBe('ARS');
+  });
+
+  it('配置缺失时 Logo 为空串', () => {
+    expect(selectHomeBranding(undefined).logo).toBe('');
   });
 });

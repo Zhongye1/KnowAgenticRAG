@@ -2,7 +2,7 @@
 
 ARS 前端。React 19 + Vite + TypeScript + Tailwind 4 + shadcn/Radix，信息架构对齐上游实现。
 
-已交付：外壳与鉴权、对话、知识库（含图谱、导图、RAG 评估）、调试面板、模型供应商、技能、数据总览；首页、个人空间、智能体管理与工具/MCP 面板仍是占位（见 `docs/develop-guides/decisions/implemented/2026-10-01-web-react-migration-design.md`）。
+已交付：首页、外壳与鉴权、对话、知识库（含图谱、导图、RAG 评估）、调试面板、模型供应商、技能、数据总览；个人空间、智能体管理与工具/MCP 面板仍是占位（见 `docs/develop-guides/decisions/implemented/2026-10-01-web-react-migration-design.md`）。
 
 ## 开发
 
