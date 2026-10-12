@@ -22,6 +22,6 @@
 |---|---|---|
 | [沙盒与文件系统](./sandbox.md) | sandbox identity、provisioner、挂载、路径权限、生命周期和代理边界 | [沙盒配置与运维](../agents/sandbox-architecture.md) |
 | [Summary 上下文压缩](./context-compression.md) | 入口阈值、L1/L2、历史 offload、state event、流事件与 token 口径 | [中间件系统](../agents/middleware.md)与[智能体配置](../agents/agents-config.md) |
-| [知识库](./knowledge-base.md) | 文件状态机、MinIO/PostgreSQL/Milvus Owner、Tasker、Agent 可见性与工具激活 | [知识库入门](../intro/knowledge-base.md)与[文档处理/OCR](../advanced/document-processing.md) |
+| [知识库](./knowledge-base.md) | 文件状态机、Silo/PostgreSQL/Milvus Owner、Tasker、Agent 可见性与工具激活 | [知识库入门](../intro/knowledge-base.md)与[文档处理/OCR](../advanced/document-processing.md) |
 
 后续机制页只在主题有稳定 Owner、真实 consumer 和可验证主链路时新增。不要为了覆盖目录而逐文件生成页面；缺少当前证据的未来设计进入 roadmap 或 proposed decision。

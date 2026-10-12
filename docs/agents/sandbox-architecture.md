@@ -60,7 +60,7 @@ Docker backend 要求 provisioner 能访问宿主机 Docker daemon，并能解�
 | `DOCKER_SANDBOX_PREFIX` | 动态容器名称前缀 |
 | `DOCKER_THREADS_HOST_PATH` | `saves/threads` 在宿主机上的绝对路径；未设置时尝试从 provisioner 挂载推导 |
 
-Compose 部署需要把 Docker socket 和 `saves` 对应目录挂入 provisioner。每个沙盒只加入自身网络，provisioner 同时加入该网络并提供认证代理；不要把动态沙盒接入承载 PostgreSQL、Redis、MinIO 等服务的应用网络，也不要把沙盒端口发布到宿主机。
+Compose 部署需要把 Docker socket 和 `saves` 对应目录挂入 provisioner。每个沙盒只加入自身网络，provisioner 同时加入该网络并提供认证代理；不要把动态沙盒接入承载 PostgreSQL、Redis、Silo 等服务的应用网络，也不要把沙盒端口发布到宿主机。
 
 ## Kubernetes 后端配置
 
@@ -86,7 +86,7 @@ Kubernetes backend 使用 kubeconfig 或 Pod 内服务账号创建沙盒 Pod 和
 
 当 `SANDBOX_PROVISIONER_BACKEND=docker` 时，`sandbox-provisioner` 会进入 `LocalContainerProvisionerBackend`。它会检查 Docker 是否可用，解析 `/app/user-data` 和 `/app/skill-projections` 两个显式挂载在宿主机上的真实路径。随后它按应用层给出的 `sandbox_id` 启动或复用类似 `ars-sandbox-<id>` 的容器，并复核用户、Workdir 与挂载身份。
 
-这个沙盒镜像默认来自 `SANDBOX_IMAGE`，容器内部监听的端口默认是 `8080`。provisioner 会为每个动态沙盒创建独立的 Docker bridge 网络，只把 provisioner 和该沙盒接入其中；沙盒之间不能互访，也不能访问承载 PostgreSQL、Redis、Neo4j、MinIO 等服务的 `app-network`。沙盒端口不发布到宿主机，provisioner 通过对应的独立网络访问真实容器，再以需要 Bearer token 的代理地址向 API/worker 提供文件和命令接口。API/worker 不直接持有沙盒容器地址。
+这个沙盒镜像默认来自 `SANDBOX_IMAGE`，容器内部监听的端口默认是 `8080`。provisioner 会为每个动态沙盒创建独立的 Docker bridge 网络，只把 provisioner 和该沙盒接入其中；沙盒之间不能互访，也不能访问承载 PostgreSQL、Redis、Neo4j、Silo 等服务的 `app-network`。沙盒端口不发布到宿主机，provisioner 通过对应的独立网络访问真实容器，再以需要 Bearer token 的代理地址向 API/worker 提供文件和命令接口。API/worker 不直接持有沙盒容器地址。
 
 这个拓扑把沙箱按“其中代码可能被完全控制”处理。`SANDBOX_PROVISIONER_TOKEN` 只配置给 API、worker 和 provisioner，绝不能写进 `sandbox.env` 或用户级 Agent 环境变量，否则沙箱会重新获得 provisioner 管理权限。
 

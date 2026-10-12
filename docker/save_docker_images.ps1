@@ -21,7 +21,7 @@ $Images = @(
     "nginx:alpine",
     "neo4j:5.26.29",
     "quay.io/coreos/etcd:v3.5.5",
-    "minio/minio:RELEASE.2023-03-20T20-16-18Z",
+    "pgsty/silo:RELEASE.2026-09-16T00-00-00Z",
     "milvusdb/milvus:v2.5.6",
     # "lmsysorg/sglang:v0.4.9.post3-cu126",
     # "ccr-2vdh3abv-pub.cnc.bj.baidubce.com/paddlex/paddlex:paddlex3.0.1-paddlepaddle3.0.0-gpu-cuda11.8-cudnn8.9-trt8.6"

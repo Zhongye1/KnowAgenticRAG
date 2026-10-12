@@ -93,7 +93,7 @@ docker compose up --build -d
 task up-lite  # macOS or Linux
 ```
 
-轻量模式仅启动核心服务（api、worker、PostgreSQL、Redis、MinIO），不加载知识库与图谱能力。切换回完整模式只需运行 `task up`。
+轻量模式仅启动核心服务（api、worker、PostgreSQL、Redis、Silo），不加载知识库与图谱能力。切换回完整模式只需运行 `task up`。
 :::
 
 ### 步骤四：访问系统

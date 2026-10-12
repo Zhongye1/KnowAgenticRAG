@@ -42,7 +42,7 @@ SILICONFLOW_API_KEY=
 
 ### 2. 启动服务
 
-从 v0.7.1 升级前，先停止业务写入，并在同一停机时点完整备份 PostgreSQL、MinIO 和 `docker/volumes/ars`，验证三者可以成套恢复。迁移会重写历史 Conversation 的 Project 绑定、附件路径与 thread 文件布局，终结非终态 Run，并收紧持久目录所有权；旧 SQLite checkpoint 不迁移。v0.7.2 Beta 不建议用于重要或缺少可恢复备份的环境，完整风险见[版本变更记录](../develop-guides/changelog.md#v072beta1-2026-08-23)。
+从 v0.7.1 升级前，先停止业务写入，并在同一停机时点完整备份 PostgreSQL、Silo 和 `docker/volumes/ars`，验证三者可以成套恢复。迁移会重写历史 Conversation 的 Project 绑定、附件路径与 thread 文件布局，终结非终态 Run，并收紧持久目录所有权；旧 SQLite checkpoint 不迁移。v0.7.2 Beta 不建议用于重要或缺少可恢复备份的环境，完整风险见[版本变更记录](../develop-guides/changelog.md#v072beta1-2026-08-23)。
 
 使用生产环境配置文件启动。升级实例必须先检出目标版本，再运行迁移脚本；迁移成功前不要启动新 API 或 worker：
 
@@ -51,15 +51,15 @@ SILICONFLOW_API_KEY=
 bash scripts/migrate-storage.sh -f docker-compose.prod.yml --env-file .env.prod
 
 # 仅启动核心服务（CPU 模式）
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 
 # 启动所有服务（包含 GPU OCR）
-docker compose -f docker-compose.prod.yml --profile all up -d --build
+docker compose -f docker-compose.prod.yml --env-file .env.prod --profile all up -d --build
 ```
 
 迁移脚本会把其后的参数原样用于每一次 Docker Compose 调用，因此迁移和重启必须使用同一份 Compose 文件、env file 与 profile。脚本只在 API/worker 已停止、provisioner 已禁止新建 Sandbox，且 Docker 容器或 Kubernetes Pod 的权威清单确认为空后签发一次性 proof；枚举失败或 Pod 仍在 Terminating 都会 fail-closed。
 
-迁移按 Workdir、系统配置、共享 Skill 和运行身份分阶段提交，不是跨 PostgreSQL、MinIO 与文件卷的单事务操作。命令失败后保持 API/worker 停止并保留日志；目标冲突或权限问题修复后，使用完全相同的参数重跑迁移，迁移器会校验已经提交的确定性目标并继续。需要放弃升级时，先保持服务停止并检出 v0.7.1，再从升级前同一停机时点的备份成套恢复 PostgreSQL、MinIO 和 `docker/volumes/ars`；只恢复数据库或单个文件卷会造成跨 Owner 状态不一致。
+迁移按 Workdir、系统配置、共享 Skill 和运行身份分阶段提交，不是跨 PostgreSQL、Silo 与文件卷的单事务操作。命令失败后保持 API/worker 停止并保留日志；目标冲突或权限问题修复后，使用完全相同的参数重跑迁移，迁移器会校验已经提交的确定性目标并继续。需要放弃升级时，先保持服务停止并检出 v0.7.1，再从升级前同一停机时点的备份成套恢复 PostgreSQL、Silo 和 `docker/volumes/ars`；只恢复数据库或单个文件卷会造成跨 Owner 状态不一致。
 
 历史知识库 Markdown 中指向 `public` bucket 的图片不会由该脚本迁移，升级后旧 URL 仍可能匿名可读。对敏感知识库应在升级后重新解析生成私有 `kb-images` 对象，确认新 Markdown 与权限代理可用后，再按实际对象清单清理旧公开图片。
 
@@ -83,7 +83,7 @@ operator 离线导出、校验后导入新布局。Compose 的 `scripts/migrate-
 
 `/api/system/ready` 只证明核心运行依赖满足接流量条件，不替代登录、对话、知识库或 Agent Run 的真实业务链路验收。
 
-公开头像和 Agent 图片通过前端同源路径 `/minio/public/...` 读取，由 Nginx 只读代理到 MinIO 的 `public` bucket。无需也不应向公网开放 MinIO 的 `9000` 对象 API 或 `9001` 管理控制台；知识库等私有 bucket 不经过这个代理。需要使用独立静态资源域名时，可在 `.env.prod` 中设置 `MINIO_PUBLIC_URL=https://assets.example.com`，并在该域名侧保持同等的只读 bucket 限制。
+公开头像和 Agent 图片通过前端同源路径 `/minio/public/...` 读取，由 Nginx 只读代理到 Silo 的 `public` bucket。无需也不应向公网开放 Silo 的 `9000` 对象 API 或 `9001` 管理控制台；知识库等私有 bucket 不经过这个代理。需要使用独立静态资源域名时，可在 `.env.prod` 中设置 `MINIO_PUBLIC_URL=https://assets.example.com`，并在该域名侧保持同等的只读 bucket 限制。
 
 历史 PDF 解析 Markdown 中已经写入的 `http://localhost:9000/public/...` 或其他 `<host>:9000/public/...` 图片地址，会在前端渲染时自动转换为同源路径，不需要重新解析 PDF。
 
@@ -104,15 +104,15 @@ operator 离线导出、校验后导入新布局。Compose 的 `scripts/migrate-
 
 ### 从使用默认凭据的版本升级
 
-如果部署曾使用仓库历史默认的 PostgreSQL、Neo4j 或 MinIO 凭据，升级 Compose 文件本身不会保证已有数据卷中的服务凭据已经改变。升级前应分别通过对应服务的管理命令真实修改凭据，再把新值写入 `.env.prod`；完成后重建相关服务，并使用旧凭据验证登录已被拒绝。
+如果部署曾使用仓库历史默认的 PostgreSQL、Neo4j 或 Silo 凭据，升级 Compose 文件本身不会保证已有数据卷中的服务凭据已经改变。升级前应分别通过对应服务的管理命令真实修改凭据，再把新值写入 `.env.prod`；完成后重建相关服务，并使用旧凭据验证登录已被拒绝。
 
 PostgreSQL 可以在数据库容器内使用交互式命令修改，避免新密码出现在 shell 历史和进程参数中：
 
 ```bash
-docker compose -f docker-compose.prod.yml exec postgres psql -U postgres -d ars -c '\password postgres'
+docker compose -f docker-compose.prod.yml --env-file .env.prod exec postgres psql -U postgres -d ars -c '\password postgres'
 ```
 
-Neo4j 应使用 `cypher-shell` 的当前用户密码修改流程；MinIO 应使用 `mc admin` 或部署所采用的密钥管理流程。不要把真实密码写入文档、测试脚本或命令历史。完成凭据轮换并分别配置 `API_KEY_DERIVATION_SECRET`、`SANDBOX_PROVISIONER_TOKEN` 后，再执行下面的重建命令。
+Neo4j 应使用 `cypher-shell` 的当前用户密码修改流程；Silo 应使用 `mc admin` 或部署所采用的密钥管理流程。不要把真实密码写入文档、测试脚本或命令历史。完成凭据轮换并分别配置 `API_KEY_DERIVATION_SECRET`、`SANDBOX_PROVISIONER_TOKEN` 后，再执行下面的重建命令。
 
 ### 更新代码
 
@@ -121,7 +121,7 @@ Neo4j 应使用 `cypher-shell` 的当前用户密码修改流程；MinIO 应使�
 git pull
 
 # 重新构建并启动
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
 ```
 
 ### 重建 Redis 后重启 worker
@@ -129,8 +129,8 @@ docker compose -f docker-compose.prod.yml up -d --build
 arq worker 在 Redis 断连后不会自动重连。重建或升级 Redis 容器后，需重启 worker 才能恢复 `/api/system/ready`：
 
 ```bash
-docker compose -f docker-compose.prod.yml up -d redis
-docker compose -f docker-compose.prod.yml restart worker
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d redis
+docker compose -f docker-compose.prod.yml --env-file .env.prod restart worker
 ```
 
 生产 Compose 不再向宿主机发布 PostgreSQL 和文档解析服务端口。确需从宿主机维护时，优先使用 `docker compose exec`；不要为了临时调试把这些端口重新暴露到公网。
@@ -147,18 +147,18 @@ docker logs -f web-prod
 
 ## 第三方组件与许可证
 
-ARS 本体采用 MIT 许可证，但 Compose 引入的第三方组件保留各自原始许可证。当前拓扑下，ARS 后端与这些组件均为独立进程，分别通过 bolt（Neo4j）、S3 API（MinIO）与原生协议（PostgreSQL、Redis、Milvus）通信，属于进程间聚合（mere aggregation），ARS 的 MIT 代码不构成 GPL/AGPL 意义下的衍生作品。
+ARS 本体采用 MIT 许可证，但 Compose 引入的第三方组件保留各自原始许可证。当前拓扑下，ARS 后端与这些组件均为独立进程，分别通过 bolt（Neo4j）、S3 API（Silo）与原生协议（PostgreSQL、Redis、Milvus）通信，属于进程间聚合（mere aggregation），ARS 的 MIT 代码不构成 GPL/AGPL 意义下的衍生作品。
 
 | 组件 | 镜像 | 许可证 | 在 ARS 中的角色 |
 |------|------------------|--------|------------------|
 | Neo4j Community | `neo4j:5.26.29` | GPL-3.0-only | 知识图谱存储（`graph` 服务） |
-| MinIO | `minio/minio:RELEASE.2023-03-20T20-16-18Z` | AGPL-3.0 | ARS 对象存储（头像、Agent 图片、知识库文件）与 Milvus 存储依赖 |
+| Silo（MinIO 兼容分支，由 Pigsty 维护） | `pgsty/silo:RELEASE.2026-09-16T00-00-00Z` | AGPL-3.0 | ARS 对象存储（头像、Agent 图片、知识库文件）与 Milvus 存储依赖 |
 | Milvus | `milvusdb/milvus:v2.5.6` | Apache-2.0 | 向量检索 |
 | etcd | `quay.io/coreos/etcd:v3.5.5` | Apache-2.0 | Milvus 元数据 |
 | PostgreSQL | `postgres:16` | PostgreSQL License | 业务主库 |
 | Redis | `redis:7.4.10-alpine` | RSALv2/SSPLv1（非 OSI；7.2 及更早为 BSD-3-Clause） | 投递、短期事件与缓存 |
 
-其中 Neo4j、MinIO、Milvus、etcd 与 Redis 已锁定精确版本；PostgreSQL 仍为浮动 tag，可按部署需要自行固定。上表只说明主要应用组件本体的许可证，不代表完整容器镜像内的基础系统与依赖包均为宽松许可证；离线再分发前需按实际镜像核对软件物料清单、许可证声明与对应源码义务。
+其中 Neo4j、Silo、Milvus、etcd 与 Redis 已锁定精确版本；PostgreSQL 仍为浮动 tag，可按部署需要自行固定。上表只说明主要应用组件本体的许可证，不代表完整容器镜像内的基础系统与依赖包均为宽松许可证；离线再分发前需按实际镜像核对软件物料清单、许可证声明与对应源码义务。
 
 Redis 7.4 起采用 RSALv2/SSPLv1 双许可（均非 OSI）：自托管使用、修改与再分发（无论是否修改）均被允许。两条路径的差异在于托管服务——RSALv2 不得把 Redis 本身作为托管服务对外提供；SSPLv1 允许托管，条件是开源整个服务管理栈。自托管 Compose 部署通常按 RSALv2 路径理解即可。
 
@@ -167,12 +167,12 @@ Redis 7.4 起采用 RSALv2/SSPLv1 双许可（均非 OSI）：自托管使用、
 以下情形会触发相应组件许可证的额外义务：
 
 1. **再分发镜像**：`docker/save_docker_images.sh` / `save_docker_images.ps1` 把镜像导出为 tar 交付给第三方时，构成对 GPL/AGPL 软件的再分发。除保留 tag/digest、许可证文本和原始声明外，还需按 GPLv3/AGPLv3 第 6 节选择与交付方式匹配的源码路径：通过物理介质交付时随附机器可读的完整对应源码，或附带对任何持有目标代码者有效的书面源码要约；要约至少有效三年，并在仍为该产品型号提供备件或客户支持期间持续有效，承诺按不高于合理物理交付成本提供源码介质或免费网络下载。通过指定网络位置提供镜像时，以同等方式且不额外收费地提供精确对应源码。源码可由不同的第三方服务器托管，但再分发者仍须在镜像下载位置旁提供清晰指引，并确保源码在所需期限内持续可用。
-2. **修改 AGPL 组件**：修改 MinIO 并对外提供网络服务时，需按 AGPL-3.0 向用户提供修改后的对应源码；未修改的上游版本仅在网络中运行时不触发第 13 节的修改源码提供义务，但再分发其镜像仍须遵守上一项的第 6 节要求。仓库内 `docker/mineru.Dockerfile` 构建的 MinerU 自 3.1.0 起采用以 Apache-2.0 为基础的 MinerU 开源许可（含规模化商用门槛与归属标注条款），以其 Dockerfile 内锁定版本的注释为准。
+2. **修改 AGPL 组件**：修改 Silo 并对外提供网络服务时，需按 AGPL-3.0 向用户提供修改后的对应源码；未修改的上游版本仅在网络中运行时不触发第 13 节的修改源码提供义务，但再分发其镜像仍须遵守上一项的第 6 节要求。仓库内 `docker/mineru.Dockerfile` 构建的 MinerU 自 3.1.0 起采用以 Apache-2.0 为基础的 MinerU 开源许可（含规模化商用门槛与归属标注条款），以其 Dockerfile 内锁定版本的注释为准。
 3. **进程内集成**：把 GPL/AGPL 组件以进程内链接方式并入自有代码会触发传染条款。ARS 架构不做进程内集成，二次开发也不要引入。
 
 ### 商业部署
 
 - **Neo4j**：需要企业版功能或商业支持时，可改用 `neo4j:5.26-enterprise` 镜像并设置 `NEO4J_ACCEPT_LICENSE_AGREEMENT=yes`，许可条款以 Neo4j 官方订阅协议为准。
-- **MinIO**：同时承载 ARS 自身对象存储（头像、Agent 图片、知识库文件）与 Milvus 依赖；商业场景可评估 MinIO 商业订阅，或由运维侧替换为其他 S3 兼容对象存储并同步迁移这两部分的数据与配置。
+- **Silo**：同时承载 ARS 自身对象存储（头像、Agent 图片、知识库文件）与 Milvus 依赖；商业场景可由运维侧替换为其他 S3 兼容对象存储并同步迁移这两部分的数据与配置。
 
 本节为工程侧整理的边界说明，不构成法律意见；对外商业交付前请由法务确认最终方案。

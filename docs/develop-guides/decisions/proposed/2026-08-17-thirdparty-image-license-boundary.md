@@ -6,16 +6,16 @@ Owner：docker-compose.yml
 
 ## 问题
 
-Compose 拓扑默认引入 Neo4j 社区版（GPL-3.0-only）与 MinIO（AGPL-3.0）镜像，而仓库又通过 `docker/save_docker_images.*` 与 `scripts/init.*` 拉取并导出这些镜像，ARS 本体是 MIT。缺少书面边界时，部署者与再分发者无法判断 GPL/AGPL 义务是否触发，商业部署也没有可依赖的合规入口（#873）。同时 `neo4j:5.26` 是浮动 minor 标签，撰写本记录时已指向 5.26.29；`redis:7-alpine` 同样浮动，当前已指向包含安全修复的 7.4.10，且 Redis 自 7.4 起许可证由 BSD-3-Clause 变更为 RSALv2/SSPLv1（非 OSI）。浮动引用意味着部署取得的版本和许可证取决于拉取时间。
+Compose 拓扑默认引入 Neo4j 社区版（GPL-3.0-only）与对象存储（AGPL-3.0）镜像，而仓库又通过 `docker/save_docker_images.*` 与 `scripts/init.*` 拉取并导出这些镜像，ARS 本体是 MIT。缺少书面边界时，部署者与再分发者无法判断 GPL/AGPL 义务是否触发，商业部署也没有可依赖的合规入口（#873）。同时 `neo4j:5.26` 是浮动 minor 标签，撰写本记录时已指向 5.26.29；`redis:7-alpine` 同样浮动，当前已指向包含安全修复的 7.4.10，且 Redis 自 7.4 起许可证由 BSD-3-Clause 变更为 RSALv2/SSPLv1（非 OSI）。浮动引用意味着部署取得的版本和许可证取决于拉取时间。
 
 ## 提案
 
-保留 Neo4j 社区版与 MinIO 作为独立进程依赖，ARS 后端仅通过 bolt 与 S3 API 通信（进程间聚合），MIT 代码不构成衍生作品。把主要组件许可证、镜像内其他软件的独立许可、再分发义务和商业替代选项写入 [deployment.md](../../../advanced/deployment.md) 的「第三方组件与许可证」章节，README 许可证节指向该章节。所有 Neo4j 镜像引用（两个 Compose 文件与四个拉取/导出脚本）统一锁定 `neo4j:5.26.29`，避免把已经跟随浮动标签升级的持久数据卷降回 5.26.28；Redis 镜像引用（两个 Compose 文件与两个 init 脚本）统一锁定 `redis:7.4.10-alpine`，保留该版本包含的安全修复。后续补丁升级必须显式修改对应引用。
+保留 Neo4j 社区版与对象存储作为独立进程依赖，ARS 后端仅通过 bolt 与 S3 API 通信（进程间聚合），MIT 代码不构成衍生作品。对象存储的具体镜像由[对象存储改用 Silo 承接 MinIO 兼容面](../implemented/2026-10-12-object-storage-silo-replacement.md)拥有，本记录只承接其许可证边界。把主要组件许可证、镜像内其他软件的独立许可、再分发义务和商业替代选项写入 [deployment.md](../../../advanced/deployment.md) 的「第三方组件与许可证」章节，README 许可证节指向该章节。所有 Neo4j 镜像引用（两个 Compose 文件与四个拉取/导出脚本）统一锁定 `neo4j:5.26.29`，避免把已经跟随浮动标签升级的持久数据卷降回 5.26.28；Redis 镜像引用（两个 Compose 文件与两个 init 脚本）统一锁定 `redis:7.4.10-alpine`，保留该版本包含的安全修复。后续补丁升级必须显式修改对应引用。
 
 ## 替代方案
 
-- 替换为宽松许可证存储：MinIO 是 Milvus standalone 的必要依赖，替换图数据库属于架构级变更，超出本记录范围。
-- 默认使用 Neo4j Enterprise / MinIO 商业订阅：需要商业协议与凭据，不应成为开源默认值，仅作为文档中的商业选项。
+- 替换为宽松许可证存储：对象存储同时服务 ARS 与 Milvus standalone，替换属于架构级变更，由[对象存储改用 Silo 承接 MinIO 兼容面](../implemented/2026-10-12-object-storage-silo-replacement.md)承接；图数据库替换不在本记录范围。
+- 默认使用 Neo4j Enterprise / AIStor 商业订阅：需要商业协议与凭据，不应成为开源默认值，仅作为文档中的商业选项。
 - 移除 `save_docker_images` 分发脚本：切断离线部署能力，代价大于收益；改为在文档中明确分发义务。
 - 锁定镜像 digest 而非版本 tag：可复现性最强，但可读性差且无法表达补丁升级意图，作为后续可选强化。
 - 引入 CI 依赖与许可证审计：由独立事项（#870）承接。

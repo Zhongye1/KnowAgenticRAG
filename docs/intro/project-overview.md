@@ -22,7 +22,7 @@ ARS（语析）是一个知识库、知识图谱与 Agent 开发平台，基于 
 | 图数据库 | Neo4j | Milvus 知识库内知识图谱存储与查询 |
 | 文档处理 | MinerU, PaddleX, RapidOCR | 多格式文档解析与 OCR |
 | 任务队列 | Redis, PostgreSQL Workers | 异步任务处理 |
-| 对象存储 | MinIO | 文件与文档存储 |
+| 对象存储 | Silo（MinIO 兼容分支） | 文件与文档存储 |
 | 关系型数据库 | PostgreSQL | 元数据与用户数据持久化 |
 | 部署 | Docker, Docker Compose | 容器化部署与编排 |
 

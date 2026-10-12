@@ -18,7 +18,7 @@
 
 ## 文档 API 工作流
 
-程序化导入先调用 `POST /api/knowledge/files/upload?kb_id=<kb_id>`，取得 MinIO `file_path` 与 `content_hash`。后续只能在下面两条工作流中选择一条；不要先创建记录，再调用一体化入口重复创建。
+程序化导入先调用 `POST /api/knowledge/files/upload?kb_id=<kb_id>`，取得 Silo `file_path` 与 `content_hash`。后续只能在下面两条工作流中选择一条；不要先创建记录，再调用一体化入口重复创建。
 
 一体化导入适合让 Tasker 完成“创建记录 → 解析 → 可选索引”：
 
@@ -65,4 +65,4 @@ Neo4j 的 URI、用户名和密码通过部署环境配置，字段名以 `.env.
 - 图谱状态与构建：[milvus_graph_service.py](https://github.com/xerrors/ARS/blob/main/backend/package/ars/knowledge/graphs/milvus_graph_service.py)
 - 部署变量：[.env.template](https://github.com/xerrors/ARS/blob/main/.env.template)、[docker-compose.yml](https://github.com/xerrors/ARS/blob/main/docker-compose.yml)、[docker-compose.prod.yml](https://github.com/xerrors/ARS/blob/main/docker-compose.prod.yml)
 
-API 调用前以当前 `/docs` OpenAPI 页面核对请求 schema。修改本文涉及的行为时，至少运行知识库权限 unit 与真实 HTTP integration；涉及 MinIO、Milvus 或 Neo4j 时，从对应存储回读结果。
+API 调用前以当前 `/docs` OpenAPI 页面核对请求 schema。修改本文涉及的行为时，至少运行知识库权限 unit 与真实 HTTP integration；涉及 Silo、Milvus 或 Neo4j 时，从对应存储回读结果。

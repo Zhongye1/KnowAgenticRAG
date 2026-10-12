@@ -24,7 +24,7 @@ flowchart LR
         Manager --> MilvusKB["MilvusKB\n文档型 executor"]
         Manager --> Connector["DifyKB / NotionKB\n只读 connector"]
         MilvusKB --> PG[("PostgreSQL")]
-        MilvusKB --> Object[("MinIO")]
+        MilvusKB --> Object[("Silo")]
         MilvusKB --> Vector[("Milvus")]
         MilvusKB --> Graph[("Neo4j，可选")]
         Connector --> External["外部检索 API"]
@@ -41,15 +41,15 @@ HTTP 路由只负责授权、请求编排和任务提交；知识库类型选择
 
 ## 文档状态机
 
-文档上传与入库是三个可分别观察的动作。上传接口先把原文件写入 MinIO；`add_file_record` 再在 PostgreSQL 创建 `uploaded` 文件记录。解析和索引使用条件更新抢占状态，只有允许的前置状态可以成为当前动作 Owner：
+文档上传与入库是三个可分别观察的动作。上传接口先把原文件写入 Silo；`add_file_record` 再在 PostgreSQL 创建 `uploaded` 文件记录。解析和索引使用条件更新抢占状态，只有允许的前置状态可以成为当前动作 Owner：
 
 ```mermaid
 stateDiagram-v2
-    [*] --> uploaded: 原文件已写 MinIO\n文件记录已创建
+    [*] --> uploaded: 原文件已写 Silo\n文件记录已创建
     uploaded --> parsing: 条件抢占
     error_parsing --> parsing: 重试解析
     failed --> parsing: 兼容旧状态
-    parsing --> parsed: Markdown 已写 MinIO
+    parsing --> parsed: Markdown 已写 Silo
     parsing --> error_parsing: 解析失败或取消
     parsed --> indexing: 条件抢占
     error_indexing --> indexing: 重试索引
@@ -67,7 +67,7 @@ stateDiagram-v2
 | 存储 | 拥有的事实 | 不拥有的事实 |
 | --- | --- | --- |
 | PostgreSQL | 知识库配置、共享与归属、文件元数据和状态、chunk 正文与图谱处理状态、Tasker 任务摘要 | 原文件字节、解析图片、向量相似度索引 |
-| MinIO | 上传原件、解析后的 Markdown、解析图片 | 文件当前业务状态、用户是否有权读取 |
+| Silo | 上传原件、解析后的 Markdown、解析图片 | 文件当前业务状态、用户是否有权读取 |
 | Milvus | chunk 向量、BM25/混合检索所需字段、图实体与关系的向量索引 | 知识库权限、文件处理状态 |
 | Neo4j | 可选知识图谱中的实体、关系和 chunk 关联 | 文档原件、向量检索结果、知识库授权 |
 | Redis | 知识库最小运行配置缓存 | 配置最终值和任何持久化文档状态 |
@@ -95,7 +95,7 @@ Agent 构建 runtime context 时按 `uid` 查询用户可访问知识库，再�
 
 知识库的最终授权发生在后端依赖、manager 可见性查询和工具目标解析处。读取接口要求当前用户至少拥有 read 权限；更新配置、添加记录、解析、索引、删除和图谱管理要求对应 manage 权限。原文件上传入口还要求管理员身份，并在携带 `kb_id` 时继续校验该库的 manage 权限。共享规则由知识库记录与用户角色、部门等主体共同解析。前端路由守卫、按钮隐藏、prompt 提示和 schema omission 只控制呈现或缩小范围，不授予权限。
 
-Agent 的 `knowledges` 配置只能缩小用户已经拥有的集合，不能扩大权限。SubAgent 沿用发起任务的用户身份，但从子 Agent 自己的 `config_json.context` 加载 `knowledges`，其配置集合可以与父 Agent 不同。工具按各自 runtime context 中的可见快照校验目标；新的 SubAgent 运行会在构建 context 时重新查询该用户权限。下载原件和读取私有解析图片也经后端鉴权代理，不能把 MinIO 对象 URL 当作公开授权凭证。
+Agent 的 `knowledges` 配置只能缩小用户已经拥有的集合，不能扩大权限。SubAgent 沿用发起任务的用户身份，但从子 Agent 自己的 `config_json.context` 加载 `knowledges`，其配置集合可以与父 Agent 不同。工具按各自 runtime context 中的可见快照校验目标；新的 SubAgent 运行会在构建 context 时重新查询该用户权限。下载原件和读取私有解析图片也经后端鉴权代理，不能把 Silo 对象 URL 当作公开授权凭证。
 
 LITE 模式下 `knowledge_capability_enabled()` 返回关闭：知识库 Skill 不注册，Context 的知识库选项被禁用，可见集合解析为空，知识库工具包也不应进入发布启动路径。关闭状态定义产品能力边界；普通服务故障必须显式失败，不能返回空检索结果掩盖异常。
 
@@ -107,7 +107,7 @@ LITE 模式下 `knowledge_capability_enabled()` 返回关闭：知识库 Skill �
 - Tasker 超时、取消或服务重启产生的任务 `failed` 不能直接推导文件状态；动作可能在写入部分外部存储后被中断，必须重新读取文件、chunk、向量和图谱状态。
 - Redis 配置缓存异常时 manager 应回源 PostgreSQL；不支持的知识库类型或已使用 executor 初始化失败会显式阻止初始化，不能静默换成其他持久化语义。
 
-恢复操作从 PostgreSQL 文件状态和错误信息开始，再按状态检查 MinIO、PostgreSQL chunk、Milvus 与 Neo4j。重新提交任务前，先保留故障现场并确认同一文件没有活跃执行 Owner，再选择重新解析、重新索引或图谱修复入口。
+恢复操作从 PostgreSQL 文件状态和错误信息开始，再按状态检查 Silo、PostgreSQL chunk、Milvus 与 Neo4j。重新提交任务前，先保留故障现场并确认同一文件没有活跃执行 Owner，再选择重新解析、重新索引或图谱修复入口。
 
 ## 源码定位与验证
 
@@ -123,4 +123,4 @@ LITE 模式下 `knowledge_capability_enabled()` 返回关闭：知识库 Skill �
 | Skill 工具门控与七个工具实现 | [middlewares/skills.py](https://github.com/xerrors/ARS/blob/main/backend/package/ars/agents/middlewares/skills.py)、[kbs/tools.py](https://github.com/xerrors/ARS/blob/main/backend/package/ars/agents/toolkits/kbs/tools.py) |
 | 知识图谱状态与 Neo4j 写入 | [milvus_graph_service.py](https://github.com/xerrors/ARS/blob/main/backend/package/ars/knowledge/graphs/milvus_graph_service.py) |
 
-纯解析或配置变化先运行对应 knowledge unit；权限、上传、状态迁移和真实存储副作用至少运行 `backend/test/integration/api/test_knowledge_router.py`，外部连接器运行 `test_knowledge_external_router.py`。Tasker 语义用 `test_tasker_behavior.py` 验证，LITE import 边界用 `test_lite_import_boundary.py` 验证。新增 guard 必须包含能恢复目标缺陷的负向案例，并从 PostgreSQL、MinIO、Milvus 或协议结果读取最终事实。
+纯解析或配置变化先运行对应 knowledge unit；权限、上传、状态迁移和真实存储副作用至少运行 `backend/test/integration/api/test_knowledge_router.py`，外部连接器运行 `test_knowledge_external_router.py`。Tasker 语义用 `test_tasker_behavior.py` 验证，LITE import 边界用 `test_lite_import_boundary.py` 验证。新增 guard 必须包含能恢复目标缺陷的负向案例，并从 PostgreSQL、Silo、Milvus 或协议结果读取最终事实。

@@ -10,7 +10,7 @@
 | ------------ | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
 | 后端         | Python 3.13 · FastAPI · LangGraph · ARQ worker                                                 | `backend/server`（HTTP 入口）、`backend/package/ars`（业务与基础设施） |
 | 前端         | React 19 · Vite · TypeScript · Tailwind 4 · shadcn/Radix                                       | `web/`                                                                 |
-| 存储         | PostgreSQL · Redis · MinIO · Milvus · Neo4j                                                    | 由 Compose 提供                                                        |
+| 存储         | PostgreSQL · Redis · Silo（MinIO 兼容分支） · Milvus · Neo4j                                   | 由 Compose 提供                                                        |
 | 命令行客户端 | `ars-cli`                                                                                      | `packages/ars-cli`                                                     |
 | 文档站       | VitePress                                                                                      | `docs/`                                                                |
 | 任务入口     | [Taskfile.yml](Taskfile.yml)（便捷封装）；[docker-compose.yml](docker-compose.yml)（事实来源） | 仓库根                                                                 |
@@ -206,4 +206,4 @@ cd docs && pnpm install && pnpm run dev
 
 ## 许可证
 
-按 `backend/pyproject.toml` 与 `packages/ars-cli/pyproject.toml` 的声明，本项目采用 MIT 许可证。Compose 引入的 Neo4j、MinIO、Milvus、etcd、Redis 等第三方组件保留各自原始许可证，部署与再分发的边界见[生产部署指南](docs/advanced/deployment.md#第三方组件与许可证)。
+按 `backend/pyproject.toml` 与 `packages/ars-cli/pyproject.toml` 的声明，本项目采用 MIT 许可证。Compose 引入的 Neo4j、Silo、Milvus、etcd、Redis 等第三方组件保留各自原始许可证，部署与再分发的边界见[生产部署指南](docs/advanced/deployment.md#第三方组件与许可证)。

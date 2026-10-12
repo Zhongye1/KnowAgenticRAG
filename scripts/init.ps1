@@ -271,7 +271,7 @@ $images = @(
     "node:24-alpine",
     "milvusdb/milvus:v2.5.6",
     "neo4j:5.26.29",
-    "minio/minio:RELEASE.2023-03-20T20-16-18Z",
+    "pgsty/silo:RELEASE.2026-09-16T00-00-00Z",
     "ghcr.io/astral-sh/uv:0.11.26",
     "nginx:alpine",
     "quay.io/coreos/etcd:v3.5.5",

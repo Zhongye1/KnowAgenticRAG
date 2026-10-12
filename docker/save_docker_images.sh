@@ -18,7 +18,7 @@ IMAGES=(
     "nginx:alpine",
     "neo4j:5.26.29",
     "quay.io/coreos/etcd:v3.5.5",
-    "minio/minio:RELEASE.2023-03-20T20-16-18Z",
+    "pgsty/silo:RELEASE.2026-09-16T00-00-00Z",
     "milvusdb/milvus:v2.5.6",
 )
 

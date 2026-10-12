@@ -163,7 +163,7 @@ const cases = [
 const techStack = [
   { group: '前端', items: ['Vue 3', 'Vite', 'Pinia'] },
   { group: '后端', items: ['FastAPI', 'LangGraph', 'ARQ'] },
-  { group: '存储', items: ['PostgreSQL', 'Redis', 'MinIO', 'Milvus', 'Neo4j'] },
+  { group: '存储', items: ['PostgreSQL', 'Redis', 'Silo', 'Milvus', 'Neo4j'] },
   { group: '解析', items: ['MinerU', 'PaddleX', 'RapidOCR'] },
   { group: '部署', items: ['Docker Compose'] }
 ]
