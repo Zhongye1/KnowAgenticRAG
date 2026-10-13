@@ -1,164 +1,171 @@
-'use client';
-
+/**
+ * 登录后的全站导航列。
+ *
+ * 结构对齐参照实现的 `AppLayout.vue`：品牌区、导航、会话列表、底部（GitHub、日夜切换、
+ * 用户菜单），右侧内容区由 `app/layouts` 装配。导航项的权限与能力门禁只影响入口可见性，
+ * 授权仍由后端执行。
+ */
+import { GitHubLogoIcon } from '@radix-ui/react-icons';
+import { Tooltip } from 'antd';
+import { Search } from 'lucide-react';
 import * as React from 'react';
-import {
-  Bot,
-  LayoutGrid,
-  LibraryBig,
-  MessageSquarePlus,
-  Search,
-  Sparkles,
-  UserRound,
-} from 'lucide-react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 
+import {
+  useIsSuperuser,
+  useLogout,
+  useShellBranding,
+} from '@/entities/session';
+import { useKnowledgeEnabled } from '@/entities/session';
 import {
   ConversationList,
   GlobalSearchModal,
   useThreadList,
 } from '@/features/chat';
-import { paths } from '@/shared/config';
-import { useIsSuperuser, useLogout, useUser } from '@/entities/session';
-import { useKnowledgeEnabled } from '@/entities/session';
+import { REPO_URL, paths } from '@/shared/config';
+import { DayNightSwitcher } from '@/shared/ui/DayNightSwitcher';
+
+import { buildNavItems, isNavItemActive } from '../lib/nav-items';
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarRail,
-  useSidebar,
-} from '@/shared/ui/sidebar';
-
-import { NavUser } from './user-menu';
-
-const NEW_CHAT_TAB = {
-  title: '新建对话',
-  url: paths.app.chat.getHref(),
-  icon: MessageSquarePlus,
-} as const;
-
-const NAV_TABS = [
-  { title: '个人空间', url: paths.app.workspace.getHref(), icon: UserRound },
-  { title: '智能体管理', url: paths.app.agentManage.getHref(), icon: Bot },
-] as const;
-
-const EXTENSIONS_TAB = {
-  title: '扩展',
-  url: paths.app.extensions.getHref(),
-  icon: LibraryBig,
-} as const;
-
-// 数据总览入口与业务导航分开声明，便于按角色拼接
-const DASHBOARD_TAB = {
-  title: '数据总览',
-  url: paths.app.dashboard.getHref(),
-  icon: LayoutGrid,
-} as const;
+  readSidebarCollapsed,
+  writeSidebarCollapsed,
+} from '../lib/sidebar-preference';
+import styles from './app-sidebar.module.css';
+import { SidebarBrand } from './sidebar-brand';
+import { UserMenu } from './user-menu';
 
 /** 低频同步：12 秒一次，折叠或页面不可见时跳过。 */
 const THREAD_STATUS_SYNC_INTERVAL_MS = 12 * 1000;
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { threadId } = useParams<{ threadId?: string }>();
-  const { state: sidebarState, isMobile } = useSidebar();
+  const [collapsed, setCollapsed] = React.useState(
+    () => readSidebarCollapsed() ?? false,
+  );
+  const [searchOpen, setSearchOpen] = React.useState(false);
   const syncStatuses = useThreadList((store) => store.syncStatuses);
   const threads = useThreadList((store) => store.threads);
   const upsertThread = useThreadList((store) => store.upsert);
-  const [searchOpen, setSearchOpen] = React.useState(false);
+  const logout = useLogout();
+  const isSuperuser = useIsSuperuser();
+  const knowledgeEnabled = useKnowledgeEnabled();
+  const branding = useShellBranding();
 
   React.useEffect(() => {
     const timer = window.setInterval(() => {
       if (document.visibilityState !== 'visible') return;
-      // 移动端的 state 只是桌面开合状态，抽屉收起不代表列表不可见
-      if (sidebarState === 'collapsed' && !isMobile) return;
+      if (collapsed) return;
       void syncStatuses();
     }, THREAD_STATUS_SYNC_INTERVAL_MS);
+
     return () => window.clearInterval(timer);
-  }, [isMobile, sidebarState, syncStatuses]);
-  const user = useUser();
-  const logout = useLogout();
-  const knowledgeEnabled = useKnowledgeEnabled();
+  }, [collapsed, syncStatuses]);
 
-  const isActive = (url: string) =>
-    pathname === url || pathname.startsWith(`${url}/`);
+  const toggleSidebar = () => {
+    // 写入失败只影响下次刷新，不阻断本次折叠。写入放在 setState 之外：
+    // StrictMode 下 updater 会执行两次，updater 必须保持纯。
+    writeSidebarCollapsed(!collapsed);
+    setCollapsed(!collapsed);
+  };
 
-  const navTabs = [
-    NEW_CHAT_TAB,
-    ...NAV_TABS,
-    // LITE 模式不注册知识域路由，入口随之隐藏；取不到投影时按可用处理，避免首屏闪烁
-    ...(knowledgeEnabled === false ? [] : [EXTENSIONS_TAB]),
-    // 数据总览入口只对超管展示（体验级约束，后端权限才是边界）
-    ...(useIsSuperuser() ? [DASHBOARD_TAB] : []),
-  ];
+  const navItems = buildNavItems({
+    knowledgeEnabled: knowledgeEnabled === true,
+    isSuperuser,
+  });
 
   return (
-    <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
-              <Link to={paths.home.getHref()}>
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                  <Sparkles className="size-4" />
-                </div>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">ARS</span>
-                  <span className="truncate text-xs">知识智能体平台</span>
-                </div>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="搜索会话"
-              onClick={() => setSearchOpen(true)}
-            >
-              <Search className="size-4" aria-hidden />
-              <span>搜索会话</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-      <SidebarContent>
-        <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-          <SidebarGroupLabel>历史会话</SidebarGroupLabel>
-          <ConversationList currentThreadId={threadId} />
-        </SidebarGroup>
-        <SidebarGroup>
-          <SidebarMenu>
-            {navTabs.map((item) => (
-              <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isActive(item.url)}
-                  tooltip={item.title}
+    <aside
+      className={`${styles.sidebar} ${collapsed ? styles.sidebarCollapsed : ''}`}
+      aria-label="主导航"
+    >
+      <SidebarBrand
+        brandName={branding.brandName}
+        avatar={branding.avatar}
+        collapsed={collapsed}
+        searchActive={searchOpen}
+        onToggle={toggleSidebar}
+        onSearch={() => setSearchOpen(true)}
+      />
+
+      <nav className={styles.nav} aria-label="页面导航">
+        {navItems.map((item) => {
+          const active = isNavItemActive(item, pathname);
+
+          return (
+            <React.Fragment key={item.title}>
+              <Tooltip
+                title={item.title}
+                placement="right"
+                open={collapsed ? undefined : false}
+              >
+                <Link
+                  to={item.url}
+                  className={[
+                    styles.navItem,
+                    item.primary ? styles.primaryAction : '',
+                    active ? styles.navItemActive : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  aria-current={active ? 'page' : undefined}
                 >
-                  <Link to={item.url}>
-                    <item.icon />
-                    <span>{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </SidebarGroup>
-      </SidebarContent>
-      <SidebarFooter>
-        <NavUser
-          user={{
-            name: user.data?.username ?? '未登录',
-            email: user.data?.department_name ?? '',
-          }}
-          onLogout={() => logout.mutate(undefined)}
-        />
-      </SidebarFooter>
+                  <item.icon className={styles.icon} aria-hidden />
+                  <span className={styles.navText}>{item.title}</span>
+                </Link>
+              </Tooltip>
+              {/* 参照在折叠态把搜索入口放在主导航项之后；展开态由品牌区的搜索按钮承担 */}
+              {item.primary && collapsed ? (
+                <Tooltip title="搜索" placement="right">
+                  <button
+                    type="button"
+                    className={`${styles.navItem} ${searchOpen ? styles.navItemActive : ''}`}
+                    aria-label="搜索"
+                    onClick={() => setSearchOpen(true)}
+                  >
+                    <Search className={styles.icon} aria-hidden />
+                  </button>
+                </Tooltip>
+              ) : null}
+            </React.Fragment>
+          );
+        })}
+      </nav>
+
+      <div className={styles.fill}>
+        {/* 参照在折叠态不渲染会话列表，只留空白填充区 */}
+        {collapsed ? null : (
+          <div className={styles.conversations}>
+            <ConversationList currentThreadId={threadId} />
+          </div>
+        )}
+      </div>
+
+      <div className={styles.footer}>
+        <a
+          className={`${styles.navItem} ${styles.github}`}
+          href={REPO_URL}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <GitHubLogoIcon className={styles.icon} aria-hidden />
+          <span className={styles.navText}>GitHub</span>
+        </a>
+        {/* 折叠态只有 39px 内容宽，44px 的开关放不下，会被 overflow 裁掉；参照也没有这一行 */}
+        {collapsed ? null : (
+          <div className={styles.navItem}>
+            <DayNightSwitcher />
+            <span className={styles.navText}>日夜模式</span>
+          </div>
+        )}
+        <div className={styles.userInfo}>
+          <UserMenu
+            collapsed={collapsed}
+            onLogout={() => logout.mutate(undefined)}
+          />
+        </div>
+      </div>
 
       <GlobalSearchModal
         open={searchOpen}
@@ -174,8 +181,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           navigate(paths.app.chat.getHref(thread.id));
         }}
       />
-
-      <SidebarRail />
-    </Sidebar>
+    </aside>
   );
 }

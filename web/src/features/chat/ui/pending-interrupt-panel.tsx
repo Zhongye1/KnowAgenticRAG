@@ -1,4 +1,16 @@
+/**
+ * 审批卡片的交互逻辑与装配。
+ *
+ * 参照实现 HumanApprovalModal.vue：工具审批与提问共用一张卡，落在输入框位置的
+ * grid 叠层上（页面装配见 pages/chat/ui/chat-page.tsx 的 `.inputStage`）。审批发
+ * `{ decisions }`（与 actionRequests 一一对应），提问发「问题 id → 选项」映射，
+ * 取消统一发 `'reject'`。
+ *
+ * 与参照的差异：参照的多步审批支持逐条「允许」后回退，本仓的审批窗口是模态的，
+ * 逐条没有可撤销语义，保留 N/M 进度但决定即推进。
+ */
 import * as React from 'react';
+import { ChevronDown, Wrench } from 'lucide-react';
 
 import {
   buildQuestionAnswers,
@@ -6,33 +18,32 @@ import {
   INTERRUPT_REJECT,
   type QuestionSelection,
 } from '../lib/approval-answers';
-import type { PendingInterrupt } from '../lib/pending-interrupt';
+import type {
+  PendingInterrupt,
+  QuestionInterrupt,
+} from '../lib/pending-interrupt';
+import type { ToolApprovalInterrupt } from '../lib/pending-interrupt';
 import { getToolApprovalSummary } from '../lib/tool-approval';
-import { Button } from '@/shared/ui/button';
-import { Input } from '@/shared/ui/input';
+import { getToolIcon } from './tool-icons';
+import styles from './approval-modal.module.css';
 
-type PendingInterruptPanelProps = {
+type ApprovalModalProps = {
   interrupt: PendingInterrupt;
   disabled?: boolean;
   onSubmit: (resume: unknown) => void;
   onCancel: () => void;
 };
 
-/**
- * 审批与提问的交互面板。
- *
- * 作为对话流内的一块，语义与提交载荷一致：审批发 `{ decisions }`，提问发「问题 id → 选项」
- * 的映射，取消统一发 `'reject'`。
- */
+/** 审批卡的对外形态：kind 决定渲染分支。 */
 export const PendingInterruptPanel = ({
   interrupt,
   disabled = false,
   onSubmit,
   onCancel,
-}: PendingInterruptPanelProps) => {
+}: ApprovalModalProps) => {
   if (interrupt.kind === 'tool_approval') {
     return (
-      <ToolApprovalPanel
+      <ToolApprovalCard
         interrupt={interrupt}
         disabled={disabled}
         onSubmit={onSubmit}
@@ -40,9 +51,8 @@ export const PendingInterruptPanel = ({
       />
     );
   }
-
   return (
-    <QuestionPanel
+    <QuestionCard
       interrupt={interrupt}
       disabled={disabled}
       onSubmit={onSubmit}
@@ -51,212 +61,392 @@ export const PendingInterruptPanel = ({
   );
 };
 
-type PanelProps = Omit<PendingInterruptPanelProps, 'interrupt'> & {
-  interrupt: Extract<PendingInterrupt, { kind: 'tool_approval' }>;
+/* ==================== 工具审批 ==================== */
+
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  write_file: '写入文件',
+  edit_file: '编辑文件',
+  execute: '执行命令',
 };
 
-/** 逐条工具调用给出批准/拒绝，提交时与 actionRequests 一一对应。 */
-const ToolApprovalPanel = ({
+const toolDisplayName = (name: unknown): string => {
+  const key = typeof name === 'string' ? name : '';
+  return TOOL_DISPLAY_NAMES[key] || key || '工具调用';
+};
+
+const formatToolArgs = (args: unknown): string => {
+  if (args === null || args === undefined) return '';
+  if (typeof args === 'string') return args;
+  try {
+    return JSON.stringify(args, null, 2);
+  } catch {
+    return String(args);
+  }
+};
+
+/** 工具审批的问题文案：参照按工具名给出固定问句。 */
+const getToolApprovalQuestion = (request: { name?: unknown }): string => {
+  const name = typeof request?.name === 'string' ? request.name : '';
+  if (name === 'execute') return '要执行这条命令吗？';
+  if (name === 'write_file' || name === 'edit_file') return '要写入这个文件吗？';
+  return '要允许这次工具调用吗？';
+};
+
+type ToolApprovalCardProps = {
+  interrupt: ToolApprovalInterrupt;
+  disabled: boolean;
+  onSubmit: (resume: unknown) => void;
+  onCancel: () => void;
+};
+
+/** 单卡逐条过 actionRequests：允许/拒绝当前条，进度条 N/M。 */
+const ToolApprovalCard = ({
   interrupt,
   disabled,
   onSubmit,
   onCancel,
-}: PanelProps) => {
-  const [selections, setSelections] = React.useState<
+}: ToolApprovalCardProps) => {
+  const [activeIndex, setActiveIndex] = React.useState(0);
+  // 已有条目的决定；提交时与 actionRequests 一一对应
+  const [decisions, setDecisions] = React.useState<
     Record<number, 'approve' | 'reject'>
-  >(() =>
-    Object.fromEntries(
-      interrupt.actionRequests.map((_, index) => [index, 'approve']),
-    ),
+  >({});
+  const [argsExpanded, setArgsExpanded] = React.useState(false);
+
+  const requests = interrupt.actionRequests as Array<{ name?: unknown; args?: unknown }>;
+  const activeRequest = requests[activeIndex] ?? null;
+  const ActiveToolIcon =
+    getToolIcon(
+      typeof activeRequest?.name === 'string' ? activeRequest.name : '',
+    ) || Wrench;
+  const allDecided = requests.every(
+    (_, index) => decisions[index] !== undefined,
   );
 
-  const toggle = (index: number) =>
-    setSelections((current) => ({
-      ...current,
-      [index]: current[index] === 'approve' ? 'reject' : 'approve',
-    }));
+  const decide = (decision: 'approve' | 'reject') => {
+    const next = { ...decisions, [activeIndex]: decision };
+    setDecisions(next);
+    // 还有没过完的条目就推进到下一条；全部过完即提交
+    const nextUnanswered = requests.findIndex(
+      (_, index) => index > activeIndex && next[index] === undefined,
+    );
+    if (nextUnanswered !== -1) {
+      setActiveIndex(nextUnanswered);
+      setArgsExpanded(false);
+      return;
+    }
+    onSubmit(buildToolApprovalResumeFromDecisions(requests.length, next));
+  };
 
   return (
-    <div className="flex flex-col gap-3 rounded-large border border-color-warning-3 bg-color-bg-2 p-4">
-      <p className="text-sm font-medium">需要你确认以下操作</p>
-      {interrupt.actionRequests.map((request, index) => (
-        <div key={index} className="flex items-center justify-between gap-3">
-          <span className="truncate text-sm text-color-text-2">
-            {getToolApprovalSummary(request)}
-          </span>
-          <Button
-            type="button"
-            size="sm"
-            variant={selections[index] === 'approve' ? 'default' : 'outline'}
-            disabled={disabled}
-            onClick={() => toggle(index)}
-          >
-            {selections[index] === 'approve' ? '已批准' : '已拒绝'}
-          </Button>
+    <div
+      className={`${styles.approvalModal} ${styles.approvalModalIsToolApproval}`}
+      role="dialog"
+      aria-labelledby="tool-approval-question"
+    >
+      <div className={styles.approvalContent}>
+        <div className={`${styles.approvalHeader} ${styles.toolApprovalHeader}`}>
+          <div className={styles.toolApprovalContext}>
+            <span className={styles.toolApprovalIcon}>
+              <ActiveToolIcon size={17} />
+            </span>
+            <span>{toolDisplayName(activeRequest?.name)}</span>
+            <code>{String(activeRequest?.name ?? '')}</code>
+          </div>
+          {requests.length > 1 ? (
+            <span className={styles.toolProgressLabel}>
+              {activeIndex + 1} / {requests.length}
+            </span>
+          ) : null}
         </div>
-      ))}
-      <div className="flex gap-2">
-        <Button
+
+        {requests.length > 1 ? (
+          <div
+            className="flex items-center gap-1.5"
+            style={{ marginBottom: 10 }}
+            aria-label="审批进度"
+          >
+            {requests.map((_, index) => (
+              <span
+                key={index}
+                className={`inline-flex size-6 items-center justify-center rounded-full border text-xs font-semibold ${
+                  index === activeIndex
+                    ? 'border-[var(--main-300)] bg-[var(--main-50)] text-[var(--main-700)]'
+                    : decisions[index] !== undefined
+                      ? 'border-[var(--gray-300)] bg-[var(--gray-100)] text-[var(--color-text)]'
+                      : 'border-[var(--gray-150)] bg-[var(--gray-25)] text-[var(--color-text-secondary)]'
+                }`}
+              >
+                {index + 1}
+              </span>
+            ))}
+          </div>
+        ) : null}
+
+        <h4 id="tool-approval-question" className={styles.toolApprovalQuestion}>
+          {getToolApprovalQuestion(activeRequest ?? undefined)}
+        </h4>
+
+        {activeRequest ? (
+          <div className={styles.toolArgsDisclosure}>
+            <button
+              id="tool-approval-summary"
+              type="button"
+              className={styles.toolArgsTrigger}
+              aria-expanded={argsExpanded}
+              aria-controls="tool-approval-full-args"
+              onClick={() => setArgsExpanded((current) => !current)}
+            >
+              <code>{getToolApprovalSummary(activeRequest) || String(activeRequest.name ?? '')}</code>
+              <ChevronDown
+                size={15}
+                className={`${styles.toolArgsChevron} ${
+                  argsExpanded ? styles.toolArgsChevronExpanded : ''
+                }`}
+              />
+            </button>
+            {argsExpanded ? (
+              <pre
+                id="tool-approval-full-args"
+                className={styles.toolArgsExpanded}
+              >
+                {formatToolArgs(activeRequest.args)}
+              </pre>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      <div
+        className={`${styles.approvalActions} ${styles.approvalActionsToolApproval}`}
+      >
+        <button
           type="button"
-          disabled={disabled}
-          onClick={() =>
-            onSubmit(
-              buildToolApprovalResume(
-                selections,
-                interrupt.actionRequests.length,
-              ),
-            )
-          }
-        >
-          提交
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
+          className={`${styles.approvalBtn} ${styles.approvalBtnReject}`}
           disabled={disabled}
           onClick={onCancel}
         >
-          全部拒绝
-        </Button>
+          拒绝全部
+        </button>
+        <button
+          type="button"
+          className={`${styles.approvalBtn} ${styles.approvalBtnReject}`}
+          disabled={disabled || allDecided}
+          onClick={() => decide('reject')}
+        >
+          拒绝
+        </button>
+        <button
+          type="button"
+          className={`${styles.approvalBtn} ${styles.approvalBtnApprove}`}
+          disabled={disabled || allDecided}
+          onClick={() => decide('approve')}
+        >
+          允许
+        </button>
       </div>
     </div>
   );
 };
 
-type QuestionPanelProps = Omit<PendingInterruptPanelProps, 'interrupt'> & {
-  interrupt: Extract<PendingInterrupt, { kind: 'question' }>;
+/** 把逐条决定折成后端 resume 载荷；未决定的条目按拒绝处理（fail-closed）。 */
+const buildToolApprovalResumeFromDecisions = (
+  total: number,
+  decisions: Record<number, 'approve' | 'reject'>,
+): unknown =>
+  buildToolApprovalResume(
+    Object.fromEntries(
+      Array.from({ length: total }, (_, index) => [
+        index,
+        decisions[index] ?? 'reject',
+      ]),
+    ),
+    total,
+  );
+
+/* ==================== 提问 ==================== */
+
+type QuestionCardProps = {
+  interrupt: QuestionInterrupt;
+  disabled: boolean;
+  onSubmit: (resume: unknown) => void;
+  /** 参照的「取消」即 reject 提交，本卡片没有独立的取消路径。 */
+  onCancel?: () => void;
 };
 
-/** 逐题选择；多选可多值，勾「其他」时附带自由文本。 */
-const QuestionPanel = ({
+/** 多题 tab 逐题作答；单选/多选/「其他」自由文本与参照同构。 */
+const QuestionCard = ({
   interrupt,
   disabled,
   onSubmit,
-  onCancel,
-}: QuestionPanelProps) => {
+}: QuestionCardProps) => {
+  const [activeIndex, setActiveIndex] = React.useState(0);
   const [selections, setSelections] = React.useState<
     Record<string, QuestionSelection>
   >({});
+  const multi = interrupt.questions.length > 1;
 
+  const activeQuestion = interrupt.questions[activeIndex];
   const selectionFor = (questionId: string): QuestionSelection =>
     selections[questionId] ?? { selected: [] };
 
   const updateSelection = (questionId: string, next: QuestionSelection) =>
     setSelections((current) => ({ ...current, [questionId]: next }));
 
-  const toggleOption = (
-    questionId: string,
-    value: string,
-    multiSelect: boolean,
-  ) => {
-    const current = selectionFor(questionId).selected;
+  const toggleOption = (value: string) => {
+    if (!activeQuestion) return;
+    const current = selectionFor(activeQuestion.questionId).selected;
     const next = current.includes(value)
       ? current.filter((item) => item !== value)
-      : multiSelect
+      : activeQuestion.multiSelect
         ? [...current, value]
         : [value];
-    updateSelection(questionId, {
-      ...selectionFor(questionId),
+    updateSelection(activeQuestion.questionId, {
+      ...selectionFor(activeQuestion.questionId),
       selected: next,
     });
   };
 
+  const isAnswered = (index: number): boolean => {
+    const question = interrupt.questions[index];
+    if (!question) return false;
+    return selectionFor(question.questionId).selected.length > 0;
+  };
+
+  const canSubmit = interrupt.questions.every(
+    (question) => selectionFor(question.questionId).selected.length > 0,
+  );
+
+  if (!activeQuestion) return null;
+
   return (
-    <div className="flex flex-col gap-4 rounded-large border border-color-border-1 bg-color-bg-2 p-4">
-      {interrupt.questions.map((question) => {
-        const selection = selectionFor(question.questionId);
-        const otherValue = `${question.questionId}__other__`;
-        return (
-          <div key={question.questionId} className="flex flex-col gap-2">
-            <p className="text-sm font-medium">{question.question}</p>
-            <div className="flex flex-wrap gap-2">
-              {question.options.map((option) => (
-                <Button
-                  key={option.value}
-                  type="button"
-                  size="sm"
-                  variant={
-                    selection.selected.includes(option.value)
-                      ? 'default'
-                      : 'outline'
+    <div className={styles.approvalModal} role="dialog">
+      <div className={styles.approvalContent}>
+        {multi ? (
+          <div className={styles.questionTabs}>
+            {interrupt.questions.map((question, index) => (
+              <button
+                key={question.questionId}
+                type="button"
+                className={`${styles.tabItem} ${
+                  index === activeIndex ? styles.tabItemActive : ''
+                }`}
+                disabled={disabled}
+                onClick={() => setActiveIndex(index)}
+              >
+                <span
+                  className={styles.tabIndex}
+                  style={
+                    isAnswered(index)
+                      ? { color: 'var(--main-700)' }
+                      : undefined
                   }
-                  disabled={disabled}
-                  onClick={() =>
-                    toggleOption(
-                      question.questionId,
-                      option.value,
-                      question.multiSelect,
-                    )
-                  }
+                >
+                  {index + 1}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        <div className={styles.approvalHeader}>
+          <h4>
+            {activeIndex + 1}. {activeQuestion.question}
+          </h4>
+        </div>
+
+        {activeQuestion.operation ? (
+          <div className={styles.approvalOperation}>
+            <span className={styles.label}>操作：</span>
+            <span className={styles.operationText}>
+              {activeQuestion.operation}
+            </span>
+          </div>
+        ) : null}
+
+        <div className={styles.questionOptions}>
+          {activeQuestion.options.map((option, optionIndex) => (
+            <label
+              key={`${activeQuestion.questionId}-${option.value}-${optionIndex}`}
+              className={styles.optionItem}
+            >
+              <input
+                type={activeQuestion.multiSelect ? 'checkbox' : 'radio'}
+                name={`approval-option-${activeQuestion.questionId}`}
+                value={option.value}
+                checked={selectionFor(activeQuestion.questionId).selected.includes(
+                  option.value,
+                )}
+                disabled={disabled}
+                onChange={() => toggleOption(option.value)}
+              />
+              <span className={styles.optionContent}>
+                <span
+                  className={`${styles.optionLabel} ${
+                    optionIndex === 0 &&
+                    String(option.label).includes('(Recommended)')
+                      ? styles.optionLabelRecommended
+                      : ''
+                  }`}
                 >
                   {option.label}
-                </Button>
-              ))}
-              {question.allowOther ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={selection.otherSelected ? 'default' : 'outline'}
-                  disabled={disabled}
-                  onClick={() =>
-                    updateSelection(question.questionId, {
-                      ...selection,
-                      selected: selection.otherSelected
-                        ? selection.selected.filter(
-                            (item) => item !== otherValue,
-                          )
-                        : [...selection.selected, otherValue],
-                      otherSelected: !selection.otherSelected,
-                    })
-                  }
-                >
-                  其他
-                </Button>
-              ) : null}
-            </div>
-            {question.allowOther && selection.otherSelected ? (
-              <Input
-                value={selection.otherText ?? ''}
+                </span>
+                {option.description ? (
+                  <span className={styles.optionDescription}>
+                    {option.description}
+                  </span>
+                ) : null}
+              </span>
+            </label>
+          ))}
+
+          {activeQuestion.allowOther ? (
+            <div className={styles.otherInput}>
+              <textarea
+                rows={1}
+                placeholder="其他：请输入自定义内容"
+                aria-label={`${activeQuestion.question} 的其他回答`}
                 disabled={disabled}
-                placeholder="补充你的回答"
-                aria-label={`${question.question} 的其他回答`}
-                onChange={(event) =>
-                  updateSelection(question.questionId, {
+                value={selectionFor(activeQuestion.questionId).otherText ?? ''}
+                onChange={(event) => {
+                  const otherValue = `${activeQuestion.questionId}__other__`;
+                  const value = event.target.value;
+                  const selection = selectionFor(activeQuestion.questionId);
+                  updateSelection(activeQuestion.questionId, {
                     ...selection,
-                    otherText: event.target.value,
-                  })
-                }
+                    otherText: value,
+                    selected: value
+                      ? Array.from(
+                          new Set([...selection.selected, otherValue]),
+                        )
+                      : selection.selected.filter((item) => item !== otherValue),
+                  });
+                }}
               />
-            ) : null}
-          </div>
-        );
-      })}
-      <div className="flex gap-2">
-        <Button
+            </div>
+          ) : null}
+        </div>
+      </div>
+
+      <div className={styles.approvalActions}>
+        <button
           type="button"
+          className={`${styles.approvalBtn} ${styles.approvalBtnReject}`}
+          onClick={() => onSubmit(INTERRUPT_REJECT)}
           disabled={disabled}
+        >
+          取消
+        </button>
+        <button
+          type="button"
+          className={`${styles.approvalBtn} ${styles.approvalBtnApprove}`}
+          disabled={disabled || !canSubmit}
           onClick={() =>
             onSubmit(buildQuestionAnswers(interrupt.questions, selections))
           }
         >
           提交
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          onClick={() => onSubmit(INTERRUPT_REJECT)}
-        >
-          跳过
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          disabled={disabled}
-          onClick={onCancel}
-        >
-          取消
-        </Button>
+        </button>
       </div>
     </div>
   );

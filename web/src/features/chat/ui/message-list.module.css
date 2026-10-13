@@ -1,0 +1,53 @@
+/* 对话消息列表的布局骨架。参照实现 AgentChatComponent.vue 的
+   `.conv-box`：一轮对话是一条纵向 flex 列，轮与轮之间留 1rem。
+   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.empty {
+  color: var(--gray-500);
+  font-size: 14px;
+}
+
+/* 一轮对话：参照 .conv-box */
+.conversation {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* 折叠的过程摘要行：参照 ConversationProcessGroupComponent 的摘要形态 */
+.processToggle {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 0.25rem;
+  border: none;
+  border-bottom: 1px solid var(--gray-150);
+  background: transparent;
+  padding: 0.25rem 0;
+  font-size: 12px;
+  color: var(--gray-500);
+  cursor: pointer;
+}
+
+.processChevron {
+  width: 1rem;
+  height: 1rem;
+  transition: transform 0.15s ease;
+}
+
+.processChevronCollapsed {
+  transform: rotate(-90deg);
+}
+
+.processList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+}

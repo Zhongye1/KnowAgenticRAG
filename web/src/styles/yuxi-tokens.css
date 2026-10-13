@@ -109,6 +109,10 @@
   --color-warning-700: #d48806; /* 警告色-深 */
   --color-warning-900: #ad6800; /* 警告色-最深 */
 
+  /* 提及候选的关键词命中色：参照 MessageInputComponent.vue 的 .query-match（#fa8c16，
+     金橘色）。参照没有给这个值命名，这里收编成正式变量供 token 门禁校验。 */
+  --query-match-color: #fa8c16;
+
   --color-info-10: #f5fbff; /* 信息色-极浅 */
   --color-info-50: #e6f7ff; /* 信息色-最浅 */
   --color-info-100: #bae7ff; /* 信息色-浅 */

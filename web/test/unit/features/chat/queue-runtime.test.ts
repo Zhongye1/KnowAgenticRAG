@@ -426,6 +426,146 @@ describe('队列运行时', () => {
     });
   });
 
+  it('把 queue_policy 透传给创建请求：引导为 steer', async () => {
+    api.createRun.mockResolvedValue({
+      request_id: 'req-steer',
+      status: 'dispatched',
+      run_id: 'run-steer',
+      thread_id: THREAD,
+    });
+    const runtime = createRuntime();
+
+    await runtime.sendMessage({
+      threadId: THREAD,
+      agentSlug: SLUG,
+      query: '先看这个',
+      queuePolicy: 'steer',
+    });
+
+    expect(api.createRun.mock.calls[0][0].queue_policy).toBe('steer');
+  });
+
+  it('建线程把 project_id 透传给创建请求', async () => {
+    threadApi.createThread.mockResolvedValue({ id: 't-1', agent_id: SLUG });
+    const runtime = createRuntime();
+
+    await runtime.createThread(SLUG, '标题', null, 'p-1');
+
+    expect(threadApi.createThread).toHaveBeenCalledWith(
+      expect.objectContaining({ projectId: 'p-1' }),
+    );
+  });
+
+  it('项目不同就是另一次建线程，不复用同一次创建', async () => {
+    threadApi.createThread.mockResolvedValue({ id: 't-1', agent_id: SLUG });
+    const runtime = createRuntime();
+
+    const first = runtime.createThread(SLUG, '标题', null, 'p-1');
+    const sameProject = runtime.createThread(SLUG, '标题', null, 'p-1');
+    const otherProject = runtime.createThread(SLUG, '标题', null, 'p-2');
+
+    await Promise.all([first, sameProject, otherProject]);
+
+    // 同一个项目复用同一次创建；换了项目就是另一次
+    expect(threadApi.createThread).toHaveBeenCalledTimes(2);
+  });
+
+  it('把会话附件 id 放进请求的 meta，并在受理后回调', async () => {
+    api.createRun.mockResolvedValue({
+      request_id: 'req-att',
+      status: 'dispatched',
+      run_id: 'run-att',
+      thread_id: THREAD,
+    });
+    const onAccepted = vi.fn();
+    const runtime = createRuntime();
+
+    await runtime.sendMessage({
+      threadId: THREAD,
+      agentSlug: SLUG,
+      query: '看下附件',
+      attachmentFileIds: ['f-1', 'f-2'],
+      onAccepted,
+    });
+
+    expect(api.createRun.mock.calls[0][0].meta).toMatchObject({
+      attachment_file_ids: ['f-1', 'f-2'],
+    });
+    expect(onAccepted).toHaveBeenCalledTimes(1);
+  });
+
+  it('没有附件时不带 attachment_file_ids', async () => {
+    api.createRun.mockResolvedValue({
+      request_id: 'req-no-att',
+      status: 'dispatched',
+      run_id: 'run-no-att',
+      thread_id: THREAD,
+    });
+    const runtime = createRuntime();
+
+    await runtime.sendMessage({
+      threadId: THREAD,
+      agentSlug: SLUG,
+      query: '你好',
+      attachmentFileIds: [],
+    });
+
+    expect(api.createRun.mock.calls[0][0].meta).not.toHaveProperty(
+      'attachment_file_ids',
+    );
+  });
+
+  it('把 model_spec 透传给创建请求', async () => {
+    api.createRun.mockResolvedValue({
+      request_id: 'req-model',
+      status: 'dispatched',
+      run_id: 'run-model',
+      thread_id: THREAD,
+    });
+    const runtime = createRuntime();
+
+    await runtime.sendMessage({
+      threadId: THREAD,
+      agentSlug: SLUG,
+      query: '你好',
+      modelSpec: 'siliconflow-cn:qwen-max',
+    });
+
+    expect(api.createRun.mock.calls[0][0].model_spec).toBe('siliconflow-cn:qwen-max');
+  });
+
+  it('不传 modelSpec 时不下发模型，交给后端解析', async () => {
+    api.createRun.mockResolvedValue({
+      request_id: 'req-no-model',
+      status: 'dispatched',
+      run_id: 'run-no-model',
+      thread_id: THREAD,
+    });
+    const runtime = createRuntime();
+
+    await runtime.sendMessage({ threadId: THREAD, agentSlug: SLUG, query: '你好' });
+
+    expect(api.createRun.mock.calls[0][0].model_spec).toBeUndefined();
+  });
+
+  it('不传 queuePolicy 时不带引导语义，交给 api 层的默认值', async () => {
+    api.createRun.mockResolvedValue({
+      request_id: 'req-plain',
+      status: 'dispatched',
+      run_id: 'run-plain',
+      thread_id: THREAD,
+    });
+    const runtime = createRuntime();
+
+    await runtime.sendMessage({
+      threadId: THREAD,
+      agentSlug: SLUG,
+      query: '你好',
+    });
+
+    expect(api.createRun.mock.calls[0][0].queue_policy).toBeUndefined();
+  });
+
   it('带图发送时本地占位就带上图片，用户不必等历史刷新才看到', async () => {
     api.createRun.mockResolvedValue({
       request_id: 'req-img',

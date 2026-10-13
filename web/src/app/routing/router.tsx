@@ -6,7 +6,7 @@ import {
   type RouteObject,
 } from 'react-router';
 
-import { DashboardLayout } from '@/app/layouts/app-shell';
+import { AppShell } from '@/app/layouts/app-shell';
 import { PagePlaceholder } from '@/shared/ui/page-placeholder';
 import { paths } from '@/shared/config';
 
@@ -16,11 +16,11 @@ import { ProtectedRoute } from './protected-route';
 /** 空白布局：首页与鉴权流程不套后台外壳。 */
 const BlankLayout = () => <Outlet />;
 
-/** 后台外壳：侧边栏 + 顶栏，所有登录后的页面共用。 */
+/** 后台外壳：导航列 + 内容区，所有登录后的页面共用。 */
 const AppLayout = () => (
-  <DashboardLayout>
+  <AppShell>
     <Outlet />
-  </DashboardLayout>
+  </AppShell>
 );
 
 const homeRoute = async () => {

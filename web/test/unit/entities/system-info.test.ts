@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   selectHomeBranding,
   selectLoginBranding,
+  selectShellBranding,
 } from '@/entities/session/lib/system-info';
 
 describe('selectLoginBranding', () => {
@@ -101,5 +102,46 @@ describe('selectHomeBranding', () => {
 
   it('配置缺失时 Logo 为空串', () => {
     expect(selectHomeBranding(undefined).logo).toBe('');
+  });
+});
+
+describe('selectShellBranding', () => {
+  it('组织名与组织头像优先', () => {
+    const branding = selectShellBranding({
+      organization: { name: '语析', avatar: '/avatar.jpg' },
+      branding: { name: 'ARS' },
+    });
+
+    expect(branding).toEqual({ brandName: '语析', avatar: '/avatar.jpg' });
+  });
+
+  it('组织名缺失时退到品牌名', () => {
+    const branding = selectShellBranding({
+      organization: { avatar: '/avatar.jpg' },
+      branding: { name: 'ARS' },
+    });
+
+    expect(branding.brandName).toBe('ARS');
+  });
+
+  it('组织名与品牌名都缺失时落到 ARS，而不是空串', () => {
+    expect(selectShellBranding(undefined).brandName).toBe('ARS');
+    expect(selectShellBranding({ organization: {} }).brandName).toBe('ARS');
+  });
+
+  it('头像缺失时为空串，由调用方决定兜底呈现', () => {
+    expect(selectShellBranding(undefined).avatar).toBe('');
+    expect(selectShellBranding({ organization: { name: '语析' } }).avatar).toBe(
+      '',
+    );
+  });
+
+  it('空白字符串按未配置处理', () => {
+    const branding = selectShellBranding({
+      organization: { name: '  ', avatar: '  ' },
+      branding: { name: '  ' },
+    });
+
+    expect(branding).toEqual({ brandName: 'ARS', avatar: '' });
   });
 });

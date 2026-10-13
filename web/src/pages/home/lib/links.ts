@@ -2,14 +2,10 @@
  * 首页用到的站外与站内链接。
  *
  * 参照实现的 `links.ts` 把未克隆的路由指回 ausvector.ai；本仓换成自己的文档站、
- * 仓库与协议页，页面里不再出现参照实现的域名。
+ * 仓库与协议页，页面里不再出现参照实现的域名。文档站与仓库地址由
+ * `shared/config/links.ts` 拥有，这里只做首页的路径组合。
  */
-
-/** 文档站由 `.github/workflows/deploy.yml` 发布到 Pages，VitePress base 是 `/KnowledgeRAG-OGAS/`。 */
-const DOCS_URL = 'https://zhongye1.github.io/KnowledgeRAG-OGAS/';
-
-/** 页脚与顶栏指向的仓库地址。 */
-const REPO_URL = 'https://github.com/Zhongye1/KnowledgeRAG-OGAS';
+import { DOCS_URL, REPO_URL } from '@/shared/config';
 
 export const outbound = {
   docs: DOCS_URL,

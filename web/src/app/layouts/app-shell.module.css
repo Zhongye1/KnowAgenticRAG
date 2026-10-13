@@ -1,0 +1,17 @@
+/* 外壳的布局容器。参照实现 AppLayout.vue 的 `.app-layout` 与 `#app-router-view`：
+   横向两栏，导航列自己撑满高度，内容区独立滚动。 */
+
+.layout {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100vh;
+  min-width: var(--min-width);
+}
+
+.content {
+  flex: 1 1 auto;
+  height: 100%;
+  max-width: 100%;
+  overflow-y: auto;
+}

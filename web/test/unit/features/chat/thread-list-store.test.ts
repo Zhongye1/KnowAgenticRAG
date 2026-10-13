@@ -522,3 +522,29 @@ describe('会话变更动作', () => {
     expect(useThreadList.getState().threads[0]?.thread_status).toBe('loading');
   });
 });
+
+describe('setModelSpec', () => {
+  it('就地记进会话 metadata，保留其它字段', () => {
+    useThreadList.setState({
+      threads: [
+        { id: 'a', agent_id: 'x', metadata: { keep: 1 } },
+        { id: 'b', agent_id: 'x' },
+      ] as never,
+    });
+
+    useThreadList.getState().setModelSpec('a', 'p:m');
+
+    const threads = useThreadList.getState().threads;
+    expect(threads[0]?.metadata).toEqual({ keep: 1, model_spec: 'p:m' });
+    // 其它会话不动
+    expect(threads[1]?.metadata).toBeUndefined();
+  });
+
+  it('列表里没有该会话时是空操作', () => {
+    useThreadList.setState({ threads: [{ id: 'a', agent_id: 'x' }] as never });
+
+    useThreadList.getState().setModelSpec('missing', 'p:m');
+
+    expect(useThreadList.getState().threads[0]?.metadata).toBeUndefined();
+  });
+});

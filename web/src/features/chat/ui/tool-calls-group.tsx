@@ -2,7 +2,8 @@
  * 工具调用组：一行摘要 + 展开后的时间线列表。
  *
  * 摘要文案、名称去重与状态统计集中在纯逻辑里；活跃期间自动展开，活跃结束后收起，
- * 避免正文开始输出时还占着屏幕。
+ * 避免正文开始输出时还占着屏幕。结构与动画对齐参照 ToolCallsGroupComponent.vue：
+ * 展开面板用 grid-rows 0fr→1fr 过渡，展开体带 border-top 灰线。
  */
 import * as React from 'react';
 import { Atom, ChevronDown } from 'lucide-react';
@@ -14,8 +15,11 @@ import {
   normalizeToolCalls,
 } from '../lib/tool-call';
 import { resolveToolRunState, ToolCallRow } from './tool-call-row';
+import styles from './tool-call-row.module.css';
 
 type ToolCallsGroupProps = {
+  /** 透传给每条工具行；见 `ToolCallRow`。 */
+  resolveKbName?: (kbId: string) => string;
   toolCalls: ChatToolCall[];
   /** 该组是不是当前正在发生的一步；用于自动展开。 */
   isActive?: boolean;
@@ -25,6 +29,7 @@ const labelOf = (toolCall: ChatToolCall): string =>
   toolCall.display_label?.trim() || getToolName(getToolCallId(toolCall));
 
 export const ToolCallsGroup = ({
+  resolveKbName,
   toolCalls,
   isActive = false,
 }: ToolCallsGroupProps) => {
@@ -56,50 +61,57 @@ export const ToolCallsGroup = ({
     .join(' · ');
 
   return (
-    <div className="flex flex-col">
+    <div className={styles.groupContainer}>
       <button
         type="button"
-        className="flex w-fit max-w-full items-center gap-2 py-1 text-left text-sm text-color-text-2 hover:text-color-text-1"
+        className={styles.groupToggle}
         aria-expanded={expanded}
         onClick={() => setUserChoice(!expanded)}
       >
-        <Atom className="size-4 shrink-0" aria-hidden />
+        <Atom className={styles.groupIcon} size={14} aria-hidden />
 
-        <span className="flex min-w-0 items-center gap-1">
-          <span className="truncate">
+        <span className={styles.groupSummaryContent}>
+          <span className={styles.groupSummaryTitle}>
             {normalized.length === 1
               ? `调用: ${labelOf(normalized[0]!)}`
               : `已调用 ${normalized.length} 个工具`}
           </span>
           {normalized.length > 1 && namesMeta ? (
             <>
-              <span aria-hidden>·</span>
-              <span className="truncate text-color-text-3">{namesMeta}</span>
+              <span className={styles.groupMetaSeparator} aria-hidden>
+                ·
+              </span>
+              <span className={styles.groupMeta}>{namesMeta}</span>
             </>
           ) : null}
           {statusSummary ? (
-            <span className="shrink-0 text-xs text-color-text-3">
-              {statusSummary}
-            </span>
+            <span className={styles.groupStatusTag}>{statusSummary}</span>
           ) : null}
         </span>
 
         <ChevronDown
-          className={`size-4 shrink-0 transition-transform ${expanded ? '' : '-rotate-90'}`}
+          className={`${styles.groupChevron} ${expanded ? '' : styles.groupChevronCollapsed}`}
+          size={14}
           aria-hidden
         />
       </button>
 
-      {expanded ? (
-        <div className="mt-1 flex flex-col gap-1">
-          {normalized.map((toolCall, index) => (
-            <ToolCallRow
-              key={toolCall.id || `${getToolCallId(toolCall)}-${index}`}
-              toolCall={toolCall}
-            />
-          ))}
+      {/* 参照 .tool-calls-collapse-panel：常驻节点走 grid-rows 动画，不用条件渲染 */}
+      <div
+        className={`${styles.groupPanel} ${expanded ? styles.groupPanelExpanded : ''}`}
+      >
+        <div className={styles.groupPanelInner}>
+          <div className={styles.groupList}>
+            {normalized.map((toolCall, index) => (
+              <ToolCallRow
+                key={toolCall.id || `${getToolCallId(toolCall)}-${index}`}
+                toolCall={toolCall}
+                resolveKbName={resolveKbName}
+              />
+            ))}
+          </div>
         </div>
-      ) : null}
+      </div>
     </div>
   );
 };

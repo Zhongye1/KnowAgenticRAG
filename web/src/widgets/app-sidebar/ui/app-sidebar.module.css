@@ -1,0 +1,311 @@
+/* 导航列样式承接参照实现 AppLayout.vue 的 <style scoped>：Less 嵌套改扁平选择器，
+   @变量改成算好的字面量或 token。参照里模板未使用的 .api-docs / .docs /
+   .theme-toggle-nav 是死规则，不搬；GitHub star 徽标属于本轮非目标，不搬。
+   参照 .primary-action 的 box-shadow 用的是带透明度的黑色字面量，这里换成 --shadow-0
+   与 --shadow-2：CSS Modules 里不允许写颜色字面量，门禁由 check-design-tokens.mjs 执行。 */
+
+.sidebar {
+  display: flex;
+  flex: 0 0 230px;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  gap: 16px;
+  width: 230px;
+  height: 100%;
+  padding: 6px 8px;
+  overflow: hidden;
+  background-color: var(--main-5);
+  border-right: 1px solid var(--gray-100);
+  user-select: none;
+  transition:
+    width 0.18s ease,
+    flex-basis 0.18s ease;
+}
+
+.sidebarCollapsed {
+  flex-basis: 56px;
+  width: 56px;
+}
+
+.brand {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  gap: 8px;
+}
+
+.brandLink {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  min-width: 0;
+  height: 32px;
+  padding: 0 4px;
+  color: var(--gray-900);
+  text-decoration: none;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.brandAvatar {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+/* 组织头像缺失时的兜底：与图片同尺寸的圆角占位，内容取品牌名首字。 */
+.brandAvatarFallback {
+  display: inline-flex;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--main-20);
+  color: var(--main-color);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.brandName {
+  min-width: 0;
+  margin-left: 10px;
+  overflow: hidden;
+  color: var(--gray-1000);
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.headerActions {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 2px;
+}
+
+.headerAction {
+  display: inline-flex;
+  flex: 0 0 30px;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.headerAction:hover,
+.headerAction:focus-visible {
+  background: var(--main-20);
+  color: var(--main-color);
+  outline: none;
+}
+
+.headerActionActive {
+  background: var(--main-20);
+  color: var(--main-color);
+}
+
+.nav {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  position: relative;
+  gap: 2px;
+}
+
+.conversations {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.fill {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.footer {
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: 32px;
+  margin: 0;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--gray-700);
+  font-size: 14px;
+  font-weight: 450;
+  text-decoration: none;
+  cursor: pointer;
+  outline: none;
+  transition:
+    background-color 0.2s ease-in-out,
+    border-color 0.2s ease-in-out,
+    color 0.2s ease-in-out;
+}
+
+/* 「新建对话」是主操作，与其余导航项区分开。 */
+.navItem.primaryAction {
+  margin-bottom: 8px;
+  border-color: var(--gray-150);
+  background-color: var(--gray-0);
+  color: var(--main-color);
+  box-shadow: 0 3px 4px var(--shadow-0);
+}
+
+/* 与参照的 `.nav-item.primary-action:hover` 同为三元素特异性，悬停主操作时压过激活态。 */
+.navItem.primaryAction:hover {
+  border-color: var(--gray-200);
+  background-color: var(--gray-0);
+  color: var(--gray-900);
+  box-shadow: 0 3px 4px var(--shadow-2);
+}
+
+.navItem:hover {
+  border-color: transparent;
+  background-color: var(--gray-50);
+  color: var(--gray-900);
+}
+
+/* 四条规则的源码顺序照抄参照 Less 编译后的顺序（primary → primary:hover → hover → active）：
+   激活态与 hover 同特异性且更靠后，因此激活项被悬停时仍显示激活外观。 */
+.navItem.navItemActive {
+  border-color: transparent;
+  background-color: color-mix(in srgb, var(--gray-100) 6%, var(--gray-100));
+  font-weight: 600;
+  color: var(--gray-1000);
+}
+
+.icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.navText {
+  min-width: 0;
+  max-width: 140px;
+  margin-left: 8px;
+  overflow: hidden;
+  line-height: 20px;
+  font-weight: 450;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition:
+    opacity 0.12s ease,
+    margin-left 0.18s ease,
+    max-width 0.18s ease;
+}
+
+.github {
+  margin-bottom: 8px;
+}
+
+.userInfo {
+  margin-bottom: 8px;
+  padding: 0 3px;
+  overflow: hidden;
+}
+
+/* 折叠态：导航列收到 56px，文字与次要动作让位给图标。
+   参照的 Less 变量在此展开为算好的像素值：
+   @sidebar-collapsed-content-width = 56 - 2*8 - 1 = 39px
+   图标内边距 = (39 - 16 - 2*1) / 2 = 10.5px
+   头像内边距 = (39 - 32 - 2*1) / 2 = 2.5px
+   品牌头像内边距 = (39 - 28) / 2 = 5.5px
+   展开图标内边距 = (39 - 16) / 2 = 11.5px */
+.sidebarCollapsed .brand {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.sidebarCollapsed .brandExpandButton {
+  flex: 0 0 100%;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 0;
+  border-radius: 8px;
+}
+
+.sidebarCollapsed .brandExpandButton .brandAvatar,
+.sidebarCollapsed .brandExpandButton .brandAvatarFallback {
+  margin-left: 5.5px;
+}
+
+.sidebarCollapsed .brandExpandIcon {
+  display: none;
+  width: 16px;
+  height: 16px;
+  margin-left: 11.5px;
+  color: var(--main-color);
+}
+
+.sidebarCollapsed .brandExpandButton:hover,
+.sidebarCollapsed .brandExpandButton:focus-visible {
+  background: var(--main-20);
+  outline: none;
+}
+
+.sidebarCollapsed .brandExpandButton:hover .brandAvatar,
+.sidebarCollapsed .brandExpandButton:hover .brandAvatarFallback,
+.sidebarCollapsed .brandExpandButton:focus-visible .brandAvatar,
+.sidebarCollapsed .brandExpandButton:focus-visible .brandAvatarFallback {
+  display: none;
+}
+
+.sidebarCollapsed .brandExpandButton:hover .brandExpandIcon,
+.sidebarCollapsed .brandExpandButton:focus-visible .brandExpandIcon {
+  display: block;
+}
+
+.sidebarCollapsed .nav {
+  align-items: stretch;
+  width: 100%;
+}
+
+.sidebarCollapsed .navItem {
+  justify-content: flex-start;
+  width: 100%;
+  padding: 0 10.5px;
+}
+
+.sidebarCollapsed .navText {
+  max-width: 0;
+  margin-left: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sidebarCollapsed .userInfo {
+  padding: 0 2.5px;
+}

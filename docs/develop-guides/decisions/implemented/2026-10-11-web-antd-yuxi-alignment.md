@@ -75,6 +75,14 @@ React 19 不变，组件基座换成 antd 5；页面样式用 CSS Modules 与原
 - 首页不含副标题轮播：参照的 hero 描述是静态文案，页面不留没有内容来源的轮播。登录入口在顶栏，按 `useUser()` 的登录态给「进入控制台 / 登录」，未登录时带上回到 `/` 的回跳参数。
 - 不搬参照的 `public/` 图片与视频。MIT 只要求保留版权声明，重写后的代码在文件头注明出处与许可。
 
+### 滚动收缩的首次清理
+
+`web/src/shared/ui` 里零引用的 7 处已删除：`command`、`link`、`page-transition`、`pagination`、`popover`、`resizable`、`form/`。`page-transition` 在 `web/src/index.css` 里的配套规则同样零 consumer，一并删除：`.page-transition`、`::view-transition-*(page-content)`、`vt-page-out` / `vt-page-in` 关键帧、无条件的 `::view-transition-*(root)` 抑制规则，以及 page-content 的 `prefers-reduced-motion` 块。`head` 不在清理范围：`web/src/shared/ui/content-layout.tsx` 以相对路径引用它。
+
+`web/src/index.css` 的主题切换注释块保持 `/*` 与 ` * ` 前缀完整：前缀缺失时该注释被解析成非法选择器，紧随其后的 `html.theme-transitioning::view-transition-*(root) { animation: none; mix-blend-mode: normal; }` 整条被丢弃，主题切换就会叠上浏览器默认的 root 淡入淡出。这条抑制规则与 `DayNightSwitcher` 的 clip-path 过渡配套，只作用于 `html.theme-transitioning` 期间。可观察点：构建产物含 `html.theme-transitioning::view-transition-old(root){mix-blend-mode:normal;animation:none}`；只删 `page-transition` 段而注释仍损坏时，产物里 `mix-blend-mode:normal` 出现 0 次。
+
+随这些组件一并移除的直接依赖：`cmdk`、`@radix-ui/react-label`、`react-hook-form`、`@hookform/resolvers`、`react-resizable-panels`、`zod`，以及本轮引入但无 consumer 的 `@ant-design/icons` 与 `dayjs`。`dayjs` 仍作为 antd 的传递依赖留在 lockfile 里。
+
 ### 决定的范围
 
 本决定覆盖基座与登录页样板。入口与外壳、对话与知识库主链路、扩展面与长尾页面仍按参照实现逐页迁移；`docs/develop-guides/design.md` 的完整视觉规范、Sass mixin 与 Tailwind 布局化的评估、shadcn 与 Tailwind 的移除在全部页面迁完之后进行。
@@ -109,7 +117,7 @@ FSD 与参照实现扁平结构的冲突：参照实现 `components/` 里的跨�
 
 OIDC 回跳目标与一次性标记是参照实现里登录页与回调页共享的契约，回调页属 M5：`readOidcRedirect` 与 `clearAutoStartAttempt` 目前只有契约测试消费，回调页落地时必须接线。
 
-`@ant-design/icons` 与 `dayjs` 目前没有直接 consumer（图标沿用 `lucide-react`，`dayjs` 只是 antd 的传递依赖），按仓库「依赖要有当前 consumer」的约定在后续提交中移除，需要时再装。
+`@ant-design/icons` 与 `dayjs` 没有直接 consumer（图标沿用 `lucide-react`，`dayjs` 只是 antd 的传递依赖），已连同零引用的 shadcn 组件一起移除，需要时再装。
 
 `web/alembic/` 是本地过程台账（决策稿、契约差异表、逐页汇报），被 Git 忽略，不是组织记忆；durable 证据是源码与测试。
 
@@ -120,7 +128,7 @@ OIDC 回跳目标与一次性标记是参照实现里登录页与回调页共享
 | 引入 antd 后现有页面与测试不回归 | `web/src/index.css`、`web/src/app/theme/antd-provider.tsx` | `pnpm run test:unit`（124 文件 / 1425 例）、`pnpm run build`、`pnpm run lint:fsd`、`pnpm run arch:check`（323 模块 / 1212 依赖） | 去掉 `@layer antd` 声明或让 antd 无层注入时，工具类覆盖必须表现为失效 | Inspected（门禁与构建全绿；真实浏览器逐页回归由迁移方执行） |
 | 层叠顺序可预测 | `web/src/index.css` | 构建产物中 `@layer` 首次出现顺序为 `properties, antd, theme, base, components, utilities` | 把 antd 移出 layer 后，`.ant-*` 覆盖与工具类的优先级必须改变 | Inspected |
 | Yuxi token 入库且不污染现有变量 | `web/src/styles/yuxi-tokens.css`、`web/src/styles/tokens.css` | 与参照实现 `base.css` / `base.dark.css` 逐值一致；`pnpm run check:tokens` | 修改 `--primary-6` 时，未迁移页面的 `bg-primary-6` 必须不跟随 | Passed |
-| 硬编码颜色门禁仍有效且无需豁免改动 | `web/scripts/check-design-tokens.mjs` | `pnpm run check:tokens`（脚本未改） | 在 `src/styles/**` 以外的 `.tsx` 写入 hex 时 gate 必须失败；种子色因此落在 `brand.css` | Passed |
+| 硬编码颜色门禁仍有效且无需豁免改动 | `web/scripts/check-design-tokens.mjs` | `pnpm run check:tokens`（本机以 `node scripts/check-design-tokens.mjs` 执行） | 在 `src/styles/**` 以外的 `.tsx` 写入 hex 时 gate 必须失败；种子色因此落在 `brand.css` | Passed（脚本只把取根目录的 `URL.pathname` 换成 `fileURLToPath`，豁免清单未改；注入 hex 后 gate 正确报出该文件） |
 | 逻辑契约先于 UI 落地 | `web/src/entities/session`、`web/src/pages/login` | `test/unit/entities` 与 `test/unit/pages/login-page.test.tsx` 共 54 例 | 移除 423 分支后锁定用例失败；移除 `sanitizeRedirect` 的 `//` 与 `/\` 判断后开放重定向用例失败（均已做「改坏 → 失败 → 还原」验证） | Passed |
 | 登录成功不被弹回登录页 | `web/src/entities/session/model/session.tsx` | `test/unit/entities/session-login-cache.test.tsx` | 把删除缓存改回写 `null` 时两条用例必须失败 | Passed |
 | 登录失败不清掉已有会话 | `web/src/shared/api/base.ts` | `test/unit/shared/api.test.ts`（未认证入口不带凭据、401 只在带凭据时失效） | 去掉未认证入口的跳过或去掉 `credentialed` 判断时对应用例必须失败（已做变异验证） | Passed |
@@ -129,7 +137,8 @@ OIDC 回跳目标与一次性标记是参照实现里登录页与回调页共享
 | 搬运后仍满足 FSD 与依赖方向 | `web/ARCHITECTURE.md`、`web/steiger.config.ts` | `pnpm run lint:fsd`、`pnpm run arch:check` | 在 `pages` 里直接引用 `features` 内部文件时 Steiger 必须报错 | Passed |
 | 视觉与参照实现对齐 | `docs/develop-guides/design.md`、`web/alembic/pages/login/report.md` | 除 `/` 外逐页与 Yuxi 做浅色 / 暗色 / 窄屏截图对照；`/` 与 AusVector 参照做同尺寸对照 | 差异必须落在台账的「声明偏离」清单里 | Not run（迁移方执行） |
 | 首页按 AusVector 基准落地 | `web/src/pages/home`、`web/src/styles/home-*.css` | `pnpm run test:unit`（127 文件 / 1449 例）、`pnpm run build`（49.11s），以及 `home-page.test.tsx`、`nexus-console.test.tsx`、`atlas-carousel.test.ts` 与 `system-info.test.ts` 的品牌投影用例 | 去掉配置加载门禁、去掉顶栏的登录态分支、把接入面板的标签绑定换成固定项、把端点复制换成写死的 MCP 端点、把 CLI 的调用形态写回 `STDIO / POSIX`、把轮播下标改成不回绕时对应用例必须失败（已做变异验证） | Inspected（门禁与构建全绿；logo 粒子轮播的观感与轮播时序、文案定稿、与参照的视觉对照与三态真实页面走查由迁移方执行） |
+| 主题切换的 root 转场抑制在构建产物里生效 | `web/src/index.css` | 产物含 `html.theme-transitioning::view-transition-old(root){mix-blend-mode:normal;animation:none}` | 只删 `page-transition` 段、注释块仍损坏时该规则被浏览器丢弃，产物里 `mix-blend-mode:normal` 出现 0 次（实测即此状态） | Inspected（构建产物已核对；主题切换的真实观感未走查） |
 
-迁移方执行的验证与命令：`docker compose build web && docker compose up -d web`（镜像里的 `node_modules` 早于本次依赖变更）后走查 `/login` 的浅色、暗色与窄屏，并覆盖登录、干净库首次运行、连续错误密码触发 423 三条真实链路；未迁移页面在 antd 基座下的回归截图；`cd web && pnpm remove @ant-design/icons dayjs`；`cd docs && pnpm run build`。逐页台账与截图在 `web/alembic/pages/login/report.md`。
+迁移方执行的验证与命令：走查 `/login` 的浅色、暗色与窄屏，并覆盖登录、干净库首次运行、连续错误密码触发 423 三条真实链路；未迁移页面在 antd 基座下的回归截图；主题切换的真实观感走查；`cd docs && pnpm run build`。逐页台账与截图在 `web/alembic/pages/login/report.md`。
 
-已知未验证范围：其余页面在 antd 基座下的真实浏览器回归、OIDC 真实跳转（本机没有可用的 OIDC 配置）、`@ant-design/icons` 与 `dayjs` 的移除、`design.md` 的完整视觉规范收口、首页与 AusVector 参照的视觉对照、首页照搬文案与 MCP 页的定稿、首页 3D 数据图（logo 粒子轮播）的观感与轮播时序、两张 logo 素材的来源与许可。
+已知未验证范围：其余页面在 antd 基座下的真实浏览器回归、OIDC 真实跳转（本机没有可用的 OIDC 配置）、`design.md` 的完整视觉规范收口、首页与 AusVector 参照的视觉对照、首页照搬文案与 MCP 页的定稿、首页 3D 数据图（logo 粒子轮播）的观感与轮播时序、两张 logo 素材的来源与许可。

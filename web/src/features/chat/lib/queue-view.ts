@@ -60,6 +60,60 @@ export type QueueRowContext = {
   queueStatus: string;
 };
 
+/**
+ * 队列里是否已经有一条**等待执行**的引导请求。
+ *
+ * 只看 `queue_policy` 会把已经派发过的引导算成「还在等」，后续引导因此被一直挡住；
+ * 状态判定与参照的 `hasPendingSteer` 同项。
+ */
+export function hasPendingDirectSteer(
+  requests: ThreadRequest[] | null | undefined,
+): boolean {
+  return (requests ?? []).some(
+    (request) =>
+      request.queue_policy === 'steer' && request.status === 'queued',
+  );
+}
+
+/** 把当前输入作为引导插队所需的条件；与参照的 `canSubmitSteer` 同项。 */
+export type DirectSteerContext = {
+  /** 该线程正在收流。 */
+  isStreaming: boolean;
+  /** 活跃 run 允许被引导。 */
+  activeRunSteerable: boolean;
+  /** 输入框里有待发送的内容。 */
+  hasInput: boolean;
+  /** 当前线程已经绑定智能体；没绑定时提交会被丢弃。 */
+  hasAgent: boolean;
+  /** 队列里已有等待执行的引导请求。 */
+  hasPendingSteer: boolean;
+  /** 正在等用户处理审批或提问。 */
+  isWaitingForUserAction: boolean;
+};
+
+/**
+ * 能否把当前还没发出的输入作为引导插队。
+ *
+ * 与队列条上的 `steer` 是两件事：那个作用于**已排队的请求**，这个作用于当前输入。
+ *
+ * 参照的 `canSubmitSteer` 还要求「不在发送冷却里」。本仓不搬这一项：冷却在参照里是为了
+ * 防止连点触发停止（他们的发送按钮兼作停止），而本仓的停止是独立按钮；提交一旦通过，
+ * 输入框在同一个事件里就被清空，`hasInput` 随即为假，因此没有可重复提交的窗口。
+ *
+ * 多出的一项是 `hasAgent`：线程切换期间智能体可能还没解析出来，那时提交会被丢掉，
+ * 渲染一个点了没反应的入口比不渲染更糟。
+ */
+export function canSubmitDirectSteer(context: DirectSteerContext): boolean {
+  return (
+    context.isStreaming &&
+    context.activeRunSteerable &&
+    context.hasInput &&
+    context.hasAgent &&
+    !context.hasPendingSteer &&
+    !context.isWaitingForUserAction
+  );
+}
+
 export type QueueRowActions = {
   canSteer: boolean;
   canCancel: boolean;

@@ -370,56 +370,55 @@ code {
     source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
 }
 
-*
-  主题切换
-  View
-  Transition（配合
-  DayNightSwitcher）
-  *
-  ----------------------------------------------------------------------------
-  *
-  关闭
-  root
-  视图过渡的默认淡入淡出与
-  plus-lighter
-  混合，再通过
-  z-index
-  控制
-  *
-  新旧快照的层级，让
-  DayNightSwitcher
-  的
-  clip-path
-  圆形过渡可见：
-  *
-  -
-  亮色模式下
-  new
-  在上层（切到亮色时
-  new
-  从点击处扩散）
-  *
-  -
-  暗色模式下
-  old
-  在上层（切到暗色时
-  old
-  向点击处收缩）
-  *
-  页面跳转转场同样复用
-  root
-  快照，因此本组样式必须限定在
-  *
-  html.theme-transitioning
-  内，避免与页面转场动画相互覆盖。
-  *
-  参考：vuejs/vitepress
-  的
-  appearanceTransition、antfu.me
-  *
-  ==========================================================================
-  */
-  html.theme-transitioning::view-transition-old(root),
+/* ============================================================================
+ * 主题切换 View Transition（配合 DayNightSwitcher）
+ * ----------------------------------------------------------------------------
+ * 关闭 root 视图过渡的默认淡入淡出与 plus-lighter 混合，再通过 z-index 控制
+ * 新旧快照的层级，让 DayNightSwitcher 的 clip-path 圆形过渡可见：
+ *
+ * - 亮色模式下 new 在上层（切到亮色时 new 从点击处扩散）
+ * - 暗色模式下 old 在上层（切到暗色时 old 向点击处收缩）
+ *
+ * 动画声明在伪元素选择器上，不用 WAAPI：伪元素从建好到 `transition.ready` 之间至少
+ * 隔一帧，那一帧里新快照按「没有裁切」画。由深转浅时它就是整屏浅色，观感是「先白
+ * 一下，再从圆心展开」。圆心与半径在 `startViewTransition` 之前写到 <html> 上，
+ * 伪元素一建出来就已经裁到 0。
+ *
+ * 本组样式必须限定在 html.theme-transitioning 内，否则会盖掉 root 快照的
+ * 默认过渡行为。
+ *
+ * 参考：vuejs/vitepress 的 appearanceTransition、antfu.me
+ * ==========================================================================
+ */
+
+@property --reveal-x {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 50vw;
+}
+
+@property --reveal-y {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 50vh;
+}
+
+@property --reveal-r {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 100vmax;
+}
+
+@keyframes theme-reveal-expand {
+  from {
+    clip-path: circle(0px at var(--reveal-x) var(--reveal-y));
+  }
+  to {
+    clip-path: circle(var(--reveal-r) at var(--reveal-x) var(--reveal-y));
+  }
+}
+
+html.theme-transitioning::view-transition-old(root),
 html.theme-transitioning::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
@@ -433,68 +432,25 @@ html.theme-transitioning::view-transition-new(root) {
   z-index: 9999;
 }
 
+/*
+ * 每个方向只让一个快照参与裁切，另一个保持 animation: none（整屏画满）垫在下面。
+ *
+ * 两个方向都挂裁切会同时出现内缩与外扩：旧快照半径从 r 收到 0、新快照从 0 涨到 r，
+ * 两个半径互补，中途它们的并集盖不满视口，四角会露出没被任何快照覆盖的区域。
+ * 新快照的正向展开因此必须限定在亮色方向（`:not(.dark)`）。
+ */
+
+/* 切到亮色：新快照在上层，从点击处向外展开；旧快照整屏不动。 */
+html.theme-transitioning:not(.dark)::view-transition-new(root) {
+  animation: theme-reveal-expand 400ms ease-out both;
+}
+
+/* 切到暗色：旧快照在上层向点击处收缩；新快照整屏不动，由收缩露出来。 */
 html.theme-transitioning.dark::view-transition-old(root) {
   z-index: 9999;
+  animation: theme-reveal-expand 400ms ease-out both reverse;
 }
 
 html.theme-transitioning.dark::view-transition-new(root) {
   z-index: 1;
-}
-
-/* ============================================================================
- * 页面跳转 View Transition（配合 react-router 的 Link viewTransition）
- * ----------------------------------------------------------------------------
- * 只有页面内容（.page-transition，view-transition-name: page-content）参与
- * 滑动 / 淡出动画；NavBar、侧边栏等常驻元素留在 root 快照中保持静止。
- * 主题切换期间（html.theme-transitioning）临时把页面内容并入 root 快照，
- * 让圆形扩散覆盖整个页面。不支持的浏览器由 react-router 自动降级。
- * ========================================================================== */
-
-.page-transition {
-  view-transition-name: page-content;
-}
-
-html.theme-transitioning .page-transition {
-  view-transition-name: none;
-}
-
-::view-transition-old(page-content),
-::view-transition-new(page-content) {
-  mix-blend-mode: normal;
-}
-
-::view-transition-old(page-content) {
-  animation: vt-page-out 0.25s ease both;
-}
-
-::view-transition-new(page-content) {
-  animation: vt-page-in 0.3s ease both;
-}
-
-/* 常驻元素（NavBar / 侧边栏 / 背景）不播放转场动画 */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
-  mix-blend-mode: normal;
-}
-
-@keyframes vt-page-out {
-  to {
-    opacity: 0;
-    transform: translateX(-24px);
-  }
-}
-
-@keyframes vt-page-in {
-  from {
-    opacity: 0;
-    transform: translateX(24px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(page-content),
-  ::view-transition-new(page-content) {
-    animation: none;
-  }
 }

@@ -1,0 +1,192 @@
+/* 面板里的文件树样式。参照 AgentPanel.vue 的
+   `.file-tree-container` / `.tree-node-name` / `.node-actions-container` /
+   `.tree-action-btn` / `.empty`，以及 FileTreeComponent.vue 的节点行
+   （32px 行高、6px 圆角、缩进 14px/级）。
+   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+
+/* 参照 .empty——居中 14px gray-500 */
+.notice,
+.errorBox {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--gray-500);
+  padding: 24px;
+  font-size: 14px;
+}
+
+.errorBox {
+  gap: 10px;
+}
+
+.retryBtn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  color: var(--main-600);
+  cursor: pointer;
+}
+
+/* 参照 .file-tree-container——独立滚动 + 6px 灰滚动条 */
+.list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  list-style: none;
+  padding: 0 6px 6px;
+  margin: 0;
+}
+
+.list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.list::-webkit-scrollbar-track {
+  background: var(--gray-50);
+}
+
+.list::-webkit-scrollbar-thumb {
+  background: var(--gray-300);
+  border-radius: 3px;
+}
+
+.list::-webkit-scrollbar-thumb:hover {
+  background: var(--gray-400);
+}
+
+/* 参照 FileTreeComponent 的节点行——32px、6px 圆角、0.15s 过渡、紧排 */
+.nodeRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  padding: 0 4px;
+  font-size: 14px;
+  color: var(--gray-800);
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: background-color 0.15s ease;
+}
+
+.nodeRowSelected {
+  background-color: var(--gray-100);
+}
+
+.nodeRowSelected:hover {
+  background-color: var(--gray-150);
+}
+
+.nodeRow:not(.nodeRowSelected):hover {
+  background-color: var(--gray-50);
+}
+
+/* 展开箭头：参照隐藏 switcher 后自绘的 chevron，小号灰色 */
+.nodeChevron {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: var(--gray-500);
+}
+
+/* 文件 / 目录用彩色类型图标（FileTypeIcon 的 <img>），不是线稿 */
+.nodeFileIcon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+/* 目录图标：参照只渲染 18px 目录图标（懒加载 spinner 同尺寸） */
+.nodeFolderIcon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.nodeSpin {
+  animation: treeSpin 1s linear infinite;
+  color: var(--main-500);
+}
+
+@keyframes treeSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 参照 .tree-node-name——14px gray-800；.name-end 同色 */
+.nodeTitle {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--gray-800);
+}
+
+.nodeTitleStart {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nodeTitleTail {
+  flex-shrink: 0;
+  white-space: nowrap;
+  color: var(--gray-800);
+}
+
+/* 参照 .node-actions-container——hover 显示、gap 4、左距 8px */
+.nodeActions {
+  display: none;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding-left: 8px;
+}
+
+.nodeRow:hover .nodeActions {
+  display: flex;
+}
+
+/* 参照 .tree-action-btn——24px 方钮；下载 hover 主色、删除 hover 红 */
+.nodeActionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--gray-500);
+  cursor: pointer;
+  padding: 0;
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+  }
+}
+
+.nodeDownloadBtn:hover:not(:disabled) {
+  color: var(--main-600);
+}
+
+.nodeDeleteBtn:hover:not(:disabled) {
+  color: var(--color-error-600);
+}
+
+.nodeActionIcon {
+  width: 14px;
+  height: 14px;
+}

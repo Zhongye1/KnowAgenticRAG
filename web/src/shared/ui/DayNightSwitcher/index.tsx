@@ -1,55 +1,35 @@
 import { useEffect, useState, type MouseEvent } from 'react';
-import { flushSync } from 'react-dom';
 
+import {
+  applyTheme,
+  getInitialTheme,
+  toggleTheme,
+  type Theme,
+} from '@/shared/lib/theme';
 import { cn } from '@/shared/lib/utils';
 
 import './day-night-switcher.css';
 
-type Theme = 'light' | 'dark';
-
-const THEME_KEY = 'ars-theme';
 const CLOUD_COUNT = 3;
 const STAR_COUNT = 5;
-
-function readStoredTheme(): string | null {
-  try {
-    return localStorage.getItem(THEME_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function getInitialTheme(): Theme {
-  const stored = readStoredTheme();
-  if (stored === 'light' || stored === 'dark') return stored;
-
-  const bodyTheme = document.body.getAttribute('data-theme');
-  if (bodyTheme === 'light' || bodyTheme === 'dark') return bodyTheme;
-
-  return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
-}
-
-function applyTheme(theme: Theme) {
-  document.body.setAttribute('data-theme', theme);
-  document.documentElement.classList.toggle('dark', theme === 'dark');
-}
 
 type DayNightSwitcherProps = {
   className?: string;
 };
 
+/**
+ * 日夜切换开关。
+ *
+ * 主题状态与切换动作在 `shared/lib/theme.ts`：用户菜单里也有一个切换入口，两处必须
+ * 走同一条路径。这里只在挂载时落一次持久化偏好，并跟随 `body[data-theme]` 同步渲染。
+ */
 export function DayNightSwitcher({ className }: DayNightSwitcherProps) {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const isDark = theme === 'dark';
 
   useEffect(() => {
-    applyTheme(theme);
-    try {
-      localStorage.setItem(THEME_KEY, theme);
-    } catch {
-      // 隐私模式下 localStorage 可能不可用，忽略即可
-    }
-  }, [isDark, theme]);
+    applyTheme(getInitialTheme());
+  }, []);
 
   useEffect(() => {
     const observer = new MutationObserver(() => {
@@ -63,58 +43,8 @@ export function DayNightSwitcher({ className }: DayNightSwitcherProps) {
     return () => observer.disconnect();
   }, []);
 
-  const toggleTheme = (event: MouseEvent<HTMLButtonElement>) => {
-    const nextIsDark = !isDark;
-    const next = nextIsDark ? 'dark' : 'light';
-
-    const isAppearanceTransition =
-      typeof document.startViewTransition === 'function' &&
-      !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    if (!isAppearanceTransition) {
-      setTheme(next);
-      return;
-    }
-
-    const x = event.clientX;
-    const y = event.clientY;
-    const endRadius = Math.hypot(
-      Math.max(x, window.innerWidth - x),
-      Math.max(y, window.innerHeight - y),
-    );
-
-    // 标记主题切换进行中：让 root 快照的圆形过渡样式（见 index.css）
-    // 只在主题切换期间生效，页面跳转转场复用同一组 root 快照
-    document.documentElement.classList.add('theme-transitioning');
-
-    const transition = document.startViewTransition(() => {
-      flushSync(() => setTheme(next));
-      applyTheme(next);
-    });
-
-    const endThemeTransition = () =>
-      document.documentElement.classList.remove('theme-transitioning');
-    transition.finished.then(endThemeTransition, endThemeTransition);
-
-    transition.ready.then(() => {
-      const clipPath = [
-        `circle(0px at ${x}px ${y}px)`,
-        `circle(${endRadius}px at ${x}px ${y}px)`,
-      ];
-      document.documentElement.animate(
-        {
-          clipPath: nextIsDark ? [...clipPath].reverse() : clipPath,
-        },
-        {
-          duration: 400,
-          easing: 'ease-out',
-          fill: 'forwards',
-          pseudoElement: nextIsDark
-            ? '::view-transition-old(root)'
-            : '::view-transition-new(root)',
-        },
-      );
-    });
+  const handleToggle = (event: MouseEvent<HTMLButtonElement>) => {
+    toggleTheme({ x: event.clientX, y: event.clientY });
   };
 
   return (
@@ -124,7 +54,7 @@ export function DayNightSwitcher({ className }: DayNightSwitcherProps) {
       aria-checked={isDark}
       aria-label="切换日间/夜间模式"
       className={cn('dns-switch', isDark && 'dns-switch--dark', className)}
-      onClick={toggleTheme}
+      onClick={handleToggle}
     >
       <span className="dns-switch__sky" aria-hidden="true">
         <span className="dns-switch__orb" />

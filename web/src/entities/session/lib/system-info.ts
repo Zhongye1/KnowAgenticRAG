@@ -78,6 +78,30 @@ export function selectLoginBranding(
   };
 }
 
+export type ShellBranding = {
+  /** 导航列品牌名：组织名优先，退到品牌名，再退到 `ARS`。 */
+  brandName: string;
+  /** 导航列头像地址；为空时由调用方决定兜底呈现。 */
+  avatar: string;
+};
+
+/**
+ * 导航列品牌投影。
+ *
+ * 与登录页、首页的投影分开：导航列只取组织名与组织头像，不消费页脚与品牌标题。
+ * 组织名为空时退到品牌名，两者都为空时用 `ARS`，与登录页兜底同值。
+ */
+export function selectShellBranding(
+  info: SystemInfoData | undefined,
+): ShellBranding {
+  const orgName = info?.organization?.name?.trim() ?? '';
+
+  return {
+    brandName: orgName || (info?.branding?.name?.trim() ?? '') || 'ARS',
+    avatar: info?.organization?.avatar?.trim() ?? '',
+  };
+}
+
 export type HomeBranding = {
   brandName: string;
   logo: string;

@@ -10,8 +10,10 @@ import { getSystemHealth, getSystemInfo } from '../api/system-info-api';
 import {
   selectHomeBranding,
   selectLoginBranding,
+  selectShellBranding,
   type HomeBranding,
   type LoginBranding,
+  type ShellBranding,
 } from '../lib/system-info';
 
 /**
@@ -38,6 +40,11 @@ export const useHomeBranding = (
   options: { enabled?: boolean } = {},
 ): HomeBranding => {
   return selectHomeBranding(useSystemInfo(options).data);
+};
+
+/** 导航列品牌投影：组织名（兜底品牌名）与组织头像。 */
+export const useShellBranding = (): ShellBranding => {
+  return selectShellBranding(useSystemInfo().data);
 };
 
 /** liveness 查询；`refetch` 就是告警条与错误态上的「重试」。 */

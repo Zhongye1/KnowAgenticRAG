@@ -351,7 +351,9 @@ describe('全局会话搜索', () => {
   it('打开时焦点落在搜索框，键盘可以直接输入', async () => {
     renderModal();
 
-    expect(document.activeElement).toBe(screen.getByLabelText('搜索历史会话'));
+    const input = screen.getByLabelText('搜索历史会话');
+    // antd 弹层经 portal 挂载，聚焦在挂载后的下一轮宏任务；waitFor 等它落地
+    await waitFor(() => expect(document.activeElement).toBe(input));
   });
 
   it('没有下一页时滚动不再请求', async () => {

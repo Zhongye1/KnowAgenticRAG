@@ -8,7 +8,7 @@
 import { describeQueueRow } from '../lib/queue-view';
 import type { QueueRowContext, QueueView } from '../lib/queue-view';
 import type { ThreadRequest } from '../api/agent-api';
-import { Button } from '@/shared/ui/button';
+import { Button } from './antd-button';
 
 type QueueBarProps = {
   view: QueueView;
@@ -40,17 +40,17 @@ export const QueueBar = ({
 
   return (
     <section
-      className="flex flex-col gap-2 rounded-large border border-color-border-1 bg-color-bg-1 p-3"
+      className="flex flex-col gap-2 rounded-large border border-[var(--gray-150)] bg-[var(--gray-0)] p-3"
       aria-label="排队中的请求"
     >
       <header className="flex items-center justify-between gap-2">
-        <span className="text-xs text-color-text-3">
+        <span className="text-xs text-[var(--gray-500)]">
           排队中 {view.pendingCount} 条
           {view.pausedReason ? ` · 已暂停：${view.pausedReason}` : ''}
         </span>
         {view.paused ? (
           <Button
-            type="button"
+
             variant="outline"
             disabled={disabled || continuing || !view.canContinue}
             onClick={onContinue}
@@ -61,7 +61,7 @@ export const QueueBar = ({
       </header>
 
       {waitingForUserAction ? (
-        <p className="text-xs text-color-text-3">
+        <p className="text-xs text-[var(--gray-500)]">
           当前任务正在等待回答或审批，完成后将继续处理后续请求。
         </p>
       ) : null}
@@ -74,19 +74,19 @@ export const QueueBar = ({
               key={request.request_id}
               className="flex items-center justify-between gap-2 text-sm"
             >
-              <span className="truncate text-color-text-2">
+              <span className="truncate text-[var(--gray-800)]">
                 {request.queue_position ? `${request.queue_position}. ` : ''}
                 {request.content || '排队请求'}
               </span>
               <span className="flex shrink-0 items-center gap-1">
                 {request.queue_policy === 'steer' ? (
-                  <span className="text-xs text-color-text-3">
+                  <span className="text-xs text-[var(--gray-500)]">
                     引导 · 下一条执行
                   </span>
                 ) : null}
                 {actions.canSteer ? (
                   <Button
-                    type="button"
+
                     variant="ghost"
                     size="sm"
                     disabled={disabled}
@@ -97,7 +97,7 @@ export const QueueBar = ({
                 ) : null}
                 {actions.canCancel ? (
                   <Button
-                    type="button"
+
                     variant="ghost"
                     size="sm"
                     disabled={disabled}

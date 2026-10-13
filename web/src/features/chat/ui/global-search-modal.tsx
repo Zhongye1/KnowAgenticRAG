@@ -8,7 +8,9 @@
  * 而不是打开时（避免在 effect 里同步 setState 多渲染一轮）；防抖在定时器回调里发起请求。
  */
 import * as React from 'react';
-import { MessageCircle, MessageCirclePlus, Search } from 'lucide-react';
+import { MessageCircle, MessageCirclePlus, Search, X } from 'lucide-react';
+
+import styles from './global-search-modal.module.css';
 
 import type { ChatThread, ThreadSearchItem } from '../api/agent-api';
 import { chatThreadApi } from '../api/agent-api';
@@ -24,9 +26,9 @@ import {
   DialogContent,
   DialogDescription,
   DialogTitle,
-} from '@/shared/ui/dialog';
-import { Input } from '@/shared/ui/input';
-import { Spinner } from '@/shared/ui/spinner';
+} from './antd-dialog';
+import { Input } from './antd-input';
+import { Spinner } from './antd-spinner';
 
 /** 防抖时长。 */
 const SEARCH_DEBOUNCE_MS = 240;
@@ -287,14 +289,13 @@ export const GlobalSearchModal = ({
 
   const renderRow = (row: ActionRow, index: number) => {
     const selected = index === activeIndex;
-    const highlight = 'bg-sidebar-accent text-sidebar-accent-foreground';
 
     if (row.kind === 'new') {
       return (
         <button
           type="button"
           data-row-index={index}
-          className={`flex w-full items-center gap-2 rounded-medium px-2 py-2 text-left text-sm ${selected ? highlight : 'text-color-text-2'}`}
+          className={`${styles.defaultItem} ${selected ? styles.resultSelected : ''}`}
           aria-current={selected ? 'true' : undefined}
           onMouseEnter={() => setSelectedIndex(index)}
           onClick={() => selectRow(row)}
@@ -317,26 +318,22 @@ export const GlobalSearchModal = ({
       <button
         type="button"
         data-row-index={index}
-        className={`flex w-full flex-col gap-1 rounded-medium px-2 py-2 text-left ${selected ? highlight : 'text-color-text-2'}`}
+        className={`${styles.result} ${selected ? styles.resultSelected : ''}`}
         aria-current={selected ? 'true' : undefined}
         onMouseEnter={() => setSelectedIndex(index)}
         onClick={() => selectRow(row)}
       >
-        <span className="flex items-center gap-2">
-          <MessageCircle className="size-4 shrink-0" aria-hidden />
-          <span className="min-w-0 flex-1 truncate text-sm">
+        <span className={styles.resultMain}>
+          <span className={styles.resultTitle}>
             {thread.title || '新的对话'}
           </span>
-          <span className="shrink-0 text-xs text-color-text-3">{date}</span>
+          <span className={styles.resultDate}>{date}</span>
         </span>
         {snippet ? (
-          <span className="line-clamp-2 text-xs text-color-text-3">
+          <span className={styles.resultSnippet}>
             {splitSnippet(snippet, trimmedQuery).map((segment, segmentIndex) =>
               segment.match ? (
-                <mark
-                  key={segmentIndex}
-                  className="bg-transparent text-primary-6"
-                >
+                <mark key={segmentIndex} className={styles.resultMark}>
                   {segment.text}
                 </mark>
               ) : (
@@ -354,7 +351,8 @@ export const GlobalSearchModal = ({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-w-xl gap-2 p-0"
+        /* 参照 .global-search-modal：680px、radius 12、白 72% 遮罩由全局覆盖类承担 */
+        className="global-search-modal-host max-w-[min(680px,calc(100vw-32px))] gap-0 overflow-hidden rounded-xl border-[var(--gray-150)] p-0"
         onKeyDown={onKeyDown}
         data-testid="global-search-modal"
       >
@@ -363,30 +361,38 @@ export const GlobalSearchModal = ({
           按消息内容搜索历史会话，↑↓ 选择，回车打开。
         </DialogDescription>
 
-        <div className="flex items-center gap-2 border-b border-color-border-1 px-3 py-2">
-          <Search className="size-4 shrink-0 text-color-text-3" aria-hidden />
-          <Input
+        {/* 参照 .global-search-input-row：62px 高、18px 字 */}
+        <div className={styles.inputRow}>
+          <input
             ref={inputRef}
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
             placeholder="搜索历史会话"
             aria-label="搜索历史会话"
-            className="border-0 shadow-none focus-visible:ring-0"
+            className={styles.input}
           />
+          <button
+            type="button"
+            className={styles.closeBtn}
+            aria-label="关闭搜索"
+            onClick={() => handleOpenChange(false)}
+          >
+            <X className="size-4" />
+          </button>
         </div>
 
         <div
           ref={listRef}
-          className="max-h-[60vh] min-h-24 overflow-y-auto px-2 pb-2"
+          className={styles.body}
           onScroll={onListScroll}
           data-testid="global-search-results"
         >
           {status === 'error' ? (
-            <div className="flex flex-col items-center gap-2 py-6 text-sm text-color-text-3">
+            <div className="flex flex-col items-center gap-2 py-6 text-sm text-[var(--gray-500)]">
               <span>搜索失败，请重试。</span>
               <button
                 type="button"
-                className="rounded-medium border border-color-border-1 px-3 py-1 text-color-text-1"
+                className="rounded-medium border border-[var(--gray-150)] px-3 py-1 text-[var(--gray-1000)]"
                 onClick={() => {
                   if (activeQuery) void runSearch(activeQuery);
                 }}
@@ -400,18 +406,21 @@ export const GlobalSearchModal = ({
             ? Array.from({ length: 5 }, (_, index) => (
                 <div
                   key={`skeleton-${index}`}
-                  className="mx-2 my-2 h-8 animate-pulse rounded-medium bg-color-fill-2"
-                />
+                  className={styles.skeletonRow}
+                >
+                  <span className={styles.skeletonDot} />
+                  <span className={styles.skeletonLines}>
+                    <i style={{ width: 190 }} />
+                    <i style={{ width: '72%' }} />
+                  </span>
+                </div>
               ))
             : null}
 
           {!showSkeleton && (status !== 'error' || results.length > 0)
             ? renderItems.map((item) =>
                 item.kind === 'label' ? (
-                  <p
-                    key={item.key}
-                    className="px-2 pt-3 pb-1 text-xs text-color-text-3"
-                  >
+                  <p key={item.key} className={styles.groupLabel}>
                     {item.label}
                   </p>
                 ) : (
@@ -426,7 +435,7 @@ export const GlobalSearchModal = ({
           !showSkeleton &&
           isSearchMode &&
           results.length === 0 ? (
-            <p className="px-2 py-6 text-center text-sm text-color-text-3">
+            <p className="px-2 py-6 text-center text-sm text-[var(--gray-500)]">
               未找到相关对话
             </p>
           ) : null}
@@ -435,13 +444,13 @@ export const GlobalSearchModal = ({
           !showSkeleton &&
           !isSearchMode &&
           recentRows.length === 0 ? (
-            <p className="px-2 py-6 text-center text-sm text-color-text-3">
+            <p className="px-2 py-6 text-center text-sm text-[var(--gray-500)]">
               暂无对话历史
             </p>
           ) : null}
 
           {status === 'loading-more' ? (
-            <p className="flex items-center justify-center gap-2 px-2 py-3 text-xs text-color-text-3">
+            <p className="flex items-center justify-center gap-2 px-2 py-3 text-xs text-[var(--gray-500)]">
               <Spinner aria-hidden className="size-3" />
               加载中...
             </p>

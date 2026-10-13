@@ -22,6 +22,7 @@ import type {
 import { toConversations } from '../lib/message-processor';
 import { MessageItem } from './message-item';
 import { ToolCallsGroup } from './tool-calls-group';
+import styles from './message-list.module.css';
 
 type MessageListProps = {
   /** 权威历史。 */
@@ -30,6 +31,10 @@ type MessageListProps = {
   streamingMessages?: ConversationMessage[];
   /** 是否正在处理，用于让最后一组工具保持展开。 */
   isProcessing?: boolean;
+  /** 透传给工具行；见 `ToolCallRow`。 */
+  resolveKbName?: (kbId: string) => string;
+  /** 产物卡片；由页面提供动作（预览、下载、保存），不传则不渲染。 */
+  renderArtifacts?: (conversation: Conversation) => React.ReactNode;
 };
 
 /** 已收尾的轮次把中间过程折成一行，正在输出的轮次保持展开。 */
@@ -38,9 +43,11 @@ type ProcessGroupItem = ConversationMessageItem | ConversationToolGroup;
 const ProcessGroup = ({
   items,
   durationMs,
+  resolveKbName,
 }: {
   items: ProcessGroupItem[];
   durationMs: number;
+  resolveKbName?: (kbId: string) => string;
 }) => {
   const [expanded, setExpanded] = React.useState(false);
 
@@ -48,24 +55,32 @@ const ProcessGroup = ({
     <section className="flex flex-col">
       <button
         type="button"
-        className="flex w-fit items-center gap-1 border-b border-color-border-1 py-1 text-xs text-color-text-3"
+        className={styles.processToggle}
         aria-expanded={expanded}
         onClick={() => setExpanded((value) => !value)}
       >
         <span>{formatProcessDuration(durationMs)}</span>
         <ChevronDown
-          className={`size-4 transition-transform ${expanded ? '' : '-rotate-90'}`}
+          className={`${styles.processChevron} ${expanded ? '' : styles.processChevronCollapsed}`}
           aria-hidden
         />
       </button>
 
       {expanded ? (
-        <div className="flex flex-col gap-2 py-2">
+        <div className={styles.processList}>
           {items.map((item) =>
             item.type === 'message' ? (
-              <MessageItem key={item.key} message={item.message} />
+              <MessageItem
+                key={item.key}
+                message={item.message}
+                resolveKbName={resolveKbName}
+              />
             ) : (
-              <ToolCallsGroup key={item.key} toolCalls={item.toolCalls} />
+              <ToolCallsGroup
+                key={item.key}
+                toolCalls={item.toolCalls}
+                resolveKbName={resolveKbName}
+              />
             ),
           )}
         </div>
@@ -78,6 +93,8 @@ export const MessageList = ({
   messages,
   streamingMessages = [],
   isProcessing = false,
+  resolveKbName,
+  renderArtifacts,
 }: MessageListProps) => {
   // 流式分片是就地追加的，不能缓存：每次渲染都重新拼一次
   const conversations: Conversation[] = [
@@ -88,9 +105,9 @@ export const MessageList = ({
   ];
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={styles.list}>
       {conversations.length === 0 ? (
-        <p className="text-sm text-color-text-3">还没有消息，发送一条试试。</p>
+        <p className={styles.empty}>暂无消息</p>
       ) : null}
 
       {conversations.map((conversation, conversationIndex) => {
@@ -98,6 +115,8 @@ export const MessageList = ({
         // 这一轮不是正在输出的那一轮，且它已经收尾（后面还有一轮，
         // 或整体已经不再处理）时才把中间过程折起来
         const settled = !isLast || !isProcessing;
+        // 「正在处理」只认流式那一轮：流刚起、还没产出分片时，历史消息不该被标成处理中
+        const streaming = conversation.status === 'streaming';
         const displayItems = getConversationDisplayItems(
           conversation.messages,
           {
@@ -108,7 +127,7 @@ export const MessageList = ({
         return (
           <div
             key={`conv-${conversationIndex}`}
-            className="flex flex-col gap-2"
+            className={styles.conversation}
             data-testid="conversation"
           >
             {displayItems.map((item, itemIndex) =>
@@ -116,9 +135,10 @@ export const MessageList = ({
                 <MessageItem
                   key={item.key}
                   message={item.message}
+                  resolveKbName={resolveKbName}
                   isProcessing={
                     isProcessing &&
-                    conversationIndex === conversations.length - 1 &&
+                    streaming &&
                     item.sourceIndex === conversation.messages.length - 1
                   }
                 />
@@ -128,18 +148,21 @@ export const MessageList = ({
                   toolCalls={item.toolCalls}
                   isActive={
                     isProcessing &&
-                    conversationIndex === conversations.length - 1 &&
+                    streaming &&
                     itemIndex === displayItems.length - 1
                   }
+                  resolveKbName={resolveKbName}
                 />
               ) : (
                 <ProcessGroup
                   key={item.key}
                   items={item.items}
                   durationMs={item.durationMs}
+                  resolveKbName={resolveKbName}
                 />
               ),
             )}
+            {renderArtifacts?.(conversation)}
           </div>
         );
       })}

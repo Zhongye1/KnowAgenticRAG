@@ -484,6 +484,8 @@ export const chatThreadApi = {
     metadata?: Record<string, unknown>;
     /** 幂等重放标识：重试同一次创建时复用，避免产生多条空线程。 */
     requestId?: string;
+    /** 项目 id；空串表示不使用项目，交给后端在发送时创建独立目录。 */
+    projectId?: string;
   }): Promise<ChatThread> =>
     unwrap<ChatThread>(
       await createThreadApiChatThreadPost({
@@ -492,6 +494,7 @@ export const chatThreadApi = {
           title: payload.title ?? '新的对话',
           metadata: payload.metadata ?? {},
           ...(payload.requestId ? { request_id: payload.requestId } : {}),
+          ...(payload.projectId ? { project_id: payload.projectId } : {}),
         },
       }),
     ),

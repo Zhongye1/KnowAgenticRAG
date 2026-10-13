@@ -1,0 +1,372 @@
+/* 消息时序调试面板的样式。参照 MessageDebugPanel.vue 的
+   `.message-debug-panel` 全段：贴边行式面板（无外框卡片）、gray-25 组头、
+   border-bottom 条目行、等宽徽标。
+   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--gray-0);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+}
+
+/* 参照 .debug-panel-toolbar */
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.titleIcon {
+  color: var(--gray-800);
+}
+
+.toolbarTitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--gray-1000);
+}
+
+.itemCountBadge {
+  font-size: 11.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--gray-150);
+  color: var(--gray-700);
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.titleActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* 参照 .action-btn——24px 高描边小钮 */
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid var(--gray-300);
+  background: var(--gray-0);
+  color: var(--gray-800);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--gray-50);
+    border-color: var(--gray-400);
+    color: var(--gray-1000);
+  }
+}
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.filterChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* 参照 .filter-chip——22px 高、active 灰底描边 */
+.filterChip {
+  height: 22px;
+  padding: 0 6px;
+  font-size: 12px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gray-600);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+
+  &:hover {
+    background: var(--gray-100);
+    color: var(--gray-900);
+  }
+}
+
+.filterChipActive {
+  background: var(--gray-150);
+  border-color: var(--gray-300);
+  color: var(--gray-1000);
+  font-weight: 600;
+}
+
+.chipCount {
+  font-size: 10.5px;
+  opacity: 0.75;
+}
+
+/* 参照 .search-box——24px 高描边框，focus 主色光环 */
+.searchBox {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 170px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  border: 1px solid var(--gray-300);
+  margin-left: auto;
+  flex: 1;
+
+  &:focus-within {
+    border-color: var(--main-color);
+    box-shadow: 0 0 0 2px var(--main-10);
+  }
+}
+
+.searchIcon {
+  color: var(--gray-500);
+  flex-shrink: 0;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: var(--gray-1000);
+  outline: none;
+
+  &::placeholder {
+    color: var(--gray-400);
+  }
+}
+
+.errorLine {
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--color-error-500);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.emptyState {
+  display: flex;
+  height: 128px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--gray-500);
+}
+
+/* 参照 .run-group：组间 4px 灰分隔；组头 gray-25 底 + 底线 */
+.runGroup + .runGroup {
+  border-top: 4px solid var(--gray-50);
+}
+
+.runGroupHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--gray-150);
+  background: var(--gray-25);
+  color: var(--gray-700);
+}
+
+.runGroupIcon {
+  color: var(--main-color);
+}
+
+.runGroupLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-900);
+}
+
+.runGroupId {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 11.5px;
+  color: var(--gray-700);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.langfuseBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 22px;
+  padding: 0 6px;
+  border: none;
+  border-radius: 4px;
+  color: var(--gray-600);
+  font-size: 11.5px;
+  background: transparent;
+  cursor: pointer;
+
+  &:hover:not(:disabled) {
+    background: var(--gray-100);
+    color: var(--main-color);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.runGroupCount {
+  margin-left: auto;
+  color: var(--gray-500);
+  font-size: 11px;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* 参照 .timeline-item——border-bottom 行、hover 灰底；error 行浅红底 */
+.timelineItem {
+  background: var(--gray-0);
+  border-bottom: 1px solid var(--gray-150);
+
+  &:hover {
+    background: var(--gray-50);
+  }
+}
+
+.timelineItemError {
+  background: var(--color-error-50);
+
+  &:hover {
+    background: var(--color-error-100);
+  }
+}
+
+.itemHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.roleIcon {
+  color: var(--gray-700);
+  flex-shrink: 0;
+}
+
+/* 参照 .role-pill：12.5px/600 纯文字色 */
+.rolePill {
+  font-size: 12.5px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.pillHuman,
+.pillAi {
+  color: var(--gray-900);
+}
+
+.pillError {
+  color: var(--color-error-700);
+}
+
+.pillSystem {
+  color: var(--gray-600);
+}
+
+.headerSummary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--gray-700);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.tokenBadge {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--gray-150);
+  color: var(--gray-700);
+  flex-shrink: 0;
+}
+
+.itemIconBtn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gray-500);
+  cursor: pointer;
+  flex-shrink: 0;
+
+  &:hover {
+    background: var(--gray-150);
+    color: var(--gray-1000);
+  }
+}
+
+/* 参照 .item-body——左侧 35px 缩进 */
+.itemBody {
+  padding: 0 12px 10px 35px;
+}
+
+.itemJson {
+  margin: 0;
+  max-height: 256px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: 4px;
+  background: var(--gray-100);
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: var(--gray-900);
+}

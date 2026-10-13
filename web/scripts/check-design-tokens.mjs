@@ -13,8 +13,11 @@
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = new URL('..', import.meta.url).pathname;
+// 用 fileURLToPath 而不是 URL.pathname：后者会把路径里的非 ASCII 与空格百分号编码，
+// 仓库路径含中文目录时 walk() 会以 ENOENT 失败。
+const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const SRC = join(ROOT, 'src');
 
 const IGNORED_DIRS = new Set(['generated', 'testing', 'node_modules', 'dist']);

@@ -15,6 +15,16 @@ import {
   parseToolCallResultForDisplay,
 } from '../lib/tool-call';
 import { getToolIcon } from './tool-icons';
+import { buildToolHeader } from '../lib/tool-header';
+import { buildToolResultView } from '../lib/tool-result';
+import styles from './tool-call-row.module.css';
+import { AskQuestionResult } from './ask-question-result';
+import { KbDocumentPreview } from './kb-document-preview';
+import { KbQueryResultView } from './kb-query-result';
+import { SubagentLifecycleRow } from './subagent-lifecycle-row';
+import { SubagentTaskRow } from './subagent-task-row';
+import { TodoList } from './todo-list';
+import { WebSearchResults } from './web-search-results';
 
 export type ToolRunState = 'running' | 'completed' | 'error';
 
@@ -36,11 +46,20 @@ function hasVisibleParams(toolCall: ChatToolCall): boolean {
 type ToolCallRowProps = {
   toolCall: ChatToolCall;
   defaultExpanded?: boolean;
+  /**
+   * `kb_id` → 知识库名。知识库列表属于 `features/knowledge-base`，本切片不能反向依赖，
+   * 因此由页面层注入；拿不到时头部不显示「知识库: X」那一段。
+   */
+  resolveKbName?: (kbId: string) => string;
+  /** 当前活跃的子智能体工具调用 id；task 行据此区分运行中与已完成。 */
+  activeSubagentToolCallIds?: ReadonlySet<string>;
 };
 
 export const ToolCallRow = ({
   toolCall,
   defaultExpanded = false,
+  resolveKbName,
+  activeSubagentToolCallIds,
 }: ToolCallRowProps) => {
   const [expanded, setExpanded] = React.useState(defaultExpanded);
 
@@ -48,89 +67,157 @@ export const ToolCallRow = ({
   const toolName = toolCall.display_label?.trim() || getToolName(toolId);
   const runState = resolveToolRunState(toolCall);
   const result = formatToolCallResult(parseToolCallResultForDisplay(toolCall));
+  const header = buildToolHeader(toolCall, { resolveKbName });
+  const resultView = buildToolResultView(toolCall);
+  // 专用头部只渲染「主文案 | 参数」，运行状态由图标传达；图标对辅助技术不可见，
+  // 因此额外渲染一份纯文本状态，视觉不变。
+  const statusText =
+    runState === 'completed'
+      ? `工具 ${toolName} 执行完成`
+      : runState === 'error'
+        ? `工具 ${toolName} 执行失败${toolCall.error_message ? `（${toolCall.error_message}）` : ''}`
+        : `正在调用工具: ${toolName}`;
   const params = hasVisibleParams(toolCall)
     ? formatToolCallResult(parseToolCallArgs(toolCall))
     : '';
 
+  // 子智能体类工具有专用行：头部、状态与结果一次组装，不走通用外壳
+  if (resultView?.kind === 'subagent-task') {
+    return <SubagentTaskRow toolCall={toolCall} activeToolCallIds={activeSubagentToolCallIds} />;
+  }
+  if (resultView?.kind === 'subagent-lifecycle') {
+    return <SubagentLifecycleRow toolCall={toolCall} />;
+  }
+
   return (
-    <div className="flex flex-col rounded-medium border border-color-border-1">
+    <div className={styles.row}>
       <button
         type="button"
-        className="flex items-center gap-2 px-2 py-1 text-left text-sm"
+        className={styles.toggle}
         aria-expanded={expanded}
         onClick={() => setExpanded((value) => !value)}
       >
+        {/* 参照 .tool-loader：单一状态图标（运行中旋转、失败红叉、完成用工具图标），
+            参照不叠第二个图标 */}
         {runState === 'error' ? (
-          <XCircle
-            className="size-4 shrink-0 text-color-danger-6"
-            aria-hidden
-          />
+          <XCircle className={`${styles.stateIcon} ${styles.stateIconError}`} aria-hidden />
         ) : runState === 'running' ? (
           <Loader
-            className="size-4 shrink-0 animate-spin text-color-text-3"
+            className={`${styles.stateIcon} ${styles.stateIconRunning}`}
             aria-hidden
           />
         ) : (
           // 完成态直接用工具图标，不再叠一个对勾
           React.createElement(getToolIcon(toolId), {
-            className: 'size-4 shrink-0 text-success-6',
+            className: `${styles.stateIcon} ${styles.stateIconDone}`,
             'aria-hidden': true,
           })
         )}
 
-        {runState === 'completed'
-          ? null
-          : React.createElement(getToolIcon(toolId), {
-              className: 'size-4 shrink-0 text-color-text-3',
-              'aria-hidden': true,
-            })}
-
-        <span className="min-w-0 flex-1 truncate text-color-text-2">
-          {runState === 'completed' ? (
+        <span className="flex min-w-0 flex-1 items-center gap-2 truncate">
+          {header ? (
             <>
-              工具 <span className="text-color-text-1">{toolName}</span>{' '}
+              <span className={styles.note}>{header.note}</span>
+              {header.segments.map((segment, index) => (
+                <React.Fragment key={`${segment.text}-${index}`}>
+                  <span className={styles.separator} aria-hidden>
+                    |
+                  </span>
+                  {segment.tag ? (
+                    <span className={styles.segmentTag}>{segment.text}</span>
+                  ) : (
+                    <span
+                      className={`${styles.segment} ${segment.code ? styles.segmentCode : ''}`}
+                      title={segment.title}
+                    >
+                      {segment.text}
+                    </span>
+                  )}
+                </React.Fragment>
+              ))}
+            </>
+          ) : runState === 'completed' ? (
+            <>
+              工具 <span className={styles.note}>{toolName}</span>{' '}
               执行完成
             </>
           ) : runState === 'error' ? (
             <>
-              工具 <span className="text-color-text-1">{toolName}</span>{' '}
+              工具 <span className={styles.note}>{toolName}</span>{' '}
               执行失败
               {toolCall.error_message ? `（${toolCall.error_message}）` : ''}
             </>
           ) : (
             <>
               正在调用工具:{' '}
-              <span className="text-color-text-1">{toolName}</span>
+              <span className={styles.note}>{toolName}</span>
             </>
           )}
         </span>
 
+        {header ? <span className="sr-only">{statusText}</span> : null}
+
+        {/* 展开箭头：参照 .tool-expand-icon——静态灰图标，不继承旋转 */}
         {expanded ? (
-          <ChevronsDownUp
-            className="size-4 shrink-0 text-color-text-3"
-            aria-hidden
-          />
+          <ChevronsDownUp className={styles.expandIcon} aria-hidden />
         ) : (
-          <ChevronsUpDown
-            className="size-4 shrink-0 text-color-text-3"
-            aria-hidden
-          />
+          <ChevronsUpDown className={styles.expandIcon} aria-hidden />
         )}
       </button>
 
       {expanded ? (
-        <div className="flex flex-col gap-2 border-t border-color-border-1 px-2 py-2 text-xs">
-          {params ? (
+        <div className={styles.detail}>
+          {params && !header?.hideParams ? (
             <div>
-              <strong className="text-color-text-2">参数: </strong>
-              <pre className="mt-1 overflow-x-auto whitespace-pre-wrap break-all text-color-text-2">
-                {params}
-              </pre>
+              <strong className={styles.detailLabel}>参数: </strong>
+              <pre className={styles.detailBlock}>{params}</pre>
             </div>
           ) : null}
-          {result ? (
+          {resultView?.kind === 'image' ? (
+            <img
+              src={resultView.url}
+              alt="工具生成的图片"
+              className={styles.humanImage}
+            />
+          ) : resultView?.kind === 'web-search' ? (
+            resultView.results.length > 0 ? (
+              <WebSearchResults results={resultView.results} />
+            ) : (
+              <pre className={styles.detailBlock}>
+                {resultView.rawText}
+              </pre>
+            )
+          ) : resultView?.kind === 'document-preview' ? (
+            <KbDocumentPreview preview={resultView.preview} />
+          ) : resultView?.kind === 'ask-question' ? (
+            <AskQuestionResult
+              questions={resultView.questions}
+              answer={resultView.answer}
+            />
+          ) : resultView?.kind === 'kb-query' ? (
+            <KbQueryResultView result={resultView.result} />
+          ) : resultView?.kind === 'memory' ? (
+            <div className="flex flex-col gap-1">
+              <p
+                className={
+                  resultView.isError
+                    ? styles.stateIconError
+                    : styles.detailLabel
+                }
+              >
+                {resultView.statusText}
+              </p>
+              {resultView.meta ? (
+                <p className={styles.attachmentMeta}>{resultView.meta}</p>
+              ) : null}
+            </div>
+          ) : resultView?.kind === 'todo' ? (
+            <TodoList items={resultView.items} />
+          ) : resultView?.kind === 'text' ? (
+            <p className={`${styles.detailBlock} ${styles.segmentCode}`}>{resultView.text}</p>
+          ) : result ? (
             <div>
-              <pre className="overflow-x-auto whitespace-pre-wrap break-all text-color-text-2">
+              <pre className={styles.detailResultPre}>
                 {result}
               </pre>
             </div>

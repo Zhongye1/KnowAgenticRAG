@@ -1,114 +1,127 @@
-'use client';
-
+/**
+ * 用户菜单。
+ *
+ * 参照实现把用户信息、文档中心、日夜切换、调试面板与退出登录收在同一个下拉菜单里。
+ * 本仓照此保留主题项：`DayNightSwitcher` 只在展开态的导航列底部，折叠态下菜单项是
+ * 唯一的切换入口。调试面板的开关放在 `features/debug` 的 store 里，与全局快捷键共用。
+ */
+import { Dropdown, type MenuProps } from 'antd';
+import { BookOpen, Bug, LogOut, Moon, Sun } from 'lucide-react';
 import * as React from 'react';
-import { BadgeCheck, Bell, Bug, ChevronsUpDown, LogOut } from 'lucide-react';
 
-import { useIsSuperuser } from '@/entities/session';
-import { DebugModal } from '@/features/debug';
-
+import { formatUserRole, useIsSuperuser, useUser } from '@/entities/session';
+import { useDebugPanel } from '@/features/debug';
+import { DOCS_URL } from '@/shared/config';
+import { toggleTheme, useIsDarkMode } from '@/shared/lib';
 import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/avatar';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu';
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from '@/shared/ui/sidebar';
 
-export function NavUser({
-  user,
-  onLogout,
-}: {
-  user: {
-    name: string;
-    email: string;
-    avatar?: string;
-  };
-  onLogout?: () => void;
-}) {
-  const { isMobile } = useSidebar();
+import styles from './user-menu.module.css';
+
+type UserMenuProps = {
+  onLogout: () => void;
+  /** 折叠态只渲染头像，与参照的 `.sidebar-collapsed` 行为一致。 */
+  collapsed?: boolean;
+};
+
+/** 头像兜底：取用户名首字，缺失时用 `?`。 */
+function initialsOf(name: string): string {
+  return name.trim().slice(0, 1).toUpperCase() || '?';
+}
+
+export function UserMenu({ onLogout, collapsed = false }: UserMenuProps) {
+  const user = useUser();
   const isSuperuser = useIsSuperuser();
-  const [debugOpen, setDebugOpen] = React.useState(false);
-  const fallback = user.name
-    .split(' ')
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join('')
-    .toUpperCase();
+  const isDark = useIsDarkMode();
+  const setDebugOpen = useDebugPanel((state) => state.setOpen);
+  const [open, setOpen] = React.useState(false);
 
-  const userAvatar = user.avatar ? (
-    <AvatarImage src={user.avatar} alt={user.name} />
-  ) : (
-    <AvatarFallback className="rounded-lg">{fallback}</AvatarFallback>
-  );
+  const name = user.data?.username ?? '未登录';
+  const uid = user.data?.uid ?? '';
+  const roleText = formatUserRole(user.data?.role);
+  const avatarUrl = user.data?.avatar ?? '';
+
+  const items: MenuProps['items'] = [
+    {
+      key: 'identity',
+      // 信息展示项：本仓没有账号设置页，这里只呈现身份，不承载跳转。
+      label: (
+        <div className={styles.identity}>
+          <span className={styles.identityName}>{name}</span>
+          <span className={styles.identityMeta}>
+            {uid ? `ID: ${uid}` : '未登录'}
+          </span>
+          <span className={styles.identityMeta}>{roleText}</span>
+        </div>
+      ),
+    },
+    { type: 'divider' },
+    { key: 'docs', icon: <BookOpen size={16} />, label: '文档中心' },
+    {
+      key: 'theme',
+      icon: isDark ? <Sun size={16} /> : <Moon size={16} />,
+      label: isDark ? '切换到浅色模式' : '切换到深色模式',
+    },
+    ...(isSuperuser
+      ? [
+          {
+            key: 'debug',
+            icon: <Bug size={16} />,
+            label: '调试面板',
+          },
+        ]
+      : []),
+    { key: 'logout', icon: <LogOut size={16} />, label: '退出登录' },
+  ];
+
+  const handleClick: MenuProps['onClick'] = ({ key, domEvent }) => {
+    if (key === 'docs') {
+      window.open(DOCS_URL, '_blank', 'noreferrer');
+      return;
+    }
+    if (key === 'theme') {
+      // 键盘触发时事件上没有坐标，交给 toggleTheme 用视口中心兜底
+      const hasPoint =
+        'clientX' in domEvent && Boolean(domEvent.clientX || domEvent.clientY);
+      toggleTheme(
+        hasPoint ? { x: domEvent.clientX, y: domEvent.clientY } : undefined,
+      );
+      return;
+    }
+    if (key === 'debug') {
+      setDebugOpen(true);
+      return;
+    }
+    if (key === 'logout') {
+      onLogout();
+    }
+  };
 
   return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Avatar className="h-8 w-8 rounded-lg">{userAvatar}</Avatar>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{user.name}</span>
-                <span className="truncate text-xs">{user.email}</span>
-              </div>
-              <ChevronsUpDown className="ml-auto size-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? 'bottom' : 'right'}
-            align="end"
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="h-8 w-8 rounded-lg">{userAvatar}</Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="truncate text-xs">{user.email}</span>
-                </div>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheck />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            {isSuperuser ? (
-              <DropdownMenuItem onSelect={() => setDebugOpen(true)}>
-                <Bug />
-                调试
-              </DropdownMenuItem>
-            ) : null}
-            <DropdownMenuItem onClick={onLogout}>
-              <LogOut />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-      <DebugModal open={debugOpen} onOpenChange={setDebugOpen} />
-    </SidebarMenu>
+    <Dropdown
+      menu={{ items, onClick: handleClick }}
+      trigger={['click']}
+      open={open}
+      onOpenChange={setOpen}
+      placement="topRight"
+    >
+      <button
+        type="button"
+        className={`${styles.trigger} ${open ? styles.triggerOpen : ''}`}
+        aria-label="用户菜单"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        <Avatar className={styles.avatar}>
+          {avatarUrl ? (
+            <AvatarImage src={avatarUrl} alt={name} />
+          ) : (
+            <AvatarFallback className="rounded-md">
+              {initialsOf(name)}
+            </AvatarFallback>
+          )}
+        </Avatar>
+        {collapsed ? null : <span className={styles.name}>{name}</span>}
+      </button>
+    </Dropdown>
   );
 }

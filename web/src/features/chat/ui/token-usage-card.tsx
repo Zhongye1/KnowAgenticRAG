@@ -51,7 +51,7 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
 
   return (
     <section
-      className="rounded-large border border-color-border-1 bg-color-bg-1 px-3 py-2 text-xs"
+      className="rounded-large border border-[var(--gray-150)] bg-[var(--gray-0)] px-3 py-2 text-xs"
       data-testid="token-usage"
     >
       <button
@@ -62,15 +62,15 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
         onClick={() => setExpanded((value) => !value)}
       >
         <span className="flex items-center gap-2">
-          <strong className="text-sm text-color-text-1">
+          <strong className="text-sm text-[var(--gray-1000)]">
             上下文占用 {getTokenUsagePercentLabel(ratio)}
           </strong>
-          <span className="text-color-text-3">
+          <span className="text-[var(--gray-500)]">
             {getTokenUsageHeadLabel(usage)}
           </span>
         </span>
         <ChevronDown
-          className={`size-4 text-color-text-3 transition-transform ${expanded ? '' : '-rotate-90'}`}
+          className={`size-4 text-[var(--gray-500)] transition-transform ${expanded ? '' : '-rotate-90'}`}
           aria-hidden
         />
       </button>
@@ -89,17 +89,17 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
       />
 
       {threadTotal !== null || cacheHit !== null ? (
-        <p className="mt-2 flex gap-4 text-color-text-3">
+        <p className="mt-2 flex gap-4 text-[var(--gray-500)]">
           {threadTotal === null ? null : (
             <span>
               当前对话累计{' '}
-              <strong className="text-color-text-1">{threadTotal}</strong>
+              <strong className="text-[var(--gray-1000)]">{threadTotal}</strong>
             </span>
           )}
           {cacheHit === null ? null : (
             <span>
               累计缓存命中率{' '}
-              <strong className="text-color-text-1">{cacheHit}</strong>
+              <strong className="text-[var(--gray-1000)]">{cacheHit}</strong>
             </span>
           )}
         </p>
@@ -109,7 +109,7 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
         <div id="token-usage-details" className="mt-3 flex flex-col gap-3">
           {barSegments.length > 0 ? (
             <span
-              className="flex h-1.5 w-full overflow-hidden rounded-full bg-color-fill-2"
+              className="flex h-1.5 w-full overflow-hidden rounded-full bg-[var(--gray-150)]"
               aria-hidden
             >
               {barSegments.map((segment) => (
@@ -129,8 +129,8 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
                   key={segment.key}
                   className="flex items-center justify-between gap-2"
                 >
-                  <span className="text-color-text-3">{segment.label}</span>
-                  <span className="text-color-text-2">
+                  <span className="text-[var(--gray-500)]">{segment.label}</span>
+                  <span className="text-[var(--gray-800)]">
                     {segment.valueLabel}
                   </span>
                 </li>
@@ -143,23 +143,23 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
               {models.map((model) => (
                 <li
                   key={model.key}
-                  className="rounded-medium border border-color-border-1 px-2 py-1"
+                  className="rounded-medium border border-[var(--gray-150)] px-2 py-1"
                 >
                   <p className="flex items-center justify-between gap-2">
-                    <strong className="text-color-text-1">{model.name}</strong>
-                    <span className="text-color-text-3">
+                    <strong className="text-[var(--gray-1000)]">{model.name}</strong>
+                    <span className="text-[var(--gray-500)]">
                       {model.callCount} 次调用
                     </span>
                   </p>
-                  <p className="mt-1 flex flex-wrap gap-3 text-color-text-3">
+                  <p className="mt-1 flex flex-wrap gap-3 text-[var(--gray-500)]">
                     <span>
                       输入 / 输出{' '}
-                      <strong className="text-color-text-1">{model.io}</strong>
+                      <strong className="text-[var(--gray-1000)]">{model.io}</strong>
                     </span>
                     {model.cache ? (
                       <span>
                         缓存{' '}
-                        <strong className="text-color-text-1">
+                        <strong className="text-[var(--gray-1000)]">
                           {model.cache}
                         </strong>
                       </span>
@@ -167,14 +167,14 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
                     {model.reasoning ? (
                       <span>
                         推理{' '}
-                        <strong className="text-color-text-1">
+                        <strong className="text-[var(--gray-1000)]">
                           {model.reasoning}
                         </strong>
                       </span>
                     ) : null}
                   </p>
                   {model.responseModel ? (
-                    <p className="mt-1 text-color-text-3">
+                    <p className="mt-1 text-[var(--gray-500)]">
                       响应 {model.responseModel}
                     </p>
                   ) : null}
@@ -184,14 +184,14 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
           ) : null}
 
           {latestCall ? (
-            <p className="flex items-center justify-between gap-2 text-color-text-3">
+            <p className="flex items-center justify-between gap-2 text-[var(--gray-500)]">
               <span>最近调用</span>
-              <strong className="text-color-text-1">{latestCall}</strong>
+              <strong className="text-[var(--gray-1000)]">{latestCall}</strong>
             </p>
           ) : null}
 
           {segments.length === 0 && models.length === 0 && !latestCall ? (
-            <p className="text-color-text-3">本次运行没有可展示的用量明细。</p>
+            <p className="text-[var(--gray-500)]">本次运行没有可展示的用量明细。</p>
           ) : null}
         </div>
       ) : null}

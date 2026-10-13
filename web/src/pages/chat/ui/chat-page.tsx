@@ -1,55 +1,95 @@
+/**
+ * 对话页容器。
+ *
+ * 只做组合与接线：路由身份（`/agent` 与 `/agent/:threadId` 复用同一实例，线程只以
+ * 地址为准）、运行时装配、面板/附件/项目/模型/审批状态，以及把结果交给视图。
+ * 提交编排（发送/引导/建线程/附件确认）在 `model/use-chat-submission`，
+ * 线程生命周期副作用在 `model/use-chat-thread-lifecycle`，页面结构在 `ui/chat-page-view`。
+ */
 import * as React from 'react';
-import { Bug } from 'lucide-react';
-import { useNavigate, useParams } from 'react-router';
 
 import {
   agentRunApi,
-  DRAFT_THREAD_ID,
-  createThreadDraftSession,
-  fetchAgentState,
-  createThreadDraftStore,
+  ArtifactsCard,
+  buildReplyLoadingStatus,
+  buildMentionConfig,
+  buildMentionDisplayLabels,
+  buildMentionFileItems,
+  buildMentionResourceItems,
+  canSubmitDirectSteer,
   describeQueue,
-  findClipboardImage,
-  ImageAttachmentPreview,
+  extractArtifactsFromConversation,
+  fallbackTitleFromQuery,
+  fetchAgentState,
+  generateConversationTitle,
+  hasPendingDirectSteer,
   isThreadWaitingForUserAction,
   isToolApprovalMode,
-  MessageList,
-  MessageDebugPanel,
   mergeMessageDebugMessages,
-  type DebugMessage,
-  normalizeUploadedImage,
-  PendingInterruptPanel,
-  QueueBar,
+  normalizeArtifactItems,
+  ProjectSelector,
   readTokenUsage,
   readToolApprovalModePreference,
+  resolveModelSpec,
   resolveToolApprovalMode,
-  TokenUsageCard,
-  ToolApprovalModeSelector,
+  ScrollController,
+  searchMentionFiles,
+  useAgentConfig,
+  useAgentOptions,
+  useAgentPanelSections,
+  useArtifactActions,
+  useAttachmentUpload,
+  useCacheThreadAttachments,
+  useChatModels,
   useChatRuntime,
+  useCreateLinkedProject,
+  useDefaultOcrEngine,
+  useDebouncedValue,
+  useFastModel,
+  useHistoryCandidates,
+  useImageUploadSlot,
+  useModelOverride,
+  useModelSelection,
+  useNotifications,
+  usePanelFileSearch,
+  usePanelFilesystem,
+  usePanelPreview,
+  useProjects,
   useStreamingMessages,
+  useSystemDefaultModel,
+  useThreadAttachments,
+  useThreadDraftInput,
   useThreadList,
   useThreadRuntime,
-  validateImageFile,
   writeToolApprovalModePreference,
+  HISTORY_SEARCH_DEBOUNCE_MS,
+  AUTO_PROJECT_ID,
+  shouldPollPanelFilesystem,
+  pendingAttachmentFileIds,
+  type Conversation,
+  type DebugMessage,
+  type MentionResourceItem,
+  type ToolApprovalMode,
 } from '@/features/chat';
-import type { ToolApprovalMode, UploadedImage } from '@/features/chat';
 import { useIsSuperuser } from '@/entities/session';
+import { useKnowledgeBases } from '@/features/knowledge-base';
 import { paths } from '@/shared/config';
-import { Button } from '@/shared/ui/button';
 import { ContentLayout } from '@/shared/ui/content-layout';
-import { Input } from '@/shared/ui/input';
-import { useNotifications } from '@/shared/ui/notifications';
-import { Spinner } from '@/shared/ui/spinner';
+import { useNavigate, useParams } from 'react-router';
 
-/**
- * 对话页。
- *
- * 进入线程加载权威历史、发送消息、流式渲染回复、中止运行、排队请求的插队/取消与队列继续、
- * 按线程保存未发送的输入、随消息发送一张图片。地址里没有线程时先建线程再跳转，因此
- * `/agent` 也能直接开始对话。
- *
- * 子代理线程视图尚未实现，子智能体工具只给通用展示。
- */
+import { useChatSubmission } from '../model/use-chat-submission';
+import { useChatThreadLifecycle } from '../model/use-chat-thread-lifecycle';
+import { ChatPageView } from './chat-page-view';
+
+/** 空态问候语；与参照同款（语析系列标语）。 */
+const GREETINGS = [
+  '语析，析万物之语',
+  '语析，与知识对话',
+  '答案藏在知识里，我来找',
+  '与知识对话，与答案相遇',
+  '你负责提问，我负责寻找',
+];
+
 export const ChatPage = () => {
   const { threadId: routeThreadId } = useParams<{ threadId: string }>();
   const navigate = useNavigate();
@@ -69,56 +109,108 @@ export const ChatPage = () => {
       context.mounted = false;
     };
   }, []);
-  // 草稿会话持有「当前输入属于哪条线程」，因此只创建一次，不能随渲染重建
-  const [draft] = React.useState(() => {
-    const store = createThreadDraftStore();
-    return { store, session: createThreadDraftSession(store, routeThreadId) };
-  });
-  const [input, setInputState] = React.useState(() =>
-    draft.store.read(routeThreadId || DRAFT_THREAD_ID),
-  );
-  // 输入框的权威值：切线程的 effect 要读「此刻」的输入。不能把 `input` 放进
-  // effect 依赖（每敲一个字都会重跑切线程），也不能用 setState 的 updater 读当前值
-  // （StrictMode 会双调用 updater，第一次已把 draftKey 换成新线程，第二次就把旧线程
-  // 的文本写进新线程的草稿键），所以由 ref 同步持有。
-  const inputRef = React.useRef(input);
-  /** 输入变化统一走这里：先同步 ref 与草稿，再更新 state。 */
-  const updateInput = React.useCallback(
-    (value: string) => {
-      inputRef.current = value;
-      draft.session.saveInput(value);
-      setInputState(value);
+
+  const { addNotification } = useNotifications();
+  const notify = React.useCallback(
+    (notice: { type: 'error' | 'info' | 'success'; title: string; message: string }) => {
+      addNotification(notice);
     },
-    [draft],
+    [addNotification],
   );
-  // 待发送的单张图片：单槽，选新图直接覆盖
-  const [image, setImage] = React.useState<UploadedImage | null>(null);
-  // 在途上传数：不止一张图时，先回来的那张不能提前放开发送按钮
-  const [pendingUploads, setPendingUploads] = React.useState(0);
-  // 上传世代号：切线程或又选了一张图都会作废更早的响应，
-  // 否则迟到的响应会把上一张图写回已经换掉的输入框
-  const uploadGenerationRef = React.useRef(0);
-  const imageFileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // 草稿输入与单槽图片上传：状态层在 features/chat/model，页面只消费
+  const { input, currentInput, updateInput, switchThread: switchDraftThread } =
+    useThreadDraftInput(routeThreadId);
+  const imageSlot = useImageUploadSlot({
+    notifyError: (message) => notify({ type: 'error', title: '对话', message }),
+  });
+  // 空态标语挂在挂载期选一次（参照同款行为）；写在渲染体内会随每次重渲换文案
+  const [greeting] = React.useState(
+    () => GREETINGS[Math.floor(Math.random() * GREETINGS.length)],
+  );
   React.useEffect(() => {
-    // 切线程（含从 /agent 进入新线程）时先把当前文本写回旧线程，再取新线程的草稿；
-    // 待发送的图片不跟线程走：留在输入框里会发给另一条线程
-    const next = draft.session.switchThread(routeThreadId, inputRef.current);
-    inputRef.current = next;
-    setInputState(next);
-    uploadGenerationRef.current += 1;
-    setImage(null);
-  }, [draft, routeThreadId]);
+    // 切线程（含从 /agent 进入新线程）时回写草稿；待发送的图片不跟线程走，
+    // 同时作废在途上传的回填，迟到的响应不能把上一条线程的图写进这一条
+    switchDraftThread(routeThreadId);
+    imageSlot.clear();
+    imageSlot.invalidate();
+    // imageSlot 的动作是稳定回调，不在依赖里展开
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeThreadId, switchDraftThread]);
+
   // 智能体由会话列表 store 统一解析：侧边栏与对话页必须指向同一个
   const agentSlug = useThreadList((state) => state.agentSlug) ?? undefined;
+  const selectAgent = useThreadList((state) => state.selectAgent);
   const ensureAgentSlug = useThreadList((state) => state.ensureAgentSlug);
   const upsertThread = useThreadList((state) => state.upsert);
-  // 只取稳定的 action，不订阅整个 store：否则每来一条通知都会重建依赖它的回调与 effect
-  const addNotification = useNotifications((state) => state.addNotification);
+  const renameThread = useThreadList((state) => state.rename);
+  const markThreadViewed = useThreadList((state) => state.markViewed);
+  const { options: agentOptions, isLoading: agentsLoading } = useAgentOptions();
+  // 底部提示与参照 .bottom-actions 同款：展示当前智能体名
+  const currentAgentName = agentOptions.find(
+    (option) => option.value === agentSlug,
+  )?.label;
+
   const runtime = useThreadRuntime(threadId);
+  const isStreaming = runtime?.isStreaming ?? false;
   const streamingMessages = useStreamingMessages(threadId);
-  // 消息时序调试：入口只给超管（后端接口自身也要求超管），面板只看当前线程的消息
   const isSuperuser = useIsSuperuser();
-  const [debugOpen, setDebugOpen] = React.useState(false);
+
+  // 右侧面板：分区列表、开关、最大化与拖宽都在 model 层的 hook 里
+  const panel = useAgentPanelSections();
+  // 轮询的前提之一：后台标签页不轮询
+  const [pageVisible, setPageVisible] = React.useState(
+    () => document.visibilityState === 'visible',
+  );
+  React.useEffect(() => {
+    const sync = () => setPageVisible(document.visibilityState === 'visible');
+    document.addEventListener('visibilitychange', sync);
+    return () => document.removeEventListener('visibilitychange', sync);
+  }, []);
+
+  // 产物动作：下载与保存到个人空间，在途集合也在 hook 里
+  const artifactActions = useArtifactActions({
+    notifyError: (message) => notify({ type: 'error', title: '对话', message }),
+    notifySuccess: (message) => notify({ type: 'success', title: '对话', message }),
+  });
+
+  // 面板文件系统：两套树的状态与轮询都在这里
+  const [treeScope, setTreeScope] = React.useState<'thread' | 'workspace'>('thread');
+  const activePanelSection = panel.sections.find(
+    (section) => section.key === panel.activeSectionKey,
+  );
+  const panelFilesystem = usePanelFilesystem({
+    threadId,
+    pollingEnabled: shouldPollPanelFilesystem({
+      panelOpen: panel.open,
+      pageVisible,
+      streaming: isStreaming,
+      activeSection: activePanelSection,
+      // 预览由树点开：身份跟随当前树的作用域（个人空间的文件不随生成变化）
+      activePreview:
+        activePanelSection?.type === 'file' ? { workdir: treeScope === 'thread' } : null,
+    }),
+  });
+  const panelPreview = usePanelPreview({ threadId });
+  // 树的文件搜索：防抖 250ms，与参照同值
+  const [fileSearchOpen, setFileSearchOpen] = React.useState(false);
+  const [fileSearchQuery, setFileSearchQuery] = React.useState('');
+  const debouncedFileSearchQuery = useDebouncedValue(fileSearchQuery, 250);
+  const fileSearch = usePanelFileSearch({
+    scope: treeScope,
+    threadId,
+    query: debouncedFileSearchQuery,
+    enabled: fileSearchOpen,
+  });
+  // 面板一打开就把当前作用域的树备好
+  React.useEffect(() => {
+    if (!panel.open) return;
+
+    void panelFilesystem.refreshThreadTree();
+    void panelFilesystem.refreshWorkspaceTree();
+    // 只在打开那一刻拉一次；之后的更新来自懒加载与轮询
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panel.open, threadId]);
 
   // 审批模式按三级回退解析：有线程看线程 metadata，无线程看本地偏好与智能体默认值
   const agentToolApprovalMode = useThreadList(
@@ -127,33 +219,55 @@ export const ChatPage = () => {
   const setThreadToolApprovalMode = useThreadList(
     (state) => state.setToolApprovalMode,
   );
+  // 模型按四级回退：按会话的覆盖 → 会话 metadata 的绑定 → 智能体配置 → 系统默认
+  const threadMetadata = useThreadList(
+    (state) => state.threads.find((item) => item.id === routeThreadId)?.metadata,
+  );
+  const modelOverride = useModelOverride(routeThreadId);
+  const setModelOverride = useModelSelection((state) => state.setOverride);
+  const setThreadModelSpec = useThreadList((state) => state.setModelSpec);
+  const promoteModelDraft = useModelSelection((state) => state.promoteDraft);
+  const chatModels = useChatModels();
+  const systemDefaultModel = useSystemDefaultModel();
+
+  // 附件上传：条目只在弹窗打开期间存在，关闭即清空
+  const [attachmentOpen, setAttachmentOpen] = React.useState(false);
+  const attachmentUpload = useAttachmentUpload({
+    configuredEngine: useDefaultOcrEngine(),
+  });
+  // 会话里已确认的附件：还没被请求用掉的那些要随下一次发送下发
+  const threadAttachments = useThreadAttachments(threadId);
+  const cacheThreadAttachments = useCacheThreadAttachments();
+  const pendingAttachmentIds = pendingAttachmentFileIds(threadAttachments.data ?? []);
+
+  // 项目只在还没有会话时可选：它决定这条会话的工作目录，建出来就改不了
+  const [selectedProjectId, setSelectedProjectId] =
+    React.useState(AUTO_PROJECT_ID);
+  const [historyQuery, setHistoryQuery] = React.useState('');
+  const projects = useProjects();
+  const createProject = useCreateLinkedProject();
+  const historyCandidates = useHistoryCandidates(
+    useDebouncedValue(historyQuery, HISTORY_SEARCH_DEBOUNCE_MS),
+  );
+
+  // metadata 是后端可写的自由字段，取值要校验后才当成模式用
   const storedThreadToolApprovalMode = useThreadList(
     (state) =>
       state.threads.find((item) => item.id === routeThreadId)?.metadata
         ?.tool_approval_mode,
   );
-  // metadata 是后端可写的自由字段，取值要校验后才当成模式用
-  const threadToolApprovalMode = isToolApprovalMode(
-    storedThreadToolApprovalMode,
-  )
+  const threadToolApprovalMode = isToolApprovalMode(storedThreadToolApprovalMode)
     ? storedThreadToolApprovalMode
     : null;
   const [savedToolApprovalMode, setSavedToolApprovalMode] =
     React.useState<ToolApprovalMode | null>(() =>
       readToolApprovalModePreference(),
     );
-  /**
-   * 真正下发给后端的只有「用户显式选过」的值。
-   *
-   * 后端解析这次 run 的模式是 `请求值 ?? 智能体配置 ?? 默认值`，从不读线程 metadata，
-   * 因此把界面的回退值一起发出去会静默覆盖智能体配置（普通用户在界面上看不到那一级）。
-   */
+  // 真正下发给后端的只有「用户显式选过」的值：把界面的回退值一起发出去会
+  // 静默覆盖智能体配置（普通用户在界面上看不到那一级）
   const requestedToolApprovalMode =
     threadToolApprovalMode ?? savedToolApprovalMode;
-  /**
-   * 选择器上显示的模式。`hasThread` 只在「线程自己带了合法模式」时为真：显示与下发必须同源，
-   * 否则会出现界面写着「请求审批」、实际按本地偏好完全信任执行的相反结果。
-   */
+  // 选择器上显示的模式：显示与下发必须同源，否则界面与实际生效模式会相反
   const toolApprovalMode = resolveToolApprovalMode({
     hasThread: Boolean(threadId) && threadToolApprovalMode !== null,
     threadMode: threadToolApprovalMode,
@@ -161,10 +275,8 @@ export const ChatPage = () => {
     savedMode: savedToolApprovalMode,
   });
 
-  /**
-   * 选择审批模式：新建对话只记本地偏好（建线程时随 metadata 落到线程上），
-   * 已有线程先持久化再记偏好——保存失败时不能让偏好改变之后所有新线程。
-   */
+  // 选择审批模式：新建对话只记本地偏好；已有线程先持久化再记偏好，
+  // 保存失败时不能让偏好改变之后所有新线程
   const onChangeToolApprovalMode = (mode: ToolApprovalMode) => {
     if (!threadId) {
       setSavedToolApprovalMode(mode);
@@ -173,7 +285,7 @@ export const ChatPage = () => {
     }
     void setThreadToolApprovalMode(threadId, mode).then((ok) => {
       if (!ok) {
-        notifyError('审批模式保存失败');
+        notify({ type: 'error', title: '对话', message: '审批模式保存失败' });
         return;
       }
       setSavedToolApprovalMode(mode);
@@ -181,46 +293,52 @@ export const ChatPage = () => {
     });
   };
 
-  const notifyError = React.useCallback(
-    (message: string) => {
-      addNotification({ type: 'error', title: '对话', message });
-    },
-    [addNotification],
-  );
-
-  /** 上传一张图片到图片槽；校验与文案都在 `image-upload` 里，这里只管状态。 */
-  const uploadImageFile = React.useCallback(
-    (file: File) => {
-      const invalid = validateImageFile(file);
-      if (invalid) {
-        notifyError(invalid);
-        return;
-      }
-      const generation = (uploadGenerationRef.current += 1);
-      setPendingUploads((count) => count + 1);
-      agentRunApi
-        .uploadImage(file)
-        .then((response) => {
-          // 这次上传已经被切线程或更新的选择作废：不能再写回图片槽
-          if (uploadGenerationRef.current !== generation) return;
-          setImage(normalizeUploadedImage(response, file.name));
-        })
-        .catch((error: unknown) => {
-          if (uploadGenerationRef.current !== generation) return;
-          notifyError(
-            error instanceof Error ? error.message : '图片上传失败，请重试。',
-          );
-        })
-        .finally(() => {
-          setPendingUploads((count) => Math.max(0, count - 1));
+  // 标题生成走快速模型；管理面读不到时是 undefined，生成调用会失败并回退截断
+  const fastModel = useFastModel();
+  // 会话标题自动生成：只有当前线程仍是发送目标线程时才写回，防止切线程后旧标题串台
+  const maybeGenerateThreadTitle = React.useCallback(
+    async (targetThreadId: string, query: string) => {
+      const fallback = fallbackTitleFromQuery(query);
+      if (!fallback) return;
+      let title = fallback;
+      try {
+        const generated = await generateConversationTitle({
+          query,
+          modelSpec: fastModel,
         });
+        if (generated) title = generated;
+      } catch {
+        // 生成失败不是用户的错误：静默回退到截断文案
+      }
+      if (contextRef.current.threadId !== targetThreadId) return;
+      void renameThread(targetThreadId, title);
     },
-    [notifyError],
+    [fastModel, renameThread],
   );
 
-  const markThreadViewed = useThreadList((state) => state.markViewed);
+  // 滚动控制（参照 ScrollController 直译）：流式输出与切线程后的跟滚都在这里
+  const chatMainRef = React.useRef<HTMLDivElement>(null);
+  const scrollControllerRef = React.useRef<ScrollController | null>(null);
+  if (!scrollControllerRef.current) {
+    scrollControllerRef.current = new ScrollController(() => chatMainRef.current);
+  }
+  const scrollController = scrollControllerRef.current;
+  React.useEffect(() => {
+    const chatMain = chatMainRef.current;
+    if (!chatMain) return;
+    chatMain.addEventListener('scroll', scrollController.handleScroll, {
+      passive: true,
+    });
+    return () => {
+      chatMain.removeEventListener('scroll', scrollController.handleScroll);
+      scrollController.cleanup();
+    };
+  }, [scrollController]);
+
   const chat = useChatRuntime({
     currentAgentId: () => agentSlug,
+    // 流式输出与收尾时自动跟滚；用户上滚后由 controller 停用
+    onScrollToBottom: () => void scrollController.scrollToBottom(),
     fetchAgentState: (_agentId, stateThreadId) => {
       void fetchAgentState(stateThreadId);
     },
@@ -231,284 +349,448 @@ export const ChatPage = () => {
       void markThreadViewed(settledThreadId);
     },
     onNotice: (notice) =>
-      addNotification({
+      notify({
         type: notice.level === 'error' ? 'error' : 'info',
         title: '对话',
         message: notice.message,
       }),
   });
 
-  React.useEffect(() => {
-    void ensureAgentSlug();
-  }, [ensureAgentSlug]);
+  useChatThreadLifecycle({
+    threadId,
+    agentSlug,
+    chat,
+    ensureAgentSlug,
+    markThreadViewed,
+    scrollToBottomStaticForce: () =>
+      void scrollController.scrollToBottomStaticForce(),
+    notify: (notice) => notify(notice),
+  });
 
-  React.useEffect(() => {
-    if (!threadId) return;
-    // 打开线程即已读：失败只记录，不影响阅读
-    void markThreadViewed(threadId);
-    void chat.loadHistory(threadId).catch(() => {
-      addNotification({
-        type: 'error',
-        title: '对话',
-        message: '加载对话历史失败。',
-      });
-    });
-  }, [addNotification, chat, markThreadViewed, threadId]);
+  // 工具行要显示「知识库: X」，但 `kb_id` 只有名称列表才能翻译；列表按 id 建一次索引
+  const knowledgeBases = useKnowledgeBases();
+  const resolveKbName = React.useMemo(() => {
+    const nameById = new Map(
+      (knowledgeBases.data ?? []).map((item) => [item.kb_id, item.name]),
+    );
+    return (kbId: string) => nameById.get(kbId) ?? '';
+  }, [knowledgeBases.data]);
 
-  React.useEffect(() => {
-    // 线程还不存在时没有队列可同步，避免在新建对话入口刷出误导提示
-    if (!agentSlug || !threadId) return;
-    void chat.refreshQueue(threadId, agentSlug);
-  }, [agentSlug, chat, threadId]);
+  // 提及候选按当前智能体的配置过滤：列出这个智能体可用的知识库 / MCP / 技能 / 子智能体
+  const agentConfig = useAgentConfig(agentSlug);
+  const currentModelSpec = resolveModelSpec({
+    override: modelOverride,
+    threadMetadata,
+    agentConfig: agentConfig.agentConfig,
+    systemDefault: systemDefaultModel,
+  });
+  const mentionConfig = React.useMemo(
+    () =>
+      buildMentionConfig({
+        configurableItems: agentConfig.configurableItems,
+        agentConfig: agentConfig.agentConfig,
+      }),
+    [agentConfig.configurableItems, agentConfig.agentConfig],
+  );
+  const mentionResources = React.useMemo(
+    () => buildMentionResourceItems(mentionConfig),
+    [mentionConfig],
+  );
+  const mentionItems: MentionResourceItem[] = React.useMemo(
+    () => [
+      ...mentionResources.knowledgeBases,
+      ...mentionResources.mcps,
+      ...mentionResources.skills,
+      ...mentionResources.subagents,
+    ],
+    [mentionResources],
+  );
+  const mentionLabels = React.useMemo(
+    () => buildMentionDisplayLabels(mentionConfig),
+    [mentionConfig],
+  );
+  const searchMentionFilesForThread = React.useCallback(
+    async (query: string) =>
+      buildMentionFileItems(
+        await searchMentionFiles({
+          ...(routeThreadId ? { threadId: routeThreadId } : {}),
+          query,
+        }),
+      ),
+    [routeThreadId],
+  );
 
-  React.useEffect(() => {
-    // 离开线程（切线程或卸载）时断开它的排队事件流；
-    // 回到线程时上面的队列同步会重新订阅。
-    if (!threadId) return;
-    return () => chat.stopRequestStreams(threadId);
-  }, [chat, threadId]);
-
-  const messages = runtime?.messages ?? [];
-  const pendingInterrupt = (runtime?.pendingInterrupt ?? null) as
-    import('@/features/chat').PendingInterrupt | null;
-  const isStreaming = runtime?.isStreaming ?? false;
+  const pendingInterrupt = runtime?.pendingInterrupt ?? null;
   const queueView = describeQueue(
     runtime?.queueSnapshot,
     runtime?.queuedRequests,
   );
   const queuedRequests = runtime?.queuedRequests ?? [];
+
+  // 生成中状态条：`replyLoadingVisible` 起效即计时，消失即清零；只在有对话时展示
+  const replyStatus = buildReplyLoadingStatus({
+    replyLoadingVisible: runtime?.replyLoadingVisible ?? false,
+    contextCompressing: runtime?.contextCompressing ?? false,
+    queuePaused:
+      (runtime?.queueSnapshot?.status ?? 'idle') === 'paused' ||
+      Boolean(runtime?.queueSnapshot?.paused_reason),
+    queuedCount: queuedRequests.length,
+  });
+  const [replyElapsedSeconds, setReplyElapsedSeconds] = React.useState(0);
+  React.useEffect(() => {
+    if (!replyStatus.visible) {
+      setReplyElapsedSeconds(0);
+      return;
+    }
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      setReplyElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+    return () => window.clearInterval(timer);
+  }, [replyStatus.visible]);
+
   const queueRowContext = {
     isStreaming,
     activeRunSteerable: runtime?.activeRunSteerable ?? false,
-    hasPendingSteer: queuedRequests.some(
-      (request) => request.queue_policy === 'steer',
-    ),
+    hasPendingSteer: hasPendingDirectSteer(queuedRequests),
     queueStatus: runtime?.queueSnapshot?.status ?? 'idle',
   };
-  // 只要正文或图片有一项就能发；上传中与流式中都不允许再发
-  const canSend =
-    (Boolean(input.trim()) || Boolean(image)) &&
-    Boolean(agentSlug) &&
-    !isStreaming &&
-    pendingUploads === 0;
+  const isWaitingForUserAction = isThreadWaitingForUserAction(runtime);
 
-  const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (!canSend || !agentSlug) return;
-    const query = input.trim();
-    const imageContent = image?.imageContent ?? null;
-    const routeThreadIdAtSubmit = threadId;
-    void (async () => {
-      try {
-        const isNewThread = !threadId;
-        const created = isNewThread
-          ? await chat.createThread(
-              agentSlug,
-              query.slice(0, 30) || undefined,
-              requestedToolApprovalMode,
-            )
-          : null;
-        const activeThreadId = threadId ?? created?.id ?? '';
-        const context = contextRef.current;
-        if (!context.mounted || context.threadId !== routeThreadIdAtSubmit) {
-          // 用户已经离开或切走，这次发送的目标线程不再是当前上下文
-          return;
-        }
-        // 先把地址写到新线程：`sendMessage` 要等整段流结束才返回，
-        // 期间页面只有拿到真实 threadId 才能渲染流式回复
-        if (created) {
-          // 用后端落库的线程，标题与刷新后的列表一致
-          upsertThread(created);
-          navigate(paths.app.chat.getHref(created.id), { replace: true });
-        }
-        // 建线程成功后才清输入：建线程失败时输入与草稿都原样保留，可以直接重发
-        updateInput('');
-        setImage(null);
-        await chat.sendMessage({
-          threadId: activeThreadId,
-          agentSlug,
-          query,
-          imageContent,
-          toolApprovalMode: requestedToolApprovalMode,
-        });
-        await chat.refreshQueue(activeThreadId, agentSlug);
-      } catch (error) {
-        // 建线程或发送被后端拒绝时静默失败会让用户以为消息已发出
-        addNotification({
-          type: 'error',
-          title: '对话',
-          message: error instanceof Error ? error.message : '发送消息失败。',
-        });
-      }
-    })();
-  };
+  // 运行中把还没发出的输入作为引导插队；判定与参照的 canSubmitSteer 同项
+  const canSteerNow = canSubmitDirectSteer({
+    isStreaming,
+    activeRunSteerable: runtime?.activeRunSteerable ?? false,
+    hasInput: Boolean(input.trim()),
+    hasAgent: Boolean(agentSlug),
+    hasPendingSteer: queueRowContext.hasPendingSteer,
+    isWaitingForUserAction,
+  });
 
-  /** 粘贴图片即上传；文本粘贴不拦截，交给输入框的默认行为。 */
-  const onPaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
-    const file = findClipboardImage(event.clipboardData);
-    if (!file) return;
-    event.preventDefault();
-    uploadImageFile(file);
-  };
-
-  /** 队列动作的失败原因是后端语义（如「已派发不可取消」），必须如实转达。 */
-  const runQueueAction = (action: Promise<unknown>) => {
-    void action.catch((error: unknown) => {
-      addNotification({
-        type: 'error',
-        title: '队列',
-        message: error instanceof Error ? error.message : '队列操作失败。',
-      });
+  const { canSend, creatingThread, submitMessage, confirmAttachments } =
+    useChatSubmission({
+      threadId,
+      contextRef,
+      agentSlug,
+      input,
+      currentInput,
+      updateInput,
+      image: imageSlot.image,
+      clearImage: imageSlot.clear,
+      pendingImageUploads: imageSlot.pendingUploads,
+      isStreaming,
+      canSteerNow,
+      chat,
+      requestedToolApprovalMode,
+      selectedProjectId,
+      setSelectedProjectId,
+      upsertThread,
+      promoteModelDraft,
+      navigateToThread: (id) =>
+        navigate(paths.app.chat.getHref(id), { replace: true }),
+      currentModelSpec,
+      setThreadModelSpec,
+      pendingAttachmentIds,
+      refetchAttachments: () => void threadAttachments.refetch(),
+      hasMessages: (runtime?.messages ?? []).length > 0,
+      maybeGenerateThreadTitle,
+      confirmUpload: attachmentUpload.confirm,
+      cacheThreadAttachments,
+      notify,
     });
-  };
+
+  /** 一轮对话的产物卡片；提取与归一在 `lib/artifacts.ts`。 */
+  const renderArtifacts = React.useCallback(
+    (conversation: Conversation) => {
+      const artifacts = normalizeArtifactItems(
+        extractArtifactsFromConversation(conversation),
+      );
+      if (artifacts.length === 0) return null;
+      return (
+        <ArtifactsCard
+          artifacts={artifacts}
+          threadId={threadId}
+          savingPaths={artifactActions.savingPaths}
+          onOpenPreview={(artifact) => {
+            panel.openSection({
+              key: `file:thread:${artifact.path}`,
+              type: 'file',
+              title: artifact.name,
+              path: artifact.path,
+            });
+            panel.setOpen(true);
+            panelPreview.open({
+              scope: 'thread',
+              path: artifact.path,
+              name: artifact.name,
+            });
+          }}
+          onDownload={(artifact) => artifactActions.download(threadId, artifact)}
+          onSave={(artifact) => artifactActions.save(threadId, artifact)}
+        />
+      );
+    },
+    [notify, panelPreview, artifactActions, threadId],
+  );
+
+  // 会话标题：参照 .conversation-title（「新的对话」不显示）
+  const currentThreadTitle = useThreadList(
+    (state) => state.threads.find((item) => item.id === routeThreadId)?.title,
+  );
+
+  const messages = runtime?.messages ?? [];
+  // 面板：分区子智能体随 agent_state 同步；增删规则在 hook 里
+  React.useEffect(() => {
+    panel.syncSubagentRuns(runtime?.agentState);
+  }, [panel.syncSubagentRuns, runtime?.agentState]);
 
   return (
-    <ContentLayout title="智能体对话">
-      <div className="flex flex-col gap-4 py-4">
-        <div className="flex min-h-40 flex-col gap-4 rounded-large border border-color-border-1 bg-color-bg-1 p-4">
-          {isSuperuser ? (
-            <div className="flex justify-end">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-pressed={debugOpen}
-                onClick={() => setDebugOpen((current) => !current)}
-              >
-                <Bug className="size-3.5" />
-                {debugOpen ? '关闭调试' : '消息调试'}
-              </Button>
-            </div>
-          ) : null}
-          <MessageList
-            messages={messages}
-            streamingMessages={streamingMessages}
-            isProcessing={isStreaming}
-          />
-        </div>
-
-        {debugOpen ? (
-          <MessageDebugPanel
-            messages={mergeMessageDebugMessages(
-              messages as unknown as DebugMessage[],
-              streamingMessages as unknown as DebugMessage[],
-              runtime?.activeRunId ?? null,
-            )}
-            fetchLangfuseUrl={(runId) => agentRunApi.getRunLangfuseLink(runId)}
-          />
-        ) : null}
-
-        {pendingInterrupt && threadId ? (
-          <PendingInterruptPanel
-            interrupt={pendingInterrupt}
-            disabled={isStreaming}
-            onSubmit={(resume) =>
-              void chat.submitInterrupt({
-                threadId,
-                agentSlug: agentSlug ?? '',
-                resume,
-                interruptedRunId: pendingInterrupt.interruptedRunId,
-              })
+    <ContentLayout title="智能体对话" fullHeight>
+      <ChatPageView
+        header={{
+          title: currentThreadTitle ?? null,
+          isSuperuser,
+          onToggleDebug: panel.toggleWithDebugSection,
+          onToggleFiles: () => {
+            if (!panel.open) {
+              panel.openSection({
+                key: 'file-tree',
+                type: 'file-tree',
+                title: '文件',
+              });
             }
-            onCancel={() =>
-              void chat.submitInterrupt({
-                threadId,
-                agentSlug: agentSlug ?? '',
-                resume: 'reject',
-                interruptedRunId: pendingInterrupt.interruptedRunId,
-              })
+            panel.setOpen((current) => !current);
+          },
+          onToggleState: () => {
+            if (!panel.open) {
+              panel.openSection({
+                key: 'state',
+                type: 'state',
+                title: '状态',
+              });
             }
-          />
-        ) : null}
-
-        {threadId ? (
-          <QueueBar
-            view={queueView}
-            requests={queuedRequests}
-            rowContext={queueRowContext}
-            waitingForUserAction={isThreadWaitingForUserAction(runtime)}
-            continuing={runtime?.continueQueueInFlight ?? false}
-            disabled={!agentSlug}
-            onSteer={(requestId) =>
-              runQueueAction(
-                chat.steer({ threadId, agentSlug: agentSlug ?? '', requestId }),
-              )
+            panel.setOpen((current) => !current);
+          },
+        }}
+        conversation={{
+          messages,
+          streamingMessages,
+          isStreaming,
+          replyStatus,
+          replyElapsedSeconds,
+          resolveKbName,
+          renderArtifacts,
+          chatMainRef,
+        }}
+        composer={{
+          agentOptions,
+          agentsLoading,
+          hasActiveThread: Boolean(threadId),
+          isCreatingThread: creatingThread,
+          onSelectAgent: selectAgent,
+          onAgentBlocked: (reason) =>
+            notify({ type: 'info', title: '智能体', message: reason }),
+          toolApprovalMode,
+          onChangeToolApprovalMode,
+          tokenUsage: readTokenUsage(runtime?.agentState),
+          onContextRingClick: panel.toggleWithDebugSection,
+          modelSelected: currentModelSpec,
+          modelGroups: chatModels.data ?? [],
+          modelsLoading: chatModels.isPending,
+          onSelectModel: (spec) => setModelOverride(routeThreadId, spec),
+          canSteerNow,
+          onSteer: () => submitMessage('steer'),
+          onOpenAttachments: () => setAttachmentOpen(true),
+          imagePending: imageSlot.pendingUploads > 0,
+          imageFileInputRef: imageSlot.fileInputRef,
+          onImageFileChange: imageSlot.onFileInputChange,
+          input,
+          onInputPaste: imageSlot.onPaste,
+          onInputChange: updateInput,
+          onSubmit: () => submitMessage(),
+          inputPlaceholder: agentSlug ? '输入消息' : '正在获取默认智能体…',
+          mentionItems,
+          mentionLabels,
+          onSearchFiles: searchMentionFilesForThread,
+          onDropFiles: imageSlot.onDropFiles,
+          canSend,
+          isStreaming,
+          inert: Boolean(pendingInterrupt && threadId),
+          onCancelRun: () => {
+            if (threadId) void chat.cancelRun(threadId);
+          },
+          attachmentUpload,
+          onConfirmAttachments: confirmAttachments,
+          queueView,
+          queuedRequests,
+          queueRowContext,
+          waitingForUserAction: isWaitingForUserAction,
+          continuing: runtime?.continueQueueInFlight ?? false,
+          runQueueAction: (action) => {
+            // 队列动作的失败原因是后端语义（如「已派发不可取消」），必须如实转达
+            void action.catch((error: unknown) => {
+              notify({
+                type: 'error',
+                title: '队列',
+                message:
+                  error instanceof Error ? error.message : '队列操作失败。',
+              });
+            });
+          },
+          chat,
+          agentSlug: agentSlug ?? null,
+          pendingInterrupt: (pendingInterrupt ?? null) as
+            | import('@/features/chat').PendingInterrupt
+            | null,
+          greeting,
+          currentAgentName,
+          projectSelector:
+            threadId ? null : (
+              <ProjectSelector
+                projects={projects.data ?? []}
+                projectsLoading={projects.isPending}
+                projectsError={
+                  projects.error instanceof Error ? projects.error.message : null
+                }
+                selected={selectedProjectId}
+                disabled={creatingThread}
+                onChange={setSelectedProjectId}
+                history={{
+                  query: historyQuery,
+                  items: historyCandidates.data?.items ?? [],
+                  loading: historyCandidates.isPending,
+                  error:
+                    historyCandidates.error instanceof Error
+                      ? historyCandidates.error.message
+                      : null,
+                  onQueryChange: setHistoryQuery,
+                }}
+                onCreateProject={async ({ name, path, requestId }) => {
+                  const project = await createProject.mutateAsync({
+                    requestId,
+                    name,
+                    path,
+                  });
+                  // 新项目建好就直接选中它：用户点「创建」的意图就是要用它
+                  setSelectedProjectId(project.id);
+                }}
+              />
+            ),
+        }}
+        sidePanel={{
+          ...panel,
+          sections: panel.sections,
+          activeSectionKey: panel.activeSectionKey,
+          maximized: panel.maximized,
+          open: panel.open,
+          resizing: panel.resizing,
+          width: panel.width,
+          rowRef: panel.rowRef,
+          onActivateSection: panel.setActiveSectionKey,
+          onCloseSection: panel.closeSection,
+          onToggleMaximize: panel.toggleMaximize,
+          onClose: () => panel.setOpen(false),
+          onResize: panel.onResize,
+          onResizeEnd: panel.endResize,
+          agentState: runtime?.agentState ?? null,
+          onOpenPreviewFile: (path: string, name: string) => {
+            panel.openSection({
+              key: `file:thread:${path}`,
+              type: 'file',
+              title: name,
+              path,
+            });
+            panelPreview.open({ scope: 'thread', path, name });
+          },
+          onOpenSubagent: ({ runId, childThreadId, name, status }) => {
+            panel.openSection({
+              key: `subagent:${runId ?? childThreadId}`,
+              type: 'subagent',
+              title: name,
+              threadId: childThreadId,
+              runId: runId ?? undefined,
+              runStatus: status,
+            });
+          },
+          previewFile: panelPreview.current,
+          onPreviewDownload: (file) => {
+            void panelPreview.download({
+              scope: treeScope,
+              path: file.path,
+              name: file.name,
+            });
+          },
+          onPreviewClose: (sectionKey) => {
+            panelPreview.close();
+            panel.closeSection(sectionKey);
+          },
+          treeScope,
+          onTreeScopeChange: setTreeScope,
+          fileSearchQuery,
+          onFileSearchQueryChange: (query) => {
+            setFileSearchOpen(true);
+            setFileSearchQuery(query);
+          },
+          fileSearchResults: fileSearch.data,
+          scopeState:
+            treeScope === 'workspace'
+              ? panelFilesystem.workspace
+              : panelFilesystem.thread,
+          onPreviewOpen: (scope, path, name) => {
+            panel.openSection({
+              key: `file:${scope}:${path}`,
+              type: 'file',
+              title: name,
+              path,
+            });
+            panelPreview.open({ scope, path, name });
+          },
+          onPreviewDownloadByScope: (scope, path, name) => {
+            void panelPreview.download({ scope, path, name });
+          },
+          onNodeExpand: (node) => {
+            panelFilesystem.setScopeState(treeScope, (current) => ({
+              ...current,
+              expandedKeys: current.expandedKeys.includes(node.key)
+                ? current.expandedKeys.filter((key) => key !== node.key)
+                : [...current.expandedKeys, node.key],
+              selectedKeys: [node.key],
+            }));
+          },
+          onLoadChildren: (node) => {
+            if (treeScope === 'workspace') {
+              void panelFilesystem.loadWorkspaceChildren(node);
+            } else {
+              void panelFilesystem.loadThreadChildren(node);
             }
-            onCancel={(requestId) =>
-              runQueueAction(
-                chat.cancelQueued({
-                  threadId,
-                  agentSlug: agentSlug ?? '',
-                  requestId,
-                }),
-              )
+          },
+          onDeleteNode: (node) => {
+            void panelFilesystem.deleteThreadNode(node);
+          },
+          onRetryTree: () => {
+            if (treeScope === 'workspace') {
+              void panelFilesystem.refreshWorkspaceTree({ force: true });
+            } else {
+              void panelFilesystem.refreshThreadTree();
             }
-            onContinue={() =>
-              runQueueAction(chat.continueQueue(threadId, agentSlug ?? ''))
-            }
-          />
-        ) : null}
-
-        <TokenUsageCard usage={readTokenUsage(runtime?.agentState)} />
-
-        {image ? (
-          <ImageAttachmentPreview
-            image={image}
-            onRemove={() => setImage(null)}
-          />
-        ) : null}
-
-        <form className="flex items-center gap-2" onSubmit={onSubmit}>
-          <ToolApprovalModeSelector
-            value={toolApprovalMode}
-            onChange={onChangeToolApprovalMode}
-          />
-          <Input
-            value={input}
-            onChange={(event) => updateInput(event.target.value)}
-            onPaste={onPaste}
-            placeholder={agentSlug ? '输入消息' : '正在获取默认智能体…'}
-            aria-label="消息输入"
-          />
-          <Button
-            type="button"
-            variant="outline"
-            disabled={isStreaming}
-            onClick={() => imageFileInputRef.current?.click()}
-          >
-            {pendingUploads > 0 ? (
-              <Spinner aria-hidden className="size-4" />
-            ) : null}
-            图片
-          </Button>
-          <input
-            ref={imageFileInputRef}
-            type="file"
-            accept="image/*"
-            className="hidden"
-            aria-label="选择图片"
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              // 先清 value 再上传：连续选同一张图也要触发 change
-              event.target.value = '';
-              if (file) uploadImageFile(file);
-            }}
-          />
-          <Button type="submit" disabled={!canSend}>
-            发送
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={!isStreaming}
-            onClick={() => {
-              if (threadId) void chat.cancelRun(threadId);
-            }}
-          >
-            停止
-          </Button>
-        </form>
-      </div>
+          },
+          debugMessages: mergeMessageDebugMessages(
+            messages as unknown as DebugMessage[],
+            streamingMessages as unknown as DebugMessage[],
+            runtime?.activeRunId ?? null,
+          ),
+          fetchLangfuseUrl: async (runId) => {
+            const link = await agentRunApi.getRunLangfuseLink(runId);
+            return link.url ?? null;
+          },
+        }}
+        overlays={{
+          attachmentOpen,
+          onAttachmentOpenChange: setAttachmentOpen,
+          image: imageSlot.image,
+          onImageRemove: imageSlot.clear,
+        }}
+      />
     </ContentLayout>
   );
 };

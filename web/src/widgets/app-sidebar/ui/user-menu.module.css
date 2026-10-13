@@ -1,0 +1,61 @@
+/* 用户菜单的触发器样式。参照实现把它压在 `.user-info` 的 `:deep()` 里；
+   本仓把用户菜单拆成自己的文件后自带样式，父级只负责外边距。 */
+
+.trigger {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.trigger:hover,
+.trigger:focus-visible,
+.triggerOpen {
+  background: var(--main-20);
+  color: var(--main-color);
+  outline: none;
+}
+
+.avatar {
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.name {
+  min-width: 0;
+  margin-left: 8px;
+  overflow: hidden;
+  font-size: 14px;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0;
+  line-height: 18px;
+}
+
+.identityName {
+  color: var(--gray-1000);
+  font-weight: 600;
+}
+
+.identityMeta {
+  color: var(--gray-600);
+  font-size: 12px;
+}

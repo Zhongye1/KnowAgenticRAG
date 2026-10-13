@@ -22,8 +22,10 @@ export type {
   SystemInfoData,
   LoginBranding,
   HomeBranding,
+  ShellBranding,
 } from './lib/system-info';
 export { MIN_PASSWORD_LENGTH } from './lib/password';
+export { formatUserRole } from './lib/user-role';
 export { formatLockRemaining } from './lib/login-lock';
 export {
   sanitizeRedirect,
@@ -35,6 +37,7 @@ export { useLoginLock } from './model/login-lock';
 export {
   useHomeBranding,
   useLoginBranding,
+  useShellBranding,
   useSystemHealth,
   useSystemInfo,
 } from './model/system-info';

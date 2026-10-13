@@ -32,7 +32,7 @@ describe('MessageList', () => {
   it('没有消息时给出空态提示', () => {
     render(<MessageList messages={[]} />);
 
-    expect(screen.getByText('还没有消息，发送一条试试。')).toBeTruthy();
+    expect(screen.getByText('暂无消息')).toBeTruthy();
   });
 
   it('渲染历史消息，并按用户消息切成多轮', async () => {
@@ -72,8 +72,11 @@ describe('MessageList', () => {
     expect(screen.queryByText(/参数/)).toBeNull();
 
     await userEvent.click(summary);
-    // 工具组展开后每条调用仍是收起的，再点一次才看到参数与结果
-    await userEvent.click(screen.getByRole('button', { name: /执行完成/ }));
+    // 工具组展开后每条调用仍是收起的，再点一次才看到参数与结果。
+    // bash 有专用头部：主文案「执行命令」+ 命令行，不再是通用文案。
+    const row = screen.getByRole('button', { name: /执行命令.*ls/ });
+    expect(row).toBeTruthy();
+    await userEvent.click(row);
 
     // 「参数: 」在 <strong> 里，取文本节点会带上标签边界，用正则匹配
     expect(
@@ -170,6 +173,71 @@ describe('MessageList', () => {
     expect(trigger.getAttribute('aria-expanded')).toBe('true');
     expect((trigger as HTMLButtonElement).disabled).toBe(true);
   });
+
+  it('流刚起、还没有流式分片时不把历史消息标成处理中', async () => {
+    render(
+      <MessageList
+        messages={[
+          human(1, '问题'),
+          assistant(2, {
+            content: '',
+            extra_metadata: {
+              additional_kwargs: { reasoning_content: '历史推理' },
+            },
+          }),
+        ]}
+        isProcessing
+        streamingMessages={[]}
+      />,
+    );
+
+    // 历史那一轮的思维链已收尾：按钮是「推理过程」，不是流式中的「Thinking...」
+    expect(
+      await screen.findByRole('button', { name: /推理过程/ }),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Thinking/ })).toBeNull();
+  });
+
+  it('传入 resolveKbName 时工具行把 kb_id 翻成知识库名', async () => {
+    const kbCall = {
+      id: 't-kb',
+      name: 'find_kb_document',
+      function: {
+        name: 'find_kb_document',
+        arguments: '{"kb_id":"kb-1","file_id":"f-1"}',
+      },
+      status: 'success',
+      tool_call_result: { content: '片段' },
+    };
+    const messages = [
+      human(1, '问题'),
+      assistant(2, { content: '', tool_calls: [kbCall] }),
+      assistant(3, { content: '最终回答' }),
+    ];
+
+    const { unmount } = render(
+      <MessageList
+        messages={messages}
+        resolveKbName={(kbId) => (kbId === 'kb-1' ? '产品文档' : '')}
+      />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /处理过程/ }));
+    await userEvent.click(
+      screen.getByRole('button', { name: /调用: 查找知识库文档/ }),
+    );
+
+    expect(screen.getByText(/知识库: 产品文档/)).toBeTruthy();
+    unmount();
+
+    // 没有注入解析器时不渲染半截标签
+    render(<MessageList messages={messages} />);
+    await userEvent.click(screen.getByRole('button', { name: /处理过程/ }));
+    await userEvent.click(
+      screen.getByRole('button', { name: /调用: 查找知识库文档/ }),
+    );
+    expect(screen.queryByText(/知识库: /)).toBeNull();
+  }, 20_000);
 
   it('有正文但标记了 error_type 时同时显示正文与提示', async () => {
     render(

@@ -39,6 +39,9 @@ export const AntdProvider = ({ children }: { children: React.ReactNode }) => {
   const theme = React.useMemo(
     () => ({
       algorithm: isDark ? antdTheme.darkAlgorithm : undefined,
+      // 参照的按钮文案没有两字间距（antd 默认在两个汉字间插空格）；
+      // 关掉它，否则「删除」的可访问名会变成「删 除」，测试与读屏都受影响
+      button: { autoInsertSpace: false },
       token: {
         fontFamily: FONT_FAMILY,
         colorPrimary: readRootColor('--antd-color-primary-seed'),

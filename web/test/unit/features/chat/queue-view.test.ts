@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  canSubmitDirectSteer,
   describeQueue,
   describeQueueRow,
+  hasPendingDirectSteer,
 } from '@/features/chat/lib/queue-view';
 
 const idle = {
@@ -141,5 +143,70 @@ describe('describeQueueRow', () => {
         queueStatus: 'paused',
       }).canCancel,
     ).toBe(true);
+  });
+});
+
+const steerContext = {
+  isStreaming: true,
+  activeRunSteerable: true,
+  hasInput: true,
+  hasAgent: true,
+  hasPendingSteer: false,
+  isWaitingForUserAction: false,
+};
+
+describe('hasPendingDirectSteer', () => {
+  it('只有等待执行的引导请求算数', () => {
+    expect(
+      hasPendingDirectSteer([
+        { request_id: 'r-1', queue_policy: 'steer', status: 'queued' },
+      ]),
+    ).toBe(true);
+  });
+
+  it('已经派发过的引导不再挡住后续引导', () => {
+    expect(
+      hasPendingDirectSteer([
+        { request_id: 'r-1', queue_policy: 'steer', status: 'dispatched' },
+        { request_id: 'r-2', queue_policy: 'steer', status: 'completed' },
+      ]),
+    ).toBe(false);
+  });
+
+  it('普通排队请求不算引导', () => {
+    expect(
+      hasPendingDirectSteer([
+        { request_id: 'r-1', queue_policy: 'enqueue', status: 'queued' },
+      ]),
+    ).toBe(false);
+  });
+
+  it('没有请求时返回 false', () => {
+    expect(hasPendingDirectSteer([])).toBe(false);
+    expect(hasPendingDirectSteer(null)).toBe(false);
+    expect(hasPendingDirectSteer(undefined)).toBe(false);
+  });
+});
+
+describe('canSubmitDirectSteer', () => {
+  it('运行中、可引导、有输入时可以引导', () => {
+    expect(canSubmitDirectSteer(steerContext)).toBe(true);
+  });
+
+  it('以下任一项不成立都不许引导', () => {
+    const cases: Array<[string, Partial<typeof steerContext>]> = [
+      ['不在流式中', { isStreaming: false }],
+      ['活跃 run 不可引导', { activeRunSteerable: false }],
+      ['输入为空', { hasInput: false }],
+      ['线程还没绑定智能体', { hasAgent: false }],
+      ['队列里已有等待执行的引导', { hasPendingSteer: true }],
+      ['正在等用户处理审批或提问', { isWaitingForUserAction: true }],
+    ];
+
+    for (const [name, patch] of cases) {
+      expect(canSubmitDirectSteer({ ...steerContext, ...patch }), name).toBe(
+        false,
+      );
+    }
   });
 });

@@ -74,6 +74,8 @@ export type ThreadListState = {
   error: string | null;
   /** 解析默认智能体（在飞请求与结果都只保留一份），返回 slug。 */
   ensureAgentSlug: () => Promise<string | null>;
+  /** 切换到指定智能体；只改当前选择，并按其重载会话列表。 */
+  selectAgent: (slug: string) => void;
   /** 解析智能体并拉取会话列表；进入页面时调用，加载期间保持 loading。 */
   initialize: () => Promise<void>;
   /** 按指定智能体拉取会话列表；没有智能体时不请求。 */
@@ -97,6 +99,13 @@ export type ThreadListState = {
     threadId: string,
     mode: ToolApprovalMode,
   ) => Promise<boolean>;
+  /**
+   * 就地记下这次下发到后端的模型。
+   *
+   * 持久化由后端拥有：创建 run 时它会在同一事务里写进会话的 `metadata.model_spec`。这里只让
+   * 本地对象跟上，免得用户随后清空选择时回退到一个还没刷新的旧值。列表里没有该会话时是空操作。
+   */
+  setModelSpec: (threadId: string, modelSpec: string) => void;
 };
 
 export const useThreadList = create<ThreadListState>((set, get) => ({
@@ -105,6 +114,13 @@ export const useThreadList = create<ThreadListState>((set, get) => ({
   threads: [],
   loading: false,
   error: null,
+
+  selectAgent: (slug) => {
+    // 解析默认智能体的在飞结果不再写回：用户刚刚显式选了另一个
+    agentSlugInFlight = null;
+    set({ agentSlug: slug, error: null });
+    void get().load(slug);
+  },
 
   ensureAgentSlug: async () => {
     const current = get().agentSlug;
@@ -259,6 +275,18 @@ export const useThreadList = create<ThreadListState>((set, get) => ({
     } catch (error) {
       console.warn('Failed to sync thread statuses:', error);
     }
+  },
+
+  setModelSpec: (threadId, modelSpec) => {
+    if (!get().threads.some((item) => item.id === threadId)) return;
+
+    set((state) => ({
+      threads: state.threads.map((item) =>
+        item.id === threadId
+          ? { ...item, metadata: { ...item.metadata, model_spec: modelSpec } }
+          : item,
+      ),
+    }));
   },
 
   setToolApprovalMode: async (threadId, mode) => {

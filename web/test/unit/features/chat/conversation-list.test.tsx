@@ -2,6 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ConfigProvider } from 'antd';
 
 const { api } = vi.hoisted(() => ({
   api: {
@@ -55,6 +56,8 @@ const LocationProbe = () => {
 
 const renderList = (currentThreadId?: string) =>
   render(
+    // 与 app 一致：antd 按钮不做两字间距，否则「删除」的可访问名变成「删 除」
+    <ConfigProvider button={{ autoInsertSpace: false }}>
     <MemoryRouter initialEntries={[`/agent/${currentThreadId ?? ''}`]}>
       <Routes>
         <Route
@@ -67,7 +70,8 @@ const renderList = (currentThreadId?: string) =>
         />
       </Routes>
       <LocationProbe />
-    </MemoryRouter>,
+    </MemoryRouter>
+    </ConfigProvider>,
   );
 
 describe('ConversationList', () => {

@@ -7,7 +7,7 @@ import * as React from 'react';
 
 import { processRunSseResponse } from '../lib/sse';
 import { createStreamSmoother } from '../lib/stream-smoother';
-import type { ToolApprovalMode } from '../lib/tool-approval';
+import { isRunInterruptedConflict, type ToolApprovalMode } from '../lib/tool-approval';
 import {
   agentRunApi,
   chatThreadApi,
@@ -49,6 +49,14 @@ function createClientRequestId(): string {
   return `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+/**
+ * 一条消息进队列的方式。
+ *
+ * `enqueue` 排在队尾；`steer` 作为引导，等当前步骤结束后优先执行。两者都是后端
+ * `queue_policy` 的取值，这里收窄成联合类型，避免页面传出后端不认的字符串。
+ */
+export type SendQueuePolicy = 'enqueue' | 'steer';
+
 export type ChatRuntimeOptions = {
   currentAgentId: () => string | undefined;
   /** AgentState 的拉取由页面注入；消息历史属于本切片的职责，运行时自己取。 */
@@ -75,6 +83,8 @@ export type ChatRuntime = {
     agentSlug: string,
     title?: string,
     toolApprovalMode?: ToolApprovalMode | null,
+    /** 项目 id；空串表示不使用项目，由后端在发送时创建独立目录。 */
+    projectId?: string,
   ) => Promise<ChatThread>;
   /** 同步线程队列（排队请求与队列状态）。 */
   refreshQueue: (threadId: string, agentSlug: string) => Promise<void>;
@@ -110,6 +120,24 @@ export type ChatRuntime = {
     imageContent?: string | null;
     /** 本次生效的工具审批模式，随请求下发。 */
     toolApprovalMode?: ToolApprovalMode | null;
+    /**
+     * 这条消息怎么进队列：`enqueue` 排在队尾，`steer` 作为引导在当前步骤结束后优先执行。
+     * 不传时按 `enqueue`。
+     */
+    queuePolicy?: SendQueuePolicy;
+    /**
+     * 这条消息使用的模型 spec（`provider:model`）。不传时由后端按会话绑定与智能体配置解析。
+     */
+    modelSpec?: string | null;
+    /**
+     * 本次要挂到请求上的会话附件 id。
+     *
+     * 附件是单次使用的：后端在创建请求的同一事务里把它们绑上去并记下 `request_id`，因此只该带
+     * 还没被用掉的那些。
+     */
+    attachmentFileIds?: string[];
+    /** 请求已被后端受理时回调；附件列表要在这时刷新，否则下一次发送会重发已用掉的 id。 */
+    onAccepted?: () => void;
     meta?: Record<string, unknown>;
   }) => Promise<void>;
   cancelRun: (threadId: string) => Promise<void>;
@@ -153,10 +181,19 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
   /** 建线程的单飞状态。 */
   let threadCreation: {
     agentSlug: string;
+    projectId: string;
     promise: Promise<ChatThread>;
   } | null = null;
-  /** 失败后按 agent 保留同一个幂等键，供下一次重试复用。 */
-  let failedCreation: { agentSlug: string; requestId: string } | null = null;
+  /**
+   * 失败后按「智能体 + 项目」保留同一个幂等键，供下一次重试复用。
+   *
+   * 两者任一变化都算另一次创建：复用旧键会让后端把上一次的意图回放回来，落到别的项目上。
+   */
+  let failedCreation: {
+    agentSlug: string;
+    projectId: string;
+    requestId: string;
+  } | null = null;
 
   const runStream = createRunStream({
     currentAgentId: options.currentAgentId,
@@ -183,14 +220,21 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
     agentSlug,
     title,
     toolApprovalMode,
+    projectId = '',
   ) => {
-    if (threadCreation?.agentSlug === agentSlug) return threadCreation.promise;
+    // 单飞按「智能体 + 项目」判定：项目换了就是另一次创建，不能把上一条线程交回去
+    if (
+      threadCreation?.agentSlug === agentSlug &&
+      threadCreation.projectId === projectId
+    ) {
+      return threadCreation.promise;
+    }
 
     // 响应丢失后的重试要带同一个 request_id，后端据此返回同一条线程而不是新建；
-    // 换智能体则属于另一次创建，不复用旧的幂等键。
+    // 智能体或项目换了都属于另一次创建，不复用旧的幂等键。
     const retryKey = failedCreation;
     const requestId =
-      retryKey?.agentSlug === agentSlug
+      retryKey?.agentSlug === agentSlug && retryKey.projectId === projectId
         ? retryKey.requestId
         : createClientRequestId();
     // 只有调用方显式给出的模式才写进线程 metadata：null 表示交回后端按智能体配置解析
@@ -201,6 +245,7 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
         agentSlug,
         title,
         requestId,
+        projectId,
         metadata: mode ? { tool_approval_mode: mode } : {},
       })
       .then((thread) => {
@@ -208,13 +253,13 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
         return thread;
       })
       .catch((error: unknown) => {
-        failedCreation = { agentSlug, requestId };
+        failedCreation = { agentSlug, projectId, requestId };
         throw error;
       })
       .finally(() => {
         if (threadCreation?.promise === promise) threadCreation = null;
       });
-    threadCreation = { agentSlug, promise };
+    threadCreation = { agentSlug, projectId, promise };
     return promise;
   };
 
@@ -263,6 +308,10 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
     query,
     imageContent,
     toolApprovalMode,
+    queuePolicy,
+    modelSpec,
+    attachmentFileIds,
+    onAccepted,
     meta,
   }) => {
     const runtime = getThreadRuntime(threadId);
@@ -290,15 +339,38 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
         thread_id: threadId,
         image_content: imageContent ?? null,
         tool_approval_mode: toolApprovalMode ?? null,
-        meta: { ...meta, request_id: requestId },
+        queue_policy: queuePolicy,
+        model_spec: modelSpec,
+        meta: {
+          ...meta,
+          request_id: requestId,
+          ...(attachmentFileIds?.length
+            ? { attachment_file_ids: attachmentFileIds }
+            : {}),
+        },
       });
     } catch (error) {
       // 发送失败时撤掉占位，避免留下一条没有对应请求的消息
       delete runtime.onGoingConv.msgChunks[requestId];
       runtime.replyLoadingVisible = false;
       notifyThreadRuntime(threadId);
+
+      // 409 run_interrupted：线程里有一条被打断的 run 正在等审批。参照的处理是
+      // 停掉本地流式态、恢复 pendingInterrupt（fetchAgentState 会带回）、并把这次
+      // 输入交还给调用方——它决定是把文本拼回输入框还是提示重试。
+      if (isRunInterruptedConflict(error)) {
+        runtime.isStreaming = false;
+        runtime.activeRunSteerable = false;
+        runtime.pendingInterrupt = null;
+        notifyThreadRuntime(threadId);
+        options.fetchAgentState(agentSlug, threadId);
+        throw error;
+      }
       throw error;
     }
+
+    // 被拒绝时后端没有绑定附件，此时刷新会把它们当成「还没用掉」——那是事实
+    onAccepted?.();
 
     await handleCreatedRequest(threadId, agentSlug, created, {
       steerable: true,
@@ -629,3 +701,6 @@ export function useChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
     [],
   );
 }
+
+/** 发送冷却窗口；防止发送后连续触发停止/再发送（参照同款 2s）。 */
+export const SEND_COOLDOWN_MS = 2000;

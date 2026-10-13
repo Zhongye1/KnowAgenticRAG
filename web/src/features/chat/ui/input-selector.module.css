@@ -1,0 +1,533 @@
+/* 输入区选择器的触发按钮样式。参照实现 AgentInputArea.vue 的
+   `.input-action-btn`（30px、无边框、13px、gray-600、hover gray-50）。 */
+
+.trigger {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+
+  &:hover {
+    color: var(--gray-900);
+    background: var(--gray-50);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  span {
+    line-height: 1;
+  }
+}
+
+.triggerIcon {
+  width: 15px;
+  height: 15px;
+}
+
+.triggerChevron {
+  width: 15px;
+  height: 15px;
+}
+
+.triggerLabel {
+  max-width: min(168px, calc(100vw - 160px));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.menuItemLabel {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuItemTag {
+  flex-shrink: 0;
+  border-radius: 0.25rem;
+  background-color: var(--gray-100);
+  padding: 0 0.25rem;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.menuItemCheck {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
+.menuHint {
+  padding: 0.25rem 0.5rem;
+  font-size: 12px;
+  color: var(--gray-500);
+  margin: 0;
+}
+
+.triggerWarning {
+  color: var(--second-600);
+}
+
+/* ---------- 项目选择器：参照 ProjectSelectionSection.vue ---------- */
+
+.projectSelection {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+  text-align: left;
+}
+
+/* 参照 .project-trigger——28px 透明钮 */
+.projectTrigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: min(280px, calc(100vw - 64px));
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--gray-600);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--gray-100);
+    color: var(--gray-900);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--main-color);
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.projectTriggerIcon {
+  flex-shrink: 0;
+  color: var(--gray-500);
+}
+
+.projectTriggerLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.projectOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
+/* 参照 .project-dropdown-panel——向上弹、300px、radius 10 */
+.projectPanelFloating {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  /* 高过停靠区（z-index 1000）：面板从它的 top 区向上弹，下半会与 dock 重叠 */
+  z-index: 1001;
+}
+
+.projectPanel {
+  width: min(300px, calc(100vw - 24px));
+  overflow: hidden;
+  border: 1px solid var(--gray-150);
+  border-radius: 10px;
+  background: var(--gray-0);
+  box-shadow: 0 8px 24px var(--shadow-4);
+}
+
+.projectView {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 参照 .project-search——28px 高输入行 */
+.projectSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 6px 0;
+  padding: 0 6px;
+
+  & input {
+    flex: 1;
+    height: 28px;
+    border: 0;
+    background: transparent;
+    font-size: 12.5px;
+    color: var(--gray-1000);
+    outline: none;
+
+    &::placeholder {
+      color: var(--gray-400);
+    }
+  }
+}
+
+/* 参照 .project-option-list */
+.projectOptionList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 120px;
+  max-height: min(260px, calc(100vh - 220px));
+  border-bottom: 1px solid var(--gray-100);
+  padding: 4px 6px;
+  overflow-y: auto;
+}
+
+/* 参照 .project-option——28px min、hover gray-50 */
+.projectOption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-900);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--gray-50);
+  }
+
+  & strong {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12.5px;
+    font-weight: 400;
+  }
+}
+
+.projectOptionSelected {
+  background: var(--gray-50);
+}
+
+.projectOptionCheck {
+  color: var(--main-color);
+  flex-shrink: 0;
+}
+
+.projectEmpty {
+  padding: 14px 8px 12px;
+  color: var(--gray-500);
+  font-size: 12px;
+  margin: 0;
+}
+
+/* 参照 .project-dropdown-actions */
+.projectActions {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 6px;
+
+  & button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 28px;
+    padding: 4px 6px;
+    border: none;
+    border-radius: 6px;
+    background: var(--gray-0);
+    color: var(--gray-600);
+    font-size: 12.5px;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--gray-50);
+      color: var(--gray-1000);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+/* 参照 .history-option-list / .history-option */
+.historyOptionList {
+  display: flex;
+  flex-direction: column;
+  min-height: 140px;
+  max-height: 240px;
+  border-top: 1px solid var(--gray-100);
+  padding: 2px 4px;
+  overflow-y: auto;
+}
+
+.historyOption {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: none;
+  border-bottom: 1px solid var(--gray-100);
+  background: transparent;
+  color: var(--gray-900);
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--gray-50);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: wait;
+  }
+
+  & span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12.5px;
+  }
+
+  & time {
+    flex-shrink: 0;
+    font-size: 11px;
+    color: var(--gray-400);
+  }
+}
+
+/* 参照 .project-form / .project-form-field */
+.projectForm {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 14px;
+}
+
+.projectFormField {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-800);
+}
+
+.projectError {
+  margin: 6px 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--color-error-50);
+  color: var(--color-error-700);
+  font-size: 12px;
+}
+
+/* ---------- 附件上传弹窗：参照 AttachmentTmpUploadModal.vue ---------- */
+
+/* 参照 a-upload-dragger 的拖拽区（.dropzone-title / .dropzone-desc） */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 28px 16px;
+  border: 1px dashed var(--gray-200);
+  border-radius: 10px;
+  background: var(--gray-25);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+
+  &:hover {
+    border-color: var(--main-400);
+    background: var(--main-5);
+  }
+}
+
+.dropzoneTitle {
+  margin: 0 0 4px;
+  color: var(--gray-800);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dropzoneDesc {
+  margin: 0;
+  color: var(--gray-500);
+  font-size: 12px;
+}
+
+.attachmentHint {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin: 0;
+}
+
+/* 参照 .attachment-list——360px 上限、10px 间距 */
+.attachmentList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  margin-top: 16px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+/* 参照 .attachment-item——12px padding、gray-50 底圆角卡 */
+.attachmentItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--gray-100);
+  border-radius: 10px;
+  background: var(--gray-50);
+}
+
+/* 参照 .attachment-file-icon——32px 圆角容器 */
+.attachmentFileIcon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--gray-0);
+  color: var(--main-color);
+}
+
+.attachmentItemContent {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.attachmentNameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.attachmentName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gray-900);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* 参照 .remove-btn——hover 变红 */
+.attachmentRemove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 0.25rem;
+  padding: 0.25rem;
+  color: var(--gray-500);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--color-error-500);
+    background: var(--color-error-50);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.attachmentMeta {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.attachmentSelect {
+  border: 1px solid var(--gray-200);
+  border-radius: 0.25rem;
+  background: var(--gray-0);
+  padding: 0.125rem 0.25rem;
+  font-size: 12px;
+  color: var(--gray-1000);
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.attachmentStatus {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.attachmentStatusRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--gray-500);
+  font-size: 11px;
+}
+
+.attachmentParseControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: min(260px, 100%);
+}

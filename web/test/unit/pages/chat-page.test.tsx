@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -12,9 +13,39 @@ import { paths } from '@/shared/config';
  */
 vi.setConfig({ testTimeout: 15000 });
 
-const { chat, runtime, notifications, agentRunApi, chatOptions, session } =
-  vi.hoisted(() => ({
+const {
+  chat,
+  runtime,
+  notifications,
+  agentRunApi,
+  chatOptions,
+  session,
+  modelGroups,
+  projectList,
+  historyQueryArgs,
+  attachmentUpload,
+  threadAttachments,
+  refetchAttachments,
+  cacheThreadAttachments,
+} = vi.hoisted(() => ({
     session: { isSuperuser: true },
+    // 可选模型列表；页面用例按需填，避免每个用例都写一遍
+    modelGroups: [] as Array<Record<string, unknown>>,
+    // 可选项目列表；同上
+    projectList: [] as Array<Record<string, unknown>>,
+    // 页面喂给历史候选查询的参数；用来证明它拿到的是防抖后的值
+    historyQueryArgs: [] as unknown[],
+    // 附件上传：确认动作要能被用例断言
+    attachmentUpload: {
+      confirm: vi.fn(
+        async (): Promise<Array<Record<string, unknown>>> => [],
+      ),
+      reset: vi.fn(),
+    },
+    // 会话里已确认的附件；用来证明「还没用掉的才随发送下发」
+    threadAttachments: [] as Array<Record<string, unknown>>,
+    refetchAttachments: vi.fn(),
+    cacheThreadAttachments: vi.fn(),
     chat: {
       loadHistory: vi.fn(),
       createThread: vi.fn(),
@@ -34,6 +65,7 @@ const { chat, runtime, notifications, agentRunApi, chatOptions, session } =
       queueSnapshot: null as unknown,
       continueQueueInFlight: false,
       isStreaming: false,
+      activeRunSteerable: false,
       pendingInterrupt: null as unknown,
       onGoingConv: { msgChunks: {} },
     },
@@ -43,9 +75,27 @@ const { chat, runtime, notifications, agentRunApi, chatOptions, session } =
         .fn()
         .mockResolvedValue({ agent: { slug: 'default-chatbot' } }),
       uploadImage: vi.fn(),
+      getRunLangfuseLink: vi.fn(),
     },
     chatOptions: { current: null as null | Record<string, unknown> },
   }));
+
+// model 层的 hook 直接 import api 段（slice 内部引用，架构如此），
+// 因此图片上传的拦截点在 api 模块，而不是 barrel 的 agentRunApi 导出。
+vi.mock('@/features/chat/api/agent-api', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/features/chat/api/agent-api')
+  >('@/features/chat/api/agent-api');
+  return {
+    ...actual,
+    agentRunApi: {
+      ...actual.agentRunApi,
+      uploadImage: agentRunApi.uploadImage,
+      getDefaultAgent: agentRunApi.getDefaultAgent,
+      getRunLangfuseLink: agentRunApi.getRunLangfuseLink,
+    },
+  };
+});
 
 vi.mock('@/entities/session', () => ({
   useIsSuperuser: () => session.isSuperuser,
@@ -56,6 +106,21 @@ vi.mock('@/features/chat', async () => {
   const draft = await vi.importActual<
     typeof import('@/features/chat/lib/thread-draft')
   >('@/features/chat/lib/thread-draft');
+  const draftInput = await vi.importActual<
+    typeof import('@/features/chat/model/thread-draft-input')
+  >('@/features/chat/model/thread-draft-input');
+  const imageSlot = await vi.importActual<
+    typeof import('@/features/chat/model/image-upload-slot')
+  >('@/features/chat/model/image-upload-slot');
+  const artifactActions = await vi.importActual<
+    typeof import('@/features/chat/model/artifact-actions')
+  >('@/features/chat/model/artifact-actions');
+  const panelSectionsStore = await vi.importActual<
+    typeof import('@/features/chat/model/panel-sections-store')
+  >('@/features/chat/model/panel-sections-store');
+  const agentOptionsQueries = await vi.importActual<
+    typeof import('@/features/chat/model/agent-options-queries')
+  >('@/features/chat/model/agent-options-queries');
   const imageUpload = await vi.importActual<
     typeof import('@/features/chat/lib/image-upload')
   >('@/features/chat/lib/image-upload');
@@ -74,7 +139,94 @@ vi.mock('@/features/chat', async () => {
   const tokenUsage = await vi.importActual<
     typeof import('@/features/chat/lib/token-usage')
   >('@/features/chat/lib/token-usage');
+  const mentionResources = await vi.importActual<
+    typeof import('@/features/chat/lib/mention-resources')
+  >('@/features/chat/lib/mention-resources');
+  const mentionText = await vi.importActual<
+    typeof import('@/features/chat/lib/mention-text')
+  >('@/features/chat/lib/mention-text');
+  const mentionConfig = await vi.importActual<
+    typeof import('@/features/chat/lib/mention-config')
+  >('@/features/chat/lib/mention-config');
+  const mentionEditor = await vi.importActual<
+    typeof import('@/features/chat/ui/mention-editor')
+  >('@/features/chat/ui/mention-editor');
+  const panelSections = await vi.importActual<
+    typeof import('@/features/chat/lib/panel-sections')
+  >('@/features/chat/lib/panel-sections');
+  const panelWidth = await vi.importActual<
+    typeof import('@/features/chat/lib/panel-width')
+  >('@/features/chat/lib/panel-width');
+  const agentPanel = await vi.importActual<
+    typeof import('@/features/chat/ui/agent-panel')
+  >('@/features/chat/ui/agent-panel');
+  const usageRing = await vi.importActual<
+    typeof import('@/features/chat/ui/context-usage-ring')
+  >('@/features/chat/ui/context-usage-ring');
+  const agentOptions = await vi.importActual<
+    typeof import('@/features/chat/lib/agent-options')
+  >('@/features/chat/lib/agent-options');
+  const agentSelector = await vi.importActual<
+    typeof import('@/features/chat/ui/agent-selector')
+  >('@/features/chat/ui/agent-selector');
+  const queueView = await vi.importActual<
+    typeof import('@/features/chat/lib/queue-view')
+  >('@/features/chat/lib/queue-view');
+  const modelSelection = await vi.importActual<
+    typeof import('@/features/chat/model/model-selection')
+  >('@/features/chat/model/model-selection');
+  const modelSpec = await vi.importActual<
+    typeof import('@/features/chat/lib/model-spec')
+  >('@/features/chat/lib/model-spec');
+  const modelSelector = await vi.importActual<
+    typeof import('@/features/chat/ui/model-selector')
+  >('@/features/chat/ui/model-selector');
+  const projectSpec = await vi.importActual<
+    typeof import('@/features/chat/lib/project-selection')
+  >('@/features/chat/lib/project-selection');
+  const subagentRun = await vi.importActual<
+    typeof import('@/features/chat/lib/subagent-run')
+  >('@/features/chat/lib/subagent-run');
+  const replyStatus = await vi.importActual<
+    typeof import('@/features/chat/lib/reply-status')
+  >('@/features/chat/lib/reply-status');
+  const threadTitle = await vi.importActual<
+    typeof import('@/features/chat/lib/thread-title')
+  >('@/features/chat/lib/thread-title');
+  const stateReaders = await vi.importActual<
+    typeof import('@/features/chat/lib/agent-state-readers')
+  >('@/features/chat/lib/agent-state-readers');
+  const antdButton = await vi.importActual<
+    typeof import('@/features/chat/ui/antd-button')
+  >('@/features/chat/ui/antd-button');
+  const projectSelector = await vi.importActual<
+    typeof import('@/features/chat/ui/project-selector')
+  >('@/features/chat/ui/project-selector');
   return {
+    buildAgentOptions: agentOptions.buildAgentOptions,
+    AgentSelector: agentSelector.AgentSelector,
+    // 智能体列表是网络调用；它的归一由 agent-options 的单测覆盖
+    listAgents: vi.fn(async () => []),
+    AgentPanel: agentPanel.AgentPanel,
+    ContextUsageRing: usageRing.ContextUsageRing,
+    closeSection: panelSections.closeSection,
+    MESSAGE_DEBUG_SECTION: panelSections.MESSAGE_DEBUG_SECTION,
+    normalizeSections: panelSections.normalizeSections,
+    upsertSection: panelSections.upsertSection,
+    resizePanelWidth: panelWidth.resizePanelWidth,
+    buildMentionDisplayLabels: mentionText.buildMentionDisplayLabels,
+    buildMentionFileItems: mentionResources.buildMentionFileItems,
+    buildMentionResourceItems: mentionResources.buildMentionResourceItems,
+    buildMentionConfig: mentionConfig.buildMentionConfig,
+    // 智能体配置是网络调用；给空配置，页面级用例只断言它按当前 slug 去取
+    useAgentConfig: vi.fn(() => ({
+      configurableItems: {},
+      agentConfig: {},
+      isLoading: false,
+    })),
+    MentionEditor: mentionEditor.MentionEditor,
+    // 提及搜索是网络调用，这里给空结果；它的解析与归一由各自的单测覆盖
+    searchMentionFiles: vi.fn(async () => []),
     isToolApprovalMode: approval.isToolApprovalMode,
     readToolApprovalModePreference: approval.readToolApprovalModePreference,
     resolveToolApprovalMode: approval.resolveToolApprovalMode,
@@ -86,12 +238,136 @@ vi.mock('@/features/chat', async () => {
     DRAFT_THREAD_ID: draft.DRAFT_THREAD_ID,
     createThreadDraftStore: draft.createThreadDraftStore,
     createThreadDraftSession: draft.createThreadDraftSession,
+    useThreadDraftInput: draftInput.useThreadDraftInput,
+    useImageUploadSlot: imageSlot.useImageUploadSlot,
+    useArtifactActions: artifactActions.useArtifactActions,
+    useAgentPanelSections: panelSectionsStore.useAgentPanelSections,
+    subagentRunSection: panelSectionsStore.subagentRunSection,
+    subagentRunTitle: (await vi.importActual<
+      typeof import('@/features/chat/lib/subagent-run')
+    >('@/features/chat/lib/subagent-run')).subagentRunTitle,
+    useAgentOptions: agentOptionsQueries.useAgentOptions,
+    SEND_COOLDOWN_MS: 0,
+    isRunInterruptedConflict: (await vi.importActual<
+      typeof import('@/features/chat/lib/tool-approval')
+    >('@/features/chat/lib/tool-approval')).isRunInterruptedConflict,
+    ScrollController: (await vi.importActual<
+      typeof import('@/features/chat/lib/scroll-controller')
+    >('@/features/chat/lib/scroll-controller')).ScrollController,
     findClipboardImage: imageUpload.findClipboardImage,
     normalizeUploadedImage: imageUpload.normalizeUploadedImage,
     validateImageFile: imageUpload.validateImageFile,
     ImageAttachmentPreview: preview.ImageAttachmentPreview,
     agentRunApi,
     describeQueueRow: () => ({ canSteer: true, canCancel: true }),
+    // 引导的判定用真实实现：页面用例只证明「按判定的结果渲染入口并下发 steer」
+    canSubmitDirectSteer: queueView.canSubmitDirectSteer,
+    hasPendingDirectSteer: queueView.hasPendingDirectSteer,
+    // 模型选择用真实实现与真实 store：页面用例证明「按回退链下发并写进覆盖表」
+    ModelSelector: modelSelector.ModelSelector,
+    useChatModels: () => ({ data: modelGroups, isPending: false }),
+    useSystemDefaultModel: () => '',
+    useModelOverride: modelSelection.useModelOverride,
+    useModelSelection: modelSelection.useModelSelection,
+    resolveModelSpec: modelSpec.resolveModelSpec,
+    // 项目选择用真实实现：页面用例证明「入口只在没有会话时出现，并把 project_id 带进建线程」
+    ProjectSelector: projectSelector.ProjectSelector,
+    AUTO_PROJECT_ID: projectSpec.AUTO_PROJECT_ID,
+    resolveProjectId: projectSpec.resolveProjectId,
+    // 子智能体分区同步用真实实现：agentState 里没有运行态时不产生分区
+    readSubagentRuns: subagentRun.readSubagentRuns,
+    SubagentThreadView: () => null,
+    Button: antdButton.Button,
+    Spinner: () => null,
+    // 通知走适配层；页面用例直接断言 notifications.addNotification 的调用
+    useNotifications: () => notifications,
+    // 生成中状态条用真实判定与真实组件：页面用例只断言出现时机由 replyLoadingVisible 决定
+    buildReplyLoadingStatus: replyStatus.buildReplyLoadingStatus,
+    GeneratingStatus: () => null,
+    // 标题生成是网络调用；页面用例不验证它，桩成空实现避免误打接口
+    generateConversationTitle: vi.fn(async () => ''),
+    fallbackTitleFromQuery: threadTitle.fallbackTitleFromQuery,
+    useFastModel: () => 'fast-model-spec',
+    // 状态分区用真实读取与真实组件：agentState 为空时渲染「暂无状态内容」
+    readAgentStateTodos: stateReaders.readAgentStateTodos,
+    readAgentStateFiles: stateReaders.readAgentStateFiles,
+    readAgentStateArtifacts: stateReaders.readAgentStateArtifacts,
+    STATE_SECTION: { key: 'state', type: 'state', title: '状态' },
+    StatePanel: () => <div data-testid="state-panel-stub" />,
+    useProjects: () => ({ data: projectList, isPending: false, error: null }),
+    // 防抖用真实实现：它只是延迟，不影响页面的可观察结果
+    HISTORY_SEARCH_DEBOUNCE_MS: 250,
+    // 防抖本身有单测；这里返回一个标记值，用来证明页面把它喂进了查询
+    useDebouncedValue: () => 'DEBOUNCED',
+    useHistoryCandidates: (query: unknown) => {
+      historyQueryArgs.push(query);
+
+      return { data: { items: [], hasMore: false }, isPending: false, error: null };
+    },
+    useCreateLinkedProject: () => ({ mutateAsync: vi.fn() }),
+    // 附件：hook 与弹窗都换桩，页面用例只证明「确认前把会话准备好」这条编排
+    useAttachmentUpload: () => attachmentUpload,
+    // 文件树：面板测试桩掉树的状态，页面用例只关心分区与编排
+    FILE_TREE_SECTION: { key: 'file-tree', type: 'file-tree', title: '文件' },
+    PANEL_TREE_SCOPES: [
+      { key: 'thread', label: '对话目录' },
+      { key: 'workspace', label: '个人空间' },
+    ],
+    shouldPollPanelFilesystem: () => false,
+    usePanelFilesystem: () => ({
+      thread: {
+        nodes: [],
+        selectedKeys: [],
+        expandedKeys: [],
+        loading: false,
+        error: null,
+        deletingPaths: [],
+      },
+      workspace: {
+        nodes: [],
+        selectedKeys: [],
+        expandedKeys: [],
+        loading: false,
+        error: null,
+        deletingPaths: [],
+      },
+      refreshThreadTree: vi.fn(async () => undefined),
+      loadThreadChildren: vi.fn(async () => undefined),
+      deleteThreadNode: vi.fn(async () => true),
+      refreshWorkspaceTree: vi.fn(async () => undefined),
+      loadWorkspaceChildren: vi.fn(async () => undefined),
+      setScopeState: vi.fn(),
+    }),
+    FileTree: () => <div data-testid="file-tree-stub" />,
+    FilePreview: () => <div data-testid="file-preview-stub" />,
+    usePanelFileSearch: () => ({ data: [], isPending: false, error: null }),
+    useDebounce: (value: unknown) => value,
+    usePanelPreview: () => ({
+      current: null,
+      open: vi.fn(),
+      close: vi.fn(),
+      reload: vi.fn(async () => undefined),
+    }),
+    useThreadAttachments: () => ({
+      data: threadAttachments,
+      refetch: refetchAttachments,
+    }),
+    useCacheThreadAttachments: () => cacheThreadAttachments,
+    pendingAttachmentFileIds: (items: Array<{ fileId: string; requestId: string | null }>) =>
+      items.filter((entry) => !entry.requestId).map((entry) => entry.fileId),
+    useDefaultOcrEngine: () => '',
+    AttachmentUploadDialog: ({
+      open,
+      onConfirm,
+    }: {
+      open: boolean;
+      onConfirm: () => Promise<void>;
+    }) =>
+      open ? (
+        <button type="button" onClick={() => void onConfirm()}>
+          确认附件
+        </button>
+      ) : null,
     isThreadWaitingForUserAction: () => false,
     describeQueue: () => ({
       visible: false,
@@ -113,7 +389,7 @@ vi.mock('@/features/chat', async () => {
     // 对话页只从切片取状态选择器，真正的会话列表 store 单独测
     useThreadList: (selector: (state: unknown) => unknown) =>
       selector(threadList),
-    ConversationList: () => null,
+    ConversationList: () => <div data-testid="conversation-list-stub" />,
     useStreamingMessages: () => [],
     useChatRuntime: (options: Record<string, unknown>) => {
       chatOptions.current = options;
@@ -136,7 +412,9 @@ const { threadList } = vi.hoisted(() => ({
     threads: [] as Array<Record<string, unknown>>,
     ensureAgentSlug: vi.fn(),
     upsert: vi.fn(),
+    rename: vi.fn(async () => true),
     setToolApprovalMode: vi.fn(),
+    setModelSpec: vi.fn(),
     markViewed: vi.fn(),
   },
 }));
@@ -153,14 +431,21 @@ vi.mock('@/shared/ui/content-layout', () => ({
 }));
 
 const { ChatPage } = await import('@/pages/chat/ui/chat-page');
+const { useModelSelection } = await import('@/features/chat/model/model-selection');
 
 /**
  * 复刻真实路由形状：`/agent` 与 `/agent/:threadId` 共用同一个组件实例。
  * 同时套上 `StrictMode`，与 `pnpm dev` 的挂载行为一致。
  */
 function renderAt(initialPath: string) {
+  // 对话页要读知识库列表来把 kb_id 翻成名称，因此需要 QueryClient
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
+
   return render(
     <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={[initialPath]}>
         <Routes>
           <Route path={paths.app.chat.path} element={<ChatPage />} />
@@ -173,6 +458,7 @@ function renderAt(initialPath: string) {
         <SwitchThreadLink />
         <BackToThreadALink />
       </MemoryRouter>
+      </QueryClientProvider>
     </React.StrictMode>,
   );
 }
@@ -241,8 +527,37 @@ describe('对话页的线程生命周期', () => {
     runtime.agentState = null;
     session.isSuperuser = true;
     runtime.messages = [];
+    runtime.isStreaming = false;
+    runtime.activeRunSteerable = false;
+    runtime.queuedRequests = [];
+    runtime.queueSnapshot = null;
+    modelGroups.length = 0;
+    projectList.length = 0;
+    historyQueryArgs.length = 0;
+    attachmentUpload.confirm.mockReset().mockResolvedValue([]);
+    attachmentUpload.reset.mockReset();
+    threadAttachments.length = 0;
+    refetchAttachments.mockReset();
+    cacheThreadAttachments.mockReset();
+    useModelSelection.setState({ overrideByKey: {} });
     threadList.agentToolApprovalMode = null;
     threadList.threads = [];
+    // 忠实桩：真实现会就地改会话 metadata，页面用例要能观察这条链路
+    threadList.setModelSpec.mockImplementation(
+      (threadId: string, spec: string) => {
+        threadList.threads = threadList.threads.map((item) =>
+          item.id === threadId
+            ? {
+                ...item,
+                metadata: {
+                  ...(item.metadata as Record<string, unknown>),
+                  model_spec: spec,
+                },
+              }
+            : item,
+        );
+      },
+    );
     agentRunApi.uploadImage.mockReset();
   });
 
@@ -255,13 +570,13 @@ describe('对话页的线程生命周期', () => {
     renderAt(paths.app.chat.getHref('thread-A'));
 
     await userEvent.click(
-      await screen.findByRole('button', { name: /消息调试/ }),
+      await screen.findByRole('button', { name: '调试' }),
     );
 
     expect(await screen.findByTestId('message-debug-panel')).toHaveTextContent(
       '2 条',
     );
-    await userEvent.click(screen.getByRole('button', { name: /关闭调试/ }));
+    await userEvent.click(screen.getByRole('button', { name: '调试', pressed: true }));
     expect(screen.queryByTestId('message-debug-panel')).toBeNull();
   });
 
@@ -286,6 +601,14 @@ describe('对话页的线程生命周期', () => {
         imageContent: null,
         // 用户没有显式选过：留空让后端按智能体配置与默认值解析
         toolApprovalMode: null,
+        // 普通发送走队尾；只有引导按钮才传 steer
+        queuePolicy: 'enqueue',
+        // 没有显式选择也没有会话绑定时不下发模型，交给后端解析
+        modelSpec: null,
+        // 这条会话还没有附件
+        attachmentFileIds: [],
+        // 附件是单次使用的：请求受理后要刷新列表
+        onAccepted: expect.any(Function),
       }),
     );
     // 新线程要立刻出现在侧边栏列表里，不必再拉一次
@@ -296,6 +619,7 @@ describe('对话页的线程生命周期', () => {
       'default-chatbot',
       '你好',
       null,
+      '',
     );
   });
 
@@ -312,6 +636,14 @@ describe('对话页的线程生命周期', () => {
         imageContent: null,
         // 用户没有显式选过：留空让后端按智能体配置与默认值解析
         toolApprovalMode: null,
+        // 普通发送走队尾；只有引导按钮才传 steer
+        queuePolicy: 'enqueue',
+        // 没有显式选择也没有会话绑定时不下发模型，交给后端解析
+        modelSpec: null,
+        // 这条会话还没有附件
+        attachmentFileIds: [],
+        // 附件是单次使用的：请求受理后要刷新列表
+        onAccepted: expect.any(Function),
       }),
     );
     expect(chat.createThread).not.toHaveBeenCalled();
@@ -330,7 +662,7 @@ describe('对话页的线程生命周期', () => {
       ),
     );
     expect(chat.sendMessage).not.toHaveBeenCalled();
-    expect(screen.getByLabelText<HTMLInputElement>('消息输入').value).toBe(
+    expect(screen.getByLabelText('消息输入').textContent).toBe(
       '你好',
     );
   });
@@ -422,7 +754,7 @@ describe('对话页的线程生命周期', () => {
     );
     await userEvent.click(screen.getByRole('link', { name: '切到 B' }));
     await waitFor(() =>
-      expect(screen.getByLabelText<HTMLInputElement>('消息输入').value).toBe(
+      expect(screen.getByLabelText('消息输入').textContent).toBe(
         '',
       ),
     );
@@ -437,7 +769,7 @@ describe('对话页的线程生命周期', () => {
     await userEvent.click(screen.getByRole('link', { name: '回到 A' }));
 
     await waitFor(() =>
-      expect(screen.getByLabelText<HTMLInputElement>('消息输入').value).toBe(
+      expect(screen.getByLabelText('消息输入').textContent).toBe(
         '还没发出去',
       ),
     );
@@ -458,7 +790,7 @@ describe('对话页的线程生命周期', () => {
 
     renderAt(paths.app.chat.getHref('thread-A'));
 
-    expect(screen.getByLabelText<HTMLInputElement>('消息输入').value).toBe(
+    expect(screen.getByLabelText('消息输入').textContent).toBe(
       '刷新前的草稿',
     );
   });
@@ -472,7 +804,7 @@ describe('对话页的线程生命周期', () => {
     await userEvent.click(screen.getByRole('link', { name: '新建对话' }));
 
     await waitFor(() =>
-      expect(screen.getByLabelText<HTMLInputElement>('消息输入').value).toBe(
+      expect(screen.getByLabelText('消息输入').textContent).toBe(
         '',
       ),
     );
@@ -658,7 +990,7 @@ describe('对话页的线程生命周期', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '请求审批' }));
     await userEvent.click(
-      await screen.findByRole('menuitemradio', { name: '完全信任' }),
+      await screen.findByRole('option', { name: '完全信任' }),
     );
 
     expect(window.localStorage.getItem('ars_tool_approval_mode')).toBe(
@@ -673,6 +1005,7 @@ describe('对话页的线程生命周期', () => {
         'default-chatbot',
         '你好',
         'always_trust',
+        '',
       ),
     );
     expect(chat.sendMessage).toHaveBeenCalledWith(
@@ -692,7 +1025,7 @@ describe('对话页的线程生命周期', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '请求审批' }));
     await userEvent.click(
-      await screen.findByRole('menuitemradio', { name: '完全信任' }),
+      await screen.findByRole('option', { name: '完全信任' }),
     );
 
     expect(threadList.setToolApprovalMode).toHaveBeenCalledWith(
@@ -736,7 +1069,7 @@ describe('对话页的线程生命周期', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '请求审批' }));
     await userEvent.click(
-      await screen.findByRole('menuitemradio', { name: '完全信任' }),
+      await screen.findByRole('option', { name: '完全信任' }),
     );
 
     await waitFor(() =>
@@ -858,7 +1191,7 @@ describe('对话页的线程生命周期', () => {
     expect(threadList.markViewed).not.toHaveBeenCalled();
   });
 
-  it('线程 state 里的用量快照渲染成用量卡片', async () => {
+  it('用量快照的消费收进状态分区，页面顶部不再有独立用量卡', async () => {
     runtime.agentState = {
       token_usage: {
         llm_input_tokens: 2048,
@@ -868,10 +1201,9 @@ describe('对话页的线程生命周期', () => {
     };
     renderAt(paths.app.chat.getHref('thread-A'));
 
-    expect(await screen.findByTestId('token-usage')).toBeTruthy();
-    expect(screen.getByTestId('token-usage').textContent).toContain(
-      '上下文占用 50%',
-    );
+    // 面板默认关闭；页面消息区上方不应再有孤立的用量卡
+    await screen.findByLabelText('消息输入');
+    expect(screen.queryByTestId('token-usage')).not.toBeInTheDocument();
   });
 
   it('没有用量快照时不渲染用量卡片', async () => {
@@ -894,5 +1226,403 @@ describe('对话页的线程生命周期', () => {
     )(undefined, 'thread-A');
 
     expect(fetchAgentState).toHaveBeenCalledWith('thread-A');
+  });
+
+  it('提及候选按当前智能体的配置取，传的是会话里的 slug', async () => {
+    const { useAgentConfig } = await import('@/features/chat');
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await waitFor(() => expect(useAgentConfig).toHaveBeenCalledWith('default-chatbot'));
+  });
+
+  it('运行中把当前输入作为引导发出，请求带 queue_policy: steer', async () => {
+    runtime.isStreaming = true;
+    runtime.activeRunSteerable = true;
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.type(await screen.findByLabelText('消息输入'), '先看这个');
+    await userEvent.click(await screen.findByRole('button', { name: '引导' }));
+
+    await waitFor(() =>
+      expect(chat.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ queuePolicy: 'steer', query: '先看这个' }),
+      ),
+    );
+  });
+
+  it('活跃 run 不可引导时不渲染引导入口', async () => {
+    runtime.isStreaming = true;
+    runtime.activeRunSteerable = false;
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.type(await screen.findByLabelText('消息输入'), '先看这个');
+    expect(screen.queryByRole('button', { name: '引导' })).toBeNull();
+  });
+
+  it('队列里已有等待执行的引导时不渲染引导入口', async () => {
+    runtime.isStreaming = true;
+    runtime.activeRunSteerable = true;
+    runtime.queuedRequests = [
+      { request_id: 'r-引导', queue_policy: 'steer', status: 'queued' },
+    ];
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.type(await screen.findByLabelText('消息输入'), '再看这个');
+    expect(screen.queryByRole('button', { name: '引导' })).toBeNull();
+  });
+
+  it('已经派发过的引导不再挡住后续引导', async () => {
+    runtime.isStreaming = true;
+    runtime.activeRunSteerable = true;
+    runtime.queuedRequests = [
+      { request_id: 'r-引导', queue_policy: 'steer', status: 'dispatched' },
+    ];
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.type(await screen.findByLabelText('消息输入'), '再看这个');
+    expect(await screen.findByRole('button', { name: '引导' })).toBeTruthy();
+  });
+
+  it('建线程在途时按回车不再提交第二条', async () => {
+    // 建线程是一次网络往返，输入要到它成功之后才清空；这期间发送按钮已经禁用，
+    // 但输入框的回车不走按钮，是第二个真实入口。
+    let resolveCreate: ((value: unknown) => void) | undefined;
+    chat.createThread.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveCreate = resolve;
+        }),
+    );
+    renderAt(paths.app.chat.getHref());
+
+    await userEvent.type(await screen.findByLabelText('消息输入'), '你好');
+    await userEvent.click(screen.getByRole('button', { name: '发送' }));
+    await userEvent.type(screen.getByLabelText('消息输入'), '{Enter}');
+
+    resolveCreate?.({ id: 'thread-新', agent_id: 'default-chatbot', title: '你好' });
+
+    // 用户可见的结果：只发出一条消息
+    await waitFor(() => expect(chat.sendMessage).toHaveBeenCalledTimes(1));
+    expect(chat.createThread).toHaveBeenCalledTimes(1);
+  });
+
+  it('引导只发文字，暂存的图片留在槽里', async () => {
+    runtime.isStreaming = true;
+    runtime.activeRunSteerable = true;
+    agentRunApi.uploadImage.mockResolvedValue({
+      success: true,
+      image_content: 'iVBORw0KGgoAAA',
+      mime_type: 'image/png',
+    });
+    renderAt(paths.app.chat.getHref('thread-A'));
+    pickImage('截图.png');
+    expect(await screen.findByTestId('image-attachment')).toBeTruthy();
+
+    await userEvent.type(await screen.findByLabelText('消息输入'), '先看这个');
+    await userEvent.click(await screen.findByRole('button', { name: '引导' }));
+
+    await waitFor(() =>
+      expect(chat.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ queuePolicy: 'steer', imageContent: null }),
+      ),
+    );
+    // 图片没发出去，就不该顺手清掉
+    expect(screen.queryByTestId('image-attachment')).toBeTruthy();
+  });
+
+  it('引导失败时把输入还原', async () => {
+    runtime.isStreaming = true;
+    runtime.activeRunSteerable = true;
+    chat.sendMessage.mockRejectedValue(new Error('引导被拒绝'));
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.type(await screen.findByLabelText('消息输入'), '先看这个');
+    await userEvent.click(await screen.findByRole('button', { name: '引导' }));
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('消息输入')).toHaveTextContent('先看这个'),
+    );
+  });
+
+  it('没有显式选择时下发会话绑定的模型', async () => {
+    threadList.threads = [
+      { id: 'thread-A', metadata: { model_spec: 'p:bound' } },
+    ];
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await send('你好');
+
+    await waitFor(() =>
+      expect(chat.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ modelSpec: 'p:bound' }),
+      ),
+    );
+  });
+
+  it('选中模型后下发它，并显示在选择器上', async () => {
+    modelGroups.push({
+      providerId: 'p',
+      providerName: '供应商',
+      models: [{ spec: 'p:chosen', label: 'Chosen' }],
+    });
+    useModelSelection.getState().setOverride('thread-A', 'p:chosen');
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    // 触发按钮显示的是 spec 里的模型名，不是列表里的展示名
+    expect(screen.getByRole('button', { name: '选择模型' }).textContent).toContain(
+      'chosen',
+    );
+    await send('你好');
+
+    await waitFor(() =>
+      expect(chat.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ modelSpec: 'p:chosen' }),
+      ),
+    );
+  });
+
+  it('清空选择后回到会话绑定的模型', async () => {
+    modelGroups.push({
+      providerId: 'p',
+      providerName: '供应商',
+      models: [{ spec: 'p:bound', label: 'Bound' }],
+    });
+    threadList.threads = [
+      { id: 'thread-A', metadata: { model_spec: 'p:bound' } },
+    ];
+    useModelSelection.getState().setOverride('thread-A', 'p:other');
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.click(screen.getByRole('button', { name: '选择模型' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: /默认/ }));
+
+    expect(useModelSelection.getState().overrideByKey).toEqual({});
+    await send('你好');
+    await waitFor(() =>
+      expect(chat.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ modelSpec: 'p:bound' }),
+      ),
+    );
+  });
+
+  it('从选择器选一个模型会写进覆盖表', async () => {
+    modelGroups.push({
+      providerId: 'p',
+      providerName: '供应商',
+      models: [{ spec: 'p:chosen', label: 'Chosen' }],
+    });
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.click(screen.getByRole('button', { name: '选择模型' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: /Chosen/ }));
+
+    expect(useModelSelection.getState().overrideByKey).toEqual({
+      'thread-A': 'p:chosen',
+    });
+  });
+
+  it('本地会话还没有绑定值时，发送后清空选择仍然回到刚下发的模型', async () => {
+    // 会话列表里的对象还没有 model_spec（后端刚绑定、列表还没重拉）
+    threadList.threads = [
+      { id: 'thread-A', agent_id: 'default-chatbot', metadata: {} },
+    ];
+    useModelSelection.getState().setOverride('thread-A', 'p:chosen');
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await send('你好');
+    await waitFor(() =>
+      expect(chat.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ modelSpec: 'p:chosen' }),
+      ),
+    );
+
+    // 用户随后清空选择：应当回到刚下发的模型，而不是掉到智能体默认值
+    await userEvent.click(screen.getByRole('button', { name: '选择模型' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: /默认/ }));
+    await send('再说一句');
+
+    await waitFor(() =>
+      expect(chat.sendMessage).toHaveBeenLastCalledWith(
+        expect.objectContaining({ modelSpec: 'p:chosen' }),
+      ),
+    );
+  });
+
+  it('没有会话时显示项目选择器，有会话时不显示', async () => {
+    projectList.push({ id: 'p-1', name: '项目一' });
+    const { unmount } = renderAt(paths.app.chat.getHref());
+
+    expect(await screen.findByRole('button', { name: /选择项目/ })).toBeTruthy();
+    unmount();
+
+    renderAt(paths.app.chat.getHref('thread-A'));
+    await waitFor(() => expect(threadList.markViewed).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: /选择项目/ })).toBeNull();
+  });
+
+  it('确认附件后把结果写进缓存，紧接着发的那条消息才带得上', async () => {
+    const confirmed = [
+      {
+        fileId: 'f-new',
+        fileName: 'a.pdf',
+        fileType: 'application/pdf',
+        fileSize: 10,
+        status: 'uploaded',
+        requestId: null,
+      },
+    ];
+    attachmentUpload.confirm.mockResolvedValue(confirmed);
+    renderAt(paths.app.chat.getHref('thread-A'));
+    await userEvent.click(await screen.findByRole('button', { name: '附件' }));
+    await userEvent.click(screen.getByRole('button', { name: '确认附件' }));
+
+    await waitFor(() =>
+      expect(cacheThreadAttachments).toHaveBeenCalledWith('thread-A', confirmed),
+    );
+  });
+
+  it('发送时带上还没被用掉的附件 id', async () => {
+    threadAttachments.push(
+      { fileId: 'f-pending', requestId: null },
+      { fileId: 'f-used', requestId: 'req-old' },
+    );
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await send('你好');
+
+    await waitFor(() =>
+      expect(chat.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ attachmentFileIds: ['f-pending'] }),
+      ),
+    );
+
+    // 请求受理后要刷新附件列表，否则下一次发送会重发已经用掉的 id
+    const options = (chat.sendMessage as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0];
+    options.onAccepted();
+    expect(refetchAttachments).toHaveBeenCalled();
+  });
+
+  it('没有附件时不下发附件字段', async () => {
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await send('你好');
+
+    await waitFor(() =>
+      expect(chat.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ attachmentFileIds: [] }),
+      ),
+    );
+  });
+
+  it('点「附件」打开上传弹窗', async () => {
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    expect(screen.queryByRole('button', { name: '确认附件' })).toBeNull();
+    await userEvent.click(await screen.findByRole('button', { name: '附件' }));
+
+    expect(screen.getByRole('button', { name: '确认附件' })).toBeTruthy();
+  });
+
+  it('有会话时确认附件直接挂到该会话上', async () => {
+    renderAt(paths.app.chat.getHref('thread-A'));
+    await userEvent.click(await screen.findByRole('button', { name: '附件' }));
+    await userEvent.click(screen.getByRole('button', { name: '确认附件' }));
+
+    await waitFor(() => expect(attachmentUpload.confirm).toHaveBeenCalledWith('thread-A'));
+    expect(chat.createThread).not.toHaveBeenCalled();
+  });
+
+  it('没有会话时确认附件会先建一条会话', async () => {
+    renderAt(paths.app.chat.getHref());
+    await userEvent.click(await screen.findByRole('button', { name: '附件' }));
+    await userEvent.click(screen.getByRole('button', { name: '确认附件' }));
+
+    await waitFor(() =>
+      expect(attachmentUpload.confirm).toHaveBeenCalledWith('thread-新'),
+    );
+    expect(chat.createThread).toHaveBeenCalledTimes(1);
+  });
+
+  it('历史候选查询拿到的是防抖后的值', async () => {
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await waitFor(() => expect(historyQueryArgs.length).toBeGreaterThan(0));
+    expect(historyQueryArgs).toContain('DEBOUNCED');
+  });
+
+  it('建线程期间切走，回到新会话时项目选择已经重置', async () => {
+    projectList.push({ id: 'p-1', name: '项目一' });
+    let resolveCreate!: (value: unknown) => void;
+    chat.createThread.mockReturnValue(
+      new Promise((resolve) => {
+        resolveCreate = resolve;
+      }),
+    );
+    renderAt(paths.app.chat.getHref());
+
+    await userEvent.click(await screen.findByRole('button', { name: /选择项目/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /项目一/ }));
+    await userEvent.type(await screen.findByLabelText('消息输入'), '你好');
+    await userEvent.click(screen.getByRole('button', { name: '发送' }));
+
+    // 建线程还没回来就切走：这次发送会被放弃
+    await userEvent.click(screen.getByRole('link', { name: '切到 B' }));
+    resolveCreate({ id: 'thread-新', agent_id: 'default-chatbot', title: '你好' });
+
+    // 回到新会话时不该还带着刚才那个项目
+    await userEvent.click(screen.getByRole('link', { name: '新建对话' }));
+    const trigger = await screen.findByRole('button', { name: /选择项目/ });
+    expect(trigger.textContent).toContain('选择项目');
+  });
+
+  it('选中项目后建线程带上它的 id', async () => {
+    projectList.push({ id: 'p-1', name: '项目一' });
+    renderAt(paths.app.chat.getHref());
+
+    await userEvent.click(await screen.findByRole('button', { name: /选择项目/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /项目一/ }));
+    await send('你好');
+
+    await waitFor(() =>
+      expect(chat.createThread).toHaveBeenCalledWith(
+        'default-chatbot',
+        '你好',
+        null,
+        'p-1',
+      ),
+    );
+  });
+
+  it('建线程后项目选择回到「不使用项目」', async () => {
+    projectList.push({ id: 'p-1', name: '项目一' });
+    renderAt(paths.app.chat.getHref());
+
+    await userEvent.click(await screen.findByRole('button', { name: /选择项目/ }));
+    await userEvent.click(await screen.findByRole('button', { name: /项目一/ }));
+    await send('你好');
+    // 建完线程后选择器整个消失：它只服务新会话
+    await waitFor(() => expect(threadList.upsert).toHaveBeenCalled());
+
+    await userEvent.click(screen.getByRole('link', { name: '新建对话' }));
+
+    // 下一条新会话不该沿用上一个项目
+    const trigger = await screen.findByRole('button', { name: /选择项目/ });
+    expect(trigger.textContent).toContain('选择项目');
+  });
+
+  it('新建会话时把草稿态选的模型带过去', async () => {
+    useModelSelection.getState().setOverride(null, 'p:draft');
+    renderAt(paths.app.chat.getHref());
+
+    await send('你好');
+
+    await waitFor(() =>
+      expect(chat.sendMessage).toHaveBeenCalledWith(
+        expect.objectContaining({ modelSpec: 'p:draft' }),
+      ),
+    );
+    expect(useModelSelection.getState().overrideByKey).toEqual({
+      'thread-新': 'p:draft',
+    });
   });
 });

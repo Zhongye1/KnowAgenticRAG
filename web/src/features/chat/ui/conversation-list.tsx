@@ -20,7 +20,7 @@ import { useThreadList } from '../model/thread-list-store';
 import { disposeAgentStateReads } from '../model/agent-state';
 import { disposeThreadRuntime } from '../model/thread-runtime-store';
 import { paths } from '@/shared/config';
-import { Button } from '@/shared/ui/button';
+import { Button } from './antd-button';
 import {
   Dialog,
   DialogContent,
@@ -28,14 +28,9 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/shared/ui/dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu';
-import { Input } from '@/shared/ui/input';
+} from './antd-dialog';
+import { Dropdown } from './antd-dropdown';
+import { Input } from './antd-input';
 
 type ConversationListProps = {
   /** 当前路由上的会话 id，用于高亮。 */
@@ -56,7 +51,7 @@ const ThreadRow = ({
   const [editing, setEditing] = React.useState(false);
   const [draft, setDraft] = React.useState(thread.title ?? '');
   const [confirming, setConfirming] = React.useState(false);
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = React.useRef<import('antd').InputRef>(null);
 
   React.useEffect(() => {
     if (editing) inputRef.current?.focus();
@@ -81,7 +76,7 @@ const ThreadRow = ({
           }}
         />
         <Button
-          type="button"
+
           variant="ghost"
           size="icon"
           aria-label="保存标题"
@@ -90,7 +85,7 @@ const ThreadRow = ({
           <Check className="size-4" />
         </Button>
         <Button
-          type="button"
+
           variant="ghost"
           size="icon"
           aria-label="取消重命名"
@@ -110,7 +105,7 @@ const ThreadRow = ({
         className={`flex min-w-0 flex-1 items-center gap-2 rounded-medium px-2 py-1 text-sm hover:bg-sidebar-accent ${
           isCurrent
             ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-            : 'text-color-text-2'
+            : 'text-[var(--gray-800)]'
         }`}
       >
         <MessageSquare className="size-4 shrink-0" aria-hidden />
@@ -120,7 +115,7 @@ const ThreadRow = ({
         {/* 运行中显示转圈，有新回复显示圆点，done 不显示 */}
         {thread.thread_status === 'loading' ? (
           <output
-            className="flex size-3 shrink-0 items-center text-color-text-3"
+            className="flex size-3 shrink-0 items-center text-[var(--gray-500)]"
             aria-label="正在运行"
           >
             <LoaderCircle className="size-3 animate-spin" aria-hidden />
@@ -136,35 +131,41 @@ const ThreadRow = ({
         ) : null}
       </Link>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100"
-            aria-label={`会话操作：${thread.title || '未命名会话'}`}
-          >
-            <MoreHorizontal className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onSelect={() => {
+      <Dropdown
+        align="end"
+        items={[
+          {
+            kind: 'item',
+            key: 'rename',
+            label: '重命名',
+            onSelect: () => {
               setDraft(thread.title ?? '');
               setEditing(true);
-            }}
-          >
-            重命名
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => void togglePin(thread.id)}>
-            {thread.is_pinned ? '取消置顶' : '置顶'}
-          </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setConfirming(true)}>
-            删除
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+            },
+          },
+          {
+            kind: 'item',
+            key: 'pin',
+            label: thread.is_pinned ? '取消置顶' : '置顶',
+            onSelect: () => void togglePin(thread.id),
+          },
+          {
+            kind: 'item',
+            key: 'delete',
+            label: '删除',
+            onSelect: () => setConfirming(true),
+          },
+        ]}
+      >
+        <Button
+          variant="ghost"
+          size="icon"
+          className="opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100"
+          aria-label={`会话操作：${thread.title || '未命名会话'}`}
+        >
+          <MoreHorizontal className="size-4" />
+        </Button>
+      </Dropdown>
 
       <Dialog open={confirming} onOpenChange={setConfirming}>
         <DialogContent>
@@ -176,14 +177,14 @@ const ThreadRow = ({
           </DialogHeader>
           <DialogFooter>
             <Button
-              type="button"
+
               variant="outline"
               onClick={() => setConfirming(false)}
             >
               取消
             </Button>
             <Button
-              type="button"
+
               variant="destructive"
               onClick={() => {
                 setConfirming(false);
@@ -225,11 +226,11 @@ export const ConversationList = ({
       {error ? (
         <p
           role="alert"
-          className="flex items-center gap-1 px-2 py-1 text-xs text-color-danger-6"
+          className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--color-error-500)]"
         >
           <span className="min-w-0 flex-1">{error}</span>
           <Button
-            type="button"
+
             variant="ghost"
             size="sm"
             onClick={() => void initialize()}
@@ -240,7 +241,7 @@ export const ConversationList = ({
       ) : null}
 
       {threads.length === 0 ? (
-        <p className="px-2 py-1 text-xs text-color-text-3">
+        <p className="px-2 py-1 text-xs text-[var(--gray-500)]">
           {loading ? '正在加载会话…' : '还没有历史会话。'}
         </p>
       ) : (

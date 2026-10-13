@@ -21,7 +21,7 @@ vi.mock('@/entities/session', () => ({
 }));
 
 vi.mock('@/app/layouts/app-shell', () => ({
-  DashboardLayout: ({ children }: { children: React.ReactNode }) => (
+  AppShell: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   ),
 }));

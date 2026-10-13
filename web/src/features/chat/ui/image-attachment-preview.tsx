@@ -21,11 +21,11 @@ export const ImageAttachmentPreview = ({
     <img
       src={toImageDataUrl(image.imageContent, image.mimeType)}
       alt={image.originalName || '待发送的图片'}
-      className="max-h-24 w-fit rounded-medium border border-color-border-1"
+      className="max-h-24 w-fit rounded-medium border border-[var(--gray-150)]"
     />
     <button
       type="button"
-      className="rounded-small border border-color-border-1 p-1 text-color-text-2 hover:text-color-text-1"
+      className="rounded-small border border-[var(--gray-150)] p-1 text-[var(--gray-800)] hover:text-[var(--gray-1000)]"
       aria-label="移除图片"
       onClick={onRemove}
     >

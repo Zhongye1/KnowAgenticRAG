@@ -60,29 +60,29 @@ src/
 ├── app/                     入口、全局 provider 装配、路由、应用外壳
 │   ├── main.tsx             createRoot 入口
 │   ├── index.tsx            全局 provider（查询客户端、错误边界、通知）
-│   ├── layouts/app-shell.tsx
+│   ├── layouts/app-shell.tsx  登录后的外壳：导航列 + 内容区
 │   └── routing/{router.tsx, guards.tsx, protected-route.tsx}
 ├── pages/                   页面切片，各带 index.ts
 │   ├── login/  {index.ts, ui/login-page.tsx}
-│   └── chat/   {index.ts, ui/chat-page.tsx}
+│   └── chat/   {index.ts, model/{use-chat-submission.ts, use-chat-thread-lifecycle.ts},
+│                ui/{chat-page.tsx, chat-page-view.tsx}}
 ├── widgets/                 跨页面复用的自包含块
-│   ├── app-sidebar/         {index.ts, ui/{app-sidebar.tsx, user-menu.tsx}}
-│   ├── app-headbar/         {index.ts, ui/app-headbar.tsx}
-│   └── intro-navbar/        {index.ts, ui/intro-navbar.tsx}
+│   └── app-sidebar/         {index.ts, lib/{nav-items.ts, sidebar-preference.ts},
+│                             ui/{app-sidebar.tsx, sidebar-brand.tsx, user-menu.tsx}}
 ├── entities/
 │   └── session/             {index.ts, api/session-api.ts, model/{session.tsx, capabilities.ts}}
 ├── shared/
 │   ├── api/                 {index.ts, base.ts, generated/}
-│   ├── config/              {index.ts, paths.ts}
+│   ├── config/              {index.ts, paths.ts, links.ts}
 │   ├── lib/                 {index.ts, utils.ts, react-query.ts, hooks/}
-│   └── ui/                  UI kit、页脚与页头原语、通知中心、Head
+│   └── ui/                  UI kit、通知中心、Head、日夜切换控件
 ├── index.css  styles/       Tailwind 与 token 的工具链固定点，按 app 层语义使用
 └── main.tsx 之外的工具链文件见上
 ```
 
 两处不随目录整齐移动的固定点：`src/index.css` 与 `src/styles/` 被 `components.json`、`vite.config.ts` 与 `scripts/check-design-tokens.mjs` 引用；测试设施放在 `web/test/`，由[测试规范](../docs/develop-guides/testing-guidelines.md)拥有，不属于运行时分层。
 
-Steiger 曾在这一步抓到一处真实的结构问题：`widgets/app-sidebar` 跨切片引用了 `widgets/user-menu`。用户菜单只被侧边栏使用，因此合并进侧边栏切片，而不是保留一个无人引用的切片。
+跨 widget 切片的导入被 Steiger 的 `fsd/forbidden-imports` 拒绝；只被单个 widget 使用的切片还会被 `fsd/insignificant-slice` 拒绝。用户菜单因此留在 `widgets/app-sidebar` 内，没有拆成独立切片；它在多个页面真正复用之前不再拆出。
 
 ## 门禁
 
@@ -112,8 +112,9 @@ Steiger 的 19 条规则覆盖了 `.dependency-cruiser.cjs` 中手写的三条 F
   读可变外部状态的订阅 hook（`useThreadRuntime`、`useStreamingMessages`）必须标注
   `'use no memo'`：React Compiler 会把「容器身份不变、内容就地变」的派生冻结在首帧。
 - 测试设施在 `web/test/setup-tests.ts` 里补了 jsdom 缺的 `matchMedia`、`ResizeObserver` 与
-  指针捕获/`scrollIntoView`：前者服务侧边栏 tooltip（缺了会让一次点击抛错并卸载整棵树），
-  后者服务 Radix 的 Select（缺了在测试里点不开下拉）。
+  指针捕获/`scrollIntoView`：`matchMedia` 服务日夜切换与首页的动效降级，`ResizeObserver`
+  服务知识库图谱画布与数据总览图表，指针捕获与 `scrollIntoView` 服务 Radix 的 Select
+  （缺了在测试里点不开下拉）。
 - `features/knowledge-base` 承载知识库管理：列表、新建/编辑表单、详情页的文件表（目录进入与
   面包屑、状态筛选、当前页按列排序、服务端分页、刷新与空态）与文件名搜索弹窗，以及查询层
   （`api` 段按 `backend/server/utils/knowledge_response.py` 的序列化形状手写类型，因为后端这些
@@ -165,8 +166,10 @@ Steiger 的 19 条规则覆盖了 `.dependency-cruiser.cjs` 中手写的三条 F
   `{message:'success', data}` 信封，api 段统一解包；下载只在数据集 `completed` 时给，否则后端
   返回 400。运行列表的进度、耗时与「仅看错误」判定（`score <= 0.5 || recall@k < 0.3`）在
   `lib/evaluation-view.ts` 里与后端同口径，`null` 与缺字段按「没有数据」处理而不是 0。
-- 调试面板（`features/debug`）的入口只有侧边栏用户菜单一处，且只对超管显示（授权仍由后端
-  `get_admin_user` 兜底）：系统日志、系统配置、用户与会话、本地存储四个页签。凭据不外泄——
+- 调试面板（`features/debug`）有两个入口：侧边栏用户菜单与 Ctrl/Cmd+Shift+D 全局快捷键，都只对超管
+  生效（授权仍由后端 `get_admin_user` 兜底），共用 `model/debug-panel-store.ts` 的同一个开关；
+  面板由 `app/layouts/app-shell.tsx` 挂载一次，只对超管渲染。四个页签是系统日志、系统配置、
+  用户与会话、本地存储。凭据不外泄——
   `readStorageItems` 把 `ars_access_token` 的值清空、预览写成「已隐藏」，复制与导出都跳过它。
   日志行的 React key 必须带序号：真实日志里同一秒会出现完全相同的整行，只按原文做 key 会
   触发 React 重复 key（真机实测 75 次告警）。级别多选至少留一个，
@@ -174,8 +177,9 @@ Steiger 的 19 条规则覆盖了 `.dependency-cruiser.cjs` 中手写的三条 F
   `_config_items[key].type` 提交布尔/数组等真实类型，属于后端管理动作。切换身份先二次确认，
   成功后写回凭据再整页重载，失败时不动当前凭据；后端禁止模拟超管（403），所以其他超管那一行
   不给入口。
-- LITE 模式的能力降级只读 `/api/system/discovery` 的 `capabilities.features.knowledge`：侧边栏与
-  扩展页隐藏入口，知识库深链由 `routing/guards.tsx` 的 `RequireKnowledgeEnabled` 兜底——投影未取到
+- LITE 模式的能力降级只读 `/api/system/discovery` 的 `capabilities.features.knowledge`：扩展页隐藏知识库
+  tab，导航列的扩展项保留但文案从「知识库 · 技能」改成「技能」（技能在 LITE 下仍可用），
+  知识库深链由 `routing/guards.tsx` 的 `RequireKnowledgeEnabled` 兜底——投影未取到
   时显示加载态，声明为 `false` 时重定向到 `/agent`。请求失败（没有 `data`）不算能力关闭，
   页面照常渲染让故障显式暴露；响应形状与契约不符时在渲染期报错并落到应用级错误边界
   （`entities/session/model/capabilities.ts` 的同一取值在全应用都是这个行为）。

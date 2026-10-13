@@ -17,6 +17,7 @@ import {
   Copy,
   ExternalLink,
   FoldVertical,
+  GitBranch,
   Search,
   Settings2,
   TriangleAlert,
@@ -37,9 +38,8 @@ import {
   type DebugMessage,
   type MessageDebugFilter,
 } from '../lib/message-debug';
-import { Button } from '@/shared/ui/button';
-import { Input } from '@/shared/ui/input';
-import { Spinner } from '@/shared/ui/spinner';
+import { Spinner } from './antd-spinner';
+import styles from './message-debug-panel.module.css';
 
 export type MessageDebugPanelProps = {
   messages: DebugMessage[];
@@ -56,13 +56,14 @@ const ROLE_ICONS = {
   other: Clock,
 } as const;
 
+/* 参照 .role-pill：纯文字色（只有 error 红），不做彩底 */
 const ROLE_CLASSES = {
-  human: 'bg-primary-6/10 text-primary-6',
-  ai: 'bg-success-6/10 text-success-6',
-  tool: 'bg-color-fill-3 text-color-text-2',
-  error: 'bg-danger-6/10 text-danger-6',
-  system: 'bg-warning-6/10 text-warning-6',
-  other: 'bg-color-fill-2 text-color-text-3',
+  human: styles.pillHuman,
+  ai: styles.pillAi,
+  tool: styles.pillHuman,
+  error: styles.pillError,
+  system: styles.pillSystem,
+  other: styles.pillSystem,
 } as const;
 
 export const MessageDebugPanel = ({
@@ -130,119 +131,110 @@ export const MessageDebugPanel = ({
 
   return (
     <section
+      className={styles.panel}
       aria-label="消息时序调试"
-      className="flex flex-col gap-3 rounded-large border border-color-border-1 bg-color-bg-1 p-3"
+      data-testid="message-debug-panel"
     >
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <span className="flex items-center gap-2 text-sm font-medium text-color-text-1">
-          <Bug className="size-4" />
-          消息时序调试
-          <span className="rounded bg-color-fill-2 px-1.5 text-xs text-color-text-3">
-            {visible.length} 条
-          </span>
-        </span>
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            title={allExpanded ? '全部折叠' : '全部展开'}
-            onClick={toggleAll}
-          >
-            {allExpanded ? (
-              <FoldVertical className="size-3.5" />
-            ) : (
-              <UnfoldVertical className="size-3.5" />
-            )}
-            {allExpanded ? '全部折叠' : '全部展开'}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              void copy(
-                JSON.stringify(
-                  entries.map((item) => item.raw),
-                  null,
-                  2,
-                ),
-                () => setAllCopied(true),
-              )
-            }
-          >
-            {allCopied ? (
-              <Check className="size-3.5" />
-            ) : (
-              <Copy className="size-3.5" />
-            )}
-            {allCopied ? '已复制' : '复制数据'}
-          </Button>
-        </div>
-      </header>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <fieldset className="flex flex-wrap gap-1">
-          <legend className="sr-only">角色筛选</legend>
-          {tabs.map((tab) => (
+      <div className={styles.toolbar}>
+        <div className={styles.titleGroup}>
+          <Bug className={styles.titleIcon} size={15} />
+          <span className={styles.toolbarTitle}>消息时序调试</span>
+          <span className={styles.itemCountBadge}>{messages.length} 条</span>
+          <div className={styles.titleActions}>
             <button
-              key={tab.key}
               type="button"
-              aria-pressed={filter === tab.key}
-              className={`rounded px-2 py-0.5 text-xs ${
-                filter === tab.key
-                  ? 'bg-primary-6/10 text-primary-6'
-                  : 'bg-color-fill-2 text-color-text-3'
-              }`}
-              onClick={() => setFilter(tab.key)}
+              className={styles.actionBtn}
+              onClick={toggleAll}
             >
-              {tab.label}
-              {tab.count > 0 ? ` ${tab.count}` : ''}
+              {allExpanded ? (
+                <FoldVertical className="size-3.5" />
+              ) : (
+                <UnfoldVertical className="size-3.5" />
+              )}
+              {allExpanded ? '全部折叠' : '全部展开'}
             </button>
-          ))}
-        </fieldset>
-        <div className="relative ml-auto w-56">
-          <Search className="absolute left-2 top-1/2 size-3.5 -translate-y-1/2 text-color-text-3" />
-          <Input
-            aria-label="搜索消息或字段"
-            className="pl-7"
-            placeholder="搜索消息或字段..."
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+            <button
+              type="button"
+              className={styles.actionBtn}
+              onClick={() =>
+                void copy(
+                  JSON.stringify(messages.map((item) => item.raw), null, 2),
+                  () => setAllCopied(true),
+                )
+              }
+            >
+              {allCopied ? (
+                <Check className="size-3.5" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+              {allCopied ? '已复制' : '复制数据'}
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.filterRow}>
+          <fieldset className={styles.filterChips}>
+            <legend className="sr-only">角色筛选</legend>
+            {tabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                className={`${styles.filterChip} ${filter === tab.key ? styles.filterChipActive : ''}`}
+                onClick={() => setFilter(tab.key)}
+              >
+                {tab.label}
+                <span className={styles.chipCount}>{tab.count}</span>
+              </button>
+            ))}
+          </fieldset>
+          <div className={styles.searchBox}>
+            <Search className={styles.searchIcon} size={13} />
+            <input
+              className={styles.searchInput}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="搜索消息或字段..."
+              aria-label="搜索消息或字段"
+            />
+          </div>
         </div>
       </div>
 
-      {notice ? (
-        <p role="alert" className="text-xs text-danger-6">
-          {notice}
-        </p>
-      ) : null}
-
-      {visible.length === 0 ? (
-        <div className="flex h-32 flex-col items-center justify-center gap-1 text-sm text-color-text-3">
-          <Clock className="size-5" />
-          {query ? '未找到匹配的消息' : '当前会话暂无消息数据'}
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {groups.map((group) => (
+      <div className={styles.body}>
+        {notice ? (
+          <p role="alert" className={styles.errorLine}>
+            {notice}
+          </p>
+        ) : null}
+        {groups.length === 0 ? (
+          <div className={styles.emptyState}>
+            <Clock className="size-5" />
+            <span>
+              {query.trim() || filter !== 'all' ? '未找到匹配的消息' : '当前会话暂无消息数据'}
+            </span>
+          </div>
+        ) : (
+          groups.map((group) => (
             <section
               key={group.key}
               aria-label={group.runId ? `Run ${group.runId}` : '未关联 Run'}
-              className="flex flex-col gap-1"
+              className={styles.runGroup}
             >
-              <header className="flex items-center gap-2 text-xs text-color-text-3">
-                <span>{group.runId ? 'Run' : '未关联 Run'}</span>
+              <header className={styles.runGroupHeader}>
+                <GitBranch className={styles.runGroupIcon} size={13} />
+                <span className={styles.runGroupLabel}>
+                  {group.runId ? 'Run' : '未关联 Run'}
+                </span>
                 {group.runId ? (
-                  <code title={group.runId}>{formatRunId(group.runId)}</code>
+                  <code className={styles.runGroupId} title={group.runId}>
+                    {formatRunId(group.runId)}
+                  </code>
                 ) : null}
                 {group.runId && fetchLangfuseUrl ? (
-                  <Button
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto px-1 py-0 text-xs"
+                    className={styles.langfuseBtn}
                     disabled={pendingRunId === group.runId}
                     onClick={() => void openLangfuse(group.runId as string)}
                   >
@@ -252,30 +244,32 @@ export const MessageDebugPanel = ({
                       <ExternalLink className="size-3" />
                     )}
                     Langfuse
-                  </Button>
+                  </button>
                 ) : null}
-                <span className="ml-auto">{group.items.length} 条</span>
+                <span className={styles.runGroupCount}>
+                  {group.items.length} 条
+                </span>
               </header>
 
-              <ul className="flex flex-col gap-1">
+              <ul className={styles.timeline}>
                 {group.items.map((item) => {
                   const Icon = ROLE_ICONS[item.role];
                   const open = expanded.has(item.id);
                   return (
                     <li
                       key={item.id}
-                      className="rounded border border-color-border-1 px-2 py-1"
+                      className={`${styles.timelineItem} ${item.role === 'error' ? styles.timelineItemError : ''}`}
                     >
-                      <div className="flex items-center gap-2">
-                        <Icon className="size-3.5 text-color-text-3" />
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-xs ${ROLE_CLASSES[item.role]}`}
-                        >
-                          {item.roleLabel}
+                      <div className={styles.itemHeader}>
+                        <Icon className={styles.roleIcon} size={13} />
+                        <span className={styles.rolePill}>
+                          <span className={ROLE_CLASSES[item.role]}>
+                            {item.roleLabel}
+                          </span>
                         </span>
                         <button
                           type="button"
-                          className="min-w-0 flex-1 truncate text-left text-xs text-color-text-2"
+                          className={styles.headerSummary}
                           title={item.summary}
                           onClick={() =>
                             setExpanded((current) => {
@@ -290,17 +284,15 @@ export const MessageDebugPanel = ({
                         </button>
                         {formatDebugTokens(item.usage) ? (
                           <span
-                            className="text-xs text-color-text-3"
+                            className={styles.tokenBadge}
                             title={formatDebugTokenTooltip(item.usage)}
                           >
                             {formatDebugTokens(item.usage)}
                           </span>
                         ) : null}
-                        <Button
+                        <button
                           type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="size-6"
+                          className={styles.itemIconBtn}
                           aria-label={`复制第 ${item.id} 条消息`}
                           onClick={() =>
                             void copy(JSON.stringify(item.raw, null, 2), () =>
@@ -313,21 +305,23 @@ export const MessageDebugPanel = ({
                           ) : (
                             <Copy className="size-3" />
                           )}
-                        </Button>
+                        </button>
                       </div>
                       {open ? (
-                        <pre className="mt-1 max-h-64 overflow-auto rounded bg-color-fill-1 px-2 py-1 text-xs whitespace-pre-wrap text-color-text-1">
-                          {JSON.stringify(item.raw, null, 2)}
-                        </pre>
+                        <div className={styles.itemBody}>
+                          <pre className={styles.itemJson}>
+                            {JSON.stringify(item.raw, null, 2)}
+                          </pre>
+                        </div>
                       ) : null}
                     </li>
                   );
                 })}
               </ul>
             </section>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
     </section>
   );
 };
