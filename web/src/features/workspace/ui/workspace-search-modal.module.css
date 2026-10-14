@@ -1,0 +1,90 @@
+/* 个人空间文件搜索弹窗的样式。
+   参照实现 GlobalSearchModal.vue：结果行是「图标 + 名称 + 路径 + 日期」，命中片段用 <mark> 高亮
+   （浅主色底、不改字重），选中行用 gray-50 底。颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 72vh;
+  overflow-y: auto;
+}
+
+.result {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.result:hover,
+.resultActive {
+  background: var(--gray-50);
+}
+
+.resultIcon {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.resultMain {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.resultTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gray-900);
+  font-size: 13px;
+}
+
+.resultTitle mark {
+  background: var(--main-40);
+  color: inherit;
+}
+
+.resultPath {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gray-500);
+  font-size: 11.5px;
+}
+
+.resultDate {
+  flex: 0 0 auto;
+  color: var(--gray-500);
+  font-size: 11.5px;
+}
+
+.state,
+.error {
+  padding: 18px 10px;
+  color: var(--gray-500);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.error {
+  color: var(--color-error-600);
+}

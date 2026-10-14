@@ -31,16 +31,20 @@ describe('parseKbQueryResult', () => {
     expect(
       parseKbQueryResult({ results: [{ content: 'A' }] }).chunks,
     ).toHaveLength(1);
-    expect(parseKbQueryResult({ chunks: [{ content: 'A' }] }).chunks).toHaveLength(
-      1,
-    );
+    expect(
+      parseKbQueryResult({ chunks: [{ content: 'A' }] }).chunks,
+    ).toHaveLength(1);
   });
 
   it('丢掉没有内容的片段，并读出元数据', () => {
     const [chunk] = parseKbQueryResult({
       results: [
         { score: 0.9 },
-        { content: 'A', score: 0.5, metadata: { source: 's.md', file_id: 'f-1' } },
+        {
+          content: 'A',
+          score: 0.5,
+          metadata: { source: 's.md', file_id: 'f-1' },
+        },
       ],
     }).chunks;
 
@@ -56,7 +60,10 @@ describe('parseKbQueryResult', () => {
 
   it('实体与关系取两种字段名，缺省值明确', () => {
     const result = parseKbQueryResult({
-      entities: [{ name: '实体A' }, { entity_name: '实体B', entity_type: '人' }],
+      entities: [
+        { name: '实体A' },
+        { entity_name: '实体B', entity_type: '人' },
+      ],
       relationships: [{}],
     });
 
@@ -79,7 +86,8 @@ describe('parseKbQueryResult', () => {
 
   it('引用标签是「编号: 地址」，缺字段有兜底', () => {
     expect(
-      parseKbQueryResult({ references: [{ file_path: '/a.md' }] }).references[0],
+      parseKbQueryResult({ references: [{ file_path: '/a.md' }] })
+        .references[0],
     ).toEqual({ url: '/a.md', label: '#1: /a.md' });
     expect(parseKbQueryResult({ references: [{}] }).references[0]).toEqual({
       url: '#',
@@ -99,12 +107,12 @@ describe('parseKbQueryResult', () => {
   });
 
   it('三块图谱数据任意一块非空就算有图谱', () => {
-    expect(parseKbQueryResult({ references: [{ url: 'x' }] }).hasGraphData).toBe(
-      true,
-    );
-    expect(parseKbQueryResult({ chunks: [{ content: 'A' }] }).hasGraphData).toBe(
-      false,
-    );
+    expect(
+      parseKbQueryResult({ references: [{ url: 'x' }] }).hasGraphData,
+    ).toBe(true);
+    expect(
+      parseKbQueryResult({ chunks: [{ content: 'A' }] }).hasGraphData,
+    ).toBe(false);
   });
 });
 
@@ -118,7 +126,9 @@ describe('kbQuerySummary', () => {
   });
 
   it('只有片段或只有图谱时各自报数', () => {
-    expect(kbQuerySummary(call({ results: [{ content: 'A' }] }))).toBe('1 个结果');
+    expect(kbQuerySummary(call({ results: [{ content: 'A' }] }))).toBe(
+      '1 个结果',
+    );
     expect(
       kbQuerySummary(call({ entities: [{ name: 'E' }], relationships: [{}] })),
     ).toBe('1 个实体，1 条关系');
@@ -136,9 +146,30 @@ describe('kbQuerySummary', () => {
 describe('片段分组与摘要', () => {
   it('按来源分组，保留首次出现的顺序', () => {
     const groups = groupChunksByFile([
-      { content: 'A', score: null, source: 'b.md', fileId: 'f-2', chunkId: '', kbId: '' },
-      { content: 'B', score: null, source: 'a.md', fileId: 'f-1', chunkId: '', kbId: '' },
-      { content: 'C', score: null, source: 'b.md', fileId: 'f-2', chunkId: '', kbId: '' },
+      {
+        content: 'A',
+        score: null,
+        source: 'b.md',
+        fileId: 'f-2',
+        chunkId: '',
+        kbId: '',
+      },
+      {
+        content: 'B',
+        score: null,
+        source: 'a.md',
+        fileId: 'f-1',
+        chunkId: '',
+        kbId: '',
+      },
+      {
+        content: 'C',
+        score: null,
+        source: 'b.md',
+        fileId: 'f-2',
+        chunkId: '',
+        kbId: '',
+      },
     ]);
 
     expect(groups.map((group) => group.filename)).toEqual(['b.md', 'a.md']);
@@ -147,8 +178,22 @@ describe('片段分组与摘要', () => {
 
   it('有 file_id 时按 file_id 归组，同文件不同来源名不会拆开', () => {
     const groups = groupChunksByFile([
-      { content: 'A', score: null, source: 'x.md', fileId: 'f-1', chunkId: '', kbId: '' },
-      { content: 'B', score: null, source: 'y.md', fileId: 'f-1', chunkId: '', kbId: '' },
+      {
+        content: 'A',
+        score: null,
+        source: 'x.md',
+        fileId: 'f-1',
+        chunkId: '',
+        kbId: '',
+      },
+      {
+        content: 'B',
+        score: null,
+        source: 'y.md',
+        fileId: 'f-1',
+        chunkId: '',
+        kbId: '',
+      },
     ]);
 
     expect(groups).toHaveLength(1);
@@ -156,8 +201,22 @@ describe('片段分组与摘要', () => {
 
   it('摘要给出片段数与文件数', () => {
     const chunks = [
-      { content: 'A', score: null, source: 'b.md', fileId: 'f-2', chunkId: '', kbId: '' },
-      { content: 'B', score: null, source: 'a.md', fileId: 'f-1', chunkId: '', kbId: '' },
+      {
+        content: 'A',
+        score: null,
+        source: 'b.md',
+        fileId: 'f-2',
+        chunkId: '',
+        kbId: '',
+      },
+      {
+        content: 'B',
+        score: null,
+        source: 'a.md',
+        fileId: 'f-1',
+        chunkId: '',
+        kbId: '',
+      },
     ];
 
     expect(kbChunkSummary(chunks)).toBe('找到 2 个相关文档片段，来自 2 个文件');
@@ -181,9 +240,9 @@ describe('片段分组与摘要', () => {
 
 describe('知识库检索的结果视图', () => {
   it('有结果时接管渲染', () => {
-    expect(buildToolResultView(call({ results: [{ content: 'A' }] }))?.kind).toBe(
-      'kb-query',
-    );
+    expect(
+      buildToolResultView(call({ results: [{ content: 'A' }] }))?.kind,
+    ).toBe('kb-query');
   });
 
   it('还没有结果时不接管', () => {

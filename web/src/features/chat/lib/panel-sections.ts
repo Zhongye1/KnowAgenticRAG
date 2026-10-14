@@ -8,15 +8,12 @@
 export type PanelSection = {
   key: string;
   /** 分区类型决定图标与内容渲染。 */
-  type:
-    | 'file-tree'
-    | 'file'
-    | 'message-debug'
-    | 'subagent'
-    | 'state';
+  type: 'file-tree' | 'file' | 'message-debug' | 'subagent';
   title: string;
   /** `file` 类型带的路径。 */
   path?: string;
+  /** `file` 类型来自哪套文件系统；缓存查找要用它。 */
+  scope?: 'thread' | 'workspace';
   /** `subagent` 类型带的子线程 id 与 run 信息。 */
   threadId?: string;
   runId?: string;
@@ -37,18 +34,13 @@ export const FILE_TREE_SECTION: PanelSection = {
   title: '文件',
 };
 
-/** 状态分区；常驻，聚合 agent_state 的五个只读段。 */
-export const STATE_SECTION: PanelSection = {
-  key: 'state',
-  type: 'state',
-  title: '状态',
-};
-
 /** 丢掉没有 `key` 或 `type` 的条目；它们无法被激活也无法渲染。 */
 export function normalizeSections(
   sections: PanelSection[] | null | undefined,
 ): PanelSection[] {
-  return (sections ?? []).filter((section) => Boolean(section?.key && section?.type));
+  return (sections ?? []).filter((section) =>
+    Boolean(section?.key && section?.type),
+  );
 }
 
 /** 新增或就地更新一个分区；按 `key` 匹配，保留原有位置。 */
@@ -76,13 +68,16 @@ export function closeSection(
   activeKey: string,
   closingKey: string,
 ): { sections: PanelSection[]; activeKey: string } {
-  const closingIndex = sections.findIndex((section) => section.key === closingKey);
+  const closingIndex = sections.findIndex(
+    (section) => section.key === closingKey,
+  );
   if (closingIndex < 0) return { sections, activeKey };
 
   const nextSections = sections.filter((section) => section.key !== closingKey);
   if (activeKey !== closingKey) return { sections: nextSections, activeKey };
 
-  const nextActive = nextSections[Math.min(closingIndex, nextSections.length - 1)];
+  const nextActive =
+    nextSections[Math.min(closingIndex, nextSections.length - 1)];
 
   return { sections: nextSections, activeKey: nextActive?.key ?? '' };
 }

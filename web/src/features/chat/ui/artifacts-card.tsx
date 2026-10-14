@@ -7,12 +7,9 @@
 import * as React from 'react';
 import { Download, FolderInput, Loader2 } from 'lucide-react';
 
-import { Button } from './antd-button';
+import { Button } from 'antd';
 
-import {
-  artifactMetaLabel,
-  type ArtifactItem,
-} from '../lib/artifacts';
+import { artifactMetaLabel, type ArtifactItem } from '../lib/artifacts';
 
 export type ArtifactsCardProps = {
   artifacts: ArtifactItem[];
@@ -34,10 +31,7 @@ export const ArtifactsCard = ({
   if (artifacts.length === 0) return null;
 
   return (
-    <section
-      aria-label="交付物"
-      className="flex w-full flex-col gap-2 py-1"
-    >
+    <section aria-label="交付物" className="flex w-full flex-col gap-2 py-1">
       {artifacts.map((artifact) => {
         const saving = savingPaths?.has(artifact.path) ?? false;
         return (
@@ -63,8 +57,9 @@ export const ArtifactsCard = ({
             </button>
             <div className="flex shrink-0 items-center gap-0.5">
               <Button
-                variant="ghost"
-                size="icon-xs"
+                type="text"
+                size="small"
+                className="size-6 [&_svg]:size-3"
                 title="下载"
                 aria-label={`下载 ${artifact.name}`}
                 onClick={() => onDownload?.(artifact)}
@@ -72,8 +67,9 @@ export const ArtifactsCard = ({
                 <Download className="size-3.5" />
               </Button>
               <Button
-                variant="ghost"
-                size="icon-xs"
+                type="text"
+                size="small"
+                className="size-6 [&_svg]:size-3"
                 title={saving ? '保存中' : '保存到个人空间'}
                 aria-label={`保存 ${artifact.name} 到个人空间`}
                 disabled={saving || !threadId}

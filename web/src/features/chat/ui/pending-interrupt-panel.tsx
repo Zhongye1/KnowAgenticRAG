@@ -24,7 +24,7 @@ import type {
 } from '../lib/pending-interrupt';
 import type { ToolApprovalInterrupt } from '../lib/pending-interrupt';
 import { getToolApprovalSummary } from '../lib/tool-approval';
-import { getToolIcon } from './tool-icons';
+import { getToolIcon } from '@/shared/ui/tool-icons';
 import styles from './approval-modal.module.css';
 
 type ApprovalModalProps = {
@@ -88,7 +88,8 @@ const formatToolArgs = (args: unknown): string => {
 const getToolApprovalQuestion = (request: { name?: unknown }): string => {
   const name = typeof request?.name === 'string' ? request.name : '';
   if (name === 'execute') return '要执行这条命令吗？';
-  if (name === 'write_file' || name === 'edit_file') return '要写入这个文件吗？';
+  if (name === 'write_file' || name === 'edit_file')
+    return '要写入这个文件吗？';
   return '要允许这次工具调用吗？';
 };
 
@@ -113,7 +114,10 @@ const ToolApprovalCard = ({
   >({});
   const [argsExpanded, setArgsExpanded] = React.useState(false);
 
-  const requests = interrupt.actionRequests as Array<{ name?: unknown; args?: unknown }>;
+  const requests = interrupt.actionRequests as Array<{
+    name?: unknown;
+    args?: unknown;
+  }>;
   const activeRequest = requests[activeIndex] ?? null;
   const ActiveToolIcon =
     getToolIcon(
@@ -145,7 +149,9 @@ const ToolApprovalCard = ({
       aria-labelledby="tool-approval-question"
     >
       <div className={styles.approvalContent}>
-        <div className={`${styles.approvalHeader} ${styles.toolApprovalHeader}`}>
+        <div
+          className={`${styles.approvalHeader} ${styles.toolApprovalHeader}`}
+        >
           <div className={styles.toolApprovalContext}>
             <span className={styles.toolApprovalIcon}>
               <ActiveToolIcon size={17} />
@@ -197,7 +203,10 @@ const ToolApprovalCard = ({
               aria-controls="tool-approval-full-args"
               onClick={() => setArgsExpanded((current) => !current)}
             >
-              <code>{getToolApprovalSummary(activeRequest) || String(activeRequest.name ?? '')}</code>
+              <code>
+                {getToolApprovalSummary(activeRequest) ||
+                  String(activeRequest.name ?? '')}
+              </code>
               <ChevronDown
                 size={15}
                 className={`${styles.toolArgsChevron} ${
@@ -275,11 +284,7 @@ type QuestionCardProps = {
 };
 
 /** 多题 tab 逐题作答；单选/多选/「其他」自由文本与参照同构。 */
-const QuestionCard = ({
-  interrupt,
-  disabled,
-  onSubmit,
-}: QuestionCardProps) => {
+const QuestionCard = ({ interrupt, disabled, onSubmit }: QuestionCardProps) => {
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [selections, setSelections] = React.useState<
     Record<string, QuestionSelection>
@@ -337,9 +342,7 @@ const QuestionCard = ({
                 <span
                   className={styles.tabIndex}
                   style={
-                    isAnswered(index)
-                      ? { color: 'var(--main-700)' }
-                      : undefined
+                    isAnswered(index) ? { color: 'var(--main-700)' } : undefined
                   }
                 >
                   {index + 1}
@@ -374,9 +377,9 @@ const QuestionCard = ({
                 type={activeQuestion.multiSelect ? 'checkbox' : 'radio'}
                 name={`approval-option-${activeQuestion.questionId}`}
                 value={option.value}
-                checked={selectionFor(activeQuestion.questionId).selected.includes(
-                  option.value,
-                )}
+                checked={selectionFor(
+                  activeQuestion.questionId,
+                ).selected.includes(option.value)}
                 disabled={disabled}
                 onChange={() => toggleOption(option.value)}
               />
@@ -416,10 +419,10 @@ const QuestionCard = ({
                     ...selection,
                     otherText: value,
                     selected: value
-                      ? Array.from(
-                          new Set([...selection.selected, otherValue]),
-                        )
-                      : selection.selected.filter((item) => item !== otherValue),
+                      ? Array.from(new Set([...selection.selected, otherValue]))
+                      : selection.selected.filter(
+                          (item) => item !== otherValue,
+                        ),
                   });
                 }}
               />

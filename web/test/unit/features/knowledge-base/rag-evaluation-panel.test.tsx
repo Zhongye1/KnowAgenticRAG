@@ -5,6 +5,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
+
+// antd 词汇由应用装配承载，测试同构挂上
+import { AntdProvider } from '@/app/theme/antd-provider';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -64,7 +67,7 @@ vi.mock('@/shared/ui/notifications', async () => {
 });
 
 vi.mock('@/shared/ui/confirm-dialog', () => ({
-  confirm: (...args: unknown[]) => confirmMock(...args),
+  useConfirm: () => ({ confirm: (...args: unknown[]) => confirmMock(...args) }),
 }));
 
 const { RagEvaluationPanel } =
@@ -109,14 +112,16 @@ const renderPanel = (
   });
   const onGoToBenchmarks = vi.fn();
   render(
-    <QueryClientProvider client={queryClient}>
-      <RagEvaluationPanel
-        kbId="kb-1"
-        readOnly={false}
-        onGoToBenchmarks={onGoToBenchmarks}
-        {...props}
-      />
-    </QueryClientProvider>,
+    <AntdProvider>
+      <QueryClientProvider client={queryClient}>
+        <RagEvaluationPanel
+          kbId="kb-1"
+          readOnly={false}
+          onGoToBenchmarks={onGoToBenchmarks}
+          {...props}
+        />
+      </QueryClientProvider>
+    </AntdProvider>,
   );
   return { onGoToBenchmarks };
 };
@@ -243,9 +248,11 @@ describe('RAG 评估分区', () => {
     await userEvent.click(
       screen.getByRole('combobox', { name: '答案评判模型' }),
     );
-    await userEvent.click(
-      await screen.findByRole('option', { name: /GPT-4o/ }),
-    );
+    // 两个下拉的候选同名：取最后渲染的（当前打开的评判模型下拉）
+    const judgeOptions = await screen.findAllByRole('option', {
+      name: /GPT-4o/,
+    });
+    await userEvent.click(judgeOptions.at(-1)!);
     await userEvent.click(screen.getByRole('button', { name: /开始评估/ }));
 
     await waitFor(() =>

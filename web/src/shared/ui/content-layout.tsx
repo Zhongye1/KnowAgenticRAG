@@ -29,6 +29,8 @@ export const ContentLayout = ({
         >
           {children}
         </div>
+        {/* 底部留白只给文档流页面；fullHeight 的高度链上多这 32px 会让外壳滚出一条空白 */}
+        {fullHeight ? null : <div className="h-8"></div>}
       </div>
     </>
   );

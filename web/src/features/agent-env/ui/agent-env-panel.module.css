@@ -1,0 +1,67 @@
+/* 沙盒环境变量面板的样式。
+   参照实现 AgentEnvSettingsCard.vue + McpEnvEditor.vue：提示条 + KV 行（键 / 值 / 显隐 /
+   删除或锁定）+ 保存钮随脏状态换文案。颜色只用 yuxi-tokens.css 的 --gray-*。 */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title {
+  margin: 0 0 4px;
+  color: var(--gray-900);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.description {
+  margin: 0;
+  color: var(--gray-600);
+  font-size: 14px;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.keyInput {
+  flex: 0 0 40%;
+}
+
+.valueInput {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.lockedMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--gray-400);
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 80px;
+}

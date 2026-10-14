@@ -71,10 +71,12 @@ export async function confirmTmpThreadAttachments(input: {
 }): Promise<ThreadAttachment[]> {
   return normalizeThreadAttachments(
     unwrap<unknown>(
-      await confirmTmpThreadAttachmentsApiChatThreadThreadIdAttachmentsConfirmPost({
-        path: { thread_id: input.threadId },
-        body: { attachments: input.attachments },
-      }),
+      await confirmTmpThreadAttachmentsApiChatThreadThreadIdAttachmentsConfirmPost(
+        {
+          path: { thread_id: input.threadId },
+          body: { attachments: input.attachments },
+        },
+      ),
     ),
   );
 }
@@ -82,27 +84,38 @@ export async function confirmTmpThreadAttachments(input: {
 /** 会话里已确认的附件；字段按不可信数据处理。 */
 export function normalizeThreadAttachments(raw: unknown): ThreadAttachment[] {
   const source =
-    typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+    typeof raw === 'object' && raw !== null
+      ? (raw as Record<string, unknown>)
+      : {};
   const attachments: ThreadAttachment[] = [];
 
-  for (const entry of Array.isArray(source.attachments) ? source.attachments : []) {
+  for (const entry of Array.isArray(source.attachments)
+    ? source.attachments
+    : []) {
     if (typeof entry !== 'object' || entry === null) continue;
 
     const attachment = entry as Record<string, unknown>;
-    const fileId = typeof attachment.file_id === 'string' ? attachment.file_id.trim() : '';
+    const fileId =
+      typeof attachment.file_id === 'string' ? attachment.file_id.trim() : '';
     if (!fileId) continue;
 
     attachments.push({
       fileId,
       fileName:
-        typeof attachment.file_name === 'string' ? attachment.file_name.trim() : '',
+        typeof attachment.file_name === 'string'
+          ? attachment.file_name.trim()
+          : '',
       fileType:
-        typeof attachment.file_type === 'string' ? attachment.file_type.trim() : '',
+        typeof attachment.file_type === 'string'
+          ? attachment.file_type.trim()
+          : '',
       fileSize:
-        typeof attachment.file_size === 'number' && Number.isFinite(attachment.file_size)
+        typeof attachment.file_size === 'number' &&
+        Number.isFinite(attachment.file_size)
           ? attachment.file_size
           : 0,
-      status: typeof attachment.status === 'string' ? attachment.status : 'uploaded',
+      status:
+        typeof attachment.status === 'string' ? attachment.status : 'uploaded',
       requestId:
         typeof attachment.request_id === 'string' && attachment.request_id
           ? attachment.request_id

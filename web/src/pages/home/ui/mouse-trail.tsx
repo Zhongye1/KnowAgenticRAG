@@ -10,7 +10,7 @@
  * 来源：AI Website Cloner Template 0.6.1（MIT，JCodesMore）里的 AusVector 首页克隆。
  * 样式在 `src/styles/home.css`，作用域 `.home-site`。
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef } from 'react';
 
 type TrailPoint = { x: number; y: number; life: number };
 
@@ -28,10 +28,10 @@ export function MouseTrail() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    if (!window.matchMedia("(pointer: fine)").matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    if (!window.matchMedia('(pointer: fine)').matches) return;
 
-    const context = canvas.getContext("2d");
+    const context = canvas.getContext('2d');
     if (!context) return;
 
     const points: TrailPoint[] = [];
@@ -68,7 +68,13 @@ export function MouseTrail() {
         point.life *= 0.88;
         const alpha = point.life * (1 - index / 10) * 0.34;
         context.beginPath();
-        context.arc(point.x, point.y, Math.max(1, 2.4 - 0.2 * index), 0, Math.PI * 2);
+        context.arc(
+          point.x,
+          point.y,
+          Math.max(1, 2.4 - 0.2 * index),
+          0,
+          Math.PI * 2,
+        );
         context.globalAlpha = alpha;
         context.fillStyle = trailColor;
         context.fill();
@@ -99,7 +105,7 @@ export function MouseTrail() {
           34,
         );
         glow.addColorStop(0, trailColor);
-        glow.addColorStop(1, "transparent");
+        glow.addColorStop(1, 'transparent');
         context.globalAlpha = 0.12;
         context.fillStyle = glow;
         context.beginPath();
@@ -126,15 +132,15 @@ export function MouseTrail() {
     };
 
     resize();
-    window.addEventListener("resize", resize);
-    window.addEventListener("pointermove", onPointerMove, { passive: true });
-    window.addEventListener("pointerleave", onPointerLeave);
+    window.addEventListener('resize', resize);
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointerleave', onPointerLeave);
     frame = requestAnimationFrame(draw);
 
     return () => {
-      window.removeEventListener("resize", resize);
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerleave", onPointerLeave);
+      window.removeEventListener('resize', resize);
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerleave', onPointerLeave);
       cancelAnimationFrame(frame);
     };
   }, []);

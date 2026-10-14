@@ -28,6 +28,13 @@ let initializeInFlight: Promise<void> | null = null;
 /** 列表读取的发起序号；用于丢弃被后发请求超越的旧响应。 */
 let loadGeneration = 0;
 
+/**
+ * 一次拉多少条会话；与参照同值。
+ *
+ * 后端默认也是 100（`limit` 上限 500），这里显式传，让「加载更多」的页大小只有一个事实源。
+ */
+export const THREAD_PAGE_SIZE = 100;
+
 /** 置顶的排前面，其余保持后端给的 `updated_at` 倒序。 */
 export function sortThreads(threads: ChatThread[]): ChatThread[] {
   return [...threads].sort(
@@ -70,6 +77,10 @@ export type ThreadListState = {
   agentToolApprovalMode: ToolApprovalMode | null;
   threads: ChatThread[];
   loading: boolean;
+  /** 还有更多会话没拉回来；由「上一页是否装满」推断（后端不返回总数）。 */
+  hasMore: boolean;
+  /** 正在追加下一页；与首屏 `loading` 分开，避免整列表退回加载态。 */
+  loadingMore: boolean;
   /** 加载失败时的可展示原因；UI 必须显示它，而不是停在空白列表。 */
   error: string | null;
   /** 解析默认智能体（在飞请求与结果都只保留一份），返回 slug。 */
@@ -80,6 +91,8 @@ export type ThreadListState = {
   initialize: () => Promise<void>;
   /** 按指定智能体拉取会话列表；没有智能体时不请求。 */
   load: (agentSlug: string | null) => Promise<void>;
+  /** 追加下一页；没有更多或正在追加时是空操作。 */
+  loadMore: () => Promise<void>;
   /** 新建线程后插入列表最前，避免再拉一次。 */
   upsert: (thread: ChatThread) => void;
   /** 重命名会话；成功后只改本地那一条。返回是否成功。 */
@@ -113,6 +126,8 @@ export const useThreadList = create<ThreadListState>((set, get) => ({
   agentToolApprovalMode: null,
   threads: [],
   loading: false,
+  hasMore: false,
+  loadingMore: false,
   error: null,
 
   selectAgent: (slug) => {
@@ -182,17 +197,55 @@ export const useThreadList = create<ThreadListState>((set, get) => ({
     try {
       const threads = await chatThreadApi.listThreads({
         agentSlug,
+        limit: THREAD_PAGE_SIZE,
         signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
       });
       // 连续加载会让多个读取并发，只接受最后一次发起的结果
       if (generation !== loadGeneration) return;
-      set({ threads: sortThreads(threads ?? []), loading: false });
+      const list = threads ?? [];
+      set({
+        threads: sortThreads(list),
+        loading: false,
+        // 后端不返回总数：上一页装满就认为还有下一页
+        hasMore: list.length >= THREAD_PAGE_SIZE,
+      });
     } catch (error) {
       console.warn('Failed to load threads:', error);
       if (generation !== loadGeneration) return;
       set({
         loading: false,
         error: error instanceof Error ? error.message : '加载会话列表失败。',
+      });
+    }
+  },
+
+  loadMore: async () => {
+    const { agentSlug, threads, hasMore, loadingMore } = get();
+    if (!agentSlug || !hasMore || loadingMore) return;
+
+    set({ loadingMore: true, error: null });
+    try {
+      const fetched = await chatThreadApi.listThreads({
+        agentSlug,
+        limit: THREAD_PAGE_SIZE,
+        offset: threads.length,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+      // 后端分页会重复返回置顶项，只追加列表里还没有的
+      const existing = new Set(get().threads.map((thread) => thread.id));
+      const appended = (fetched ?? []).filter(
+        (thread) => !existing.has(thread.id),
+      );
+      set({
+        threads: sortThreads([...get().threads, ...appended]),
+        loadingMore: false,
+        hasMore: appended.length >= THREAD_PAGE_SIZE,
+      });
+    } catch (error) {
+      console.warn('Failed to load more threads:', error);
+      set({
+        loadingMore: false,
+        error: error instanceof Error ? error.message : '加载更多会话失败。',
       });
     }
   },

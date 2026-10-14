@@ -43,9 +43,7 @@ describe('extractArtifactsFromConversation', () => {
 
   it('丢弃没有结果的调用', () => {
     const artifacts = extractArtifactsFromConversation(
-      conversation([
-        aiMessage([presentCall({ tool_call_result: null })]),
-      ]),
+      conversation([aiMessage([presentCall({ tool_call_result: null })])]),
     );
     expect(artifacts).toEqual([]);
   });
@@ -99,7 +97,12 @@ describe('extractArtifactsFromConversation', () => {
           tool_calls: [presentCall()],
         },
         aiMessage([
-          { id: 'c2', name: 'write_file', args: { filepaths: ['/x'] }, tool_call_result: { content: 'ok' } },
+          {
+            id: 'c2',
+            name: 'write_file',
+            args: { filepaths: ['/x'] },
+            tool_call_result: { content: 'ok' },
+          },
         ]),
       ]),
     );
@@ -122,8 +125,9 @@ describe('normalizeArtifactItems', () => {
 
 describe('artifactMetaLabel', () => {
   it('按扩展名给标签', () => {
-    expect(artifactMetaLabel('/out/report.md')).toBe('Markdown 文档');
-    expect(artifactMetaLabel('/out/a.CSV')).toBe('CSV 表格');
+    // 与参照同一条规则：有扩展名就是「交付文件 · 大写扩展名」，不另做中文友好名
+    expect(artifactMetaLabel('/out/report.md')).toBe('交付文件 · MD');
+    expect(artifactMetaLabel('/out/a.CSV')).toBe('交付文件 · CSV');
     expect(artifactMetaLabel('/out/pic.webp')).toBe('交付文件 · WEBP');
   });
 

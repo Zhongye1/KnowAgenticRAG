@@ -1,0 +1,218 @@
+/* 个人空间预览面板的样式。
+   参照实现 AgentFilePreview.vue 的 `.preview-header` / `.modal-action-btn` / 编辑条，以及
+   WorkspacePreviewPane.vue 的状态与空态。颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  background: var(--gray-0);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--gray-150);
+  background: var(--gray-25);
+}
+
+.title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.titleIcon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.titlePath {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--gray-600);
+}
+
+.dirty {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--main-20);
+  color: var(--main-700);
+  font-size: 11px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-600);
+  cursor: pointer;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+
+.actionBtn:disabled {
+  color: var(--gray-300);
+  cursor: not-allowed;
+}
+
+.content {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.state,
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 260px;
+  padding: 24px;
+  gap: 8px;
+  color: var(--gray-500);
+  text-align: center;
+}
+
+.spinner {
+  animation: preview-spin 1s linear infinite;
+  color: var(--color-primary-500);
+}
+
+@keyframes preview-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty h3 {
+  margin: 0;
+  color: var(--gray-700);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.empty p {
+  margin: 0;
+  font-size: 12px;
+}
+
+.markdown {
+  padding: 10px 14px;
+}
+
+.code {
+  margin: 0;
+  padding: 10px 14px;
+  color: var(--gray-800);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.truncated {
+  display: block;
+  margin-top: 8px;
+  color: var(--gray-500);
+}
+
+.image {
+  display: block;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+.frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  border: 0;
+}
+
+.editor {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  padding: 10px 14px;
+  border: 0;
+  outline: none;
+  resize: none;
+  background: var(--gray-0);
+  color: var(--gray-800);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* 全屏预览：参照的 overlay（z-index 1200、灰底、居中卡片） */
+.overlay {
+  position: fixed;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  max-width: none;
+  max-height: none;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  background: var(--shadow-5);
+}
+
+.overlayInner {
+  display: flex;
+  flex-direction: column;
+  width: min(1100px, 100%);
+  height: min(760px, 100%);
+  min-height: 0;
+  border-radius: 10px;
+  background: var(--gray-0);
+  overflow: hidden;
+  box-shadow: 0 12px 40px var(--shadow-4);
+}
+
+.overlayBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}

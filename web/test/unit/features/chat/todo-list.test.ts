@@ -56,9 +56,9 @@ describe('parseTodoList', () => {
   });
 
   it('丢掉没有内容的条目', () => {
-    expect(parseTodoList([{ status: 'pending' }, { content: 'B' }])).toHaveLength(
-      1,
-    );
+    expect(
+      parseTodoList([{ status: 'pending' }, { content: 'B' }]),
+    ).toHaveLength(1);
   });
 
   it('形状不符时返回空数组', () => {
@@ -78,7 +78,12 @@ describe('todoHeaderLabel', () => {
 
     expect(todoHeaderLabel(call({}, items))).toBe('进行中: 进行项');
     expect(
-      todoHeaderLabel(call({}, items.filter((i) => i.status !== 'in_progress'))),
+      todoHeaderLabel(
+        call(
+          {},
+          items.filter((i) => i.status !== 'in_progress'),
+        ),
+      ),
     ).toBe('待处理: 待办项');
     expect(
       todoHeaderLabel(call({}, [{ content: '完成项', status: 'completed' }])),

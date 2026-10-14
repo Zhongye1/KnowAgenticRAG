@@ -45,4 +45,80 @@ export default defineConfig([
     files: ['**/features/dashboard/**'],
     rules: { 'fsd/insignificant-slice': 'off' },
   },
+  {
+    // 智能体面板的入口同样只有 /agent-manage 一处（与供应商 tab 并列）。搜索、分组、统计与
+    // 卡片是一体的；并入页面会让页面同时持有卡片渲染。列表读取本身已经上移到 entities/agent，
+    // 这一条只针对面板切片。
+    files: ['**/features/agents/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
+    // 个人空间页面的入口只有 /workspace 一处；三段式（侧栏/文件表/预览）、格式化与控制器是一体的，
+    // 并入 pages/workspace 会让页面同时持有端点编排与预览编辑缓冲。
+    files: ['**/features/workspace/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
+    // entities/workspace 目前的消费方是 features/workspace（页面控制器）与 features/chat 的
+    // 委派分支，但后者不单独 `import` 它的模块（同 entities/agent 的那条说明），因此同样按
+    // 「只关闭这一条」处理，而不是把端点与归一塞进页面。
+    files: ['**/entities/workspace/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
+    // 三个分区的实体与面板各有两端消费方（features/settings 外壳通过 `@x` 公共 API 引用），
+    // 但 steiger 的引用统计把被 off 掉的切片文件从树里摘掉，这些引用不计入（同 entities/agent
+    // 的说明）。按同一口径只关掉「单引用/零引用建议合并」，而不是把分区并进外壳。
+    files: [
+      '**/features/api-keys/**',
+      '**/features/agent-env/**',
+      '**/entities/user-apikey/**',
+      '**/entities/agent-env/**',
+    ],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
+    // 设置外壳的入口只有用户菜单一处；分区导航与装配是它自己的事实，各分区实体与面板
+    // 属于各自的切片（account-settings / api-keys / agent-env），因此保留外壳切片。
+    files: ['**/features/settings/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
+    // 账户设置弹窗的入口只有用户菜单一处（参照同样只有 UserInfoComponent 引 SettingsModal）。
+    // 资料写入、头像上传、Memory 开关与校验是一体的：并入 widgets/app-sidebar 会让侧边栏
+    // 同时拥有身份展示与用户资料写入，因此保留切片，只关掉「单引用建议合并」这一条。
+    files: ['**/features/account-settings/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
+    // entities/agent 有两个 feature 消费方（features/chat 的候选列表、features/agents 的面板），
+    // 但这条规则看不到它们：对 features/* 关闭本规则时，steiger 会把那些文件从本规则的树里摘掉
+    // （dist 的 `prepareVfsForRuleRun` 对 `severity: 'off'` 的 glob 取反），于是它们的引用不计入。
+    // 实测：同一条导入放进 widgets 会被计入，放进 features 不会。这里按同一口径关闭本规则，
+    // 而不是把切片并进页面。
+    files: ['**/entities/agent/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
+    // 设置弹窗的四个管理分区入口都只有 features/settings 一处（上游同样只挂在 SettingsModal 的
+    // tab 里）。与 entities/agent 同因：唯一消费方是 features/* 时本规则看不到引用。每个分区都是
+    // 一屏完整的管理面（列表、筛选、表单与写入），并入外壳会让外壳同时拥有七个领域的状态。
+    files: [
+      '**/features/basic-settings/**',
+      '**/features/ocr-settings/**',
+      '**/features/user-management/**',
+      '**/features/department-management/**',
+    ],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
+    // 三个新实体同样只有 features/* 的消费方（部门与用户管理共读部门、两个管理面读用户、
+    // OCR 与基本设置共读系统配置），因此与 entities/agent 同口径关闭这一条。
+    files: [
+      '**/entities/department/**',
+      '**/entities/user-admin/**',
+      '**/entities/system-config/**',
+    ],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
 ]);

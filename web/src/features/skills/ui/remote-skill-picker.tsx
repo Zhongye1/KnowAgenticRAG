@@ -6,6 +6,7 @@
  */
 import * as React from 'react';
 import { History, Trash2 } from 'lucide-react';
+import { Button, Checkbox, Dropdown, Input, Spin } from 'antd';
 
 import type { RemoteSkillHit, RemoteSkillOption } from '../api/skill-api';
 import {
@@ -25,17 +26,6 @@ import {
 } from '../lib/remote-skills';
 import type { RemoteRequest } from '../lib/install-flow';
 import { skillApi } from '../api/skill-api';
-import { Button } from '@/shared/ui/button';
-import { Checkbox } from '@/shared/ui/checkbox';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu';
-import { Input } from '@/shared/ui/input';
-import { Spinner } from '@/shared/ui/spinner';
 import { useNotifications } from '@/shared/ui/notifications';
 
 export const useRemotePicker = () => {
@@ -244,7 +234,7 @@ const Row = ({
       className="mt-0.5"
       checked={checked}
       aria-label={label}
-      onCheckedChange={(value) => onToggle(value === true)}
+      onChange={(e) => onToggle(e.target.checked)}
     />
     <span className="flex min-w-0 flex-1 flex-col">
       <span className="truncate text-sm text-color-text-1">{label}</span>
@@ -266,13 +256,13 @@ const SelectionActions = ({
   onNone: () => void;
 }) => (
   <div className="flex items-center gap-1">
-    <Button type="button" variant="link" size="sm" onClick={onAll}>
+    <Button htmlType="button" type="link" size="small" onClick={onAll}>
       全选
     </Button>
-    <Button type="button" variant="link" size="sm" onClick={onInvert}>
+    <Button htmlType="button" type="link" size="small" onClick={onInvert}>
       反选
     </Button>
-    <Button type="button" variant="link" size="sm" onClick={onNone}>
+    <Button htmlType="button" type="link" size="small" onClick={onNone}>
       清空
     </Button>
   </div>
@@ -294,10 +284,10 @@ export const RemoteSkillPicker = ({ picker }: { picker: RemotePicker }) => {
         ).map(([key, label]) => (
           <Button
             key={key}
-            type="button"
+            htmlType="button"
             role="tab"
-            variant="ghost"
-            size="sm"
+            variant="text"
+            size="small"
             className="rounded-b-none"
             aria-selected={picker.tab === key}
             aria-current={picker.tab === key ? 'page' : undefined}
@@ -321,67 +311,79 @@ export const RemoteSkillPicker = ({ picker }: { picker: RemotePicker }) => {
                   if (event.key === 'Enter') void picker.listFromRepo();
                 }}
               />
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className="absolute top-0.5 right-0.5"
-                    aria-label="历史仓库"
-                  >
-                    <History className="size-3.5" aria-hidden />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="max-w-80">
-                  {picker.history.length === 0 ? (
-                    <DropdownMenuItem disabled>暂无使用历史</DropdownMenuItem>
-                  ) : (
-                    <>
-                      {picker.history.map((item) => (
-                        <DropdownMenuItem
-                          key={item}
-                          onSelect={() => picker.selectHistory(item)}
-                        >
-                          <span
-                            className="min-w-0 flex-1 truncate"
-                            title={item}
-                          >
-                            {item}
-                          </span>
-                          <button
-                            type="button"
-                            aria-label={`删除历史 ${item}`}
-                            className="ml-2 shrink-0 text-color-text-3"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              picker.deleteHistory(item);
-                            }}
-                          >
-                            <Trash2 className="size-3" aria-hidden />
-                          </button>
-                        </DropdownMenuItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onSelect={() => picker.selectHistory('__clear__')}
-                      >
-                        <Trash2 className="size-3" aria-hidden />
-                        清空历史记录
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Dropdown
+                menu={{
+                  items:
+                    picker.history.length === 0
+                      ? [
+                          {
+                            key: 'empty',
+                            label: '暂无使用历史',
+                            disabled: true,
+                          },
+                        ]
+                      : [
+                          ...picker.history.map((item) => ({
+                            key: item,
+                            label: (
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className="min-w-0 flex-1 truncate"
+                                  title={item}
+                                >
+                                  {item}
+                                </span>
+                                <button
+                                  type="button"
+                                  aria-label={`删除历史 ${item}`}
+                                  className="shrink-0 text-color-text-3"
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                    picker.deleteHistory(item);
+                                  }}
+                                >
+                                  <Trash2 className="size-3" aria-hidden />
+                                </button>
+                              </span>
+                            ),
+                          })),
+                          { type: 'divider' as const },
+                          {
+                            key: '__clear__',
+                            label: (
+                              <span className="flex items-center gap-2">
+                                <Trash2 className="size-3" aria-hidden />
+                                清空历史记录
+                              </span>
+                            ),
+                          },
+                        ],
+                  onClick: ({ key }) => {
+                    if (key === '__clear__') picker.selectHistory('__clear__');
+                    else picker.selectHistory(key);
+                  },
+                }}
+                trigger={['click']}
+              >
+                <Button
+                  htmlType="button"
+                  type="text"
+                  size="small"
+                  className="absolute top-0.5 right-0.5"
+                  aria-label="历史仓库"
+                >
+                  <History className="size-3.5" aria-hidden />
+                </Button>
+              </Dropdown>
             </div>
             <Button
-              type="button"
+              htmlType="button"
               disabled={picker.listing}
               onClick={() => void picker.listFromRepo()}
             >
               {picker.listing ? (
                 <>
-                  <Spinner aria-hidden className="size-3.5" />
+                  <Spin aria-hidden className="size-3.5" />
                   拉取中…
                 </>
               ) : (
@@ -463,13 +465,13 @@ export const RemoteSkillPicker = ({ picker }: { picker: RemotePicker }) => {
               }}
             />
             <Button
-              type="button"
+              htmlType="button"
               disabled={picker.searching}
               onClick={() => void picker.searchGlobally()}
             >
               {picker.searching ? (
                 <>
-                  <Spinner aria-hidden className="size-3.5" />
+                  <Spin aria-hidden className="size-3.5" />
                   查找中…
                 </>
               ) : (

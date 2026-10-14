@@ -40,6 +40,26 @@ describe('AgentPanel', () => {
     expect(tabs[1]!.getAttribute('aria-selected')).toBe('false');
   });
 
+  it('激活底色挂在外层包装上，按钮本身不带', () => {
+    setup();
+
+    const [active, inactive] = screen.getAllByRole('tab');
+    // 挂在按钮上会被 .sectionTabMain 的 background: transparent 盖掉，底色永远不显示
+    expect(active!.parentElement?.className).toContain('sectionTabActive');
+    expect(active!.className).not.toContain('sectionTabActive');
+    expect(inactive!.parentElement?.className).not.toContain(
+      'sectionTabActive',
+    );
+  });
+
+  it('相邻分区标签之间有分隔线', () => {
+    setup();
+
+    expect(
+      document.querySelectorAll('[class*="sectionTabDivider"]'),
+    ).toHaveLength(1);
+  });
+
   it('点击标签回调激活', async () => {
     const props = setup();
 

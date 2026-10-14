@@ -7,7 +7,10 @@ import * as React from 'react';
 
 import { processRunSseResponse } from '../lib/sse';
 import { createStreamSmoother } from '../lib/stream-smoother';
-import { isRunInterruptedConflict, type ToolApprovalMode } from '../lib/tool-approval';
+import {
+  isRunInterruptedConflict,
+  type ToolApprovalMode,
+} from '../lib/tool-approval';
 import {
   agentRunApi,
   chatThreadApi,

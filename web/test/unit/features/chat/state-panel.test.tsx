@@ -36,6 +36,68 @@ describe('StatePanel', () => {
     expect(screen.getByLabelText('进行中')).toBeInTheDocument();
   });
 
+  it('待办的脉冲点只在「进行中」出现', () => {
+    render(
+      <StatePanel
+        tokenUsage={null}
+        todos={[
+          { label: '排队中', title: '排队中', status: 'pending' },
+          { label: '跑着', title: '跑着', status: 'in_progress' },
+        ]}
+        files={[]}
+        artifacts={[]}
+        subagentRuns={[]}
+      />,
+    );
+
+    // 指示环里只有进行中的那条带脉冲子节点
+    const pulseCount = (label: string) =>
+      screen.getByLabelText(label).querySelectorAll('span span').length;
+    expect(pulseCount('进行中')).toBe(1);
+    expect(pulseCount('待处理')).toBe(0);
+  });
+
+  it('文件条目用按扩展名着色的类型图标', () => {
+    const { container } = render(
+      <StatePanel
+        tokenUsage={null}
+        todos={[]}
+        files={[
+          { key: '/out/a.md', path: '/out/a.md', name: 'a.md' },
+          { key: '/out/b.pdf', path: '/out/b.pdf', name: 'b.pdf' },
+        ]}
+        artifacts={[]}
+        subagentRuns={[]}
+      />,
+    );
+
+    const sources = Array.from(container.querySelectorAll('img')).map((img) =>
+      img.getAttribute('src'),
+    );
+    expect(sources).toHaveLength(2);
+    // 两个不同扩展名落到不同的图标资源上；同一套通用图标时两者会相等
+    expect(sources[0]).not.toBe(sources[1]);
+  });
+
+  it('产物条目带类型描述，文件条目不带', () => {
+    render(
+      <StatePanel
+        tokenUsage={null}
+        todos={[]}
+        files={[{ key: '/out/a.md', path: '/out/a.md', name: 'a.md' }]}
+        artifacts={[{ key: '/out/r.md', path: '/out/r.md', name: 'r.md' }]}
+        subagentRuns={[]}
+      />,
+    );
+
+    // 参照 .state-list-item-meta：产物行两行——文件名 + 类型描述
+    expect(screen.getByTitle('打开 r.md').textContent).toContain(
+      '交付文件 · MD',
+    );
+    // 附件/文件行只有文件名
+    expect(screen.getByTitle('打开 a.md').textContent).toBe('a.md');
+  });
+
   it('点击文件条目打开预览', () => {
     const onOpenFile = vi.fn();
     render(

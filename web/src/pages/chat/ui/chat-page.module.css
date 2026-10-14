@@ -65,9 +65,10 @@
   min-width: 0;
 }
 
-/* 拖拽中冻结过渡，跟手 */
-.contentRowResizing .chatMain,
-.contentRowResizing .chat {
+/* 拖拽中冻结过渡：页头让位与主列收窄都要跟手，否则按钮会落后于分栏虚线。
+   参照 .is-resizing-file-panel 把这个类挂在 .chat 上——页头是它的子级才吃得到这条规则 */
+.chatResizing .chatHeader,
+.chatResizing .chatMain {
   transition: none;
 }
 
@@ -115,9 +116,41 @@
   margin: 0 auto;
 }
 
-/* ---------- 输入面板：参照 .input-box ---------- */
+/* ---------- 输入面板：参照 .agent-composer + .input-box ---------- */
 
-/* 大胶囊容器：grid 四区（top / options+send 左右分列），选项按钮与发送在输入层内部 */
+.composer {
+  width: 100%;
+}
+
+/* 顶灰条：参照 composer-top-attachment mixin（AgentInputArea.vue 的 .composer-extra-region）——
+   灰底圆角顶，贴在胶囊**外面**的上缘：左右内缩 12px，底边被胶囊压住 2px */
+.composerExtra {
+  position: relative;
+  z-index: 0;
+  min-width: 0;
+  display: flex;
+  min-height: 36px;
+  align-items: flex-start;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 0 12px -2px;
+  padding: 4px 14px 2px;
+  border-bottom: 0;
+  border-radius: 16px 16px 0 0;
+  background: var(--gray-25);
+  scrollbar-width: none;
+}
+
+.composerExtra::-webkit-scrollbar {
+  display: none;
+}
+
+/* 有顶灰条时胶囊盖住它的下缘（参照 .agent-composer.has-extra :deep(.input-box) 的 z-index: 1） */
+.composerExtra + .inputPanel {
+  z-index: 1;
+}
+
+/* 大胶囊容器：grid 四区（top / input / options + send） */
 .inputPanel {
   container-type: inline-size;
   display: grid;
@@ -139,36 +172,112 @@
     'options send';
 }
 
-/* top 区：参照 .composer-extra-region（composer-top-attachment mixin +
-   AgentInputArea.vue:217）——灰底圆角顶、贴在输入胶囊上缘 */
+/* 拖入文件：参照 .input-box.dragging-files——整箱主色描边 + 主色浅底 + 虚线叠层 */
+.inputPanel[data-dragging] {
+  border-color: var(--main-color);
+  background: var(--main-10);
+}
+
+.inputPanel[data-dragging]::after {
+  content: '释放以上传附件';
+  position: absolute;
+  inset: 6px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--main-color);
+  border-radius: 10px;
+  color: var(--main-700);
+  background: color-mix(in srgb, var(--gray-0) 88%, transparent);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* top 区：参照 .top-slot 里的 .input-top-stack——图片在上、附件卡片在下，与编辑区留 8px。
+   没有内容时调用方不渲染这个节点，因此不会白占高度 */
 .inputTop {
   grid-area: top;
-  position: relative;
-  z-index: 0;
-  min-width: 0;
+  width: 100%;
   display: flex;
-  min-height: 36px;
-  align-items: flex-start;
-  gap: 6px;
-  overflow: visible;
-  margin: 0 12px -2px;
-  padding: 4px 14px 2px;
-  border-bottom: 0;
-  border-radius: 16px 16px 0 0;
-  background: var(--gray-25);
-  scrollbar-width: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
-.inputTop::-webkit-scrollbar {
-  display: none;
+/* 附件卡片列表：参照 .attachment-preview-list */
+.attachmentList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
 
+/* 参照 .attachment-file-card——220px 圆角卡；本仓附件不可单独移除（后端没有删除端点），
+   因此不留参照给移除钮的右侧内边距 */
+.attachmentCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 220px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-150);
+  border-radius: 12px;
+  background: var(--gray-0);
+  box-shadow: 0 1px 4px var(--shadow-0);
+}
+
+/* 参照 .attachment-file-icon——40px 圆角图标块 */
+.attachmentCardIcon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  color: var(--main-700);
+  background: var(--main-30);
+}
+
+.attachmentCardBody {
+  min-width: 0;
+}
+
+.attachmentCardName {
+  overflow: hidden;
+  color: var(--gray-900);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachmentCardMeta {
+  margin-top: 2px;
+  color: var(--gray-500);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+/* 选项区（左下）：参照 .expand-options——「+」与它右侧的动作行之间不留间距 */
 .inputOptions {
   grid-area: options;
   justify-self: start;
   display: flex;
   align-items: center;
   gap: 0;
+}
+
+/* 参照 .input-actions-left：审批模式与智能体之间 2px，窄屏换行 */
+.inputActionsLeft {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
 }
 
 /* 编辑区：参照 .user-input——显式占 input 区并留 0.5rem 下边距 */
@@ -179,13 +288,60 @@
   margin-bottom: 0.5rem;
 }
 
+/* 发送区（右下）：参照 .send-button-container */
 .inputSend {
   grid-area: send;
   justify-self: end;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
+}
+
+/* 参照 .input-actions-right：与发送钮之间留 8px */
+.inputActionsRight {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 8px;
+}
+
+/* 引导钮：参照 .direct-steer-button——28px 无边框文字钮 */
+.steerButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.steerButton:hover:not(:disabled) {
+  color: var(--gray-700);
+  background: var(--gray-100);
+}
+
+.steerButton:focus-visible {
+  outline: 2px solid var(--main-color);
+  outline-offset: 1px;
+}
+
+.steerButton:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
+.steerButtonIcon {
+  width: 14px;
+  height: 14px;
 }
 
 /* 发送钮：参照 .send-button.ant-btn-icon-only——32px 圆形主色图标钮 */
@@ -220,6 +376,20 @@
 .sendButtonIcon {
   width: 14px;
   height: 14px;
+}
+
+/* 窄屏：参照 .input-box 的 520px 断点——收圆角与内边距 */
+@media (max-width: 520px) {
+  .inputPanel {
+    border-radius: 15px;
+    padding: 0.625rem 0.875rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .attachmentCard {
+    width: min(220px, 100%);
+  }
 }
 
 /* ---------- 空态问候语：参照 .chat-greeting-input ---------- */
@@ -367,8 +537,9 @@
 
 /* ---------- 右侧面板：参照 .side-panel / .side-panel--file ---------- */
 
-/* 面板外壳挂在 absolute 包装上（side-panel--file），全高覆盖含页头；
-   AgentPanel 自己有背景与左边框 */
+/* 面板外壳：参照 .side-panel--file，是 .chat 的直接子级（与页头、内容行并列），
+   absolute 覆盖右缘整高，所以页头那一行也在它下面；背景与分栏虚线由内层
+   AgentPanel 给（.shell 的背景 + .resizeHandle 的左边框虚线） */
 .sidePanel {
   position: absolute;
   top: 0;
@@ -398,6 +569,128 @@
 /* 拖拽中冻结过渡（参照 .no-transition） */
 .sidePanelNoTransition {
   transition: none !important;
+}
+
+/* ---------- 状态面板：参照 .side-panel--state ---------- */
+
+/* 与文件面板并列的第二个表面：内容行里的 340px 窄列，或右上角的浮卡 */
+.statePanel {
+  z-index: 26;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--gray-150);
+  border-radius: 10px;
+  background: var(--gray-0);
+  box-shadow: 0 4px 16px var(--shadow-0);
+}
+
+/* 停靠：容器放得下 340px 面板 + 800px 聊天列时占一列，主列靠 flex 自然收窄 */
+.statePanelDocked {
+  flex: 0 0 340px;
+  align-self: flex-start;
+  max-height: calc(100% - 16px);
+  margin: 8px 8px 8px 0;
+}
+
+/* 浮动：文件面板开着或容器不够宽时成为卡片，并给文件面板让位 */
+.statePanelFloating {
+  position: absolute;
+  top: 8px;
+  right: calc(var(--file-panel-width) + 8px);
+  width: min(340px, calc(100% - var(--file-panel-width) - 24px));
+  max-height: calc(100vh - 16px);
+  box-shadow:
+    0 12px 28px var(--shadow-1),
+    0 2px 8px var(--shadow-0);
+}
+
+.statePanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px 0;
+  background: transparent;
+  border-bottom: none;
+}
+
+.statePanelTitle {
+  min-width: 0;
+  color: var(--gray-500);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.statePanelHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stateRefreshButton {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-500);
+  cursor: pointer;
+  /* 参照 .state-refresh-btn：默认藏着，悬停或焦点进入面板才出现 */
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease,
+    color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.stateRefreshButton:hover:not(:disabled) {
+  background: var(--gray-100);
+  color: var(--main-700);
+}
+
+.stateRefreshButton:disabled {
+  cursor: not-allowed;
+}
+
+/* 鼠标悬停面板、焦点在面板内、或刷新钮自身获得键盘焦点时露出 */
+.statePanel:hover .stateRefreshButton,
+.statePanel:focus-within .stateRefreshButton,
+.stateRefreshButton:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 触屏没有 hover：常显，否则这颗钮永远摸不到 */
+@media (hover: none) {
+  .stateRefreshButton {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.stateRefreshSpin {
+  animation: stateRefreshSpin 1s linear infinite;
+}
+
+@keyframes stateRefreshSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 内容自己滚动（StatePanel 的根节点带 overflow: auto） */
+.statePanelBody {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
 }
 
 /* ---------- 响应式：参照 1024 / 768 两档 ---------- */

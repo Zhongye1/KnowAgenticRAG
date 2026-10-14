@@ -58,7 +58,8 @@
   min-height: 0;
   overflow: auto;
   padding: 0;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family:
+    'JetBrains Mono', 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
   line-height: 1.5;
   color: var(--gray-1000);
@@ -230,8 +231,8 @@
 
 .stateChevron {
   flex-shrink: 0;
-  width: 14px;
-  height: 14px;
+  width: 15px;
+  height: 15px;
   color: var(--gray-400);
   transition:
     transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
@@ -283,14 +284,22 @@
   min-width: 0;
 }
 
-/* 参照 .state-list / .state-list-item——gray-25 圆角卡片行 */
+/* 参照 .state-list / .state-list-item——gray-25 圆角卡片行。
+   列表样式必须显式清掉：本仓不引 Tailwind preflight，重置交给 antd 的 reset.css，
+   而它没有清 ul 的 marker 与 40px 左内边距，不清就会每行多一个圆点、整列右移。 */
 .stateList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
 .stateListCompact {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
   flex-direction: column;
 }
@@ -332,15 +341,28 @@
   padding: 5px 8px;
 }
 
-.stateListItemIcon {
+/* 文件类型图标是彩色 SVG <img>（与参照 FileTypeIcon 同源），不用 currentColor 着色 */
+.stateFileIcon {
   width: 15px;
   height: 15px;
   flex-shrink: 0;
+  object-fit: contain;
 }
 
+/* 参照 .fallback-avatar-text：按容器比例的字号，这里容器固定 24px */
+.stateSubagentInitials {
+  color: var(--gray-0);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+/* 行内正文：列排，标题在上、meta 在下（参照 .state-list-item-body 里两个 div 的堆叠） */
 .stateRowBody {
   min-width: 0;
   flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .stateItem {
@@ -474,34 +496,8 @@
   margin-top: 8px;
 }
 
-/* 用量卡：参照 .token-usage-context-card——单层卡、可点击 */
-.stateUsageCard {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 10px 12px;
-  border: 1px solid var(--gray-150);
-  border-radius: 10px;
-  background: var(--gray-0);
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color 0.18s ease,
-    background 0.18s ease;
-
-  &:hover {
-    border-color: var(--gray-200);
-    background: var(--gray-10);
-  }
-
-  &:focus-visible {
-    outline: 2px solid var(--main-200);
-    outline-offset: 2px;
-  }
-}
+/* 用量卡本体（参照 .token-usage-context-card）的样式在 token-usage-card.tsx 里，
+   用 Tailwind 表达；这里不再留一份等价的手写副本 */
 
 @media (prefers-reduced-motion: reduce) {
   .stateChevron,

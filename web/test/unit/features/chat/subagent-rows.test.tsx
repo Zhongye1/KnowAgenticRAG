@@ -37,7 +37,9 @@ describe('SubagentTaskRow', () => {
         })}
       />,
     );
-    expect(screen.getByLabelText(/子智能体 researcher 失败/)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/子智能体 researcher 失败/),
+    ).toBeInTheDocument();
   });
 });
 

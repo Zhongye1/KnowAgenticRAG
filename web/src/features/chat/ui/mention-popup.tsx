@@ -11,12 +11,8 @@
 import * as React from 'react';
 
 import { resolveFileIconUrl } from '@/shared/lib/file-icon';
-import { getMentionIcon } from './mention-icons';
 import styles from './mention-editor.module.css';
-import {
-  MENTION_GROUP_TITLES,
-  type MentionGroups,
-} from '../lib/mention-query';
+import { MENTION_GROUP_TITLES, type MentionGroups } from '../lib/mention-query';
 import type { MentionResourceItem } from '../lib/mention-resources';
 
 type MentionPopupProps = {
@@ -102,7 +98,7 @@ export const MentionPopup = ({
               // 参照：文件行用彩色类型图标 + 路径列；资源行不带图标
               const isFile = item.type === 'file';
               const parentDir = isFile
-                ? (item.value.split('/').slice(0, -1).join('/') || '/')
+                ? item.value.split('/').slice(0, -1).join('/') || '/'
                 : '';
 
               return (

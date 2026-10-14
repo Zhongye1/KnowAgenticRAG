@@ -121,9 +121,9 @@ describe('知识库表单对话框', () => {
 
     await userEvent.type(screen.getByLabelText('知识库名称'), ' 新库 ');
     await userEvent.type(screen.getByLabelText('知识库描述'), '说明');
-    await userEvent.click(screen.getByLabelText('知识库类型'));
+    await userEvent.click(screen.getByRole('combobox', { name: '知识库类型' }));
     await userEvent.click(await findOption('ARS'));
-    await userEvent.click(screen.getByLabelText('嵌入模型'));
+    await userEvent.click(screen.getByRole('combobox', { name: '嵌入模型' }));
     await userEvent.click(await findOption(/BGE M3/));
     await userEvent.click(screen.getByRole('button', { name: '创建' }));
 
@@ -144,7 +144,7 @@ describe('知识库表单对话框', () => {
     renderDialog();
 
     await userEvent.type(screen.getByLabelText('知识库名称'), '库');
-    await userEvent.click(screen.getByLabelText('知识库类型'));
+    await userEvent.click(screen.getByRole('combobox', { name: '知识库类型' }));
     await userEvent.click(await findOption('Dify'));
 
     expect(await screen.findByLabelText('Dify API URL')).toBeTruthy();
@@ -157,9 +157,9 @@ describe('知识库表单对话框', () => {
     const { onOpenChange } = renderDialog();
 
     await userEvent.type(screen.getByLabelText('知识库名称'), '重名库');
-    await userEvent.click(screen.getByLabelText('知识库类型'));
+    await userEvent.click(screen.getByRole('combobox', { name: '知识库类型' }));
     await userEvent.click(await findOption('ARS'));
-    await userEvent.click(screen.getByLabelText('嵌入模型'));
+    await userEvent.click(screen.getByRole('combobox', { name: '嵌入模型' }));
     await userEvent.click(await findOption(/BGE M3/));
     await userEvent.click(screen.getByRole('button', { name: '创建' }));
 

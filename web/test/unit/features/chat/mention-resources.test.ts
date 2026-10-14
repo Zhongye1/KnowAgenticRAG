@@ -9,7 +9,9 @@ describe('buildMentionResourceItems', () => {
   it('知识库用名称当值与展示名，并带上 kb_id', () => {
     expect(
       buildMentionResourceItems({
-        knowledgeBases: [{ kb_id: 'kb-1', name: '产品文档', description: '说明' }],
+        knowledgeBases: [
+          { kb_id: 'kb-1', name: '产品文档', description: '说明' },
+        ],
       }).knowledgeBases,
     ).toEqual([
       {

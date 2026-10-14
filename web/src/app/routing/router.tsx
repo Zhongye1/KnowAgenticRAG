@@ -48,6 +48,11 @@ const agentManageRoute = async () => {
   return { Component: AgentManagePage };
 };
 
+const workspaceRoute = async () => {
+  const { WorkspacePage } = await import('@/pages/workspace');
+  return { Component: WorkspacePage };
+};
+
 const knowledgeBaseRoute = async () => {
   const { KnowledgeBasePage } = await import('@/pages/knowledge-base');
   return { Component: KnowledgeBasePage };
@@ -56,6 +61,11 @@ const knowledgeBaseRoute = async () => {
 const skillDetailRoute = async () => {
   const { SkillDetailPage } = await import('@/pages/skill-detail');
   return { Component: SkillDetailPage };
+};
+
+const mcpDetailRoute = async () => {
+  const { McpDetailPage } = await import('@/pages/mcp-detail');
+  return { Component: McpDetailPage };
 };
 
 const dashboardRoute = async () => {
@@ -90,10 +100,7 @@ export const appRoutes: RouteObject[] = [
         children: [
           { path: paths.app.chat.path, lazy: chatRoute },
           { path: `${paths.app.chat.path}/:threadId`, lazy: chatRoute },
-          {
-            path: paths.app.workspace.path,
-            element: <PagePlaceholder title="个人空间" />,
-          },
+          { path: paths.app.workspace.path, lazy: workspaceRoute },
           {
             element: <RequireSuperuser />,
             children: [
@@ -122,7 +129,7 @@ export const appRoutes: RouteObject[] = [
           },
           {
             path: paths.app.extensions.mcp.path,
-            element: <PagePlaceholder title="MCP 服务" />,
+            lazy: mcpDetailRoute,
           },
           {
             path: paths.app.extensions.skill.path,

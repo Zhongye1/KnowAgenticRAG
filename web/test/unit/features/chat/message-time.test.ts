@@ -27,7 +27,9 @@ describe('formatChatTime', () => {
   });
 
   it('昨天带前缀', () => {
-    expect(formatChatTime(shanghai(2026, 10, 11, 9, 5), NOW)).toBe('昨天 09:05');
+    expect(formatChatTime(shanghai(2026, 10, 11, 9, 5), NOW)).toBe(
+      '昨天 09:05',
+    );
   });
 
   it('一周内带星期', () => {
@@ -74,7 +76,10 @@ describe('formatDurationLabel', () => {
 describe('messageDurationMs', () => {
   it('起止都有效时给出毫秒差', () => {
     expect(
-      messageDurationMs(shanghai(2026, 10, 12, 9, 0), shanghai(2026, 10, 12, 9, 1)),
+      messageDurationMs(
+        shanghai(2026, 10, 12, 9, 0),
+        shanghai(2026, 10, 12, 9, 1),
+      ),
     ).toBe(60_000);
   });
 
@@ -82,7 +87,10 @@ describe('messageDurationMs', () => {
     expect(messageDurationMs(null, shanghai(2026, 10, 12, 9, 1))).toBe(0);
     expect(messageDurationMs(shanghai(2026, 10, 12, 9, 1), null)).toBe(0);
     expect(
-      messageDurationMs(shanghai(2026, 10, 12, 9, 1), shanghai(2026, 10, 12, 9, 0)),
+      messageDurationMs(
+        shanghai(2026, 10, 12, 9, 1),
+        shanghai(2026, 10, 12, 9, 0),
+      ),
     ).toBe(0);
   });
 });

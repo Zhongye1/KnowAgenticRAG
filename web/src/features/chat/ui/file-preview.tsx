@@ -9,9 +9,9 @@ import * as React from 'react';
 import { Download, Loader2, X } from 'lucide-react';
 import styles from './panel-sections.module.css';
 
-import { Button } from './antd-button';
+import { Button } from 'antd';
 
-import type { PreviewFile } from '../lib/panel-preview';
+import type { PreviewFile } from '@/shared/lib/file-preview';
 
 type FilePreviewProps = {
   file: PreviewFile | null;
@@ -23,11 +23,7 @@ const UNSUPPORTED_TEXT = '当前文件暂不支持预览，请下载后查看';
 
 const FilePreview = ({ file, onClose, onDownload }: FilePreviewProps) => {
   if (!file) {
-    return (
-      <div className={styles.previewCenter}>
-        选择一个文件查看预览
-      </div>
-    );
+    return <div className={styles.previewCenter}>选择一个文件查看预览</div>;
   }
 
   const header = (
@@ -79,7 +75,7 @@ const FilePreview = ({ file, onClose, onDownload }: FilePreviewProps) => {
         <div className={styles.previewCenter}>
           <span>{file.message || UNSUPPORTED_TEXT}</span>
           {onDownload ? (
-            <Button  variant="outline" onClick={() => onDownload(file)}>
+            <Button variant="outlined" onClick={() => onDownload(file)}>
               <Download className="size-3.5" aria-hidden />
               下载文件
             </Button>
@@ -91,7 +87,11 @@ const FilePreview = ({ file, onClose, onDownload }: FilePreviewProps) => {
     if (file.previewType === 'image' && file.previewUrl) {
       return (
         <div className="flex flex-1 items-center justify-center overflow-auto p-2">
-          <img src={file.previewUrl} alt={file.name} className="max-h-full max-w-full" />
+          <img
+            src={file.previewUrl}
+            alt={file.name}
+            className="max-h-full max-w-full"
+          />
         </div>
       );
     }
@@ -119,9 +119,14 @@ const FilePreview = ({ file, onClose, onDownload }: FilePreviewProps) => {
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col" aria-label={`文件预览 ${file.name}`}>
+    <div
+      className="flex h-full min-h-0 flex-col p-1"
+      aria-label={`文件预览 ${file.name}`}
+    >
       {header}
-      {file.truncated && file.status === 'ready' && file.previewType !== 'text' ? (
+      {file.truncated &&
+      file.status === 'ready' &&
+      file.previewType !== 'text' ? (
         <div className={styles.notice}>
           文件过大，仅展示前一部分；可下载查看完整内容。
         </div>

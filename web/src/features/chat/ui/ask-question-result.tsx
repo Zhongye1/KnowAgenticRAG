@@ -20,7 +20,11 @@ export const AskQuestionResult = ({
   answer,
 }: AskQuestionResultProps) => {
   if (questions.length === 0) {
-    return <p className="py-3 text-center text-xs text-[var(--gray-500)]">暂无提问内容</p>;
+    return (
+      <p className="py-3 text-center text-xs text-[var(--gray-500)]">
+        暂无提问内容
+      </p>
+    );
   }
 
   return (
@@ -36,13 +40,17 @@ export const AskQuestionResult = ({
               <span className="shrink-0 rounded-small bg-[var(--gray-100)] px-1.5 text-xs text-[var(--gray-500)]">
                 {questionIndex + 1}
               </span>
-              <span className="text-[var(--gray-1000)]">{question.question}</span>
+              <span className="text-[var(--gray-1000)]">
+                {question.question}
+              </span>
             </div>
 
             {question.operation ? (
               <div className="flex gap-2 pl-6">
                 <span className="shrink-0 text-[var(--gray-500)]">操作</span>
-                <span className="text-[var(--gray-800)]">{question.operation}</span>
+                <span className="text-[var(--gray-800)]">
+                  {question.operation}
+                </span>
               </div>
             ) : null}
 
@@ -59,7 +67,9 @@ export const AskQuestionResult = ({
                           : 'border-[var(--gray-150)]'
                       }`}
                     >
-                      <span className="text-[var(--gray-1000)]">{option.label}</span>
+                      <span className="text-[var(--gray-1000)]">
+                        {option.label}
+                      </span>
                       {option.description ? (
                         <span className="ml-2 text-[var(--gray-500)]">
                           {option.description}

@@ -1,8 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import * as React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { MentionEditor } from '@/features/chat/ui/mention-editor';
+import type { MentionResourceItem } from '@/features/chat/lib/mention-resources';
+import {
+  MentionEditor,
+  type MentionEditorHandle,
+} from '@/features/chat/ui/mention-editor';
 
 const editor = () => screen.getByRole('textbox', { name: '消息输入' });
 
@@ -37,9 +42,7 @@ describe('MentionEditor', () => {
 
   it('输入后回调序列化文本', async () => {
     const onChange = vi.fn();
-    render(
-      <MentionEditor value="" onChange={onChange} ariaLabel="消息输入" />,
-    );
+    render(<MentionEditor value="" onChange={onChange} ariaLabel="消息输入" />);
 
     editor().textContent = '你好';
     await userEvent.type(editor(), '{Enter}');
@@ -81,70 +84,48 @@ describe('MentionEditor', () => {
   });
 });
 
-describe('MentionEditor 的拖放', () => {
-  const drop = (files: File[]) => {
-    const target = editor().parentElement!;
-    const dataTransfer = {
-      types: ['Files'],
-      files,
-      dropEffect: 'none',
-    } as unknown as DataTransfer;
-
-    return { target, dataTransfer };
+describe('MentionEditor 的命令式插入', () => {
+  const item: MentionResourceItem = {
+    value: '产品文档',
+    label: '产品文档',
+    type: 'knowledge',
+    tokenLabel: '@knowledge:产品文档',
+    description: '',
   };
 
-  it('拖入文件时回调文件列表', async () => {
-    const onDropFiles = vi.fn();
+  it('光标不在编辑器里时把令牌追加到末尾', () => {
+    const onChange = vi.fn();
+    const ref = React.createRef<MentionEditorHandle>();
     render(
       <MentionEditor
-        value=""
-        onChange={vi.fn()}
-        onDropFiles={onDropFiles}
+        ref={ref}
+        value="先看"
+        onChange={onChange}
         ariaLabel="消息输入"
       />,
     );
 
-    const file = new File(['x'], 'a.png', { type: 'image/png' });
-    const { target, dataTransfer } = drop([file]);
-    fireEvent.drop(target, { dataTransfer });
+    act(() => ref.current!.insertMentionToken(item));
 
-    expect(onDropFiles).toHaveBeenCalledWith([file]);
+    expect(onChange).toHaveBeenCalledWith('先看@knowledge:产品文档 ');
+    expect(editor().querySelector('[data-mention-raw]')).not.toBeNull();
   });
 
-  it('没有拖放回调时不拦截，也不回调', async () => {
-    const onDropFiles = vi.fn();
-    render(
-      <MentionEditor value="" onChange={vi.fn()} ariaLabel="消息输入" />,
-    );
-
-    const { target, dataTransfer } = drop([
-      new File(['x'], 'a.png', { type: 'image/png' }),
-    ]);
-    fireEvent.drop(target, { dataTransfer });
-
-    expect(onDropFiles).not.toHaveBeenCalled();
-  });
-
-  it('拖的不是文件时不处理', async () => {
-    const onDropFiles = vi.fn();
+  it('禁用时不插入', () => {
+    const onChange = vi.fn();
+    const ref = React.createRef<MentionEditorHandle>();
     render(
       <MentionEditor
+        ref={ref}
         value=""
-        onChange={vi.fn()}
-        onDropFiles={onDropFiles}
+        onChange={onChange}
+        disabled
         ariaLabel="消息输入"
       />,
     );
 
-    const target = editor().parentElement!;
-    fireEvent.drop(target, {
-      dataTransfer: {
-        types: ['text/plain'],
-        files: [],
-        dropEffect: 'none',
-      } as unknown as DataTransfer,
-    });
+    act(() => ref.current!.insertMentionToken(item));
 
-    expect(onDropFiles).not.toHaveBeenCalled();
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

@@ -17,10 +17,7 @@ import {
   resolveUserAnswer,
   type QuestionItem,
 } from './ask-question';
-import {
-  parseKbQueryResult,
-  type KbQueryResult,
-} from './kb-query-result';
+import { parseKbQueryResult, type KbQueryResult } from './kb-query-result';
 import { buildMemoryView } from './memory';
 import { parseTodoList, type TodoItem } from './todo-list';
 import {
@@ -101,7 +98,7 @@ export function formatCalculatorResult(content: unknown): string {
   }).format(value);
 }
 
-/** 按工具 id 给出结果视图；没有专门视图时返回 `null`。 */export function buildToolResultView(
+/** 按工具 id 给出结果视图；没有专门视图时返回 `null`。 */ export function buildToolResultView(
   toolCall: ChatToolCall,
 ): ToolResultView {
   switch (toolCall.name || toolCall.function?.name) {
@@ -139,7 +136,8 @@ export function formatCalculatorResult(content: unknown): string {
     case 'ask_user_question': {
       const questions = resolveQuestions(toolCall);
       // 参数里没有题目且结果还没到时不接管
-      if (questions.length === 0 && rawResult(toolCall) === undefined) return null;
+      if (questions.length === 0 && rawResult(toolCall) === undefined)
+        return null;
 
       return {
         kind: 'ask-question',

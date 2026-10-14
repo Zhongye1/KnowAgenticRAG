@@ -10,6 +10,7 @@
  */
 import * as React from 'react';
 import { LoaderCircle, PackageOpen, X, XCircle } from 'lucide-react';
+import { Button, Spin } from 'antd';
 
 import {
   skillApi,
@@ -46,17 +47,8 @@ import {
   validateShareConfig,
   type ShareConfig,
 } from '@/shared/lib/share-config';
-import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
+import { Modal } from 'antd';
 import { ShareConfigForm } from '@/shared/ui/share-config-form';
-import { Spinner } from '@/shared/ui/spinner';
 import { cn } from '@/shared/lib';
 
 import { InstallStatusList } from './install-status-list';
@@ -311,32 +303,28 @@ export const SkillInstallFlowDialog = ({
   })();
 
   return (
-    <Dialog
+    <Modal
       open
-      onOpenChange={(open) => {
-        if (!open) handleClose();
+      onCancel={() => {
+        if (canClose) handleClose();
       }}
-    >
-      <DialogContent
-        className="max-w-3xl gap-3"
-        data-testid="skill-install-flow"
-        showCloseButton={false}
-        // 安装中与解析中不允许用 Esc/点遮罩关掉（草稿与进度会丢）
-        onEscapeKeyDown={(event) => {
-          if (!canClose) event.preventDefault();
-        }}
-        onPointerDownOutside={(event) => {
-          if (!canClose) event.preventDefault();
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
+      // 安装中与解析中不允许用 Esc/点遮罩关掉（草稿与进度会丢）
+      keyboard={!canClose ? false : undefined}
+      maskClosable={canClose}
+      closable={false}
+      width={768}
+      data-testid="skill-install-flow"
+      title={
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-medium bg-color-fill-2 text-color-text-2">
               <PackageOpen className="size-4" aria-hidden />
             </span>
             <span className="min-w-0 flex-1 truncate">{modalTitle}</span>
-          </DialogTitle>
-          <DialogDescription>{modalDescription}</DialogDescription>
+          </div>
+          <div className="text-xs font-normal text-color-text-3">
+            {modalDescription}
+          </div>
           <div className="flex items-center justify-between gap-2">
             <span
               className="text-xs text-color-text-3"
@@ -346,9 +334,9 @@ export const SkillInstallFlowDialog = ({
               {STEP_LABELS[phaseStepIndex(phase)]}
             </span>
             <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
+              htmlType="button"
+              type="text"
+              size="small"
               aria-label="关闭"
               disabled={!canClose}
               onClick={handleClose}
@@ -356,285 +344,300 @@ export const SkillInstallFlowDialog = ({
               <X className="size-4" aria-hidden />
             </Button>
           </div>
-        </DialogHeader>
+        </div>
+      }
+      footer={null}
+    >
+      <div className="flex min-h-0 flex-col gap-3">
+        {phase === 'selecting' ? <RemoteSkillPicker picker={picker} /> : null}
 
-        <div className="flex min-h-0 flex-col gap-3">
-          {phase === 'selecting' ? <RemoteSkillPicker picker={picker} /> : null}
+        {phase === 'preparing' ? (
+          <div className="flex flex-col gap-3" aria-live="polite">
+            <div
+              className={cn(
+                'flex flex-col items-center gap-1 rounded-medium border border-color-border-1 px-4 py-6 text-center',
+              )}
+            >
+              {flowError ? (
+                <XCircle className="size-5 text-danger-6" aria-hidden />
+              ) : (
+                <LoaderCircle
+                  className="size-5 animate-spin text-color-text-3"
+                  aria-hidden
+                />
+              )}
+              <strong className="text-sm text-color-text-1">
+                {flowError
+                  ? 'Skill 加载失败'
+                  : `正在加载 ${progressItems.length} 个 Skill`}
+              </strong>
+              <span className="text-xs text-color-text-3">
+                {flowError || '从远程仓库拉取并解析，通常只需片刻'}
+              </span>
+            </div>
+            {progressItems.length ? (
+              <InstallStatusList items={progressItems} />
+            ) : null}
+          </div>
+        ) : null}
+
+        {phase === 'reviewing' ? (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-baseline justify-between gap-2">
+              <strong className="text-sm text-color-text-1">
+                确认安装内容
+              </strong>
+              <span className="text-xs text-color-text-3">
+                {readyItems.length} 个 Skill，共用下方安装设置
+              </span>
+            </div>
+            <ul
+              className="flex max-h-56 flex-col gap-1 overflow-y-auto"
+              data-testid="review-list"
+            >
+              {reviewItems.map((item) => (
+                <li
+                  key={item.key}
+                  className={cn(
+                    'flex items-start gap-2 rounded-small border border-color-border-1 px-3 py-2',
+                    item.success ? undefined : 'border-danger-3 bg-danger-1',
+                  )}
+                >
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <strong className="truncate text-sm text-color-text-1">
+                      {item.name}
+                    </strong>
+                    <span className="truncate text-xs text-color-text-3">
+                      {item.description || item.error || '暂无描述'}
+                    </span>
+                    {installTarget === 'shared' && item.warnings.length ? (
+                      <span role="alert" className="text-xs text-warning-6">
+                        {item.warnings.join('；')}
+                      </span>
+                    ) : null}
+                  </span>
+                  {!item.success ? (
+                    <span className="shrink-0 text-xs text-danger-6">
+                      解析失败
+                    </span>
+                  ) : null}
+                  <Button
+                    htmlType="button"
+                    variant="text"
+                    size="small"
+                    aria-label={`移除 ${item.name}`}
+                    onClick={() => removeReviewItem(item)}
+                  >
+                    <X className="size-3.5" aria-hidden />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+
+            <section className="flex flex-col gap-2">
+              <h3 className="text-sm text-color-text-1">安装位置</h3>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  htmlType="button"
+                  variant={installTarget === 'personal' ? 'solid' : 'outlined'}
+                  color={installTarget === 'personal' ? 'primary' : 'default'}
+                  className="h-auto flex-col items-start gap-1 px-3 py-2 text-left whitespace-normal"
+                  aria-pressed={installTarget === 'personal'}
+                  onClick={() => setInstallTarget('personal')}
+                >
+                  <span className="text-sm">
+                    个人 Skill <b>推荐</b>
+                  </span>
+                  <span className="text-xs font-normal opacity-80">
+                    仅自己可用，保存在个人 Skill 持久源，不进入平台数据库。
+                  </span>
+                </Button>
+                {isAdmin ? (
+                  <Button
+                    htmlType="button"
+                    variant={installTarget === 'shared' ? 'solid' : 'outlined'}
+                    color={installTarget === 'shared' ? 'primary' : 'default'}
+                    className="h-auto flex-col items-start gap-1 px-3 py-2 text-left whitespace-normal"
+                    aria-pressed={installTarget === 'shared'}
+                    onClick={() => setInstallTarget('shared')}
+                  >
+                    <span className="text-sm">共享 Skill</span>
+                    <span className="text-xs font-normal opacity-80">
+                      进入平台 Skill 库，并继续配置指定人、部门或全局范围。
+                    </span>
+                  </Button>
+                ) : null}
+              </div>
+              {installTarget === 'personal' ? (
+                <p className="text-xs text-color-text-3">
+                  {PERSONAL_INSTALL_NOTE}
+                </p>
+              ) : null}
+            </section>
+
+            {installTarget === 'shared' ? (
+              <section className="flex flex-col gap-2">
+                <h3 className="text-sm text-color-text-1">生效范围</h3>
+                <ShareConfigForm
+                  value={shareConfig}
+                  onChange={(next) => {
+                    setFlowError('');
+                    setShareConfig(next);
+                  }}
+                  allowedLevels={allowedLevels}
+                  departments={(targets.data?.departments ?? []).map(
+                    (item) => ({ value: item.id, label: item.name }),
+                  )}
+                  users={(targets.data?.users ?? []).map((item) => ({
+                    value: item.uid,
+                    label: item.department_name
+                      ? `${item.username}（${item.department_name}）`
+                      : item.username,
+                  }))}
+                  targetsLoading={targets.isPending}
+                  autoSelectUser={{
+                    uid: user.data?.uid,
+                    departmentId: user.data?.department_id ?? null,
+                  }}
+                  error={flowError || null}
+                />
+              </section>
+            ) : null}
+
+            {installTarget === 'personal' && flowError ? (
+              <p role="alert" className="text-sm text-danger-6">
+                {flowError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {phase === 'installing' ? (
+          <div
+            className="flex flex-col items-center gap-1 rounded-medium border border-color-border-1 px-4 py-6 text-center"
+            aria-live="polite"
+          >
+            <LoaderCircle
+              className="size-5 animate-spin text-color-text-3"
+              aria-hidden
+            />
+            <strong className="text-sm text-color-text-1">
+              正在安装 {installItems.length} 个 Skill
+            </strong>
+            <span className="text-xs text-color-text-3">
+              正在安装到：{targetLabel}
+            </span>
+          </div>
+        ) : null}
+
+        {phase === 'result' ? (
+          <div className="flex flex-col gap-3" aria-live="polite">
+            <div className="flex items-baseline justify-between gap-2">
+              <strong className="text-sm text-color-text-1">
+                {resultTitle(installItems)}
+              </strong>
+              <span className="text-xs text-color-text-3">
+                成功 {summary.success} 个，失败 {summary.failed} 个
+              </span>
+            </div>
+            <InstallStatusList items={installItems} />
+            {flowError ? (
+              <p role="alert" className="text-sm text-danger-6">
+                {flowError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+
+      <div className="flex items-center justify-between gap-2 pt-2">
+        <span
+          className="min-w-0 truncate text-xs text-color-text-3"
+          data-testid="install-footer-summary"
+        >
+          {footerSummary}
+        </span>
+        <div className="flex items-center gap-2">
+          {phase === 'selecting' ? (
+            <>
+              <Button
+                htmlType="button"
+                variant="outlined"
+                onClick={handleClose}
+              >
+                取消
+              </Button>
+              <Button
+                htmlType="button"
+                disabled={!picker.canSubmit}
+                onClick={() => void prepareRequests(picker.buildRequests())}
+              >
+                解析并确认
+              </Button>
+            </>
+          ) : null}
 
           {phase === 'preparing' ? (
-            <div className="flex flex-col gap-3" aria-live="polite">
-              <div
-                className={cn(
-                  'flex flex-col items-center gap-1 rounded-medium border border-color-border-1 px-4 py-6 text-center',
-                )}
+            flowError ? (
+              <Button
+                htmlType="button"
+                variant="outlined"
+                onClick={handleClose}
               >
-                {flowError ? (
-                  <XCircle className="size-5 text-danger-6" aria-hidden />
-                ) : (
-                  <LoaderCircle
-                    className="size-5 animate-spin text-color-text-3"
-                    aria-hidden
-                  />
-                )}
-                <strong className="text-sm text-color-text-1">
-                  {flowError
-                    ? 'Skill 加载失败'
-                    : `正在加载 ${progressItems.length} 个 Skill`}
-                </strong>
-                <span className="text-xs text-color-text-3">
-                  {flowError || '从远程仓库拉取并解析，通常只需片刻'}
-                </span>
-              </div>
-              {progressItems.length ? (
-                <InstallStatusList items={progressItems} />
-              ) : null}
-            </div>
+                关闭
+              </Button>
+            ) : (
+              <Button htmlType="button" disabled>
+                <Spin aria-hidden className="size-3.5" />
+                正在加载
+              </Button>
+            )
           ) : null}
 
           {phase === 'reviewing' ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex items-baseline justify-between gap-2">
-                <strong className="text-sm text-color-text-1">
-                  确认安装内容
-                </strong>
-                <span className="text-xs text-color-text-3">
-                  {readyItems.length} 个 Skill，共用下方安装设置
-                </span>
-              </div>
-              <ul
-                className="flex max-h-56 flex-col gap-1 overflow-y-auto"
-                data-testid="review-list"
+            <>
+              <Button
+                htmlType="button"
+                variant="outlined"
+                onClick={handleClose}
               >
-                {reviewItems.map((item) => (
-                  <li
-                    key={item.key}
-                    className={cn(
-                      'flex items-start gap-2 rounded-small border border-color-border-1 px-3 py-2',
-                      item.success ? undefined : 'border-danger-3 bg-danger-1',
-                    )}
-                  >
-                    <span className="flex min-w-0 flex-1 flex-col">
-                      <strong className="truncate text-sm text-color-text-1">
-                        {item.name}
-                      </strong>
-                      <span className="truncate text-xs text-color-text-3">
-                        {item.description || item.error || '暂无描述'}
-                      </span>
-                      {installTarget === 'shared' && item.warnings.length ? (
-                        <span role="alert" className="text-xs text-warning-6">
-                          {item.warnings.join('；')}
-                        </span>
-                      ) : null}
-                    </span>
-                    {!item.success ? (
-                      <span className="shrink-0 text-xs text-danger-6">
-                        解析失败
-                      </span>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`移除 ${item.name}`}
-                      onClick={() => removeReviewItem(item)}
-                    >
-                      <X className="size-3.5" aria-hidden />
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-
-              <section className="flex flex-col gap-2">
-                <h3 className="text-sm text-color-text-1">安装位置</h3>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <Button
-                    type="button"
-                    variant={
-                      installTarget === 'personal' ? 'default' : 'outline'
-                    }
-                    className="h-auto flex-col items-start gap-1 px-3 py-2 text-left whitespace-normal"
-                    aria-pressed={installTarget === 'personal'}
-                    onClick={() => setInstallTarget('personal')}
-                  >
-                    <span className="text-sm">
-                      个人 Skill <b>推荐</b>
-                    </span>
-                    <span className="text-xs font-normal opacity-80">
-                      仅自己可用，保存在个人 Skill 持久源，不进入平台数据库。
-                    </span>
-                  </Button>
-                  {isAdmin ? (
-                    <Button
-                      type="button"
-                      variant={
-                        installTarget === 'shared' ? 'default' : 'outline'
-                      }
-                      className="h-auto flex-col items-start gap-1 px-3 py-2 text-left whitespace-normal"
-                      aria-pressed={installTarget === 'shared'}
-                      onClick={() => setInstallTarget('shared')}
-                    >
-                      <span className="text-sm">共享 Skill</span>
-                      <span className="text-xs font-normal opacity-80">
-                        进入平台 Skill 库，并继续配置指定人、部门或全局范围。
-                      </span>
-                    </Button>
-                  ) : null}
-                </div>
-                {installTarget === 'personal' ? (
-                  <p className="text-xs text-color-text-3">
-                    {PERSONAL_INSTALL_NOTE}
-                  </p>
-                ) : null}
-              </section>
-
-              {installTarget === 'shared' ? (
-                <section className="flex flex-col gap-2">
-                  <h3 className="text-sm text-color-text-1">生效范围</h3>
-                  <ShareConfigForm
-                    value={shareConfig}
-                    onChange={(next) => {
-                      setFlowError('');
-                      setShareConfig(next);
-                    }}
-                    allowedLevels={allowedLevels}
-                    departments={(targets.data?.departments ?? []).map(
-                      (item) => ({ value: item.id, label: item.name }),
-                    )}
-                    users={(targets.data?.users ?? []).map((item) => ({
-                      value: item.uid,
-                      label: item.department_name
-                        ? `${item.username}（${item.department_name}）`
-                        : item.username,
-                    }))}
-                    targetsLoading={targets.isPending}
-                    autoSelectUser={{
-                      uid: user.data?.uid,
-                      departmentId: user.data?.department_id ?? null,
-                    }}
-                    error={flowError || null}
-                  />
-                </section>
-              ) : null}
-
-              {installTarget === 'personal' && flowError ? (
-                <p role="alert" className="text-sm text-danger-6">
-                  {flowError}
-                </p>
-              ) : null}
-            </div>
+                取消
+              </Button>
+              <Button
+                htmlType="button"
+                disabled={readyItems.length === 0}
+                onClick={() => void installDrafts()}
+              >
+                确认安装 {readyItems.length} 个 Skill · {targetLabel}
+              </Button>
+            </>
           ) : null}
 
           {phase === 'installing' ? (
-            <div
-              className="flex flex-col items-center gap-1 rounded-medium border border-color-border-1 px-4 py-6 text-center"
-              aria-live="polite"
-            >
-              <LoaderCircle
-                className="size-5 animate-spin text-color-text-3"
-                aria-hidden
-              />
-              <strong className="text-sm text-color-text-1">
-                正在安装 {installItems.length} 个 Skill
-              </strong>
-              <span className="text-xs text-color-text-3">
-                正在安装到：{targetLabel}
-              </span>
-            </div>
+            <Button htmlType="button" disabled>
+              <Spin aria-hidden className="size-3.5" />
+              正在安装
+            </Button>
           ) : null}
 
           {phase === 'result' ? (
-            <div className="flex flex-col gap-3" aria-live="polite">
-              <div className="flex items-baseline justify-between gap-2">
-                <strong className="text-sm text-color-text-1">
-                  {resultTitle(installItems)}
-                </strong>
-                <span className="text-xs text-color-text-3">
-                  成功 {summary.success} 个，失败 {summary.failed} 个
-                </span>
-              </div>
-              <InstallStatusList items={installItems} />
-              {flowError ? (
-                <p role="alert" className="text-sm text-danger-6">
-                  {flowError}
-                </p>
+            <>
+              {failedItems.length ? (
+                <Button
+                  htmlType="button"
+                  variant="outlined"
+                  onClick={retryFailed}
+                >
+                  重新加载失败项
+                </Button>
               ) : null}
-            </div>
+              <Button htmlType="button" onClick={finishFlow}>
+                完成
+              </Button>
+            </>
           ) : null}
         </div>
-
-        <DialogFooter className="justify-between sm:justify-between">
-          <span
-            className="min-w-0 truncate text-xs text-color-text-3"
-            data-testid="install-footer-summary"
-          >
-            {footerSummary}
-          </span>
-          <div className="flex items-center gap-2">
-            {phase === 'selecting' ? (
-              <>
-                <Button type="button" variant="outline" onClick={handleClose}>
-                  取消
-                </Button>
-                <Button
-                  type="button"
-                  disabled={!picker.canSubmit}
-                  onClick={() => void prepareRequests(picker.buildRequests())}
-                >
-                  解析并确认
-                </Button>
-              </>
-            ) : null}
-
-            {phase === 'preparing' ? (
-              flowError ? (
-                <Button type="button" variant="outline" onClick={handleClose}>
-                  关闭
-                </Button>
-              ) : (
-                <Button type="button" disabled>
-                  <Spinner aria-hidden className="size-3.5" />
-                  正在加载
-                </Button>
-              )
-            ) : null}
-
-            {phase === 'reviewing' ? (
-              <>
-                <Button type="button" variant="outline" onClick={handleClose}>
-                  取消
-                </Button>
-                <Button
-                  type="button"
-                  disabled={readyItems.length === 0}
-                  onClick={() => void installDrafts()}
-                >
-                  确认安装 {readyItems.length} 个 Skill · {targetLabel}
-                </Button>
-              </>
-            ) : null}
-
-            {phase === 'installing' ? (
-              <Button type="button" disabled>
-                <Spinner aria-hidden className="size-3.5" />
-                正在安装
-              </Button>
-            ) : null}
-
-            {phase === 'result' ? (
-              <>
-                {failedItems.length ? (
-                  <Button type="button" variant="outline" onClick={retryFailed}>
-                    重新加载失败项
-                  </Button>
-                ) : null}
-                <Button type="button" onClick={finishFlow}>
-                  完成
-                </Button>
-              </>
-            ) : null}
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </Modal>
   );
 };

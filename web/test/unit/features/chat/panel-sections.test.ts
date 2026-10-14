@@ -34,8 +34,9 @@ describe('normalizeSections', () => {
 
 describe('upsertSection', () => {
   it('新增时追加到末尾', () => {
-    expect(upsertSection([section('a')], MESSAGE_DEBUG_SECTION).map((s) => s.key))
-      .toEqual(['a', 'message-debug']);
+    expect(
+      upsertSection([section('a')], MESSAGE_DEBUG_SECTION).map((s) => s.key),
+    ).toEqual(['a', 'message-debug']);
   });
 
   it('已存在时就地更新并保留位置', () => {

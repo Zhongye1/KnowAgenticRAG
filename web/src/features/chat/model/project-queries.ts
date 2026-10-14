@@ -53,7 +53,8 @@ export const useProjects = () =>
 export const useHistoryCandidates = (query: string) =>
   useQuery({
     queryKey: projectKeys.history(query),
-    queryFn: () => listHistoryCandidates({ query, limit: HISTORY_CANDIDATE_LIMIT }),
+    queryFn: () =>
+      listHistoryCandidates({ query, limit: HISTORY_CANDIDATE_LIMIT }),
   });
 
 /**

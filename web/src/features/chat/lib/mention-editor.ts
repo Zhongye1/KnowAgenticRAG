@@ -61,9 +61,7 @@ export function serializeEditorNode(node: Node | null | undefined): string {
 }
 
 /** 编辑器当前内容的原始文本；根节点为空时返回空串。 */
-export function serializeEditorContent(
-  root: Node | null | undefined,
-): string {
+export function serializeEditorContent(root: Node | null | undefined): string {
   return serializeEditorNode(root);
 }
 
@@ -191,7 +189,10 @@ export function getSelectionRawOffset(
   // 元素内：把前 `startOffset` 个子节点的原始长度加上
   const children = Array.from(node.childNodes).slice(0, range.startOffset);
 
-  return children.reduce((total, child) => total + getRawNodeLength(child), base);
+  return children.reduce(
+    (total, child) => total + getRawNodeLength(child),
+    base,
+  );
 }
 
 /** 把光标放到原始文本的第 `offset` 个字符处；越界会被夹住。 */

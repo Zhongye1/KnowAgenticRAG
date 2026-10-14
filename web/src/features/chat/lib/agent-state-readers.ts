@@ -23,7 +23,9 @@ const TODO_NAME_MAX_LENGTH = 60;
 
 /** 待办的展示名：按字符截断，对齐参照 `formatTodoName`。 */
 export function formatTodoName(content: unknown): string {
-  return Array.from(String(content || '')).slice(0, TODO_NAME_MAX_LENGTH).join('');
+  return Array.from(String(content || ''))
+    .slice(0, TODO_NAME_MAX_LENGTH)
+    .join('');
 }
 
 const TODO_STATUSES = new Set(['completed', 'in_progress', 'pending']);
@@ -72,12 +74,15 @@ export function readAgentStateFiles(
 ): AgentStateFile[] {
   const files: AgentStateFile[] = [];
   const seenPaths = new Set<string>();
-  const pushFile = (entry: {
-    path?: unknown;
-    file_path?: unknown;
-    file_name?: unknown;
-    name?: unknown;
-  }, fallbackName = '文件') => {
+  const pushFile = (
+    entry: {
+      path?: unknown;
+      file_path?: unknown;
+      file_name?: unknown;
+      name?: unknown;
+    },
+    fallbackName = '文件',
+  ) => {
     const path =
       nonEmptyString(entry.path) ||
       nonEmptyString(entry.file_path) ||
@@ -88,7 +93,10 @@ export function readAgentStateFiles(
     files.push({
       key: path,
       path,
-      name: nonEmptyString(entry.file_name) || nonEmptyString(entry.name) || fallbackName,
+      name:
+        nonEmptyString(entry.file_name) ||
+        nonEmptyString(entry.name) ||
+        fallbackName,
     });
   };
 
@@ -98,7 +106,9 @@ export function readAgentStateFiles(
       for (const [path, fileData] of Object.entries(raw)) {
         pushFile({
           path,
-          ...(typeof fileData === 'object' && fileData !== null && !Array.isArray(fileData)
+          ...(typeof fileData === 'object' &&
+          fileData !== null &&
+          !Array.isArray(fileData)
             ? fileData
             : {}),
         });

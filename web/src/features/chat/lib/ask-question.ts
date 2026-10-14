@@ -11,7 +11,14 @@ import type { ChatToolCall } from '../api/agent-api';
 export const OTHER_OPTION_VALUE = '__other__';
 
 const QUESTION_WRAPPER_KEYS = ['questions', 'items', 'item', 'list', 'data'];
-const OPTION_WRAPPER_KEYS = ['item', 'items', 'options', 'list', 'choices', 'data'];
+const OPTION_WRAPPER_KEYS = [
+  'item',
+  'items',
+  'options',
+  'list',
+  'choices',
+  'data',
+];
 
 export type QuestionOption = {
   label: string;
@@ -82,10 +89,8 @@ function resolveCollection(
 
 /** 选项归一；标签与值互相兜底，两者都没有的条目丢掉。 */
 export function normalizeOptions(raw: unknown): QuestionOption[] {
-  return resolveCollection(
-    raw,
-    OPTION_WRAPPER_KEYS,
-    (item) => Boolean((item as { label?: unknown })?.label),
+  return resolveCollection(raw, OPTION_WRAPPER_KEYS, (item) =>
+    Boolean((item as { label?: unknown })?.label),
   )
     .map((item) => {
       const record = (item ?? {}) as Record<string, unknown>;
@@ -139,8 +144,9 @@ export function normalizeQuestions(raw: unknown): QuestionItem[] {
       if (!question) return null;
 
       const questionId =
-        String(record.questionId ?? record.question_id ?? record.id ?? '').trim() ||
-        `q-${index + 1}`;
+        String(
+          record.questionId ?? record.question_id ?? record.id ?? '',
+        ).trim() || `q-${index + 1}`;
       const allowOther = parseBool(
         record.allowOther ?? record.allow_other,
         true,
@@ -154,7 +160,10 @@ export function normalizeQuestions(raw: unknown): QuestionItem[] {
       );
       const options =
         allowOther && !baseOptions.some(isOtherOption)
-          ? [...baseOptions, { label: '其他', value: OTHER_OPTION_VALUE, description: '' }]
+          ? [
+              ...baseOptions,
+              { label: '其他', value: OTHER_OPTION_VALUE, description: '' },
+            ]
           : baseOptions;
 
       return {
@@ -245,9 +254,13 @@ export function questionAnswer(
   questions: QuestionItem[],
   question: QuestionItem,
 ): unknown {
-  if (answer === null || answer === undefined || answer === '') return undefined;
+  if (answer === null || answer === undefined || answer === '')
+    return undefined;
 
-  if (questions.length === 1 && (typeof answer !== 'object' || Array.isArray(answer))) {
+  if (
+    questions.length === 1 &&
+    (typeof answer !== 'object' || Array.isArray(answer))
+  ) {
     return answer;
   }
 

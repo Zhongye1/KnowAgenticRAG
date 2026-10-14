@@ -42,7 +42,9 @@ describe('上下文用量卡片', () => {
     render(<TokenUsageCard usage={usage} />);
 
     const card = screen.getByTestId('token-usage');
-    expect(card.textContent).toContain('上下文占用 50%');
+    // 参照的排布：大号占比在左，标签与已用/上限在右
+    expect(card.textContent).toContain('50%');
+    expect(card.textContent).toContain('上下文占用');
     expect(card.textContent).toContain('2K / 4K');
     expect(card.textContent).toContain('12.1K');
   });
@@ -69,8 +71,9 @@ describe('上下文用量卡片', () => {
       />,
     );
 
+    // 轨道填充走危险色 token（参照 .token-usage-context-fill 的 .is-danger）
     expect(screen.getByTestId('token-usage-progress').className).toContain(
-      'accent-danger-6',
+      '--color-error-500',
     );
   });
 
@@ -101,5 +104,19 @@ describe('上下文用量卡片', () => {
     await userEvent.click(screen.getByRole('button', { name: /上下文占用/ }));
 
     expect(screen.getByText('本次运行没有可展示的用量明细。')).toBeTruthy();
+  });
+
+  it('构成明细带小标题，图例按分段类型着色', async () => {
+    render(<TokenUsageCard usage={usage} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /上下文占用/ }));
+
+    expect(screen.getByText('最近上下文构成')).toBeTruthy();
+    // 色点与堆叠条共用同一张 tone 表：系统提示 → chart-palette-2
+    const dot = screen
+      .getByText('系统提示')
+      .parentElement?.querySelector('span[aria-hidden]');
+    expect(dot?.className).toContain('--chart-palette-2');
+    expect(screen.getByText('512')).toBeTruthy();
   });
 });

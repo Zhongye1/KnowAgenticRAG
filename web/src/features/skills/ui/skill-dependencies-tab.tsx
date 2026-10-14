@@ -7,6 +7,7 @@
  */
 import * as React from 'react';
 import { Save, X } from 'lucide-react';
+import { Button, Checkbox, Input, Spin, Tag } from 'antd';
 
 import type { ManagedSkill } from '../api/skill-api';
 import { skillApi } from '../api/skill-api';
@@ -19,11 +20,6 @@ import {
   useInvalidateSkills,
   useSkillDependencyOptions,
 } from '../model/skill-queries';
-import { Badge } from '@/shared/ui/badge';
-import { Button } from '@/shared/ui/button';
-import { Checkbox } from '@/shared/ui/checkbox';
-import { Input } from '@/shared/ui/input';
-import { Spinner } from '@/shared/ui/spinner';
 import { useNotifications } from '@/shared/ui/notifications';
 
 type SkillDependenciesTabProps = {
@@ -117,13 +113,13 @@ export const SkillDependenciesTab = ({
         </div>
         {editable ? (
           <Button
-            type="button"
+            htmlType="button"
             disabled={saving || options.isPending}
             onClick={() => void save()}
           >
             {saving ? (
               <>
-                <Spinner aria-hidden className="size-3.5" />
+                <Spin aria-hidden className="size-3.5" />
                 保存中…
               </>
             ) : (
@@ -134,7 +130,7 @@ export const SkillDependenciesTab = ({
             )}
           </Button>
         ) : (
-          <Button type="button" variant="outline" disabled>
+          <Button htmlType="button" variant="outlined" disabled>
             {skill.source_type === 'builtin' ? '系统维护' : '只读'}
           </Button>
         )}
@@ -164,7 +160,7 @@ export const SkillDependenciesTab = ({
               <ul className="flex flex-wrap gap-1">
                 {values.map((value) => (
                   <li key={value}>
-                    <Badge variant="secondary" className="gap-1">
+                    <Tag className="gap-1">
                       <span title={dependencyLabel(group, value)}>
                         {dependencyLabel(group, value)}
                       </span>
@@ -177,7 +173,7 @@ export const SkillDependenciesTab = ({
                           <X className="size-3" aria-hidden />
                         </button>
                       ) : null}
-                    </Badge>
+                    </Tag>
                   </li>
                 ))}
               </ul>
@@ -199,7 +195,7 @@ export const SkillDependenciesTab = ({
 
             {options.isPending ? (
               <p className="flex items-center gap-2 text-xs text-color-text-3">
-                <Spinner aria-hidden className="size-3.5" />
+                <Spin aria-hidden className="size-3.5" />
                 正在加载依赖候选…
               </p>
             ) : visible.length ? (
@@ -211,9 +207,7 @@ export const SkillDependenciesTab = ({
                         checked={values.includes(option.value)}
                         disabled={!editable}
                         aria-label={option.label}
-                        onCheckedChange={() =>
-                          toggle(group.formKey, option.value)
-                        }
+                        onChange={() => toggle(group.formKey, option.value)}
                       />
                       <span className="truncate">{option.label}</span>
                     </label>

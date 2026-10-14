@@ -26,16 +26,26 @@ import {
 } from './agent-config';
 
 /** 可作为提及候选的配置种类。 */
-export const MENTION_RESOURCE_KINDS = ['knowledges', 'mcps', 'skills', 'subagents'] as const;
+export const MENTION_RESOURCE_KINDS = [
+  'knowledges',
+  'mcps',
+  'skills',
+  'subagents',
+] as const;
 
 export type MentionResourceKind = (typeof MENTION_RESOURCE_KINDS)[number];
 
 const isMentionKind = (value: unknown): value is MentionResourceKind =>
-  typeof value === 'string' && (MENTION_RESOURCE_KINDS as readonly string[]).includes(value);
+  typeof value === 'string' &&
+  (MENTION_RESOURCE_KINDS as readonly string[]).includes(value);
 
-const asText = (value: unknown): string => (typeof value === 'string' ? value : '');
+const asText = (value: unknown): string =>
+  typeof value === 'string' ? value : '';
 
-const firstText = (source: Record<string, unknown>, fields: string[]): string => {
+const firstText = (
+  source: Record<string, unknown>,
+  fields: string[],
+): string => {
   for (const field of fields) {
     const value = asText(source[field]);
     if (value) return value;
@@ -64,7 +74,9 @@ const optionValue = (option: unknown): string => {
 const optionLabel = (option: unknown, fallback: string): string => {
   if (typeof option !== 'object' || option === null) return fallback;
 
-  return firstText(option as Record<string, unknown>, ['name', 'label']) || fallback;
+  return (
+    firstText(option as Record<string, unknown>, ['name', 'label']) || fallback
+  );
 };
 
 const optionDescription = (option: unknown): string => {
@@ -89,7 +101,10 @@ function normalizeOption(
   }
 
   if (kind === 'subagents') {
-    const raw = typeof option === 'object' && option !== null ? (option as Record<string, unknown>) : {};
+    const raw =
+      typeof option === 'object' && option !== null
+        ? (option as Record<string, unknown>)
+        : {};
 
     return { id: value, slug: asText(raw.slug) || value, name, description };
   }
@@ -98,7 +113,10 @@ function normalizeOption(
 }
 
 /** 配置项里这一项属于哪个提及种类；`kind` 优先，其次看配置键名。 */
-const resolveKind = (key: string, item: Record<string, unknown>): MentionResourceKind | null => {
+const resolveKind = (
+  key: string,
+  item: Record<string, unknown>,
+): MentionResourceKind | null => {
   if (isMentionKind(item.kind)) return item.kind;
   if (isMentionKind(key)) return key;
 
@@ -150,7 +168,10 @@ export function buildMentionConfig({
       value.length === 0 &&
       EMPTY_MEANS_ALL_RESOURCE_KINDS.includes(kind);
 
-    if ((value === null || isEmptyAll) && DEFAULT_ALL_RESOURCE_KINDS.includes(kind)) {
+    if (
+      (value === null || isEmptyAll) &&
+      DEFAULT_ALL_RESOURCE_KINDS.includes(kind)
+    ) {
       includeAll[kind] = true;
     } else if (Array.isArray(value)) {
       const bucket = (selected[kind] ??= new Set<string>());

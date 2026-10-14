@@ -6,10 +6,20 @@ import type { ChatMessage } from '@/features/chat/api/agent-api';
 import type { ConversationSources } from '@/features/chat/lib/sources';
 import { MessageActions } from '@/features/chat/ui/message-actions';
 
+const { notifications } = vi.hoisted(() => ({
+  notifications: { addNotification: vi.fn() },
+}));
+
+vi.mock('@/shared/ui/notifications', async () => {
+  const actual = await vi.importActual<
+    typeof import('@/shared/ui/notifications')
+  >('@/shared/ui/notifications');
+  return { ...actual, useNotifications: () => notifications };
+});
+
 vi.mock('@/features/chat/api/feedback-api', async (importOriginal) => {
-  const actual = await importOriginal<
-    typeof import('@/features/chat/api/feedback-api')
-  >();
+  const actual =
+    await importOriginal<typeof import('@/features/chat/api/feedback-api')>();
   return {
     ...actual,
     submitMessageFeedback: vi.fn(async (_id, rating, reason) => {
@@ -41,7 +51,9 @@ const chunk = (file: string) => ({
   chunkId: `c-${file}`,
 });
 
-const sources = (overrides: Partial<ConversationSources> = {}): ConversationSources => ({
+const sources = (
+  overrides: Partial<ConversationSources> = {},
+): ConversationSources => ({
   knowledgeChunks: [],
   webSources: [],
   ...overrides,
@@ -63,9 +75,9 @@ describe('MessageActions 的反馈提交', () => {
     await user.click(screen.getByRole('button', { name: '点赞' }));
     // 状态翻成已点赞（title 变化）——重复提交是幂等成功
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: '点赞' }).getAttribute('title')).toBe(
-        '已点赞',
-      ),
+      expect(
+        screen.getByRole('button', { name: '点赞' }).getAttribute('title'),
+      ).toBe('已点赞'),
     );
   });
 });
@@ -105,7 +117,11 @@ describe('MessageActions 的基本项', () => {
   it('没有起止时间时不渲染时间项', () => {
     render(
       <MessageActions
-        message={message({ created_at: null, run_started_at: null, run_finished_at: null })}
+        message={message({
+          created_at: null,
+          run_started_at: null,
+          run_finished_at: null,
+        })}
         sources={sources()}
       />,
     );
@@ -122,7 +138,11 @@ describe('MessageActions 的基本项', () => {
 
     const onRetry = vi.fn();
     render(
-      <MessageActions message={message()} sources={sources()} onRetry={onRetry} />,
+      <MessageActions
+        message={message()}
+        sources={sources()}
+        onRetry={onRetry}
+      />,
     );
     expect(screen.getByRole('button', { name: '重新生成' })).toBeTruthy();
   });
@@ -135,9 +155,9 @@ describe('MessageActions 的基本项', () => {
       />,
     );
 
-    expect(screen.getByRole('button', { name: '点赞' }).getAttribute('title')).toBe(
-      '已点赞',
-    );
+    expect(
+      screen.getByRole('button', { name: '点赞' }).getAttribute('title'),
+    ).toBe('已点赞');
   });
 });
 
@@ -152,7 +172,10 @@ describe('MessageActions 的来源部分', () => {
     render(
       <MessageActions
         message={message()}
-        sources={sources({ knowledgeChunks: [chunk('a.md')], webSources: [webSource] })}
+        sources={sources({
+          knowledgeChunks: [chunk('a.md')],
+          webSources: [webSource],
+        })}
       />,
     );
 

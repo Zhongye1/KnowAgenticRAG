@@ -37,11 +37,11 @@ export function maxPanelRatio(containerWidth: number): number {
 }
 
 /** 把比例夹到 `[25%, maxPanelRatio]`。 */
-export function clampPanelRatio(
-  ratio: number,
-  containerWidth: number,
-): number {
-  return Math.max(MIN_PANEL_RATIO, Math.min(ratio, maxPanelRatio(containerWidth)));
+export function clampPanelRatio(ratio: number, containerWidth: number): number {
+  return Math.max(
+    MIN_PANEL_RATIO,
+    Math.min(ratio, maxPanelRatio(containerWidth)),
+  );
 }
 
 /**
@@ -59,6 +59,22 @@ export function panelWidthFromRatio(
   const minWidth = panelMinWidth(containerWidth, maxWidth);
   const preferred = containerWidth * ratio;
   return `${Math.max(minWidth, Math.min(preferred, maxWidth))}px`;
+}
+
+/**
+ * 与 `panelWidthFromRatio` 同一套换算的像素值。
+ *
+ * 拖拽锚点要的是数字，而 `panelWidthFromRatio` 的契约是 CSS 值（量不到容器宽度时退回
+ * 百分比字符串）。这里在产出方把像素解析出来，调用方不必自己认字符串格式。
+ */
+export function panelWidthPxFromRatio(
+  ratio: number,
+  containerWidth: number,
+): number {
+  const width = panelWidthFromRatio(ratio, containerWidth);
+  const match = /^([\d.]+)px$/.exec(width);
+
+  return match ? Number(match[1]) : 0;
 }
 
 export type PanelWidthInput = {
@@ -104,10 +120,7 @@ export function panelMinWidth(
 }
 
 /** 把宽度夹到 `[下界, 上界]`。 */
-export function clampPanelWidth(
-  width: number,
-  containerWidth: number,
-): number {
+export function clampPanelWidth(width: number, containerWidth: number): number {
   const max = panelMaxWidth(containerWidth);
   const min = panelMinWidth(containerWidth, max);
 

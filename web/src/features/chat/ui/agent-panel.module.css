@@ -13,24 +13,27 @@
 }
 
 /* 拖拽把手：参照 .resize-handle——4×32px 居中灰条，hover 变主色 */
+/* 拖拽把手同时是面板左右两侧的分界：整高的 1px 虚线。
+   元素本身留 6px 命中区（虚线画在左边框上），否则 1px 太细抓不住。
+   虚线画在面板**内侧**（left: 0）：负偏移会让它落到聊天列里，被 z-index 更高的
+   输入停靠区从自己的顶端往下盖住，看起来就是「到输入框高度就断了」。 */
 .resizeHandle {
   position: absolute;
-  left: -2px;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 32px;
-  width: 4px;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  border-left: 1px dashed var(--gray-200);
+  background: transparent;
   cursor: col-resize;
-  background: var(--gray-300);
-  border-radius: 2px;
   z-index: 10;
-  transition: background 0.2s;
+  transition: border-color 0.2s;
   touch-action: none;
 }
 
 .resizeHandle:hover,
 .resizeHandleActive {
-  background: var(--main-400);
+  border-left-color: var(--main-400);
 }
 
 .header {
@@ -94,14 +97,23 @@
   flex: 0 0 auto;
   align-items: center;
   min-width: 0;
+  gap: 2px;
   max-width: 140px;
   border-radius: 7px;
   color: var(--gray-600);
 }
 
 .sectionTabActive {
-  background: var(--gray-100);
+  background: var(--gray-200);
   color: var(--gray-900);
+}
+
+/* 相邻 tab 之间的分隔线：不占 tab 自身的宽度，active 底色不会把它吃掉 */
+.sectionTabDivider {
+  width: 1px;
+  height: 14px;
+  flex-shrink: 0;
+  background: var(--gray-300);
 }
 
 .sectionTabMain {
@@ -115,6 +127,13 @@
   background: transparent;
   color: inherit;
   cursor: pointer;
+}
+
+/* 没有关闭钮时（常驻的文件分区）按钮就是唯一/最后一个子元素：
+   右侧补 7px，否则激活底色会贴着文字（参照 .section-tab-main 的 only-child 规则） */
+.sectionTabMain:only-child,
+.sectionTabMain:last-child {
+  margin-right: 7px;
 }
 
 .sectionTabIcon {

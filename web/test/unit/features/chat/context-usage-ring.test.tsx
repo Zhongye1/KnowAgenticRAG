@@ -15,6 +15,12 @@ const ring = () => screen.getByRole('button', { name: '上下文使用情况' })
 const progressArc = (container: HTMLElement) =>
   container.querySelectorAll('circle')[1] ?? null;
 
+/** 悬浮说明由 antd Tooltip 渲染，需要真的悬停才会出现。 */
+const hoverTooltipText = async (): Promise<string> => {
+  await userEvent.hover(ring());
+  return (await screen.findByRole('tooltip')).textContent ?? '';
+};
+
 describe('ContextUsageRing', () => {
   it('按比例画进度弧', () => {
     const { container } = render(<ContextUsageRing usage={usage(500, 1000)} />);
@@ -43,11 +49,12 @@ describe('ContextUsageRing', () => {
     expect(container.querySelectorAll('circle')).toHaveLength(1);
   });
 
-  it('没有用量时按未知处理', () => {
+  it('没有用量时按未知处理，且不弹说明', async () => {
     const { container } = render(<ContextUsageRing usage={null} />);
 
     expect(container.querySelectorAll('circle')).toHaveLength(1);
-    expect(ring().getAttribute('title')).toBe('上下文占用 --');
+    await userEvent.hover(ring());
+    expect(screen.queryByRole('tooltip')).toBeNull();
   });
 
   it('档位按 75% 与 90% 分界', () => {
@@ -61,15 +68,21 @@ describe('ContextUsageRing', () => {
       return className;
     };
 
-    expect(toneOf(700)).toContain('text-[var(--main-600)]');
-    expect(toneOf(750)).toContain('text-[var(--second-600)]');
+    expect(toneOf(700)).toContain('text-[var(--main-color)]');
+    expect(toneOf(750)).toContain('text-[var(--color-warning-500)]');
     expect(toneOf(900)).toContain('text-[var(--color-error-500)]');
   });
 
-  it('标题给出百分比', () => {
+  it('说明给出占比与已用 / 上限', async () => {
     render(<ContextUsageRing usage={usage(900, 1000)} />);
 
-    expect(ring().getAttribute('title')).toBe('上下文占用 90%');
+    expect(await hoverTooltipText()).toBe('90% · 900 / 1000 上下文已使用');
+  });
+
+  it('上限未知时说明只报已用', async () => {
+    render(<ContextUsageRing usage={{ llm_input_tokens: 500 }} />);
+
+    expect(await hoverTooltipText()).toBe('500 上下文已使用');
   });
 
   it('点击回调，禁用时不回调', async () => {

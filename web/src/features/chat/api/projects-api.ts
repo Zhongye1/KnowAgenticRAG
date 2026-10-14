@@ -31,7 +31,8 @@ export type HistoryCandidate = {
   updatedAt: string;
 };
 
-const asText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+const asText = (value: unknown): string =>
+  typeof value === 'string' ? value.trim() : '';
 
 /** 缺 `id` 的项目丢掉；名称缺失时退到 id。 */
 export function normalizeProjects(raw: unknown): ProjectItem[] {
@@ -63,7 +64,9 @@ export function normalizeHistoryCandidates(raw: unknown): {
   hasMore: boolean;
 } {
   const source =
-    typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+    typeof raw === 'object' && raw !== null
+      ? (raw as Record<string, unknown>)
+      : {};
   const items: HistoryCandidate[] = [];
 
   for (const entry of Array.isArray(source.items) ? source.items : []) {
@@ -120,10 +123,12 @@ export async function createLinkedProject(input: {
 }
 
 /** 可作为新项目目录的历史对话。 */
-export async function listHistoryCandidates(input: {
-  query?: string;
-  limit?: number;
-} = {}): Promise<{ items: HistoryCandidate[]; hasMore: boolean }> {
+export async function listHistoryCandidates(
+  input: {
+    query?: string;
+    limit?: number;
+  } = {},
+): Promise<{ items: HistoryCandidate[]; hasMore: boolean }> {
   return normalizeHistoryCandidates(
     unwrap<unknown>(
       await listHistoryCandidatesApiProjectsHistoryCandidatesGet({

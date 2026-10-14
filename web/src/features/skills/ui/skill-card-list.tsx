@@ -6,7 +6,14 @@
  */
 import * as React from 'react';
 import { useNavigate } from 'react-router';
-import { RefreshCw, Search, Upload, WandSparkles } from 'lucide-react';
+import { Upload, WandSparkles } from 'lucide-react';
+import { Button, Spin } from 'antd';
+import { Empty as SharedEmpty } from '@/shared/ui/empty';
+import {
+  ListPrimaryButton,
+  ListRefreshButton,
+  ListToolbar,
+} from '@/shared/ui/list-toolbar';
 
 import type { SkillCard as SkillCardModel } from '../api/skill-api';
 import { skillApi } from '../api/skill-api';
@@ -21,11 +28,7 @@ import {
 } from '../lib/skill-view';
 import { useInvalidateSkills, useSkillCards } from '../model/skill-queries';
 import { paths } from '@/shared/config';
-import { Button } from '@/shared/ui/button';
-import { confirm } from '@/shared/ui/confirm-dialog';
-import { Empty } from '@/shared/ui/empty';
-import { Input } from '@/shared/ui/input';
-import { Spinner } from '@/shared/ui/spinner';
+import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { useNotifications } from '@/shared/ui/notifications';
 
 import type { InstallFlowRequest } from './skill-install-flow-dialog';
@@ -42,6 +45,7 @@ const isAcceptedUpload = (filename: string): boolean => {
 };
 
 export const SkillCardList = () => {
+  const { confirm } = useConfirm();
   const navigate = useNavigate();
   const notifications = useNotifications();
   const cards = useSkillCards();
@@ -213,121 +217,113 @@ export const SkillCardList = () => {
 
   return (
     <div className="flex flex-col gap-4" data-testid="skill-card-list">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        {/* 搜索框没有可见文案，无障碍名由 Input 的 aria-label 提供，不需要 label 包裹 */}
-        <div className="relative flex min-w-56 flex-1 items-center">
-          <Search
-            className="pointer-events-none absolute left-2 size-4 text-color-text-3"
-            aria-hidden
-          />
-          <Input
-            className="pl-8"
-            value={keyword}
-            aria-label="搜索技能"
-            placeholder="搜索技能..."
-            onChange={(event) => setKeyword(event.target.value)}
-          />
-        </div>
-
-        {batchMode ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              onClick={() => setSelected(candidates.map((skill) => skill.slug))}
-            >
-              全选
-            </Button>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              onClick={() => setSelected(invertSelection(candidates, selected))}
-            >
-              反选
-            </Button>
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              onClick={() => setSelected([])}
-            >
-              清空
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={selected.length === 0 || deleting}
-              onClick={() => void batchDelete()}
-            >
-              批量删除 ({selected.length})
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={deleting}
-              onClick={exitBatchMode}
-            >
-              退出管理
-            </Button>
-          </div>
-        ) : (
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy || candidates.length === 0}
-              onClick={() => setBatchMode(true)}
-            >
-              批量管理
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={busy}
-              onClick={openRemoteInstall}
-            >
-              远程安装
-            </Button>
-            <Button
-              type="button"
-              disabled={busy}
-              onClick={() => fileInput.current?.click()}
-            >
-              <Upload className="size-3.5" aria-hidden />
-              {importing ? '解析中…' : '上传 Skill'}
-            </Button>
-            <input
-              ref={fileInput}
-              type="file"
-              className="hidden"
-              accept={ACCEPTED_UPLOAD}
-              aria-label="上传 Skill 文件"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                // 同一个文件连续选两次也要触发：清掉 input 的值
-                event.target.value = '';
-                if (file) void startUpload(file);
-              }}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon-sm"
-              aria-label="刷新 Skills"
-              disabled={busy}
-              onClick={() => void cards.refetch()}
-            >
-              <RefreshCw className="size-3.5" aria-hidden />
-            </Button>
-          </div>
-        )}
-      </div>
+      <ListToolbar
+        search={{
+          value: keyword,
+          onChange: setKeyword,
+          placeholder: '搜索技能...',
+          label: '搜索技能',
+        }}
+        actions={
+          batchMode ? (
+            <>
+              <Button
+                htmlType="button"
+                type="link"
+                size="small"
+                onClick={() =>
+                  setSelected(candidates.map((skill) => skill.slug))
+                }
+              >
+                全选
+              </Button>
+              <Button
+                htmlType="button"
+                type="link"
+                size="small"
+                onClick={() =>
+                  setSelected(invertSelection(candidates, selected))
+                }
+              >
+                反选
+              </Button>
+              <Button
+                htmlType="button"
+                type="link"
+                size="small"
+                onClick={() => setSelected([])}
+              >
+                清空
+              </Button>
+              <Button
+                htmlType="button"
+                color="danger"
+                variant="solid"
+                disabled={selected.length === 0 || deleting}
+                onClick={() => void batchDelete()}
+              >
+                批量删除 ({selected.length})
+              </Button>
+              <Button
+                htmlType="button"
+                variant="outlined"
+                disabled={deleting}
+                onClick={exitBatchMode}
+              >
+                退出管理
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button
+                htmlType="button"
+                variant="outlined"
+                disabled={busy || candidates.length === 0}
+                onClick={() => setBatchMode(true)}
+              >
+                批量管理
+              </Button>
+              <Button
+                htmlType="button"
+                variant="outlined"
+                disabled={busy}
+                onClick={openRemoteInstall}
+              >
+                远程安装
+              </Button>
+              <ListPrimaryButton
+                disabled={busy}
+                onClick={() => fileInput.current?.click()}
+              >
+                <Upload className="size-4" aria-hidden />
+                {importing ? '解析中…' : '上传 Skill'}
+              </ListPrimaryButton>
+              <input
+                ref={fileInput}
+                type="file"
+                className="hidden"
+                accept={ACCEPTED_UPLOAD}
+                aria-label="上传 Skill 文件"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  // 同一个文件连续选两次也要触发：清掉 input 的值
+                  event.target.value = '';
+                  if (file) void startUpload(file);
+                }}
+              />
+              <ListRefreshButton
+                label="刷新 Skills"
+                refreshing={cards.isFetching}
+                onClick={() => void cards.refetch()}
+              />
+            </>
+          )
+        }
+      />
 
       {cards.isPending ? (
         <p className="flex items-center gap-2 py-8 text-sm text-color-text-3">
-          <Spinner aria-hidden className="size-4" />
+          <Spin aria-hidden className="size-4" />
           正在加载技能…
         </p>
       ) : cards.isError ? (
@@ -338,15 +334,15 @@ export const SkillCardList = () => {
               : '加载技能失败。'}
           </p>
           <Button
-            type="button"
-            variant="outline"
+            htmlType="button"
+            variant="outlined"
             onClick={() => void cards.refetch()}
           >
             重试
           </Button>
         </div>
       ) : groups.length === 0 ? (
-        <Empty
+        <SharedEmpty
           icon={WandSparkles}
           description={
             keyword
@@ -362,7 +358,7 @@ export const SkillCardList = () => {
             className="flex flex-col gap-2"
           >
             <h3 className="text-sm text-color-text-2">{group.title}</h3>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
               {group.skills.map((skill) => (
                 <SkillCard
                   key={`${group.key}:${skill.slug || skill.id}`}

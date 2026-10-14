@@ -20,7 +20,8 @@ export type ChatModelGroup = {
   models: ChatModelItem[];
 };
 
-const asText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+const asText = (value: unknown): string =>
+  typeof value === 'string' ? value.trim() : '';
 
 /**
  * 归一成分组列表：缺 `spec` 的模型丢掉，缺供应商名的退到 id，整组没有模型时不出现。
@@ -51,7 +52,10 @@ export function normalizeChatModels(raw: unknown): ChatModelGroup[] {
       if (!spec || seenSpecs.has(spec)) continue;
 
       seenSpecs.add(spec);
-      models.push({ spec, label: asText(model.display_name) || asText(model.model_id) || spec });
+      models.push({
+        spec,
+        label: asText(model.display_name) || asText(model.model_id) || spec,
+      });
     }
 
     if (!models.length) continue;

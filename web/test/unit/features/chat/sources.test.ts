@@ -3,7 +3,11 @@ import { describe, expect, it } from 'vitest';
 import type { ChatMessage, ChatToolCall } from '@/features/chat/api/agent-api';
 import { extractSources, hasSources } from '@/features/chat/lib/sources';
 
-const toolCall = (name: string, content: unknown, args?: unknown): ChatToolCall => ({
+const toolCall = (
+  name: string,
+  content: unknown,
+  args?: unknown,
+): ChatToolCall => ({
   id: `call-${name}`,
   name,
   function: {
@@ -138,8 +142,12 @@ describe('extractSources 的网络来源', () => {
     const sources = extractSources([
       aiMessage([
         toolCall('web_search', { results: [{ title: 'A', url: 'https://a' }] }),
-        toolCall('tavily_search', { results: [{ title: 'B', url: 'https://b' }] }),
-        toolCall('doubao_search', { results: [{ title: 'C', url: 'https://c' }] }),
+        toolCall('tavily_search', {
+          results: [{ title: 'B', url: 'https://b' }],
+        }),
+        toolCall('doubao_search', {
+          results: [{ title: 'C', url: 'https://c' }],
+        }),
       ]),
     ]);
 
@@ -163,15 +171,18 @@ describe('extractSources 的网络来源', () => {
       ]),
     ]);
 
-    expect(sources.webSources.map((source) => source.title)).toEqual(['B', 'A']);
+    expect(sources.webSources.map((source) => source.title)).toEqual([
+      'B',
+      'A',
+    ]);
   });
 });
 
 describe('extractSources 的边界', () => {
   it('非 ai 消息、没有工具调用、空输入都返回空来源', () => {
-    expect(
-      extractSources([{ id: 1, type: 'human', content: '问题' }]),
-    ).toEqual({ knowledgeChunks: [], webSources: [] });
+    expect(extractSources([{ id: 1, type: 'human', content: '问题' }])).toEqual(
+      { knowledgeChunks: [], webSources: [] },
+    );
     expect(extractSources([aiMessage([])])).toEqual({
       knowledgeChunks: [],
       webSources: [],
@@ -201,15 +212,15 @@ describe('extractSources 的边界', () => {
       },
     };
 
-    expect(extractSources([aiMessage([broken])]).knowledgeChunks).toHaveLength(1);
+    expect(extractSources([aiMessage([broken])]).knowledgeChunks).toHaveLength(
+      1,
+    );
   });
 });
 
 describe('hasSources', () => {
   it('两类任一非空即为有来源', () => {
-    expect(
-      hasSources({ knowledgeChunks: [], webSources: [] }),
-    ).toBe(false);
+    expect(hasSources({ knowledgeChunks: [], webSources: [] })).toBe(false);
     expect(
       hasSources({
         knowledgeChunks: [

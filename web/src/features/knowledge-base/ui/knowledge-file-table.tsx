@@ -23,6 +23,9 @@ import {
   Search,
   Upload,
 } from 'lucide-react';
+import { Button, Checkbox, Select, Spin } from 'antd';
+import { useNotifications } from '@/shared/ui/notifications';
+import { useConfirm } from '@/shared/ui/confirm-dialog';
 
 import { knowledgeApi, type KnowledgeFileItem } from '../api/knowledge-api';
 import { getDefaultDetailView } from '../lib/knowledge-files';
@@ -56,24 +59,12 @@ import { FileUploadDialog } from './file-upload-dialog';
 import { FilePreview as FilePreviewPane } from './file-preview';
 import { FileRowActions } from './file-row-actions';
 import { MoveFileDialog } from './move-file-dialog';
-import { Button } from '@/shared/ui/button';
-import { Checkbox } from '@/shared/ui/checkbox';
-import { confirm } from '@/shared/ui/confirm-dialog';
 import { Empty } from '@/shared/ui/empty';
-import { useNotifications } from '@/shared/ui/notifications';
-import { Spinner } from '@/shared/ui/spinner';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/ui/select';
 import {
   TableBody,
   TableCell,
   // 注意：同名的 `Table` 是简易表格组件（{data, columns} 形态），
-  // shadcn 的原语是 `TableElement`
+  // 这里要的是表格原语 `TableElement`
   TableElement,
   TableHead,
   TableHeader,
@@ -145,6 +136,7 @@ export const KnowledgeFileTable = ({
   onOpenSearch,
   readOnly = false,
 }: KnowledgeFileTableProps) => {
+  const { confirm } = useConfirm();
   const { location, status, page } = view;
   const { parentId, pathPrefix, crumbs } = location;
   const [pageSize, setPageSize] = React.useState<number>(100);
@@ -454,17 +446,12 @@ export const KnowledgeFileTable = ({
                 header: () => (
                   <Checkbox
                     aria-label="选择当前页全部文件"
-                    checked={
-                      allSelected
-                        ? true
-                        : someSelected
-                          ? 'indeterminate'
-                          : false
-                    }
+                    checked={allSelected}
+                    indeterminate={someSelected && !allSelected}
                     disabled={selectableOnPage.length === 0}
-                    onCheckedChange={(checked) =>
+                    onChange={(e) =>
                       setSelectedIds(
-                        checked
+                        e.target.checked
                           ? selectableOnPage.map((item) => item.file_id)
                           : [],
                       )
@@ -476,9 +463,9 @@ export const KnowledgeFileTable = ({
                     aria-label={`选择 ${row.original.filename}`}
                     checked={selectedIds.includes(row.original.file_id)}
                     disabled={!canSelectFile(row.original, locked)}
-                    onCheckedChange={(checked) =>
+                    onChange={(e) =>
                       setSelectedIds(
-                        checked
+                        e.target.checked
                           ? [...selectedIds, row.original.file_id]
                           : selectedIds.filter(
                               (id) => id !== row.original.file_id,
@@ -636,9 +623,9 @@ export const KnowledgeFileTable = ({
             已选 {selectedIds.length} 项
           </span>
           <Button
-            type="button"
-            variant="ghost"
-            size="sm"
+            htmlType="button"
+            variant="text"
+            size="small"
             disabled={
               locked ||
               !items.some(
@@ -651,9 +638,9 @@ export const KnowledgeFileTable = ({
             批量解析
           </Button>
           <Button
-            type="button"
-            variant="ghost"
-            size="sm"
+            htmlType="button"
+            variant="text"
+            size="small"
             disabled={
               locked ||
               !items.some(
@@ -666,9 +653,9 @@ export const KnowledgeFileTable = ({
             批量入库
           </Button>
           <Button
-            type="button"
-            variant="ghost"
-            size="sm"
+            htmlType="button"
+            variant="text"
+            size="small"
             className="text-danger-6"
             disabled={
               locked ||
@@ -691,9 +678,9 @@ export const KnowledgeFileTable = ({
             aria-label="文件路径"
           >
             <Button
-              type="button"
-              variant="ghost"
-              size="sm"
+              htmlType="button"
+              variant="text"
+              size="small"
               aria-label="回到根目录"
               onClick={() => gotoCrumb(-1)}
             >
@@ -724,29 +711,27 @@ export const KnowledgeFileTable = ({
         <div className="flex items-center gap-2">
           <Select
             value={status}
-            onValueChange={(value) => {
+            onChange={(value) => {
               // 换筛选就是换一份结果集，页码必须归位
               onViewChange({ ...view, status: value, page: 1 });
             }}
-          >
-            <SelectTrigger aria-label="按状态筛选文件" className="w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部状态</SelectItem>
-              {FILE_STATUS_FILTER_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            aria-label="按状态筛选文件"
+            style={{ width: 128 }}
+            virtual={false}
+            options={[
+              { value: 'all', label: '全部状态' },
+              ...FILE_STATUS_FILTER_OPTIONS.map((option) => ({
+                value: option.value,
+                label: option.label,
+              })),
+            ]}
+          />
 
           {onOpenSearch ? (
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
+              htmlType="button"
+              variant="outlined"
+              size="small"
               onClick={onOpenSearch}
             >
               <Search className="size-4" aria-hidden />
@@ -756,9 +741,9 @@ export const KnowledgeFileTable = ({
 
           {readOnly ? null : (
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
+              htmlType="button"
+              variant="outlined"
+              size="small"
               disabled={showingStaleRows}
               onClick={() => setUploadOpen(true)}
             >
@@ -768,9 +753,9 @@ export const KnowledgeFileTable = ({
           )}
 
           <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
+            htmlType="button"
+            variant="outlined"
+            size="small"
             aria-label="刷新文件列表"
             disabled={files.isFetching}
             onClick={handleRefresh}
@@ -796,7 +781,7 @@ export const KnowledgeFileTable = ({
 
       {files.isPending || showingStaleRows ? (
         <p className="flex items-center gap-2 py-2 text-xs text-color-text-3">
-          <Spinner aria-hidden className="size-4" />
+          <Spin aria-hidden className="size-4" />
           正在加载文件…
         </p>
       ) : null}
@@ -809,8 +794,8 @@ export const KnowledgeFileTable = ({
               : '加载文件失败。'}
           </p>
           <Button
-            type="button"
-            variant="outline"
+            htmlType="button"
+            variant="outlined"
             onClick={() => void files.refetch()}
           >
             重试
@@ -891,27 +876,23 @@ export const KnowledgeFileTable = ({
           <span className="flex items-center gap-2">
             <Select
               value={String(pageSize)}
-              onValueChange={(value) => {
+              onChange={(value) => {
                 // 每页条数变了，原来的第 2 页不一定还存在
                 setPageSize(Number(value));
                 onViewChange({ ...view, page: 1 });
               }}
-            >
-              <SelectTrigger aria-label="每页条数" className="w-24">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FILE_PAGE_SIZE_OPTIONS.map((size) => (
-                  <SelectItem key={size} value={String(size)}>
-                    {size} 条/页
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              aria-label="每页条数"
+              style={{ width: 96 }}
+              virtual={false}
+              options={FILE_PAGE_SIZE_OPTIONS.map((size) => ({
+                value: String(size),
+                label: `${size} 条/页`,
+              }))}
+            />
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
+              htmlType="button"
+              variant="outlined"
+              size="small"
               disabled={page <= 1}
               onClick={() =>
                 onViewChange({ ...view, page: Math.max(1, page - 1) })
@@ -920,9 +901,9 @@ export const KnowledgeFileTable = ({
               上一页
             </Button>
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
+              htmlType="button"
+              variant="outlined"
+              size="small"
               disabled={page >= totalPages}
               onClick={() => onViewChange({ ...view, page: page + 1 })}
             >

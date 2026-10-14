@@ -1,12 +1,19 @@
 /**
  * 知识库卡片：列表页的一张卡。
  *
- * 名称、类型、描述、统计摘要与权限提示，右上角菜单提供复制 ID、编辑与删除；副标题展示
- * 文件/分块/大小统计（共享范围在详情页的「共享设置」里改）。
+ * 结构与样式走 `shared/ui` 的 `InfoCard`（对齐参照 `InfoCard.vue`）：32px 图标块 + 名称 +
+ * 副标题（创建时间 · 文件数）+ 两行描述 + 类型/只读标签 + 统计摘要，右上角菜单提供
+ * 复制 ID、编辑与删除。「只读」来自 `can_manage`（当前用户的有效权限），不是连接器能力；
+ * 只读时不给编辑与删除。
  *
- * 「只读」徽标来自 `can_manage`（当前用户的有效权限），不是连接器能力；只读时不给编辑与删除。
+ * 与参照 `DataBaseView.vue` 的显式偏离（见决策记录）：参照的标签行还带共享范围与嵌入模型；
+ * 本仓不放共享标签（共享范围在详情页的「共享设置」里改），统计摘要保留在描述下方。
  */
 import { Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { Button, Dropdown } from 'antd';
+
+import { formatRelativeTime } from '@/shared/lib';
+import { InfoCard, type InfoCardTag } from '@/shared/ui/info-card';
 
 import type { KnowledgeBase } from '../api/knowledge-api';
 import {
@@ -14,14 +21,6 @@ import {
   formatCount,
   getKbTypeLabel,
 } from '../lib/knowledge-view';
-import { Badge } from '@/shared/ui/badge';
-import { Button } from '@/shared/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu';
 
 type KnowledgeCardProps = {
   database: KnowledgeBase;
@@ -39,89 +38,114 @@ export const KnowledgeCard = ({
   onCopyId,
 }: KnowledgeCardProps) => {
   const stats = database.stats;
+  const tags: InfoCardTag[] = [
+    { name: getKbTypeLabel(database.kb_type), color: 'blue' },
+    ...(database.can_manage === false
+      ? [{ name: '只读', color: 'gray' as const }]
+      : []),
+  ];
 
   return (
-    <article
-      className="group/card flex flex-col gap-2 rounded-large border border-color-border-1 bg-color-bg-1 p-4 transition-colors hover:border-color-border-3"
-      data-testid="knowledge-card"
-    >
-      <header className="flex items-start justify-between gap-2">
-        <h3 className="min-w-0 flex-1">
-          <button
-            type="button"
-            className="max-w-full truncate text-left text-sm font-medium text-color-text-1"
-            onClick={() => onOpen(database)}
+    <InfoCard
+      slug={database.kb_id}
+      testId="knowledge-card"
+      title={database.name}
+      subtitle={[
+        // 参照的副标题口径：相对时间 + 文件数（创建时间缺失时只留文件数）
+        database.created_at
+          ? `${formatRelativeTime(database.created_at)}创建`
+          : null,
+        `${formatCount(stats.file_count)} 文件`,
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+      description={database.description || '暂无描述'}
+      tags={tags}
+      onOpen={() => onOpen(database)}
+      action={
+        <Dropdown
+          trigger={['click']}
+          menu={{
+            items: [
+              {
+                key: 'copy-id',
+                label: (
+                  <span className="flex items-center gap-2">
+                    <Copy className="size-4" aria-hidden />
+                    复制 ID
+                  </span>
+                ),
+              },
+              ...(database.can_manage === false
+                ? []
+                : [
+                    {
+                      key: 'edit',
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <Pencil className="size-4" aria-hidden />
+                          编辑
+                        </span>
+                      ),
+                    },
+                    {
+                      key: 'delete',
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <Trash2 className="size-4" aria-hidden />
+                          删除
+                        </span>
+                      ),
+                      danger: true,
+                    },
+                  ]),
+            ],
+            onClick: ({ key }) => {
+              if (key === 'copy-id') onCopyId(database);
+              if (key === 'edit') onEdit(database);
+              if (key === 'delete') onDelete(database);
+            },
+          }}
+        >
+          <Button
+            htmlType="button"
+            type="text"
+            size="small"
+            aria-label={`知识库操作：${database.name}`}
           >
-            {database.name}
-          </button>
-          <span className="mt-1 flex items-center gap-2">
-            <Badge variant="secondary">
-              {getKbTypeLabel(database.kb_type)}
-            </Badge>
-            {database.can_manage === false ? (
-              <Badge variant="outline">只读</Badge>
-            ) : null}
-          </span>
-        </h3>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label={`知识库操作：${database.name}`}
-            >
-              <MoreHorizontal className="size-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => onCopyId(database)}>
-              <Copy className="size-4" aria-hidden />
-              复制 ID
-            </DropdownMenuItem>
-            {database.can_manage === false ? null : (
-              <>
-                <DropdownMenuItem onSelect={() => onEdit(database)}>
-                  <Pencil className="size-4" aria-hidden />
-                  编辑
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => onDelete(database)}>
-                  <Trash2 className="size-4" aria-hidden />
-                  删除
-                </DropdownMenuItem>
-              </>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </header>
-
-      <p className="line-clamp-2 min-h-8 text-xs text-color-text-3">
-        {database.description || '暂无描述'}
-      </p>
-
-      <dl className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-color-text-3">
+            <MoreHorizontal className="size-4" />
+          </Button>
+        </Dropdown>
+      }
+    >
+      <dl className="m-0 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[var(--gray-500)]">
         <div className="flex gap-1">
           <dt>文件</dt>
-          <dd className="text-color-text-2">{formatCount(stats.file_count)}</dd>
+          <dd className="m-0 text-[var(--gray-700)]">
+            {formatCount(stats.file_count)}
+          </dd>
         </div>
         <div className="flex gap-1">
           <dt>分块</dt>
-          <dd className="text-color-text-2">
+          <dd className="m-0 text-[var(--gray-700)]">
             {formatCount(stats.chunk_count)}
           </dd>
         </div>
         <div className="flex gap-1">
           <dt>大小</dt>
-          <dd className="text-color-text-2">{formatBytes(stats.total_size)}</dd>
+          <dd className="m-0 text-[var(--gray-700)]">
+            {formatBytes(stats.total_size)}
+          </dd>
         </div>
         {stats.processing_count ? (
           <div className="flex gap-1">
             <dt>处理中</dt>
-            <dd className="text-color-text-2">{stats.processing_count}</dd>
+            <dd className="m-0 text-[var(--gray-700)]">
+              {stats.processing_count}
+            </dd>
           </div>
         ) : null}
       </dl>
-    </article>
+    </InfoCard>
   );
 };

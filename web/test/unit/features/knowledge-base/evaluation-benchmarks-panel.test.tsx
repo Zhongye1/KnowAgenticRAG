@@ -5,6 +5,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
+
+// antd 词汇由应用装配承载，测试同构挂上
+import { AntdProvider } from '@/app/theme/antd-provider';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -51,7 +54,7 @@ vi.mock('@/shared/ui/notifications', async () => {
 });
 
 vi.mock('@/shared/ui/confirm-dialog', () => ({
-  confirm: (...args: unknown[]) => confirmMock(...args),
+  useConfirm: () => ({ confirm: (...args: unknown[]) => confirmMock(...args) }),
 }));
 
 vi.mock('@/features/knowledge-base/lib/file-download', () => ({
@@ -82,9 +85,11 @@ const renderPanel = (readOnly = false) => {
     defaultOptions: { queries: { retry: false } },
   });
   render(
-    <QueryClientProvider client={queryClient}>
-      <EvaluationBenchmarksPanel kbId="kb-1" readOnly={readOnly} />
-    </QueryClientProvider>,
+    <AntdProvider>
+      <QueryClientProvider client={queryClient}>
+        <EvaluationBenchmarksPanel kbId="kb-1" readOnly={readOnly} />
+      </QueryClientProvider>
+    </AntdProvider>,
   );
 };
 
@@ -192,7 +197,7 @@ describe('评估基准分区', () => {
 
     expect(
       await screen.findByRole('menuitem', { name: /下载/ }),
-    ).toHaveAttribute('data-disabled');
+    ).toHaveAttribute('aria-disabled', 'true');
   });
 
   it('完成态才给下载，且预览弹窗里也有下载入口', async () => {

@@ -1,16 +1,12 @@
 /* 提及输入框与候选弹窗的样式。参照实现 MessageInputComponent.vue 的
    `.user-input.mention-editor` 与 `.mention-popup` 段逐值对齐。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。
+   拖放不在这里：参照把 drag/drop 与 `.dragging-files` 都放在整个 `.input-box` 上，
+   由持有胶囊的 chat-input-form 负责。 */
 
 .wrapper {
   position: relative;
   flex: 1;
-}
-
-/* 拖放高亮：参照 .input-box 的 dragover——整箱主色描边 + 主色浅底 + 虚线叠层 */
-.wrapperDragging {
-  outline: 1px solid var(--main-color);
-  background-color: var(--main-10);
 }
 
 .editor {
@@ -21,7 +17,6 @@
   background: transparent;
   border: none;
   margin: 0;
-  margin-bottom: 0.5rem;
   color: var(--gray-1000);
   font-size: 15px;
   line-height: 1.5;

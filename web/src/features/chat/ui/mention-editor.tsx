@@ -31,7 +31,11 @@ import {
   findActiveMentionQuery,
   replaceRawRange,
 } from '../lib/mention-text';
-import { getMentionIcon, MENTION_ICON_SIZE, MENTION_ICON_STROKE_WIDTH } from './mention-icons';
+import {
+  getMentionIcon,
+  MENTION_ICON_SIZE,
+  MENTION_ICON_STROKE_WIDTH,
+} from './mention-icons';
 import { MentionPopup } from './mention-popup';
 import styles from './mention-editor.module.css';
 
@@ -93,30 +97,34 @@ type MentionEditorProps = {
   searchFiles?: (query: string) => Promise<MentionResourceItem[]>;
   /** 芯片展示名映射；见 `buildMentionDisplayLabels`。 */
   displayLabels?: Record<string, string>;
-  /** 拖入文件时回调；不传时不接受拖放。 */
-  onDropFiles?: (files: File[]) => void;
   ariaLabel?: string;
 };
 
-/** 拖的是不是文件；拖选中的文字不算。 */
-const hasTransferFiles = (transfer: DataTransfer | null): boolean =>
-  Array.from(transfer?.types ?? []).includes('Files');
+/** 命令式接口：供「+」面板从编辑器外部插入一个提及令牌。 */
+export type MentionEditorHandle = {
+  /** 在光标处插入令牌（光标不在编辑器里时追加到末尾）并聚焦。 */
+  insertMentionToken: (item: MentionResourceItem) => void;
+};
 
 type PopupState = { start: number; end: number; query: string };
 
-export const MentionEditor = ({
-  value,
-  onChange,
-  onSubmit,
-  placeholder,
-  disabled = false,
-  configItems = [],
-  searchFiles,
-  displayLabels = {},
-  onDropFiles,
-  ariaLabel,
-}: MentionEditorProps) => {
-  const [dragging, setDragging] = React.useState(false);
+export const MentionEditor = React.forwardRef<
+  MentionEditorHandle,
+  MentionEditorProps
+>(function MentionEditor(
+  {
+    value,
+    onChange,
+    onSubmit,
+    placeholder,
+    disabled = false,
+    configItems = [],
+    searchFiles,
+    displayLabels = {},
+    ariaLabel,
+  },
+  ref,
+) {
   const editorRef = React.useRef<HTMLDivElement>(null);
   const [popup, setPopup] = React.useState<PopupState | null>(null);
   const [activeIndex, setActiveIndex] = React.useState(0);
@@ -229,17 +237,39 @@ export const MentionEditor = ({
 
     const current = serializeEditorContent(editor);
     const inserted = `${item.tokenLabel} `;
-    const next = replaceRawRange(
-      current,
-      popup.start,
-      popup.end,
-      inserted,
-    );
+    const next = replaceRawRange(current, popup.start, popup.end, inserted);
     renderValue(next, popup.start + inserted.length);
     onChange(next);
     setPopup(null);
     editor.focus();
   };
+
+  /**
+   * 「+」面板选资源时插入令牌：没有 `@查询` 可替换，因此落在当前光标处。
+   * 光标不在编辑器里（用户刚点了面板）时追加到末尾，而不是丢弃这次选择。
+   */
+  const insertMentionToken = React.useCallback(
+    (item: MentionResourceItem) => {
+      const editor = editorRef.current;
+      if (!editor || disabled) return;
+
+      const current = serializeEditorContent(editor);
+      const offset = getSelectionRawOffset(editor);
+      const at = offset === null ? current.length : offset;
+      const inserted = `${item.tokenLabel} `;
+      const next = replaceRawRange(current, at, at, inserted);
+
+      renderValue(next, at + inserted.length);
+      onChange(next);
+      setPopup(null);
+      editor.focus();
+    },
+    [disabled, onChange, renderValue],
+  );
+
+  React.useImperativeHandle(ref, () => ({ insertMentionToken }), [
+    insertMentionToken,
+  ]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (disabled) return;
@@ -248,7 +278,11 @@ export const MentionEditor = ({
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
         setActiveIndex((index) =>
-          moveMentionSelection(index, event.key === 'ArrowDown' ? 1 : -1, flat.length),
+          moveMentionSelection(
+            index,
+            event.key === 'ArrowDown' ? 1 : -1,
+            flat.length,
+          ),
         );
         return;
       }
@@ -301,45 +335,8 @@ export const MentionEditor = ({
     setPopup(null);
   };
 
-  const handleDragEnter = (event: React.DragEvent<HTMLDivElement>) => {
-    if (!hasTransferFiles(event.dataTransfer) || !onDropFiles) return;
-    event.preventDefault();
-    setDragging(true);
-  };
-
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    if (!hasTransferFiles(event.dataTransfer)) return;
-    event.preventDefault();
-    // 不接受拖放时给出「禁止」光标，而不是让用户以为放下会生效
-    event.dataTransfer.dropEffect = onDropFiles ? 'copy' : 'none';
-    if (onDropFiles) setDragging(true);
-  };
-
-  const handleDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
-    // 只在真正离开容器时收掉高亮：子元素之间移动也会触发 dragleave
-    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return;
-    setDragging(false);
-  };
-
-  const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    if (!hasTransferFiles(event.dataTransfer)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    setDragging(false);
-    if (!onDropFiles) return;
-
-    const files = Array.from(event.dataTransfer?.files ?? []);
-    if (files.length > 0) onDropFiles(files);
-  };
-
   return (
-    <div
-      className={`${styles.wrapper} ${dragging ? styles.wrapperDragging : ''}`}
-      onDragEnter={handleDragEnter}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-    >
+    <div className={styles.wrapper}>
       <div
         ref={editorRef}
         /* 提及要显示成整体芯片，原生 input/textarea 只能放纯文本，因此这里用
@@ -373,4 +370,4 @@ export const MentionEditor = ({
       ) : null}
     </div>
   );
-};
+});

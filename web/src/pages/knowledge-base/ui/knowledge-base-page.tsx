@@ -33,8 +33,7 @@ import {
   useKnowledgeBase,
 } from '@/features/knowledge-base';
 import { paths } from '@/shared/config';
-import { Badge } from '@/shared/ui/badge';
-import { Button } from '@/shared/ui/button';
+import { Button, Tag } from 'antd';
 import { ContentLayout } from '@/shared/ui/content-layout';
 import { PagePlaceholder } from '@/shared/ui/page-placeholder';
 import { Spinner } from '@/shared/ui/spinner';
@@ -109,9 +108,11 @@ const KnowledgeBaseContent = ({ kbId }: { kbId: string }) => {
             ? database.error.message
             : '加载知识库失败。'}
         </p>
-        <Button type="button" variant="outline" asChild>
-          <Link to={paths.app.extensions.getHref()}>返回知识库列表</Link>
-        </Button>
+        <Link to={paths.app.extensions.getHref()}>
+          <Button htmlType="button" variant="outlined">
+            返回知识库列表
+          </Button>
+        </Link>
       </div>
     );
   }
@@ -144,19 +145,19 @@ const KnowledgeBaseContent = ({ kbId }: { kbId: string }) => {
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div className="flex min-w-0 flex-col gap-1">
               <span className="flex items-center gap-2">
-                <Button type="button" variant="ghost" size="icon-sm" asChild>
-                  <Link
-                    to={paths.app.extensions.getHref()}
-                    aria-label="返回知识库列表"
-                  >
+                <Link
+                  to={paths.app.extensions.getHref()}
+                  aria-label="返回知识库列表"
+                >
+                  <Button htmlType="button" type="text" size="small">
                     <ArrowLeft className="size-4" />
-                  </Link>
-                </Button>
+                  </Button>
+                </Link>
                 <h2 className="truncate text-base font-medium text-color-text-1">
                   {kb.name}
                 </h2>
-                <Badge variant="secondary">{getKbTypeLabel(kb.kb_type)}</Badge>
-                {readOnly ? <Badge variant="outline">只读</Badge> : null}
+                <Tag>{getKbTypeLabel(kb.kb_type)}</Tag>
+                {readOnly ? <Tag>只读</Tag> : null}
                 <span className="text-xs text-color-text-3">
                   {describeShareConfig(kb.share_config).label}
                 </span>
@@ -167,9 +168,9 @@ const KnowledgeBaseContent = ({ kbId }: { kbId: string }) => {
             </div>
             {readOnly ? null : (
               <Button
-                type="button"
-                variant="outline"
-                size="sm"
+                htmlType="button"
+                variant="outlined"
+                size="small"
                 onClick={() => setShareOpen(true)}
               >
                 <Share2 className="size-4" aria-hidden />
@@ -205,8 +206,8 @@ const KnowledgeBaseContent = ({ kbId }: { kbId: string }) => {
           {tabs.map((tab) => (
             <Button
               key={tab.key}
-              type="button"
-              variant="ghost"
+              htmlType="button"
+              type="text"
               className="rounded-b-none"
               aria-current={tab.key === visibleTab ? 'page' : undefined}
               onClick={() => setActiveTab(tab.key)}

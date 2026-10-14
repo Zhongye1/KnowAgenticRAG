@@ -8,7 +8,7 @@
 import type * as React from 'react';
 
 import { cn } from '@/shared/lib';
-import { Button } from '@/shared/ui/button';
+import { Button } from 'antd';
 import { Spinner } from '@/shared/ui/spinner';
 
 export const PanelCard = ({
@@ -99,7 +99,12 @@ export const PanelBody = ({
       >
         <span>{errorText}</span>
         {onRetry ? (
-          <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+          <Button
+            htmlType="button"
+            variant="outlined"
+            size="small"
+            onClick={onRetry}
+          >
             重新加载
           </Button>
         ) : null}

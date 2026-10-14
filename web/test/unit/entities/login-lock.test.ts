@@ -31,9 +31,9 @@ describe('parseRemainingSecondsFromDetail', () => {
     expect(
       parseRemainingSecondsFromDetail('由于多次登录失败，账户已被锁定 300 秒'),
     ).toBe(300);
-    expect(parseRemainingSecondsFromDetail('登录被锁定，请等待 45 秒后再试')).toBe(
-      45,
-    );
+    expect(
+      parseRemainingSecondsFromDetail('登录被锁定，请等待 45 秒后再试'),
+    ).toBe(45);
   });
 
   it('普通凭据错误不产生剩余秒数', () => {

@@ -2,7 +2,9 @@
 
 状态：implemented
 类型：feature
-Owner：web/src/features/chat/ui/antd-button.tsx
+Owner：web/src/app/theme/antd-provider.tsx
+
+补充（2026-10-14）：本记录原先的 Owner 是决策 1 里的过渡适配层 `web/src/features/chat/ui/antd-button.tsx`，它已在 B6 收口时按该条约定删除（调用方改用 antd 词汇）。本批仍然有效的主张——按钮两字间距关闭与主题 token——现在由 `web/src/app/theme/antd-provider.tsx` 承载，Owner 随之更新。
 
 事实分工：本批新增 `web/src/features/chat/ui/antd-button.tsx`（shared/ui 的按钮词汇到 antd 的映射）、`web/src/features/chat/ui/antd-dropdown.tsx`（描述性 items 到 antd menu 的组装）及两者的小模块样式；十个 Button 消费方与四个 DropdownMenu 消费方换入；`app/theme/antd-provider.tsx` 关掉按钮两字间距。
 

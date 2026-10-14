@@ -43,15 +43,23 @@ export function filterMentionItems(
   if (!needle) return items;
 
   return items.filter((item) =>
-    [item.label, item.value, item.description, item.resourceId, item.tokenLabel, item.type]
-      .some((field) => String(field ?? '').toLowerCase().includes(needle)),
+    [
+      item.label,
+      item.value,
+      item.description,
+      item.resourceId,
+      item.tokenLabel,
+      item.type,
+    ].some((field) =>
+      String(field ?? '')
+        .toLowerCase()
+        .includes(needle),
+    ),
   );
 }
 
 /** 按类型分组；未登记的类型被丢掉。 */
-export function groupMentionItems(
-  items: MentionResourceItem[],
-): MentionGroups {
+export function groupMentionItems(items: MentionResourceItem[]): MentionGroups {
   const groups = EMPTY_GROUPS();
 
   for (const item of items) {
@@ -90,9 +98,7 @@ export function buildMentionGroups(
   localFiles: MentionResourceItem[],
 ): MentionGroups {
   const groups = groupMentionItems(filterMentionItems(configItems, query));
-  groups.files = query.trim()
-    ? filterMentionItems(localFiles, query)
-    : [];
+  groups.files = query.trim() ? filterMentionItems(localFiles, query) : [];
 
   return groups;
 }
@@ -147,9 +153,7 @@ export type FlatMentionItem = {
  * 键盘导航用的是「整体第几项」而不是「第几组第几项」：用户按上下键时不会意识到分组
  * 边界，所以活动下标必须在同一个序列里连续。
  */
-export function flattenMentionGroups(
-  groups: MentionGroups,
-): FlatMentionItem[] {
+export function flattenMentionGroups(groups: MentionGroups): FlatMentionItem[] {
   const flat: FlatMentionItem[] = [];
 
   for (const { key } of MENTION_GROUP_TITLES) {

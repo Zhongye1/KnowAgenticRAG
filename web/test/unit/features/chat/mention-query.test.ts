@@ -84,7 +84,9 @@ describe('buildMentionGroups', () => {
 
   it('本地文件只在有查询词时参与', () => {
     expect(buildMentionGroups('', config, files).files).toEqual([]);
-    expect(buildMentionGroups('', config, files).knowledgeBases).toHaveLength(1);
+    expect(buildMentionGroups('', config, files).knowledgeBases).toHaveLength(
+      1,
+    );
     expect(buildMentionGroups('', config, files).skills).toHaveLength(1);
   });
 

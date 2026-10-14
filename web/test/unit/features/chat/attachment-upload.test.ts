@@ -33,9 +33,14 @@ const item = (patch: Partial<AttachmentItem> = {}): AttachmentItem => ({
 
 describe('validateAttachmentFile', () => {
   it('恰好等于上限时通过，多一个字节就拒绝', () => {
-    expect(validateAttachmentFile({ name: 'a', size: MAX_ATTACHMENT_SIZE_BYTES })).toBeNull();
     expect(
-      validateAttachmentFile({ name: 'a', size: MAX_ATTACHMENT_SIZE_BYTES + 1 }),
+      validateAttachmentFile({ name: 'a', size: MAX_ATTACHMENT_SIZE_BYTES }),
+    ).toBeNull();
+    expect(
+      validateAttachmentFile({
+        name: 'a',
+        size: MAX_ATTACHMENT_SIZE_BYTES + 1,
+      }),
     ).toContain('5 MB');
   });
 
@@ -48,27 +53,41 @@ describe('getDefaultParseMethod', () => {
   it('配置值在可选项里时用它，优先于 rapid_ocr 兜底', () => {
     // 可选项里同时有配置值与 rapid_ocr 时，取配置值
     expect(
-      getDefaultParseMethod(['disable', 'paddle_ocr', DEFAULT_OCR_ENGINE], 'paddle_ocr'),
+      getDefaultParseMethod(
+        ['disable', 'paddle_ocr', DEFAULT_OCR_ENGINE],
+        'paddle_ocr',
+      ),
     ).toBe('paddle_ocr');
-    expect(getDefaultParseMethod(['disable', 'paddle_ocr'], 'paddle_ocr')).toBe('paddle_ocr');
-  });
-
-  it('配置成 disable 且可选项里有它时取 disable', () => {
-    expect(getDefaultParseMethod(['disable', 'paddle_ocr'], 'disable')).toBe('disable');
-  });
-
-  it('配置值不在可选项里时回退到 rapid_ocr', () => {
-    expect(getDefaultParseMethod(['disable', 'paddle_ocr', DEFAULT_OCR_ENGINE], 'nope')).toBe(
-      DEFAULT_OCR_ENGINE,
+    expect(getDefaultParseMethod(['disable', 'paddle_ocr'], 'paddle_ocr')).toBe(
+      'paddle_ocr',
     );
   });
 
+  it('配置成 disable 且可选项里有它时取 disable', () => {
+    expect(getDefaultParseMethod(['disable', 'paddle_ocr'], 'disable')).toBe(
+      'disable',
+    );
+  });
+
+  it('配置值不在可选项里时回退到 rapid_ocr', () => {
+    expect(
+      getDefaultParseMethod(
+        ['disable', 'paddle_ocr', DEFAULT_OCR_ENGINE],
+        'nope',
+      ),
+    ).toBe(DEFAULT_OCR_ENGINE);
+  });
+
   it('没有 rapid_ocr 时取第一个非 disable 项', () => {
-    expect(getDefaultParseMethod(['disable', 'paddle_ocr', 'other'], 'nope')).toBe('paddle_ocr');
+    expect(
+      getDefaultParseMethod(['disable', 'paddle_ocr', 'other'], 'nope'),
+    ).toBe('paddle_ocr');
   });
 
   it('图片那种不带 disable 的列表也能取到值', () => {
-    expect(getDefaultParseMethod([DEFAULT_OCR_ENGINE], null)).toBe(DEFAULT_OCR_ENGINE);
+    expect(getDefaultParseMethod([DEFAULT_OCR_ENGINE], null)).toBe(
+      DEFAULT_OCR_ENGINE,
+    );
   });
 
   it('空列表或形状不符时返回 null', () => {
@@ -94,12 +113,17 @@ describe('条目状态判定', () => {
       item({ localId: 'd', status: 'parsing' }),
     ];
 
-    expect(confirmableItems(items).map((entry) => entry.localId)).toEqual(['a', 'b']);
+    expect(confirmableItems(items).map((entry) => entry.localId)).toEqual([
+      'a',
+      'b',
+    ]);
   });
 
   it('有在途条目或没有可确认条目时不能确认', () => {
     expect(canConfirm([item({ status: 'uploaded' })])).toBe(true);
-    expect(canConfirm([item({ status: 'uploaded' }), item({ status: 'uploading' })])).toBe(false);
+    expect(
+      canConfirm([item({ status: 'uploaded' }), item({ status: 'uploading' })]),
+    ).toBe(false);
     expect(canConfirm([item({ status: 'error' })])).toBe(false);
     expect(canConfirm([])).toBe(false);
     expect(hasBusyItems([])).toBe(false);
@@ -182,9 +206,30 @@ describe('pendingAttachmentFileIds', () => {
   it('只取还没被请求用掉的附件', () => {
     expect(
       pendingAttachmentFileIds([
-        { fileId: 'f-1', fileName: '', fileType: '', fileSize: 0, status: '', requestId: null },
-        { fileId: 'f-2', fileName: '', fileType: '', fileSize: 0, status: '', requestId: 'req-1' },
-        { fileId: 'f-3', fileName: '', fileType: '', fileSize: 0, status: '', requestId: null },
+        {
+          fileId: 'f-1',
+          fileName: '',
+          fileType: '',
+          fileSize: 0,
+          status: '',
+          requestId: null,
+        },
+        {
+          fileId: 'f-2',
+          fileName: '',
+          fileType: '',
+          fileSize: 0,
+          status: '',
+          requestId: 'req-1',
+        },
+        {
+          fileId: 'f-3',
+          fileName: '',
+          fileType: '',
+          fileSize: 0,
+          status: '',
+          requestId: null,
+        },
       ]),
     ).toEqual(['f-1', 'f-3']);
   });
@@ -193,7 +238,14 @@ describe('pendingAttachmentFileIds', () => {
     expect(pendingAttachmentFileIds([])).toEqual([]);
     expect(
       pendingAttachmentFileIds([
-        { fileId: '', fileName: '', fileType: '', fileSize: 0, status: '', requestId: null },
+        {
+          fileId: '',
+          fileName: '',
+          fileType: '',
+          fileSize: 0,
+          status: '',
+          requestId: null,
+        },
       ]),
     ).toEqual([]);
   });

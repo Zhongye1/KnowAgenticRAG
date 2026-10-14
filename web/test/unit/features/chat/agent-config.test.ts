@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { applyConfigDefaults, readAgentContext } from '@/features/chat/lib/agent-config';
+import {
+  applyConfigDefaults,
+  readAgentContext,
+} from '@/features/chat/lib/agent-config';
 
 describe('applyConfigDefaults', () => {
   it('没存过的配置项补上 schema 默认值', () => {
@@ -13,7 +16,10 @@ describe('applyConfigDefaults', () => {
   });
 
   it('已存下来的值不被默认值覆盖', () => {
-    const config = applyConfigDefaults({ model: { default: 'qwen-max' } }, { model: 'gpt-4o' });
+    const config = applyConfigDefaults(
+      { model: { default: 'qwen-max' } },
+      { model: 'gpt-4o' },
+    );
 
     expect(config.model).toBe('gpt-4o');
   });
@@ -45,7 +51,10 @@ describe('applyConfigDefaults', () => {
 
   it('返回新对象，不改入参', () => {
     const agentConfig = { model: 'gpt-4o' };
-    const config = applyConfigDefaults({ skills: { default: null } }, agentConfig);
+    const config = applyConfigDefaults(
+      { skills: { default: null } },
+      agentConfig,
+    );
 
     expect(config).not.toBe(agentConfig);
     expect(agentConfig).toEqual({ model: 'gpt-4o' });
@@ -60,11 +69,15 @@ describe('applyConfigDefaults', () => {
 
 describe('readAgentContext', () => {
   it('取 config_json.context', () => {
-    expect(readAgentContext({ config_json: { context: { model: 'a' } } })).toEqual({ model: 'a' });
+    expect(
+      readAgentContext({ config_json: { context: { model: 'a' } } }),
+    ).toEqual({ model: 'a' });
   });
 
   it('没有 context 时退回 config_json 本身', () => {
-    expect(readAgentContext({ config_json: { model: 'a' } })).toEqual({ model: 'a' });
+    expect(readAgentContext({ config_json: { model: 'a' } })).toEqual({
+      model: 'a',
+    });
   });
 
   it('形状不符时返回空对象', () => {

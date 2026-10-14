@@ -20,7 +20,7 @@
 
       body {
         margin: 0;
-        font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
         background: var(--bg);
         color: var(--text);
         line-height: 1.75;
@@ -87,10 +87,13 @@
     <main class="container">
       <article class="card">
         <h1>用户协议</h1>
-        <div class="meta">适用组织：{{ORG_NAME}} | 生效日期：{{EFFECTIVE_DATE}}</div>
+        <div class="meta">
+          适用组织：{{ORG_NAME}} | 生效日期：{{EFFECTIVE_DATE}}
+        </div>
 
         <p>
-          欢迎使用 {{PRODUCT_NAME}}。在使用本平台提供的服务前，请仔细阅读并充分理解本协议。
+          欢迎使用
+          {{PRODUCT_NAME}}。在使用本平台提供的服务前，请仔细阅读并充分理解本协议。
           您在登录、注册或继续使用本平台服务时，即视为已阅读并同意本协议全部内容。
         </p>
 
@@ -129,12 +132,12 @@
         </p>
 
         <h2>七、联系我们</h2>
-        <p>
-          如您对本协议有任何疑问，请通过平台公布的联系方式与我们联系。
-        </p>
+        <p>如您对本协议有任何疑问，请通过平台公布的联系方式与我们联系。</p>
 
         <div class="notice">
-          提示：本文件为模板协议，请在上线前替换 {{ORG_NAME}}、{{PRODUCT_NAME}}、{{EFFECTIVE_DATE}} 等占位内容，并由法务审核。
+          提示：本文件为模板协议，请在上线前替换
+          {{ORG_NAME}}、{{PRODUCT_NAME}}、{{EFFECTIVE_DATE}}
+          等占位内容，并由法务审核。
         </div>
       </article>
     </main>

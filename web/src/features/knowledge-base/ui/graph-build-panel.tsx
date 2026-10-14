@@ -7,6 +7,8 @@
  * 只在「文档型知识库 + 可管理 + 用户打开了面板」时由调用方渲染，因此没有只读分支。
  */
 import { Database, RefreshCw } from 'lucide-react';
+import { Button } from 'antd';
+import { Progress } from '@/shared/ui/progress';
 
 import type { GraphBuildStatus } from '../api/graph-api';
 import {
@@ -17,8 +19,6 @@ import {
   isGraphBuildRunning,
   type GraphBuildAction,
 } from '../lib/graph-build';
-import { Button } from '@/shared/ui/button';
-import { Progress } from '@/shared/ui/progress';
 
 export type GraphBuildPanelProps = {
   status?: GraphBuildStatus | null;
@@ -71,9 +71,9 @@ export const GraphBuildPanel = ({
       <header className="flex items-center justify-between border-b border-color-border-1 px-3 py-2">
         <span className="text-sm font-medium text-color-text-1">索引管理</span>
         <Button
-          type="button"
-          variant="ghost"
-          size="icon"
+          htmlType="button"
+          variant="text"
+          size="small"
           aria-label="刷新图谱构建状态"
           className="size-6"
           disabled={loading}
@@ -126,7 +126,7 @@ export const GraphBuildPanel = ({
 
         <div className="flex flex-col gap-1">
           <Button
-            type="button"
+            htmlType="button"
             className="w-full"
             disabled={action.disabled || busy || action.kind === 'building'}
             onClick={handlers[ACTION_HANDLERS[action.kind]]}
@@ -137,18 +137,18 @@ export const GraphBuildPanel = ({
           {canManageGraphBuildConfig(status) ? (
             <div className="flex justify-end gap-1">
               <Button
-                type="button"
-                variant="ghost"
-                size="sm"
+                htmlType="button"
+                variant="text"
+                size="small"
                 disabled={busy}
                 onClick={onConfigure}
               >
                 修改配置
               </Button>
               <Button
-                type="button"
-                variant="ghost"
-                size="sm"
+                htmlType="button"
+                variant="text"
+                size="small"
                 className="text-danger-6"
                 disabled={busy}
                 onClick={onReset}

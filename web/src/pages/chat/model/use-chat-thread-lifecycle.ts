@@ -20,8 +20,15 @@ export type ChatThreadLifecycleOptions = {
 };
 
 export const useChatThreadLifecycle = (options: ChatThreadLifecycleOptions) => {
-  const { threadId, agentSlug, chat, ensureAgentSlug, markThreadViewed, scrollToBottomStaticForce, notify } =
-    options;
+  const {
+    threadId,
+    agentSlug,
+    chat,
+    ensureAgentSlug,
+    markThreadViewed,
+    scrollToBottomStaticForce,
+    notify,
+  } = options;
 
   React.useEffect(() => {
     // 挂载时确保默认智能体：会话列表 store 与对话页必须指向同一个

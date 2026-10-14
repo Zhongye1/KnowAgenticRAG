@@ -61,7 +61,11 @@ export const useCacheThreadAttachments = () => {
 const errorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message ? error.message : fallback;
 
-const blankItem = (localId: string, file: File, error: string | null): AttachmentItem => ({
+const blankItem = (
+  localId: string,
+  file: File,
+  error: string | null,
+): AttachmentItem => ({
   localId,
   fileName: file.name,
   fileSize: file.size,
@@ -92,10 +96,12 @@ export type AttachmentUpload = {
   confirm: (threadId: string) => Promise<ThreadAttachment[]>;
 };
 
-export const useAttachmentUpload = (options: {
-  /** 系统配置里的默认 OCR 引擎；用来决定解析方式的默认值。 */
-  configuredEngine?: unknown;
-} = {}): AttachmentUpload => {
+export const useAttachmentUpload = (
+  options: {
+    /** 系统配置里的默认 OCR 引擎；用来决定解析方式的默认值。 */
+    configuredEngine?: unknown;
+  } = {},
+): AttachmentUpload => {
   const [items, setItems] = React.useState<AttachmentItem[]>([]);
   const seedRef = React.useRef(0);
   const configuredEngine = options.configuredEngine;
@@ -122,7 +128,9 @@ export const useAttachmentUpload = (options: {
       // 先把条目全部列出来：用户选了三个文件就该立刻看到三条，而不是等第一条传完才出现第二条
       setItems((current) => [
         ...current,
-        ...entries.map((entry) => blankItem(entry.localId, entry.file, entry.invalid)),
+        ...entries.map((entry) =>
+          blankItem(entry.localId, entry.file, entry.invalid),
+        ),
       ]);
 
       await Promise.all(
@@ -130,8 +138,15 @@ export const useAttachmentUpload = (options: {
           .filter((entry) => !entry.invalid)
           .map(async (entry) => {
             try {
-              const uploaded = await uploadTmpAttachment(entry.file, configuredEngine);
-              patch(entry.localId, { ...uploaded, status: 'uploaded', error: null });
+              const uploaded = await uploadTmpAttachment(
+                entry.file,
+                configuredEngine,
+              );
+              patch(entry.localId, {
+                ...uploaded,
+                status: 'uploaded',
+                error: null,
+              });
             } catch (error) {
               patch(entry.localId, {
                 status: 'error',
@@ -171,21 +186,24 @@ export const useAttachmentUpload = (options: {
     [patch],
   );
 
-  const setParseMethod = React.useCallback((localId: string, method: string) => {
-    setItems((current) =>
-      current.map((item) =>
-        item.localId === localId
-          ? {
-              ...item,
-              selectedParseMethod: method,
-              parsedObjectName: null,
-              parseError: null,
-              status: item.status === 'parsed' ? 'uploaded' : item.status,
-            }
-          : item,
-      ),
-    );
-  }, []);
+  const setParseMethod = React.useCallback(
+    (localId: string, method: string) => {
+      setItems((current) =>
+        current.map((item) =>
+          item.localId === localId
+            ? {
+                ...item,
+                selectedParseMethod: method,
+                parsedObjectName: null,
+                parseError: null,
+                status: item.status === 'parsed' ? 'uploaded' : item.status,
+              }
+            : item,
+        ),
+      );
+    },
+    [],
+  );
 
   const remove = React.useCallback((localId: string) => {
     setItems((current) => current.filter((item) => item.localId !== localId));

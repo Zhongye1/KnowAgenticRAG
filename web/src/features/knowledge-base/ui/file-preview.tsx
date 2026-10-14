@@ -5,13 +5,13 @@
  * 不支持时给出后端的原因。图片与 PDF 用 objectURL，组件卸载或切换文件时释放。
  */
 import * as React from 'react';
+import { Spin } from 'antd';
 
 import type { KnowledgeFileItem } from '../api/knowledge-api';
 import { getCodeLanguageByPath } from '../lib/file-preview';
 import { useFilePreview } from '../model/knowledge-queries';
 import { Empty } from '@/shared/ui/empty';
 import { Markdown } from '@/shared/ui/markdown';
-import { Spinner } from '@/shared/ui/spinner';
 import { useIsDarkMode } from '@/shared/lib';
 import { renderCodeBlock } from '@/shared/markdown';
 import { PdfPreview } from './pdf-preview';
@@ -85,7 +85,7 @@ export const FilePreview = ({ kbId, file }: FilePreviewProps) => {
   if (preview.isPending) {
     return (
       <p className="flex items-center gap-2 text-sm text-color-text-3">
-        <Spinner aria-hidden className="size-4" />
+        <Spin aria-hidden className="size-4" />
         正在加载文件…
       </p>
     );

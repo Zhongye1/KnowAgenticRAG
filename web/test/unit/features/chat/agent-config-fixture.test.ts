@@ -3,7 +3,10 @@ import { join } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { applyConfigDefaults, readAgentContext } from '@/features/chat/lib/agent-config';
+import {
+  applyConfigDefaults,
+  readAgentContext,
+} from '@/features/chat/lib/agent-config';
 import { buildMentionConfig } from '@/features/chat/lib/mention-config';
 import { buildMentionResourceItems } from '@/features/chat/lib/mention-resources';
 
@@ -81,7 +84,9 @@ describe('真实后端响应的提及候选', () => {
 
     expect(selected.skills.map((entry) => entry.slug)).toEqual(['image-gen']);
     expect(selected.skills[0]).toMatchObject({ name: 'image-gen' });
-    expect(selected.subagents.map((entry) => entry.id)).toEqual(['general-purpose']);
+    expect(selected.subagents.map((entry) => entry.id)).toEqual([
+      'general-purpose',
+    ]);
   });
 
   it('配置里没写过的种类补默认值后仍是「默认全部」', () => {

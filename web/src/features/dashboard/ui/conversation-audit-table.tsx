@@ -21,6 +21,7 @@ import {
   hasActiveConversationFilters,
   type ConversationFilters,
 } from '../lib/conversation-query';
+import { Button, Input, Spin } from 'antd';
 import {
   formatFullDateTime,
   truncateIdentifier,
@@ -30,17 +31,8 @@ import {
   useConversationOptions,
 } from '../model/dashboard-queries';
 import { PanelBody, PanelCard } from './panel-card';
-import { Button } from '@/shared/ui/button';
-import { Empty } from '@/shared/ui/empty';
-import { Input } from '@/shared/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/ui/select';
-import { Spinner } from '@/shared/ui/spinner';
+import { Empty as SharedEmpty } from '@/shared/ui/empty';
+import { Select } from 'antd';
 
 /** 状态标签的配色：与设计规范的状态色表一致。 */
 const STATUS_CLASSES: Record<string, string> = {
@@ -135,95 +127,76 @@ export const ConversationAuditTable = ({
           </div>
 
           <Select
+            virtual={false}
             value={filters.status}
-            onValueChange={(value) =>
+            aria-label="按会话状态筛选"
+            style={{ width: 168 }}
+            size="small"
+            options={CONVERSATION_STATUS_OPTIONS.map((option) => ({
+              value: option.value,
+              label: option.label,
+            }))}
+            onChange={(value) =>
               applyFilterChange({
                 status: value as ConversationFilters['status'],
               })
             }
-          >
-            <SelectTrigger
-              aria-label="按会话状态筛选"
-              className="h-8 w-[168px] text-xs"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {CONVERSATION_STATUS_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
 
           <Select
+            virtual={false}
             value={filters.agentId ?? 'all'}
-            onValueChange={(value) =>
+            aria-label="按智能体筛选"
+            style={{ width: 170 }}
+            size="small"
+            options={[
+              { value: 'all', label: '全部智能体' },
+              ...(options.data?.agents ?? []).map((agent) => ({
+                value: agent.agent_id ?? '',
+                label: `${agent.agent_name || agent.agent_id}${agent.is_deleted ? '（已删除）' : ''}`,
+              })),
+            ]}
+            onChange={(value) =>
               applyFilterChange({
                 agentId: value === 'all' ? undefined : value,
               })
             }
-          >
-            <SelectTrigger
-              aria-label="按智能体筛选"
-              className="h-8 w-[170px] text-xs"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部智能体</SelectItem>
-              {(options.data?.agents ?? []).map((agent) => (
-                <SelectItem
-                  key={agent.agent_id ?? ''}
-                  value={agent.agent_id ?? ''}
-                >
-                  {agent.agent_name || agent.agent_id}
-                  {agent.is_deleted ? '（已删除）' : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
 
           <Select
+            virtual={false}
             value={filters.uid ?? 'all'}
-            onValueChange={(value) =>
+            aria-label="按用户筛选"
+            style={{ width: 160 }}
+            size="small"
+            options={[
+              { value: 'all', label: '全部用户' },
+              ...(options.data?.users ?? []).map((user) => ({
+                value: user.uid ?? '',
+                label: `${user.username || user.uid}${user.is_deleted ? '（已注销）' : ''}`,
+              })),
+            ]}
+            onChange={(value) =>
               applyFilterChange({ uid: value === 'all' ? undefined : value })
             }
-          >
-            <SelectTrigger
-              aria-label="按用户筛选"
-              className="h-8 w-[160px] text-xs"
-            >
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部用户</SelectItem>
-              {(options.data?.users ?? []).map((user) => (
-                <SelectItem key={user.uid ?? ''} value={user.uid ?? ''}>
-                  {user.username || user.uid}
-                  {user.is_deleted ? '（已注销）' : ''}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          />
 
           <Button
-            type="button"
-            variant="outline"
-            size="sm"
+            htmlType="button"
+            variant="outlined"
+            size="small"
             disabled={!hasActiveConversationFilters(applied)}
             onClick={resetFilters}
           >
             重置
           </Button>
-          <Button type="button" size="sm" onClick={submitSearch}>
+          <Button htmlType="button" size="small" onClick={submitSearch}>
             查询
           </Button>
           <Button
-            type="button"
-            variant="outline"
-            size="sm"
+            htmlType="button"
+            variant="outlined"
+            size="small"
             disabled={list.isFetching}
             onClick={() => void list.refetch()}
           >
@@ -242,12 +215,12 @@ export const ConversationAuditTable = ({
         testId="conversation-audit"
       >
         {!hasRows ? (
-          <Empty description="没有符合当前条件的会话，可调整关键词或状态后重试。" />
+          <SharedEmpty description="没有符合当前条件的会话，可调整关键词或状态后重试。" />
         ) : (
           <div className="relative overflow-x-auto">
             {stale ? (
               <div className="absolute inset-x-0 top-0 z-10 flex justify-center bg-color-bg-1/70 py-1">
-                <Spinner size="sm" className="text-color-text-3" />
+                <Spin size="small" className="text-color-text-3" />
               </div>
             ) : null}
             <table className="w-full min-w-[900px] text-left text-xs">
@@ -343,9 +316,9 @@ export const ConversationAuditTable = ({
                     </td>
                     <td className="py-2">
                       <Button
-                        type="button"
-                        variant="link"
-                        size="xs"
+                        htmlType="button"
+                        type="link"
+                        size="small"
                         disabled={stale}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -371,39 +344,33 @@ export const ConversationAuditTable = ({
           </span>
           <div className="flex items-center gap-2">
             <Select
+              virtual={false}
               value={String(pageSize)}
-              onValueChange={(value) => {
+              aria-label="每页条数"
+              style={{ width: 104 }}
+              size="small"
+              options={CONVERSATION_PAGE_SIZES.map((size) => ({
+                value: String(size),
+                label: `${size} 条/页`,
+              }))}
+              onChange={(value) => {
                 setPageSize(Number(value));
                 setPage(FILTER_CHANGE_PAGE);
               }}
-            >
-              <SelectTrigger
-                aria-label="每页条数"
-                className="h-8 w-[104px] text-xs"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CONVERSATION_PAGE_SIZES.map((size) => (
-                  <SelectItem key={size} value={String(size)}>
-                    {size} 条/页
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            />
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
+              htmlType="button"
+              variant="outlined"
+              size="small"
               disabled={page <= 1 || stale}
               onClick={() => setPage((current) => Math.max(1, current - 1))}
             >
               上一页
             </Button>
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
+              htmlType="button"
+              variant="outlined"
+              size="small"
               disabled={page >= pageCount || stale}
               onClick={() => setPage((current) => current + 1)}
             >

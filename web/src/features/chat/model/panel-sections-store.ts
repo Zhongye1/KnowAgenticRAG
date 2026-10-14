@@ -10,7 +10,6 @@ import * as React from 'react';
 import {
   FILE_TREE_SECTION,
   MESSAGE_DEBUG_SECTION,
-  STATE_SECTION,
   closeSection,
   normalizeSections,
   upsertSection,
@@ -18,6 +17,7 @@ import {
 } from '../lib/panel-sections';
 import {
   DEFAULT_PANEL_RATIO,
+  panelWidthPxFromRatio,
   panelRatioFromWidth,
   panelWidthFromRatio,
   resizePanelWidth,
@@ -58,9 +58,27 @@ export type AgentPanelSections = {
   /** 面板行的容器 ref；拖宽换算要用它的实际宽度。 */
   rowRef: React.RefObject<HTMLDivElement | null>;
   /** 关闭一个分区；返回新的分区列表与激活键。 */
-  closeSection: (key: string) => { sections: PanelSection[]; activeKey: string };
-  /** 点击调试入口 / 用量环：未开面板时先带上调试分区，再翻转开关。 */
+  closeSection: (key: string) => {
+    sections: PanelSection[];
+    activeKey: string;
+  };
+  /** 点击调试入口：未开面板时先带上调试分区，再翻转开关。 */
   toggleWithDebugSection: () => void;
+  /**
+   * 状态面板是否打开。
+   *
+   * 它与文件面板是**两个独立表面**（参照 `.side-panel--state` 与 `.side-panel--file`）：
+   * 文件面板是贴着右缘的工作区，状态面板是「智能体现在在干什么」的窄列或浮卡。
+   */
+  stateOpen: boolean;
+  setStateOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  /**
+   * 状态面板的呈现方式。
+   *
+   * 参照只在「文件面板关着且容器放得下 340px 面板 + 800px 聊天列」时停靠，
+   * 其余情况浮动成卡片——所以两个面板不会同时占掉横向空间。
+   */
+  stateMode: 'docked' | 'floating';
   /**
    * 子智能体分区随 `agent_state.subagent_runs` 同步：有运行态就有分区，
    * 运行态消失（清空）时只清掉 subagent 分区，不动文件与调试分区。
@@ -70,11 +88,11 @@ export type AgentPanelSections = {
 
 export const useAgentPanelSections = (): AgentPanelSections => {
   const [open, setOpen] = React.useState(false);
+  // 文件面板初始只有文件树；预览、子智能体、调试分区按需追加（参照 agentPanelSections）
   const [sections, setSections] = React.useState<PanelSection[]>(() => [
     FILE_TREE_SECTION,
-    STATE_SECTION,
-    MESSAGE_DEBUG_SECTION,
   ]);
+  const [stateOpen, setStateOpen] = React.useState(false);
   const [activeSectionKey, setActiveSectionKey] = React.useState(
     FILE_TREE_SECTION.key,
   );
@@ -82,10 +100,17 @@ export const useAgentPanelSections = (): AgentPanelSections => {
   // 持久宽度是容器比例（参照 panelRatio），拖拽期间临时落成像素
   const [panelRatio, setPanelRatio] = React.useState(DEFAULT_PANEL_RATIO);
   const [dragWidth, setDragWidth] = React.useState<number | null>(null);
+  // 最近一次真正应用的拖拽宽度。收尾回写比例要读它而不是 dragWidth：
+  // 收尾与最后一次 onResize 常落在同一批里，读 state 会拿到上一帧的值，
+  // 比例因此比最后一帧差一步，松手后面板还会自己挪一段（页头按钮随之落后于分栏虚线）
+  const dragWidthRef = React.useRef<number | null>(null);
   // 内容行实际宽度；ResizeObserver 同步，展示换算用
   const [containerWidth, setContainerWidth] = React.useState(0);
   // 拖拽锚点：`resizePanelWidth` 会在碰到边界时把它们换成新的
   const resizeRef = React.useRef({ startX: 0, startWidth: 0 });
+  // 面板当前的渲染宽度（px），拖拽第一次移动要拿它当锚点。
+  // 不能用内容行的宽度：那会把第一次移动算成「从内容行宽度起算」，直接顶到最大宽度。
+  const currentWidthRef = React.useRef(0);
   const rowRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -105,8 +130,25 @@ export const useAgentPanelSections = (): AgentPanelSections => {
       ? dragWidth
       : panelWidthFromRatio(panelRatio, containerWidth);
 
+  React.useEffect(() => {
+    currentWidthRef.current =
+      dragWidth ?? panelWidthPxFromRatio(panelRatio, containerWidth);
+  }, [dragWidth, panelRatio, containerWidth]);
+
+  /** 停靠所需的横向空间；与参照同值。 */
+  const STATE_PANEL_DOCK_WIDTH = 340;
+  const STATE_PANEL_MIN_CHAT_WIDTH = 800;
+
+  const stateMode: 'docked' | 'floating' =
+    !open &&
+    containerWidth - STATE_PANEL_DOCK_WIDTH > STATE_PANEL_MIN_CHAT_WIDTH
+      ? 'docked'
+      : 'floating';
+
   const openSection = React.useCallback((section: PanelSection) => {
-    setSections((current) => upsertSection(normalizeSections(current), section));
+    setSections((current) =>
+      upsertSection(normalizeSections(current), section),
+    );
     setActiveSectionKey(section.key);
   }, []);
 
@@ -134,11 +176,13 @@ export const useAgentPanelSections = (): AgentPanelSections => {
 
   const onResize = React.useCallback((clientX: number) => {
     const container = rowRef.current?.clientWidth ?? 0;
-    // 拖拽锚点第一次移动时从当前实际宽度起算（参照 handleResizingChange 的起始锚定）
+    // 拖拽锚点第一次移动时从**面板当前宽度**起算（参照 handleResizingChange 的起始锚定）。
+    // 量不到宽度（容器还没布局）时不改宽度：拿 0 当锚点会把面板压没
     const anchor =
       resizeRef.current.startWidth === 0
-        ? { startX: clientX, startWidth: rowRef.current?.offsetWidth ?? 0 }
+        ? { startX: clientX, startWidth: currentWidthRef.current }
         : resizeRef.current;
+    if (!anchor.startWidth) return;
     const next = resizePanelWidth({
       clientX,
       startX: anchor.startX,
@@ -146,19 +190,22 @@ export const useAgentPanelSections = (): AgentPanelSections => {
       containerWidth: container,
     });
     resizeRef.current = { startX: next.startX, startWidth: next.startWidth };
+    dragWidthRef.current = next.width;
     setDragWidth(next.width);
   }, []);
 
   /** 拖拽结束：最终像素回写成持久比例，锚点清零（参照 handleResizingChange 收尾）。 */
   const endResize = React.useCallback(() => {
+    const finalWidth = dragWidthRef.current;
     setPanelRatio((current) => {
       const container = rowRef.current?.clientWidth ?? 0;
-      if (!container || dragWidth === null) return current;
-      return panelRatioFromWidth(dragWidth, container);
+      if (!container || finalWidth === null) return current;
+      return panelRatioFromWidth(finalWidth, container);
     });
+    dragWidthRef.current = null;
     setDragWidth(null);
     resizeRef.current = { startX: 0, startWidth: 0 };
-  }, [dragWidth]);
+  }, []);
 
   const syncSubagentRuns = React.useCallback((agentState: unknown) => {
     const runs = readSubagentRuns(agentState);
@@ -192,6 +239,9 @@ export const useAgentPanelSections = (): AgentPanelSections => {
     rowRef,
     closeSection: closeSectionByKey,
     toggleWithDebugSection,
+    stateOpen,
+    setStateOpen,
+    stateMode,
     syncSubagentRuns,
   };
 };

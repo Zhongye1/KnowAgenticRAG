@@ -28,7 +28,9 @@ const setup = (
 };
 
 const openMenu = async () => {
-  await userEvent.click(screen.getByRole('button', { name: /智能助手|加载中|智能体/ }));
+  await userEvent.click(
+    screen.getByRole('button', { name: /智能助手|加载中|智能体/ }),
+  );
 };
 
 describe('AgentSelector', () => {

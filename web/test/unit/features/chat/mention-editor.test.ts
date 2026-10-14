@@ -43,7 +43,9 @@ describe('getRawNodeLength', () => {
   });
 
   it('元素按子节点累加，空节点为 0', () => {
-    expect(getRawNodeLength(buildEditor(`a<br>${chip('@x:y')}`))).toBe(1 + 1 + 4);
+    expect(getRawNodeLength(buildEditor(`a<br>${chip('@x:y')}`))).toBe(
+      1 + 1 + 4,
+    );
     expect(getRawNodeLength(null)).toBe(0);
   });
 });

@@ -66,7 +66,11 @@ const { LoginPage } = await import('@/pages/login');
 const LOGIN_BUTTON = /登\s?录/;
 
 const systemInfo = {
-  organization: { name: '语析', logo: '/favicon.svg', login_bg: '/login-bg.jpg' },
+  organization: {
+    name: '语析',
+    logo: '/favicon.svg',
+    login_bg: '/login-bg.jpg',
+  },
   branding: { name: 'ARS' },
   footer: {
     copyright: '© 语析 2026 v0.7.2',

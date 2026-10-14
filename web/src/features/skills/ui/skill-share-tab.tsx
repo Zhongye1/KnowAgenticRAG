@@ -7,6 +7,7 @@
  */
 import * as React from 'react';
 import { Save } from 'lucide-react';
+import { Button, Spin, Switch } from 'antd';
 
 import type { ManagedSkill, SkillAccessLevel } from '../api/skill-api';
 import { skillApi } from '../api/skill-api';
@@ -24,10 +25,7 @@ import {
   validateShareConfig,
   type ShareConfig,
 } from '@/shared/lib/share-config';
-import { Button } from '@/shared/ui/button';
 import { ShareConfigForm } from '@/shared/ui/share-config-form';
-import { Spinner } from '@/shared/ui/spinner';
-import { Switch } from '@/shared/ui/switch';
 import { useNotifications } from '@/shared/ui/notifications';
 
 type SkillShareTabProps = {
@@ -112,10 +110,14 @@ export const SkillShareTab = ({ skill, allowedLevels }: SkillShareTabProps) => {
           </p>
         </div>
         {editable ? (
-          <Button type="button" disabled={saving} onClick={() => void save()}>
+          <Button
+            htmlType="button"
+            disabled={saving}
+            onClick={() => void save()}
+          >
             {saving ? (
               <>
-                <Spinner aria-hidden className="size-3.5" />
+                <Spin aria-hidden className="size-3.5" />
                 保存中…
               </>
             ) : (
@@ -143,7 +145,7 @@ export const SkillShareTab = ({ skill, allowedLevels }: SkillShareTabProps) => {
             checked={enabled}
             disabled={!editable}
             aria-label="启用状态"
-            onCheckedChange={(checked) => {
+            onChange={(checked) => {
               setError('');
               setEnabled(checked);
             }}

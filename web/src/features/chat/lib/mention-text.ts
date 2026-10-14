@@ -66,7 +66,8 @@ export function parseMentionText(text: unknown): MentionTextSegment[] {
       kind: 'mention',
       raw,
       type: match[1] as string,
-      value: quotedValue !== undefined ? unquote(quotedValue) : (rawValue as string),
+      value:
+        quotedValue !== undefined ? unquote(quotedValue) : (rawValue as string),
       start,
       end,
     });

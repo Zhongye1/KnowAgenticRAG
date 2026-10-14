@@ -7,10 +7,7 @@ import {
   MEMORY_PREVIEW_MAX_LENGTH,
 } from '@/features/chat/lib/memory';
 
-const call = (
-  args: unknown,
-  result?: unknown,
-): ChatToolCall => ({
+const call = (args: unknown, result?: unknown): ChatToolCall => ({
   id: 'call-1',
   name: 'remember_memory',
   function: {
@@ -40,8 +37,9 @@ describe('memoryContentPreview', () => {
 describe('buildMemoryView', () => {
   it('updated 且带 replaces 时是纠正，否则是追加', () => {
     expect(
-      buildMemoryView(call({ content: 'A', replaces: 'B' }, { status: 'updated' }))
-        .statusText,
+      buildMemoryView(
+        call({ content: 'A', replaces: 'B' }, { status: 'updated' }),
+      ).statusText,
     ).toBe('记忆已纠正更新');
     expect(
       buildMemoryView(call({ content: 'A' }, { status: 'updated' })).statusText,
@@ -50,7 +48,8 @@ describe('buildMemoryView', () => {
 
   it('unchanged 与 error 各有文案，error 带上原因', () => {
     expect(
-      buildMemoryView(call({ content: 'A' }, { status: 'unchanged' })).statusText,
+      buildMemoryView(call({ content: 'A' }, { status: 'unchanged' }))
+        .statusText,
     ).toBe('记忆内容已存在，未变更');
 
     const errored = buildMemoryView(
@@ -70,12 +69,20 @@ describe('buildMemoryView', () => {
 
   it('行号区间同号时只给一个行号', () => {
     expect(
-      buildMemoryView(call({ content: 'A' }, { status: 'updated', start_line: 3, end_line: 3 }))
-        .lineTag,
+      buildMemoryView(
+        call(
+          { content: 'A' },
+          { status: 'updated', start_line: 3, end_line: 3 },
+        ),
+      ).lineTag,
     ).toBe('L3');
     expect(
-      buildMemoryView(call({ content: 'A' }, { status: 'updated', start_line: 3, end_line: 7 }))
-        .lineTag,
+      buildMemoryView(
+        call(
+          { content: 'A' },
+          { status: 'updated', start_line: 3, end_line: 7 },
+        ),
+      ).lineTag,
     ).toBe('L3-7');
   });
 
@@ -84,14 +91,21 @@ describe('buildMemoryView', () => {
       buildMemoryView(
         call(
           { content: 'A' },
-          { status: 'updated', path: 'memory.md', start_line: 3, end_line: 7, size: 128 },
+          {
+            status: 'updated',
+            path: 'memory.md',
+            start_line: 3,
+            end_line: 7,
+            size: 128,
+          },
         ),
       ).meta,
     ).toBe('memory.md · 第 3-7 行 · 128 B');
 
     expect(
-      buildMemoryView(call({ content: 'A' }, { status: 'updated', path: 'memory.md' }))
-        .meta,
+      buildMemoryView(
+        call({ content: 'A' }, { status: 'updated', path: 'memory.md' }),
+      ).meta,
     ).toBe('memory.md');
   });
 

@@ -17,6 +17,8 @@ import {
   Trash2,
   WandSparkles,
 } from 'lucide-react';
+import { Button, Input, Modal, Spin } from 'antd';
+import { Empty as SharedEmpty } from '@/shared/ui/empty';
 
 import type { SkillFileNode } from '../api/skill-api';
 import { skillApi } from '../api/skill-api';
@@ -44,20 +46,8 @@ import {
   useSkillTree,
 } from '../model/skill-queries';
 import { paths } from '@/shared/config';
-import { Button } from '@/shared/ui/button';
-import { confirm } from '@/shared/ui/confirm-dialog';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
-import { Empty } from '@/shared/ui/empty';
-import { Input } from '@/shared/ui/input';
+import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { MDPreview } from '@/shared/ui/md-preview';
-import { Spinner } from '@/shared/ui/spinner';
-import { Textarea } from '@/shared/ui/textarea';
 import { useNotifications } from '@/shared/ui/notifications';
 
 import { SkillDependenciesTab } from './skill-dependencies-tab';
@@ -84,6 +74,7 @@ const downloadBlob = (blob: Blob, filename: string) => {
 };
 
 export const SkillDetailView = ({ slug }: { slug: string }) => {
+  const { confirm } = useConfirm();
   const navigate = useNavigate();
   const notifications = useNotifications();
   const invalidate = useInvalidateSkills();
@@ -254,7 +245,7 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
   if (query.isPending) {
     return (
       <p className="flex items-center gap-2 p-6 text-sm text-color-text-3">
-        <Spinner aria-hidden className="size-4" />
+        <Spin aria-hidden className="size-4" />
         正在加载技能…
       </p>
     );
@@ -270,15 +261,15 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
 
   if (!skill) {
     return (
-      <Empty
+      <SharedEmpty
         icon={WandSparkles}
         description="未找到 Skill。它可能已被删除，或你没有管理权限。"
         action={
-          <Button type="button" variant="outline" asChild>
-            <Link to={paths.app.extensions.getHref('skills')}>
+          <Link to={paths.app.extensions.getHref('skills')}>
+            <Button htmlType="button" variant="outlined">
               返回技能列表
-            </Link>
-          </Button>
+            </Button>
+          </Link>
         }
       />
     );
@@ -288,14 +279,14 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
     <div className="flex flex-col gap-4" data-testid="skill-detail">
       <div className="flex flex-wrap items-start justify-between gap-2 rounded-large border border-color-border-1 bg-color-bg-1 p-4">
         <div className="flex min-w-0 items-start gap-2">
-          <Button type="button" variant="ghost" size="icon-sm" asChild>
-            <Link
-              to={paths.app.extensions.getHref('skills')}
-              aria-label="返回技能列表"
-            >
+          <Link
+            to={paths.app.extensions.getHref('skills')}
+            aria-label="返回技能列表"
+          >
+            <Button htmlType="button" type="text" size="small">
               <ArrowLeft className="size-4" />
-            </Link>
-          </Button>
+            </Button>
+          </Link>
           <span className="flex size-8 shrink-0 items-center justify-center rounded-medium bg-color-fill-2 text-color-text-2">
             <WandSparkles className="size-4" aria-hidden />
           </span>
@@ -313,8 +304,8 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
         <div className="flex items-center gap-2">
           {canExportSkill(skill) ? (
             <Button
-              type="button"
-              variant="outline"
+              htmlType="button"
+              variant="outlined"
               disabled={exporting}
               onClick={() => void exportZip()}
             >
@@ -324,8 +315,9 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
           ) : null}
           {canDeleteManagedSkill(skill) ? (
             <Button
-              type="button"
-              variant="destructive"
+              htmlType="button"
+              color="danger"
+              variant="solid"
               onClick={() => void removeSkill()}
             >
               <Trash2 className="size-3.5" aria-hidden />
@@ -353,8 +345,8 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
           {TABS.map((tab) => (
             <Button
               key={tab.key}
-              type="button"
-              variant="ghost"
+              htmlType="button"
+              variant="text"
               className="rounded-b-none"
               aria-current={tab.key === activeTab ? 'page' : undefined}
               onClick={() => setActiveTab(tab.key)}
@@ -377,9 +369,9 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
                 !selectedIsDir &&
                 isMarkdownPath(selectedPath) ? (
                   <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
+                    htmlType="button"
+                    variant="outlined"
+                    size="small"
                     aria-pressed={previewMode}
                     onClick={() => setPreviewMode((current) => !current)}
                   >
@@ -389,17 +381,18 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
                 {editable && selectedPath && !selectedIsDir ? (
                   <>
                     <Button
-                      type="button"
-                      size="sm"
+                      htmlType="button"
+                      size="small"
                       disabled={saving || !dirty}
                       onClick={() => void saveFile()}
                     >
                       {saving ? '保存中…' : '保存'}
                     </Button>
                     <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
+                      htmlType="button"
+                      color="danger"
+                      variant="solid"
+                      size="small"
                       disabled={selectedPath === 'SKILL.md'}
                       title={
                         selectedPath === 'SKILL.md'
@@ -417,10 +410,10 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
 
             <div className="min-h-80 flex-1 p-3">
               {!selectedPath || selectedIsDir ? (
-                <Empty description="选择文件以开始编辑。" />
+                <SharedEmpty description="选择文件以开始编辑。" />
               ) : file.isPending ? (
                 <p className="flex items-center gap-2 text-sm text-color-text-3">
-                  <Spinner aria-hidden className="size-4" />
+                  <Spin aria-hidden className="size-4" />
                   正在读取文件…
                 </p>
               ) : file.isError ? (
@@ -432,7 +425,7 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
               ) : previewMode ? (
                 <MDPreview value={draft} />
               ) : (
-                <Textarea
+                <Input.TextArea
                   className="min-h-80 font-mono text-xs"
                   value={draft}
                   aria-label={selectedPath}
@@ -453,9 +446,10 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
                 {editable ? (
                   <>
                     <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
+                      htmlType="button"
+                      variant="text"
+                      size="small"
+                      className="size-6 [&_svg]:size-3"
                       aria-label="新建文件"
                       onClick={() => {
                         setCreateForm({ path: '', isDir: false, content: '' });
@@ -465,9 +459,10 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
                       <FilePlus className="size-3.5" aria-hidden />
                     </Button>
                     <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-xs"
+                      htmlType="button"
+                      variant="text"
+                      size="small"
+                      className="size-6 [&_svg]:size-3"
                       aria-label="新建目录"
                       onClick={() => {
                         setCreateForm({ path: '', isDir: true, content: '' });
@@ -479,9 +474,10 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
                   </>
                 ) : null}
                 <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-xs"
+                  htmlType="button"
+                  variant="text"
+                  size="small"
+                  className="size-6 [&_svg]:size-3"
                   aria-label="刷新目录树"
                   onClick={reloadTree}
                 >
@@ -492,7 +488,7 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
             <div className="max-h-96 min-h-32 overflow-y-auto p-2">
               {tree.isPending ? (
                 <p className="flex items-center gap-2 p-2 text-xs text-color-text-3">
-                  <Spinner aria-hidden className="size-3.5" />
+                  <Spin aria-hidden className="size-3.5" />
                   正在加载目录…
                 </p>
               ) : tree.isError ? (
@@ -542,69 +538,70 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
       ) : null}
 
       {createOpen ? (
-        <Dialog open onOpenChange={setCreateOpen}>
-          <DialogContent className="max-w-md" data-testid="skill-create-node">
-            <DialogHeader>
-              <DialogTitle>
-                {createForm.isDir ? '新建目录' : '新建文件'}
-              </DialogTitle>
-            </DialogHeader>
-            <label
-              htmlFor="skill-create-path"
-              className="flex flex-col gap-1 text-xs text-color-text-2"
-            >
-              路径（相对于根目录）
-              <Input
-                id="skill-create-path"
-                value={createForm.path}
-                placeholder="src/main.py"
-                aria-label="路径（相对于根目录）"
-                onChange={(event) =>
-                  setCreateForm((current) => ({
-                    ...current,
-                    path: event.target.value,
-                  }))
-                }
-              />
-            </label>
-            {!createForm.isDir ? (
-              <label
-                htmlFor="skill-create-content"
-                className="flex flex-col gap-1 text-xs text-color-text-2"
-              >
-                内容
-                <Textarea
-                  id="skill-create-content"
-                  rows={5}
-                  value={createForm.content}
-                  aria-label="内容"
-                  onChange={(event) =>
-                    setCreateForm((current) => ({
-                      ...current,
-                      content: event.target.value,
-                    }))
-                  }
-                />
-              </label>
-            ) : null}
-            <DialogFooter>
+        <Modal
+          open
+          width={448}
+          data-testid="skill-create-node"
+          title={createForm.isDir ? '新建目录' : '新建文件'}
+          onCancel={() => setCreateOpen(false)}
+          footer={
+            <>
               <Button
-                type="button"
-                variant="outline"
+                htmlType="button"
+                variant="outlined"
                 onClick={() => setCreateOpen(false)}
               >
                 取消
               </Button>
               <Button
-                type="button"
+                htmlType="button"
                 disabled={creating || !createForm.path.trim()}
                 onClick={() => void createNode()}
               >
                 {creating ? '创建中…' : '创建'}
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </>
+          }
+        >
+          <label
+            htmlFor="skill-create-path"
+            className="flex flex-col gap-1 text-xs text-color-text-2"
+          >
+            路径（相对于根目录）
+            <Input
+              id="skill-create-path"
+              value={createForm.path}
+              placeholder="src/main.py"
+              aria-label="路径（相对于根目录）"
+              onChange={(event) =>
+                setCreateForm((current) => ({
+                  ...current,
+                  path: event.target.value,
+                }))
+              }
+            />
+          </label>
+          {!createForm.isDir ? (
+            <label
+              htmlFor="skill-create-content"
+              className="flex flex-col gap-1 text-xs text-color-text-2"
+            >
+              内容
+              <Input.TextArea
+                id="skill-create-content"
+                rows={5}
+                value={createForm.content}
+                aria-label="内容"
+                onChange={(event) =>
+                  setCreateForm((current) => ({
+                    ...current,
+                    content: event.target.value,
+                  }))
+                }
+              />
+            </label>
+          ) : null}
+        </Modal>
       ) : null}
 
       {isBuiltinInstalledSkill(skill) ? (

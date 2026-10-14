@@ -1,0 +1,240 @@
+/* 个人空间文件表的样式。
+   参照实现 FileBrowserTable.vue 的 `.file-browser-*` 与 WorkspaceFileList.vue 的正文样式，
+   表格外观按 `.file-browser-ant-table` 的逐值（表头 8/10、单元格 7/10、行高与悬停底色）。
+   颜色只用 yuxi-tokens.css 的 --gray-* / --main-* / --shadow-*。 */
+
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  background: var(--gray-0);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--gray-100);
+  flex: 0 0 auto;
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  font-size: 14px;
+  line-height: 26px;
+}
+
+.crumb {
+  display: inline-flex;
+  align-items: center;
+  max-width: 220px;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--main-800);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: color 0.16s ease;
+}
+
+.crumb::after {
+  flex: 0 0 auto;
+  content: '/';
+  margin: 0 8px;
+  color: var(--gray-300);
+  font-weight: 400;
+}
+
+.crumb:last-of-type::after {
+  display: none;
+}
+
+.crumb:hover:not(:disabled) {
+  color: var(--main-600);
+}
+
+.crumbActive,
+.crumb:disabled {
+  color: var(--gray-900);
+  cursor: default;
+}
+
+.crumbLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.entryCount {
+  flex: 0 0 auto;
+  color: var(--gray-500);
+  font-size: 12px;
+}
+
+.tableWrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 8px;
+  background: var(--gray-0);
+}
+
+.table {
+  min-width: 100%;
+}
+
+/* 表头吸顶：长目录滚动时列名不跟着走 */
+.headRow th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 8px 10px;
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  border-bottom: 1px solid var(--gray-100);
+  background: var(--gray-0);
+}
+
+.headRow th::after {
+  display: none;
+}
+
+.row td {
+  padding: 7px 10px;
+  background: var(--gray-0);
+  color: var(--gray-700);
+  font-size: 13px;
+  line-height: 20px;
+  border-bottom: 1px solid var(--gray-50);
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+  cursor: pointer;
+}
+
+.row:hover td {
+  background: var(--main-20);
+  color: var(--gray-1000);
+}
+
+.rowDeleting td {
+  opacity: 0.62;
+}
+
+.sizeCell {
+  width: 86px;
+}
+
+.timeCell {
+  width: 126px;
+}
+
+.actionCell {
+  width: 58px;
+  text-align: center;
+  cursor: default;
+}
+
+.checkCell {
+  width: 40px;
+}
+
+.nameCell {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+  gap: 8px;
+  vertical-align: middle;
+}
+
+.nameIcon {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+
+.nameText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.moreAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-500);
+  cursor: pointer;
+}
+
+.moreAction:hover:not(:disabled) {
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+
+.moreAction:disabled {
+  color: var(--gray-300);
+  cursor: not-allowed;
+}
+
+.menuItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  color: var(--gray-500);
+  font-size: 13px;
+}
+
+@media (max-width: 767px) {
+  .header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 14px;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}

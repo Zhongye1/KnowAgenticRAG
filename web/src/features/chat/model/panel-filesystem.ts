@@ -15,7 +15,6 @@ import {
   listDirectory,
   searchEntries,
 } from '../api/filesystem-api';
-import type { FilesystemEntry } from '../api/filesystem-api';
 import {
   applyPrefetchedVisibility,
   createFilesystemRefreshGate,
@@ -56,13 +55,18 @@ const errorMessage = (error: unknown, fallback: string): string =>
   error instanceof Error && error.message ? error.message : fallback;
 
 /** 根刷新要预取的目录；取不到子项时按「没取到」处理，不当成空目录隐藏。 */
-async function loadRootNodes(scope: PanelTreeScope, threadId?: string): Promise<{
+async function loadRootNodes(
+  scope: PanelTreeScope,
+  threadId?: string,
+): Promise<{
   nodes: TreeNode[];
   prefetchedKeys: string[];
 }> {
   const entries = await listDirectory({ scope, threadId, path: '/' });
   const roots = sortEntries(entries).map((entry) =>
-    scope === 'workspace' ? createWorkspaceTreeNode(entry) : createTreeNode(entry),
+    scope === 'workspace'
+      ? createWorkspaceTreeNode(entry)
+      : createTreeNode(entry),
   );
 
   const prefetched = await Promise.all(
@@ -92,7 +96,9 @@ async function loadScopeChildren(
   const entries = await listDirectory({ scope, threadId, path: directoryPath });
 
   return sortEntries(entries).map((entry) =>
-    scope === 'workspace' ? createWorkspaceTreeNode(entry) : createTreeNode(entry),
+    scope === 'workspace'
+      ? createWorkspaceTreeNode(entry)
+      : createTreeNode(entry),
   );
 }
 
@@ -100,7 +106,10 @@ export type PanelFilesystem = {
   thread: PanelTreeScopeState;
   workspace: PanelTreeScopeState;
   /** 刷新对话目录；`silent` 保留展开状态，`ensure` 期间有刷新在飞时攒一次待办。 */
-  refreshThreadTree: (options?: { silent?: boolean; ensure?: boolean }) => Promise<void>;
+  refreshThreadTree: (options?: {
+    silent?: boolean;
+    ensure?: boolean;
+  }) => Promise<void>;
   /** 懒加载一个目录的子项。 */
   loadThreadChildren: (node: TreeNode) => Promise<void>;
   /** 删除对话目录里的一个节点，成功后就地移除。 */
@@ -129,8 +138,10 @@ export const usePanelFilesystem = (options: {
   // 个人空间加载过就不重复拉：切换作用域要保活
   const workspaceLoadedRef = React.useRef(false);
 
-  const [thread, setThread] = React.useState<PanelTreeScopeState>(emptyScopeState);
-  const [workspace, setWorkspace] = React.useState<PanelTreeScopeState>(emptyScopeState);
+  const [thread, setThread] =
+    React.useState<PanelTreeScopeState>(emptyScopeState);
+  const [workspace, setWorkspace] =
+    React.useState<PanelTreeScopeState>(emptyScopeState);
 
   const patchScope = React.useCallback(
     (scope: PanelTreeScope, changes: Partial<PanelTreeScopeState>) => {
@@ -157,7 +168,10 @@ export const usePanelFilesystem = (options: {
       patchScope('thread', { error: null });
 
       try {
-        const { nodes, prefetchedKeys } = await loadRootNodes('thread', requestedThreadId);
+        const { nodes, prefetchedKeys } = await loadRootNodes(
+          'thread',
+          requestedThreadId,
+        );
         let next = nodes;
 
         if (silent) {
@@ -165,7 +179,8 @@ export const usePanelFilesystem = (options: {
           next = await refreshExpandedTree(
             nodes,
             current.expandedKeys,
-            (directoryPath) => loadScopeChildren('thread', requestedThreadId, directoryPath),
+            (directoryPath) =>
+              loadScopeChildren('thread', requestedThreadId, directoryPath),
             prefetchedKeys,
           );
         }
@@ -174,9 +189,12 @@ export const usePanelFilesystem = (options: {
 
         patchScope('thread', {
           nodes: next,
-          expandedKeys: expandedKeysAfterFilesystemRefresh(thread.expandedKeys, {
-            silent,
-          }),
+          expandedKeys: expandedKeysAfterFilesystemRefresh(
+            thread.expandedKeys,
+            {
+              silent,
+            },
+          ),
           selectedKeys: [],
           error: null,
         });
@@ -247,7 +265,9 @@ export const usePanelFilesystem = (options: {
       } finally {
         setThread((current) => ({
           ...current,
-          deletingPaths: current.deletingPaths.filter((path) => path !== node.key),
+          deletingPaths: current.deletingPaths.filter(
+            (path) => path !== node.key,
+          ),
         }));
       }
     },
@@ -263,7 +283,12 @@ export const usePanelFilesystem = (options: {
       try {
         const { nodes } = await loadRootNodes('workspace');
         workspaceLoadedRef.current = true;
-        setWorkspace((current) => ({ ...current, nodes, loading: false, error: null }));
+        setWorkspace((current) => ({
+          ...current,
+          nodes,
+          loading: false,
+          error: null,
+        }));
       } catch (error) {
         setWorkspace((current) => ({
           ...current,
@@ -275,25 +300,29 @@ export const usePanelFilesystem = (options: {
     [patchScope],
   );
 
-  const loadWorkspaceChildren = React.useCallback(
-    async (node: TreeNode) => {
-      if (node.isLeaf || node.children?.length) return;
+  const loadWorkspaceChildren = React.useCallback(async (node: TreeNode) => {
+    if (node.isLeaf || node.children?.length) return;
 
-      try {
-        const children = await loadScopeChildren('workspace', undefined, node.key);
-        setWorkspace((current) => ({
-          ...current,
-          nodes: updateTreeChildren(current.nodes, node.key, children),
-        }));
-      } catch (error) {
-        console.warn('加载目录失败:', node.key, error);
-      }
-    },
-    [],
-  );
+    try {
+      const children = await loadScopeChildren(
+        'workspace',
+        undefined,
+        node.key,
+      );
+      setWorkspace((current) => ({
+        ...current,
+        nodes: updateTreeChildren(current.nodes, node.key, children),
+      }));
+    } catch (error) {
+      console.warn('加载目录失败:', node.key, error);
+    }
+  }, []);
 
   const setScopeState = React.useCallback(
-    (scope: PanelTreeScope, updater: (current: PanelTreeScopeState) => PanelTreeScopeState) => {
+    (
+      scope: PanelTreeScope,
+      updater: (current: PanelTreeScopeState) => PanelTreeScopeState,
+    ) => {
       const setState = scope === 'workspace' ? setWorkspace : setThread;
       setState(updater);
     },
@@ -338,7 +367,13 @@ export const usePanelFileSearch = (input: {
   enabled: boolean;
 }) =>
   useQuery({
-    queryKey: ['chat', 'panel-files', input.scope, input.threadId ?? '', input.query],
+    queryKey: [
+      'chat',
+      'panel-files',
+      input.scope,
+      input.threadId ?? '',
+      input.query,
+    ],
     queryFn: () =>
       searchEntries({
         scope: input.scope,
@@ -347,5 +382,3 @@ export const usePanelFileSearch = (input: {
       }),
     enabled: input.enabled && input.query.trim().length > 0,
   });
-
-export type { FilesystemEntry };

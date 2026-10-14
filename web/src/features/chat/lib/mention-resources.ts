@@ -76,10 +76,7 @@ export function buildMentionResourceItems(
   const map = <T>(
     items: Array<Record<string, unknown>> | undefined,
     build: (item: Record<string, unknown>) => T | null,
-  ): T[] =>
-    (items ?? [])
-      .map(build)
-      .filter((item): item is T => item !== null);
+  ): T[] => (items ?? []).map(build).filter((item): item is T => item !== null);
 
   return {
     knowledgeBases: map(mention.knowledgeBases, (kb) =>

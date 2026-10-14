@@ -1,12 +1,17 @@
-/* 输入区选择器的触发按钮样式。参照实现 AgentInputArea.vue 的
-   `.input-action-btn`（30px、无边框、13px、gray-600、hover gray-50）。 */
+/* 输入区选择器的触发按钮样式。参照实现 AgentInputArea.vue 的 `.input-action-btn`
+   （30px、无边框、13px、gray-600、hover gray-50）与 AgentView.vue /
+   ToolApprovalModeSelector.vue 的 `.config-dropdown-trigger`（宽度上限、窄屏收成图标）。 */
 
 .trigger {
   display: flex;
   flex-shrink: 0;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   height: 30px;
+  min-width: 0;
+  /* 默认宽度上限取自参照的 .input-model-selector；智能体与审批模式另有两个上限 */
+  max-width: min(168px, calc(100vw - 160px));
   padding: 6px 8px;
   border: none;
   border-radius: 8px;
@@ -32,9 +37,27 @@
   }
 }
 
+/* 参照 AgentView.vue 的 `.config-dropdown-trigger`——智能体名允许更长 */
+.triggerAgent {
+  max-width: min(240px, calc(100vw - 160px));
+}
+
+/* 参照 ToolApprovalModeSelector.vue 的 `.config-dropdown-trigger` */
+.triggerApproval {
+  max-width: min(180px, calc(100vw - 160px));
+}
+
 .triggerIcon {
   width: 15px;
   height: 15px;
+}
+
+/* 窄屏时才出现的图标：参照 `.config-dropdown-compact-icon`（宽屏隐藏、只留文字） */
+.triggerCompactIcon {
+  display: none;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
 }
 
 .triggerChevron {
@@ -43,10 +66,39 @@
 }
 
 .triggerLabel {
-  max-width: min(168px, calc(100vw - 160px));
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 窄屏：参照 `.config-dropdown-trigger` 的 @container 收缩——30px 纯图标钮。
+   容器是输入胶囊（.inputPanel 的 container-type: inline-size）。 */
+@container (max-width: 640px) {
+  .triggerAgent,
+  .triggerApproval {
+    width: 30px;
+    padding-inline: 0;
+  }
+
+  .triggerAgent .triggerCompactIcon,
+  .triggerApproval .triggerCompactIcon {
+    display: block;
+  }
+
+  .triggerAgent .triggerLabel,
+  .triggerAgent .triggerChevron,
+  .triggerApproval .triggerLabel,
+  .triggerApproval .triggerChevron {
+    display: none;
+  }
+}
+
+/* 参照 AgentView.vue 的 520px 断点 */
+@media (max-width: 520px) {
+  .triggerAgent {
+    max-width: calc(100vw - 112px);
+  }
 }
 
 .menuItem {
@@ -85,20 +137,20 @@
   margin: 0;
 }
 
+/* 完全信任态的告警色：参照 `.config-dropdown-trigger.is-trusted` */
 .triggerWarning {
-  color: var(--second-600);
+  color: var(--color-warning-700);
 }
 
 /* ---------- 项目选择器：参照 ProjectSelectionSection.vue ---------- */
 
 .projectSelection {
-  position: relative;
   display: inline-flex;
   min-width: 0;
   text-align: left;
 }
 
-/* 参照 .project-trigger——28px 透明钮 */
+/* 参照 .project-trigger——28px 透明钮；宽屏只有图标与文字，没有箭头 */
 .projectTrigger {
   display: flex;
   align-items: center;
@@ -110,55 +162,52 @@
   border-radius: 7px;
   background: transparent;
   color: var(--gray-600);
+  text-align: left;
   cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
 
-  &:hover {
-    background: var(--gray-100);
-    color: var(--gray-900);
-  }
+.projectTrigger:hover:not(:disabled),
+.projectTriggerActive:not(:disabled) {
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
 
-  &:focus-visible {
-    outline: 2px solid var(--main-color);
-    outline-offset: 2px;
-  }
+.projectTrigger:focus-visible {
+  outline: 2px solid var(--main-color);
+  outline-offset: 2px;
+}
 
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
+.projectTrigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .projectTriggerIcon {
   flex-shrink: 0;
   color: var(--gray-500);
+  transition: color 0.15s ease;
+}
+
+.projectTrigger:hover:not(:disabled) .projectTriggerIcon,
+.projectTriggerActive:not(:disabled) .projectTriggerIcon {
+  color: var(--gray-800);
 }
 
 .projectTriggerLabel {
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
   font-size: 13px;
   font-weight: 400;
   line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.projectOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-}
-
-/* 参照 .project-dropdown-panel——向上弹、300px、radius 10 */
-.projectPanelFloating {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  left: 0;
-  /* 高过停靠区（z-index 1000）：面板从它的 top 区向上弹，下半会与 dock 重叠 */
-  z-index: 1001;
-}
-
+/* 面板：参照 .project-dropdown-panel */
 .projectPanel {
   width: min(300px, calc(100vw - 24px));
   overflow: hidden;
@@ -168,89 +217,151 @@
   box-shadow: 0 8px 24px var(--shadow-4);
 }
 
-.projectView {
-  display: flex;
-  flex-direction: column;
-}
-
-/* 参照 .project-search——28px 高输入行 */
+/* 参照 .project-search——带放大镜的 28px 输入行 */
 .projectSearch {
   display: flex;
   align-items: center;
   gap: 6px;
   margin: 6px 6px 0;
   padding: 0 6px;
-
-  & input {
-    flex: 1;
-    height: 28px;
-    border: 0;
-    background: transparent;
-    font-size: 12.5px;
-    color: var(--gray-1000);
-    outline: none;
-
-    &::placeholder {
-      color: var(--gray-400);
-    }
-  }
+  color: var(--color-text-tertiary);
 }
 
-/* 参照 .project-option-list */
+.projectSearchIcon {
+  flex: 0 0 auto;
+}
+
+.projectSearch input {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.projectSearch input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
 .projectOptionList {
   display: flex;
   flex-direction: column;
   gap: 1px;
   min-height: 120px;
   max-height: min(260px, calc(100vh - 220px));
+  overflow-y: auto;
   border-bottom: 1px solid var(--gray-100);
   padding: 4px 6px;
-  overflow-y: auto;
 }
 
-/* 参照 .project-option——28px min、hover gray-50 */
+.projectLoading,
+.historyLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 120px;
+}
+
 .projectOption {
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 0;
+  width: 100%;
   min-height: 28px;
   padding: 4px 6px;
-  border: none;
+  border: 0;
   border-radius: 6px;
   background: transparent;
-  color: var(--gray-900);
+  color: var(--color-text);
   text-align: left;
   cursor: pointer;
+  transition: background-color 0.12s ease;
+}
 
-  &:hover {
-    background: var(--gray-50);
-  }
-
-  & strong {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 12.5px;
-    font-weight: 400;
-  }
+.projectOption:hover:not(:disabled) {
+  background: var(--gray-50);
 }
 
 .projectOptionSelected {
   background: var(--gray-50);
 }
 
-.projectOptionCheck {
+.projectOption:focus-visible,
+.historyOption:focus-visible,
+.historySearchRow > button:focus-visible {
+  outline: 2px solid var(--main-color);
+  outline-offset: 2px;
+}
+
+.projectOption:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.projectOptionIcon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+}
+
+.projectOptionSelected .projectOptionIcon,
+.projectOptionSelected > svg {
   color: var(--main-color);
-  flex-shrink: 0;
+}
+
+.projectOptionBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.projectOptionBody strong {
+  display: block;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectOptionCheck {
+  flex: 0 0 auto;
+  color: var(--main-color);
 }
 
 .projectEmpty {
   padding: 14px 8px 12px;
-  color: var(--gray-500);
+  color: var(--color-text-secondary);
   font-size: 12px;
-  margin: 0;
+  text-align: center;
+}
+
+/* 加载失败：文案与重试按钮同一行（参照 .project-error） */
+.projectError {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--color-error-50);
+  color: var(--color-error-700);
+  font-size: 12px;
+}
+
+.projectError button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 600;
 }
 
 /* 参照 .project-dropdown-actions */
@@ -259,107 +370,165 @@
   flex-direction: column;
   gap: 1px;
   padding: 4px 6px;
-
-  & button {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-height: 28px;
-    padding: 4px 6px;
-    border: none;
-    border-radius: 6px;
-    background: var(--gray-0);
-    color: var(--gray-600);
-    font-size: 12.5px;
-    text-align: left;
-    cursor: pointer;
-
-    &:hover {
-      background: var(--gray-50);
-      color: var(--gray-1000);
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  }
 }
 
-/* 参照 .history-option-list / .history-option */
+.projectActions button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--gray-0);
+  color: var(--color-text);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.projectActions button:hover {
+  background: var(--gray-50);
+  color: var(--gray-1000);
+}
+
+.projectActionChevron {
+  margin-left: auto;
+  color: var(--color-text-tertiary);
+}
+
+/* 历史视图：返回钮与搜索框同一行（参照 .history-search-row） */
+.historySearchRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+}
+
+.historySearchRow > button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.historySearchRow > button:hover {
+  background: var(--gray-50);
+  color: var(--color-text);
+}
+
+.historySearchRow .projectSearch {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
 .historyOptionList {
   display: flex;
-  flex-direction: column;
   min-height: 140px;
   max-height: 240px;
-  border-top: 1px solid var(--gray-100);
-  padding: 2px 4px;
+  flex-direction: column;
   overflow-y: auto;
+  border-top: 1px solid var(--gray-100);
+  background: var(--gray-0);
+  padding: 2px 4px;
 }
 
 .historyOption {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
   min-height: 28px;
   padding: 4px 6px;
-  border: none;
+  border: 0;
   border-bottom: 1px solid var(--gray-100);
   background: transparent;
-  color: var(--gray-900);
+  color: var(--color-text);
   text-align: left;
   cursor: pointer;
-
-  &:hover {
-    background: var(--gray-50);
-  }
-
-  &:disabled {
-    opacity: 0.55;
-    cursor: wait;
-  }
-
-  & span {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    font-size: 12.5px;
-  }
-
-  & time {
-    flex-shrink: 0;
-    font-size: 11px;
-    color: var(--gray-400);
-  }
 }
 
-/* 参照 .project-form / .project-form-field */
+.historyOption:last-child {
+  border-bottom: 0;
+}
+
+.historyOption:hover:not(:disabled) {
+  background: var(--gray-50);
+}
+
+.historyOption:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.historyOption > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyOptionIcon {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+}
+
+.historyOption time {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.historyEmpty {
+  margin: auto;
+  padding: 16px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* 新建项目的弹窗正文：参照 .project-form / .project-form-field */
 .projectForm {
   display: flex;
   flex-direction: column;
   gap: 18px;
-  padding: 14px;
 }
 
 .projectFormField {
   display: flex;
   flex-direction: column;
   gap: 7px;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 500;
-  color: var(--gray-800);
 }
 
-.projectError {
-  margin: 6px 8px;
-  padding: 6px 8px;
-  border-radius: 6px;
-  background: var(--color-error-50);
-  color: var(--color-error-700);
-  font-size: 12px;
+@media (max-width: 768px) {
+  .projectTrigger {
+    max-width: calc(100vw - 72px);
+  }
+}
+
+@media (max-width: 520px) {
+  .projectPanel {
+    width: min(270px, calc(100vw - 105px));
+  }
 }
 
 /* ---------- 附件上传弹窗：参照 AttachmentTmpUploadModal.vue ---------- */

@@ -1,11 +1,14 @@
 /**
- * 智能体候选项的归一与切换规则。
+ * 智能体候选项与切换规则。
  *
- * 响应在契约里没有类型，字段按不可信数据处理：读不到就跳过这一条，不猜。
+ * 领域读取（wire → `Agent`，含标识与内置标记）在 `entities/agent`；这里只把它映射成选择器
+ * 需要的形状，并持有「能不能切换」的规则。
  *
  * **值用 `slug` 而不是 `id`**：后端 `agents.id` 是自增整数，`slug` 才是业务上的字符串
  * 标识；本仓会话与请求下发的一直是 `agentSlug`。
  */
+import type { Agent } from '@/entities/agent';
+
 export type AgentOption = {
   /** 下发给后端与写进会话的字符串标识。 */
   value: string;
@@ -14,32 +17,20 @@ export type AgentOption = {
   isBuiltin: boolean;
 };
 
-const asText = (value: unknown): string =>
-  typeof value === 'string' ? value.trim() : '';
-
 /**
- * 归一成候选项：排除子智能体（它们不是用户可切换的入口），缺 `slug` 的条目丢掉。
- * 名称缺失时退到 `slug`——列表里出现一行空白比用标识更差。
+ * 归一成候选项：排除子智能体（它们不是用户可切换的入口）。
+ *
+ * 标识与名称的兜底已经在 `toAgent` 里做过，这里不再重复判空。
  */
-export function buildAgentOptions(agents: unknown): AgentOption[] {
-  if (!Array.isArray(agents)) return [];
-
+export function buildAgentOptions(agents: Agent[]): AgentOption[] {
   return agents
-    .map((raw): AgentOption | null => {
-      const agent = (raw ?? {}) as Record<string, unknown>;
-      if (agent.is_subagent === true) return null;
-
-      const value = asText(agent.slug);
-      if (!value) return null;
-
-      return {
-        value,
-        label: asText(agent.name) || value,
-        icon: asText(agent.icon),
-        isBuiltin: agent.is_builtin === true,
-      };
-    })
-    .filter((option): option is AgentOption => option !== null);
+    .filter((agent) => !agent.isSubagent)
+    .map((agent) => ({
+      value: agent.slug,
+      label: agent.name,
+      icon: agent.icon,
+      isBuiltin: agent.isBuiltin,
+    }));
 }
 
 /** 选择器上显示的当前智能体名：加载中、找不到时的兜底文案与参照一致。 */

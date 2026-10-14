@@ -5,31 +5,22 @@
  * 读不到时显式给出后端原因而不是画成空文档；底栏是卸载、关闭与「去管理」。
  */
 import { WandSparkles } from 'lucide-react';
+import { Button, Spin, Switch, Tag } from 'antd';
+import { Empty as SharedEmpty } from '@/shared/ui/empty';
+import { formatExtensionTitle } from '@/shared/lib';
 
 import type { SkillCard } from '../api/skill-api';
 import {
   canManageSkill,
   canToggleSkillEnabled,
-  formatSkillTitle,
   getSkillIcon,
   isBuiltinSkill,
   isPersonalSkill,
   sourceTypeLabel,
 } from '../lib/skill-view';
 import { useSkillPreviewFile } from '../model/skill-queries';
-import { Badge } from '@/shared/ui/badge';
-import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
-import { Empty } from '@/shared/ui/empty';
+import { Modal } from 'antd';
 import { MDPreview } from '@/shared/ui/md-preview';
-import { Spinner } from '@/shared/ui/spinner';
-import { Switch } from '@/shared/ui/switch';
 
 import { SkillIcon } from './skill-icon';
 
@@ -67,83 +58,84 @@ export const SkillPreviewDialog = ({
     : '未读取到 SKILL.md';
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-2xl gap-3"
-        data-testid="skill-preview-dialog"
-        showCloseButton={false}
-      >
-        <DialogHeader>
-          <DialogTitle className="flex min-w-0 items-center gap-2">
-            <span className="flex size-8 shrink-0 items-center justify-center rounded-medium bg-color-fill-2 text-color-text-2">
-              <SkillIcon icon={icon} className="size-4" />
+    <Modal
+      open
+      onCancel={() => onOpenChange(false)}
+      closable={false}
+      width={672}
+      data-testid="skill-preview-dialog"
+      title={
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-medium bg-color-fill-2 text-color-text-2">
+            <SkillIcon icon={icon} className="size-4" />
+          </span>
+          <span className="min-w-0 flex-col">
+            <span className="block truncate">
+              {formatExtensionTitle(skill.name) || skill.slug}
             </span>
-            <span className="min-w-0 flex-col">
-              <span className="block truncate">
-                {formatSkillTitle(skill.name) || skill.slug}
-              </span>
-              <span className="mt-0.5 flex items-center gap-2 text-xs font-normal text-color-text-3">
-                <span>{sourceTypeLabel(skill.source_type)} Skill</span>
-                {!enabled ? <Badge variant="secondary">已禁用</Badge> : null}
-              </span>
+            <span className="mt-0.5 flex items-center gap-2 text-xs font-normal text-color-text-3">
+              <span>{sourceTypeLabel(skill.source_type)} Skill</span>
+              {!enabled ? <Tag>已禁用</Tag> : null}
             </span>
-          </DialogTitle>
-        </DialogHeader>
-
-        {canToggleSkillEnabled(skill) ? (
-          <div className="flex items-center gap-2 text-xs text-color-text-3">
-            <Switch
-              checked={enabled}
-              disabled={!manageable || toggling}
-              aria-label={enabled ? '禁用 Skill' : '启用 Skill'}
-              onCheckedChange={() => onToggleEnabled(skill)}
-            />
-            {enabled ? '已启用' : '已禁用'}
-          </div>
-        ) : null}
-
-        <div className="min-h-64 max-h-[56vh] overflow-y-auto rounded-medium border border-color-border-1 bg-color-bg-2 p-3">
-          {preview.isPending ? (
-            <p className="flex min-h-56 items-center justify-center gap-2 text-sm text-color-text-3">
-              <Spinner aria-hidden className="size-4" />
-              正在读取 SKILL.md…
-            </p>
-          ) : markdown ? (
-            <MDPreview value={markdown} />
-          ) : (
-            <Empty description={failed} icon={WandSparkles} />
-          )}
+          </span>
         </div>
+      }
+      footer={null}
+    >
+      {canToggleSkillEnabled(skill) ? (
+        <div className="flex items-center gap-2 text-xs text-color-text-3">
+          <Switch
+            checked={enabled}
+            disabled={!manageable || toggling}
+            aria-label={enabled ? '禁用 Skill' : '启用 Skill'}
+            onChange={() => onToggleEnabled(skill)}
+          />
+          {enabled ? '已启用' : '已禁用'}
+        </div>
+      ) : null}
 
-        <DialogFooter className="justify-between sm:justify-between">
-          <div>
-            {canUninstall ? (
-              <Button
-                type="button"
-                variant="destructive"
-                disabled={deleting}
-                onClick={() => onUninstall(skill)}
-              >
-                {deleting ? '卸载中…' : '卸载'}
-              </Button>
-            ) : null}
-          </div>
-          <div className="flex items-center gap-2">
+      <div className="min-h-64 max-h-[56vh] overflow-y-auto rounded-medium border border-color-border-1 bg-color-bg-2 p-3">
+        {preview.isPending ? (
+          <p className="flex min-h-56 items-center justify-center gap-2 text-sm text-color-text-3">
+            <Spin aria-hidden className="size-4" />
+            正在读取 SKILL.md…
+          </p>
+        ) : markdown ? (
+          <MDPreview value={markdown} />
+        ) : (
+          <SharedEmpty description={failed} icon={WandSparkles} />
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-2 pt-2">
+        <div>
+          {canUninstall ? (
             <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
+              htmlType="button"
+              color="danger"
+              variant="solid"
+              disabled={deleting}
+              onClick={() => onUninstall(skill)}
             >
-              关闭
+              {deleting ? '卸载中…' : '卸载'}
             </Button>
-            {!isPersonalSkill(skill) ? (
-              <Button type="button" onClick={() => onManage(skill)}>
-                去管理
-              </Button>
-            ) : null}
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          ) : null}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            htmlType="button"
+            variant="outlined"
+            onClick={() => onOpenChange(false)}
+          >
+            关闭
+          </Button>
+          {!isPersonalSkill(skill) ? (
+            <Button htmlType="button" onClick={() => onManage(skill)}>
+              去管理
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    </Modal>
   );
 };

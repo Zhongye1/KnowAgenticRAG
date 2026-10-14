@@ -11,7 +11,13 @@ import * as React from 'react';
 import { Bot, Check, ChevronDown } from 'lucide-react';
 import styles from './input-selector.module.css';
 
-import { Dropdown, type ChatDropdownItem } from './antd-dropdown';
+import { Dropdown } from 'antd';
+import {
+  toAntdMenuItems,
+  toSelectedKeys,
+  findItem,
+  type ChatDropdownItem,
+} from './chat-dropdown';
 
 import {
   agentSwitchBlockReason,
@@ -77,14 +83,25 @@ export const AgentSelector = ({
   }));
 
   return (
-    <Dropdown items={items} disabled={loading || isCreatingThread} placement="topLeft">
+    <Dropdown
+      menu={{
+        items: toAntdMenuItems(items),
+        selectedKeys: toSelectedKeys(items),
+        onClick: ({ key }) => findItem(items, key)?.onSelect(),
+        selectable: true,
+      }}
+      trigger={['click']}
+      placement="topLeft"
+      disabled={loading || isCreatingThread}
+    >
       <button
         type="button"
-        className={styles.trigger}
+        className={`${styles.trigger} ${styles.triggerAgent}`}
         aria-label={label}
         disabled={loading || isCreatingThread}
       >
-        <Bot className={styles.triggerIcon} aria-hidden />
+        {/* 图标与参照同构：宽屏只留文字与箭头，窄屏（≤640px）收成纯图标钮 */}
+        <Bot className={styles.triggerCompactIcon} aria-hidden />
         <span className={styles.triggerLabel}>{label}</span>
         <ChevronDown className={styles.triggerChevron} aria-hidden />
       </button>

@@ -8,17 +8,27 @@
  * 知道容器有多宽。
  */
 import * as React from 'react';
-import { Bug, FileText, Folders, Gauge, Maximize2, Minimize2, PanelRight, X } from 'lucide-react';
+import {
+  Bug,
+  FileText,
+  Folders,
+  Maximize2,
+  Minimize2,
+  PanelRight,
+  X,
+} from 'lucide-react';
 import styles from './agent-panel.module.css';
 
 import { normalizeSections, type PanelSection } from '../lib/panel-sections';
+
+/** 拖动开始的位移阈值（px）：小于它算单击，不改宽度也不点亮把手。 */
+const RESIZE_START_THRESHOLD_PX = 3;
 
 const SECTION_ICONS = {
   'file-tree': Folders,
   file: FileText,
   'message-debug': Bug,
   subagent: Folders,
-  state: Gauge,
 } as const;
 
 type AgentPanelProps = {
@@ -60,10 +70,17 @@ export const AgentPanel = ({
   onResizeEnd,
   children,
 }: AgentPanelProps) => {
-  const normalized = React.useMemo(() => normalizeSections(sections), [sections]);
+  const normalized = React.useMemo(
+    () => normalizeSections(sections),
+    [sections],
+  );
   const [resizing, setResizing] = React.useState(false);
+  // 视觉上的「正在拖动」：只有指针真的移动过才点亮把手，单击不该闪一下
+  const [dragging, setDragging] = React.useState(false);
   const frameRef = React.useRef(0);
   const pendingXRef = React.useRef(0);
+  const startXRef = React.useRef(0);
+  const movedRef = React.useRef(false);
 
   // 指针每动一下都换算会打满主线程；按帧合并，只发最后一次的位置
   const queueResize = React.useCallback(
@@ -81,6 +98,12 @@ export const AgentPanel = ({
 
   const stopResize = React.useCallback(
     (event?: PointerEvent) => {
+      // 先取消排队的那一帧：它若在 endResize 之后执行，会把已经清零的锚点当成「第一次移动」，
+      // 重新写回 dragWidth，面板就永远停在「拖拽中」
+      if (frameRef.current) {
+        window.cancelAnimationFrame(frameRef.current);
+        frameRef.current = 0;
+      }
       setResizing(false);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
@@ -92,7 +115,20 @@ export const AgentPanel = ({
   );
 
   const handlePointerMove = React.useCallback(
-    (event: PointerEvent) => queueResize(event.clientX),
+    (event: PointerEvent) => {
+      // 越过起点阈值才算开始拖：单击把手不该把面板宽度跳到点击位置
+      if (!movedRef.current) {
+        if (
+          Math.abs(event.clientX - startXRef.current) <
+          RESIZE_START_THRESHOLD_PX
+        ) {
+          return;
+        }
+        movedRef.current = true;
+        setDragging(true);
+      }
+      queueResize(event.clientX);
+    },
     [queueResize],
   );
 
@@ -126,15 +162,13 @@ export const AgentPanel = ({
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     event.currentTarget.setPointerCapture?.(event.pointerId);
-    queueResize(event.clientX);
+    // 只记起点，先不改宽度：等指针越过阈值再开始（见 handlePointerMove）
+    startXRef.current = event.clientX;
+    movedRef.current = false;
   };
 
   return (
-    <aside
-      className={styles.shell}
-      style={{ width }}
-      aria-label="侧边栏"
-    >
+    <aside className={styles.shell} style={{ width }} aria-label="侧边栏">
       {!maximized ? (
         <div
           /* 竖向拖拽把手：`hr` 是横向分隔符，承载不了拖拽，因此用带 role 的 div */
@@ -142,7 +176,7 @@ export const AgentPanel = ({
           role="separator"
           aria-orientation="vertical"
           aria-label="调整侧边栏宽度"
-          className={`${styles.resizeHandle} ${resizing ? styles.resizeHandleActive : ''}`}
+          className={`${styles.resizeHandle} ${dragging ? styles.resizeHandleActive : ''}`}
           onPointerDown={startResize}
         />
       ) : null}
@@ -153,35 +187,48 @@ export const AgentPanel = ({
           role="tablist"
           aria-label="侧边栏内容"
         >
-          {normalized.map((section) => {
+          {normalized.map((section, index) => {
             const Icon = SECTION_ICONS[section.type] ?? Folders;
             const active = section.key === activeSectionKey;
 
             return (
-              <div key={section.key} className={styles.sectionTab}>
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={active}
-                  title={section.title}
-                  className={`${styles.sectionTabMain} ${active ? styles.sectionTabActive : ''}`}
-                  onClick={() => onActivateSection(section.key)}
+              <React.Fragment key={section.key}>
+                {index > 0 ? (
+                  <span aria-hidden className={styles.sectionTabDivider} />
+                ) : null}
+                {/* 激活态挂在外层：底色由它给，挂在按钮上会被 .sectionTabMain 的
+                    background: transparent 盖掉（参照里这个类也在外层） */}
+                <div
+                  className={`${styles.sectionTab} ${
+                    active ? styles.sectionTabActive : ''
+                  }`}
                 >
-                  <Icon className={styles.sectionTabIcon} aria-hidden />
-                  <span className={styles.sectionTabTitle}>{section.title}</span>
-                </button>
-                {/* 文件树是常驻分区，不给关闭入口 */}
-                {section.type !== 'file-tree' ? (
                   <button
                     type="button"
-                    aria-label={`关闭 ${section.title}`}
-                    className={styles.sectionTabClose}
-                    onClick={() => onCloseSection(section.key)}
+                    role="tab"
+                    aria-selected={active}
+                    title={section.title}
+                    className={styles.sectionTabMain}
+                    onClick={() => onActivateSection(section.key)}
                   >
-                    <X className={styles.sectionTabCloseIcon} aria-hidden />
+                    <Icon className={styles.sectionTabIcon} aria-hidden />
+                    <span className={styles.sectionTabTitle}>
+                      {section.title}
+                    </span>
                   </button>
-                ) : null}
-              </div>
+                  {/* 文件树是常驻分区，不给关闭入口 */}
+                  {section.type !== 'file-tree' ? (
+                    <button
+                      type="button"
+                      aria-label={`关闭 ${section.title}`}
+                      className={styles.sectionTabClose}
+                      onClick={() => onCloseSection(section.key)}
+                    >
+                      <X className={styles.sectionTabCloseIcon} aria-hidden />
+                    </button>
+                  ) : null}
+                </div>
+              </React.Fragment>
             );
           })}
         </div>

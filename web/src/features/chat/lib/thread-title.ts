@@ -1,11 +1,11 @@
 /**
- * 会话标题的自动生成。
+ * 会话标题的纯逻辑。
  *
  * 对齐参照 `AgentChatComponent.vue:3242`：线程的第一条消息触发一次标题生成，
  * 用非流式模型调用走 `fast_model`；生成失败回退到截断原文。
+ * 网络调用在 `api/agent-api.ts`（契约生成物只允许 api 段引用），这里只有提示词、
+ * 清洗与回退。
  */
-import { unwrap } from '@/shared/api';
-import { callApiChatCallPost } from '@/shared/api/generated/sdk.gen';
 
 /** 标题生成提示词；请求内容封在标签里并显式声明「只当素材」，防注入。 */
 export function buildConversationTitlePrompt(requestContent: string): string {
@@ -39,26 +39,4 @@ export function sanitizeGeneratedTitle(raw: unknown): string {
     .replace(/\s+/g, ' ')
     .trim();
   return cleaned.slice(0, TITLE_MAX_LENGTH);
-}
-
-/** 用 fast_model 生成一次标题；模型没有配置或调用失败都抛给调用方回退。 */
-export async function generateConversationTitle(input: {
-  query: string;
-  /** `meta.model_spec`；参照传系统配置的 `fast_model`。 */
-  modelSpec: unknown;
-}): Promise<string> {
-  const response = unwrap<unknown>(
-    await callApiChatCallPost({
-      body: {
-        query: buildConversationTitlePrompt(input.query),
-        meta: { model_spec: input.modelSpec },
-      },
-    }),
-  );
-  // 参照取 `response.response`；后端没有 response_model，字段按不可信数据处理
-  const payload =
-    typeof response === 'object' && response !== null && 'response' in response
-      ? (response as { response?: unknown }).response
-      : response;
-  return sanitizeGeneratedTitle(payload);
 }

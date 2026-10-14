@@ -54,10 +54,7 @@ export type ToolHeaderContext = {
 };
 
 /** 从参数里取字符串字段；非字符串与空串都算没有。 */
-function argString(
-  args: Record<string, unknown>,
-  ...keys: string[]
-): string {
+function argString(args: Record<string, unknown>, ...keys: string[]): string {
   for (const key of keys) {
     const value = args[key];
     if (typeof value === 'string' && value.trim()) return value.trim();
@@ -123,7 +120,9 @@ function knowledgeBaseSummary(toolCall: ChatToolCall): string {
   const list = Array.isArray(parsed) ? parsed : [];
   const names = list
     .map((item) => (item as { name?: unknown } | null)?.name)
-    .filter((name): name is string => typeof name === 'string' && Boolean(name));
+    .filter(
+      (name): name is string => typeof name === 'string' && Boolean(name),
+    );
   if (names.length === 0) return '暂无知识库';
 
   const preview = names.slice(0, 3).join('，');
@@ -189,10 +188,7 @@ export function buildToolHeader(
 
       return {
         note: '搜索文件内容',
-        segments: [
-          ...detail(pattern),
-          ...detail(target, { code: true }),
-        ],
+        segments: [...detail(pattern), ...detail(target, { code: true })],
       };
     }
 

@@ -15,14 +15,28 @@ import {
   settlePreviewCacheLoad,
   type PreviewCache,
   type PreviewCacheEntry,
-  type PreviewFile,
 } from '../lib/panel-preview';
+import type { PreviewFile } from '@/shared/lib/file-preview';
 
 export type PanelPreview = {
   /** 当前分区正在展示的文件；null 表示还没有可展示的内容。 */
   current: PreviewFile | null;
   /** 打开（或激活）一个文件的预览。 */
-  open: (input: { scope: 'thread' | 'workspace'; path: string; name: string }) => void;
+  open: (input: {
+    scope: 'thread' | 'workspace';
+    path: string;
+    name: string;
+  }) => void;
+  /**
+   * 缓存里某个文件的预览；没加载过时返回 null。
+   *
+   * 文件分区按各自的 path 取内容：`current` 只是「最后打开的那一个」，多个预览 tab
+   * 并存时用它会让每个 tab 都显示同一个文件。
+   */
+  previewFor: (input: {
+    scope: 'thread' | 'workspace';
+    path: string;
+  }) => PreviewFile | null;
   /** 关闭当前预览。 */
   close: () => void;
   /** 重新加载当前文件；用于轮询发现文件变化后。 */
@@ -114,7 +128,8 @@ export const usePanelPreview = (options: {
             revokeObjectURL,
           });
           // 只有关键请求还是当前请求时才上屏
-          if (requestSeq === requestSeqRef.current && published) setCurrent(file);
+          if (requestSeq === requestSeqRef.current && published)
+            setCurrent(file);
         } catch (error) {
           cacheRef.current.delete(cacheKey);
           if (requestSeq === requestSeqRef.current) {
@@ -132,6 +147,19 @@ export const usePanelPreview = (options: {
           });
         }
       })();
+    },
+    [options.threadId],
+  );
+
+  const previewFor = React.useCallback(
+    (input: { scope: 'thread' | 'workspace'; path: string }) => {
+      const cacheKey = previewCacheKey({
+        scope: input.scope,
+        threadId: options.threadId,
+        path: input.path,
+      });
+
+      return cacheRef.current.get(cacheKey)?.file ?? null;
     },
     [options.threadId],
   );
@@ -205,5 +233,5 @@ export const usePanelPreview = (options: {
     [options.threadId],
   );
 
-  return { current, open, close, reload, download };
+  return { current, previewFor, open, close, reload, download };
 };

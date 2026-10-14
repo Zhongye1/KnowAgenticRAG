@@ -15,7 +15,7 @@ Owner：web/src/features/chat/lib/artifacts.ts
 ## 决策
 
 1. **提取规则对齐参照**：只认 AI 消息的 `present_artifacts` 调用；`tool_call_result` 存在或 `status === 'success'` 才算交付；`args` 是字符串时 JSON 解析，失败跳过该调用；`filepaths` 里丢弃空白与非字符串，路径 trim 后去重并保持首次出现顺序。落 `lib/artifacts.ts` 的 `extractArtifactsFromConversation`。
-2. **展示归一单独一层**：`normalizeArtifactItems` 把路径数组转成 `{path, name}` 条目，文件名取最后一段，连文件名都取不出（如 `/`）的路径不渲染；`artifactMetaLabel` 按扩展名给中文标签。
+2. **展示归一单独一层**：`normalizeArtifactItems` 把路径数组转成 `{path, name}` 条目，文件名取最后一段，连文件名都取不出（如 `/`）的路径不渲染；`artifactMetaLabel` 给类型描述（与参照同一条规则：`交付文件 · 大写扩展名`，无扩展名时 `交付文件`）。这条文案现在也由状态面板的产物行共用，见 [状态面板的用量卡与产物行还原参照](./2026-10-14-state-panel-usage-card-align-yuxi.md)。
 3. **卡片用回调槽位，不自带请求**：`ui/artifacts-card.tsx` 只渲染条目与触发回调（打开预览、下载、保存），fetch 与通知都在页面层——与现有 `FileTree` / `FilePreview` 的编排方式一致，卡片保持纯展示可单测。
 4. **挂载点走 `MessageList` 的 `renderArtifacts` 槽位**：每轮对话渲染完显示项后追加卡片，与参照 `AgentChatComponent.vue:111` 的位置一致（产物卡片在对话流里，不在面板内）。
 5. **端点落 `api/artifacts-api.ts`**：下载复用 `lib/panel-preview.ts` 的 `parseDownloadFilename`（RFC 5987）与 `saveBlobAsFile`；保存的响应 `saved_path` 按不可信数据校验，缺失时显式抛错。

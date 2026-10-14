@@ -7,7 +7,13 @@
  * 上限未知时只画底环，不画进度弧：画一个 0% 的弧会让人以为「用量是 0」，
  * 而实际是「不知道上限」。
  */
-import { getTokenUsagePercentLabel, getTokenUsageRatio, getTokenUsageTone } from '../lib/token-usage';
+import { Tooltip } from 'antd';
+
+import {
+  getTokenUsageRatio,
+  getTokenUsageTone,
+  getTokenUsageTooltipLabel,
+} from '../lib/token-usage';
 import type { TokenUsage } from '../lib/token-usage';
 
 /** 环形半径与线宽；`viewBox` 是 16×16。 */
@@ -15,10 +21,11 @@ const RADIUS = 6;
 const STROKE_WIDTH = 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
+/** 档位色：参照里进度弧常态是主色，只有告警与危险才换色。 */
 const TONE_CLASSES = {
   danger: 'text-[var(--color-error-500)]',
-  warning: 'text-[var(--second-600)]',
-  normal: 'text-[var(--main-600)]',
+  warning: 'text-[var(--color-warning-500)]',
+  normal: 'text-[var(--main-color)]',
 } as const;
 
 type ContextUsageRingProps = {
@@ -34,42 +41,51 @@ export const ContextUsageRing = ({
 }: ContextUsageRingProps) => {
   const ratio = usage ? getTokenUsageRatio(usage) : null;
   const tone = getTokenUsageTone(ratio);
-  const percentLabel = getTokenUsagePercentLabel(ratio);
-  const title = `上下文占用 ${percentLabel}`;
 
   return (
-    <button
-      type="button"
-      className={`shrink-0 rounded-full p-0.5 ${TONE_CLASSES[tone]}`}
-      title={title}
-      aria-label="上下文使用情况"
-      disabled={disabled}
-      onClick={onClick}
+    <Tooltip
+      title={usage ? getTokenUsageTooltipLabel(usage) : null}
+      placement="top"
+      mouseEnterDelay={0.15}
     >
-      <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden>
-        <circle
-          cx="8"
-          cy="8"
-          r={RADIUS}
-          fill="none"
-          strokeWidth={STROKE_WIDTH}
-          className="stroke-[var(--gray-150)]"
-        />
-        {ratio !== null && ratio > 0 ? (
+      <button
+        type="button"
+        className={`inline-flex size-[26px] shrink-0 items-center justify-center rounded-md border border-transparent bg-transparent p-0 transition-colors enabled:hover:bg-[var(--gray-100)] disabled:cursor-not-allowed disabled:opacity-50 ${TONE_CLASSES[tone]}`}
+        aria-label="上下文使用情况"
+        disabled={disabled}
+        onClick={onClick}
+      >
+        <svg
+          viewBox="0 0 16 16"
+          width="16"
+          height="16"
+          className="block"
+          aria-hidden
+        >
           <circle
             cx="8"
             cy="8"
             r={RADIUS}
             fill="none"
             strokeWidth={STROKE_WIDTH}
-            strokeLinecap="round"
-            strokeDasharray={CIRCUMFERENCE}
-            strokeDashoffset={CIRCUMFERENCE * (1 - ratio)}
-            transform="rotate(-90 8 8)"
-            className="stroke-current"
+            className="stroke-[var(--gray-300)] opacity-[0.65]"
           />
-        ) : null}
-      </svg>
-    </button>
+          {ratio !== null && ratio > 0 ? (
+            <circle
+              cx="8"
+              cy="8"
+              r={RADIUS}
+              fill="none"
+              strokeWidth={STROKE_WIDTH}
+              strokeLinecap="round"
+              strokeDasharray={CIRCUMFERENCE}
+              strokeDashoffset={CIRCUMFERENCE * (1 - ratio)}
+              transform="rotate(-90 8 8)"
+              className="stroke-current transition-[stroke-dashoffset] duration-300"
+            />
+          ) : null}
+        </svg>
+      </button>
+    </Tooltip>
   );
 };

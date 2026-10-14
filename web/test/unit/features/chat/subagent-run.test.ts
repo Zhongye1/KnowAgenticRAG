@@ -64,7 +64,11 @@ describe('resolveSubagentDisplayName', () => {
   it('结果里的名字优先，其次参数 slug，退回「子智能体」', () => {
     expect(
       resolveSubagentDisplayName(
-        call({ tool_call_result: { content: JSON.stringify({ subagent_name: '写手' }) } }),
+        call({
+          tool_call_result: {
+            content: JSON.stringify({ subagent_name: '写手' }),
+          },
+        }),
       ),
     ).toBe('写手');
     expect(resolveSubagentDisplayName(call())).toBe('researcher');
@@ -131,7 +135,14 @@ describe('resolveTaskRunStatus', () => {
 
 describe('isSubagentToolCall', () => {
   it('认全六个工具 id，不认别的', () => {
-    for (const id of ['task', 'subagent_start', 'subagent_status', 'subagent_events', 'subagent_cancel', 'subagent_await']) {
+    for (const id of [
+      'task',
+      'subagent_start',
+      'subagent_status',
+      'subagent_events',
+      'subagent_cancel',
+      'subagent_await',
+    ]) {
       expect(isSubagentToolCall(call({ name: id }))).toBe(true);
     }
     expect(isSubagentToolCall(call({ name: 'read_file' }))).toBe(false);
@@ -182,7 +193,10 @@ describe('buildSubagentLifecycleView', () => {
   });
 
   it('结果正文取 output，事件截到八条', () => {
-    const events = Array.from({ length: 12 }, (_, i) => ({ seq: String(i), event: 'e' }));
+    const events = Array.from({ length: 12 }, (_, i) => ({
+      seq: String(i),
+      event: 'e',
+    }));
     const view = buildSubagentLifecycleView(
       call({
         name: 'subagent_status',
@@ -217,7 +231,9 @@ describe('buildSubagentLifecycleView', () => {
     expect(view.fallbackResult).toBe('');
     // 参数里的 slug 撑头部与元信息
     expect(view.title).toBe('查询子智能体: researcher');
-    expect(view.meta).toEqual([{ label: 'subagent_slug', value: 'researcher' }]);
+    expect(view.meta).toEqual([
+      { label: 'subagent_slug', value: 'researcher' },
+    ]);
   });
 });
 

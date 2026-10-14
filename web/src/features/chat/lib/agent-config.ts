@@ -40,7 +40,8 @@ export const asRecord = (value: unknown): Record<string, unknown> =>
     ? (value as Record<string, unknown>)
     : {};
 
-const asText = (value: unknown): string => (typeof value === 'string' ? value : '');
+const asText = (value: unknown): string =>
+  typeof value === 'string' ? value : '';
 
 /**
  * 把配置项的默认值补进智能体配置。
@@ -58,7 +59,11 @@ export function applyConfigDefaults(
     const item = asRecord(rawItem);
     const value = config[key];
     // `null` 表示「默认全部」的种类保留原值，其余情况下 null 与 undefined 都补默认值
-    if (value === null && DEFAULT_ALL_RESOURCE_KINDS.includes(asText(item.kind))) continue;
+    if (
+      value === null &&
+      DEFAULT_ALL_RESOURCE_KINDS.includes(asText(item.kind))
+    )
+      continue;
     if (value !== undefined && value !== null) continue;
     if (item.default !== undefined) config[key] = item.default;
   }

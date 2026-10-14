@@ -1,79 +1,17 @@
 /**
  * 会话搜索的展示逻辑。
  *
- * 片段高亮切片、结果日期格式、最近会话的时间分组。时间按固定 +08:00 偏移计算，不引日期库
- * （上海自 1991 年起没有夏令时）。
+ * 只留会话这一侧：片段高亮切片与结果日期格式在 `@/shared/lib`（文件搜索共用），
+ * 这里只保留默认视图上限、最近会话的时间分组与结果片段取值。
  */
+import { toShanghaiDate } from '@/shared/lib';
+
 import type { ChatThread, ThreadSearchItem } from '../api/agent-api';
 
 /** 默认视图上限。 */
 export const RECENT_THREAD_LIMIT = 30;
 /** 每页结果条数。 */
 export const CONVERSATION_SEARCH_LIMIT = 20;
-
-const SHANGHAI_OFFSET_MS = 8 * 60 * 60 * 1000;
-
-/** 把后端给的 UTC 时间串换算到上海时钟；之后一律用 getUTC* 读取。 */
-const toShanghaiDate = (value?: string | null): Date | null => {
-  if (!value) return null;
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return null;
-  return new Date(parsed.getTime() + SHANGHAI_OFFSET_MS);
-};
-
-/** 一条片段被切成的高亮段：`match` 为真时用 `<mark>` 渲染。 */
-export type SnippetSegment = { text: string; match: boolean };
-
-/**
- * 按查询词切片段，大小写不敏感、纯子串匹配：不分词、不正则、标题不高亮。
- * 空内容或空查询时返回整段非高亮。
- */
-export const splitSnippet = (
-  content: string,
-  query: string,
-): SnippetSegment[] => {
-  const text = content ?? '';
-  const needle = (query ?? '').trim();
-  if (!text || !needle) return [{ text, match: false }];
-
-  const lowerText = text.toLowerCase();
-  const lowerNeedle = needle.toLowerCase();
-  const segments: SnippetSegment[] = [];
-  let cursor = 0;
-  let index = lowerText.indexOf(lowerNeedle);
-
-  while (index >= 0) {
-    if (index > cursor) {
-      segments.push({ text: text.slice(cursor, index), match: false });
-    }
-    segments.push({
-      text: text.slice(index, index + needle.length),
-      match: true,
-    });
-    cursor = index + needle.length;
-    index = lowerText.indexOf(lowerNeedle, cursor);
-  }
-  if (cursor < text.length) {
-    segments.push({ text: text.slice(cursor), match: false });
-  }
-  return segments;
-};
-
-/** 结果行右侧的日期：当年显示 `M月D日`，跨年显示 `YYYY-MM-DD`。 */
-export const formatResultDate = (
-  value?: string | null,
-  now: Date = new Date(),
-): string => {
-  const parsed = toShanghaiDate(value);
-  if (!parsed) return '';
-  const month = parsed.getUTCMonth() + 1;
-  const day = parsed.getUTCDate();
-  const nowShanghai = new Date(now.getTime() + SHANGHAI_OFFSET_MS);
-  if (parsed.getUTCFullYear() === nowShanghai.getUTCFullYear()) {
-    return `${month}月${day}日`;
-  }
-  return `${parsed.getUTCFullYear()}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-};
 
 /** 最近会话的时间分组标签：≤7 天、≤30 天、更早。 */
 export const getRecentGroupLabel = (
@@ -84,11 +22,12 @@ export const getRecentGroupLabel = (
   if (!parsed) return '更早';
   const startOfDay = (date: Date) =>
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
-  const diffDays = Math.floor(
-    (startOfDay(new Date(now.getTime() + SHANGHAI_OFFSET_MS)) -
-      startOfDay(parsed)) /
-      (24 * 60 * 60 * 1000),
-  );
+  const nowShanghai = toShanghaiDate(now.toISOString());
+  const diffDays = nowShanghai
+    ? Math.floor(
+        (startOfDay(nowShanghai) - startOfDay(parsed)) / (24 * 60 * 60 * 1000),
+      )
+    : 0;
   if (diffDays <= 7) return '前 7 天';
   if (diffDays <= 30) return '前 30 天';
   return '更早';

@@ -168,7 +168,9 @@ export const getSubagentToolId = (
 export const isSubagentToolCall = (
   toolCall: ChatToolCall | null | undefined,
 ): boolean =>
-  (SUBAGENT_TOOL_IDS as readonly string[]).includes(getSubagentToolId(toolCall));
+  (SUBAGENT_TOOL_IDS as readonly string[]).includes(
+    getSubagentToolId(toolCall),
+  );
 
 /**
  * 展示名：结果里的名字优先，其次参数的 slug，最后退回「子智能体」。
@@ -323,12 +325,12 @@ export function buildSubagentLifecycleView(
       : '');
 
   const runId = firstNonEmpty(result.run_id, args.run_id, result.active_run_id);
-  const threadId = firstNonEmpty(
-    result.thread_id,
-    args.thread_id,
-  );
+  const threadId = firstNonEmpty(result.thread_id, args.thread_id);
   const slug = firstNonEmpty(result.subagent_slug, args.subagent_slug);
-  const lastSeq = firstNonEmpty(result.last_seq, (result.progress as Record<string, unknown> | undefined)?.last_seq);
+  const lastSeq = firstNonEmpty(
+    result.last_seq,
+    (result.progress as Record<string, unknown> | undefined)?.last_seq,
+  );
   const eventsRaw = Array.isArray(result.events) ? result.events : [];
   const meta: SubagentMetaItem[] = (
     [
@@ -342,21 +344,17 @@ export function buildSubagentLifecycleView(
     .filter(([, value]) => value)
     .map(([labelKey, value]) => ({ label: labelKey, value }));
 
-  const events = eventsRaw
-    .slice(0, EVENT_PREVIEW_LIMIT)
-    .map((event, index) => {
-      const record = isRecord(event) ? event : {};
-      return {
-        seq: nonEmptyString(record.seq) || String(index + 1),
-        name: firstNonEmpty(record.event, record.type, record.method) || 'event',
-      };
-    });
+  const events = eventsRaw.slice(0, EVENT_PREVIEW_LIMIT).map((event, index) => {
+    const record = isRecord(event) ? event : {};
+    return {
+      seq: nonEmptyString(record.seq) || String(index + 1),
+      name: firstNonEmpty(record.event, record.type, record.method) || 'event',
+    };
+  });
 
   const progressRaw = (result.progress as Record<string, unknown> | undefined)
     ?.messages;
-  const progressMessages = (
-    Array.isArray(progressRaw) ? progressRaw : []
-  )
+  const progressMessages = (Array.isArray(progressRaw) ? progressRaw : [])
     .map((message) => {
       const record = isRecord(message) ? message : {};
       return {
@@ -374,13 +372,18 @@ export function buildSubagentLifecycleView(
   } else if (isRecord(resultValue)) {
     resultText =
       nonEmptyString(resultValue.output) ||
-      nonEmptyString((resultValue.error as Record<string, unknown> | undefined)?.message);
+      nonEmptyString(
+        (resultValue.error as Record<string, unknown> | undefined)?.message,
+      );
   }
 
   // 空对象与没有任何结构化内容的情况都没有兜底文本：交给通用渲染
   const hasMeaningfulResult = Object.keys(result).length > 0;
   const fallbackResult =
-    !hasMeaningfulResult || resultText || events.length || progressMessages.length
+    !hasMeaningfulResult ||
+    resultText ||
+    events.length ||
+    progressMessages.length
       ? ''
       : JSON.stringify(result, null, 2);
 
@@ -417,10 +420,7 @@ export function buildSubagentTaskView(
 ): SubagentTaskView {
   const args = parseSubagentArgs(toolCall);
   const runStatus = resolveTaskRunStatus(toolCall, options);
-  const description = truncateText(
-    args.description,
-    50,
-  );
+  const description = truncateText(args.description, 50);
   return {
     name: resolveSubagentDisplayName(toolCall),
     runStatus,

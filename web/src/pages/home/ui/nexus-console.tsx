@@ -82,7 +82,8 @@ export const NexusConsole = () => {
   const codeRef = React.useRef<HTMLPreElement | null>(null);
   const metrics = useConsoleScrollbars(frameRef, codeRef, activeTab);
 
-  const tab = ACCESS_TABS.find((item) => item.id === activeTab) ?? ACCESS_TABS[0];
+  const tab =
+    ACCESS_TABS.find((item) => item.id === activeTab) ?? ACCESS_TABS[0];
 
   const copyEndpoint = React.useCallback(async () => {
     try {
@@ -179,7 +180,10 @@ export const NexusConsole = () => {
             <a className="button button-primary nx-cta" href={tab.docsHref}>
               Protocol Docs <span aria-hidden="true">↗</span>
             </a>
-            <a className="button button-quiet nx-cta" href={outbound.docsQuickStart}>
+            <a
+              className="button button-quiet nx-cta"
+              href={outbound.docsQuickStart}
+            >
               Quick start
             </a>
           </div>
@@ -204,7 +208,11 @@ export const NexusConsole = () => {
             <code className="text-xs nx-term-accent truncate select-all">
               {tab.endpoint}
             </code>
-            <button className="copy-button" type="button" onClick={copyEndpoint}>
+            <button
+              className="copy-button"
+              type="button"
+              onClick={copyEndpoint}
+            >
               {copied ? 'Copied' : 'Copy endpoint'}
             </button>
           </div>

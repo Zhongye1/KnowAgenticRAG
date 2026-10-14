@@ -16,6 +16,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+// antd 词汇（按钮两字间距、message/modal 上下文）由应用装配承载，测试里同构挂上
+import { AntdProvider } from '@/app/theme/antd-provider';
+
 /** 弹窗里有多次 userEvent 驱动的页签与表格交互，给本文件单独放宽预算。 */
 vi.setConfig({ testTimeout: 15000 });
 
@@ -52,15 +55,12 @@ vi.mock('@/entities/session', () => ({
   useUser: () => ({ data: currentUser.value }),
 }));
 
-vi.mock('@/shared/ui/notifications', async () => {
-  const actual = await vi.importActual<
-    typeof import('@/shared/ui/notifications')
-  >('@/shared/ui/notifications');
-  return { ...actual, useNotifications: () => notifications };
-});
+vi.mock('@/shared/ui/notifications', () => ({
+  useNotifications: () => notifications,
+}));
 
 vi.mock('@/shared/ui/confirm-dialog', () => ({
-  confirm: (...args: unknown[]) => confirmMock(...args),
+  useConfirm: () => ({ confirm: (...args: unknown[]) => confirmMock(...args) }),
 }));
 
 const { DebugModal } = await import('@/features/debug');
@@ -120,9 +120,11 @@ let user: ReturnType<typeof userEvent.setup>;
 const renderModal = (open = true) => {
   const onOpenChange = vi.fn();
   render(
-    <QueryClientProvider client={queryClient()}>
-      <DebugModal open={open} onOpenChange={onOpenChange} />
-    </QueryClientProvider>,
+    <AntdProvider>
+      <QueryClientProvider client={queryClient()}>
+        <DebugModal open={open} onOpenChange={onOpenChange} />
+      </QueryClientProvider>
+    </AntdProvider>,
   );
   return { onOpenChange };
 };
@@ -643,6 +645,8 @@ describe('弹窗骨架', () => {
   it('关闭按钮把开合状态交回调用方', async () => {
     const { onOpenChange } = renderModal();
 
+    // Modal 有挂载动画；等日志内容渲染可见后再点页脚的关闭按钮
+    await screen.findByText(/服务启动/);
     await user.click(screen.getByRole('button', { name: '关闭' }));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);

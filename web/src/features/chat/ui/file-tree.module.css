@@ -2,7 +2,9 @@
    `.file-tree-container` / `.tree-node-name` / `.node-actions-container` /
    `.tree-action-btn` / `.empty`，以及 FileTreeComponent.vue 的节点行
    （32px 行高、6px 圆角、缩进 14px/级）。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。
+   行结构与键盘交互由 antd `Tree` 承担，因此这里有一组 `.ant-tree-*` 覆盖：
+   它们只在本组件的 `.tree` 之下生效，不污染全局（全局覆盖归 antd-overrides.css）。 */
 
 /* 参照 .empty——居中 14px gray-500 */
 .notice,
@@ -33,60 +35,84 @@
 }
 
 /* 参照 .file-tree-container——独立滚动 + 6px 灰滚动条 */
-.list {
+.tree {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
-  list-style: none;
+  overflow: auto;
   padding: 0 6px 6px;
-  margin: 0;
+  background: transparent;
+  font-size: 14px;
 }
 
-.list::-webkit-scrollbar {
+.tree::-webkit-scrollbar {
   width: 6px;
 }
 
-.list::-webkit-scrollbar-track {
+.tree::-webkit-scrollbar-track {
   background: var(--gray-50);
 }
 
-.list::-webkit-scrollbar-thumb {
+.tree::-webkit-scrollbar-thumb {
   background: var(--gray-300);
   border-radius: 3px;
 }
 
-.list::-webkit-scrollbar-thumb:hover {
+.tree::-webkit-scrollbar-thumb:hover {
   background: var(--gray-400);
 }
 
-/* 参照 FileTreeComponent 的节点行——32px、6px 圆角、0.15s 过渡、紧排 */
+/* 行：antd 自带内边距与选中底色换成参照 FileTreeComponent 的节点行 */
+.tree :global(.ant-tree-treenode) {
+  width: 100%;
+  padding: 0;
+}
+
+/* 参照的展开箭头是自绘的，antd 的 switcher 不占位 */
+.tree :global(.ant-tree-switcher) {
+  display: none;
+}
+
+.tree :global(.ant-tree-indent-unit) {
+  width: 14px;
+}
+
+.tree :global(.ant-tree-node-content-wrapper) {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  height: 32px;
+  padding: 0 4px;
+  border-radius: 6px;
+  color: var(--gray-800);
+  transition: background-color 0.15s ease;
+}
+
+.tree :global(.ant-tree-node-content-wrapper:hover) {
+  background-color: var(--gray-50);
+}
+
+.tree :global(.ant-tree-node-content-wrapper.ant-tree-node-selected) {
+  background-color: var(--gray-100);
+}
+
+.tree :global(.ant-tree-node-content-wrapper.ant-tree-node-selected:hover) {
+  background-color: var(--gray-150);
+}
+
+/* 悬停整行（含内边距）都露出动作钮 */
+.tree :global(.ant-tree-node-content-wrapper:hover) .nodeActions {
+  display: flex;
+}
+
+/* 节点行的内容；行高与圆角由 antd 的包装元素承担 */
 .nodeRow {
   display: flex;
   align-items: center;
   gap: 4px;
-  height: 32px;
-  border: none;
-  background: transparent;
-  border-radius: 6px;
-  padding: 0 4px;
-  font-size: 14px;
-  color: var(--gray-800);
-  cursor: pointer;
   width: 100%;
+  min-width: 0;
+  height: 100%;
   text-align: left;
-  transition: background-color 0.15s ease;
-}
-
-.nodeRowSelected {
-  background-color: var(--gray-100);
-}
-
-.nodeRowSelected:hover {
-  background-color: var(--gray-150);
-}
-
-.nodeRow:not(.nodeRowSelected):hover {
-  background-color: var(--gray-50);
 }
 
 /* 展开箭头：参照隐藏 switcher 后自绘的 chevron，小号灰色 */
@@ -155,10 +181,6 @@
   padding-left: 8px;
 }
 
-.nodeRow:hover .nodeActions {
-  display: flex;
-}
-
 /* 参照 .tree-action-btn——24px 方钮；下载 hover 主色、删除 hover 红 */
 .nodeActionBtn {
   display: flex;
@@ -183,7 +205,7 @@
 }
 
 .nodeDeleteBtn:hover:not(:disabled) {
-  color: var(--color-error-600);
+  color: var(--color-error-500);
 }
 
 .nodeActionIcon {

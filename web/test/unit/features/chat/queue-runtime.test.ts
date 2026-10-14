@@ -531,7 +531,9 @@ describe('队列运行时', () => {
       modelSpec: 'siliconflow-cn:qwen-max',
     });
 
-    expect(api.createRun.mock.calls[0][0].model_spec).toBe('siliconflow-cn:qwen-max');
+    expect(api.createRun.mock.calls[0][0].model_spec).toBe(
+      'siliconflow-cn:qwen-max',
+    );
   });
 
   it('不传 modelSpec 时不下发模型，交给后端解析', async () => {
@@ -543,7 +545,11 @@ describe('队列运行时', () => {
     });
     const runtime = createRuntime();
 
-    await runtime.sendMessage({ threadId: THREAD, agentSlug: SLUG, query: '你好' });
+    await runtime.sendMessage({
+      threadId: THREAD,
+      agentSlug: SLUG,
+      query: '你好',
+    });
 
     expect(api.createRun.mock.calls[0][0].model_spec).toBeUndefined();
   });

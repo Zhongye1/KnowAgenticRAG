@@ -6,12 +6,16 @@
  *   工具类与 CSS Modules。
  * - `ConfigProvider` 按 Yuxi `src/stores/theme.js` 平移主题：种子色、链接色、
  *   圆角与字体栈；暗色用 `theme.darkAlgorithm` 并跟随 `html.dark`。
+ * - 中文包从 `antd/es/locale/zh_CN` 取，不走 `antd/locale/zh_CN`：后者是
+ *   `module.exports = require('../lib/locale/zh_CN')` 的 CJS 转发，其命名空间对象
+ *   （`{default, __esModule}`）会整份到达 `ConfigProvider`，antd 读不到 `Modal.okText`
+ *   等键就退回英文——弹窗按钮与分页器因此一直是英文。`es/` 那份是真正的 ESM 默认导出。
  * - `App`（`component={false}`，不新增 DOM 层）提供主题感知的 `message`，
  *   页面用 `App.useApp()` 取用，避免 antd 对静态方法的上下文告警。
  */
 import { StyleProvider } from '@ant-design/cssinjs';
 import { App as AntdApp, ConfigProvider, theme as antdTheme } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
+import zhCN from 'antd/es/locale/zh_CN';
 import * as React from 'react';
 
 import { useIsDarkMode } from '@/shared/lib/theme';
@@ -41,7 +45,6 @@ export const AntdProvider = ({ children }: { children: React.ReactNode }) => {
       algorithm: isDark ? antdTheme.darkAlgorithm : undefined,
       // 参照的按钮文案没有两字间距（antd 默认在两个汉字间插空格）；
       // 关掉它，否则「删除」的可访问名会变成「删 除」，测试与读屏都受影响
-      button: { autoInsertSpace: false },
       token: {
         fontFamily: FONT_FAMILY,
         colorPrimary: readRootColor('--antd-color-primary-seed'),
@@ -57,7 +60,13 @@ export const AntdProvider = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <StyleProvider layer>
-      <ConfigProvider theme={theme} locale={zhCN}>
+      {/* 中文按钮不插空格：antd 默认在两个汉字间插空格（「删除」变「删 除」），
+          与参照的紧凑文案、读屏与测试的可访问名都不一致，全局关掉 */}
+      <ConfigProvider
+        theme={theme}
+        locale={zhCN}
+        button={{ autoInsertSpace: false }}
+      >
         <AntdApp component={false}>{children}</AntdApp>
       </ConfigProvider>
     </StyleProvider>

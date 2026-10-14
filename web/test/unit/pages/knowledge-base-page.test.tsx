@@ -5,11 +5,20 @@ import * as React from 'react';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+// antd 词汇由应用装配承载，测试同构挂上
+import { AntdProvider } from '@/app/theme/antd-provider';
+
 /**
- * 这套用例逐个靠 userEvent 驱动 Radix 弹窗，全套件并行跑时会超过默认 5 秒预算；
+ * 这套用例逐个靠 userEvent 驱动 antd 弹窗，全套件并行跑时会超过默认 5 秒预算；
  * 这里给本文件一个明确预算，不放宽全局配置。
  */
 vi.setConfig({ testTimeout: 15000 });
+
+/**
+ * 搜索结果要等 240ms 防抖 + 一次查询；antd 弹窗与表格比原 Radix 实现重，
+ * 全套件并行跑时把等待窗口放宽到文件预算以内，而不是放宽全局配置。
+ */
+const SEARCH_RESULT_TIMEOUT_MS = 12000;
 
 const { api } = vi.hoisted(() => ({
   api: {
@@ -127,18 +136,20 @@ const renderPage = () => {
     defaultOptions: { queries: { retry: false } },
   });
   render(
-    <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={['/extensions/knowledgebase/kb-1']}>
-        <Routes>
-          <Route
-            path="/extensions/knowledgebase/:kbId"
-            element={<KnowledgeBasePage />}
-          />
-          <Route path="/extensions" element={<span>列表页</span>} />
-        </Routes>
-        <LocationProbe />
-      </MemoryRouter>
-    </QueryClientProvider>,
+    <AntdProvider>
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter initialEntries={['/extensions/knowledgebase/kb-1']}>
+          <Routes>
+            <Route
+              path="/extensions/knowledgebase/:kbId"
+              element={<KnowledgeBasePage />}
+            />
+            <Route path="/extensions" element={<span>列表页</span>} />
+          </Routes>
+          <LocationProbe />
+        </MemoryRouter>
+      </QueryClientProvider>
+    </AntdProvider>,
   );
 };
 
@@ -329,7 +340,9 @@ describe('知识库详情页', () => {
     renderPage();
     await screen.findByText('研发知识库');
 
-    await userEvent.click(await screen.findByLabelText('每页条数'));
+    await userEvent.click(
+      await screen.findByRole('combobox', { name: '每页条数' }),
+    );
     await userEvent.click(
       await screen.findByRole('option', { name: '300 条/页' }),
     );
@@ -343,9 +356,12 @@ describe('知识库详情页', () => {
     await userEvent.click(screen.getByRole('button', { name: '检索测试' }));
     await userEvent.click(screen.getByRole('button', { name: '文件管理' }));
 
-    expect(screen.getByLabelText('每页条数').textContent).toContain(
-      '300 条/页',
-    );
+    // antd Select 的选中值渲染在 selection-item，combobox input 本身无文本
+    expect(
+      screen.getByText('300 条/页', {
+        selector: '.ant-select-selection-item',
+      }),
+    ).toBeTruthy();
   });
 
   it('文件表用详情页的 kbId 拉列表', async () => {
@@ -419,7 +435,7 @@ describe('知识库详情页', () => {
       await screen.findByRole(
         'button',
         { name: /年度报表\.pdf/ },
-        { timeout: 3000 },
+        { timeout: SEARCH_RESULT_TIMEOUT_MS },
       ),
     );
 
@@ -456,7 +472,7 @@ describe('知识库详情页', () => {
       await screen.findByRole(
         'button',
         { name: /年度报表\.pdf/ },
-        { timeout: 3000 },
+        { timeout: SEARCH_RESULT_TIMEOUT_MS },
       ),
     );
 
@@ -502,7 +518,7 @@ describe('知识库详情页', () => {
       await screen.findByRole(
         'button',
         { name: /年度报表\.pdf/ },
-        { timeout: 3000 },
+        { timeout: SEARCH_RESULT_TIMEOUT_MS },
       ),
     );
 
@@ -561,7 +577,7 @@ describe('知识库详情页', () => {
       await screen.findByRole(
         'button',
         { name: /年度报表\.pdf/ },
-        { timeout: 3000 },
+        { timeout: SEARCH_RESULT_TIMEOUT_MS },
       ),
     );
     await screen.findByText('目录内文件.md');
@@ -604,7 +620,7 @@ describe('知识库详情页', () => {
       await screen.findByRole(
         'button',
         { name: /根目录文件\.pdf/ },
-        { timeout: 3000 },
+        { timeout: SEARCH_RESULT_TIMEOUT_MS },
       ),
     );
 
@@ -658,7 +674,8 @@ describe('共享设置入口', () => {
     expect(screen.getByText('部门共享')).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: /共享设置/ }));
 
-    expect(await screen.findByTestId('share-config-dialog')).toBeTruthy();
+    // antd Modal 不带 testid，按弹窗内容断言它确实开了
+    expect(await screen.findByRole('radio', { name: '部门共享' })).toBeTruthy();
   });
 
   it('只读知识库不给共享入口', async () => {

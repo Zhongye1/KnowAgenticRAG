@@ -12,7 +12,15 @@ const item = (
   kind: string,
   options: Array<Record<string, unknown>> = [],
   overrides: Record<string, unknown> = {},
-) => ({ kind, type: 'list', name: kind, options, default: null, description: '', ...overrides });
+) => ({
+  kind,
+  type: 'list',
+  name: kind,
+  options,
+  default: null,
+  description: '',
+  ...overrides,
+});
 
 const option = (key: string, name?: string, description = '') => ({
   key,
@@ -24,7 +32,10 @@ describe('buildMentionConfig', () => {
   it('配置值为 null 时该种类的全部可选项参与', () => {
     const config = buildMentionConfig({
       configurableItems: {
-        skills: item('skills', [option('retrieve', '检索'), option('ocr', 'OCR')]),
+        skills: item('skills', [
+          option('retrieve', '检索'),
+          option('ocr', 'OCR'),
+        ]),
         subagents: item('subagents', [option('deep-research', '深度研究')]),
       },
       agentConfig: { skills: null, subagents: null },
@@ -35,7 +46,12 @@ describe('buildMentionConfig', () => {
       { slug: 'ocr', name: 'OCR', description: '' },
     ]);
     expect(config.subagents).toEqual([
-      { id: 'deep-research', slug: 'deep-research', name: '深度研究', description: '' },
+      {
+        id: 'deep-research',
+        slug: 'deep-research',
+        name: '深度研究',
+        description: '',
+      },
     ]);
   });
 
@@ -45,26 +61,34 @@ describe('buildMentionConfig', () => {
     };
 
     // 后端存下来的只有被改过的项；空 context 不能读成「一个都不选」
-    expect(buildMentionConfig({ configurableItems, agentConfig: {} }).skills).toEqual([
-      { slug: 'retrieve', name: '检索', description: '' },
-    ]);
+    expect(
+      buildMentionConfig({ configurableItems, agentConfig: {} }).skills,
+    ).toEqual([{ slug: 'retrieve', name: '检索', description: '' }]);
     expect(buildMentionConfig({ configurableItems }).skills).toHaveLength(1);
   });
 
   it('配置值是数组时只取数组里的项，顺序按配置值', () => {
     const config = buildMentionConfig({
       configurableItems: {
-        skills: item('skills', [option('retrieve', '检索'), option('ocr', 'OCR')]),
+        skills: item('skills', [
+          option('retrieve', '检索'),
+          option('ocr', 'OCR'),
+        ]),
       },
       agentConfig: { skills: ['ocr', 'retrieve'] },
     });
 
-    expect(config.skills.map((entry) => entry.slug)).toEqual(['ocr', 'retrieve']);
+    expect(config.skills.map((entry) => entry.slug)).toEqual([
+      'ocr',
+      'retrieve',
+    ]);
   });
 
   it('配置值是空数组时该种类没有候选', () => {
     const config = buildMentionConfig({
-      configurableItems: { skills: item('skills', [option('retrieve', '检索')]) },
+      configurableItems: {
+        skills: item('skills', [option('retrieve', '检索')]),
+      },
       agentConfig: { skills: [] },
     });
 
@@ -82,7 +106,12 @@ describe('buildMentionConfig', () => {
     });
 
     expect(config.subagents).toEqual([
-      { id: 'fact-verifier', slug: 'fact-verifier', name: '事实核查员', description: '' },
+      {
+        id: 'fact-verifier',
+        slug: 'fact-verifier',
+        name: '事实核查员',
+        description: '',
+      },
     ]);
   });
 
@@ -101,7 +130,9 @@ describe('buildMentionConfig', () => {
 
   it('配置值里出现可选项之外的值时该值被丢掉', () => {
     const config = buildMentionConfig({
-      configurableItems: { skills: item('skills', [option('retrieve', '检索')]) },
+      configurableItems: {
+        skills: item('skills', [option('retrieve', '检索')]),
+      },
       agentConfig: { skills: ['retrieve', 'not-in-options'] },
     });
 
@@ -112,7 +143,10 @@ describe('buildMentionConfig', () => {
     const config = buildMentionConfig({
       configurableItems: {
         skills: item('skills', [option('retrieve', '旧名字')]),
-        preload_skills: item('skills', [option('retrieve', '新名字'), option('ocr', 'OCR')]),
+        preload_skills: item('skills', [
+          option('retrieve', '新名字'),
+          option('ocr', 'OCR'),
+        ]),
       },
       agentConfig: { skills: null, preload_skills: [] },
     });
@@ -125,11 +159,15 @@ describe('buildMentionConfig', () => {
 
   it('配置项没有 kind 时按配置键名判定', () => {
     const config = buildMentionConfig({
-      configurableItems: { mcps: { options: [option('github', 'GitHub')], default: null } },
+      configurableItems: {
+        mcps: { options: [option('github', 'GitHub')], default: null },
+      },
       agentConfig: { mcps: null },
     });
 
-    expect(config.mcps).toEqual([{ slug: 'github', name: 'GitHub', description: '' }]);
+    expect(config.mcps).toEqual([
+      { slug: 'github', name: 'GitHub', description: '' },
+    ]);
   });
 
   it('知识库候选带 kb_id，值是 kb_id 而不是名称', () => {
@@ -162,7 +200,9 @@ describe('buildMentionConfig', () => {
       agentConfig: { skills: null },
     });
 
-    expect(config.skills).toEqual([{ slug: 'retrieve', name: '检索', description: '' }]);
+    expect(config.skills).toEqual([
+      { slug: 'retrieve', name: '检索', description: '' },
+    ]);
   });
 
   it('可选项缺 key 时退到 name 当标识', () => {
@@ -172,13 +212,19 @@ describe('buildMentionConfig', () => {
       agentConfig: { skills: null },
     });
 
-    expect(config.skills).toEqual([{ slug: '只有名字', name: '只有名字', description: '' }]);
+    expect(config.skills).toEqual([
+      { slug: '只有名字', name: '只有名字', description: '' },
+    ]);
   });
 
   it('options 不是数组时该配置项不贡献候选', () => {
     const config = buildMentionConfig({
       configurableItems: {
-        skills: { kind: 'skills', options: { retrieve: '检索' }, default: null },
+        skills: {
+          kind: 'skills',
+          options: { retrieve: '检索' },
+          default: null,
+        },
       },
       agentConfig: { skills: null },
     });
@@ -191,7 +237,10 @@ describe('buildMentionConfig', () => {
       {},
       { configurableItems: null, agentConfig: null },
       { configurableItems: ['skills'], agentConfig: 'nope' },
-      { configurableItems: { skills: 'nope' }, agentConfig: { skills: 'nope' } },
+      {
+        configurableItems: { skills: 'nope' },
+        agentConfig: { skills: 'nope' },
+      },
     ]) {
       expect(buildMentionConfig(input)).toEqual({
         knowledgeBases: [],
@@ -204,7 +253,9 @@ describe('buildMentionConfig', () => {
 
   it('不改变入参', () => {
     const agentConfig = { skills: null };
-    const configurableItems = { skills: item('skills', [option('retrieve', '检索')]) };
+    const configurableItems = {
+      skills: item('skills', [option('retrieve', '检索')]),
+    };
 
     buildMentionConfig({ configurableItems, agentConfig });
 

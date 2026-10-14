@@ -10,7 +10,9 @@ describe('normalizeChatModels', () => {
         'siliconflow-cn': {
           provider_id: 'siliconflow-cn',
           provider_display_name: 'SiliconFlow',
-          models: [{ spec: 'siliconflow-cn:qwen-max', display_name: 'Qwen Max' }],
+          models: [
+            { spec: 'siliconflow-cn:qwen-max', display_name: 'Qwen Max' },
+          ],
         },
         other: {
           models: [{ spec: 'other:m', model_id: 'm' }],
@@ -22,7 +24,11 @@ describe('normalizeChatModels', () => {
         providerName: 'SiliconFlow',
         models: [{ spec: 'siliconflow-cn:qwen-max', label: 'Qwen Max' }],
       },
-      { providerId: 'other', providerName: 'other', models: [{ spec: 'other:m', label: 'm' }] },
+      {
+        providerId: 'other',
+        providerName: 'other',
+        models: [{ spec: 'other:m', label: 'm' }],
+      },
     ]);
   });
 
@@ -30,7 +36,11 @@ describe('normalizeChatModels', () => {
     const groups = normalizeChatModels({
       p: {
         provider_id: 'p',
-        models: [{ display_name: '没有 spec' }, { spec: 'p:m1' }, { spec: 'p:m2', model_id: 'M2' }],
+        models: [
+          { display_name: '没有 spec' },
+          { spec: 'p:m1' },
+          { spec: 'p:m2', model_id: 'M2' },
+        ],
       },
     });
 
@@ -41,8 +51,12 @@ describe('normalizeChatModels', () => {
   });
 
   it('整组没有可用模型时不出现', () => {
-    expect(normalizeChatModels({ p: { provider_id: 'p', models: [] } })).toEqual([]);
-    expect(normalizeChatModels({ p: { provider_id: 'p', models: [{}, null] } })).toEqual([]);
+    expect(
+      normalizeChatModels({ p: { provider_id: 'p', models: [] } }),
+    ).toEqual([]);
+    expect(
+      normalizeChatModels({ p: { provider_id: 'p', models: [{}, null] } }),
+    ).toEqual([]);
   });
 
   it('归一后的重复供应商与重复模型被去掉', () => {
@@ -76,7 +90,9 @@ describe('模型覆盖表', () => {
     const { setOverride } = useModelSelection.getState();
     setOverride('thread-A', 'p:m');
 
-    expect(useModelSelection.getState().overrideByKey).toEqual({ 'thread-A': 'p:m' });
+    expect(useModelSelection.getState().overrideByKey).toEqual({
+      'thread-A': 'p:m',
+    });
 
     setOverride('thread-A', '');
     expect(useModelSelection.getState().overrideByKey).toEqual({});
@@ -85,7 +101,9 @@ describe('模型覆盖表', () => {
   it('没有会话时记在草稿键上', () => {
     useModelSelection.getState().setOverride(null, 'p:m');
 
-    expect(useModelSelection.getState().overrideByKey).toEqual({ __draft__: 'p:m' });
+    expect(useModelSelection.getState().overrideByKey).toEqual({
+      __draft__: 'p:m',
+    });
   });
 
   it('新建会话后草稿态的选择挪到会话上', () => {

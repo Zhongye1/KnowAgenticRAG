@@ -13,6 +13,7 @@ import {
   RotateCw,
   Trash2,
 } from 'lucide-react';
+import { Button, Dropdown } from 'antd';
 
 import type { KnowledgeFileItem } from '../api/knowledge-api';
 import {
@@ -23,13 +24,6 @@ import {
   FILE_ACTIONS,
   getFilePrimaryAction,
 } from '../lib/knowledge-files';
-import { Button } from '@/shared/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu';
 
 type FileRowActionsProps = {
   file: KnowledgeFileItem;
@@ -60,94 +54,134 @@ export const FileRowActions = ({
   const primaryAction = getFilePrimaryAction(file);
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`文件操作：${file.filename}`}
-        >
-          <MoreHorizontal className="size-4" />
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {file.is_folder ? (
-          <>
-            {readOnly ? null : (
-              <DropdownMenuItem disabled={locked} onSelect={() => onMove(file)}>
-                <FolderInput className="size-4" aria-hidden />
-                移动到…
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              variant="destructive"
-              // 目录没有解析/入库状态，只看只读标记；批量删除才按能力矩阵过滤
-              disabled={readOnly || locked}
-              onSelect={() => onDelete(file)}
-            >
-              <Trash2 className="size-4" aria-hidden />
-              删除文件夹
-            </DropdownMenuItem>
-          </>
-        ) : (
-          <>
-            <DropdownMenuItem
-              disabled={locked || !canDownloadFile(file)}
-              onSelect={() => onDownload(file)}
-            >
-              <Download className="size-4" aria-hidden />
-              下载文件
-            </DropdownMenuItem>
-            {!readOnly && canParseFile(file) ? (
-              <DropdownMenuItem
-                disabled={locked}
-                onSelect={() => onParse(file)}
-              >
-                <FileText className="size-4" aria-hidden />
-                {primaryAction?.label ?? '解析文件'}
-              </DropdownMenuItem>
-            ) : null}
-            {!readOnly && primaryAction?.type === FILE_ACTIONS.INDEX ? (
-              <DropdownMenuItem
-                disabled={locked}
-                onSelect={() => onIndex(file)}
-              >
-                <Database className="size-4" aria-hidden />
-                {primaryAction.label}
-              </DropdownMenuItem>
-            ) : null}
-            {!readOnly && canReindexFile(file) ? (
-              <DropdownMenuItem
-                disabled={locked}
-                onSelect={() => onIndex(file)}
-              >
-                <RotateCw className="size-4" aria-hidden />
-                重新入库
-              </DropdownMenuItem>
-            ) : null}
-            {readOnly ? null : (
-              <>
-                <DropdownMenuItem
-                  disabled={locked}
-                  onSelect={() => onMove(file)}
-                >
-                  <FolderInput className="size-4" aria-hidden />
-                  移动到…
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  variant="destructive"
-                  disabled={!canDeleteFile(file, locked)}
-                  onSelect={() => onDelete(file)}
-                >
-                  <Trash2 className="size-4" aria-hidden />
-                  删除文件
-                </DropdownMenuItem>
-              </>
-            )}
-          </>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <Dropdown
+      trigger={['click']}
+      menu={{
+        items: file.is_folder
+          ? [
+              ...(readOnly
+                ? []
+                : [
+                    {
+                      key: 'move',
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <FolderInput className="size-4" aria-hidden />
+                          移动到…
+                        </span>
+                      ),
+                      disabled: locked,
+                    },
+                  ]),
+              {
+                key: 'delete-folder',
+                // 目录没有解析/入库状态，只看只读标记；批量删除才按能力矩阵过滤
+                label: (
+                  <span className="flex items-center gap-2">
+                    <Trash2 className="size-4" aria-hidden />
+                    删除文件夹
+                  </span>
+                ),
+                disabled: readOnly || locked,
+                danger: true,
+              },
+            ]
+          : [
+              {
+                key: 'download',
+                label: (
+                  <span className="flex items-center gap-2">
+                    <Download className="size-4" aria-hidden />
+                    下载文件
+                  </span>
+                ),
+                disabled: locked || !canDownloadFile(file),
+              },
+              ...(!readOnly && canParseFile(file)
+                ? [
+                    {
+                      key: 'parse',
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <FileText className="size-4" aria-hidden />
+                          {primaryAction?.label ?? '解析文件'}
+                        </span>
+                      ),
+                      disabled: locked,
+                    },
+                  ]
+                : []),
+              ...(!readOnly && primaryAction?.type === FILE_ACTIONS.INDEX
+                ? [
+                    {
+                      key: 'index',
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <Database className="size-4" aria-hidden />
+                          {primaryAction.label}
+                        </span>
+                      ),
+                      disabled: locked,
+                    },
+                  ]
+                : []),
+              ...(!readOnly && canReindexFile(file)
+                ? [
+                    {
+                      key: 'reindex',
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <RotateCw className="size-4" aria-hidden />
+                          重新入库
+                        </span>
+                      ),
+                      disabled: locked,
+                    },
+                  ]
+                : []),
+              ...(readOnly
+                ? []
+                : [
+                    {
+                      key: 'move',
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <FolderInput className="size-4" aria-hidden />
+                          移动到…
+                        </span>
+                      ),
+                      disabled: locked,
+                    },
+                    {
+                      key: 'delete-file',
+                      label: (
+                        <span className="flex items-center gap-2">
+                          <Trash2 className="size-4" aria-hidden />
+                          删除文件
+                        </span>
+                      ),
+                      disabled: !canDeleteFile(file, locked),
+                      danger: true,
+                    },
+                  ]),
+            ],
+        onClick: ({ key }) => {
+          if (key === 'move') onMove(file);
+          if (key === 'delete-folder' || key === 'delete-file') onDelete(file);
+          if (key === 'download') onDownload(file);
+          if (key === 'parse') onParse(file);
+          if (key === 'index' || key === 'reindex') onIndex(file);
+        },
+      }}
+    >
+      <Button
+        htmlType="button"
+        type="text"
+        size="small"
+        aria-label={`文件操作：${file.filename}`}
+      >
+        <MoreHorizontal className="size-4" />
+      </Button>
+    </Dropdown>
   );
 };

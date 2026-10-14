@@ -94,9 +94,9 @@ describe('selectHomeBranding', () => {
   });
 
   it('品牌名缺失时落到 ARS', () => {
-    expect(selectHomeBranding({ organization: { name: '语析' } }).brandName).toBe(
-      'ARS',
-    );
+    expect(
+      selectHomeBranding({ organization: { name: '语析' } }).brandName,
+    ).toBe('ARS');
     expect(selectHomeBranding(undefined).brandName).toBe('ARS');
   });
 

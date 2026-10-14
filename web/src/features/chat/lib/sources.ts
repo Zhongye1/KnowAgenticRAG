@@ -108,7 +108,8 @@ export function extractSources(
 
           knowledgeChunks.push({
             kbId,
-            kbName: kbId && options.resolveKbName ? options.resolveKbName(kbId) : '',
+            kbName:
+              kbId && options.resolveKbName ? options.resolveKbName(kbId) : '',
             content: chunk.content,
             score: chunk.score,
             source: chunk.source,

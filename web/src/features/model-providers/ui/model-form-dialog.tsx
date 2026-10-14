@@ -6,6 +6,7 @@
  * embedding 与 rerank 出现。
  */
 import * as React from 'react';
+import { Button, Input, Modal, Select } from 'antd';
 
 import type {
   EnabledModel,
@@ -19,24 +20,6 @@ import {
   modelFormValue,
   type ModelForm,
 } from '../lib/provider-view';
-import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
-import { Input } from '@/shared/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/ui/select';
-import { Textarea } from '@/shared/ui/textarea';
 
 const REQUEST_BODY_PLACEHOLDER = '{\n  "enable_thinking": false\n}';
 
@@ -105,166 +88,165 @@ export const ModelFormDialog = ({
   };
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent data-testid="model-form-dialog">
-        <DialogHeader>
-          <DialogTitle>{model ? '模型配置' : '手动添加模型'}</DialogTitle>
-          <DialogDescription>
+    <Modal
+      open
+      onCancel={() => onOpenChange(false)}
+      data-testid="model-form-dialog"
+      title={
+        <div>
+          <div>{model ? '模型配置' : '手动添加模型'}</div>
+          <div className="text-xs font-normal text-color-text-3">
             请求参数只对 OpenAI 兼容供应商的 chat 模型生效，经 extra_body 透传。
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-3">
-          {model ? (
-            <p className="flex flex-col gap-1 text-xs text-color-text-2">
-              <span>模型 ID</span>
-              <code className="text-sm break-all text-color-text-1">
-                {model.id}
-              </code>
-            </p>
-          ) : (
-            <Field label={<span>模型 ID</span>}>
-              <Input
-                value={form.id}
-                aria-label="模型 ID"
-                placeholder="例如 BAAI/bge-m3"
-                onChange={(event) => update('id', event.target.value)}
-              />
-            </Field>
-          )}
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Field label="展示名称">
-              <Input
-                value={form.display_name}
-                aria-label="展示名称"
-                onChange={(event) => update('display_name', event.target.value)}
-              />
-            </Field>
-            <Field label="模型类型">
-              <Select
-                value={form.type}
-                onValueChange={(value) => update('type', value as ModelType)}
-              >
-                <SelectTrigger aria-label="模型类型">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {typeOptions.map((type) => (
-                    <SelectItem key={type} value={type}>
-                      {type}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
           </div>
+        </div>
+      }
+      footer={null}
+    >
+      <div className="flex flex-col gap-3">
+        {model ? (
+          <p className="flex flex-col gap-1 text-xs text-color-text-2">
+            <span>模型 ID</span>
+            <code className="text-sm break-all text-color-text-1">
+              {model.id}
+            </code>
+          </p>
+        ) : (
+          <Field label={<span>模型 ID</span>}>
+            <Input
+              value={form.id}
+              aria-label="模型 ID"
+              placeholder="例如 BAAI/bge-m3"
+              onChange={(event) => update('id', event.target.value)}
+            />
+          </Field>
+        )}
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Field label="协议覆盖">
-              <Input
-                value={form.protocol_override}
-                aria-label="协议覆盖"
-                placeholder="可选"
-                onChange={(event) =>
-                  update('protocol_override', event.target.value)
-                }
-              />
-            </Field>
-            <Field label="Base URL 覆盖">
-              <Input
-                value={form.base_url_override}
-                aria-label="Base URL 覆盖"
-                placeholder="可选"
-                onChange={(event) =>
-                  update('base_url_override', event.target.value)
-                }
-              />
-            </Field>
-          </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Field label="展示名称">
+            <Input
+              value={form.display_name}
+              aria-label="展示名称"
+              onChange={(event) => update('display_name', event.target.value)}
+            />
+          </Field>
+          <Field label="模型类型">
+            <Select
+              value={form.type}
+              aria-label="模型类型"
+              virtual={false}
+              options={typeOptions.map((type) => ({
+                value: type,
+                label: type,
+              }))}
+              onChange={(value) => update('type', value as ModelType)}
+            />
+          </Field>
+        </div>
 
-          <Field
-            label={
-              <>
-                模型请求参数 JSON
-                <span className="block text-color-text-3">
-                  仅 OpenAI 兼容供应商（含 OpenRouter）的 chat 模型会经
-                  extra_body 透传； 允许字段：
-                  {ALLOWED_EXTRA_BODY_FIELDS.join('、')}。
-                </span>
-              </>
-            }
-          >
-            <Textarea
-              rows={6}
-              value={form.request_body_overrides_text}
-              aria-label="模型请求参数 JSON"
-              placeholder={REQUEST_BODY_PLACEHOLDER}
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Field label="协议覆盖">
+            <Input
+              value={form.protocol_override}
+              aria-label="协议覆盖"
+              placeholder="可选"
               onChange={(event) =>
-                update('request_body_overrides_text', event.target.value)
+                update('protocol_override', event.target.value)
               }
             />
           </Field>
-
-          <div className="flex flex-col gap-3 sm:flex-row">
-            {form.type === 'embedding' ? (
-              <Field label="维度">
-                <Input
-                  type="number"
-                  min={1}
-                  value={form.dimension ?? ''}
-                  aria-label="维度"
-                  onChange={(event) =>
-                    update(
-                      'dimension',
-                      event.target.value === ''
-                        ? null
-                        : Number(event.target.value),
-                    )
-                  }
-                />
-              </Field>
-            ) : null}
-            {form.type === 'embedding' || form.type === 'rerank' ? (
-              <Field label="Batch Size">
-                <Input
-                  type="number"
-                  min={1}
-                  value={form.batch_size ?? ''}
-                  aria-label="Batch Size"
-                  onChange={(event) =>
-                    update(
-                      'batch_size',
-                      event.target.value === ''
-                        ? null
-                        : Number(event.target.value),
-                    )
-                  }
-                />
-              </Field>
-            ) : null}
-          </div>
+          <Field label="Base URL 覆盖">
+            <Input
+              value={form.base_url_override}
+              aria-label="Base URL 覆盖"
+              placeholder="可选"
+              onChange={(event) =>
+                update('base_url_override', event.target.value)
+              }
+            />
+          </Field>
         </div>
 
-        {error ? (
-          <p role="alert" className="text-sm text-danger-6">
-            {error}
-          </p>
-        ) : null}
+        <Field
+          label={
+            <>
+              模型请求参数 JSON
+              <span className="block text-color-text-3">
+                仅 OpenAI 兼容供应商（含 OpenRouter）的 chat 模型会经 extra_body
+                透传； 允许字段：
+                {ALLOWED_EXTRA_BODY_FIELDS.join('、')}。
+              </span>
+            </>
+          }
+        >
+          <Input.TextArea
+            rows={6}
+            value={form.request_body_overrides_text}
+            aria-label="模型请求参数 JSON"
+            placeholder={REQUEST_BODY_PLACEHOLDER}
+            onChange={(event) =>
+              update('request_body_overrides_text', event.target.value)
+            }
+          />
+        </Field>
 
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
-            取消
-          </Button>
-          <Button type="button" isLoading={saving} onClick={submit}>
-            确定
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          {form.type === 'embedding' ? (
+            <Field label="维度">
+              <Input
+                type="number"
+                min={1}
+                value={form.dimension ?? ''}
+                aria-label="维度"
+                onChange={(event) =>
+                  update(
+                    'dimension',
+                    event.target.value === ''
+                      ? null
+                      : Number(event.target.value),
+                  )
+                }
+              />
+            </Field>
+          ) : null}
+          {form.type === 'embedding' || form.type === 'rerank' ? (
+            <Field label="Batch Size">
+              <Input
+                type="number"
+                min={1}
+                value={form.batch_size ?? ''}
+                aria-label="Batch Size"
+                onChange={(event) =>
+                  update(
+                    'batch_size',
+                    event.target.value === ''
+                      ? null
+                      : Number(event.target.value),
+                  )
+                }
+              />
+            </Field>
+          ) : null}
+        </div>
+      </div>
+
+      {error ? (
+        <p role="alert" className="text-sm text-danger-6">
+          {error}
+        </p>
+      ) : null}
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button
+          htmlType="button"
+          variant="outlined"
+          onClick={() => onOpenChange(false)}
+        >
+          取消
+        </Button>
+        <Button htmlType="button" loading={saving} onClick={submit}>
+          确定
+        </Button>
+      </div>
+    </Modal>
   );
 };

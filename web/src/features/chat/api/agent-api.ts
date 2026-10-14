@@ -26,8 +26,13 @@ import {
   getThreadActiveRunApiAgentThreadThreadIdActiveRunGet,
   getThreadStateApiChatThreadThreadIdStateGet,
   uploadImageApiChatImageUploadPost,
+  callApiChatCallPost,
 } from '@/shared/api/generated/sdk.gen';
 import type { ImageUploadResponse } from '@/shared/api/generated/types.gen';
+import {
+  buildConversationTitlePrompt,
+  sanitizeGeneratedTitle,
+} from '../lib/thread-title';
 import type { ToolApprovalMode } from '../lib/tool-approval';
 
 export type RunStatus =
@@ -499,3 +504,25 @@ export const chatThreadApi = {
       }),
     ),
 };
+
+/** 用 fast_model 生成一次会话标题；调用失败由调用方回退截断文案。 */
+export async function generateConversationTitle(input: {
+  query: string;
+  /** `meta.model_spec`；参照传系统配置的 `fast_model`。 */
+  modelSpec: unknown;
+}): Promise<string> {
+  const response = unwrap<unknown>(
+    await callApiChatCallPost({
+      body: {
+        query: buildConversationTitlePrompt(input.query),
+        meta: { model_spec: input.modelSpec },
+      },
+    }),
+  );
+  // 参照取 `response.response`；后端没有 response_model，字段按不可信数据处理
+  const payload =
+    typeof response === 'object' && response !== null && 'response' in response
+      ? (response as { response?: unknown }).response
+      : response;
+  return sanitizeGeneratedTitle(payload);
+}

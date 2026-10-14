@@ -1,8 +1,8 @@
 /**
  * 上下文用量卡片。
  *
- * 占比、构成条、当前对话累计与缓存命中率，展开后是按模型分桶的调用统计与最近一次调用。
- * `token_usage` 缺失时显示「未上报」，不假装有数据。
+ * 占比、构成条、当前对话累计与缓存命中率，展开后是「按模型分桶的调用统计 → 最近上下文
+ * 构成 → 最近调用」三块。`token_usage` 缺失时显示「未上报」，不假装有数据。
  */
 import * as React from 'react';
 import { ChevronDown } from 'lucide-react';
@@ -27,12 +27,47 @@ type TokenUsageCardProps = {
   usage?: TokenUsage | null;
 };
 
-/** 占比档位对应原生进度条的颜色。 */
-const TONE_ACCENTS: Record<'danger' | 'warning' | 'normal', string> = {
-  danger: 'accent-danger-6',
-  warning: 'accent-warning-6',
-  normal: 'accent-primary-6',
+/**
+ * 占比档位的轨道着色。
+ *
+ * 用原生 `<progress>` 而不是参照的 span + `role="progressbar"`：语义元素是本仓 a11y 规则
+ * 与 lint 都要求的方向。原生元素的填充只能靠伪元素着色，所以这里把 webkit 与 firefox 两套
+ * 伪元素一起写上；常态是主色，只有警告与危险换色（与参照 .token-usage-context-fill 同值）。
+ */
+const TONE_BARS: Record<'danger' | 'warning' | 'normal', string> = {
+  danger:
+    '[&::-webkit-progress-value]:bg-[var(--color-error-500)] [&::-moz-progress-bar]:bg-[var(--color-error-500)]',
+  warning:
+    '[&::-webkit-progress-value]:bg-[var(--color-warning-500)] [&::-moz-progress-bar]:bg-[var(--color-warning-500)]',
+  normal:
+    '[&::-webkit-progress-value]:bg-[var(--main-500)] [&::-moz-progress-bar]:bg-[var(--main-500)]',
 };
+
+/** 轨道本体（底槽）的样式；两套伪元素都要，否则 Firefox 会退回系统外观。 */
+const PROGRESS_TRACK =
+  'block h-[5px] w-full appearance-none overflow-hidden rounded-full bg-[var(--gray-100)] [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-[var(--gray-100)] [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:transition-[width,background-color] [&::-webkit-progress-value]:duration-200 [&::-moz-progress-bar]:rounded-full';
+
+/**
+ * 构成分段与图例色点的着色（参照 .is-system / .is-tools / … 一组 token）。
+ *
+ * 分段与图例共用同一张表：同一种 token 在两处必须是同一个颜色。`cut`（被压缩的部分）
+ * 在参照里是主色叠斜纹，斜纹用 arbitrary property 写在同一类里。
+ */
+const SEGMENT_TONES: Record<string, string> = {
+  system: 'bg-[var(--chart-palette-2)]',
+  tools: 'bg-[var(--chart-palette-3)]',
+  messages: 'bg-[var(--chart-palette-1)]',
+  'tool-messages': 'bg-[var(--chart-palette-6)]',
+  summary: 'bg-[var(--chart-palette-5)]',
+  cut: 'bg-[var(--main-500)] [background-image:repeating-linear-gradient(135deg,var(--main-30)_0,var(--main-30)_1px,transparent_1px,transparent_4px)]',
+  overhead: 'bg-[var(--gray-300)]',
+};
+
+/** 认不出的分段用中性灰，不猜颜色。 */
+const SEGMENT_TONE_FALLBACK = 'bg-[var(--gray-300)]';
+
+const segmentTone = (key: string): string =>
+  SEGMENT_TONES[key] ?? SEGMENT_TONE_FALLBACK;
 
 export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
   const [expanded, setExpanded] = React.useState(false);
@@ -49,149 +84,201 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
   const cacheHit = getCacheHitLabel(usage);
   const latestCall = getLatestCallLabel(usage);
 
+  const tone = getTokenUsageTone(ratio);
+  const percentLabel = getTokenUsagePercentLabel(ratio);
+  const percentValue = ratio === null ? 0 : Math.round(ratio * 100);
+  const hasDetails =
+    segments.length > 0 || models.length > 0 || latestCall !== null;
+
   return (
-    <section
-      className="rounded-large border border-[var(--gray-150)] bg-[var(--gray-0)] px-3 py-2 text-xs"
-      data-testid="token-usage"
-    >
+    <section aria-label="上下文使用情况" data-testid="token-usage">
+      {/* 整张卡就是开关（参照 .token-usage-context-card）：大号占比在左，标签与已用/上限在右 */}
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-2 text-left"
+        className="flex w-full flex-col gap-2 rounded-[10px] border border-[var(--gray-150)] bg-[var(--gray-0)] px-3 py-2.5 text-left transition-colors duration-200 hover:border-[var(--gray-200)]"
         aria-expanded={expanded}
         aria-controls="token-usage-details"
         onClick={() => setExpanded((value) => !value)}
       >
-        <span className="flex items-center gap-2">
-          <strong className="text-sm text-[var(--gray-1000)]">
-            上下文占用 {getTokenUsagePercentLabel(ratio)}
+        <span className="flex items-baseline justify-between gap-2">
+          <strong className="text-[18px] font-semibold leading-[1.1] tabular-nums text-[var(--gray-900)]">
+            {percentLabel}
           </strong>
-          <span className="text-[var(--gray-500)]">
-            {getTokenUsageHeadLabel(usage)}
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <span className="whitespace-nowrap text-[11px] font-medium text-[var(--gray-500)]">
+              上下文占用
+            </span>
+            <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-[11px] tabular-nums text-[var(--gray-500)]">
+              {getTokenUsageHeadLabel(usage)}
+            </span>
+            <ChevronDown
+              className={`size-3.5 shrink-0 text-[var(--gray-500)] transition-transform ${
+                expanded ? '' : '-rotate-90'
+              }`}
+              aria-hidden
+            />
           </span>
         </span>
-        <ChevronDown
-          className={`size-4 text-[var(--gray-500)] transition-transform ${expanded ? '' : '-rotate-90'}`}
-          aria-hidden
+
+        {/*
+          用原生 progress 表达占比。上限未知时传 0 而不是省略 value：
+          省略会渲染成浏览器的不确定态动画，静止的信息卡上容易被读成「正在加载」。
+        */}
+        <progress
+          className={`${PROGRESS_TRACK} ${TONE_BARS[tone]}`}
+          value={percentValue}
+          max={100}
+          aria-label="上下文占用"
+          aria-valuetext={getTokenUsageAriaLabel(usage)}
+          data-testid="token-usage-progress"
         />
+
+        {/* 两项指标两列并排，中间一条分隔线（参照 .token-usage-card-metrics） */}
+        {threadTotal !== null || cacheHit !== null ? (
+          <span className="grid grid-cols-2 gap-3 [&>*+*]:border-l [&>*+*]:border-[var(--gray-150)] [&>*+*]:pl-3">
+            {threadTotal === null ? null : (
+              <span className="flex min-w-0 flex-col">
+                <small className="text-[11px] leading-[1.4] text-[var(--gray-500)]">
+                  当前对话累计
+                </small>
+                <strong className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold tabular-nums text-[var(--gray-900)]">
+                  {threadTotal}
+                </strong>
+              </span>
+            )}
+            {cacheHit === null ? null : (
+              <span className="flex min-w-0 flex-col">
+                <small className="text-[11px] leading-[1.4] text-[var(--gray-500)]">
+                  累计缓存命中率
+                </small>
+                <strong className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold tabular-nums text-[var(--gray-900)]">
+                  {cacheHit}
+                </strong>
+              </span>
+            )}
+          </span>
+        ) : null}
       </button>
 
-      {/*
-        用原生 progress 表达占比。上限未知时传 0 而不是省略 value：
-        省略会渲染成浏览器的不确定态动画，静止的信息卡上容易被读成「正在加载」。
-      */}
-      <progress
-        className={`mt-2 block h-1.5 w-full overflow-hidden rounded-full ${TONE_ACCENTS[getTokenUsageTone(ratio)]}`}
-        value={ratio === null ? 0 : ratio * 100}
-        max={100}
-        aria-label="上下文占用"
-        aria-valuetext={getTokenUsageAriaLabel(usage)}
-        data-testid="token-usage-progress"
-      />
-
-      {threadTotal !== null || cacheHit !== null ? (
-        <p className="mt-2 flex gap-4 text-[var(--gray-500)]">
-          {threadTotal === null ? null : (
-            <span>
-              当前对话累计{' '}
-              <strong className="text-[var(--gray-1000)]">{threadTotal}</strong>
-            </span>
-          )}
-          {cacheHit === null ? null : (
-            <span>
-              累计缓存命中率{' '}
-              <strong className="text-[var(--gray-1000)]">{cacheHit}</strong>
-            </span>
-          )}
-        </p>
-      ) : null}
-
       {expanded ? (
-        <div id="token-usage-details" className="mt-3 flex flex-col gap-3">
-          {barSegments.length > 0 ? (
-            <span
-              className="flex h-1.5 w-full overflow-hidden rounded-full bg-[var(--gray-150)]"
-              aria-hidden
-            >
-              {barSegments.map((segment) => (
-                <span
-                  key={segment.key}
-                  className="block h-full bg-primary-6"
-                  style={{ width: segment.width }}
-                />
-              ))}
-            </span>
-          ) : null}
-
-          {segments.length > 0 ? (
-            <ul className="flex flex-col gap-1">
-              {segments.map((segment) => (
-                <li
-                  key={segment.key}
-                  className="flex items-center justify-between gap-2"
-                >
-                  <span className="text-[var(--gray-500)]">{segment.label}</span>
-                  <span className="text-[var(--gray-800)]">
-                    {segment.valueLabel}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-
+        <div id="token-usage-details" className="flex flex-col gap-2.5 px-0.5">
+          {/* 按模型分桶的调用统计：一整块卡片，条目之间用分隔线 */}
           {models.length > 0 ? (
-            <ul className="flex flex-col gap-2">
+            <div className="flex flex-col overflow-hidden rounded-[9px] border border-[var(--gray-150)]">
               {models.map((model) => (
-                <li
+                <article
                   key={model.key}
-                  className="rounded-medium border border-[var(--gray-150)] px-2 py-1"
+                  className="border-b border-[var(--gray-150)] bg-[var(--gray-0)] p-[11px] last:border-b-0"
                 >
-                  <p className="flex items-center justify-between gap-2">
-                    <strong className="text-[var(--gray-1000)]">{model.name}</strong>
-                    <span className="text-[var(--gray-500)]">
+                  <header className="mb-2.5 flex items-start justify-between gap-2">
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      <strong className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-semibold leading-[1.4] text-[var(--gray-900)]">
+                        {model.name}
+                      </strong>
+                      {model.responseModel ? (
+                        <span className="text-[11px] text-[var(--gray-500)]">
+                          响应 {model.responseModel}
+                        </span>
+                      ) : null}
+                    </div>
+                    <span className="shrink-0 rounded-full bg-[var(--gray-50)] px-1.5 py-0.5 text-[11px] text-[var(--gray-500)]">
                       {model.callCount} 次调用
                     </span>
-                  </p>
-                  <p className="mt-1 flex flex-wrap gap-3 text-[var(--gray-500)]">
-                    <span>
-                      输入 / 输出{' '}
-                      <strong className="text-[var(--gray-1000)]">{model.io}</strong>
+                  </header>
+                  <div
+                    className={`grid gap-2 ${
+                      model.reasoning ? 'grid-cols-3' : 'grid-cols-2'
+                    }`}
+                  >
+                    <span className="flex min-w-0 flex-col gap-0.5">
+                      <span className="text-[10px] text-[var(--gray-500)]">
+                        输入 / 输出
+                      </span>
+                      <strong className="text-xs font-semibold tabular-nums text-[var(--gray-900)] [overflow-wrap:anywhere]">
+                        {model.io}
+                      </strong>
                     </span>
                     {model.cache ? (
-                      <span>
-                        缓存{' '}
-                        <strong className="text-[var(--gray-1000)]">
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="text-[10px] text-[var(--gray-500)]">
+                          缓存
+                        </span>
+                        <strong className="text-xs font-semibold tabular-nums text-[var(--gray-900)] [overflow-wrap:anywhere]">
                           {model.cache}
                         </strong>
                       </span>
                     ) : null}
                     {model.reasoning ? (
-                      <span>
-                        推理{' '}
-                        <strong className="text-[var(--gray-1000)]">
+                      <span className="flex min-w-0 flex-col gap-0.5">
+                        <span className="text-[10px] text-[var(--gray-500)]">
+                          推理
+                        </span>
+                        <strong className="text-xs font-semibold tabular-nums text-[var(--gray-900)] [overflow-wrap:anywhere]">
                           {model.reasoning}
                         </strong>
                       </span>
                     ) : null}
-                  </p>
-                  {model.responseModel ? (
-                    <p className="mt-1 text-[var(--gray-500)]">
-                      响应 {model.responseModel}
-                    </p>
-                  ) : null}
-                </li>
+                  </div>
+                </article>
               ))}
-            </ul>
+            </div>
+          ) : null}
+
+          {/* 最近上下文构成：分段着色堆叠条 + 两列图例（参照 .token-usage-composition） */}
+          {segments.length > 0 ? (
+            <div className="flex flex-col gap-2 rounded-[9px] border border-[var(--gray-150)] bg-[var(--gray-0)] p-[11px]">
+              <span className="text-[11px] font-semibold text-[var(--gray-600)]">
+                最近上下文构成
+              </span>
+              <span
+                className="flex h-2.5 gap-px overflow-hidden rounded-full bg-[var(--gray-100)]"
+                aria-hidden
+              >
+                {barSegments.map((segment) => (
+                  <span
+                    key={segment.key}
+                    className={`block h-full min-w-[2px] transition-[width] duration-200 ${segmentTone(segment.key)}`}
+                    style={{ width: segment.width }}
+                  />
+                ))}
+              </span>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1.5">
+                {segments.map((segment) => (
+                  <span
+                    key={segment.key}
+                    className="flex min-w-0 items-center justify-between gap-1.5 text-[11px] text-[var(--gray-500)]"
+                  >
+                    <span className="inline-flex min-w-0 items-center gap-[5px]">
+                      <span
+                        aria-hidden
+                        className={`size-[7px] shrink-0 rounded-[2px] ${segmentTone(segment.key)}`}
+                      />
+                      {segment.label}
+                    </span>
+                    <strong className="font-semibold tabular-nums text-[var(--gray-800)]">
+                      {segment.valueLabel}
+                    </strong>
+                  </span>
+                ))}
+              </div>
+            </div>
           ) : null}
 
           {latestCall ? (
-            <p className="flex items-center justify-between gap-2 text-[var(--gray-500)]">
-              <span>最近调用</span>
-              <strong className="text-[var(--gray-1000)]">{latestCall}</strong>
-            </p>
+            <div className="flex flex-col px-1">
+              <span className="flex items-center justify-between gap-2.5 border-b border-[var(--gray-100)] py-[5px] text-[11px] text-[var(--gray-500)] last:border-b-0">
+                最近调用
+                <strong className="min-w-0 text-right font-semibold tabular-nums text-[var(--gray-800)]">
+                  {latestCall}
+                </strong>
+              </span>
+            </div>
           ) : null}
 
-          {segments.length === 0 && models.length === 0 && !latestCall ? (
-            <p className="text-[var(--gray-500)]">本次运行没有可展示的用量明细。</p>
+          {!hasDetails ? (
+            <p className="text-[var(--gray-500)]">
+              本次运行没有可展示的用量明细。
+            </p>
           ) : null}
         </div>
       ) : null}

@@ -1,82 +1,95 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { App as AntdApp } from 'antd';
+import { describe, expect, it } from 'vitest';
 
-import { ConfirmDialogHost } from '@/shared/ui/confirm-dialog-host';
-import { confirm, useConfirmStore } from '@/shared/ui/confirm-dialog';
+import { useConfirm } from '@/shared/ui/confirm-dialog';
 
-const renderHost = () => render(<ConfirmDialogHost />);
+/**
+ * 确认框现在是 antd `modal.confirm` 的语义封装；断言走真实 antd 渲染
+ * （antd App 上下文内），覆盖确认/取消/危险色/Esc 四条用户可观察行为。
+ */
+const Probe = ({
+  onAnswer,
+  options,
+}: {
+  onAnswer: (answer: boolean) => void;
+  options: Parameters<ReturnType<typeof useConfirm>['confirm']>[0];
+}) => {
+  const { confirm } = useConfirm();
 
-describe('命令式确认框', () => {
-  beforeEach(() => {
-    useConfirmStore.setState({ pending: null });
-  });
+  return (
+    <button type="button" onClick={() => void confirm(options).then(onAnswer)}>
+      触发
+    </button>
+  );
+};
 
-  it('确认后以 true 结束，且弹窗关闭', async () => {
-    renderHost();
-    const answer = confirm({ title: '删除知识库' });
+const renderConfirm = (
+  options: Parameters<ReturnType<typeof useConfirm>['confirm']>[0],
+) => {
+  const answers: boolean[] = [];
+  render(
+    <AntdApp>
+      <Probe options={options} onAnswer={(answer) => answers.push(answer)} />
+    </AntdApp>,
+  );
+  return answers;
+};
 
-    expect(await screen.findByText('删除知识库')).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: '确定' }));
+describe('命令式确认框（antd modal.confirm 封装）', () => {
+  it('确认后以 true 结束', async () => {
+    const answers = renderConfirm({ title: '删除知识库' });
 
-    await expect(answer).resolves.toBe(true);
-    await waitFor(() =>
-      expect(screen.queryByTestId('confirm-dialog')).toBeNull(),
-    );
+    await userEvent.click(screen.getByRole('button', { name: '触发' }));
+    await userEvent.click(await screen.findByRole('button', { name: '确 定' }));
+
+    expect(answers).toEqual([true]);
   });
 
   it('取消后以 false 结束', async () => {
-    renderHost();
-    const answer = confirm({ title: '删除文件', description: '不可恢复' });
+    const answers = renderConfirm({
+      title: '删除文件',
+      description: '不可恢复',
+    });
 
-    expect(await screen.findByText('不可恢复')).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: '取消' }));
+    await userEvent.click(screen.getByRole('button', { name: '触发' }));
+    await userEvent.click(await screen.findByRole('button', { name: '取 消' }));
 
-    await expect(answer).resolves.toBe(false);
+    expect(answers).toEqual([false]);
   });
 
   it('自定义按钮文案与危险色', async () => {
-    renderHost();
-    const answer = confirm({
-      title: '重置图谱',
-      confirmText: '重置',
+    const answers = renderConfirm({
+      title: '重置图谱设置',
+      confirmText: '重置设置',
       cancelText: '再想想',
       destructive: true,
     });
 
-    expect(await screen.findByRole('button', { name: '再想想' })).toBeTruthy();
-    const button = screen.getByRole('button', { name: '重置' });
-    expect(button.className).toContain('text-destructive');
+    await userEvent.click(screen.getByRole('button', { name: '触发' }));
+    const button = await screen.findByRole('button', { name: '重置设置' });
+    expect(button.className).toContain('ant-btn-dangerous');
     await userEvent.click(button);
 
-    await expect(answer).resolves.toBe(true);
-  });
-
-  it('新请求顶掉旧请求时，旧请求以 false 结束而不是悬空', async () => {
-    renderHost();
-    const first = confirm({ title: '第一个' });
-    const second = confirm({ title: '第二个' });
-
-    await expect(first).resolves.toBe(false);
-    expect(await screen.findByText('第二个')).toBeTruthy();
-
-    await userEvent.click(screen.getByRole('button', { name: '确定' }));
-    await expect(second).resolves.toBe(true);
+    expect(answers).toEqual([true]);
   });
 
   it('按 Esc 关闭视为取消', async () => {
-    renderHost();
-    const answer = confirm({ title: '删除' });
-    expect(await screen.findByText('删除')).toBeTruthy();
+    const answers = renderConfirm({ title: '删除会话记录' });
 
-    await userEvent.keyboard('{Escape}');
-
-    await expect(answer).resolves.toBe(false);
-  });
-
-  it('没有请求时不渲染弹窗', () => {
-    renderHost();
-
-    expect(screen.queryByTestId('confirm-dialog')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: '触发' }));
+    // antd confirm 的 title 会渲染成两处（modal-confirm 头部与 title 元素），用 selector 定位
+    await screen.findByText('删除会话记录', {
+      selector: '.ant-modal-confirm-title',
+    });
+    // rc-dialog 把 keydown 挂在 wrapper（tabIndex=-1）上；userEvent 的 keyboard
+    // 聚焦 body 触发不到，这里直接对 wrapper 派发 Esc（keyCode 27）
+    fireEvent.keyDown(
+      document.querySelector('.ant-modal-wrap') ?? document.body,
+      { keyCode: 27, key: 'Escape' },
+    );
+    // rc-dialog 的关闭动画结束后 promise 才 resolve
+    await waitFor(() => expect(answers).toEqual([false]));
   });
 });

@@ -2,21 +2,14 @@
  * 供应商卡片。
  *
  * 启用的卡显示 Base URL、能力行、凭证缺失徽标与「管理模型」入口；停用态只显示名称与 id。
- * 图标固定用 lucide 的 `Globe`，不引入第三方品牌图标来源。
+ * 图标按 `provider_id` 取品牌 logo（`provider-icon.tsx`），自定义供应商回落 Globe。
  */
-import { Globe, Settings2 } from 'lucide-react';
+import { Settings2 } from 'lucide-react';
 
 import type { ModelProvider } from '../api/model-provider-api';
 import { hasCredentialWarning, providerInfoRows } from '../lib/provider-view';
-import { Badge } from '@/shared/ui/badge';
-import { Button } from '@/shared/ui/button';
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/shared/ui/card';
+import { Button, Tag } from 'antd';
+import { ProviderIcon } from './provider-icon';
 
 type ProviderCardProps = {
   provider: ModelProvider;
@@ -36,38 +29,40 @@ export const ProviderCard = ({
 
   if (!provider.is_enabled) {
     return (
-      <Card
-        className="cursor-pointer gap-0 py-3 transition-colors hover:border-primary-6"
+      <section
+        className="cursor-pointer gap-0 rounded-large border border-color-border-1 bg-color-bg-1 py-3 transition-colors hover:border-primary-6"
         onClick={() => onEdit(provider)}
       >
-        <CardHeader className="px-4">
-          <CardTitle className="flex items-center gap-2 text-sm">
-            <Globe className="size-4 text-color-text-3" aria-hidden />
+        <header className="px-4">
+          <h3 className="flex items-center gap-2 text-sm font-semibold">
+            <ProviderIcon providerId={provider.provider_id} />
             {provider.display_name}
-          </CardTitle>
+          </h3>
           <p className="text-xs text-color-text-3">{provider.provider_id}</p>
-        </CardHeader>
-      </Card>
+        </header>
+      </section>
     );
   }
 
   return (
-    <Card className="gap-0 py-3">
-      <CardHeader className="px-4">
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <Globe className="size-4 text-color-text-3" aria-hidden />
+    <section className="gap-0 rounded-large border border-color-border-1 bg-color-bg-1 py-3">
+      <header className="px-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold">
+          <ProviderIcon providerId={provider.provider_id} />
           <button
             type="button"
-            className="text-left underline-offset-4 hover:underline focus-visible:outline-2"
+            /* border-0 bg-transparent p-0：原生 button 的默认灰底/边框/内边距都不要，
+               悬停反馈只留名称下划线，键盘聚焦外框保留（focus-visible） */
+            className="border-0 bg-transparent p-0 text-left text-color-text-1 underline-offset-4 hover:underline focus-visible:outline-2"
             onClick={() => onEdit(provider)}
           >
             {provider.display_name}
           </button>
-          {warning ? <Badge variant="destructive">凭证缺失</Badge> : null}
-        </CardTitle>
+          {warning ? <Tag color="error">凭证缺失</Tag> : null}
+        </h3>
         <p className="text-xs text-color-text-3">{provider.provider_id}</p>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-1 px-4 pt-2 text-xs">
+      </header>
+      <div className="flex flex-col gap-1 px-4 pt-2 text-xs">
         {providerInfoRows(provider).map((row) => (
           <p key={row.label} className="flex gap-2">
             <span className="shrink-0 text-color-text-3">{row.label}</span>
@@ -76,19 +71,20 @@ export const ProviderCard = ({
             </span>
           </p>
         ))}
-      </CardContent>
-      <CardFooter className="px-4 pt-2">
+      </div>
+      <footer className="px-4 pt-2">
         <Button
-          type="button"
-          variant="ghost"
-          size="sm"
+          htmlType="button"
+          type="primary"
+          /* 与工具栏主按钮同规格：antd 自带投影不要，层序 bug 会把文字压成深色 */
+          className="text-color-white shadow-none"
           icon={<Settings2 className="size-3.5" aria-hidden />}
           onClick={() => onManageModels(provider)}
         >
           管理模型
           {modelCount > 0 ? `（已启用 ${modelCount} 个）` : ''}
         </Button>
-      </CardFooter>
-    </Card>
+      </footer>
+    </section>
   );
 };

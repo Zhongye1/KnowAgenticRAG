@@ -132,7 +132,9 @@ describe('HomePage', () => {
     expect(screen.getByText('Data structure')).toBeInTheDocument();
     expect(screen.getByText('Agent Runtime')).toBeInTheDocument();
     expect(
-      screen.getByText('Discover and retrieve records across supported datasets'),
+      screen.getByText(
+        'Discover and retrieve records across supported datasets',
+      ),
     ).toBeInTheDocument();
     expect(
       screen.getByText('© 2026 Ausdata Science Pty Ltd'),

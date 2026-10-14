@@ -7,28 +7,20 @@
  * 因此提交时会一并带上当前值。
  */
 import * as React from 'react';
+import { Button, Modal } from 'antd';
+import { useNotifications } from '@/shared/ui/notifications';
 
 import type { KnowledgeBaseDetail } from '../api/knowledge-api';
 import {
   useShareTargets,
   useUpdateKnowledgeBase,
 } from '../model/knowledge-queries';
-import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
 import {
   normalizeShareConfig,
   validateShareConfig,
   type ShareConfig,
 } from '@/shared/lib/share-config';
 import { ShareConfigForm } from '@/shared/ui/share-config-form';
-import { useNotifications } from '@/shared/ui/notifications';
 
 type ShareConfigDialogProps = {
   kb: KnowledgeBaseDetail;
@@ -81,53 +73,49 @@ export const ShareConfigDialog = ({
   };
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-2xl gap-3"
-        data-testid="share-config-dialog"
-      >
-        <DialogHeader>
-          <DialogTitle>共享设置</DialogTitle>
-          <DialogDescription>
+    <Modal open onCancel={() => onOpenChange(false)} footer={null}>
+      title=
+      {
+        <div>
+          <div>共享设置</div>
+          <div className="text-xs font-normal text-color-text-3">
             控制谁能读取这个知识库，以及谁还能继续共享它。管理范围必须落在读取范围内。
-          </DialogDescription>
-        </DialogHeader>
-
-        <ShareConfigForm
-          value={config}
-          onChange={onChange}
-          error={error}
-          departments={(targets.data?.departments ?? []).map((item) => ({
-            value: item.id,
-            label: item.name,
-          }))}
-          users={(targets.data?.users ?? []).map((item) => ({
-            value: item.uid,
-            label: item.department_name
-              ? `${item.username}（${item.department_name}）`
-              : item.username,
-          }))}
-          targetsLoading={targets.isPending}
-        />
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={update.isPending}
-            onClick={() => onOpenChange(false)}
-          >
-            取消
-          </Button>
-          <Button
-            type="button"
-            disabled={update.isPending}
-            onClick={() => void onSave()}
-          >
-            {update.isPending ? '保存中…' : '保存'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          </div>
+        </div>
+      }
+      <ShareConfigForm
+        value={config}
+        onChange={onChange}
+        error={error}
+        departments={(targets.data?.departments ?? []).map((item) => ({
+          value: item.id,
+          label: item.name,
+        }))}
+        users={(targets.data?.users ?? []).map((item) => ({
+          value: item.uid,
+          label: item.department_name
+            ? `${item.username}（${item.department_name}）`
+            : item.username,
+        }))}
+        targetsLoading={targets.isPending}
+      />
+      <div>
+        <Button
+          htmlType="button"
+          variant="outlined"
+          disabled={update.isPending}
+          onClick={() => onOpenChange(false)}
+        >
+          取消
+        </Button>
+        <Button
+          htmlType="button"
+          disabled={update.isPending}
+          onClick={() => void onSave()}
+        >
+          {update.isPending ? '保存中…' : '保存'}
+        </Button>
+      </div>
+    </Modal>
   );
 };

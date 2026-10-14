@@ -1,20 +1,26 @@
 /**
  * 对话页的纯视图。
  *
- * 页面结构与条件渲染（顶栏、消息区、输入停靠、右侧面板、弹窗与图片预览）都在这里，
+ * 页面结构与条件渲染（顶栏、消息区、输入停靠、右侧面板、附件弹窗）都在这里，
  * 数据与动作由容器以分组 props 注入；不读路由、store，也不发起业务动作。
  */
 import * as React from 'react';
-import { Bug } from 'lucide-react';
+import { Bug, Folders, ListCollapse, RefreshCw } from 'lucide-react';
 
 import {
   AttachmentUploadDialog,
   GeneratingStatus,
-  ImageAttachmentPreview,
   MessageDebugPanel,
   MessageList,
   PendingInterruptPanel,
   QueueBar,
+  StatePanel,
+  readAgentStateArtifacts,
+  readAgentStateFiles,
+  readAgentStateTodos,
+  readSubagentRuns,
+  readTokenUsage,
+  subagentRunTitle,
   type AttachmentUpload,
   type ChatMessage,
   type ChatRuntime,
@@ -25,7 +31,6 @@ import {
   type QueueRowContext,
   type QueueView,
   type ThreadRequest,
-  type UploadedImage,
 } from '@/features/chat';
 import { ChatInputForm } from './chat-input-form';
 import type { ChatInputFormProps } from './chat-input-form';
@@ -83,11 +88,31 @@ export type ChatPageViewProps = {
     debugMessages: DebugMessage[];
     fetchLangfuseUrl: (runId: string) => Promise<string | null>;
   };
+  /**
+   * 状态面板：与文件面板独立的第二个表面。
+   *
+   * 参照里它是一块可停靠（容器放得下时占 340px 窄列）也可浮动（放不下时成为卡片）
+   * 的面板，内容是 agent_state 的五个只读段；文件面板是另一个表面。
+   */
+  statePanel: {
+    open: boolean;
+    mode: 'docked' | 'floating';
+    agentState: unknown;
+    refreshing: boolean;
+    onRefresh: () => void;
+    /** 打开线程文件的预览分区（来自状态分区的产物/文件列表）。 */
+    onOpenPreviewFile: (path: string, name: string) => void;
+    /** 打开子智能体线程分区。 */
+    onOpenSubagent: (run: {
+      runId: string | null;
+      childThreadId: string;
+      name: string;
+      status: string | undefined;
+    }) => void;
+  };
   overlays: {
     attachmentOpen: boolean;
     onAttachmentOpenChange: (open: boolean) => void;
-    image: UploadedImage | null;
-    onImageRemove: () => void;
   };
 };
 
@@ -96,6 +121,7 @@ export const ChatPageView = ({
   conversation,
   composer,
   sidePanel,
+  statePanel,
   overlays,
 }: ChatPageViewProps) => {
   const {
@@ -132,13 +158,15 @@ export const ChatPageView = ({
       <div
         className={`${styles.chat} ${sidePanel.open ? styles.chatHasPanel : ''} ${
           sidePanel.open && sidePanel.maximized ? styles.chatMaximized : ''
-        }`}
+        } ${sidePanel.resizing ? styles.chatResizing : ''}`}
         style={
           {
-            '--file-panel-width':
-              typeof sidePanel.width === 'number'
+            // 面板关着时是 0：浮动状态面板的 right 偏移引用它，给成比例宽度会把浮卡推到聊天列中间
+            '--file-panel-width': sidePanel.open
+              ? typeof sidePanel.width === 'number'
                 ? `${sidePanel.width}px`
-                : sidePanel.width,
+                : sidePanel.width
+              : '0px',
           } as React.CSSProperties
         }
       >
@@ -158,7 +186,8 @@ export const ChatPageView = ({
               <button
                 type="button"
                 className={`${styles.navBtn} ${styles.navBtnDebug} ${
-                  sidePanel.open && sidePanel.activeSectionKey === 'message-debug'
+                  sidePanel.open &&
+                  sidePanel.activeSectionKey === 'message-debug'
                     ? styles.navBtnActive
                     : ''
                 }`}
@@ -179,18 +208,19 @@ export const ChatPageView = ({
               aria-expanded={sidePanel.open}
               onClick={header.onToggleFiles}
             >
+              <Folders className="size-3.5" aria-hidden />
               文件
             </button>
             <button
               type="button"
               className={`${styles.navBtn} ${
-                sidePanel.open && sidePanel.activeSectionKey === 'state'
-                  ? styles.navBtnActive
-                  : ''
+                statePanel.open ? styles.navBtnActive : ''
               }`}
-              aria-expanded={sidePanel.open}
+              aria-expanded={statePanel.open}
+              aria-controls="agent-state-panel"
               onClick={header.onToggleState}
             >
+              <ListCollapse className="size-3.5" aria-hidden />
               状态
             </button>
           </div>
@@ -198,8 +228,10 @@ export const ChatPageView = ({
         <div
           ref={sidePanel.rowRef}
           className={`${styles.contentRow} ${sidePanel.open ? styles.contentRowHasPanel : ''} ${
-            sidePanel.open && sidePanel.maximized ? styles.contentRowMaximized : ''
-          } ${sidePanel.resizing ? styles.contentRowResizing : ''}`}
+            sidePanel.open && sidePanel.maximized
+              ? styles.contentRowMaximized
+              : ''
+          }`}
         >
           <div ref={chatMainRef} className={styles.chatMain}>
             {replyStatus.visible && messages.length > 0 ? (
@@ -262,13 +294,17 @@ export const ChatPageView = ({
                       )
                     }
                     onContinue={() =>
-                      runQueueAction(chat.continueQueue(threadId, agentSlug ?? ''))
+                      runQueueAction(
+                        chat.continueQueue(threadId, agentSlug ?? ''),
+                      )
                     }
                   />
                 ) : null}
                 <div
                   className={styles.inputStage}
-                  data-has-approval={Boolean(pendingInterrupt && threadId) || undefined}
+                  data-has-approval={
+                    Boolean(pendingInterrupt && threadId) || undefined
+                  }
                 >
                   {pendingInterrupt && threadId ? (
                     <div className={styles.approvalCard}>
@@ -298,13 +334,14 @@ export const ChatPageView = ({
                 <ChatInputForm
                   {...inputFormProps}
                   agentSlug={agentSlug ?? null}
-                  top={threadId ? null : projectSelector ?? null}
+                  top={threadId ? null : (projectSelector ?? null)}
                 />
                 {/* 底部提示：参照 .bottom-actions——在 dock 内、有会话才显示 */}
                 {threadId ? (
                   <div className={styles.bottomActions}>
                     <p className={styles.bottomNote}>
-                      当前智能体：{currentAgentName ?? '…'}；请注意辨别内容的可靠性
+                      当前智能体：{currentAgentName ?? '…'}
+                      ；请注意辨别内容的可靠性
                     </p>
                   </div>
                 ) : null}
@@ -312,22 +349,89 @@ export const ChatPageView = ({
             </div>
           </div>
 
-          {/* 面板：参照 .side-panel--file——absolute 全高覆盖在 .chat 右缘（含页头） */}
-          <div
-            className={`${styles.sidePanel} ${sidePanel.open ? styles.sidePanelVisible : ''} ${
-              sidePanel.resizing ? styles.sidePanelNoTransition : ''
-            }`}
-            style={{ width: sidePanel.width }}
-          >
-            {sidePanel.open ? (
-              <ChatSidePanel {...sidePanel} width="100%">
-                <MessageDebugPanel
-                  messages={sidePanel.debugMessages}
-                  fetchLangfuseUrl={sidePanel.fetchLangfuseUrl}
+          {/* 状态面板：参照 .side-panel--state——停靠时是内容行里的 340px 窄列，
+              浮动时是右上角的卡片 */}
+          {statePanel.open ? (
+            <div
+              id="agent-state-panel"
+              className={`${styles.statePanel} ${
+                statePanel.mode === 'docked'
+                  ? styles.statePanelDocked
+                  : styles.statePanelFloating
+              }`}
+              data-mode={statePanel.mode}
+            >
+              <div className={styles.statePanelHeader}>
+                <span className={styles.statePanelTitle}>状态</span>
+                <div className={styles.statePanelHeaderActions}>
+                  <button
+                    type="button"
+                    className={styles.stateRefreshButton}
+                    title="刷新状态"
+                    aria-label="刷新状态"
+                    disabled={statePanel.refreshing}
+                    onClick={statePanel.onRefresh}
+                  >
+                    <RefreshCw
+                      className={
+                        statePanel.refreshing
+                          ? styles.stateRefreshSpin
+                          : undefined
+                      }
+                      size={14}
+                      aria-hidden
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.statePanelBody}>
+                <StatePanel
+                  tokenUsage={readTokenUsage(statePanel.agentState)}
+                  todos={readAgentStateTodos(statePanel.agentState)}
+                  files={readAgentStateFiles(statePanel.agentState)}
+                  artifacts={readAgentStateArtifacts(statePanel.agentState).map(
+                    (path) => ({
+                      key: path,
+                      path,
+                      name: path.split('/').filter(Boolean).pop() || path,
+                    }),
+                  )}
+                  subagentRuns={readSubagentRuns(statePanel.agentState)}
+                  onOpenFile={(file) => {
+                    statePanel.onOpenPreviewFile(file.path, file.name);
+                  }}
+                  onOpenSubagent={(run) => {
+                    if (!run.child_thread_id) return;
+                    statePanel.onOpenSubagent({
+                      runId: run.run_id ?? null,
+                      childThreadId: run.child_thread_id,
+                      name: subagentRunTitle(run),
+                      status: run.status,
+                    });
+                  }}
                 />
-              </ChatSidePanel>
-            ) : null}
-          </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        {/* 文件面板：参照 .side-panel--file——.chat 的直接子级（与页头、内容行并列），
+            absolute 覆盖右缘整高；页头靠 padding-right 让位，按钮留在分栏虚线左侧 */}
+        <div
+          className={`${styles.sidePanel} ${sidePanel.open ? styles.sidePanelVisible : ''} ${
+            sidePanel.resizing ? styles.sidePanelNoTransition : ''
+          }`}
+          style={{ width: sidePanel.width }}
+        >
+          {sidePanel.open ? (
+            <ChatSidePanel {...sidePanel} width="100%">
+              <MessageDebugPanel
+                messages={sidePanel.debugMessages}
+                fetchLangfuseUrl={sidePanel.fetchLangfuseUrl}
+              />
+            </ChatSidePanel>
+          ) : null}
         </div>
 
         <AttachmentUploadDialog
@@ -336,13 +440,6 @@ export const ChatPageView = ({
           upload={composer.attachmentUpload}
           onConfirm={onConfirmAttachments}
         />
-
-        {overlays.image ? (
-          <ImageAttachmentPreview
-            image={overlays.image}
-            onRemove={overlays.onImageRemove}
-          />
-        ) : null}
       </div>
     </div>
   );

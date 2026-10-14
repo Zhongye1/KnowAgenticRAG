@@ -7,9 +7,8 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { LOCK_TICK_MS, useLoginLock } = await import(
-  '@/entities/session/model/login-lock'
-);
+const { LOCK_TICK_MS, useLoginLock } =
+  await import('@/entities/session/model/login-lock');
 
 const advance = (ms: number) => {
   act(() => {

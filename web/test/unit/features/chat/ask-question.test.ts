@@ -37,12 +37,16 @@ describe('parseBool', () => {
 describe('normalizeQuestions', () => {
   it('接受数组、包装键与单个问题对象三种形状', () => {
     expect(normalizeQuestions([{ question: 'A' }])).toHaveLength(1);
-    expect(normalizeQuestions({ questions: [{ question: 'A' }] })).toHaveLength(1);
+    expect(normalizeQuestions({ questions: [{ question: 'A' }] })).toHaveLength(
+      1,
+    );
     expect(normalizeQuestions({ question: 'A' })).toHaveLength(1);
   });
 
   it('字段名走别名，questionId 缺省时按序号生成', () => {
-    const [item] = normalizeQuestions([{ title: 'A', id: 'x', operation: '选一个' }]);
+    const [item] = normalizeQuestions([
+      { title: 'A', id: 'x', operation: '选一个' },
+    ]);
 
     expect(item).toMatchObject({
       question: 'A',
@@ -55,7 +59,8 @@ describe('normalizeQuestions', () => {
 
   it('默认补「其他」选项，已经有时不重复补', () => {
     expect(
-      normalizeQuestions([{ question: 'A', options: [{ label: '甲' }] }])[0]!.options,
+      normalizeQuestions([{ question: 'A', options: [{ label: '甲' }] }])[0]!
+        .options,
     ).toEqual([
       { label: '甲', value: '甲', description: '' },
       { label: '其他', value: '__other__', description: '' },
@@ -77,7 +82,9 @@ describe('normalizeQuestions', () => {
   });
 
   it('没有题干的条目被丢掉', () => {
-    expect(normalizeQuestions([{ options: [] }, { question: 'A' }])).toHaveLength(1);
+    expect(
+      normalizeQuestions([{ options: [] }, { question: 'A' }]),
+    ).toHaveLength(1);
   });
 
   it('形状不符时返回空数组', () => {
@@ -90,14 +97,18 @@ describe('resolveQuestions', () => {
   it('参数优先于结果', () => {
     expect(
       resolveQuestions(
-        call({ questions: [{ question: '参数题' }] }, { questions: [{ question: '结果题' }] }),
+        call(
+          { questions: [{ question: '参数题' }] },
+          { questions: [{ question: '结果题' }] },
+        ),
       )[0]!.question,
     ).toBe('参数题');
   });
 
   it('参数没有时退到结果', () => {
     expect(
-      resolveQuestions(call({}, { questions: [{ question: '结果题' }] }))[0]!.question,
+      resolveQuestions(call({}, { questions: [{ question: '结果题' }] }))[0]!
+        .question,
     ).toBe('结果题');
   });
 });
@@ -123,12 +134,22 @@ describe('askQuestionSummary', () => {
 
 describe('答案解析', () => {
   const questions = normalizeQuestions([
-    { question: 'A', questionId: 'q1', options: [{ label: '甲', value: 'jia' }] },
-    { question: 'B', questionId: 'q2', options: [{ label: '乙', value: 'yi' }] },
+    {
+      question: 'A',
+      questionId: 'q1',
+      options: [{ label: '甲', value: 'jia' }],
+    },
+    {
+      question: 'B',
+      questionId: 'q2',
+      options: [{ label: '乙', value: 'yi' }],
+    },
   ]);
 
   it('user_answer 优先于 answer', () => {
-    expect(resolveUserAnswer(call({}, { answer: 'x', user_answer: 'y' }))).toBe('y');
+    expect(resolveUserAnswer(call({}, { answer: 'x', user_answer: 'y' }))).toBe(
+      'y',
+    );
     expect(resolveUserAnswer(call({}, { answer: 'x' }))).toBe('x');
     expect(resolveUserAnswer(call({}))).toBeNull();
   });
@@ -138,7 +159,9 @@ describe('答案解析', () => {
 
     expect(questionAnswer('jia', single, single[0]!)).toBe('jia');
     expect(questionAnswer({ q1: 'jia' }, questions, questions[0]!)).toBe('jia');
-    expect(questionAnswer({ q1: 'jia' }, questions, questions[1]!)).toBeUndefined();
+    expect(
+      questionAnswer({ q1: 'jia' }, questions, questions[1]!),
+    ).toBeUndefined();
   });
 
   it('选项值翻译成标签，找不到原样返回', () => {
@@ -149,7 +172,10 @@ describe('答案解析', () => {
 
   it('type=other 时拼「其他: 文本」', () => {
     expect(
-      formatAnswer({ type: 'other', selected: ['jia'], text: '自己写' }, questions[0]!),
+      formatAnswer(
+        { type: 'other', selected: ['jia'], text: '自己写' },
+        questions[0]!,
+      ),
     ).toBe('甲、其他: 自己写');
     expect(formatAnswer({ type: 'other' }, questions[0]!)).toBe('其他');
   });

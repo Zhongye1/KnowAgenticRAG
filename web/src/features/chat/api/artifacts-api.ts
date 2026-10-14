@@ -9,7 +9,10 @@ import {
   saveThreadArtifactToWorkspaceApiChatThreadThreadIdArtifactsSavePost,
 } from '@/shared/api/generated/sdk.gen';
 
-import { parseDownloadFilename, saveBlobAsFile } from '../lib/panel-preview';
+import {
+  parseDownloadFilename,
+  saveBlobAsFile,
+} from '@/shared/lib/file-download';
 
 /** 下载一个交付物；文件名优先取 Content-Disposition（中文走 RFC 5987）。 */
 export async function downloadThreadArtifact(input: {
@@ -45,7 +48,10 @@ export async function saveThreadArtifact(input: {
   const response = unwrap<{ saved_path?: unknown }>(
     await saveThreadArtifactToWorkspaceApiChatThreadThreadIdArtifactsSavePost({
       path: { thread_id: input.threadId },
-      body: { path: input.path, destination_path: input.destinationPath ?? null },
+      body: {
+        path: input.path,
+        destination_path: input.destinationPath ?? null,
+      },
     }),
   );
 

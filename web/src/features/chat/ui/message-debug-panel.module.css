@@ -8,8 +8,9 @@
   flex-direction: column;
   height: 100%;
   background: var(--gray-0);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
+    Arial, sans-serif;
 }
 
 /* 参照 .debug-panel-toolbar */

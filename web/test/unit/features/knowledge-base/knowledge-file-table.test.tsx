@@ -96,7 +96,7 @@ const { shouldPollFiles } =
   await import('@/features/knowledge-base/ui/knowledge-file-table');
 
 /** 要开下拉、翻页或等异步查询的用例自带预算，并行跑整套时不会被 5 秒上限误伤。 */
-const { ConfirmDialogHost } = await import('@/shared/ui/confirm-dialog-host');
+const { AntdProvider } = await import('@/app/theme/antd-provider');
 
 const file = (id: string, extra: Record<string, unknown> = {}) => ({
   file_id: id,
@@ -177,10 +177,11 @@ const renderTable = (props: Parameters<typeof Harness>[0] = {}) => {
     defaultOptions: { queries: { retry: false } },
   });
   render(
-    <QueryClientProvider client={queryClient}>
-      <Harness {...props} />
-      <ConfirmDialogHost />
-    </QueryClientProvider>,
+    <AntdProvider>
+      <QueryClientProvider client={queryClient}>
+        <Harness {...props} />
+      </QueryClientProvider>
+    </AntdProvider>,
   );
 };
 
@@ -315,7 +316,9 @@ describe('知识库文件表', () => {
     await userEvent.click(screen.getByRole('button', { name: '下一页' }));
     await screen.findByText('第2页.pdf');
 
-    await userEvent.click(screen.getByLabelText('按状态筛选文件'));
+    await userEvent.click(
+      screen.getByRole('combobox', { name: '按状态筛选文件' }),
+    );
     await userEvent.click(
       await screen.findByRole('option', { name: '待入库' }),
     );
@@ -520,7 +523,9 @@ describe('知识库文件表', () => {
       expect(screen.getByRole('navigation', { name: '文件路径' })).toBeTruthy(),
     );
 
-    await userEvent.click(screen.getByLabelText('按状态筛选文件'));
+    await userEvent.click(
+      screen.getByRole('combobox', { name: '按状态筛选文件' }),
+    );
     await userEvent.click(
       await screen.findByRole('option', { name: '待解析' }),
     );
@@ -555,7 +560,9 @@ describe('知识库文件表', () => {
     );
     renderTable();
 
-    await userEvent.click(screen.getByLabelText('按状态筛选文件'));
+    await userEvent.click(
+      screen.getByRole('combobox', { name: '按状态筛选文件' }),
+    );
     await userEvent.click(
       await screen.findByRole('option', { name: '待解析' }),
     );
@@ -695,7 +702,7 @@ describe('知识库文件表', () => {
     await userEvent.click(screen.getByRole('button', { name: '下一页' }));
     await screen.findByText('第2页.pdf');
 
-    await userEvent.click(screen.getByLabelText('每页条数'));
+    await userEvent.click(screen.getByRole('combobox', { name: '每页条数' }));
     await userEvent.click(
       await screen.findByRole('option', { name: '300 条/页' }),
     );
@@ -971,7 +978,11 @@ describe('文件行内操作', () => {
     await userEvent.click(screen.getByRole('menuitem', { name: /删除文件/ }));
 
     expect(api.deleteDocument).not.toHaveBeenCalled();
-    expect(await screen.findByText('删除文件')).toBeTruthy();
+    expect(
+      await screen.findByText('删除文件', {
+        selector: '.ant-modal-confirm-title',
+      }),
+    ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: '确认' }));
 
     await waitFor(() =>
@@ -990,9 +1001,16 @@ describe('文件行内操作', () => {
 
     await openRowMenu('报表');
     await userEvent.click(screen.getByRole('menuitem', { name: /删除文件/ }));
-    await userEvent.click(screen.getByRole('button', { name: '取消' }));
+    await userEvent.click(
+      within(
+        document.querySelector('.ant-modal-confirm') as HTMLElement,
+      ).getByRole('button', { name: '取消' }),
+    );
 
-    await waitFor(() => expect(screen.queryByText('删除文件')).toBeNull());
+    // antd Modal 关闭走淡出动画，等 confirm 容器从 DOM 移除
+    await waitFor(() =>
+      expect(document.querySelector('.ant-modal-confirm')).toBeNull(),
+    );
     expect(api.deleteDocument).not.toHaveBeenCalled();
   });
 
@@ -1184,7 +1202,11 @@ describe('文件批量操作', () => {
     await userEvent.click(screen.getByRole('button', { name: '批量删除' }));
 
     // 全选勾上 3 行（处理中不可勾），其中解析中不可删除 → 只提交 2 行
-    expect(await screen.findByText('批量删除文件')).toBeTruthy();
+    expect(
+      await screen.findByText('批量删除文件', {
+        selector: '.ant-modal-confirm-title',
+      }),
+    ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: '确认' }));
 
     await waitFor(() =>
@@ -1291,10 +1313,10 @@ describe('只读与陈旧态', () => {
     await userEvent.click(
       screen.getByRole('button', { name: '文件操作：报表.pdf' }),
     );
-    // Radix 的菜单项是 div，`toBeEnabled()` 对它恒真，要查 data-disabled
+    // antd 菜单项禁用走 aria-disabled
     expect(
       screen.getByRole('menuitem', { name: /下载文件/ }),
-    ).not.toHaveAttribute('data-disabled');
+    ).not.toHaveAttribute('aria-disabled', 'true');
     expect(screen.queryByRole('menuitem', { name: /删除文件/ })).toBeNull();
   });
 
@@ -1322,10 +1344,12 @@ describe('只读与陈旧态', () => {
       screen.getByRole('button', { name: '文件操作：报表.pdf' }),
     );
     expect(screen.getByRole('menuitem', { name: /下载文件/ })).toHaveAttribute(
-      'data-disabled',
+      'aria-disabled',
+      'true',
     );
     expect(screen.getByRole('menuitem', { name: /删除文件/ })).toHaveAttribute(
-      'data-disabled',
+      'aria-disabled',
+      'true',
     );
   });
 
@@ -1372,9 +1396,13 @@ describe('只读与陈旧态', () => {
       screen.getByRole('checkbox', { name: '选择 甲.pdf' }),
     );
 
+    // antd Checkbox 的半选是 indeterminate prop（背景样式），不是 aria-checked=mixed
     expect(
-      screen.getByRole('checkbox', { name: '选择当前页全部文件' }),
-    ).toHaveAttribute('aria-checked', 'mixed');
+      screen
+        .getByRole('checkbox', { name: '选择当前页全部文件' })
+        .closest('label')
+        ?.querySelector('.ant-checkbox-indeterminate'),
+    ).toBeTruthy();
   });
 });
 

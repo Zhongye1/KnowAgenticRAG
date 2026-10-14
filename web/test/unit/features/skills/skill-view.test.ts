@@ -10,7 +10,6 @@ import type { SkillCard } from '@/features/skills/api/skill-api';
 import {
   canToggleSkillEnabled,
   deletableSkills,
-  formatSkillTitle,
   getSkillIcon,
   groupSkills,
   invertSelection,
@@ -22,6 +21,7 @@ import {
   sourceTypeLabel,
   visibleSkillGroups,
 } from '@/features/skills/lib/skill-view';
+import { formatExtensionTitle } from '@/shared/lib';
 
 const card = (extra: Partial<SkillCard> = {}): SkillCard => ({
   id: 1,
@@ -149,10 +149,10 @@ describe('卡片标签与文案', () => {
   });
 
   it('标题按词边界折行', () => {
-    expect(formatSkillTitle('deep-research')).toBe('Deep Research');
-    expect(formatSkillTitle('mysql_reporter')).toBe('Mysql Reporter');
-    expect(formatSkillTitle('PDF')).toBe('PDF');
-    expect(formatSkillTitle('')).toBe('');
+    expect(formatExtensionTitle('deep-research')).toBe('Deep Research');
+    expect(formatExtensionTitle('mysql_reporter')).toBe('Mysql Reporter');
+    expect(formatExtensionTitle('PDF')).toBe('PDF');
+    expect(formatExtensionTitle('')).toBe('');
   });
 
   it('图标按 slug 关键词命中，认不出用通用图标', () => {

@@ -5,6 +5,9 @@
  * 「同一份响应被过滤后的可见卡片」，而不是又发了一次请求。
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// antd 词汇由应用装配承载，测试同构挂上
+import { AntdProvider } from '@/app/theme/antd-provider';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
@@ -29,9 +32,12 @@ const renderDialog = () => {
     defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
   });
   return render(
-    <QueryClientProvider client={client}>
-      <FeedbackDialog open onOpenChange={onOpenChange} />
-    </QueryClientProvider>,
+    // antd 词汇由应用装配承载，测试同构挂上
+    <AntdProvider>
+      <QueryClientProvider client={client}>
+        <FeedbackDialog open onOpenChange={onOpenChange} />
+      </QueryClientProvider>
+    </AntdProvider>,
   );
 };
 

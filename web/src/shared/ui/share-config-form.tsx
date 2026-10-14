@@ -10,7 +10,7 @@
  */
 import * as React from 'react';
 
-import { Button } from '@/shared/ui/button';
+import { Button } from 'antd';
 import { Spinner } from '@/shared/ui/spinner';
 import {
   ACCESS_LEVELS,
@@ -152,9 +152,9 @@ export const ShareConfigForm = ({
           </span>
           {key === 'manage_scope' ? (
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
+              htmlType="button"
+              variant="outlined"
+              size="small"
               onClick={() =>
                 setScope(
                   'manage_scope',
@@ -204,9 +204,10 @@ export const ShareConfigForm = ({
                   return (
                     <li key={String(option.value)}>
                       <Button
-                        type="button"
-                        variant={selected ? 'default' : 'outline'}
-                        size="sm"
+                        htmlType="button"
+                        variant={selected ? 'solid' : 'outlined'}
+                        color="primary"
+                        size="small"
                         aria-pressed={selected}
                         onClick={() =>
                           toggleId(key, scope.access_level, option.value)

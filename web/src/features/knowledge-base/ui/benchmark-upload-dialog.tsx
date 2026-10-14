@@ -5,6 +5,7 @@
  * 提交前做，错误显示在弹窗里；后端只会校验扩展名，体积与内容格式是界面自己的约束。
  */
 import * as React from 'react';
+import { Button, Input, Modal, Spin } from 'antd';
 
 import {
   MAX_BENCHMARK_FILE_BYTES,
@@ -13,17 +14,6 @@ import {
   validateJsonlContent,
 } from '../lib/evaluation-form';
 import { useUploadEvaluationDataset } from '../model/evaluation-queries';
-import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
-import { Input } from '@/shared/ui/input';
-import { Spinner } from '@/shared/ui/spinner';
 
 export type BenchmarkUploadDialogProps = {
   kbId: string;
@@ -94,86 +84,83 @@ export const BenchmarkUploadDialog = ({
   };
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[600px]">
-        <DialogHeader>
-          <DialogTitle>上传评估基准</DialogTitle>
-          <DialogDescription>
+    <Modal open onCancel={() => onOpenChange(false)} footer={null}>
+      title=
+      {
+        <div>
+          <div>上传评估基准</div>
+          <div className="text-xs font-normal text-color-text-3">
             每行一个 JSON 对象，仅支持 .jsonl，最大 100MB。
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1 text-xs text-color-text-2">
-            <label htmlFor="benchmark-name">
-              名称<span className="text-danger-6"> *</span>
-            </label>
-            <Input
-              id="benchmark-name"
-              value={name}
-              onChange={(event) => {
-                setError('');
-                setName(event.target.value);
-              }}
-            />
           </div>
-
-          <div className="flex flex-col gap-1 text-xs text-color-text-2">
-            <label htmlFor="benchmark-description">说明</label>
-            <textarea
-              id="benchmark-description"
-              rows={3}
-              className="rounded border border-color-border-1 bg-color-bg-1 px-2 py-1 text-sm text-color-text-1"
-              value={description}
-              onChange={(event) => setDescription(event.target.value)}
-            />
-          </div>
-
-          <div className="flex flex-col gap-1 text-xs text-color-text-2">
-            <label htmlFor="benchmark-file">
-              基准文件<span className="text-danger-6"> *</span>
-            </label>
-            <input
-              id="benchmark-file"
-              type="file"
-              accept=".jsonl"
-              className="text-sm text-color-text-1"
-              onChange={(event) =>
-                void pickFile(event.target.files?.[0] ?? null)
-              }
-            />
-            <span className="text-color-text-3">
-              上限 {Math.round(MAX_BENCHMARK_FILE_BYTES / 1024 / 1024)}
-              MB，抽样校验前 5 行。
-            </span>
-          </div>
-
-          {error ? (
-            <p role="alert" className="text-xs text-danger-6">
-              {error}
-            </p>
-          ) : null}
+        </div>
+      }
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1 text-xs text-color-text-2">
+          <label htmlFor="benchmark-name">
+            名称<span className="text-danger-6"> *</span>
+          </label>
+          <Input
+            id="benchmark-name"
+            value={name}
+            onChange={(event) => {
+              setError('');
+              setName(event.target.value);
+            }}
+          />
         </div>
 
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={upload.isPending}
-            onClick={() => onOpenChange(false)}
-          >
-            取消
-          </Button>
-          <Button
-            type="button"
-            disabled={upload.isPending}
-            onClick={() => void submit()}
-          >
-            {upload.isPending ? <Spinner /> : null}
-            上传
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="flex flex-col gap-1 text-xs text-color-text-2">
+          <label htmlFor="benchmark-description">说明</label>
+          <textarea
+            id="benchmark-description"
+            rows={3}
+            className="rounded border border-color-border-1 bg-color-bg-1 px-2 py-1 text-sm text-color-text-1"
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1 text-xs text-color-text-2">
+          <label htmlFor="benchmark-file">
+            基准文件<span className="text-danger-6"> *</span>
+          </label>
+          <input
+            id="benchmark-file"
+            type="file"
+            accept=".jsonl"
+            className="text-sm text-color-text-1"
+            onChange={(event) => void pickFile(event.target.files?.[0] ?? null)}
+          />
+          <span className="text-color-text-3">
+            上限 {Math.round(MAX_BENCHMARK_FILE_BYTES / 1024 / 1024)}
+            MB，抽样校验前 5 行。
+          </span>
+        </div>
+
+        {error ? (
+          <p role="alert" className="text-xs text-danger-6">
+            {error}
+          </p>
+        ) : null}
+      </div>
+      <div>
+        <Button
+          htmlType="button"
+          variant="outlined"
+          disabled={upload.isPending}
+          onClick={() => onOpenChange(false)}
+        >
+          取消
+        </Button>
+        <Button
+          htmlType="button"
+          disabled={upload.isPending}
+          onClick={() => void submit()}
+        >
+          {upload.isPending ? <Spin /> : null}
+          上传
+        </Button>
+      </div>
+    </Modal>
   );
 };

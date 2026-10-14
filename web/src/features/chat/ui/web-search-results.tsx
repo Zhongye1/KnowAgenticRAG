@@ -15,7 +15,11 @@ const formatScore = (score: number): string => `${(score * 100).toFixed(1)}%`;
 
 export const WebSearchResults = ({ results }: WebSearchResultsProps) => {
   if (results.length === 0) {
-    return <p className="py-3 text-center text-xs text-[var(--gray-500)]">未找到相关搜索结果</p>;
+    return (
+      <p className="py-3 text-center text-xs text-[var(--gray-500)]">
+        未找到相关搜索结果
+      </p>
+    );
   }
 
   return (

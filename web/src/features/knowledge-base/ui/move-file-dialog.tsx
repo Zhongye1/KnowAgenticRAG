@@ -8,23 +8,13 @@
  */
 import * as React from 'react';
 import { ChevronRight, Folder, Home } from 'lucide-react';
+import { Button, Empty, Modal, Spin } from 'antd';
 
 import type { KnowledgeFileItem } from '../api/knowledge-api';
 import {
   useKnowledgeFiles,
   useMoveKnowledgeFile,
 } from '../model/knowledge-queries';
-import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
-import { Empty } from '@/shared/ui/empty';
-import { Spinner } from '@/shared/ui/spinner';
 
 type MoveFileDialogProps = {
   kbId: string;
@@ -103,103 +93,103 @@ export const MoveFileDialog = ({
   };
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg gap-3" data-testid="move-file-dialog">
-        <DialogHeader>
-          <DialogTitle>移动「{file.filename}」</DialogTitle>
-          <DialogDescription>
+    <Modal
+      open
+      onCancel={() => onOpenChange(false)}
+      footer={null}
+      data-testid="move-file-dialog"
+    >
+      title=
+      {
+        <div>
+          <div>移动「{file.filename}」</div>
+          <div className="text-xs font-normal text-color-text-3">
             选择目标目录，确认后移动；当前浏览的是「{target.label}
             」。只列出实体目录：
             路径投影出来的目录没有独立记录，不能作为移动目标。
-          </DialogDescription>
-        </DialogHeader>
-
-        <nav
-          className="flex flex-wrap items-center gap-1 text-xs text-color-text-3"
-          aria-label="目标目录路径"
-        >
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            aria-label="回到根目录"
-            onClick={() => gotoCrumb(-1)}
-          >
-            <Home className="size-3" aria-hidden />
-            根目录
-          </Button>
-          {crumbs.map((crumb, index) => (
-            <React.Fragment key={`${crumb.parentId ?? 'root'}-${index}`}>
-              <ChevronRight className="size-3 shrink-0" aria-hidden />
-              <button
-                type="button"
-                className="max-w-40 truncate hover:text-color-text-1"
-                title={crumb.label}
-                onClick={() => gotoCrumb(index)}
-              >
-                {crumb.label}
-              </button>
-            </React.Fragment>
-          ))}
-        </nav>
-
-        <div className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-large border border-color-border-1 p-1">
-          {listing.isPending ? (
-            <p className="flex items-center gap-2 p-3 text-xs text-color-text-3">
-              <Spinner aria-hidden className="size-4" />
-              正在加载目录…
-            </p>
-          ) : null}
-          {listing.isError ? (
-            <p role="alert" className="p-3 text-xs text-danger-6">
-              {listing.error instanceof Error
-                ? listing.error.message
-                : '加载目录失败。'}
-            </p>
-          ) : null}
-          {listing.isSuccess && folders.length === 0 ? (
-            <Empty description="这个目录下没有子目录" />
-          ) : null}
-          {folders.map((folder) => (
-            <button
-              key={folder.file_id}
-              type="button"
-              className="flex items-center gap-2 rounded-medium px-2 py-2 text-left text-sm text-color-text-1 hover:bg-sidebar-accent"
-              onClick={() => enter(folder)}
-            >
-              <Folder
-                className="size-4 shrink-0 text-color-text-3"
-                aria-hidden
-              />
-              <span className="min-w-0 flex-1 truncate" title={folder.filename}>
-                {folder.filename}
-              </span>
-              <ChevronRight className="size-3 shrink-0" aria-hidden />
-            </button>
-          ))}
+          </div>
         </div>
-
-        <DialogFooter>
-          <Button
+      }
+      <nav
+        className="flex flex-wrap items-center gap-1 text-xs text-color-text-3"
+        aria-label="目标目录路径"
+      >
+        <Button
+          htmlType="button"
+          variant="text"
+          size="small"
+          aria-label="回到根目录"
+          onClick={() => gotoCrumb(-1)}
+        >
+          <Home className="size-3" aria-hidden />
+          根目录
+        </Button>
+        {crumbs.map((crumb, index) => (
+          <React.Fragment key={`${crumb.parentId ?? 'root'}-${index}`}>
+            <ChevronRight className="size-3 shrink-0" aria-hidden />
+            <button
+              type="button"
+              className="max-w-40 truncate hover:text-color-text-1"
+              title={crumb.label}
+              onClick={() => gotoCrumb(index)}
+            >
+              {crumb.label}
+            </button>
+          </React.Fragment>
+        ))}
+      </nav>
+      <div className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-large border border-color-border-1 p-1">
+        {listing.isPending ? (
+          <p className="flex items-center gap-2 p-3 text-xs text-color-text-3">
+            <Spin aria-hidden className="size-4" />
+            正在加载目录…
+          </p>
+        ) : null}
+        {listing.isError ? (
+          <p role="alert" className="p-3 text-xs text-danger-6">
+            {listing.error instanceof Error
+              ? listing.error.message
+              : '加载目录失败。'}
+          </p>
+        ) : null}
+        {listing.isSuccess && folders.length === 0 ? (
+          <Empty description="这个目录下没有子目录" />
+        ) : null}
+        {folders.map((folder) => (
+          <button
+            key={folder.file_id}
             type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
+            className="flex items-center gap-2 rounded-medium px-2 py-2 text-left text-sm text-color-text-1 hover:bg-sidebar-accent"
+            onClick={() => enter(folder)}
           >
-            取消
-          </Button>
-          <Button
-            type="button"
-            disabled={moveMutation.isPending || atCurrentParent}
-            onClick={() => void onConfirm()}
-          >
-            {moveMutation.isPending
-              ? '移动中…'
-              : atCurrentParent
-                ? '已经在这个目录下'
-                : `移动到「${target.label}」`}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            <Folder className="size-4 shrink-0 text-color-text-3" aria-hidden />
+            <span className="min-w-0 flex-1 truncate" title={folder.filename}>
+              {folder.filename}
+            </span>
+            <ChevronRight className="size-3 shrink-0" aria-hidden />
+          </button>
+        ))}
+      </div>
+      <div>
+        <Button
+          htmlType="button"
+          variant="outlined"
+          onClick={() => onOpenChange(false)}
+        >
+          取消
+        </Button>
+        <Button
+          htmlType="button"
+          disabled={moveMutation.isPending || atCurrentParent}
+          onClick={() => void onConfirm()}
+        >
+          {moveMutation.isPending
+            ? '移动中…'
+            : atCurrentParent
+              ? '已经在这个目录下'
+              : `移动到「${target.label}」`}
+        </Button>
+      </div>
+    </Modal>
   );
 };

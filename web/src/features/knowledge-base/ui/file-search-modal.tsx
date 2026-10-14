@@ -9,6 +9,7 @@
  */
 import * as React from 'react';
 import { FileText } from 'lucide-react';
+import { Button, Empty, Input, Modal, Spin } from 'antd';
 
 import type { KnowledgeFileSearchItem } from '../api/knowledge-api';
 import {
@@ -19,17 +20,6 @@ import {
 } from '../lib/knowledge-files';
 import { formatBytes } from '../lib/knowledge-view';
 import { useSearchKnowledgeFiles } from '../model/knowledge-queries';
-import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
-import { Empty } from '@/shared/ui/empty';
-import { Input } from '@/shared/ui/input';
-import { Spinner } from '@/shared/ui/spinner';
 
 /** 自动搜索的防抖时长。 */
 const SEARCH_DEBOUNCE_MS = 240;
@@ -62,113 +52,109 @@ export const FileSearchModal = ({
   const files = results.data?.files ?? [];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl gap-3" data-testid="file-search-modal">
-        <DialogHeader>
-          <DialogTitle>搜索文件</DialogTitle>
-          <DialogDescription>仅匹配文件名，不搜索文件内容。</DialogDescription>
-        </DialogHeader>
-
-        <Input
-          value={keyword}
-          aria-label="搜索文件名"
-          placeholder="输入文件名关键词"
-          onChange={(event) => setKeyword(event.target.value)}
-        />
-
-        {submitted && results.isFetching ? (
-          <p className="flex items-center gap-2 py-4 text-sm text-color-text-3">
-            <Spinner aria-hidden className="size-4" />
-            正在搜索…
-          </p>
-        ) : null}
-
-        {submitted && results.isError ? (
-          <p role="alert" className="py-4 text-sm text-danger-6">
-            {results.error instanceof Error
-              ? results.error.message
-              : '搜索失败。'}
-          </p>
-        ) : null}
-
-        {submitted && results.isSuccess && files.length === 0 ? (
-          <Empty description="未找到匹配的文件" />
-        ) : null}
-
-        {files.length > 0 ? (
-          <ul
-            className="flex max-h-80 flex-col gap-1 overflow-y-auto"
-            aria-label="搜索结果"
-          >
-            {files.map((file) => {
-              const view = getFileStatusView(file.status);
-              const { basename, dirname } = splitFilename(file.filename);
-              return (
-                <li key={file.file_id}>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 rounded-medium px-2 py-2 text-left hover:bg-sidebar-accent"
-                    onClick={() => {
-                      onSelect(file);
-                      onOpenChange(false);
-                    }}
-                  >
-                    <FileText
-                      className="size-4 shrink-0 text-color-text-3"
-                      aria-hidden
-                    />
-                    <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                      <span
-                        className="truncate text-sm text-color-text-1"
-                        title={basename}
-                      >
-                        {basename}
-                      </span>
-                      {dirname ? (
-                        <span
-                          className="shrink-0 truncate text-xs text-color-text-3"
-                          title={dirname}
-                        >
-                          {formatDirname(dirname)}
-                        </span>
-                      ) : null}
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-small px-2 py-0.5 text-xs ${view.className}`}
-                    >
-                      {view.label}
-                    </span>
-                    <span className="shrink-0 text-xs text-color-text-3">
-                      {formatBytes(file.file_size ?? undefined)}
-                    </span>
-                    <span className="shrink-0 text-xs text-color-text-3">
-                      {formatSearchResultTime(file.updated_at) || '—'}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
-
-        <p className="text-xs text-color-text-3">
-          {submitted
-            ? results.data?.has_more
-              ? `共 ${results.data.total} 条结果，仅展示前 ${files.length} 条，请细化关键词。`
-              : `共 ${results.data?.total ?? 0} 条结果`
-            : '输入关键词后按文件名匹配。'}
-        </p>
-
-        <div className="flex justify-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-          >
-            关闭
-          </Button>
+    <Modal open={open} onCancel={() => onOpenChange(false)} footer={null}>
+      title=
+      {
+        <div>
+          <div>搜索文件</div>
+          <div className="text-xs font-normal text-color-text-3">
+            仅匹配文件名，不搜索文件内容。
+          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      }
+      <Input
+        value={keyword}
+        aria-label="搜索文件名"
+        placeholder="输入文件名关键词"
+        onChange={(event) => setKeyword(event.target.value)}
+      />
+      {submitted && results.isFetching ? (
+        <p className="flex items-center gap-2 py-4 text-sm text-color-text-3">
+          <Spin aria-hidden className="size-4" />
+          正在搜索…
+        </p>
+      ) : null}
+      {submitted && results.isError ? (
+        <p role="alert" className="py-4 text-sm text-danger-6">
+          {results.error instanceof Error
+            ? results.error.message
+            : '搜索失败。'}
+        </p>
+      ) : null}
+      {submitted && results.isSuccess && files.length === 0 ? (
+        <Empty description="未找到匹配的文件" />
+      ) : null}
+      {files.length > 0 ? (
+        <ul
+          className="flex max-h-80 flex-col gap-1 overflow-y-auto"
+          aria-label="搜索结果"
+        >
+          {files.map((file) => {
+            const view = getFileStatusView(file.status);
+            const { basename, dirname } = splitFilename(file.filename);
+            return (
+              <li key={file.file_id}>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-medium px-2 py-2 text-left hover:bg-sidebar-accent"
+                  onClick={() => {
+                    onSelect(file);
+                    onOpenChange(false);
+                  }}
+                >
+                  <FileText
+                    className="size-4 shrink-0 text-color-text-3"
+                    aria-hidden
+                  />
+                  <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                    <span
+                      className="truncate text-sm text-color-text-1"
+                      title={basename}
+                    >
+                      {basename}
+                    </span>
+                    {dirname ? (
+                      <span
+                        className="shrink-0 truncate text-xs text-color-text-3"
+                        title={dirname}
+                      >
+                        {formatDirname(dirname)}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded-small px-2 py-0.5 text-xs ${view.className}`}
+                  >
+                    {view.label}
+                  </span>
+                  <span className="shrink-0 text-xs text-color-text-3">
+                    {formatBytes(file.file_size ?? undefined)}
+                  </span>
+                  <span className="shrink-0 text-xs text-color-text-3">
+                    {formatSearchResultTime(file.updated_at) || '—'}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      <p className="text-xs text-color-text-3">
+        {submitted
+          ? results.data?.has_more
+            ? `共 ${results.data.total} 条结果，仅展示前 ${files.length} 条，请细化关键词。`
+            : `共 ${results.data?.total ?? 0} 条结果`
+          : '输入关键词后按文件名匹配。'}
+      </p>
+      <div className="flex justify-end">
+        <Button
+          htmlType="button"
+          variant="outlined"
+          onClick={() => onOpenChange(false)}
+        >
+          关闭
+        </Button>
+      </div>
+    </Modal>
   );
 };

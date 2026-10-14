@@ -1,0 +1,99 @@
+/* 设置弹窗外壳的样式。
+   参照实现 SettingsModal.vue 的 `.settings-modal` / `.settings-sider` / `.settings-content`：
+   无标题栏、关闭钮自绘在左上角、左导航 176px / gray-50 底 / 右分隔线，导航项 15px、
+   激活 gray-150 底 + main-700 字。颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+
+.shell {
+  position: relative;
+  display: flex;
+  min-height: min(84vh, 840px);
+}
+
+/* 关闭钮压在导航栏上方；`.sider` 的 52px 上内边距就是给它留的位置 */
+.closeButton {
+  position: absolute;
+  top: 10px;
+  left: 14px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--gray-50);
+  color: var(--gray-700);
+  cursor: pointer;
+}
+
+.closeButton:hover,
+.closeButton:focus-visible {
+  background: var(--gray-200);
+  color: var(--gray-900);
+}
+
+.sider {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 0 0 176px;
+  padding: 52px 10px 12px;
+  border-right: 1px solid var(--gray-150);
+  background: var(--gray-50);
+}
+
+.siderItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gray-700);
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.siderItem:hover {
+  background: var(--gray-100);
+}
+
+.siderItemActive {
+  background: var(--gray-150);
+  color: var(--main-700);
+  font-weight: 500;
+}
+
+.content {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 16px;
+  overflow-y: auto;
+  background: var(--gray-0);
+  max-height: min(84vh, 840px);
+}
+
+@media (max-width: 760px) {
+  .shell {
+    flex-direction: column;
+  }
+
+  .sider {
+    flex-direction: row;
+    flex: 0 0 auto;
+    padding: 8px 10px;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--gray-150);
+  }
+
+  .content {
+    max-height: 60vh;
+  }
+}

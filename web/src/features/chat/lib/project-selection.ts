@@ -12,7 +12,8 @@ import type { ProjectItem } from '../api/projects-api';
 /** 没有显式选项目时的取值；下发时归一成空串。 */
 export const AUTO_PROJECT_ID = '__auto__';
 
-const asText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+const asText = (value: unknown): string =>
+  typeof value === 'string' ? value.trim() : '';
 
 /** 按名称过滤；大小写不敏感，空白查询返回原列表。 */
 export function filterProjects(
@@ -27,31 +28,14 @@ export function filterProjects(
   );
 }
 
-/**
- * 相对时间文案；与参照同档：刚刚 / N分钟前 / N小时前 / N天前 / N个月前 / N年前。
- *
- * 时间无法解析时返回空串，由调用方决定显示什么。
- */
-export function formatRelativeTime(value: unknown, now = Date.now()): string {
-  const timestamp = Date.parse(asText(value));
-  if (!Number.isFinite(timestamp)) return '';
-
-  const elapsed = Math.max(0, now - timestamp);
-  const minute = 60 * 1000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-
-  if (elapsed < minute) return '刚刚';
-  if (elapsed < hour) return `${Math.floor(elapsed / minute)}分钟前`;
-  if (elapsed < day) return `${Math.floor(elapsed / hour)}小时前`;
-  if (elapsed < 30 * day) return `${Math.floor(elapsed / day)}天前`;
-  if (elapsed < 365 * day) return `${Math.floor(elapsed / (30 * day))}个月前`;
-
-  return `${Math.floor(elapsed / (365 * day))}年前`;
-}
+/** 相对时间文案；实现在 shared（知识库卡片与项目选择共用）。 */
+export { formatRelativeTime } from '@/shared/lib';
 
 /** 新建项目需要名称与目录两者都非空。 */
-export function canCreateProject(input: { name: unknown; path: unknown }): boolean {
+export function canCreateProject(input: {
+  name: unknown;
+  path: unknown;
+}): boolean {
   return Boolean(asText(input.name) && asText(input.path));
 }
 
@@ -83,7 +67,9 @@ export function projectHint(value: unknown, projects: ProjectItem[]): string {
   const id = asText(value);
   const project = projects.find((item) => item.id === id);
 
-  return project?.directoryMode === 'linked' ? '个人空间已有目录' : '系统管理目录';
+  return project?.directoryMode === 'linked'
+    ? '个人空间已有目录'
+    : '系统管理目录';
 }
 
 /**

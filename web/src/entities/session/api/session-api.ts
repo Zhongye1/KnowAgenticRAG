@@ -14,8 +14,12 @@ import {
   discoveryApiSystemDiscoveryGet,
   getOidcConfigApiAuthOidcConfigGet,
   getOidcLoginUrlApiAuthOidcLoginUrlGet,
+  getUserConfigApiUserConfigGet,
   initializeAdminApiAuthInitializePost,
   loginForAccessTokenApiAuthTokenPost,
+  updateProfileApiAuthProfilePut,
+  updateUserConfigApiUserConfigPut,
+  uploadUserAvatarApiAuthUploadAvatarPost,
 } from '@/shared/api/generated/sdk.gen';
 
 import { parseRemainingSecondsFromDetail } from '../lib/login-lock';
@@ -141,9 +145,7 @@ export async function initializeAdmin(
 }
 
 export async function getOidcConfig(): Promise<OidcConfig> {
-  const config = unwrap<OidcConfig>(
-    await getOidcConfigApiAuthOidcConfigGet(),
-  );
+  const config = unwrap<OidcConfig>(await getOidcConfigApiAuthOidcConfigGet());
   return {
     enabled: config.enabled === true,
     login_url: config.login_url ?? null,
@@ -173,6 +175,66 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     }
     throw error;
   }
+}
+
+/** 资料更新的载荷；只传需要改的字段（显式 null 才清空手机号）。 */
+export type ProfileUpdate = {
+  username?: string;
+  phone_number?: string | null;
+};
+
+/**
+ * 更新自己的资料；服务端校验用户名与手机号（重名/格式错误给 400 detail），返回完整用户。
+ *
+ * 响应不再归一成第二份「用户长什么样」：调用方统一失效身份缓存重取，形状漂移留给 `useUser`。
+ */
+export async function updateProfile(input: ProfileUpdate): Promise<void> {
+  unwrap<unknown>(
+    await updateProfileApiAuthProfilePut({
+      body: {
+        ...(input.username !== undefined ? { username: input.username } : {}),
+        ...(input.phone_number !== undefined
+          ? { phone_number: input.phone_number }
+          : {}),
+      },
+    }),
+  );
+}
+
+/** 上传头像；服务端落库并返回可访问地址，客户端不需要再 PUT profile。 */
+export async function uploadAvatar(file: File): Promise<string> {
+  const payload = unwrap<{ avatar_url?: unknown }>(
+    await uploadUserAvatarApiAuthUploadAvatarPost({ body: { file } }),
+  );
+  const url =
+    typeof payload.avatar_url === 'string' ? payload.avatar_url.trim() : '';
+  if (!url) {
+    throw new Error('头像上传失败：响应里没有头像地址');
+  }
+
+  return url;
+}
+
+/** 当前用户的配置；服务端没建过记录时 `enable_memory` 按缺省 false 读。 */
+export async function getUserConfig(): Promise<{ enableMemory: boolean }> {
+  const payload = unwrap<{ enable_memory?: unknown }>(
+    await getUserConfigApiUserConfigGet(),
+  );
+
+  return { enableMemory: payload.enable_memory === true };
+}
+
+/** 保存当前用户的配置；响应与服务端落库后的状态一致。 */
+export async function updateUserConfig(input: {
+  enableMemory: boolean;
+}): Promise<{ enableMemory: boolean }> {
+  const payload = unwrap<{ enable_memory?: unknown }>(
+    await updateUserConfigApiUserConfigPut({
+      body: { enable_memory: input.enableMemory },
+    }),
+  );
+
+  return { enableMemory: payload.enable_memory === true };
 }
 
 /** 能力投影：LITE 模式下 knowledge 为 false，UI 据此降级。 */

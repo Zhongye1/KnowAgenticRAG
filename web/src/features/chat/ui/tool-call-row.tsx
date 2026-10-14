@@ -14,7 +14,7 @@ import {
   parseToolCallArgs,
   parseToolCallResultForDisplay,
 } from '../lib/tool-call';
-import { getToolIcon } from './tool-icons';
+import { getToolIcon } from '@/shared/ui/tool-icons';
 import { buildToolHeader } from '../lib/tool-header';
 import { buildToolResultView } from '../lib/tool-result';
 import styles from './tool-call-row.module.css';
@@ -83,7 +83,12 @@ export const ToolCallRow = ({
 
   // 子智能体类工具有专用行：头部、状态与结果一次组装，不走通用外壳
   if (resultView?.kind === 'subagent-task') {
-    return <SubagentTaskRow toolCall={toolCall} activeToolCallIds={activeSubagentToolCallIds} />;
+    return (
+      <SubagentTaskRow
+        toolCall={toolCall}
+        activeToolCallIds={activeSubagentToolCallIds}
+      />
+    );
   }
   if (resultView?.kind === 'subagent-lifecycle') {
     return <SubagentLifecycleRow toolCall={toolCall} />;
@@ -100,7 +105,10 @@ export const ToolCallRow = ({
         {/* 参照 .tool-loader：单一状态图标（运行中旋转、失败红叉、完成用工具图标），
             参照不叠第二个图标 */}
         {runState === 'error' ? (
-          <XCircle className={`${styles.stateIcon} ${styles.stateIconError}`} aria-hidden />
+          <XCircle
+            className={`${styles.stateIcon} ${styles.stateIconError}`}
+            aria-hidden
+          />
         ) : runState === 'running' ? (
           <Loader
             className={`${styles.stateIcon} ${styles.stateIconRunning}`}
@@ -138,19 +146,16 @@ export const ToolCallRow = ({
             </>
           ) : runState === 'completed' ? (
             <>
-              工具 <span className={styles.note}>{toolName}</span>{' '}
-              执行完成
+              工具 <span className={styles.note}>{toolName}</span> 执行完成
             </>
           ) : runState === 'error' ? (
             <>
-              工具 <span className={styles.note}>{toolName}</span>{' '}
-              执行失败
+              工具 <span className={styles.note}>{toolName}</span> 执行失败
               {toolCall.error_message ? `（${toolCall.error_message}）` : ''}
             </>
           ) : (
             <>
-              正在调用工具:{' '}
-              <span className={styles.note}>{toolName}</span>
+              正在调用工具: <span className={styles.note}>{toolName}</span>
             </>
           )}
         </span>
@@ -183,9 +188,7 @@ export const ToolCallRow = ({
             resultView.results.length > 0 ? (
               <WebSearchResults results={resultView.results} />
             ) : (
-              <pre className={styles.detailBlock}>
-                {resultView.rawText}
-              </pre>
+              <pre className={styles.detailBlock}>{resultView.rawText}</pre>
             )
           ) : resultView?.kind === 'document-preview' ? (
             <KbDocumentPreview preview={resultView.preview} />
@@ -214,12 +217,12 @@ export const ToolCallRow = ({
           ) : resultView?.kind === 'todo' ? (
             <TodoList items={resultView.items} />
           ) : resultView?.kind === 'text' ? (
-            <p className={`${styles.detailBlock} ${styles.segmentCode}`}>{resultView.text}</p>
+            <p className={`${styles.detailBlock} ${styles.segmentCode}`}>
+              {resultView.text}
+            </p>
           ) : result ? (
             <div>
-              <pre className={styles.detailResultPre}>
-                {result}
-              </pre>
+              <pre className={styles.detailResultPre}>{result}</pre>
             </div>
           ) : null}
         </div>

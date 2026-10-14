@@ -34,7 +34,9 @@ export const ContextSection = () => {
             </div>
 
             <div className="context-placeholder" data-context-placeholder>
-              <span className="context-placeholder-eyebrow">ACCESS REQUEST</span>
+              <span className="context-placeholder-eyebrow">
+                ACCESS REQUEST
+              </span>
               <p className="context-placeholder-text">
                 参照实现这里是内测申请表（姓名 / 邮箱 / 手机与接入方式勾选）。
                 本仓没有接收该表单的后端，这一块先占位。

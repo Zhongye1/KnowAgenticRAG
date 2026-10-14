@@ -49,8 +49,7 @@ vi.mock('@/shared/ui/notifications', () => ({
 }));
 
 const { ModelProviderPanel } = await import('@/features/model-providers');
-const { ConfirmDialogHost } = await import('@/shared/ui/confirm-dialog-host');
-const { useConfirmStore } = await import('@/shared/ui/confirm-dialog');
+const { AntdProvider } = await import('@/app/theme/antd-provider');
 
 /** 后端 `to_dict()` 的投影，含明文密钥——api 段必须把它折成 has_api_key。 */
 const rawProvider = (extra: Record<string, unknown> = {}) => ({
@@ -83,16 +82,16 @@ const renderPanel = () => {
     defaultOptions: { queries: { retry: false } },
   });
   render(
-    <QueryClientProvider client={queryClient}>
-      <ModelProviderPanel />
-      <ConfirmDialogHost />
-    </QueryClientProvider>,
+    <AntdProvider>
+      <QueryClientProvider client={queryClient}>
+        <ModelProviderPanel />
+      </QueryClientProvider>
+    </AntdProvider>,
   );
 };
 
 describe('模型供应商面板', () => {
   beforeEach(() => {
-    useConfirmStore.setState({ pending: null });
     notifications.addNotification.mockReset();
     sdk.list.mockReset().mockResolvedValue(ok([rawProvider()]));
     sdk.create.mockReset().mockResolvedValue(ok({}));
@@ -140,9 +139,7 @@ describe('模型供应商面板', () => {
     // 变异：api 段把 api_key 原样透出时，这条会命中
     expect(document.body.textContent).not.toContain('sk-plain-secret');
 
-    const card = screen
-      .getByText('供应商一')
-      .closest('[data-slot="card"]') as HTMLElement;
+    const card = screen.getByText('供应商一').closest('section') as HTMLElement;
     expect(within(card).getByText('https://api.example.com/v1')).toBeTruthy();
     expect(within(card).getByText(/管理模型（已启用 1 个）/)).toBeTruthy();
   });
@@ -249,7 +246,11 @@ describe('模型供应商面板', () => {
     await userEvent.click(
       await screen.findByRole('button', { name: '删除供应商' }),
     );
-    expect(await screen.findByText('删除 供应商一？')).toBeTruthy();
+    expect(
+      await screen.findByText('删除 供应商一？', {
+        selector: '.ant-modal-confirm-title',
+      }),
+    ).toBeTruthy();
     expect(sdk.remove).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole('button', { name: '删除' }));
@@ -368,9 +369,14 @@ describe('模型供应商面板', () => {
     expect(
       await screen.findByText(
         '默认模型读取失败，无法确认该供应商是否正在被使用',
+        { selector: '.ant-modal-confirm-title' },
       ),
     ).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: '取消' }));
+    await userEvent.click(
+      within(
+        document.querySelector('.ant-modal-confirm') as HTMLElement,
+      ).getByRole('button', { name: '取消' }),
+    );
 
     // 变异：fail-open 时这里会直接发出 DELETE——后端没有这条守卫
     await waitFor(() => expect(sdk.remove).not.toHaveBeenCalled());
@@ -388,7 +394,11 @@ describe('模型供应商面板', () => {
     expect(
       await screen.findByRole('button', { name: '仍然停用' }),
     ).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: '取消' }));
+    await userEvent.click(
+      within(
+        document.querySelector('.ant-modal-confirm') as HTMLElement,
+      ).getByRole('button', { name: '取消' }),
+    );
 
     await waitFor(() => expect(sdk.update).not.toHaveBeenCalled());
   });

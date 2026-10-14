@@ -2,7 +2,9 @@
 
 状态：implemented
 类型：feature
-Owner：web/src/features/chat/ui/antd-button.tsx
+Owner：web/src/app/theme/antd-provider.tsx
+
+补充（2026-10-14）：本记录原先的 Owner 是决策 1 里的过渡适配层 `web/src/features/chat/ui/antd-button.tsx`，它已在 B6 收口时按该条约定删除（调用方改用 antd 词汇）。本批仍然有效的主张——按钮两字间距关闭与主题 token——现在由 `web/src/app/theme/antd-provider.tsx` 承载，Owner 随之更新。
 
 事实分工：本批两份决策同属一批（第一批是 button/dropdown，本批是其余五类控件）。新增适配层：`antd-dialog.tsx`（Radix Dialog 复合形态到 antd Modal 的映射，含焦点进弹层与 Esc 关闭的行为补齐）、`antd-input.tsx`（Input/Textarea 直通）、`antd-notifications.tsx`（store 词汇到 antd message）、`antd-spinner.tsx`（尺寸类）。`conversation-list` 的标题编辑 Input 的 ref 类型改为 antd `InputRef`。
 

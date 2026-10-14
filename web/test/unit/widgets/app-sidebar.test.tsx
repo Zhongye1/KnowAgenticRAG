@@ -11,7 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.setConfig({ testTimeout: 15000 });
 
 const { syncStatuses, upsert, sessionState, session } = vi.hoisted(() => {
-  const state = { isSuperuser: false, knowledgeEnabled: false };
+  const state = { isSuperuser: false, isAdmin: false, knowledgeEnabled: false };
   return {
     syncStatuses: vi.fn().mockResolvedValue(undefined),
     upsert: vi.fn(),
@@ -28,12 +28,26 @@ const { syncStatuses, upsert, sessionState, session } = vi.hoisted(() => {
       useLogout: () => ({ mutate: vi.fn() }),
       useKnowledgeEnabled: () => state.knowledgeEnabled,
       useIsSuperuser: () => state.isSuperuser,
+      useIsAdmin: () => state.isAdmin,
       useShellBranding: () => ({ brandName: 'ARS', avatar: '' }),
       // 文案映射有自己的用例，这里给一个能通过的最小实现
       formatUserRole: () => '普通用户',
+      useUserConfig: () => ({
+        data: { enableMemory: false },
+        isPending: false,
+      }),
+      useUpdateProfile: () => ({ mutateAsync: vi.fn() }),
+      useUpdateUserConfig: () => ({ mutateAsync: vi.fn(), isPending: false }),
+      useUploadAvatar: () => ({ mutateAsync: vi.fn() }),
     },
   };
 });
+
+vi.mock('@/features/account-settings', () => ({
+  // 弹窗本体在 features 里单独测，这里只验证菜单入口的接线
+  SettingsModal: ({ open }: { open: boolean }) =>
+    open ? <div>账户设置弹窗</div> : null,
+}));
 
 vi.mock('@/features/chat', () => ({
   ConversationList: () => null,

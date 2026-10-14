@@ -8,7 +8,7 @@
 import { describeQueueRow } from '../lib/queue-view';
 import type { QueueRowContext, QueueView } from '../lib/queue-view';
 import type { ThreadRequest } from '../api/agent-api';
-import { Button } from './antd-button';
+import { Button } from 'antd';
 
 type QueueBarProps = {
   view: QueueView;
@@ -50,8 +50,7 @@ export const QueueBar = ({
         </span>
         {view.paused ? (
           <Button
-
-            variant="outline"
+            variant="outlined"
             disabled={disabled || continuing || !view.canContinue}
             onClick={onContinue}
           >
@@ -86,9 +85,8 @@ export const QueueBar = ({
                 ) : null}
                 {actions.canSteer ? (
                   <Button
-
-                    variant="ghost"
-                    size="sm"
+                    type="text"
+                    size="small"
                     disabled={disabled}
                     onClick={() => onSteer(request.request_id)}
                   >
@@ -97,9 +95,8 @@ export const QueueBar = ({
                 ) : null}
                 {actions.canCancel ? (
                   <Button
-
-                    variant="ghost"
-                    size="sm"
+                    type="text"
+                    size="small"
                     disabled={disabled}
                     aria-label={`删除排队请求：${request.content || '排队请求'}`}
                     onClick={() => onCancel(request.request_id)}

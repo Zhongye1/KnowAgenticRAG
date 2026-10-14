@@ -2,6 +2,9 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
+
+// antd 词汇由应用装配承载，测试同构挂上
+import { AntdProvider } from '@/app/theme/antd-provider';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -85,9 +88,11 @@ const renderDialog = (props: Record<string, unknown> = {}) => {
     onError: vi.fn(),
   };
   render(
-    <QueryClientProvider client={queryClient}>
-      <MoveFileDialog kbId="kb-1" file={movedFile} {...handlers} {...props} />
-    </QueryClientProvider>,
+    <AntdProvider>
+      <QueryClientProvider client={queryClient}>
+        <MoveFileDialog kbId="kb-1" file={movedFile} {...handlers} {...props} />
+      </QueryClientProvider>
+    </AntdProvider>,
   );
   return handlers;
 };

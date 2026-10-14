@@ -1,83 +1,49 @@
 /**
  * 面板文件系统端点：对话目录（viewer）与个人空间（workspace）两套。
  *
- * 两套的读、删、搜走同一组函数，靠作用域参数区分；响应没有声明模型，字段按不可信数据处理。
+ * 两套的读、删、搜走同一组函数，靠作用域参数区分。**个人空间那一侧的事实归 `@/entities/workspace`**
+ * （端点、条目归一、预览载荷），这里只把它接到面板的作用域参数上，个人空间页面读的是同一份实现；
+ * 对话目录那一侧留在本地，因为它是线程沙箱域，只有面板用。响应没有声明模型，字段按不可信数据处理。
  */
+import {
+  deleteWorkspaceEntry,
+  downloadWorkspaceEntry,
+  fetchWorkspaceFile,
+  listWorkspaceEntries,
+  searchWorkspaceEntries,
+} from '@/entities/workspace';
 import { unwrap } from '@/shared/api';
+import {
+  deleteViewerFileRouteApiViewerFilesystemFileDelete,
+  downloadViewerApiViewerFilesystemDownloadGet,
+  getViewerFileApiViewerFilesystemFileGet,
+  getViewerTreeApiViewerFilesystemTreeGet,
+  searchViewerFilesRouteApiViewerFilesystemSearchGet,
+} from '@/shared/api/generated/sdk.gen';
 import {
   parseDownloadFilename,
   saveBlobAsFile,
-  type PreviewFile,
-} from '../lib/panel-preview';
-import {
-  deleteViewerFileRouteApiViewerFilesystemFileDelete,
-  deleteWorkspaceFileRouteApiWorkspaceFileDelete,
-  downloadViewerApiViewerFilesystemDownloadGet,
-  downloadWorkspaceApiWorkspaceDownloadGet,
-  getViewerFileApiViewerFilesystemFileGet,
-  getViewerTreeApiViewerFilesystemTreeGet,
-  getWorkspaceFileApiWorkspaceFileGet,
-  getWorkspaceTreeApiWorkspaceTreeGet,
-  searchViewerFilesRouteApiViewerFilesystemSearchGet,
-  searchWorkspaceFilesRouteApiWorkspaceSearchGet,
-} from '@/shared/api/generated/sdk.gen';
+} from '@/shared/lib/file-download';
+import type { PreviewFile } from '@/shared/lib/file-preview';
+import { toFileEntries } from '@/shared/lib/filesystem-entry';
+import type { FileEntry } from '@/shared/lib/filesystem-entry';
 
 /** 两套树的作用域；树模型与 UI 都用这个名字。 */
 export type PanelTreeScope = 'thread' | 'workspace';
-
-/** 文件系统里的一个条目。 */
-export type FilesystemEntry = {
-  /** 接口给的原始路径；目录带尾斜杠，树节点键用它。 */
-  path: string;
-  name: string;
-  isDir: boolean;
-  size: number;
-  modifiedAt: string;
-};
-
-const asText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
-
-/** 缺 `path` 的条目丢掉——它既不能当节点键也不能预览。 */
-export function normalizeEntries(raw: unknown): FilesystemEntry[] {
-  const source =
-    typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
-  const entries: FilesystemEntry[] = [];
-
-  for (const item of Array.isArray(source.entries) ? source.entries : []) {
-    if (typeof item !== 'object' || item === null) continue;
-
-    const entry = item as Record<string, unknown>;
-    const path = asText(entry.path);
-    if (!path) continue;
-
-    entries.push({
-      path,
-      name: asText(entry.name),
-      isDir: entry.is_dir === true,
-      size:
-        typeof entry.size === 'number' && Number.isFinite(entry.size) ? entry.size : 0,
-      modifiedAt: asText(entry.modified_at),
-    });
-  }
-
-  return entries;
-}
 
 /** 列出一个目录的子项；`path` 省略时是根。 */
 export async function listDirectory(input: {
   scope: PanelTreeScope;
   threadId?: string;
   path?: string;
-}): Promise<FilesystemEntry[]> {
+}): Promise<FileEntry[]> {
   const path = input.path ?? '/';
 
   if (input.scope === 'workspace') {
-    return normalizeEntries(
-      unwrap<unknown>(await getWorkspaceTreeApiWorkspaceTreeGet({ query: { path } })),
-    );
+    return listWorkspaceEntries({ path });
   }
 
-  return normalizeEntries(
+  return toFileEntries(
     unwrap<unknown>(
       await getViewerTreeApiViewerFilesystemTreeGet({
         query: { thread_id: input.threadId ?? '', path },
@@ -93,11 +59,7 @@ export async function deleteEntry(input: {
   path: string;
 }): Promise<void> {
   if (input.scope === 'workspace') {
-    unwrap<unknown>(
-      await deleteWorkspaceFileRouteApiWorkspaceFileDelete({
-        query: { path: input.path },
-      }),
-    );
+    await deleteWorkspaceEntry({ path: input.path });
     return;
   }
 
@@ -113,18 +75,12 @@ export async function searchEntries(input: {
   scope: PanelTreeScope;
   threadId?: string;
   query: string;
-}): Promise<FilesystemEntry[]> {
+}): Promise<FileEntry[]> {
   if (input.scope === 'workspace') {
-    return normalizeEntries(
-      unwrap<unknown>(
-        await searchWorkspaceFilesRouteApiWorkspaceSearchGet({
-          query: { query: input.query },
-        }),
-      ),
-    );
+    return searchWorkspaceEntries({ query: input.query });
   }
 
-  return normalizeEntries(
+  return toFileEntries(
     unwrap<unknown>(
       await searchViewerFilesRouteApiViewerFilesystemSearchGet({
         query: { thread_id: input.threadId ?? '', query: input.query },
@@ -138,7 +94,7 @@ export async function searchEntries(input: {
  *
  * 后端对文本与 markdown 返回 JSON（`{content, preview_type, supported, message, truncated, limit}`），
  * 对图片与 PDF 返回二进制流（`X-Ars-Preview-Type` 头带类型）——这与参照的两个归一分支一致。
- * 二进制分支在这里建成对象 URL；回收由预览缓存负责。
+ * 个人空间那一侧走 `@/entities/workspace`；二进制分支的对象 URL 由预览缓存负责回收。
  */
 export async function fetchFileContent(input: {
   scope: PanelTreeScope;
@@ -146,6 +102,10 @@ export async function fetchFileContent(input: {
   path: string;
   name: string;
 }): Promise<PreviewFile> {
+  if (input.scope === 'workspace') {
+    return fetchWorkspaceFile({ path: input.path, name: input.name });
+  }
+
   const baseFile: PreviewFile = {
     path: input.path,
     name: input.name,
@@ -158,12 +118,9 @@ export async function fetchFileContent(input: {
     truncated: false,
   };
 
-  const result =
-    input.scope === 'workspace'
-      ? await getWorkspaceFileApiWorkspaceFileGet({ query: { path: input.path } })
-      : await getViewerFileApiViewerFilesystemFileGet({
-          query: { thread_id: input.threadId ?? '', path: input.path },
-        });
+  const result = await getViewerFileApiViewerFilesystemFileGet({
+    query: { thread_id: input.threadId ?? '', path: input.path },
+  });
 
   // 没拿到原生响应意味着请求层出错（错误已在 result.error 里），按失败处理
   const response = result.response;
@@ -192,7 +149,8 @@ export async function fetchFileContent(input: {
 
   const blob = await response.blob();
   const headerType = response.headers.get('x-ars-preview-type');
-  const previewType = (headerType as PreviewFile['previewType'] | null) || 'unsupported';
+  const previewType =
+    (headerType as PreviewFile['previewType'] | null) || 'unsupported';
 
   return {
     ...baseFile,
@@ -202,7 +160,9 @@ export async function fetchFileContent(input: {
     status: previewType !== 'unsupported' ? 'ready' : 'unsupported',
     message:
       previewType === 'unsupported' ? '当前文件暂不支持预览，请下载后查看' : '',
-    previewUrl: window.URL?.createObjectURL ? window.URL.createObjectURL(blob) : '',
+    previewUrl: window.URL?.createObjectURL
+      ? window.URL.createObjectURL(blob)
+      : '',
   };
 }
 
@@ -217,12 +177,16 @@ export async function downloadFileEntry(input: {
   path: string;
   fallbackName: string;
 }): Promise<{ ok: boolean; filename: string }> {
-  const result =
-    input.scope === 'workspace'
-      ? await downloadWorkspaceApiWorkspaceDownloadGet({ query: { path: input.path } })
-      : await downloadViewerApiViewerFilesystemDownloadGet({
-          query: { thread_id: input.threadId ?? '', path: input.path },
-        });
+  if (input.scope === 'workspace') {
+    return downloadWorkspaceEntry({
+      path: input.path,
+      fallbackName: input.fallbackName,
+    });
+  }
+
+  const result = await downloadViewerApiViewerFilesystemDownloadGet({
+    query: { thread_id: input.threadId ?? '', path: input.path },
+  });
 
   const response = result.response;
   if (!response) return { ok: false, filename: input.fallbackName };

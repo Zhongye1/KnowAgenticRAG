@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { FilesystemEntry } from '@/features/chat/api/filesystem-api';
+import type { FileEntry } from '@/shared/lib/filesystem-entry';
 import {
   applyPrefetchedVisibility,
   buildDisplayName,
@@ -8,8 +8,6 @@ import {
   createTreeNode,
   createWorkspaceTreeNode,
   expandedKeysAfterFilesystemRefresh,
-  isSameOrChildPath,
-  normalizePathKey,
   refreshExpandedTree,
   removeTreeNode,
   shouldPollPanelFilesystem,
@@ -20,7 +18,7 @@ import {
   type TreeNode,
 } from '@/features/chat/lib/panel-tree';
 
-const entry = (path: string, isDir = false, size = 0): FilesystemEntry => ({
+const entry = (path: string, isDir = false, size = 0): FileEntry => ({
   path,
   name: buildDisplayName(path),
   isDir,
@@ -120,9 +118,13 @@ describe('updateTreeChildren / removeTreeNode', () => {
   ];
 
   it('就地替换目标目录的子项，其它节点不动', () => {
-    const next = updateTreeChildren(tree(), '/a/b/', [createTreeNode(entry('/a/b/e.txt'))]);
+    const next = updateTreeChildren(tree(), '/a/b/', [
+      createTreeNode(entry('/a/b/e.txt')),
+    ]);
 
-    expect(next[0]?.children?.[0]?.children?.map((node) => node.key)).toEqual(['/a/b/e.txt']);
+    expect(next[0]?.children?.[0]?.children?.map((node) => node.key)).toEqual([
+      '/a/b/e.txt',
+    ]);
     expect(next[1]?.key).toBe('/d.txt');
   });
 
@@ -138,7 +140,9 @@ describe('updateTreeChildren / removeTreeNode', () => {
   });
 
   it('移除顶层节点', () => {
-    expect(removeTreeNode(tree(), '/d.txt').map((node) => node.key)).toEqual(['/a/']);
+    expect(removeTreeNode(tree(), '/d.txt').map((node) => node.key)).toEqual([
+      '/a/',
+    ]);
   });
 
   it('treeContainsKey 认嵌套键', () => {
@@ -147,27 +151,11 @@ describe('updateTreeChildren / removeTreeNode', () => {
   });
 });
 
-describe('normalizePathKey / isSameOrChildPath', () => {
-  it('去掉尾斜杠', () => {
-    expect(normalizePathKey('/a/b/')).toBe('/a/b');
-    expect(normalizePathKey(null)).toBe('');
-  });
-
-  it('同一个路径与它的子树都算命中，兄弟不算', () => {
-    expect(isSameOrChildPath('/a/b/', '/a/b')).toBe(true);
-    expect(isSameOrChildPath('/a/b/c.txt', '/a/b')).toBe(true);
-    expect(isSameOrChildPath('/a/bc', '/a/b')).toBe(false);
-    expect(isSameOrChildPath('', '/a')).toBe(false);
-  });
-});
-
 describe('refreshExpandedTree', () => {
   const tree = (): TreeNode[] => [
     {
       ...createTreeNode(dir('/a/')),
-      children: [
-        { ...createTreeNode(dir('/a/b/')), children: [] },
-      ],
+      children: [{ ...createTreeNode(dir('/a/b/')), children: [] }],
     },
   ];
 
@@ -200,7 +188,11 @@ describe('refreshExpandedTree', () => {
       throw new Error('目录瞬时不可读');
     });
 
-    const next = await refreshExpandedTree(withChildren, ['/a/b/'], loadChildren);
+    const next = await refreshExpandedTree(
+      withChildren,
+      ['/a/b/'],
+      loadChildren,
+    );
 
     expect(next[0]?.children?.[0]?.children?.map((node) => node.key)).toEqual([
       '/a/b/old.txt',
@@ -218,8 +210,12 @@ describe('refreshExpandedTree', () => {
 
 describe('expandedKeysAfterFilesystemRefresh', () => {
   it('静默刷新保留，非静默清空', () => {
-    expect(expandedKeysAfterFilesystemRefresh(['/a/'], { silent: true })).toEqual(['/a/']);
-    expect(expandedKeysAfterFilesystemRefresh(['/a/'], { silent: false })).toEqual([]);
+    expect(
+      expandedKeysAfterFilesystemRefresh(['/a/'], { silent: true }),
+    ).toEqual(['/a/']);
+    expect(
+      expandedKeysAfterFilesystemRefresh(['/a/'], { silent: false }),
+    ).toEqual([]);
   });
 });
 
@@ -236,7 +232,10 @@ describe('applyPrefetchedVisibility', () => {
       { key: '/uploads/', children: [createTreeNode(entry('/uploads/a.txt'))] },
     ]);
 
-    expect(result.nodes.map((node) => node.key)).toEqual(['/uploads/', '/other/']);
+    expect(result.nodes.map((node) => node.key)).toEqual([
+      '/uploads/',
+      '/other/',
+    ]);
     expect(result.prefetchedKeys).toEqual(['/outputs/', '/uploads/']);
   });
 
@@ -295,15 +294,25 @@ describe('shouldPollPanelFilesystem', () => {
     panelOpen: true,
     pageVisible: true,
     streaming: true,
-    activeSection: { key: 'file-tree', type: 'file-tree' as const, title: '文件' },
+    activeSection: {
+      key: 'file-tree',
+      type: 'file-tree' as const,
+      title: '文件',
+    },
     activePreview: null,
   };
 
   it('三个前提缺一不可', () => {
     expect(shouldPollPanelFilesystem(base)).toBe(true);
-    expect(shouldPollPanelFilesystem({ ...base, panelOpen: false })).toBe(false);
-    expect(shouldPollPanelFilesystem({ ...base, pageVisible: false })).toBe(false);
-    expect(shouldPollPanelFilesystem({ ...base, streaming: false })).toBe(false);
+    expect(shouldPollPanelFilesystem({ ...base, panelOpen: false })).toBe(
+      false,
+    );
+    expect(shouldPollPanelFilesystem({ ...base, pageVisible: false })).toBe(
+      false,
+    );
+    expect(shouldPollPanelFilesystem({ ...base, streaming: false })).toBe(
+      false,
+    );
   });
 
   it('文件预览只在预览对话目录里的文件时轮询', () => {
@@ -335,7 +344,11 @@ describe('shouldPollPanelFilesystem', () => {
     expect(
       shouldPollPanelFilesystem({
         ...base,
-        activeSection: { key: 'message-debug', type: 'message-debug', title: '调试' },
+        activeSection: {
+          key: 'message-debug',
+          type: 'message-debug',
+          title: '调试',
+        },
       }),
     ).toBe(false);
   });

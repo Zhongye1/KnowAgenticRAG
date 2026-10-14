@@ -25,9 +25,8 @@ const { sdk } = vi.hoisted(() => ({
 
 vi.mock('@/shared/api/generated/sdk.gen', () => sdk);
 
-const { LOGIN_LOCKED_STATUS } = await import(
-  '@/entities/session/api/session-api'
-);
+const { LOGIN_LOCKED_STATUS } =
+  await import('@/entities/session/api/session-api');
 
 const {
   LoginLockedError,

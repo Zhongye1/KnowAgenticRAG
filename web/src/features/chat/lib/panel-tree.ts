@@ -6,9 +6,13 @@
  * 刷新门（按线程单飞、合并待办、只在请求线程仍是当前线程时提交）与轮询判定
  * （面板打开、页面可见、正在生成，且当前分区需要看到文件系统变化）。
  *
- * 树的节点键用接口给的原始路径：目录路径带尾斜杠，比较时才归一。
+ * 树的节点键用接口给的原始路径：目录路径带尾斜杠，比较时才归一（比较规则在
+ * `@/shared/lib/workspace-path`，个人空间页面共用）。
  */
-import type { FilesystemEntry, PanelTreeScope } from '../api/filesystem-api';
+import type { FileEntry } from '@/shared/lib/filesystem-entry';
+import { isSameOrChildPath } from '@/shared/lib/workspace-path';
+
+import type { PanelTreeScope } from '../api/filesystem-api';
 import type { PanelSection } from './panel-sections';
 
 /** 两套树的作用域；它们互相独立、切换保活。 */
@@ -56,14 +60,13 @@ export function buildDisplayName(fullPath: unknown): string {
 }
 
 /** 目录在前，再按名称排；用 `zh-Hans-CN` 排序，与参照同。 */
-export function sortEntries(entries: FilesystemEntry[]): FilesystemEntry[] {
+export function sortEntries(entries: FileEntry[]): FileEntry[] {
   return [...entries].sort((left, right) => {
     if (left.isDir !== right.isDir) return left.isDir ? -1 : 1;
 
-    return buildDisplayName(left.path).toLowerCase().localeCompare(
-      buildDisplayName(right.path).toLowerCase(),
-      'zh-Hans-CN',
-    );
+    return buildDisplayName(left.path)
+      .toLowerCase()
+      .localeCompare(buildDisplayName(right.path).toLowerCase(), 'zh-Hans-CN');
   });
 }
 
@@ -76,7 +79,7 @@ const NAME_SPLIT_THRESHOLD = 5;
  * 文件名的最后 5 个字符单独成段，是为了在窄面板里做「中间省略」：尾部（通常是扩展名）永远可见。
  */
 export function createTreeNode(
-  entry: FilesystemEntry,
+  entry: FileEntry,
   extraFileData: Record<string, unknown> = {},
 ): TreeNode {
   const fullPath = String(entry?.path ?? '');
@@ -110,7 +113,7 @@ export function createTreeNode(
 }
 
 /** 个人空间树的节点：预览与下载走个人空间身份，而不是当前对话。 */
-export const createWorkspaceTreeNode = (entry: FilesystemEntry): TreeNode =>
+export const createWorkspaceTreeNode = (entry: FileEntry): TreeNode =>
   createTreeNode(entry, { workdir: false, workspace: true });
 
 /** 就地替换某个目录的子项；目标不在树里时原样返回。 */
@@ -123,12 +126,18 @@ export function updateTreeChildren(
     if (node.key === targetKey) return { ...node, children };
     if (!node.children?.length) return node;
 
-    return { ...node, children: updateTreeChildren(node.children, targetKey, children) };
+    return {
+      ...node,
+      children: updateTreeChildren(node.children, targetKey, children),
+    };
   });
 }
 
 /** 移除某个节点（含它的子树）。 */
-export function removeTreeNode(nodes: TreeNode[], targetKey: string): TreeNode[] {
+export function removeTreeNode(
+  nodes: TreeNode[],
+  targetKey: string,
+): TreeNode[] {
   const result: TreeNode[] = [];
 
   for (const node of nodes) {
@@ -144,28 +153,14 @@ export function removeTreeNode(nodes: TreeNode[], targetKey: string): TreeNode[]
   return result;
 }
 
-/** 去掉尾斜杠，用于比较。 */
-export const normalizePathKey = (path: unknown): string =>
-  String(path ?? '').replace(/\/+$/, '');
-
-/** 两个路径是不是同一个，或者后者在前者的子树里。 */
-export function isSameOrChildPath(path: unknown, targetPath: unknown): boolean {
-  const normalizedPath = normalizePathKey(path);
-  const normalizedTarget = normalizePathKey(targetPath);
-  if (!normalizedPath || !normalizedTarget) return false;
-
-  return (
-    normalizedPath === normalizedTarget ||
-    normalizedPath.startsWith(`${normalizedTarget}/`)
-  );
-}
-
 /** 树里有没有这个键。 */
 export function treeContainsKey(nodes: TreeNode[], targetKey: string): boolean {
   return nodes.some(
     (node) =>
       node.key === targetKey ||
-      Boolean(node.children?.length && treeContainsKey(node.children, targetKey)),
+      Boolean(
+        node.children?.length && treeContainsKey(node.children, targetKey),
+      ),
   );
 }
 
@@ -215,7 +210,9 @@ export function applyPrefetchedVisibility(
   nodes: TreeNode[],
   prefetched: Array<{ key: string; children: TreeNode[] | null }>,
 ): { nodes: TreeNode[]; prefetchedKeys: string[] } {
-  const prefetchedByKey = new Map(prefetched.map((entry) => [entry.key, entry.children]));
+  const prefetchedByKey = new Map(
+    prefetched.map((entry) => [entry.key, entry.children]),
+  );
   const prefetchedKeys = prefetched
     .filter((entry) => entry.children !== null)
     .map((entry) => entry.key);
@@ -256,7 +253,10 @@ export function createFilesystemRefreshGate() {
   const pending = new Set<string>();
 
   return {
-    begin(threadId: string, { ensure = false }: { ensure?: boolean } = {}): boolean {
+    begin(
+      threadId: string,
+      { ensure = false }: { ensure?: boolean } = {},
+    ): boolean {
       const key = String(threadId ?? '');
       if (!key) return false;
 
@@ -278,7 +278,9 @@ export function createFilesystemRefreshGate() {
     },
 
     canCommit(requestedThreadId: string, currentThreadId: string): boolean {
-      return Boolean(requestedThreadId) && requestedThreadId === currentThreadId;
+      return (
+        Boolean(requestedThreadId) && requestedThreadId === currentThreadId
+      );
     },
   };
 }
@@ -300,7 +302,10 @@ export function shouldPollPanelFilesystem(input: {
   if (!input.panelOpen || !input.pageVisible || !input.streaming) return false;
   if (input.activeSection?.type === 'file-tree') return true;
 
-  return input.activeSection?.type === 'file' && input.activePreview?.workdir === true;
+  return (
+    input.activeSection?.type === 'file' &&
+    input.activePreview?.workdir === true
+  );
 }
 
 /** 删除节点后清理选中与展开状态，并交出要关闭的预览路径。 */
@@ -308,10 +313,18 @@ export function treeStateAfterDelete(
   selectedKeys: string[],
   expandedKeys: string[],
   deletedPath: string,
-): { selectedKeys: string[]; expandedKeys: string[]; closedPreviewPath: string } {
+): {
+  selectedKeys: string[];
+  expandedKeys: string[];
+  closedPreviewPath: string;
+} {
   return {
-    selectedKeys: selectedKeys.filter((key) => !isSameOrChildPath(key, deletedPath)),
-    expandedKeys: expandedKeys.filter((key) => !isSameOrChildPath(key, deletedPath)),
+    selectedKeys: selectedKeys.filter(
+      (key) => !isSameOrChildPath(key, deletedPath),
+    ),
+    expandedKeys: expandedKeys.filter(
+      (key) => !isSameOrChildPath(key, deletedPath),
+    ),
     closedPreviewPath: deletedPath,
   };
 }

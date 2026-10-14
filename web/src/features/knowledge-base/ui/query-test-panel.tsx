@@ -9,6 +9,7 @@
  */
 import * as React from 'react';
 import { Search } from 'lucide-react';
+import { Button, Empty, Input, Spin } from 'antd';
 
 import type { QueryTestChunk } from '../api/knowledge-api';
 import { buildQueryMeta } from '../lib/knowledge-query-params';
@@ -17,10 +18,6 @@ import {
   useSampleQuestions,
 } from '../model/knowledge-queries';
 import { knowledgeApi } from '../api/knowledge-api';
-import { Button } from '@/shared/ui/button';
-import { Empty } from '@/shared/ui/empty';
-import { Input } from '@/shared/ui/input';
-import { Spinner } from '@/shared/ui/spinner';
 
 type QueryTestPanelProps = {
   kbId: string;
@@ -75,7 +72,7 @@ export const QueryTestPanel = ({ kbId }: QueryTestPanelProps) => {
           }}
         />
         <Button
-          type="button"
+          htmlType="button"
           disabled={loading}
           onClick={() => void onSubmit()}
         >
@@ -89,9 +86,9 @@ export const QueryTestPanel = ({ kbId }: QueryTestPanelProps) => {
           {sampleQuestions.map((question) => (
             <li key={question}>
               <Button
-                type="button"
-                variant="outline"
-                size="sm"
+                htmlType="button"
+                variant="outlined"
+                size="small"
                 onClick={() => setQuery(question)}
               >
                 {question}
@@ -103,7 +100,7 @@ export const QueryTestPanel = ({ kbId }: QueryTestPanelProps) => {
 
       {loading ? (
         <p className="flex items-center gap-2 text-sm text-color-text-3">
-          <Spinner aria-hidden className="size-4" />
+          <Spin aria-hidden className="size-4" />
           正在检索…
         </p>
       ) : null}

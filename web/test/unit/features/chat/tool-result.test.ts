@@ -22,7 +22,9 @@ describe('buildToolResultView', () => {
     expect(
       buildToolResultView(call('text_to_img_qwen_image', '生成失败：额度不足')),
     ).toBeNull();
-    expect(buildToolResultView(call('text_to_img_qwen_image', null))).toBeNull();
+    expect(
+      buildToolResultView(call('text_to_img_qwen_image', null)),
+    ).toBeNull();
   });
 
   it('生成图表：取数组第一项的 text', () => {
@@ -48,13 +50,17 @@ describe('网络搜索的结果视图', () => {
   it('结构化结果交给结果列表渲染', () => {
     const view = buildToolResultView(
       call('web_search', {
-        results: [{ title: '标题', url: 'https://a', score: 0.87, content: '摘要' }],
+        results: [
+          { title: '标题', url: 'https://a', score: 0.87, content: '摘要' },
+        ],
       }),
     );
 
     expect(view).toEqual({
       kind: 'web-search',
-      results: [{ title: '标题', url: 'https://a', score: 0.87, content: '摘要' }],
+      results: [
+        { title: '标题', url: 'https://a', score: 0.87, content: '摘要' },
+      ],
       rawText: '',
     });
   });
@@ -70,7 +76,9 @@ describe('网络搜索的结果视图', () => {
   });
 
   it('既没有结果也没有原文时不接管，交给通用渲染', () => {
-    expect(buildToolResultView(call('doubao_search', { results: [] }))).toBeNull();
+    expect(
+      buildToolResultView(call('doubao_search', { results: [] })),
+    ).toBeNull();
     expect(buildToolResultView(call('web_search', null))).toBeNull();
   });
 
@@ -80,9 +88,9 @@ describe('网络搜索的结果视图', () => {
     );
 
     expect(view?.kind).toBe('web-search');
-    expect(
-      view?.kind === 'web-search' ? view.results : [],
-    ).toEqual([{ title: 'https://a', url: 'https://a', score: null, content: '' }]);
+    expect(view?.kind === 'web-search' ? view.results : []).toEqual([
+      { title: 'https://a', url: 'https://a', score: null, content: '' },
+    ]);
   });
 });
 
@@ -105,7 +113,10 @@ describe('计算器的结果视图', () => {
       buildToolResultView(call('calculator', content));
 
     expect(text(Number.POSITIVE_INFINITY)).toEqual({ kind: 'text', text: '∞' });
-    expect(text(Number.NEGATIVE_INFINITY)).toEqual({ kind: 'text', text: '-∞' });
+    expect(text(Number.NEGATIVE_INFINITY)).toEqual({
+      kind: 'text',
+      text: '-∞',
+    });
     expect(text(Number.NaN)).toEqual({ kind: 'text', text: 'NaN' });
   });
 

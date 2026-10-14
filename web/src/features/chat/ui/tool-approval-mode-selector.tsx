@@ -6,7 +6,13 @@
  */
 import { Check, ChevronDown, Hand, ShieldAlert } from 'lucide-react';
 
-import { Dropdown, type ChatDropdownItem } from './antd-dropdown';
+import { Dropdown } from 'antd';
+import {
+  toAntdMenuItems,
+  toSelectedKeys,
+  findItem,
+  type ChatDropdownItem,
+} from './chat-dropdown';
 import styles from './input-selector.module.css';
 
 import type { ToolApprovalMode } from '../lib/tool-approval';
@@ -54,16 +60,26 @@ export const ToolApprovalModeSelector = ({
   });
 
   return (
-    <Dropdown items={items} placement="topLeft">
+    <Dropdown
+      menu={{
+        items: toAntdMenuItems(items),
+        selectedKeys: toSelectedKeys(items),
+        onClick: ({ key }) => findItem(items, key)?.onSelect(),
+        selectable: true,
+      }}
+      trigger={['click']}
+      placement="topLeft"
+    >
       <button
         type="button"
         aria-label={current.label}
-        className={`${styles.trigger} ${
+        className={`${styles.trigger} ${styles.triggerApproval} ${
           value === 'always_trust' ? styles.triggerWarning : ''
         }`}
       >
-        <CurrentIcon className={styles.triggerIcon} aria-hidden />
-        {current.label}
+        {/* 图标与参照同构：宽屏只留文字与箭头，窄屏（≤640px）收成纯图标钮 */}
+        <CurrentIcon className={styles.triggerCompactIcon} aria-hidden />
+        <span className={styles.triggerLabel}>{current.label}</span>
         <ChevronDown className={styles.triggerChevron} aria-hidden />
       </button>
     </Dropdown>

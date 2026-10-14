@@ -41,7 +41,8 @@ export type ChatSubmissionOptions = {
   requestedToolApprovalMode: ToolApprovalMode | null;
   /** 项目选择只服务新会话；建出线程就重置回「不使用项目」。 */
   selectedProjectId: string;
-  setSelectedProjectId: (projectId: string) => void;  upsertThread: (thread: CreatedThread) => void;
+  setSelectedProjectId: (projectId: string) => void;
+  upsertThread: (thread: CreatedThread) => void;
   promoteModelDraft: (threadId: string) => void;
   navigateToThread: (threadId: string) => void;
   /** 没有显式选择也没有会话绑定时不下发模型。 */
@@ -146,7 +147,9 @@ export const useChatSubmission = (options: ChatSubmissionOptions) => {
 
     void (async () => {
       try {
-        const activeThreadId = await ensureThread(query.slice(0, 30) || undefined);
+        const activeThreadId = await ensureThread(
+          query.slice(0, 30) || undefined,
+        );
         if (!activeThreadId) return;
         const context = options.contextRef.current;
         if (!context.mounted || context.threadId !== routeThreadIdAtSubmit) {

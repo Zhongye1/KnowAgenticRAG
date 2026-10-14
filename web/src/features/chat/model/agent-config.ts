@@ -9,8 +9,13 @@
 import * as React from 'react';
 import { useQuery } from '@tanstack/react-query';
 
-import { getAgentDetail } from '../api/agents-api';
-import { applyConfigDefaults, asRecord, readAgentContext } from '../lib/agent-config';
+import { getAgentDetail } from '@/entities/agent';
+
+import {
+  applyConfigDefaults,
+  asRecord,
+  readAgentContext,
+} from '../lib/agent-config';
 
 /** 一个智能体一份配置；slug 就是详情端点的路径参数，因此直接用它当键。 */
 const agentConfigQueryKey = (agentSlug: string) =>
@@ -31,7 +36,9 @@ const EMPTY: AgentConfigProjection = {
 };
 
 /** 读不到时不猜：返回空配置，调用方据此不给候选。 */
-export const useAgentConfig = (agentSlug: string | undefined): AgentConfigProjection => {
+export const useAgentConfig = (
+  agentSlug: string | undefined,
+): AgentConfigProjection => {
   const query = useQuery({
     queryKey: agentConfigQueryKey(agentSlug ?? ''),
     queryFn: () => getAgentDetail(agentSlug as string),
@@ -39,13 +46,17 @@ export const useAgentConfig = (agentSlug: string | undefined): AgentConfigProjec
   });
 
   return React.useMemo(() => {
-    if (!query.data) return { ...EMPTY, isLoading: Boolean(agentSlug) && query.isLoading };
+    if (!query.data)
+      return { ...EMPTY, isLoading: Boolean(agentSlug) && query.isLoading };
 
     const configurableItems = asRecord(query.data.configurable_items);
 
     return {
       configurableItems,
-      agentConfig: applyConfigDefaults(configurableItems, readAgentContext(query.data)),
+      agentConfig: applyConfigDefaults(
+        configurableItems,
+        readAgentContext(query.data),
+      ),
       isLoading: false,
     };
   }, [agentSlug, query.data, query.isLoading]);

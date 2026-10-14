@@ -1,4 +1,10 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -58,19 +64,19 @@ const renderList = (currentThreadId?: string) =>
   render(
     // 与 app 一致：antd 按钮不做两字间距，否则「删除」的可访问名变成「删 除」
     <ConfigProvider button={{ autoInsertSpace: false }}>
-    <MemoryRouter initialEntries={[`/agent/${currentThreadId ?? ''}`]}>
-      <Routes>
-        <Route
-          path="/agent"
-          element={<ConversationList currentThreadId={currentThreadId} />}
-        />
-        <Route
-          path="/agent/:threadId"
-          element={<ConversationList currentThreadId={currentThreadId} />}
-        />
-      </Routes>
-      <LocationProbe />
-    </MemoryRouter>
+      <MemoryRouter initialEntries={[`/agent/${currentThreadId ?? ''}`]}>
+        <Routes>
+          <Route
+            path="/agent"
+            element={<ConversationList currentThreadId={currentThreadId} />}
+          />
+          <Route
+            path="/agent/:threadId"
+            element={<ConversationList currentThreadId={currentThreadId} />}
+          />
+        </Routes>
+        <LocationProbe />
+      </MemoryRouter>
     </ConfigProvider>,
   );
 
@@ -97,7 +103,7 @@ describe('ConversationList', () => {
     renderList();
 
     expect(await screen.findByText('会话一')).toBeTruthy();
-    expect(screen.getByText('未命名会话')).toBeTruthy();
+    expect(screen.getByText('新的对话')).toBeTruthy();
     expect(api.listThreads).toHaveBeenCalledWith(
       expect.objectContaining({ agentSlug: 'default-chatbot' }),
     );
@@ -111,8 +117,13 @@ describe('ConversationList', () => {
 
     renderList('会话一');
 
-    const pinned = await screen.findByRole('link', { name: /会话二/ });
-    expect(pinned.querySelector('[aria-label="已置顶"]')).toBeTruthy();
+    // 置顶标记在行的操作区里（会话链接的兄弟节点），因此从整行上找
+    const pinnedRow = (
+      await screen.findByRole('link', {
+        name: /会话二/,
+      })
+    ).closest('li');
+    expect(pinnedRow?.querySelector('[aria-label="已置顶"]')).toBeTruthy();
     expect(
       screen.getByRole('link', { name: '会话一' }).getAttribute('aria-current'),
     ).toBe('page');
@@ -128,7 +139,7 @@ describe('ConversationList', () => {
     renderList();
 
     expect(await screen.findByText('正在加载会话…')).toBeTruthy();
-    expect(screen.queryByText('还没有历史会话。')).toBeNull();
+    expect(screen.queryByText('暂无对话历史')).toBeNull();
 
     pending.resolve([]);
   });
@@ -140,12 +151,10 @@ describe('ConversationList', () => {
 
     renderList();
 
-    expect(screen.queryByText('还没有历史会话。')).toBeNull();
+    expect(screen.queryByText('暂无对话历史')).toBeNull();
 
     agent.resolve({ agent: { slug: 'default-chatbot' } });
-    await waitFor(() =>
-      expect(screen.getByText('还没有历史会话。')).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByText('暂无对话历史')).toBeTruthy());
   });
 
   it('解析失败时显示原因，不拉列表也不显示跨智能体会话', async () => {
@@ -166,7 +175,7 @@ describe('ConversationList', () => {
 
     renderList();
 
-    expect(await screen.findByText('还没有历史会话。')).toBeTruthy();
+    expect(await screen.findByText('暂无对话历史')).toBeTruthy();
   });
 
   it('加载失败时显示原因，而不是停在空白列表', async () => {
@@ -309,5 +318,73 @@ describe('ConversationList', () => {
     expect(within(readyRow).getByLabelText('有新回复')).toBeTruthy();
     // done 不显示任何标记
     expect(screen.getAllByRole('status')).toHaveLength(2);
+  });
+
+  it('双击会话行打开重命名弹窗', async () => {
+    api.listThreads.mockResolvedValue([thread('旧标题')]);
+    renderList();
+
+    await userEvent.dblClick(
+      await screen.findByRole('link', { name: '旧标题' }),
+    );
+
+    expect(
+      await screen.findByRole('dialog', { name: '重命名对话' }),
+    ).toBeTruthy();
+    expect((screen.getByLabelText('会话标题') as HTMLInputElement).value).toBe(
+      '旧标题',
+    );
+  });
+
+  it('中键点会话行走删除确认，且不跳走', async () => {
+    api.listThreads.mockResolvedValue([thread('会话一'), thread('会话二')]);
+    renderList('会话一');
+
+    // 这个版本的 testing-library 没有 fireEvent.auxClick，直接派发中键事件
+    fireEvent(
+      await screen.findByRole('link', { name: '会话二' }),
+      new MouseEvent('auxclick', {
+        bubbles: true,
+        cancelable: true,
+        button: 1,
+      }),
+    );
+
+    expect(await screen.findByText('删除会话')).toBeTruthy();
+    expect(screen.getByTestId('path').textContent).toBe('/agent/会话一');
+  });
+
+  it('「最近」标题能折叠列表', async () => {
+    api.listThreads.mockResolvedValue([thread('会话一')]);
+    renderList();
+    await screen.findByText('会话一');
+
+    await userEvent.click(screen.getByText('最近'));
+
+    expect(screen.queryByText('会话一')).toBeNull();
+  });
+
+  it('不满一页时不给「加载更多」', async () => {
+    api.listThreads.mockResolvedValue([thread('会话一')]);
+    renderList();
+    await screen.findByText('会话一');
+
+    expect(screen.queryByRole('button', { name: '加载更多' })).toBeNull();
+  });
+
+  it('装满一页时给出「加载更多」，点它按偏移追加下一页', async () => {
+    api.listThreads.mockResolvedValueOnce(
+      Array.from({ length: 100 }, (_, index) => thread(`会话${index}`)),
+    );
+    renderList();
+    await screen.findByText('会话0');
+
+    api.listThreads.mockResolvedValueOnce([thread('更早的会话')]);
+    await userEvent.click(screen.getByRole('button', { name: '加载更多' }));
+
+    expect(await screen.findByText('更早的会话')).toBeTruthy();
+    expect(api.listThreads).toHaveBeenLastCalledWith(
+      expect.objectContaining({ limit: 100, offset: 100 }),
+    );
   });
 });

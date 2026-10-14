@@ -53,7 +53,10 @@ export function resolveModelSpec(input: {
  *
  * 悬浮说明用的是完整 spec，因此这里可以只显示短名。
  */
-export function formatModelSpecLabel(spec: unknown, placeholder: string): string {
+export function formatModelSpecLabel(
+  spec: unknown,
+  placeholder: string,
+): string {
   const text = asText(spec);
   if (!text) return placeholder;
 

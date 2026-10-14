@@ -97,8 +97,14 @@ function normalizeChunks(payload: Record<string, unknown>): KbQueryChunk[] {
               : null,
         // 来源的兜底链与参照一致；全都没有时归到「未知来源」而不是空串
         source:
-          pick('source', 'file_name', 'filename', 'title', 'file_id', 'kb_id') ||
-          '未知来源',
+          pick(
+            'source',
+            'file_name',
+            'filename',
+            'title',
+            'file_id',
+            'kb_id',
+          ) || '未知来源',
         fileId:
           topLevelFileId ||
           (typeof metadata.file_id === 'string' ? metadata.file_id : ''),
@@ -233,7 +239,8 @@ export function kbQuerySummary(toolCall: ChatToolCall): string {
   if (entityCount > 0 || relationCount > 0) {
     return `${entityCount} 个实体，${relationCount} 条关系`;
   }
-  if (content !== undefined || toolCall.status === 'success') return '未找到结果';
+  if (content !== undefined || toolCall.status === 'success')
+    return '未找到结果';
 
   return '';
 }
@@ -245,9 +252,7 @@ export type KbChunkFileGroup = {
 };
 
 /** 按来源把片段分组，保留首次出现的顺序。 */
-export function groupChunksByFile(
-  chunks: KbQueryChunk[],
-): KbChunkFileGroup[] {
+export function groupChunksByFile(chunks: KbQueryChunk[]): KbChunkFileGroup[] {
   const groups = new Map<string, KbChunkFileGroup>();
 
   for (const chunk of chunks) {

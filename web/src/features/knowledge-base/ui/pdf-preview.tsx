@@ -7,8 +7,7 @@
  */
 import * as React from 'react';
 import { CircleAlert, LoaderCircle } from 'lucide-react';
-
-import { Spinner } from '@/shared/ui/spinner';
+import { Spin } from 'antd';
 
 type PdfPreviewProps = {
   blob: Blob;
@@ -117,7 +116,7 @@ export const PdfPreview = ({ blob }: PdfPreviewProps) => {
     <div className="flex flex-col gap-2" data-testid="pdf-preview">
       {state.status === 'loading' ? (
         <p className="flex items-center gap-2 text-sm text-color-text-3">
-          <Spinner aria-hidden className="size-4" />
+          <Spin aria-hidden className="size-4" />
           正在加载 PDF 文档…
         </p>
       ) : null}

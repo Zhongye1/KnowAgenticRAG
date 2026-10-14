@@ -31,14 +31,18 @@ describe('readAgentStateTodos', () => {
   });
 
   it('丢弃缺 content 的条目与非数组输入', () => {
-    expect(readAgentStateTodos({ todos: [{ status: 'pending' }, 'x'] })).toEqual([]);
+    expect(
+      readAgentStateTodos({ todos: [{ status: 'pending' }, 'x'] }),
+    ).toEqual([]);
     expect(readAgentStateTodos(null)).toEqual([]);
     expect(readAgentStateTodos({ todos: 'no' })).toEqual([]);
   });
 
   it('展示名截到 60 字符，完整内容留在 title', () => {
     const long = '字'.repeat(80);
-    const todos = readAgentStateTodos({ todos: [{ content: long, status: 'pending' }] });
+    const todos = readAgentStateTodos({
+      todos: [{ content: long, status: 'pending' }],
+    });
     expect(todos[0].label).toHaveLength(60);
     expect(todos[0].title).toHaveLength(80);
   });
@@ -51,7 +55,11 @@ describe('readAgentStateFiles', () => {
       [{ path: '/out/a.md', name: 'a.md' }, { path: '/tmp/up.bin' }],
     );
     expect(files).toHaveLength(3);
-    expect(files[0]).toEqual({ key: '/out/a.md', path: '/out/a.md', name: 'a.md' });
+    expect(files[0]).toEqual({
+      key: '/out/a.md',
+      path: '/out/a.md',
+      name: 'a.md',
+    });
     // 附件没有元数据名时用「附件」兜底
     expect(files[2].name).toBe('附件');
   });
@@ -66,8 +74,14 @@ describe('readAgentStateFiles', () => {
 describe('readAgentStateArtifacts', () => {
   it('过滤非字符串与空白', () => {
     expect(
-      readAgentStateArtifacts({ artifacts: ['/out/a.md', '  ', 42, '/out/b.md'] }),
-    ).toEqual(['/out/a.md', '  ', '/out/b.md'].filter((p) => typeof p === 'string' && p.trim()));
+      readAgentStateArtifacts({
+        artifacts: ['/out/a.md', '  ', 42, '/out/b.md'],
+      }),
+    ).toEqual(
+      ['/out/a.md', '  ', '/out/b.md'].filter(
+        (p) => typeof p === 'string' && p.trim(),
+      ),
+    );
   });
 
   it('缺失与非对象返回空数组', () => {
@@ -79,17 +93,26 @@ describe('readAgentStateArtifacts', () => {
 describe('readAgentStateSubagentRuns', () => {
   it('直通 readSubagentRuns 的读取口径', () => {
     const runs = readAgentStateSubagentRuns({
-      subagent_runs: [{ run_id: 'r1', child_thread_id: 't1', status: 'running' }],
+      subagent_runs: [
+        { run_id: 'r1', child_thread_id: 't1', status: 'running' },
+      ],
     });
     expect(runs).toHaveLength(1);
-    expect(readAgentStateSubagentRuns({ subagent_runs: [{ run_id: 'r1' }] })).toEqual([]);
+    expect(
+      readAgentStateSubagentRuns({ subagent_runs: [{ run_id: 'r1' }] }),
+    ).toEqual([]);
   });
 });
 
 describe('hasVisibleStateSections', () => {
   it('四个集合全空才是空态', () => {
     expect(
-      hasVisibleStateSections({ todos: [], files: [], artifacts: [], subagentRuns: [] }),
+      hasVisibleStateSections({
+        todos: [],
+        files: [],
+        artifacts: [],
+        subagentRuns: [],
+      }),
     ).toBe(false);
     expect(
       hasVisibleStateSections({

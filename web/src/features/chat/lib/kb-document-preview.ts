@@ -38,8 +38,8 @@ export function isPreviewResult(value: unknown): value is RawWindow & {
 } {
   return Boolean(
     value &&
-      typeof value === 'object' &&
-      typeof (value as { content?: unknown }).content === 'string',
+    typeof value === 'object' &&
+    typeof (value as { content?: unknown }).content === 'string',
   );
 }
 

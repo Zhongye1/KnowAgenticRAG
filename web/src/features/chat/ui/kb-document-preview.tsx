@@ -19,7 +19,9 @@ export const KbDocumentPreview = ({ preview }: KbDocumentPreviewProps) => (
     <div className="flex flex-col gap-0.5">
       <p className="text-[var(--gray-800)]">{preview.summary}</p>
       {preview.fileId ? (
-        <p className="text-xs text-[var(--gray-500)]">file_id: {preview.fileId}</p>
+        <p className="text-xs text-[var(--gray-500)]">
+          file_id: {preview.fileId}
+        </p>
       ) : null}
     </div>
 

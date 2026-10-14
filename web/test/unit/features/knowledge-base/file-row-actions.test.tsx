@@ -48,15 +48,14 @@ const openMenu = async (filename = '报表.pdf') => {
   );
 };
 
-/** Radix 的菜单项是带 `data-disabled` 的 div，不是 `<button disabled>`。 */
+/** antd Dropdown 的菜单项是 `<li role="menuitem">`，禁用态走 aria-disabled。 */
 const menuItem = (name: RegExp) => screen.getByRole('menuitem', { name });
 
 const expectMenuItemDisabled = (name: RegExp) =>
-  expect(menuItem(name)).toHaveAttribute('data-disabled');
+  expect(menuItem(name)).toHaveAttribute('aria-disabled', 'true');
 
-/** `toBeEnabled()` 在这类 div 上永远为真，必须查属性。 */
 const expectMenuItemEnabled = (name: RegExp) =>
-  expect(menuItem(name)).not.toHaveAttribute('data-disabled');
+  expect(menuItem(name).getAttribute('aria-disabled')).not.toBe('true');
 
 describe('文件行操作菜单', () => {
   it('已入库的文件可下载、重新入库与删除', async () => {

@@ -19,14 +19,7 @@ import {
 import { useFeedbackList } from '../model/dashboard-queries';
 import { PanelBody } from './panel-card';
 import { ToggleGroup } from './toggle-group';
-import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
+import { Button, Modal } from 'antd';
 import { Empty } from '@/shared/ui/empty';
 
 const FeedbackCard = ({ item }: { item: FeedbackItem }) => {
@@ -86,9 +79,9 @@ const FeedbackCard = ({ item }: { item: FeedbackItem }) => {
             </p>
             {shouldShowMessageExpandButton(item.message_content) ? (
               <Button
-                type="button"
+                htmlType="button"
                 variant="link"
-                size="xs"
+                size="small"
                 className="mt-1"
                 onClick={() => setExpandedMessage((value) => !value)}
               >
@@ -129,48 +122,53 @@ export const FeedbackDialog = ({ open, onOpenChange }: FeedbackDialogProps) => {
   const visible = filterFeedbacks(feedbacks.data ?? [], rating);
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[85vh] max-w-[1100px] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>用户反馈详情</DialogTitle>
-          <DialogDescription>
+    <Modal
+      open={open}
+      onCancel={() => onOpenChange(false)}
+      footer={null}
+      width={1100}
+      styles={{ body: { maxHeight: '75vh', overflowY: 'auto' } }}
+      title={
+        <div>
+          <div>用户反馈详情</div>
+          <div className="text-xs font-normal text-color-text-3">
             按类型查看用户对智能体回复的评价与原因。
-          </DialogDescription>
-        </DialogHeader>
+          </div>
+        </div>
+      }
+    >
+      <ToggleGroup
+        label="反馈类型"
+        value={rating}
+        options={FEEDBACK_FILTER_OPTIONS}
+        onChange={setRating}
+        testId="feedback-rating-filter"
+      />
 
-        <ToggleGroup
-          label="反馈类型"
-          value={rating}
-          options={FEEDBACK_FILTER_OPTIONS}
-          onChange={setRating}
-          testId="feedback-rating-filter"
-        />
-
-        <PanelBody
-          loading={feedbacks.isPending}
-          error={feedbacks.isError}
-          onRetry={() => void feedbacks.refetch()}
-          errorText="反馈列表加载失败。"
-          height={200}
-          testId="feedback-list"
-        >
-          {visible.length === 0 ? (
-            <Empty
-              description={
-                (feedbacks.data ?? []).length === 0
-                  ? '暂无反馈数据。用户在会话里点赞或点踩后会出现在这里。'
-                  : '当前类型下没有反馈，可切换类型查看。'
-              }
-            />
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {visible.map((item) => (
-                <FeedbackCard key={item.id} item={item} />
-              ))}
-            </div>
-          )}
-        </PanelBody>
-      </DialogContent>
-    </Dialog>
+      <PanelBody
+        loading={feedbacks.isPending}
+        error={feedbacks.isError}
+        onRetry={() => void feedbacks.refetch()}
+        errorText="反馈列表加载失败。"
+        height={200}
+        testId="feedback-list"
+      >
+        {visible.length === 0 ? (
+          <Empty
+            description={
+              (feedbacks.data ?? []).length === 0
+                ? '暂无反馈数据。用户在会话里点赞或点踩后会出现在这里。'
+                : '当前类型下没有反馈，可切换类型查看。'
+            }
+          />
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {visible.map((item) => (
+              <FeedbackCard key={item.id} item={item} />
+            ))}
+          </div>
+        )}
+      </PanelBody>
+    </Modal>
   );
 };

@@ -136,8 +136,12 @@ export const MessageItem = ({
                   <FileText className="size-4" />
                 </span>
                 <span className={styles.attachmentBody}>
-                  <span className={styles.attachmentName}>{attachment.name}</span>
-                  <span className={styles.attachmentMeta}>{attachment.meta}</span>
+                  <span className={styles.attachmentName}>
+                    {attachment.name}
+                  </span>
+                  <span className={styles.attachmentMeta}>
+                    {attachment.meta}
+                  </span>
                 </span>
               </li>
             ))}
@@ -214,14 +218,9 @@ export const MessageItem = ({
         />
       ) : null}
 
-      {errorText ? (
-        <p className={styles.errorHint}>{errorText}</p>
-      ) : null}
+      {errorText ? <p className={styles.errorHint}>{errorText}</p> : null}
 
-      <MessageActions
-        message={message}
-        sources={sources}
-      />
+      <MessageActions message={message} sources={sources} />
 
       {message.isStoppedByUser ? (
         <p className={styles.stoppedHint}>你停止生成了本次回答</p>

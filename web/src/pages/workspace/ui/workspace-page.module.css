@@ -1,0 +1,215 @@
+/* 个人空间页面的布局样式。
+   参照实现 WorkspaceView.vue 的 `.workspace-view` / `.workspace-shell` / `.workspace-main` /
+   `.workspace-preview-panel` / `.workspace-preview-resizer`，数值逐条对照（168px 侧栏、
+   3px 分隔条、280px 预览最小宽、30–70% 拖拽区间、960px 内联断点）。
+   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+
+.view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 44px;
+  padding: 10px var(--page-padding);
+  border-bottom: 1px solid var(--gray-100);
+  flex: 0 0 auto;
+  position: relative;
+}
+
+/* 加载中在页头下沿走一条 2px 进度条（参照的 .page-header-loading-bar） */
+.loadingBar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  overflow: hidden;
+  background: var(--main-50);
+}
+
+.loadingBar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 40%;
+  background: var(--main-500);
+  animation: page-loading 1.5s infinite linear;
+}
+
+@keyframes page-loading {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+.title {
+  flex: 0 0 auto;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-2000);
+  white-space: nowrap;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.shell {
+  position: relative;
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--gray-0);
+  overflow: hidden;
+}
+
+.shellCollapsed {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sidebarSlot {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+}
+
+.sidebarSlot > * {
+  height: 100%;
+}
+
+.collapseAction,
+.expandAction {
+  position: absolute;
+  top: 50%;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid var(--gray-150);
+  background: var(--gray-0);
+  color: var(--gray-600);
+  cursor: pointer;
+  transform: translateY(-50%);
+  box-shadow: 0 4px 12px var(--shadow-2);
+}
+
+.collapseAction {
+  right: -13px;
+}
+
+.expandAction {
+  left: 4px;
+}
+
+.collapseAction:hover,
+.expandAction:hover {
+  background: var(--main-20);
+  color: var(--main-color);
+}
+
+.main {
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.previewPanel {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition:
+    width 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.22s ease;
+}
+
+.previewPanelResizing {
+  transition: none;
+}
+
+.previewBody {
+  flex: 1 1 auto;
+  min-width: 280px;
+  height: 100%;
+  min-height: 0;
+}
+
+.resizer {
+  /* 分隔线：重置 `<hr>` 的 UA 默认样式（上下各 1px inset 边框 + 8px 外边距，会让它变成
+     一条 5px 的双条），只留一条贯穿面板高度的细线。3px 的盒子是抓取热区，视觉上的线由
+     `::after` 画在正中——默认 gray-100，与面板各处边框同色，读起来就是一条连续分隔线。 */
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 3px;
+  min-width: 3px;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+}
+
+.resizer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--gray-100);
+  transition:
+    width 0.15s ease,
+    background 0.15s ease;
+}
+
+/* 悬停与拖拽：线变主色并加粗到整个热区，给「抓得住」的反馈 */
+.resizer:hover::after,
+.resizer:active::after {
+  width: 3px;
+  background: var(--main-400);
+}
+
+.resizer:focus-visible {
+  outline: none;
+}
+
+.resizer:focus-visible::after {
+  width: 3px;
+  background: var(--main-400);
+}
+
+/* 窄屏（<960px）把预览放进模态，不进内联面板 */
+.previewModalBody {
+  height: 70vh;
+  min-height: 320px;
+}

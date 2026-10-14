@@ -51,11 +51,14 @@ export function extractArtifactsFromConversation(
         }
       }
 
-      const filepaths = Array.isArray((args as { filepaths?: unknown })?.filepaths)
+      const filepaths = Array.isArray(
+        (args as { filepaths?: unknown })?.filepaths,
+      )
         ? (args as { filepaths: unknown[] }).filepaths
         : [];
       for (const filepath of filepaths) {
-        const normalizedPath = typeof filepath === 'string' ? filepath.trim() : '';
+        const normalizedPath =
+          typeof filepath === 'string' ? filepath.trim() : '';
         if (!normalizedPath || seenPaths.has(normalizedPath)) continue;
         seenPaths.add(normalizedPath);
         artifacts.push(normalizedPath);
@@ -82,20 +85,15 @@ export function normalizeArtifactItems(paths: unknown): ArtifactItem[] {
   return items;
 }
 
-const EXTENSION_LABELS: Record<string, string> = {
-  md: 'Markdown 文档',
-  txt: '文本文件',
-  csv: 'CSV 表格',
-  json: 'JSON 文件',
-};
-
-/** 卡片上的类型描述；识别不出扩展名时是「交付文件」。 */
+/**
+ * 产物行的类型描述；识别不出扩展名时是「交付文件」。
+ *
+ * 与参照同一条规则（`AgentArtifactsCard.vue` 的 `getArtifactMetaLabel`）：有扩展名就是
+ * `交付文件 · 大写扩展名`。产物卡片与状态面板的产物行共用这一条文案，不各写一套。
+ */
 export function artifactMetaLabel(path: string): string {
   const filename = path.split('/').filter(Boolean).pop() || '';
   if (!filename.includes('.')) return '交付文件';
   const extension = filename.split('.').pop() || '';
-  return (
-    EXTENSION_LABELS[extension.toLowerCase()] ??
-    (extension ? `交付文件 · ${extension.toUpperCase()}` : '交付文件')
-  );
+  return extension ? `交付文件 · ${extension.toUpperCase()}` : '交付文件';
 }

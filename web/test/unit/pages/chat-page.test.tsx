@@ -1,6 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Link, MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -28,57 +34,55 @@ const {
   refetchAttachments,
   cacheThreadAttachments,
 } = vi.hoisted(() => ({
-    session: { isSuperuser: true },
-    // 可选模型列表；页面用例按需填，避免每个用例都写一遍
-    modelGroups: [] as Array<Record<string, unknown>>,
-    // 可选项目列表；同上
-    projectList: [] as Array<Record<string, unknown>>,
-    // 页面喂给历史候选查询的参数；用来证明它拿到的是防抖后的值
-    historyQueryArgs: [] as unknown[],
-    // 附件上传：确认动作要能被用例断言
-    attachmentUpload: {
-      confirm: vi.fn(
-        async (): Promise<Array<Record<string, unknown>>> => [],
-      ),
-      reset: vi.fn(),
-    },
-    // 会话里已确认的附件；用来证明「还没用掉的才随发送下发」
-    threadAttachments: [] as Array<Record<string, unknown>>,
-    refetchAttachments: vi.fn(),
-    cacheThreadAttachments: vi.fn(),
-    chat: {
-      loadHistory: vi.fn(),
-      createThread: vi.fn(),
-      refreshQueue: vi.fn(),
-      sendMessage: vi.fn(),
-      cancelRun: vi.fn(),
-      submitInterrupt: vi.fn(),
-      steer: vi.fn(),
-      cancelQueued: vi.fn(),
-      continueQueue: vi.fn(),
-      stopRequestStreams: vi.fn(),
-    },
-    runtime: {
-      agentState: null as unknown,
-      messages: [] as unknown[],
-      queuedRequests: [] as unknown[],
-      queueSnapshot: null as unknown,
-      continueQueueInFlight: false,
-      isStreaming: false,
-      activeRunSteerable: false,
-      pendingInterrupt: null as unknown,
-      onGoingConv: { msgChunks: {} },
-    },
-    notifications: { addNotification: vi.fn() },
-    agentRunApi: {
-      getDefaultAgent: vi
-        .fn()
-        .mockResolvedValue({ agent: { slug: 'default-chatbot' } }),
-      uploadImage: vi.fn(),
-      getRunLangfuseLink: vi.fn(),
-    },
-    chatOptions: { current: null as null | Record<string, unknown> },
-  }));
+  session: { isSuperuser: true },
+  // 可选模型列表；页面用例按需填，避免每个用例都写一遍
+  modelGroups: [] as Array<Record<string, unknown>>,
+  // 可选项目列表；同上
+  projectList: [] as Array<Record<string, unknown>>,
+  // 页面喂给历史候选查询的参数；用来证明它拿到的是防抖后的值
+  historyQueryArgs: [] as unknown[],
+  // 附件上传：确认动作要能被用例断言
+  attachmentUpload: {
+    confirm: vi.fn(async (): Promise<Array<Record<string, unknown>>> => []),
+    reset: vi.fn(),
+  },
+  // 会话里已确认的附件；用来证明「还没用掉的才随发送下发」
+  threadAttachments: [] as Array<Record<string, unknown>>,
+  refetchAttachments: vi.fn(),
+  cacheThreadAttachments: vi.fn(),
+  chat: {
+    loadHistory: vi.fn(),
+    createThread: vi.fn(),
+    refreshQueue: vi.fn(),
+    sendMessage: vi.fn(),
+    cancelRun: vi.fn(),
+    submitInterrupt: vi.fn(),
+    steer: vi.fn(),
+    cancelQueued: vi.fn(),
+    continueQueue: vi.fn(),
+    stopRequestStreams: vi.fn(),
+  },
+  runtime: {
+    agentState: null as unknown,
+    messages: [] as unknown[],
+    queuedRequests: [] as unknown[],
+    queueSnapshot: null as unknown,
+    continueQueueInFlight: false,
+    isStreaming: false,
+    activeRunSteerable: false,
+    pendingInterrupt: null as unknown,
+    onGoingConv: { msgChunks: {} },
+  },
+  notifications: { addNotification: vi.fn() },
+  agentRunApi: {
+    getDefaultAgent: vi
+      .fn()
+      .mockResolvedValue({ agent: { slug: 'default-chatbot' } }),
+    uploadImage: vi.fn(),
+    getRunLangfuseLink: vi.fn(),
+  },
+  chatOptions: { current: null as null | Record<string, unknown> },
+}));
 
 // model 层的 hook 直接 import api 段（slice 内部引用，架构如此），
 // 因此图片上传的拦截点在 api 模块，而不是 barrel 的 agentRunApi 导出。
@@ -196,17 +200,18 @@ vi.mock('@/features/chat', async () => {
   const stateReaders = await vi.importActual<
     typeof import('@/features/chat/lib/agent-state-readers')
   >('@/features/chat/lib/agent-state-readers');
-  const antdButton = await vi.importActual<
-    typeof import('@/features/chat/ui/antd-button')
-  >('@/features/chat/ui/antd-button');
   const projectSelector = await vi.importActual<
     typeof import('@/features/chat/ui/project-selector')
   >('@/features/chat/ui/project-selector');
+  const composerOptions = await vi.importActual<
+    typeof import('@/features/chat/ui/composer-options')
+  >('@/features/chat/ui/composer-options');
+  const attachmentLib = await vi.importActual<
+    typeof import('@/features/chat/lib/attachment-upload')
+  >('@/features/chat/lib/attachment-upload');
   return {
     buildAgentOptions: agentOptions.buildAgentOptions,
     AgentSelector: agentSelector.AgentSelector,
-    // 智能体列表是网络调用；它的归一由 agent-options 的单测覆盖
-    listAgents: vi.fn(async () => []),
     AgentPanel: agentPanel.AgentPanel,
     ContextUsageRing: usageRing.ContextUsageRing,
     closeSection: panelSections.closeSection,
@@ -225,6 +230,8 @@ vi.mock('@/features/chat', async () => {
       isLoading: false,
     })),
     MentionEditor: mentionEditor.MentionEditor,
+    // 「+」面板用真实实现：页面用例要走真实的「+ → 添加附件」路径
+    ComposerOptions: composerOptions.ComposerOptions,
     // 提及搜索是网络调用，这里给空结果；它的解析与归一由各自的单测覆盖
     searchMentionFiles: vi.fn(async () => []),
     isToolApprovalMode: approval.isToolApprovalMode,
@@ -243,17 +250,23 @@ vi.mock('@/features/chat', async () => {
     useArtifactActions: artifactActions.useArtifactActions,
     useAgentPanelSections: panelSectionsStore.useAgentPanelSections,
     subagentRunSection: panelSectionsStore.subagentRunSection,
-    subagentRunTitle: (await vi.importActual<
-      typeof import('@/features/chat/lib/subagent-run')
-    >('@/features/chat/lib/subagent-run')).subagentRunTitle,
+    subagentRunTitle: (
+      await vi.importActual<typeof import('@/features/chat/lib/subagent-run')>(
+        '@/features/chat/lib/subagent-run',
+      )
+    ).subagentRunTitle,
     useAgentOptions: agentOptionsQueries.useAgentOptions,
     SEND_COOLDOWN_MS: 0,
-    isRunInterruptedConflict: (await vi.importActual<
-      typeof import('@/features/chat/lib/tool-approval')
-    >('@/features/chat/lib/tool-approval')).isRunInterruptedConflict,
-    ScrollController: (await vi.importActual<
-      typeof import('@/features/chat/lib/scroll-controller')
-    >('@/features/chat/lib/scroll-controller')).ScrollController,
+    isRunInterruptedConflict: (
+      await vi.importActual<typeof import('@/features/chat/lib/tool-approval')>(
+        '@/features/chat/lib/tool-approval',
+      )
+    ).isRunInterruptedConflict,
+    ScrollController: (
+      await vi.importActual<
+        typeof import('@/features/chat/lib/scroll-controller')
+      >('@/features/chat/lib/scroll-controller')
+    ).ScrollController,
     findClipboardImage: imageUpload.findClipboardImage,
     normalizeUploadedImage: imageUpload.normalizeUploadedImage,
     validateImageFile: imageUpload.validateImageFile,
@@ -277,7 +290,7 @@ vi.mock('@/features/chat', async () => {
     // 子智能体分区同步用真实实现：agentState 里没有运行态时不产生分区
     readSubagentRuns: subagentRun.readSubagentRuns,
     SubagentThreadView: () => null,
-    Button: antdButton.Button,
+    Button: (await import('antd')).Button,
     Spinner: () => null,
     // 通知走适配层；页面用例直接断言 notifications.addNotification 的调用
     useNotifications: () => notifications,
@@ -292,8 +305,26 @@ vi.mock('@/features/chat', async () => {
     readAgentStateTodos: stateReaders.readAgentStateTodos,
     readAgentStateFiles: stateReaders.readAgentStateFiles,
     readAgentStateArtifacts: stateReaders.readAgentStateArtifacts,
-    STATE_SECTION: { key: 'state', type: 'state', title: '状态' },
-    StatePanel: () => <div data-testid="state-panel-stub" />,
+    StatePanel: ({
+      onOpenFile,
+    }: {
+      onOpenFile?: (file: { path: string; name: string }) => void;
+    }) => (
+      <div data-testid="state-panel-stub">
+        <button
+          type="button"
+          onClick={() => onOpenFile?.({ path: '/out/a.md', name: 'a.md' })}
+        >
+          状态里的文件
+        </button>
+        <button
+          type="button"
+          onClick={() => onOpenFile?.({ path: '/out/b.md', name: 'b.md' })}
+        >
+          状态里的文件 b
+        </button>
+      </div>
+    ),
     useProjects: () => ({ data: projectList, isPending: false, error: null }),
     // 防抖用真实实现：它只是延迟，不影响页面的可观察结果
     HISTORY_SEARCH_DEBOUNCE_MS: 250,
@@ -302,7 +333,11 @@ vi.mock('@/features/chat', async () => {
     useHistoryCandidates: (query: unknown) => {
       historyQueryArgs.push(query);
 
-      return { data: { items: [], hasMore: false }, isPending: false, error: null };
+      return {
+        data: { items: [], hasMore: false },
+        isPending: false,
+        error: null,
+      };
     },
     useCreateLinkedProject: () => ({ mutateAsync: vi.fn() }),
     // 附件：hook 与弹窗都换桩，页面用例只证明「确认前把会话准备好」这条编排
@@ -339,11 +374,24 @@ vi.mock('@/features/chat', async () => {
       setScopeState: vi.fn(),
     }),
     FileTree: () => <div data-testid="file-tree-stub" />,
-    FilePreview: () => <div data-testid="file-preview-stub" />,
+    FilePreview: ({ file }: { file: { path: string } | null }) => (
+      <div data-testid="file-preview-stub">{file?.path ?? '无'}</div>
+    ),
     usePanelFileSearch: () => ({ data: [], isPending: false, error: null }),
     useDebounce: (value: unknown) => value,
     usePanelPreview: () => ({
       current: null,
+      previewFor: vi.fn(({ path }: { path: string }) => ({
+        path,
+        name: path.split('/').pop() ?? path,
+        status: 'ready' as const,
+        previewType: 'text' as const,
+        supported: true,
+        content: 'x',
+        previewUrl: '',
+        message: '',
+        truncated: false,
+      })),
       open: vi.fn(),
       close: vi.fn(),
       reload: vi.fn(async () => undefined),
@@ -353,8 +401,10 @@ vi.mock('@/features/chat', async () => {
       refetch: refetchAttachments,
     }),
     useCacheThreadAttachments: () => cacheThreadAttachments,
-    pendingAttachmentFileIds: (items: Array<{ fileId: string; requestId: string | null }>) =>
-      items.filter((entry) => !entry.requestId).map((entry) => entry.fileId),
+    // 「还没被用掉」的判据用真实实现：预览与下发的 id 必须同源
+    pendingThreadAttachments: attachmentLib.pendingThreadAttachments,
+    pendingAttachmentFileIds: attachmentLib.pendingAttachmentFileIds,
+    formatFileSize: attachmentLib.formatFileSize,
     useDefaultOcrEngine: () => '',
     AttachmentUploadDialog: ({
       open,
@@ -431,7 +481,10 @@ vi.mock('@/shared/ui/content-layout', () => ({
 }));
 
 const { ChatPage } = await import('@/pages/chat/ui/chat-page');
-const { useModelSelection } = await import('@/features/chat/model/model-selection');
+const { useModelSelection } =
+  await import('@/features/chat/model/model-selection');
+// antd 词汇由应用装配承载，测试同构挂上
+const { AntdProvider } = await import('@/app/theme/antd-provider');
 
 /**
  * 复刻真实路由形状：`/agent` 与 `/agent/:threadId` 共用同一个组件实例。
@@ -445,20 +498,22 @@ function renderAt(initialPath: string) {
 
   return render(
     <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[initialPath]}>
-        <Routes>
-          <Route path={paths.app.chat.path} element={<ChatPage />} />
-          <Route
-            path={`${paths.app.chat.path}/:threadId`}
-            element={<ChatPage />}
-          />
-        </Routes>
-        <NewChatLink />
-        <SwitchThreadLink />
-        <BackToThreadALink />
-      </MemoryRouter>
-      </QueryClientProvider>
+      <AntdProvider>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter initialEntries={[initialPath]}>
+            <Routes>
+              <Route path={paths.app.chat.path} element={<ChatPage />} />
+              <Route
+                path={`${paths.app.chat.path}/:threadId`}
+                element={<ChatPage />}
+              />
+            </Routes>
+            <NewChatLink />
+            <SwitchThreadLink />
+            <BackToThreadALink />
+          </MemoryRouter>
+        </QueryClientProvider>
+      </AntdProvider>
     </React.StrictMode>,
   );
 }
@@ -504,6 +559,17 @@ const pickImage = (name = '截图.png', type = 'image/png') => {
   fireEvent.change(screen.getByLabelText('选择图片'), {
     target: { files: [new File(['x'], name, { type })] },
   });
+};
+
+/** 打开附件上传弹窗：附件入口在「+」展开面板里，走真实的两步路径。 */
+const openAttachmentDialog = async () => {
+  await userEvent.click(
+    await screen.findByRole('button', { name: '添加内容' }),
+  );
+  await userEvent.click(
+    // 面板项是 role=menuitem 的按钮（与参照同构），显式 role 会盖掉隐式的 button
+    await screen.findByRole('menuitem', { name: '添加附件' }),
+  );
 };
 
 describe('对话页的线程生命周期', () => {
@@ -569,14 +635,14 @@ describe('对话页的线程生命周期', () => {
     ];
     renderAt(paths.app.chat.getHref('thread-A'));
 
-    await userEvent.click(
-      await screen.findByRole('button', { name: '调试' }),
-    );
+    await userEvent.click(await screen.findByRole('button', { name: '调试' }));
 
     expect(await screen.findByTestId('message-debug-panel')).toHaveTextContent(
       '2 条',
     );
-    await userEvent.click(screen.getByRole('button', { name: '调试', pressed: true }));
+    await userEvent.click(
+      screen.getByRole('button', { name: '调试', pressed: true }),
+    );
     expect(screen.queryByTestId('message-debug-panel')).toBeNull();
   });
 
@@ -662,9 +728,7 @@ describe('对话页的线程生命周期', () => {
       ),
     );
     expect(chat.sendMessage).not.toHaveBeenCalled();
-    expect(screen.getByLabelText('消息输入').textContent).toBe(
-      '你好',
-    );
+    expect(screen.getByLabelText('消息输入').textContent).toBe('你好');
   });
 
   it('建过线程后点「新建对话」再发送，会再建一条而不是串回上一条', async () => {
@@ -754,9 +818,7 @@ describe('对话页的线程生命周期', () => {
     );
     await userEvent.click(screen.getByRole('link', { name: '切到 B' }));
     await waitFor(() =>
-      expect(screen.getByLabelText('消息输入').textContent).toBe(
-        '',
-      ),
+      expect(screen.getByLabelText('消息输入').textContent).toBe(''),
     );
     // 切走不能把 A 的未发送文本写进 B：写串键会让 B 刷新后冒出别人的草稿
     expect(
@@ -769,9 +831,7 @@ describe('对话页的线程生命周期', () => {
     await userEvent.click(screen.getByRole('link', { name: '回到 A' }));
 
     await waitFor(() =>
-      expect(screen.getByLabelText('消息输入').textContent).toBe(
-        '还没发出去',
-      ),
+      expect(screen.getByLabelText('消息输入').textContent).toBe('还没发出去'),
     );
   });
 
@@ -790,9 +850,7 @@ describe('对话页的线程生命周期', () => {
 
     renderAt(paths.app.chat.getHref('thread-A'));
 
-    expect(screen.getByLabelText('消息输入').textContent).toBe(
-      '刷新前的草稿',
-    );
+    expect(screen.getByLabelText('消息输入').textContent).toBe('刷新前的草稿');
   });
 
   it('发送成功后不留草稿，回到新建对话不会还原已发送的文本', async () => {
@@ -804,9 +862,7 @@ describe('对话页的线程生命周期', () => {
     await userEvent.click(screen.getByRole('link', { name: '新建对话' }));
 
     await waitFor(() =>
-      expect(screen.getByLabelText('消息输入').textContent).toBe(
-        '',
-      ),
+      expect(screen.getByLabelText('消息输入').textContent).toBe(''),
     );
   });
 
@@ -1232,7 +1288,9 @@ describe('对话页的线程生命周期', () => {
     const { useAgentConfig } = await import('@/features/chat');
     renderAt(paths.app.chat.getHref('thread-A'));
 
-    await waitFor(() => expect(useAgentConfig).toHaveBeenCalledWith('default-chatbot'));
+    await waitFor(() =>
+      expect(useAgentConfig).toHaveBeenCalledWith('default-chatbot'),
+    );
   });
 
   it('运行中把当前输入作为引导发出，请求带 queue_policy: steer', async () => {
@@ -1299,7 +1357,11 @@ describe('对话页的线程生命周期', () => {
     await userEvent.click(screen.getByRole('button', { name: '发送' }));
     await userEvent.type(screen.getByLabelText('消息输入'), '{Enter}');
 
-    resolveCreate?.({ id: 'thread-新', agent_id: 'default-chatbot', title: '你好' });
+    resolveCreate?.({
+      id: 'thread-新',
+      agent_id: 'default-chatbot',
+      title: '你好',
+    });
 
     // 用户可见的结果：只发出一条消息
     await waitFor(() => expect(chat.sendMessage).toHaveBeenCalledTimes(1));
@@ -1369,9 +1431,9 @@ describe('对话页的线程生命周期', () => {
     renderAt(paths.app.chat.getHref('thread-A'));
 
     // 触发按钮显示的是 spec 里的模型名，不是列表里的展示名
-    expect(screen.getByRole('button', { name: '选择模型' }).textContent).toContain(
-      'chosen',
-    );
+    expect(
+      screen.getByRole('button', { name: '选择模型' }).textContent,
+    ).toContain('chosen');
     await send('你好');
 
     await waitFor(() =>
@@ -1394,7 +1456,9 @@ describe('对话页的线程生命周期', () => {
     renderAt(paths.app.chat.getHref('thread-A'));
 
     await userEvent.click(screen.getByRole('button', { name: '选择模型' }));
-    await userEvent.click(await screen.findByRole('menuitem', { name: /默认/ }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: /默认/ }),
+    );
 
     expect(useModelSelection.getState().overrideByKey).toEqual({});
     await send('你好');
@@ -1414,7 +1478,9 @@ describe('对话页的线程生命周期', () => {
     renderAt(paths.app.chat.getHref('thread-A'));
 
     await userEvent.click(screen.getByRole('button', { name: '选择模型' }));
-    await userEvent.click(await screen.findByRole('menuitem', { name: /Chosen/ }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: /Chosen/ }),
+    );
 
     expect(useModelSelection.getState().overrideByKey).toEqual({
       'thread-A': 'p:chosen',
@@ -1438,7 +1504,9 @@ describe('对话页的线程生命周期', () => {
 
     // 用户随后清空选择：应当回到刚下发的模型，而不是掉到智能体默认值
     await userEvent.click(screen.getByRole('button', { name: '选择模型' }));
-    await userEvent.click(await screen.findByRole('menuitem', { name: /默认/ }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: /默认/ }),
+    );
     await send('再说一句');
 
     await waitFor(() =>
@@ -1452,7 +1520,9 @@ describe('对话页的线程生命周期', () => {
     projectList.push({ id: 'p-1', name: '项目一' });
     const { unmount } = renderAt(paths.app.chat.getHref());
 
-    expect(await screen.findByRole('button', { name: /选择项目/ })).toBeTruthy();
+    expect(
+      await screen.findByRole('button', { name: /选择项目/ }),
+    ).toBeTruthy();
     unmount();
 
     renderAt(paths.app.chat.getHref('thread-A'));
@@ -1473,12 +1543,38 @@ describe('对话页的线程生命周期', () => {
     ];
     attachmentUpload.confirm.mockResolvedValue(confirmed);
     renderAt(paths.app.chat.getHref('thread-A'));
-    await userEvent.click(await screen.findByRole('button', { name: '附件' }));
+    await openAttachmentDialog();
     await userEvent.click(screen.getByRole('button', { name: '确认附件' }));
 
     await waitFor(() =>
-      expect(cacheThreadAttachments).toHaveBeenCalledWith('thread-A', confirmed),
+      expect(cacheThreadAttachments).toHaveBeenCalledWith(
+        'thread-A',
+        confirmed,
+      ),
     );
+  });
+
+  it('输入区顶栏只预览还没被用掉的附件', async () => {
+    threadAttachments.push(
+      {
+        fileId: 'f-pending',
+        fileName: '待发送.pdf',
+        fileSize: 2048,
+        requestId: null,
+      },
+      {
+        fileId: 'f-used',
+        fileName: '已用掉.pdf',
+        fileSize: 2048,
+        requestId: 'req-old',
+      },
+    );
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    expect(await screen.findByText('待发送.pdf')).toBeTruthy();
+    expect(screen.getByText('2 KB')).toBeTruthy();
+    // 已经被请求用掉的附件不能再出现在预览里，否则用户会以为它还会随这次发送下发
+    expect(screen.queryByText('已用掉.pdf')).toBeNull();
   });
 
   it('发送时带上还没被用掉的附件 id', async () => {
@@ -1497,7 +1593,9 @@ describe('对话页的线程生命周期', () => {
     );
 
     // 请求受理后要刷新附件列表，否则下一次发送会重发已经用掉的 id
-    const options = (chat.sendMessage as ReturnType<typeof vi.fn>).mock.calls.at(-1)?.[0];
+    const options = (
+      chat.sendMessage as ReturnType<typeof vi.fn>
+    ).mock.calls.at(-1)?.[0];
     options.onAccepted();
     expect(refetchAttachments).toHaveBeenCalled();
   });
@@ -1514,27 +1612,29 @@ describe('对话页的线程生命周期', () => {
     );
   });
 
-  it('点「附件」打开上传弹窗', async () => {
+  it('点「+」面板里的「添加附件」打开上传弹窗', async () => {
     renderAt(paths.app.chat.getHref('thread-A'));
 
     expect(screen.queryByRole('button', { name: '确认附件' })).toBeNull();
-    await userEvent.click(await screen.findByRole('button', { name: '附件' }));
+    await openAttachmentDialog();
 
     expect(screen.getByRole('button', { name: '确认附件' })).toBeTruthy();
   });
 
   it('有会话时确认附件直接挂到该会话上', async () => {
     renderAt(paths.app.chat.getHref('thread-A'));
-    await userEvent.click(await screen.findByRole('button', { name: '附件' }));
+    await openAttachmentDialog();
     await userEvent.click(screen.getByRole('button', { name: '确认附件' }));
 
-    await waitFor(() => expect(attachmentUpload.confirm).toHaveBeenCalledWith('thread-A'));
+    await waitFor(() =>
+      expect(attachmentUpload.confirm).toHaveBeenCalledWith('thread-A'),
+    );
     expect(chat.createThread).not.toHaveBeenCalled();
   });
 
   it('没有会话时确认附件会先建一条会话', async () => {
     renderAt(paths.app.chat.getHref());
-    await userEvent.click(await screen.findByRole('button', { name: '附件' }));
+    await openAttachmentDialog();
     await userEvent.click(screen.getByRole('button', { name: '确认附件' }));
 
     await waitFor(() =>
@@ -1560,14 +1660,22 @@ describe('对话页的线程生命周期', () => {
     );
     renderAt(paths.app.chat.getHref());
 
-    await userEvent.click(await screen.findByRole('button', { name: /选择项目/ }));
-    await userEvent.click(await screen.findByRole('button', { name: /项目一/ }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: /选择项目/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole('button', { name: /项目一/ }),
+    );
     await userEvent.type(await screen.findByLabelText('消息输入'), '你好');
     await userEvent.click(screen.getByRole('button', { name: '发送' }));
 
     // 建线程还没回来就切走：这次发送会被放弃
     await userEvent.click(screen.getByRole('link', { name: '切到 B' }));
-    resolveCreate({ id: 'thread-新', agent_id: 'default-chatbot', title: '你好' });
+    resolveCreate({
+      id: 'thread-新',
+      agent_id: 'default-chatbot',
+      title: '你好',
+    });
 
     // 回到新会话时不该还带着刚才那个项目
     await userEvent.click(screen.getByRole('link', { name: '新建对话' }));
@@ -1579,8 +1687,12 @@ describe('对话页的线程生命周期', () => {
     projectList.push({ id: 'p-1', name: '项目一' });
     renderAt(paths.app.chat.getHref());
 
-    await userEvent.click(await screen.findByRole('button', { name: /选择项目/ }));
-    await userEvent.click(await screen.findByRole('button', { name: /项目一/ }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: /选择项目/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole('button', { name: /项目一/ }),
+    );
     await send('你好');
 
     await waitFor(() =>
@@ -1597,8 +1709,12 @@ describe('对话页的线程生命周期', () => {
     projectList.push({ id: 'p-1', name: '项目一' });
     renderAt(paths.app.chat.getHref());
 
-    await userEvent.click(await screen.findByRole('button', { name: /选择项目/ }));
-    await userEvent.click(await screen.findByRole('button', { name: /项目一/ }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: /选择项目/ }),
+    );
+    await userEvent.click(
+      await screen.findByRole('button', { name: /项目一/ }),
+    );
     await send('你好');
     // 建完线程后选择器整个消失：它只服务新会话
     await waitFor(() => expect(threadList.upsert).toHaveBeenCalled());
@@ -1624,5 +1740,181 @@ describe('对话页的线程生命周期', () => {
     expect(useModelSelection.getState().overrideByKey).toEqual({
       'thread-新': 'p:draft',
     });
+  });
+
+  it('「状态」开独立的状态面板，「文件」开文件面板，两者互不干扰', async () => {
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.click(await screen.findByRole('button', { name: '状态' }));
+    expect(screen.getByTestId('state-panel-stub')).toBeTruthy();
+    // 状态不再是文件面板里的一个 tab
+    expect(screen.queryByRole('tablist', { name: '侧边栏内容' })).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: '状态' }));
+    expect(screen.queryByTestId('state-panel-stub')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: '文件' }));
+    expect(
+      await screen.findByRole('tablist', { name: '侧边栏内容' }),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('state-panel-stub')).toBeNull();
+  });
+
+  it('文件面板初始只有文件树一个分区', async () => {
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.click(await screen.findByRole('button', { name: '文件' }));
+
+    const tabs = within(
+      await screen.findByRole('tablist', { name: '侧边栏内容' }),
+    ).getAllByRole('tab');
+    // 预览、子智能体与调试分区按需追加，不预先占位
+    expect(tabs.map((tab) => tab.textContent)).toEqual(['文件']);
+  });
+
+  it('文件面板与页头同级，覆盖右缘整高', async () => {
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.click(await screen.findByRole('button', { name: '文件' }));
+
+    // 页头：按钮 → 右栏 → 页头本体；面板外壳：AgentPanel 的 aside 外那层 absolute 包装
+    const header = screen.getByRole('button', { name: '文件' }).parentElement
+      ?.parentElement;
+    const panel = document.querySelector(
+      'aside[aria-label="侧边栏"]',
+    )?.parentElement;
+    expect(header).toBeTruthy();
+    expect(panel).toBeTruthy();
+
+    // 面板与页头同级（不是被内容行包住的子级），它才覆盖得到页头那一行
+    expect(panel?.parentElement).toBe(header?.parentElement);
+    // 在页头之后：分栏虚线因此是整列高
+    expect(
+      header!.compareDocumentPosition(panel!) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    // 父级正是定义 --file-panel-width 的那个元素：页头让位与拖拽冻结都落在同一个作用域
+    expect(
+      panel?.parentElement?.style.getPropertyValue('--file-panel-width'),
+    ).not.toBe('');
+  });
+
+  it('用量环开的是状态面板，不是调试分区', async () => {
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.click(
+      await screen.findByRole('button', { name: '上下文使用情况' }),
+    );
+
+    expect(screen.getByTestId('state-panel-stub')).toBeTruthy();
+    expect(screen.queryByRole('tablist', { name: '侧边栏内容' })).toBeNull();
+  });
+
+  it('状态面板的刷新按钮拉一次 agent_state', async () => {
+    const { fetchAgentState } = await import('@/features/chat');
+    renderAt(paths.app.chat.getHref('thread-A'));
+    await userEvent.click(await screen.findByRole('button', { name: '状态' }));
+    // 打开时已经补拉过一次，这里清掉只验手动刷新
+    (fetchAgentState as ReturnType<typeof vi.fn>).mockClear();
+
+    await userEvent.click(screen.getByRole('button', { name: '刷新状态' }));
+
+    expect(fetchAgentState).toHaveBeenCalledWith('thread-A');
+  });
+
+  it('容器放得下时状态面板停靠', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1400);
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.click(await screen.findByRole('button', { name: '状态' }));
+
+    // 1400 - 340 > 800：停靠成窄列
+    expect(
+      document.querySelector('[data-mode]')?.getAttribute('data-mode'),
+    ).toBe('docked');
+    vi.restoreAllMocks();
+  });
+
+  it('容器不够宽时状态面板浮动', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1000);
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    await userEvent.click(await screen.findByRole('button', { name: '状态' }));
+
+    // 1000 - 340 < 800：放不下窄列，改为浮卡
+    expect(
+      document.querySelector('[data-mode]')?.getAttribute('data-mode'),
+    ).toBe('floating');
+    vi.restoreAllMocks();
+  });
+
+  it('打开文件面板会收起状态面板', async () => {
+    vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(1400);
+    renderAt(paths.app.chat.getHref('thread-A'));
+    await userEvent.click(await screen.findByRole('button', { name: '状态' }));
+
+    await userEvent.click(screen.getByRole('button', { name: '文件' }));
+
+    // 参照里两块面板不同时占横向空间
+    expect(document.querySelector('[data-mode]')).toBeNull();
+    vi.restoreAllMocks();
+  });
+
+  it('点状态面板里的文件会把文件面板打开', async () => {
+    renderAt(paths.app.chat.getHref('thread-A'));
+    await userEvent.click(await screen.findByRole('button', { name: '状态' }));
+
+    await userEvent.click(screen.getByRole('button', { name: '状态里的文件' }));
+
+    // 分区只是加进列表：不打开面板的话用户点了没有任何可见变化
+    expect(
+      await screen.findByRole('tablist', { name: '侧边栏内容' }),
+    ).toBeTruthy();
+    expect(screen.queryByTestId('state-panel-stub')).toBeNull();
+  });
+
+  it('切换预览分区时按各自的路径取内容', async () => {
+    renderAt(paths.app.chat.getHref('thread-A'));
+
+    // 从状态面板开出两个预览分区
+    await userEvent.click(await screen.findByRole('button', { name: '状态' }));
+    await userEvent.click(screen.getByRole('button', { name: '状态里的文件' }));
+    expect(await screen.findByTestId('file-preview-stub')).toHaveTextContent(
+      '/out/a.md',
+    );
+    await userEvent.click(screen.getByRole('button', { name: '状态' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: '状态里的文件 b' }),
+    );
+    expect(await screen.findByTestId('file-preview-stub')).toHaveTextContent(
+      '/out/b.md',
+    );
+
+    // 切回第一个分区：内容要跟着分区走，而不是继续显示最后打开的那个文件
+    await userEvent.click(screen.getByRole('tab', { name: /a\.md/ }));
+
+    expect(screen.getByTestId('file-preview-stub')).toHaveTextContent(
+      '/out/a.md',
+    );
+  });
+
+  it('状态按钮的高亮与展开态跟着状态面板，而不是文件面板', async () => {
+    renderAt(paths.app.chat.getHref('thread-A'));
+    const stateButton = await screen.findByRole('button', { name: '状态' });
+
+    expect(stateButton.getAttribute('aria-expanded')).toBe('false');
+    await userEvent.click(stateButton);
+
+    expect(
+      screen
+        .getByRole('button', { name: '状态' })
+        .getAttribute('aria-expanded'),
+    ).toBe('true');
+    // 文件面板没开，但状态面板开着：这颗按钮不该报告文件面板的状态
+    expect(
+      screen
+        .getByRole('button', { name: '文件' })
+        .getAttribute('aria-expanded'),
+    ).toBe('false');
   });
 });

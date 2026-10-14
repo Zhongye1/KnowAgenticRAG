@@ -1,0 +1,236 @@
+/* 侧边栏会话列表。参照 ConversationNavSection.vue 的样式段逐值对齐。
+   例外是行的悬停/选中底色：本仓侧边栏用 shadcn 的 `--sidebar-*` 调色板（偏冷的浅底），
+   参照的 --gray-50 在这层底色上没有对比，因此底色仍走 sidebar token，
+   其余（尺寸、圆角、字号、遮罩、状态点位置）照参照。 */
+
+.section {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  overflow: hidden;
+}
+
+.panel {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+/* 「最近」标题：点一下折叠列表（参照 .history-label） */
+.label {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gray-800);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.label:hover {
+  background: var(--gray-50);
+}
+
+.collapseIcon {
+  transition: transform 0.2s ease;
+}
+
+.collapseIconCollapsed {
+  transform: rotate(-90deg);
+}
+
+.list {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+}
+
+/* 行的容器：会话链接与操作区是兄弟节点，操作区绝对定位覆盖在右侧 */
+/* ul 的默认内边距会把行挤窄（标题因此提前截断），默认项目符号也不是参照的样子 */
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  position: relative;
+  display: block;
+}
+
+.item {
+  --row-bg: transparent;
+
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  padding: 0 8px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--gray-700);
+  font-size: 13px;
+  text-align: left;
+  /* 行是链接但外观是列表项，必须显式关掉下划线：本仓不引 Tailwind 的 preflight
+     （重置交给 antd 的 reset.css），而它没有清 `a` 的下划线，UA 默认会生效 */
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.row:hover .item {
+  --row-bg: var(--sidebar-accent);
+
+  background: var(--sidebar-accent);
+}
+
+.itemActive {
+  --row-bg: var(--sidebar-accent);
+
+  background: var(--sidebar-accent);
+  color: var(--gray-1000);
+}
+
+.itemActive .title {
+  font-weight: 600;
+}
+
+/* 悬停或已置顶时露出操作区（参照的 .actions-mask / .conversation-actions） */
+.row:hover .actionsMask,
+.row:hover .actions,
+.row:has(.pinnedIndicator) .actionsMask,
+.row:has(.pinnedIndicator) .actions {
+  opacity: 1;
+}
+
+/* 悬停时把「更多」换成真正的按钮，并把状态点与置顶标记让位 */
+.row:hover .moreButton {
+  display: inline-flex;
+}
+
+.row:hover .pinnedIndicator,
+.row:hover .status {
+  display: none;
+}
+
+.title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 标题到按钮之间的渐隐遮罩，避免文字从按钮下面穿出来 */
+.actionsMask {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 56px;
+  background: linear-gradient(to right, transparent, var(--row-bg) 28px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+}
+
+.actions {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transform: translateY(-50%);
+  transition: opacity 0.2s ease;
+}
+
+.actionButtonWrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+/* 未悬停时这里显示置顶标记；悬停才换成「更多」按钮 */
+.moreButton {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  color: var(--gray-600);
+}
+
+.pinnedIndicator {
+  color: var(--gray-400);
+}
+
+/* 状态点固定在右侧，避开「更多」按钮的位置 */
+.status {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--main-color);
+  pointer-events: none;
+  transform: translateY(-50%) translateX(50%);
+}
+
+.statusLoading svg {
+  animation: threadStatusSpin 1s linear infinite;
+}
+
+.statusReady {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--main-color);
+}
+
+@keyframes threadStatusSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty {
+  margin-top: 16px;
+  color: var(--gray-500);
+  font-size: 12px;
+  text-align: center;
+}
+
+.loadMoreWrapper {
+  padding: 8px;
+  text-align: center;
+}
+
+.loadMoreButton {
+  color: var(--main-color);
+  font-size: 12px;
+}

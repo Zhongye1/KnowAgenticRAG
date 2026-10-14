@@ -10,7 +10,10 @@ const groups: ChatModelGroup[] = [
     providerId: 'siliconflow-cn',
     providerName: 'SiliconFlow',
     models: [
-      { spec: 'siliconflow-cn:Pro/MiniMaxAI/MiniMax-M2.5', label: 'MiniMax M2.5' },
+      {
+        spec: 'siliconflow-cn:Pro/MiniMaxAI/MiniMax-M2.5',
+        label: 'MiniMax M2.5',
+      },
       { spec: 'siliconflow-cn:qwen-max', label: 'Qwen Max' },
     ],
   },
@@ -46,9 +49,9 @@ describe('ModelSelector', () => {
   it('没有选择时显示占位文案', () => {
     setup();
 
-    expect(screen.getByRole('button', { name: '选择模型' }).textContent).toContain(
-      '选择模型',
-    );
+    expect(
+      screen.getByRole('button', { name: '选择模型' }).textContent,
+    ).toContain('选择模型');
   });
 
   it('加载中显示「加载中...」并禁止展开', () => {
@@ -78,7 +81,9 @@ describe('ModelSelector', () => {
   it('点一个模型把 spec 交回调用方', async () => {
     const props = setup();
     await userEvent.click(screen.getByRole('button', { name: '选择模型' }));
-    await userEvent.click(await screen.findByRole('menuitem', { name: /Qwen Max/ }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: /Qwen Max/ }),
+    );
 
     expect(props.onSelect).toHaveBeenCalledWith('siliconflow-cn:qwen-max');
   });
@@ -86,7 +91,9 @@ describe('ModelSelector', () => {
   it('点「默认」交回空串，用来清空选择', async () => {
     const props = setup({ selected: 'siliconflow-cn:qwen-max' });
     await userEvent.click(screen.getByRole('button', { name: '选择模型' }));
-    await userEvent.click(await screen.findByRole('menuitem', { name: /默认/ }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: /默认/ }),
+    );
 
     expect(props.onSelect).toHaveBeenCalledWith('');
   });

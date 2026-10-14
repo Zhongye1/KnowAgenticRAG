@@ -2,9 +2,9 @@
 
 状态：implemented
 类型：feature
-Owner：web/alembic/pages/agent/evidence/b7-light-1440x900.png
+Owner：docs/develop-guides/decisions/implemented/2026-10-12-chat-visual-walkthrough.md
 
-事实分工：本批产出 `web/alembic/pages/agent/evidence/` 下的真实页面截图（浅色 1440×900、浅色窄屏 390×844、暗色 1440×900、暗色窄屏 390×844）；走查方式是 headless Chrome 的 CDP（`Page.captureScreenshot`），脚本在 `web/tmp/`（不入库）。
+事实分工：本记录拥有走查方式、有效性口径与证据清单；截图本体归档在本地台账 `web/alembic/pages/agent/evidence/`（`alembic/` 被 gitignore，不入库，只在有该工作目录的机器上存在），台账侧的完成状态见 `web/alembic/pages/agent/roadmap.md`。走查方式是 headless Chrome 的 CDP（`Page.captureScreenshot`），脚本在 `web/tmp/`（不入库）。
 
 ## 问题
 

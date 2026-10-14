@@ -5,7 +5,16 @@
  * 只读知识库不给管理入口。列表由页面外壳承载。
  */
 import * as React from 'react';
-import { Plus, RefreshCw, Search } from 'lucide-react';
+import { Plus } from 'lucide-react';
+import { Button, Spin } from 'antd';
+import { Empty as SharedEmpty } from '@/shared/ui/empty';
+import {
+  ListPrimaryButton,
+  ListRefreshButton,
+  ListToolbar,
+} from '@/shared/ui/list-toolbar';
+import { useNotifications } from '@/shared/ui/notifications';
+import { useConfirm } from '@/shared/ui/confirm-dialog';
 
 import type { KnowledgeBase } from '../api/knowledge-api';
 import { getKbTypeLabel } from '../lib/knowledge-view';
@@ -14,12 +23,6 @@ import {
   useKnowledgeBases,
   useKnowledgeTypes,
 } from '../model/knowledge-queries';
-import { Empty } from '@/shared/ui/empty';
-import { Button } from '@/shared/ui/button';
-import { confirm } from '@/shared/ui/confirm-dialog';
-import { Input } from '@/shared/ui/input';
-import { Spinner } from '@/shared/ui/spinner';
-import { useNotifications } from '@/shared/ui/notifications';
 
 import { KnowledgeCard } from './knowledge-card';
 import { KnowledgeFormDialog } from './knowledge-form-dialog';
@@ -33,6 +36,7 @@ type KnowledgeListProps = {
 const ALL_TYPES = '__all__';
 
 export const KnowledgeList = ({ onOpen }: KnowledgeListProps) => {
+  const { confirm } = useConfirm();
   const databases = useKnowledgeBases();
   const types = useKnowledgeTypes();
   const removeMutation = useDeleteKnowledgeBase();
@@ -101,72 +105,66 @@ export const KnowledgeList = ({ onOpen }: KnowledgeListProps) => {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-56 flex-1">
-          <Search
-            className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-color-text-3"
-            aria-hidden
-          />
-          <Input
-            value={keyword}
-            onChange={(event) => setKeyword(event.target.value)}
-            placeholder="搜索名称或描述"
-            aria-label="搜索知识库"
-            className="pl-8"
-          />
-        </div>
-
-        {typeOptions.length > 0 ? (
-          <div className="flex items-center gap-1">
-            <Button
-              type="button"
-              size="sm"
-              variant={typeFilter === ALL_TYPES ? 'default' : 'outline'}
-              onClick={() => setTypeFilter(ALL_TYPES)}
-            >
-              全部
-            </Button>
-            {typeOptions.map((type) => (
+      <ListToolbar
+        search={{
+          value: keyword,
+          onChange: setKeyword,
+          placeholder: '搜索名称或描述',
+          label: '搜索知识库',
+        }}
+        filters={
+          typeOptions.length > 0 ? (
+            <div className="flex items-center gap-1">
               <Button
-                key={type}
-                type="button"
-                size="sm"
-                variant={typeFilter === type ? 'default' : 'outline'}
-                onClick={() => setTypeFilter(type)}
+                htmlType="button"
+                size="small"
+                variant={typeFilter === ALL_TYPES ? 'solid' : 'outlined'}
+                color={typeFilter === ALL_TYPES ? 'primary' : 'default'}
+                onClick={() => setTypeFilter(ALL_TYPES)}
               >
-                {getKbTypeLabel(type)}
+                全部
               </Button>
-            ))}
-          </div>
-        ) : null}
-
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          aria-label="刷新知识库列表"
-          onClick={() => void databases.refetch()}
-        >
-          <RefreshCw className="size-4" />
-        </Button>
-        <Button
-          type="button"
-          disabled={
-            !types.isSuccess || Object.keys(types.data ?? {}).length === 0
-          }
-          onClick={() => {
-            setEditing(null);
-            setFormOpen(true);
-          }}
-        >
-          <Plus className="size-4" aria-hidden />
-          新建知识库
-        </Button>
-      </div>
+              {typeOptions.map((type) => (
+                <Button
+                  key={type}
+                  htmlType="button"
+                  size="small"
+                  variant={typeFilter === type ? 'solid' : 'outlined'}
+                  color={typeFilter === type ? 'primary' : 'default'}
+                  onClick={() => setTypeFilter(type)}
+                >
+                  {getKbTypeLabel(type)}
+                </Button>
+              ))}
+            </div>
+          ) : null
+        }
+        actions={
+          <>
+            <ListPrimaryButton
+              disabled={
+                !types.isSuccess || Object.keys(types.data ?? {}).length === 0
+              }
+              onClick={() => {
+                setEditing(null);
+                setFormOpen(true);
+              }}
+            >
+              <Plus className="size-4" aria-hidden />
+              新建知识库
+            </ListPrimaryButton>
+            <ListRefreshButton
+              label="刷新知识库列表"
+              refreshing={databases.isFetching}
+              onClick={() => void databases.refetch()}
+            />
+          </>
+        }
+      />
 
       {databases.isPending ? (
         <p className="flex items-center gap-2 py-8 text-sm text-color-text-3">
-          <Spinner aria-hidden className="size-4" />
+          <Spin aria-hidden className="size-4" />
           正在加载知识库…
         </p>
       ) : null}
@@ -179,8 +177,8 @@ export const KnowledgeList = ({ onOpen }: KnowledgeListProps) => {
               : '加载知识库失败。'}
           </p>
           <Button
-            type="button"
-            variant="outline"
+            htmlType="button"
+            variant="outlined"
             onClick={() => void databases.refetch()}
           >
             重试
@@ -189,7 +187,7 @@ export const KnowledgeList = ({ onOpen }: KnowledgeListProps) => {
       ) : null}
 
       {databases.isSuccess && visible.length === 0 ? (
-        <Empty
+        <SharedEmpty
           description={
             (databases.data ?? []).length === 0
               ? '还没有知识库。新建一个后即可上传文档。'
@@ -198,7 +196,7 @@ export const KnowledgeList = ({ onOpen }: KnowledgeListProps) => {
           action={
             (databases.data ?? []).length === 0 ? (
               <Button
-                type="button"
+                htmlType="button"
                 onClick={() => {
                   // 必须清掉上一次的编辑对象，否则会把已删的知识库打开成编辑态
                   setEditing(null);

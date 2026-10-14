@@ -36,7 +36,11 @@ type TodoListProps = {
 
 export const TodoList = ({ items }: TodoListProps) => {
   if (items.length === 0) {
-    return <p className="py-3 text-center text-xs text-[var(--gray-500)]">暂无待办事项</p>;
+    return (
+      <p className="py-3 text-center text-xs text-[var(--gray-500)]">
+        暂无待办事项
+      </p>
+    );
   }
 
   return (
@@ -54,7 +58,10 @@ export const TodoList = ({ items }: TodoListProps) => {
               className={`size-4 shrink-0 ${STATUS_CLASSES[item.status]}`}
               aria-hidden
             />
-            <span className="truncate text-[var(--gray-800)]" title={item.title}>
+            <span
+              className="truncate text-[var(--gray-800)]"
+              title={item.title}
+            >
               {item.label}
             </span>
           </li>

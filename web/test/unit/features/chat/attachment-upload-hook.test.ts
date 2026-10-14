@@ -59,7 +59,9 @@ describe('useAttachmentUpload', () => {
     const { result } = renderHook(() => useAttachmentUpload());
 
     await act(async () => {
-      await result.current.addFiles([file('big.pdf', MAX_ATTACHMENT_SIZE_BYTES + 1)]);
+      await result.current.addFiles([
+        file('big.pdf', MAX_ATTACHMENT_SIZE_BYTES + 1),
+      ]);
     });
 
     expect(api.uploadTmpAttachment).not.toHaveBeenCalled();
@@ -77,19 +79,27 @@ describe('useAttachmentUpload', () => {
 
     let adding!: Promise<void>;
     act(() => {
-      adding = result.current.addFiles([file('a.pdf'), file('b.pdf'), file('c.pdf')]);
+      adding = result.current.addFiles([
+        file('a.pdf'),
+        file('b.pdf'),
+        file('c.pdf'),
+      ]);
     });
 
     // 三条都在「上传中」，不等任何一条回来
     expect(result.current.items).toHaveLength(3);
-    expect(result.current.items.every((entry) => entry.status === 'uploading')).toBe(true);
+    expect(
+      result.current.items.every((entry) => entry.status === 'uploading'),
+    ).toBe(true);
     expect(result.current.busy).toBe(true);
 
     await act(async () => {
       pending.forEach((resolve, index) => resolve(uploaded(`f${index}.pdf`)));
       await adding;
     });
-    expect(result.current.items.every((entry) => entry.status === 'uploaded')).toBe(true);
+    expect(
+      result.current.items.every((entry) => entry.status === 'uploaded'),
+    ).toBe(true);
   });
 
   it('一条失败不影响另一条', async () => {
@@ -103,7 +113,10 @@ describe('useAttachmentUpload', () => {
       await result.current.addFiles([file('bad.pdf'), file('good.pdf')]);
     });
 
-    expect(result.current.items.map((item) => item.status)).toEqual(['error', 'uploaded']);
+    expect(result.current.items.map((item) => item.status)).toEqual([
+      'error',
+      'uploaded',
+    ]);
     expect(result.current.items[0]?.error).toBe('上传失败');
     expect(result.current.items[1]?.error).toBeNull();
   });
@@ -144,7 +157,12 @@ describe('useAttachmentUpload', () => {
       await result.current.parse(result.current.items[0]!);
     });
 
-    act(() => result.current.setParseMethod(result.current.items[0]!.localId, 'disable'));
+    act(() =>
+      result.current.setParseMethod(
+        result.current.items[0]!.localId,
+        'disable',
+      ),
+    );
 
     expect(result.current.items[0]).toMatchObject({
       status: 'uploaded',
@@ -160,7 +178,9 @@ describe('useAttachmentUpload', () => {
     });
 
     act(() => result.current.remove(result.current.items[0]!.localId));
-    expect(result.current.items.map((item) => item.fileName)).toEqual(['b.pdf']);
+    expect(result.current.items.map((item) => item.fileName)).toEqual([
+      'b.pdf',
+    ]);
 
     act(() => result.current.reset());
     expect(result.current.items).toEqual([]);
@@ -169,7 +189,10 @@ describe('useAttachmentUpload', () => {
   it('清空后在途上传的结果不会再回到列表里', async () => {
     let resolveUpload!: (value: ReturnType<typeof uploaded>) => void;
     api.uploadTmpAttachment.mockImplementation(
-      () => new Promise((resolve) => { resolveUpload = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveUpload = resolve;
+        }),
     );
     const { result } = renderHook(() => useAttachmentUpload());
 

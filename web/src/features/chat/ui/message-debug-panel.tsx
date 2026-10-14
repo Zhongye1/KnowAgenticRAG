@@ -38,7 +38,7 @@ import {
   type DebugMessage,
   type MessageDebugFilter,
 } from '../lib/message-debug';
-import { Spinner } from './antd-spinner';
+import { Spin } from 'antd';
 import styles from './message-debug-panel.module.css';
 
 export type MessageDebugPanelProps = {
@@ -158,7 +158,11 @@ export const MessageDebugPanel = ({
               className={styles.actionBtn}
               onClick={() =>
                 void copy(
-                  JSON.stringify(messages.map((item) => item.raw), null, 2),
+                  JSON.stringify(
+                    messages.map((item) => item.raw),
+                    null,
+                    2,
+                  ),
                   () => setAllCopied(true),
                 )
               }
@@ -211,7 +215,9 @@ export const MessageDebugPanel = ({
           <div className={styles.emptyState}>
             <Clock className="size-5" />
             <span>
-              {query.trim() || filter !== 'all' ? '未找到匹配的消息' : '当前会话暂无消息数据'}
+              {query.trim() || filter !== 'all'
+                ? '未找到匹配的消息'
+                : '当前会话暂无消息数据'}
             </span>
           </div>
         ) : (
@@ -239,7 +245,7 @@ export const MessageDebugPanel = ({
                     onClick={() => void openLangfuse(group.runId as string)}
                   >
                     {pendingRunId === group.runId ? (
-                      <Spinner className="size-3" />
+                      <Spin className="size-3" />
                     ) : (
                       <ExternalLink className="size-3" />
                     )}

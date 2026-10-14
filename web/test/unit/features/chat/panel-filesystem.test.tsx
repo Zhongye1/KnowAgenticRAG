@@ -85,9 +85,9 @@ describe('usePanelFilesystem', () => {
       await result.current.loadThreadChildren(result.current.thread.nodes[0]!);
     });
 
-    expect(result.current.thread.nodes[0]?.children?.map((node) => node.key)).toEqual([
-      '/other/result.json',
-    ]);
+    expect(
+      result.current.thread.nodes[0]?.children?.map((node) => node.key),
+    ).toEqual(['/other/result.json']);
     // 除预取 outputs / uploads 之外，只额外拉了 /other/ 这一个子目录
     const otherCalls = api.listDirectory.mock.calls.filter(
       ([input]) => (input as { path?: string }).path === '/other/',
@@ -125,7 +125,9 @@ describe('usePanelFilesystem', () => {
       threadId: 't-1',
       path: '/a/',
     });
-    expect(result.current.thread.nodes.map((node) => node.key)).toEqual(['/d.txt']);
+    expect(result.current.thread.nodes.map((node) => node.key)).toEqual([
+      '/d.txt',
+    ]);
     expect(result.current.thread.selectedKeys).toEqual([]);
     expect(onDeleted).toHaveBeenCalledWith('/a/');
     expect(result.current.thread.deletingPaths).toEqual([]);
@@ -160,7 +162,8 @@ describe('usePanelFilesystem', () => {
     api.listDirectory.mockImplementation(
       ({ path }: { path: string }) =>
         new Promise((resolve) => {
-          if (path === '/') resolveRoot = () => resolve({ entries: rootEntries() });
+          if (path === '/')
+            resolveRoot = () => resolve({ entries: rootEntries() });
           else resolve({ entries: [] });
         }),
     );
@@ -176,7 +179,11 @@ describe('usePanelFilesystem', () => {
     await Promise.all([first, second]);
 
     // 第二次被刷新门挡下，根目录只请求一次
-    expect(api.listDirectory.mock.calls.filter(([input]) => (input as { path?: string }).path === '/')).toHaveLength(1);
+    expect(
+      api.listDirectory.mock.calls.filter(
+        ([input]) => (input as { path?: string }).path === '/',
+      ),
+    ).toHaveLength(1);
   });
 
   it('轮询开启时按间隔静默刷新，关闭时不挂', async () => {
@@ -231,7 +238,9 @@ describe('usePanelFilesystem', () => {
     await act(async () => {
       await result.current.refreshWorkspaceTree({ force: true });
     });
-    expect(api.listDirectory.mock.calls.length).toBeGreaterThan(callsAfterFirst);
+    expect(api.listDirectory.mock.calls.length).toBeGreaterThan(
+      callsAfterFirst,
+    );
   });
 
   it('个人空间的节点不是 workdir 文件', async () => {
@@ -255,7 +264,12 @@ describe('usePanelFileSearch', () => {
 
   it('查询词为空时不发请求', async () => {
     const { result } = renderWithClient(() =>
-      usePanelFileSearch({ scope: 'thread', threadId: 't-1', query: '  ', enabled: true }),
+      usePanelFileSearch({
+        scope: 'thread',
+        threadId: 't-1',
+        query: '  ',
+        enabled: true,
+      }),
     );
 
     await waitFor(() => expect(result.current.isSuccess).toBe(false));
@@ -279,6 +293,8 @@ describe('usePanelFileSearch', () => {
       threadId: undefined,
       query: 'report',
     });
-    expect(result.current.data?.map((item) => item.path)).toEqual(['/a/report.md']);
+    expect(result.current.data?.map((item) => item.path)).toEqual([
+      '/a/report.md',
+    ]);
   });
 });

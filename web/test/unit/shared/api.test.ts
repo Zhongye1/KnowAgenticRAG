@@ -147,7 +147,9 @@ describe('生成物客户端的凭据与 401 副作用', () => {
     setAccessToken('ars.token.stale');
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue(jsonResponse(401, { detail: '登录标识或密码错误' })),
+      vi
+        .fn()
+        .mockResolvedValue(jsonResponse(401, { detail: '登录标识或密码错误' })),
     );
     const listener = vi.fn();
     window.addEventListener(UNAUTHORIZED_EVENT, listener);

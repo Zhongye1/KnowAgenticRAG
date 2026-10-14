@@ -27,9 +27,16 @@ describe('resolveModelSpec', () => {
   it('按覆盖 → 会话绑定 → 智能体配置 → 系统默认的顺序取值', () => {
     expect(resolveModelSpec(full)).toBe('override:m');
     expect(resolveModelSpec({ ...full, override: '' })).toBe('thread:m');
-    expect(resolveModelSpec({ ...full, override: '', threadMetadata: {} })).toBe('agent:m');
     expect(
-      resolveModelSpec({ ...full, override: '', threadMetadata: {}, agentConfig: {} }),
+      resolveModelSpec({ ...full, override: '', threadMetadata: {} }),
+    ).toBe('agent:m');
+    expect(
+      resolveModelSpec({
+        ...full,
+        override: '',
+        threadMetadata: {},
+        agentConfig: {},
+      }),
     ).toBe('system:m');
   });
 
@@ -39,18 +46,26 @@ describe('resolveModelSpec', () => {
   });
 
   it('空串与纯空白都不算选中', () => {
-    expect(resolveModelSpec({ override: '   ', agentConfig: { model: 'agent:m' } })).toBe('agent:m');
-    expect(resolveModelSpec({ threadMetadata: { model_spec: '  ' }, systemDefault: 'system:m' })).toBe(
-      'system:m',
-    );
+    expect(
+      resolveModelSpec({ override: '   ', agentConfig: { model: 'agent:m' } }),
+    ).toBe('agent:m');
+    expect(
+      resolveModelSpec({
+        threadMetadata: { model_spec: '  ' },
+        systemDefault: 'system:m',
+      }),
+    ).toBe('system:m');
   });
 });
 
 describe('formatModelSpecLabel', () => {
   it('取模型名的最后一段', () => {
-    expect(formatModelSpecLabel('siliconflow-cn:Pro/MiniMaxAI/MiniMax-M2.5', '选择模型')).toBe(
-      'MiniMax-M2.5',
-    );
+    expect(
+      formatModelSpecLabel(
+        'siliconflow-cn:Pro/MiniMaxAI/MiniMax-M2.5',
+        '选择模型',
+      ),
+    ).toBe('MiniMax-M2.5');
   });
 
   it('没有斜杠时就是模型名', () => {

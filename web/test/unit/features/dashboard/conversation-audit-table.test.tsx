@@ -6,7 +6,16 @@
  * 详情抽屉与表格同属一条链路，放在同一文件里验证「点行 → 拿到详情 → 渲染消息」。
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+
+// antd 词汇由应用装配承载，测试同构挂上
+import { AntdProvider } from '@/app/theme/antd-provider';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import * as React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -71,13 +80,16 @@ const renderTable = (harness = false) => {
     defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
   });
   return render(
-    <QueryClientProvider client={client}>
-      {harness ? (
-        <Harness />
-      ) : (
-        <ConversationAuditTable onOpenThread={onOpenThread} />
-      )}
-    </QueryClientProvider>,
+    // antd 词汇（按钮两字间距、下拉行为）由应用装配承载，测试同构挂上
+    <AntdProvider>
+      <QueryClientProvider client={client}>
+        {harness ? (
+          <Harness />
+        ) : (
+          <ConversationAuditTable onOpenThread={onOpenThread} />
+        )}
+      </QueryClientProvider>
+    </AntdProvider>,
   );
 };
 
@@ -398,9 +410,20 @@ describe('会话详情抽屉', () => {
     await userEvent.click(rows[0]);
     await screen.findByTestId('thread-detail-drawer');
 
-    await userEvent.keyboard('{Escape}');
+    // rc-drawer 的 Esc 监听挂在面板根（.ant-drawer，tabIndex=-1）上；
+    // userEvent.keyboard 聚焦 body 触发不到，直接对面板派发 Esc
+    fireEvent.keyDown(document.querySelector('.ant-drawer') ?? document.body, {
+      keyCode: 27,
+      key: 'Escape',
+    });
+    // antd Drawer 关闭走淡出动画后卸载；jsdom 无布局时以 content-wrapper-hidden
+    // 表达「用户看到的关闭」，卸载与否是动画实现细节
     await waitFor(() =>
-      expect(screen.queryByTestId('thread-detail-drawer')).toBeNull(),
+      expect(
+        document
+          .querySelector('[data-testid="thread-detail-drawer"]')
+          ?.classList.contains('ant-drawer-content-wrapper-hidden') ?? true,
+      ).toBe(true),
     );
     expect(api.detail).toHaveBeenCalledTimes(1);
   });

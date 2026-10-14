@@ -21,7 +21,13 @@ describe('normalizeProjects', () => {
   it('只留界面用得到的字段，缺名称时退到 id', () => {
     expect(
       normalizeProjects([
-        { id: 'a', name: 'Alpha', workdir_path: '/w/a', directory_mode: 'managed', uid: 'x' },
+        {
+          id: 'a',
+          name: 'Alpha',
+          workdir_path: '/w/a',
+          directory_mode: 'managed',
+          uid: 'x',
+        },
         { id: 'b' },
       ]),
     ).toEqual([
@@ -71,12 +77,19 @@ describe('normalizeHistoryCandidates', () => {
   });
 
   it('has_more 只在明确为 true 时成立', () => {
-    expect(normalizeHistoryCandidates({ items: [], has_more: true }).hasMore).toBe(true);
-    expect(normalizeHistoryCandidates({ items: [], has_more: 'yes' }).hasMore).toBe(false);
+    expect(
+      normalizeHistoryCandidates({ items: [], has_more: true }).hasMore,
+    ).toBe(true);
+    expect(
+      normalizeHistoryCandidates({ items: [], has_more: 'yes' }).hasMore,
+    ).toBe(false);
   });
 
   it('形状不符时返回空结果', () => {
-    expect(normalizeHistoryCandidates(null)).toEqual({ items: [], hasMore: false });
+    expect(normalizeHistoryCandidates(null)).toEqual({
+      items: [],
+      hasMore: false,
+    });
     expect(normalizeHistoryCandidates({ items: 'nope' })).toEqual({
       items: [],
       hasMore: false,

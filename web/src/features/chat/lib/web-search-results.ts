@@ -55,7 +55,8 @@ export function parseWebSearchResults(
     }
   }
 
-  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return EMPTY;
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+    return EMPTY;
 
   const raw = (parsed as { results?: unknown }).results;
   const list = Array.isArray(raw) ? raw : [];

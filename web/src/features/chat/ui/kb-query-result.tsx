@@ -29,10 +29,15 @@ export const KbQueryResultView = ({ result }: KbQueryResultViewProps) => (
           <section className="flex flex-col gap-1">
             <h6 className="text-[var(--gray-500)]">实体</h6>
             {result.entities.map((entity, index) => (
-              <div key={`entity-${index}-${entity.name}`} className="flex flex-col">
+              <div
+                key={`entity-${index}-${entity.name}`}
+                className="flex flex-col"
+              >
                 <div className="flex items-center gap-2">
                   <span className="text-[var(--gray-1000)]">{entity.name}</span>
-                  <span className="text-xs text-[var(--gray-500)]">{entity.type}</span>
+                  <span className="text-xs text-[var(--gray-500)]">
+                    {entity.type}
+                  </span>
                 </div>
                 {entity.description ? (
                   <p className="text-[var(--gray-800)]">{entity.description}</p>
@@ -46,11 +51,20 @@ export const KbQueryResultView = ({ result }: KbQueryResultViewProps) => (
           <section className="flex flex-col gap-1">
             <h6 className="text-[var(--gray-500)]">关系</h6>
             {result.relationships.map((relation, index) => (
-              <div key={`relation-${index}`} className="flex items-center gap-2">
-                <span className="text-[var(--gray-1000)]">{relation.srcId}</span>
+              <div
+                key={`relation-${index}`}
+                className="flex items-center gap-2"
+              >
+                <span className="text-[var(--gray-1000)]">
+                  {relation.srcId}
+                </span>
                 <span aria-hidden>→</span>
-                <span className="text-[var(--gray-1000)]">{relation.tgtId}</span>
-                <span className="text-[var(--gray-500)]">{relation.keywords}</span>
+                <span className="text-[var(--gray-1000)]">
+                  {relation.tgtId}
+                </span>
+                <span className="text-[var(--gray-500)]">
+                  {relation.keywords}
+                </span>
               </div>
             ))}
           </section>

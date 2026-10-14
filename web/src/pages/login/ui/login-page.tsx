@@ -170,7 +170,8 @@ export const LoginPage = () => {
 
   // 健康检查只表达进程 liveness；非 ok 或请求失败都进告警条
   const healthFailed =
-    health.isError || (health.data !== undefined && health.data.status !== 'ok');
+    health.isError ||
+    (health.data !== undefined && health.data.status !== 'ok');
   const healthMessage = health.isError
     ? health.error instanceof Error
       ? health.error.message

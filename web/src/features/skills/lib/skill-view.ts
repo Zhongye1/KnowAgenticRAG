@@ -35,22 +35,6 @@ const GROUP_TITLES: Record<SkillGroupKey, string> = {
   shared: '共享',
 };
 
-/** 卡片标题格式化：分隔符折成空格、逐词首字母大写（缩略语原样）。 */
-export const formatSkillTitle = (value: unknown): string => {
-  const text = String(value ?? '').trim();
-  if (!text) return '';
-  return text
-    .replace(/[-_]+/g, ' ')
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((word) =>
-      /^[A-Z0-9]{2,3}$/.test(word)
-        ? word
-        : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase(),
-    )
-    .join(' ');
-};
-
 /** 按 slug 关键词给图标，认不出用通用图标。 */
 const SKILL_ICON_RULES: Array<{ keywords: string[]; icon: LucideIcon }> = [
   { keywords: ['design'], icon: Paintbrush },

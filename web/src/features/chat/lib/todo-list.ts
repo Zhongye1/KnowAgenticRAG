@@ -11,11 +11,7 @@ import { parseToolCallArgs } from './tool-call';
 export const TODO_NAME_MAX_LENGTH = 20;
 
 export type TodoStatus =
-  | 'completed'
-  | 'in_progress'
-  | 'pending'
-  | 'cancelled'
-  | 'unknown';
+  'completed' | 'in_progress' | 'pending' | 'cancelled' | 'unknown';
 
 export type TodoItem = {
   status: TodoStatus;

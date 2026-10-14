@@ -1,19 +1,22 @@
 /**
  * 用户菜单。
  *
- * 参照实现把用户信息、文档中心、日夜切换、调试面板与退出登录收在同一个下拉菜单里。
+ * 参照实现把用户信息、文档中心、日夜切换、调试面板、设置与退出登录收在同一个下拉菜单里。
  * 本仓照此保留主题项：`DayNightSwitcher` 只在展开态的导航列底部，折叠态下菜单项是
  * 唯一的切换入口。调试面板的开关放在 `features/debug` 的 store 里，与全局快捷键共用。
+ * 「设置」打开账户设置弹窗（账户资料、头像、Memory 开关），入口只在登录后的外壳存在。
  */
 import { Dropdown, type MenuProps } from 'antd';
-import { BookOpen, Bug, LogOut, Moon, Sun } from 'lucide-react';
+import { BookOpen, Bug, LogOut, Moon, Settings, Sun } from 'lucide-react';
 import * as React from 'react';
 
 import { formatUserRole, useIsSuperuser, useUser } from '@/entities/session';
+import { SettingsModal } from '@/features/settings';
 import { useDebugPanel } from '@/features/debug';
 import { DOCS_URL } from '@/shared/config';
 import { toggleTheme, useIsDarkMode } from '@/shared/lib';
-import { Avatar, AvatarFallback, AvatarImage } from '@/shared/ui/avatar';
+import { useNotifications } from '@/shared/ui/notifications';
+import { Avatar } from 'antd';
 
 import styles from './user-menu.module.css';
 
@@ -33,7 +36,9 @@ export function UserMenu({ onLogout, collapsed = false }: UserMenuProps) {
   const isSuperuser = useIsSuperuser();
   const isDark = useIsDarkMode();
   const setDebugOpen = useDebugPanel((state) => state.setOpen);
+  const { addNotification } = useNotifications();
   const [open, setOpen] = React.useState(false);
+  const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   const name = user.data?.username ?? '未登录';
   const uid = user.data?.uid ?? '';
@@ -43,7 +48,7 @@ export function UserMenu({ onLogout, collapsed = false }: UserMenuProps) {
   const items: MenuProps['items'] = [
     {
       key: 'identity',
-      // 信息展示项：本仓没有账号设置页，这里只呈现身份，不承载跳转。
+      // 信息展示项：改资料走「设置」，这里只呈现身份，不承载跳转。
       label: (
         <div className={styles.identity}>
           <span className={styles.identityName}>{name}</span>
@@ -70,6 +75,11 @@ export function UserMenu({ onLogout, collapsed = false }: UserMenuProps) {
           },
         ]
       : []),
+    {
+      key: 'settings',
+      icon: <Settings size={16} />,
+      label: '设置',
+    },
     { key: 'logout', icon: <LogOut size={16} />, label: '退出登录' },
   ];
 
@@ -91,37 +101,45 @@ export function UserMenu({ onLogout, collapsed = false }: UserMenuProps) {
       setDebugOpen(true);
       return;
     }
+    if (key === 'settings') {
+      setOpen(false);
+      setSettingsOpen(true);
+      return;
+    }
     if (key === 'logout') {
       onLogout();
     }
   };
 
   return (
-    <Dropdown
-      menu={{ items, onClick: handleClick }}
-      trigger={['click']}
-      open={open}
-      onOpenChange={setOpen}
-      placement="topRight"
-    >
-      <button
-        type="button"
-        className={`${styles.trigger} ${open ? styles.triggerOpen : ''}`}
-        aria-label="用户菜单"
-        aria-haspopup="menu"
-        aria-expanded={open}
+    <>
+      <Dropdown
+        menu={{ items, onClick: handleClick }}
+        trigger={['click']}
+        open={open}
+        onOpenChange={setOpen}
+        placement="topRight"
       >
-        <Avatar className={styles.avatar}>
-          {avatarUrl ? (
-            <AvatarImage src={avatarUrl} alt={name} />
-          ) : (
-            <AvatarFallback className="rounded-md">
-              {initialsOf(name)}
-            </AvatarFallback>
-          )}
-        </Avatar>
-        {collapsed ? null : <span className={styles.name}>{name}</span>}
-      </button>
-    </Dropdown>
+        <button
+          type="button"
+          className={`${styles.trigger} ${open ? styles.triggerOpen : ''}`}
+          aria-label="用户菜单"
+          aria-haspopup="menu"
+          aria-expanded={open}
+        >
+          <Avatar size={28} src={avatarUrl} className={styles.avatar}>
+            {initialsOf(name)}
+          </Avatar>
+          {collapsed ? null : <span className={styles.name}>{name}</span>}
+        </button>
+      </Dropdown>
+
+      <SettingsModal
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        notifySuccess={(title) => addNotification({ type: 'success', title })}
+        notifyError={(title) => addNotification({ type: 'error', title })}
+      />
+    </>
   );
 }

@@ -28,19 +28,17 @@ import {
   useModelProviders,
   useUpdateProvider,
 } from '../model/provider-queries';
-import { Button } from '@/shared/ui/button';
-import { confirm } from '@/shared/ui/confirm-dialog';
-import { Empty } from '@/shared/ui/empty';
-import { Input } from '@/shared/ui/input';
-import { Spinner } from '@/shared/ui/spinner';
+import { useConfirm } from '@/shared/ui/confirm-dialog';
 import { useNotifications } from '@/shared/ui/notifications';
 
+import { Button, Empty, Input, Spin } from 'antd';
 import { ModelFormDialog } from './model-form-dialog';
 import { ProviderCard } from './provider-card';
 import { ProviderFormDialog } from './provider-form-dialog';
 import { ProviderModelsDialog } from './provider-models-dialog';
 
 export const ModelProviderPanel = () => {
+  const { confirm } = useConfirm();
   const notifications = useNotifications();
   const providers = useModelProviders();
   const defaultModel = useDefaultModelSpec();
@@ -250,10 +248,14 @@ export const ModelProviderPanel = () => {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* 与智能体面板同规格：ant reset 在 base 层压过组件层的 color/font，
+          主按钮白字、输入框 32px 高与按钮对齐、上限 33vw，新增按钮 ml-auto
+          连同刷新一起靠右 */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-56 flex-1">
+        <div className="relative w-full max-w-[33vw] sm:w-auto sm:flex-1">
+          {/* z-10：图标是绝对定位的兄弟节点，会被后绘的不透明输入框盖住 */}
           <Search
-            className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-color-text-3"
+            className="pointer-events-none absolute top-1/2 left-2 z-10 size-4 -translate-y-1/2 text-color-text-3"
             aria-hidden
           />
           <Input
@@ -261,10 +263,14 @@ export const ModelProviderPanel = () => {
             onChange={(event) => setKeyword(event.target.value)}
             placeholder="搜索供应商…"
             aria-label="搜索供应商"
-            className="pl-8"
+            className="h-8 pl-8 leading-8"
           />
         </div>
-        <p className="text-xs text-color-text-3" data-testid="provider-stats">
+        {/* m-0：p 的默认下边距会把 flex 居中算歪（视觉偏上 6px） */}
+        <p
+          className="m-0 text-xs text-color-text-3"
+          data-testid="provider-stats"
+        >
           共 {stats.total} 个 · 已启用 {stats.enabled} 个 · 已启用模型{' '}
           {stats.models} 个
           {stats.warning > 0 ? ` · 凭证缺失 ${stats.warning} 个` : ''}
@@ -275,26 +281,32 @@ export const ModelProviderPanel = () => {
           </output>
         ) : null}
         <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          aria-label="刷新供应商列表"
-          onClick={() => void providers.refetch()}
-        >
-          <RefreshCw className="size-4" aria-hidden />
-        </Button>
-        <Button
-          type="button"
+          htmlType="button"
+          type="primary"
           icon={<Plus className="size-4" aria-hidden />}
+          /* shadow-none：antd 非线框主按钮自带的 2px 底部投影不要 */
+          className="ml-auto text-color-white shadow-none"
           onClick={openCreate}
         >
           新增供应商
+        </Button>
+        <Button
+          htmlType="button"
+          type="text"
+          size="small"
+          aria-label="刷新供应商列表"
+          onClick={() => void providers.refetch()}
+        >
+          <RefreshCw
+            className={`size-4 ${providers.isFetching ? 'animate-spin' : ''}`}
+            aria-hidden
+          />
         </Button>
       </div>
 
       {providers.isPending ? (
         <p className="flex items-center gap-2 py-8 text-sm text-color-text-3">
-          <Spinner aria-hidden className="size-4" />
+          <Spin aria-hidden className="size-4" />
           正在加载供应商…
         </p>
       ) : null}
@@ -307,8 +319,8 @@ export const ModelProviderPanel = () => {
               : '加载供应商失败。'}
           </p>
           <Button
-            type="button"
-            variant="outline"
+            htmlType="button"
+            variant="outlined"
             onClick={() => void providers.refetch()}
           >
             重试

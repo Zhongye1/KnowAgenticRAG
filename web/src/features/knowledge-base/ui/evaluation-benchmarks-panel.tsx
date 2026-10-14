@@ -16,6 +16,10 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
+import { Button, Dropdown, Spin } from 'antd';
+import { Progress } from '@/shared/ui/progress';
+import { useNotifications } from '@/shared/ui/notifications';
+import { useConfirm } from '@/shared/ui/confirm-dialog';
 
 import type { EvaluationDataset } from '../api/evaluation-api';
 import {
@@ -39,18 +43,7 @@ import { evaluationApi } from '../api/evaluation-api';
 import { BenchmarkGenerateDialog } from './benchmark-generate-dialog';
 import { BenchmarkUploadDialog } from './benchmark-upload-dialog';
 import { BenchmarkDatasetPreview } from './benchmark-dataset-preview';
-import { Button } from '@/shared/ui/button';
-import { confirm } from '@/shared/ui/confirm-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu';
 import { Empty } from '@/shared/ui/empty';
-import { Progress } from '@/shared/ui/progress';
-import { Spinner } from '@/shared/ui/spinner';
-import { useNotifications } from '@/shared/ui/notifications';
 
 export type EvaluationBenchmarksPanelProps = {
   kbId: string;
@@ -73,6 +66,7 @@ export const EvaluationBenchmarksPanel = ({
   kbId,
   readOnly,
 }: EvaluationBenchmarksPanelProps) => {
+  const { confirm } = useConfirm();
   const notifications = useNotifications();
   const datasets = useEvaluationDatasets(kbId);
   const resume = useResumeEvaluationDataset(kbId);
@@ -133,7 +127,7 @@ export const EvaluationBenchmarksPanel = ({
   if (datasets.isLoading) {
     return (
       <div className="flex h-[420px] items-center justify-center gap-2 text-sm text-color-text-2">
-        <Spinner />
+        <Spin />
         加载中…
       </div>
     );
@@ -149,8 +143,8 @@ export const EvaluationBenchmarksPanel = ({
             : '未知错误'}
         </p>
         <Button
-          type="button"
-          variant="outline"
+          htmlType="button"
+          variant="outlined"
           onClick={() => void datasets.refetch()}
         >
           <RefreshCw className="size-4" />
@@ -170,8 +164,8 @@ export const EvaluationBenchmarksPanel = ({
         </span>
         <div className="flex gap-2">
           <Button
-            type="button"
-            variant="outline"
+            htmlType="button"
+            variant="outlined"
             onClick={() => void datasets.refetch()}
           >
             <RefreshCw className="size-4" />
@@ -180,14 +174,14 @@ export const EvaluationBenchmarksPanel = ({
           {readOnly ? null : (
             <>
               <Button
-                type="button"
-                variant="outline"
+                htmlType="button"
+                variant="outlined"
                 onClick={() => setUploadOpen(true)}
               >
                 <Upload className="size-4" />
                 上传基准
               </Button>
-              <Button type="button" onClick={() => setGenerateOpen(true)}>
+              <Button htmlType="button" onClick={() => setGenerateOpen(true)}>
                 <Sparkles className="size-4" />
                 自动生成
               </Button>
@@ -209,14 +203,17 @@ export const EvaluationBenchmarksPanel = ({
               readOnly ? null : (
                 <div className="flex gap-2">
                   <Button
-                    type="button"
-                    variant="outline"
+                    htmlType="button"
+                    variant="outlined"
                     onClick={() => setUploadOpen(true)}
                   >
                     <Upload className="size-4" />
                     上传基准
                   </Button>
-                  <Button type="button" onClick={() => setGenerateOpen(true)}>
+                  <Button
+                    htmlType="button"
+                    onClick={() => setGenerateOpen(true)}
+                  >
                     <Sparkles className="size-4" />
                     自动生成
                   </Button>
@@ -266,45 +263,59 @@ export const EvaluationBenchmarksPanel = ({
                       {dataset.item_count} 个问题
                     </span>
                     {readOnly ? null : (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`${dataset.name} 操作`}
-                          >
-                            <MoreHorizontal className="size-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            disabled={
-                              dataset.build_metadata.status !== 'failed'
-                            }
-                            onSelect={() => void runResume(dataset)}
-                          >
-                            <Plus className="size-4" />
-                            继续生成
-                          </DropdownMenuItem>
-                          {/* 导出走后端 `export_dataset_jsonl`：非 completed 一律 400 */}
-                          <DropdownMenuItem
-                            disabled={
-                              !isDatasetCompleted(dataset.build_metadata)
-                            }
-                            onSelect={() => void runDownload(dataset)}
-                          >
-                            <Download className="size-4" />
-                            下载
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onSelect={() => void runDelete(dataset)}
-                          >
-                            <Trash2 className="size-4" />
-                            删除
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <Dropdown
+                        trigger={['click']}
+                        menu={{
+                          items: [
+                            {
+                              key: 'resume',
+                              label: (
+                                <span className="flex items-center gap-2">
+                                  <Plus className="size-4" />
+                                  继续生成
+                                </span>
+                              ),
+                              disabled:
+                                dataset.build_metadata.status !== 'failed',
+                            },
+                            {
+                              key: 'download',
+                              label: (
+                                <span className="flex items-center gap-2">
+                                  <Download className="size-4" />
+                                  下载
+                                </span>
+                              ),
+                              disabled: !isDatasetCompleted(
+                                dataset.build_metadata,
+                              ),
+                            },
+                            {
+                              key: 'delete',
+                              label: (
+                                <span className="flex items-center gap-2">
+                                  <Trash2 className="size-4" />
+                                  删除
+                                </span>
+                              ),
+                            },
+                          ],
+                          onClick: ({ key }) => {
+                            if (key === 'resume') void runResume(dataset);
+                            if (key === 'download') void runDownload(dataset);
+                            if (key === 'delete') void runDelete(dataset);
+                          },
+                        }}
+                      >
+                        <Button
+                          htmlType="button"
+                          type="text"
+                          size="small"
+                          aria-label={`${dataset.name} 操作`}
+                        >
+                          <MoreHorizontal className="size-4" />
+                        </Button>
+                      </Dropdown>
                     )}
                   </div>
                 </div>

@@ -52,8 +52,7 @@ const { SkillDetailPage } = await import('@/pages/skill-detail');
 const { QueryClient, QueryClientProvider } =
   await import('@tanstack/react-query');
 // 删除走命令式确认框，测试里要挂上它的渲染出口
-const { ConfirmDialogHost } = await import('@/shared/ui/confirm-dialog-host');
-const { useConfirmStore } = await import('@/shared/ui/confirm-dialog');
+const { AntdProvider } = await import('@/app/theme/antd-provider');
 
 const managedSkill = (extra: Record<string, unknown> = {}) => ({
   id: 3,
@@ -87,21 +86,24 @@ const renderPage = () => {
     defaultOptions: { queries: { retry: false } },
   });
   return render(
-    <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={['/extensions/skill/mysql-reporter']}>
-        <Routes>
-          <Route path="/extensions/skill/:slug" element={<SkillDetailPage />} />
-          <Route path="/extensions" element={<LocationProbe />} />
-        </Routes>
-        <ConfirmDialogHost />
-      </MemoryRouter>
-    </QueryClientProvider>,
+    <AntdProvider>
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/extensions/skill/mysql-reporter']}>
+          <Routes>
+            <Route
+              path="/extensions/skill/:slug"
+              element={<SkillDetailPage />}
+            />
+            <Route path="/extensions" element={<LocationProbe />} />
+          </Routes>
+        </MemoryRouter>
+      </QueryClientProvider>
+    </AntdProvider>,
   );
 };
 
 describe('技能详情的导航落点', () => {
   beforeEach(() => {
-    useConfirmStore.setState({ pending: null });
     notifications.addNotification.mockReset();
     sdk.listManaged
       .mockReset()

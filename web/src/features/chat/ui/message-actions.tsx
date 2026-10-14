@@ -22,16 +22,8 @@ import {
 } from 'lucide-react';
 
 import { copyTextToClipboard } from '@/shared/lib';
-import { Button } from './antd-button';
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './antd-dialog';
-import { Textarea } from './antd-input';
-import { useNotifications } from './antd-notifications';
+import { Button, Input, Modal } from 'antd';
+import { useNotifications } from '@/shared/ui/notifications';
 import styles from './message-actions.module.css';
 
 import type { ChatMessage } from '../api/agent-api';
@@ -92,10 +84,7 @@ export const MessageActions = ({
   React.useEffect(() => {
     if (!copied) return;
 
-    const timer = window.setTimeout(
-      () => setCopied(false),
-      COPIED_FEEDBACK_MS,
-    );
+    const timer = window.setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS);
     return () => window.clearTimeout(timer);
   }, [copied]);
 
@@ -119,7 +108,11 @@ export const MessageActions = ({
     try {
       await submitMessageFeedback(message.id, next, nextReason ?? null);
       setRating(next);
-      addNotification({ type: 'success', title: '反馈', message: '感谢您的反馈！' });
+      addNotification({
+        type: 'success',
+        title: '反馈',
+        message: '感谢您的反馈！',
+      });
     } catch (error) {
       // 重复提交是后端语义，不是失败：如实转达而不是提示「请稍后重试」
       if (error instanceof Error && error.message.includes('already')) {
@@ -141,12 +134,20 @@ export const MessageActions = ({
   const handleCopy = async () => {
     const ok = await copyTextToClipboard(message.content);
     if (!ok) {
-      addNotification({ type: 'error', title: '复制', message: '复制失败，请手动复制' });
+      addNotification({
+        type: 'error',
+        title: '复制',
+        message: '复制失败，请手动复制',
+      });
       return;
     }
 
     setCopied(true);
-    addNotification({ type: 'success', title: '复制', message: '文本已复制到剪贴板' });
+    addNotification({
+      type: 'success',
+      title: '复制',
+      message: '文本已复制到剪贴板',
+    });
   };
 
   return (
@@ -274,40 +275,40 @@ export const MessageActions = ({
         </div>
       ) : null}
 
-      <Dialog open={reasonOpen} onOpenChange={setReasonOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>请告诉我们不满意的原因</DialogTitle>
-          </DialogHeader>
-          <Textarea
-            rows={4}
-            maxLength={DISLIKE_REASON_MAX_LENGTH}
-            placeholder="您的反馈将帮助我们改进服务（可选）"
-            aria-label="不满意原因"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-          />
-          <DialogFooter>
-            <Button
-
-              variant="ghost"
-              onClick={() => {
-                setReason('');
-                setReasonOpen(false);
-              }}
-            >
-              取消
-            </Button>
-            <Button
-
-              disabled={submitting}
-              onClick={() => void sendFeedback('dislike', reason)}
-            >
-              提交
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <Modal
+        open={reasonOpen}
+        onCancel={() => setReasonOpen(false)}
+        footer={null}
+        title={<div>请告诉我们不满意的原因</div>}
+      >
+        <Input.TextArea
+          rows={4}
+          maxLength={DISLIKE_REASON_MAX_LENGTH}
+          placeholder="您的反馈将帮助我们改进服务（可选）"
+          aria-label="不满意原因"
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+        />
+        <div className="flex justify-end gap-2 pt-2">
+          <Button
+            htmlType="button"
+            type="text"
+            onClick={() => {
+              setReason('');
+              setReasonOpen(false);
+            }}
+          >
+            取消
+          </Button>
+          <Button
+            htmlType="button"
+            disabled={submitting}
+            onClick={() => void sendFeedback('dislike', reason)}
+          >
+            提交
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 };

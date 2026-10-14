@@ -1,36 +1,44 @@
 /**
  * 侧边栏里的会话列表。
  *
- * 展示与操作分开：标题、置顶标记、当前会话高亮、加载与失败状态由这里渲染，
- * 重命名、置顶、删除都经 store 落到后端；失败原因显示在列表上方，不停在静默。
+ * 参照 `ConversationNavSection.vue`：可折叠的「最近」标题、32px 会话行（悬停露出渐隐遮罩与
+ * 「更多」按钮）、行状态点、置顶标记、底部的「加载更多」。
+ *
+ * 行的手势与参照一致：单击进入、双击重命名、中键删除，另有悬停出现的「更多」菜单
+ * （置顶 / 重命名 / 删除）。
+ *
+ * 与参照的两处不同：
+ * - 行仍是 `<Link>` 而不是 `<div>`：可聚焦、可读屏、可新标签页打开；手势挂在它上面，
+ *   中键的默认行为（新标签页）被拦下。
+ * - 悬停/选中的底色走本仓侧边栏的 `--sidebar-*` 调色板：参照的 `--gray-50` 在这层底色上
+ *   没有对比。
  */
 import * as React from 'react';
 import {
-  Check,
-  LoaderCircle,
-  MessageSquare,
-  MoreHorizontal,
+  ChevronDown,
+  Loader2,
+  MoreVertical,
   Pin,
-  X,
+  PinOff,
+  SquarePen,
+  Trash2,
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 
+import { Button, Dropdown, Input, Modal } from 'antd';
+
+import { useNotifications } from '@/shared/ui/notifications';
+import { paths } from '@/shared/config';
+
 import type { ChatThread } from '../api/agent-api';
-import { useThreadList } from '../model/thread-list-store';
 import { disposeAgentStateReads } from '../model/agent-state';
 import { disposeThreadRuntime } from '../model/thread-runtime-store';
-import { paths } from '@/shared/config';
-import { Button } from './antd-button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from './antd-dialog';
-import { Dropdown } from './antd-dropdown';
-import { Input } from './antd-input';
+import { useThreadList } from '../model/thread-list-store';
+
+import styles from './conversation-list.module.css';
+
+/** 标题缺省时的占位；与参照同值，也与本仓页头的「新的对话」一致。 */
+const UNTITLED = '新的对话';
 
 type ConversationListProps = {
   /** 当前路由上的会话 id，用于高亮。 */
@@ -45,166 +53,214 @@ const ThreadRow = ({
   isCurrent: boolean;
 }) => {
   const navigate = useNavigate();
+  const { addNotification } = useNotifications();
   const rename = useThreadList((state) => state.rename);
   const togglePin = useThreadList((state) => state.togglePin);
   const remove = useThreadList((state) => state.remove);
-  const [editing, setEditing] = React.useState(false);
+  const [renaming, setRenaming] = React.useState(false);
   const [draft, setDraft] = React.useState(thread.title ?? '');
   const [confirming, setConfirming] = React.useState(false);
-  const inputRef = React.useRef<import('antd').InputRef>(null);
+  const renameInputRef = React.useRef<import('antd').InputRef>(null);
 
   React.useEffect(() => {
-    if (editing) inputRef.current?.focus();
-  }, [editing]);
+    if (renaming) renameInputRef.current?.focus();
+  }, [renaming]);
 
-  const commitRename = async () => {
-    if (!(await rename(thread.id, draft))) return;
-    setEditing(false);
+  const title = thread.title || UNTITLED;
+
+  const openRename = () => {
+    setDraft(thread.title ?? '');
+    setRenaming(true);
   };
 
-  if (editing) {
-    return (
-      <span className="flex items-center gap-1 px-2 py-1">
+  const commitRename = async () => {
+    const next = draft.trim();
+    if (!next) {
+      addNotification({
+        type: 'warning',
+        title: '会话',
+        message: '标题不能为空',
+      });
+      return;
+    }
+    if (!(await rename(thread.id, next))) return;
+    setRenaming(false);
+  };
+
+  const confirmRemove = async () => {
+    setConfirming(false);
+    if (!(await remove(thread.id))) return;
+    // 删掉哪条都要清掉它的运行时：订阅与在途请求不该继续为已删会话工作
+    disposeAgentStateReads(thread.id);
+    disposeThreadRuntime(thread.id);
+    if (!isCurrent) return;
+    // 删掉的正是当前会话：后端随后会返回「对话线程不存在」，
+    // 必须离开这个地址，否则用户停在一条已死的会话上
+    navigate(paths.app.chat.getHref(), { replace: true });
+  };
+
+  return (
+    /* 操作区是行的兄弟节点而不是 Link 的子节点：`<a>` 里不能放按钮，
+       而且嵌进去会让点「更多」冒泡成一次导航 */
+    <span className={styles.row}>
+      <Link
+        to={paths.app.chat.getHref(thread.id)}
+        aria-current={isCurrent ? 'page' : undefined}
+        className={`${styles.item} ${isCurrent ? styles.itemActive : ''}`}
+        /* 双击重命名。第一次点击已经进入这条会话（与参照一致），改名弹窗随后打开 */
+        onDoubleClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openRename();
+        }}
+        /* 中键删除。拦下默认行为，否则浏览器会另开一个标签页 */
+        onAuxClick={(event) => {
+          if (event.button !== 1) return;
+          event.preventDefault();
+          setConfirming(true);
+        }}
+      >
+        <span className={styles.title}>{title}</span>
+        <span className={styles.actionsMask} aria-hidden />
+
+        {thread.thread_status === 'loading' ? (
+          /* output 隐式带 role=status：读屏会播报状态变化，且不需要额外 role */
+          <output
+            className={`${styles.status} ${styles.statusLoading}`}
+            aria-label="正在运行"
+            title="正在运行"
+          >
+            <Loader2 size={12} aria-hidden />
+          </output>
+        ) : thread.thread_status === 'ready' ? (
+          <output
+            className={`${styles.status} ${styles.statusReady}`}
+            aria-label="有新回复"
+            title="有新回复"
+          />
+        ) : null}
+      </Link>
+
+      <span className={styles.actions}>
+        <Dropdown
+          trigger={['click']}
+          menu={{
+            items: [
+              {
+                key: 'pin',
+                icon: thread.is_pinned ? (
+                  <PinOff size={14} aria-hidden />
+                ) : (
+                  <Pin size={14} aria-hidden />
+                ),
+                label: thread.is_pinned ? '取消置顶' : '置顶',
+              },
+              {
+                key: 'rename',
+                icon: <SquarePen size={14} aria-hidden />,
+                label: '重命名',
+              },
+              {
+                key: 'delete',
+                icon: <Trash2 size={14} aria-hidden />,
+                label: '删除',
+                danger: true,
+              },
+            ],
+            onClick: ({ key }) => {
+              if (key === 'pin') void togglePin(thread.id);
+              if (key === 'rename') openRename();
+              if (key === 'delete') setConfirming(true);
+            },
+          }}
+        >
+          <span className={styles.actionButtonWrapper}>
+            <Button
+              type="text"
+              size="small"
+              className={styles.moreButton}
+              aria-label={`会话操作：${title}`}
+            >
+              <MoreVertical size={16} aria-hidden />
+            </Button>
+            {thread.is_pinned ? (
+              <Pin
+                className={styles.pinnedIndicator}
+                size={14}
+                aria-label="已置顶"
+              />
+            ) : null}
+          </span>
+        </Dropdown>
+      </span>
+
+      <Modal
+        open={renaming}
+        onCancel={() => setRenaming(false)}
+        title="重命名对话"
+        centered
+        width={400}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              htmlType="button"
+              variant="outlined"
+              onClick={() => setRenaming(false)}
+            >
+              取消
+            </Button>
+            <Button htmlType="button" onClick={() => void commitRename()}>
+              保存
+            </Button>
+          </div>
+        }
+      >
+        <p className="m-0 mb-3 text-[13px] text-[var(--gray-500)]">
+          保持简短且易于识别
+        </p>
         <Input
-          ref={inputRef}
+          ref={renameInputRef}
           value={draft}
           aria-label="会话标题"
           onChange={(event) => setDraft(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === 'Enter') void commitRename();
-            if (event.key === 'Escape') setEditing(false);
+            if (event.key === 'Escape') setRenaming(false);
           }}
         />
-        <Button
+      </Modal>
 
-          variant="ghost"
-          size="icon"
-          aria-label="保存标题"
-          onClick={() => void commitRename()}
-        >
-          <Check className="size-4" />
-        </Button>
-        <Button
-
-          variant="ghost"
-          size="icon"
-          aria-label="取消重命名"
-          onClick={() => setEditing(false)}
-        >
-          <X className="size-4" />
-        </Button>
-      </span>
-    );
-  }
-
-  return (
-    <span className="group/row flex items-center gap-1">
-      <Link
-        to={paths.app.chat.getHref(thread.id)}
-        aria-current={isCurrent ? 'page' : undefined}
-        className={`flex min-w-0 flex-1 items-center gap-2 rounded-medium px-2 py-1 text-sm hover:bg-sidebar-accent ${
-          isCurrent
-            ? 'bg-sidebar-accent text-sidebar-accent-foreground'
-            : 'text-[var(--gray-800)]'
-        }`}
-      >
-        <MessageSquare className="size-4 shrink-0" aria-hidden />
-        <span className="min-w-0 flex-1 truncate">
-          {thread.title || '未命名会话'}
-        </span>
-        {/* 运行中显示转圈，有新回复显示圆点，done 不显示 */}
-        {thread.thread_status === 'loading' ? (
-          <output
-            className="flex size-3 shrink-0 items-center text-[var(--gray-500)]"
-            aria-label="正在运行"
-          >
-            <LoaderCircle className="size-3 animate-spin" aria-hidden />
-          </output>
-        ) : thread.thread_status === 'ready' ? (
-          <output
-            className="block size-2 shrink-0 rounded-full bg-primary-6"
-            aria-label="有新回复"
-          />
-        ) : null}
-        {thread.is_pinned ? (
-          <Pin className="size-3 shrink-0" aria-label="已置顶" />
-        ) : null}
-      </Link>
-
-      <Dropdown
-        align="end"
-        items={[
-          {
-            kind: 'item',
-            key: 'rename',
-            label: '重命名',
-            onSelect: () => {
-              setDraft(thread.title ?? '');
-              setEditing(true);
-            },
-          },
-          {
-            kind: 'item',
-            key: 'pin',
-            label: thread.is_pinned ? '取消置顶' : '置顶',
-            onSelect: () => void togglePin(thread.id),
-          },
-          {
-            kind: 'item',
-            key: 'delete',
-            label: '删除',
-            onSelect: () => setConfirming(true),
-          },
-        ]}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className="opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100"
-          aria-label={`会话操作：${thread.title || '未命名会话'}`}
-        >
-          <MoreHorizontal className="size-4" />
-        </Button>
-      </Dropdown>
-
-      <Dialog open={confirming} onOpenChange={setConfirming}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>删除会话</DialogTitle>
-            <DialogDescription>
-              删除后这条会话不再出现在列表里，历史消息不会恢复。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
+      <Modal
+        open={confirming}
+        onCancel={() => setConfirming(false)}
+        footer={
+          <div className="flex justify-end gap-2">
             <Button
-
-              variant="outline"
+              htmlType="button"
+              variant="outlined"
               onClick={() => setConfirming(false)}
             >
               取消
             </Button>
             <Button
-
-              variant="destructive"
-              onClick={() => {
-                setConfirming(false);
-                void (async () => {
-                  if (!(await remove(thread.id))) return;
-                  // 删掉哪条都要清掉它的运行时：订阅与在途请求不该继续为已删会话工作
-                  disposeAgentStateReads(thread.id);
-                  disposeThreadRuntime(thread.id);
-                  if (!isCurrent) return;
-                  // 删掉的正是当前会话：后端随后会返回「对话线程不存在」，
-                  // 必须离开这个地址，否则用户停在一条已死的会话上
-                  navigate(paths.app.chat.getHref(), { replace: true });
-                })();
-              }}
+              htmlType="button"
+              color="danger"
+              variant="solid"
+              onClick={() => void confirmRemove()}
             >
               删除
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </div>
+        }
+        title={
+          <div>
+            <div>删除会话</div>
+            <div className="text-xs font-normal text-color-text-3">
+              删除后这条会话不再出现在列表里，历史消息不会恢复。
+            </div>
+          </div>
+        }
+      />
     </span>
   );
 };
@@ -214,48 +270,88 @@ export const ConversationList = ({
 }: ConversationListProps) => {
   const threads = useThreadList((state) => state.threads);
   const loading = useThreadList((state) => state.loading);
+  const loadingMore = useThreadList((state) => state.loadingMore);
+  const hasMore = useThreadList((state) => state.hasMore);
   const error = useThreadList((state) => state.error);
   const initialize = useThreadList((state) => state.initialize);
+  const loadMore = useThreadList((state) => state.loadMore);
+  const [collapsed, setCollapsed] = React.useState(false);
 
   React.useEffect(() => {
     void initialize();
   }, [initialize]);
 
   return (
-    <div className="flex flex-col gap-1">
-      {error ? (
-        <p
-          role="alert"
-          className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--color-error-500)]"
+    <section className={styles.section}>
+      <div className={styles.panel}>
+        <button
+          type="button"
+          className={styles.label}
+          aria-expanded={!collapsed}
+          onClick={() => setCollapsed((current) => !current)}
         >
-          <span className="min-w-0 flex-1">{error}</span>
-          <Button
+          <span>最近</span>
+          <ChevronDown
+            className={`${styles.collapseIcon} ${
+              collapsed ? styles.collapseIconCollapsed : ''
+            }`}
+            size={14}
+            aria-hidden
+          />
+        </button>
 
-            variant="ghost"
-            size="sm"
-            onClick={() => void initialize()}
-          >
-            重试
-          </Button>
-        </p>
-      ) : null}
+        {collapsed ? null : (
+          <div className={styles.list}>
+            {error ? (
+              <p
+                role="alert"
+                className="flex items-center gap-1 px-2 py-1 text-xs text-[var(--color-error-500)]"
+              >
+                <span className="min-w-0 flex-1">{error}</span>
+                <Button
+                  type="text"
+                  size="small"
+                  onClick={() => void initialize()}
+                >
+                  重试
+                </Button>
+              </p>
+            ) : null}
 
-      {threads.length === 0 ? (
-        <p className="px-2 py-1 text-xs text-[var(--gray-500)]">
-          {loading ? '正在加载会话…' : '还没有历史会话。'}
-        </p>
-      ) : (
-        <ul className="flex flex-col gap-0.5" aria-label="历史会话">
-          {threads.map((thread) => (
-            <li key={thread.id}>
-              <ThreadRow
-                thread={thread}
-                isCurrent={thread.id === currentThreadId}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+            {threads.length > 0 ? (
+              <ul className={styles.rows} aria-label="历史会话">
+                {threads.map((thread) => (
+                  <li key={thread.id}>
+                    <ThreadRow
+                      thread={thread}
+                      isCurrent={thread.id === currentThreadId}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className={styles.empty}>
+                {/* 加载期间不闪空态：慢网络下会先出现「暂无对话历史」再被列表替换 */}
+                {loading ? '正在加载会话…' : '暂无对话历史'}
+              </div>
+            )}
+
+            {hasMore ? (
+              <div className={styles.loadMoreWrapper}>
+                <Button
+                  type="text"
+                  size="small"
+                  className={styles.loadMoreButton}
+                  loading={loadingMore}
+                  onClick={() => void loadMore()}
+                >
+                  {loadingMore ? '加载中...' : '加载更多'}
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        )}
+      </div>
+    </section>
   );
 };

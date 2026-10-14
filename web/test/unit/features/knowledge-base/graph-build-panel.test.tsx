@@ -3,6 +3,9 @@
  * 判定规则的正确答案在 `lib/graph-build.test.ts`，这里验的是「面板有没有照它渲染」。
  */
 import { render, screen } from '@testing-library/react';
+
+// antd 词汇由应用装配承载，测试同构挂上
+import { AntdProvider } from '@/app/theme/antd-provider';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -47,7 +50,11 @@ const renderPanel = (
     onReset: vi.fn(),
     onOpenFailedChunks: vi.fn(),
   };
-  render(<GraphBuildPanel status={status()} {...handlers} {...props} />);
+  render(
+    <AntdProvider>
+      <GraphBuildPanel status={status()} {...handlers} {...props} />
+    </AntdProvider>,
+  );
   return handlers;
 };
 

@@ -75,8 +75,7 @@ vi.mock('@/shared/ui/notifications', async () => {
 });
 
 const { SkillCardList } = await import('@/features/skills');
-const { ConfirmDialogHost } = await import('@/shared/ui/confirm-dialog-host');
-const { useConfirmStore } = await import('@/shared/ui/confirm-dialog');
+const { AntdProvider } = await import('@/app/theme/antd-provider');
 
 const card = (extra: Record<string, unknown> = {}) => ({
   id: 1,
@@ -132,12 +131,13 @@ const renderPanel = () => {
     defaultOptions: { queries: { retry: false } },
   });
   render(
-    <MemoryRouter initialEntries={['/extensions?tab=skills']}>
-      <QueryClientProvider client={queryClient}>
-        <SkillCardList />
-        <ConfirmDialogHost />
-      </QueryClientProvider>
-    </MemoryRouter>,
+    <AntdProvider>
+      <MemoryRouter initialEntries={['/extensions?tab=skills']}>
+        <QueryClientProvider client={queryClient}>
+          <SkillCardList />
+        </QueryClientProvider>
+      </MemoryRouter>
+    </AntdProvider>,
   );
 };
 
@@ -160,7 +160,6 @@ const visibleGroups = () =>
 
 describe('技能面板', () => {
   beforeEach(() => {
-    useConfirmStore.setState({ pending: null });
     notifications.addNotification.mockReset();
     Object.values(sdk).forEach((mock) => mock.mockReset());
     sdk.listCards.mockResolvedValue(ok(FIXTURE));
@@ -264,7 +263,9 @@ describe('技能面板', () => {
     await waitForCard('shared-one');
 
     await userEvent.click(
-      within(cardFor('shared-one')).getByRole('button', { name: 'Shared One' }),
+      within(cardFor('shared-one')).getByRole('button', {
+        name: /Shared\s*One/,
+      }),
     );
     await screen.findByTestId('skill-preview-dialog');
     expect(await screen.findByText('共享说明')).toBeTruthy();
@@ -295,7 +296,9 @@ describe('技能面板', () => {
     await waitForCard('shared-one');
 
     await userEvent.click(
-      within(cardFor('shared-one')).getByRole('button', { name: 'Shared One' }),
+      within(cardFor('shared-one')).getByRole('button', {
+        name: /Shared\s*One/,
+      }),
     );
     expect(await screen.findByText('文件不存在: SKILL.md')).toBeTruthy();
   });
@@ -314,10 +317,16 @@ describe('技能面板', () => {
     await userEvent.click(screen.getByRole('button', { name: '关闭' }));
 
     await userEvent.click(
-      within(cardFor('shared-one')).getByRole('button', { name: 'Shared One' }),
+      within(cardFor('shared-one')).getByRole('button', {
+        name: /Shared\s*One/,
+      }),
     );
     await userEvent.click(await screen.findByRole('button', { name: '卸载' }));
-    await userEvent.click(await screen.findByRole('button', { name: '卸载' }));
+    await userEvent.click(
+      within(
+        document.querySelector('.ant-modal-confirm') as HTMLElement,
+      ).getByRole('button', { name: '卸载' }),
+    );
     await waitFor(() =>
       expect(sdk.deleteSkill).toHaveBeenCalledWith({
         path: { slug: 'shared-one' },

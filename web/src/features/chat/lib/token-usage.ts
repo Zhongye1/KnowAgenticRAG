@@ -230,6 +230,24 @@ export const getTokenUsageHeadLabel = (usage: TokenUsage): string => {
   return limit === null ? total : `${total} / ${formatTokenCount(limit)}`;
 };
 
+/**
+ * 用量环的悬浮说明。回退顺序与参照 `formatContextUsageTooltip` 一致：上限未知时只报已用，
+ * 上限已知时报「占比 · 已用 / 上限」。
+ *
+ * 数字格式用本模块自己的 `formatTokenCount` / `getTokenUsagePercentLabel`，与用量卡片同源；
+ * 参照那边是一位小数百分比与 1000 进制的 K/M，两者刻意不同——同一个用量在卡片与环上
+ * 必须给出同样的数字。
+ */
+export const getTokenUsageTooltipLabel = (usage: TokenUsage): string => {
+  if (getTokenUsageStackLimit(usage) === null) {
+    return `${formatTokenCount(getTokenUsageStackTotal(usage))} 上下文已使用`;
+  }
+
+  return `${getTokenUsagePercentLabel(
+    getTokenUsageRatio(usage),
+  )} · ${getTokenUsageHeadLabel(usage)} 上下文已使用`;
+};
+
 /** 进度条的无障碍文案。 */
 export const getTokenUsageAriaLabel = (usage: TokenUsage): string => {
   const ratio = getTokenUsageRatio(usage);

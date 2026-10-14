@@ -88,15 +88,9 @@ export {
   useSystemDefaultModel,
 } from './model/system-config';
 export { ModelSelector } from './ui/model-selector';
-export {
-  AUTO_PROJECT_ID,
-  resolveProjectId,
-} from './lib/project-selection';
+export { AUTO_PROJECT_ID, resolveProjectId } from './lib/project-selection';
 export { FILE_TREE_SECTION } from './lib/panel-sections';
-export {
-  PANEL_TREE_SCOPES,
-  shouldPollPanelFilesystem,
-} from './lib/panel-tree';
+export { PANEL_TREE_SCOPES, shouldPollPanelFilesystem } from './lib/panel-tree';
 export {
   usePanelFileSearch,
   usePanelFilesystem,
@@ -114,7 +108,9 @@ export {
 export { ProjectSelector } from './ui/project-selector';
 export {
   MAX_ATTACHMENT_SIZE_BYTES,
+  formatFileSize,
   pendingAttachmentFileIds,
+  pendingThreadAttachments,
   type AttachmentItem,
   type AttachmentStatus,
   type ThreadAttachment,
@@ -133,7 +129,9 @@ export type { ChatModelGroup, ChatModelItem } from './api/model-api';
 export type { QueueRowContext, QueueView } from './lib/queue-view';
 export type { ConversationMessage } from './lib/message-processor';
 export { buildMentionDisplayLabels } from './lib/mention-text';
+export { ComposerOptions } from './ui/composer-options';
 export { MentionEditor } from './ui/mention-editor';
+export type { MentionEditorHandle } from './ui/mention-editor';
 export { AgentPanel } from './ui/agent-panel';
 export {
   closeSection,
@@ -144,7 +142,7 @@ export {
 export type { PanelSection } from './lib/panel-sections';
 export type { TreeNode } from './lib/panel-tree';
 export type { TokenUsage } from './lib/token-usage';
-export type { PreviewFile } from './lib/panel-preview';
+export type { PreviewFile } from '@/shared/lib/file-preview';
 export { resizePanelWidth } from './lib/panel-width';
 export {
   extractArtifactsFromConversation,
@@ -152,11 +150,6 @@ export {
 } from './lib/artifacts';
 export type { ArtifactItem } from './lib/artifacts';
 export { ArtifactsCard } from './ui/artifacts-card';
-export { Button } from './ui/antd-button';
-export { Input, Textarea } from './ui/antd-input';
-export { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from './ui/antd-dialog';
-export { useNotifications } from './ui/antd-notifications';
-export { Spinner } from './ui/antd-spinner';
 export {
   downloadThreadArtifact,
   saveThreadArtifact,
@@ -183,10 +176,8 @@ export { useAgentOptions } from './model/agent-options-queries';
 export { SubagentThreadView } from './ui/subagent-thread-view';
 export { buildReplyLoadingStatus } from './lib/reply-status';
 export { GeneratingStatus } from './ui/generating-status';
-export {
-  generateConversationTitle,
-  fallbackTitleFromQuery,
-} from './lib/thread-title';
+export { generateConversationTitle } from './api/agent-api';
+export { fallbackTitleFromQuery } from './lib/thread-title';
 export { useFastModel } from './model/system-config';
 export {
   readAgentStateTodos,
@@ -197,9 +188,7 @@ export {
 } from './lib/agent-state-readers';
 export type { AgentStateFile } from './lib/agent-state-readers';
 export { StatePanel } from './ui/state-panel';
-export { STATE_SECTION } from './lib/panel-sections';
 export { ContextUsageRing } from './ui/context-usage-ring';
-export { listAgents } from './api/agents-api';
 export { buildAgentOptions } from './lib/agent-options';
 export type { AgentOption } from './lib/agent-options';
 export { AgentSelector } from './ui/agent-selector';

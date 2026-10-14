@@ -36,6 +36,18 @@ vi.mock('@/features/skills', () => ({
   SkillCardList: () => <div>技能面板</div>,
 }));
 
+vi.mock('@/features/tools', () => ({
+  ToolsPanel: () => <div>工具面板</div>,
+}));
+
+vi.mock('@/features/mcp', () => ({
+  McpCardList: () => <div>MCP 面板</div>,
+}));
+
+vi.mock('@/shared/ui/notifications', () => ({
+  useNotifications: () => ({ addNotification: vi.fn() }),
+}));
+
 vi.mock('@/shared/ui/content-layout', () => ({
   ContentLayout: ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -106,7 +118,7 @@ describe('扩展页外壳', () => {
 
     expect(screen.getByRole('button', { name: '技能' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: '工具' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'MCP 服务' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'MCP' })).toBeNull();
     expect(screen.queryByRole('button', { name: '知识库' })).toBeNull();
   });
 
@@ -134,12 +146,14 @@ describe('扩展页外壳', () => {
     expect(screen.queryByText('列表占位')).toBeNull();
   });
 
-  it('工具与 MCP 仍是占位说明', async () => {
+  it('工具与 MCP tab 挂真实面板', async () => {
     renderPage();
 
     await userEvent.click(screen.getByRole('button', { name: '工具' }));
+    expect(await screen.findByText('工具面板')).toBeTruthy();
 
-    expect(await screen.findByText('该面板随对应分片接入。')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: 'MCP' }));
+    expect(await screen.findByText('MCP 面板')).toBeTruthy();
   });
 
   it('选中知识库后跳转到详情地址', async () => {

@@ -9,10 +9,15 @@
  * `useTestModelStatus` 与 `refreshModelCache`，对话页不重复提供。
  */
 import * as React from 'react';
-import { ChevronDown } from 'lucide-react';
 import styles from './input-selector.module.css';
 
-import { Dropdown, type ChatDropdownItem } from './antd-dropdown';
+import { Dropdown } from 'antd';
+import {
+  toAntdMenuItems,
+  toSelectedKeys,
+  findItem,
+  type ChatDropdownItem,
+} from './chat-dropdown';
 
 import type { ChatModelGroup } from '../api/model-api';
 import { formatModelSpecLabel } from '../lib/model-spec';
@@ -38,11 +43,21 @@ export const ModelSelector = ({
     : formatModelSpecLabel(selected, placeholder);
 
   const items: ChatDropdownItem[] = [
-    { kind: 'item', key: '', label: '默认', onSelect: () => onSelect(''), selected: !selected },
+    {
+      kind: 'item',
+      key: '',
+      label: '默认',
+      onSelect: () => onSelect(''),
+      selected: !selected,
+    },
   ];
   for (const group of groups) {
     items.push({ kind: 'separator', key: `sep-${group.providerId}` });
-    items.push({ kind: 'label', key: `label-${group.providerId}`, label: group.providerName });
+    items.push({
+      kind: 'label',
+      key: `label-${group.providerId}`,
+      label: group.providerName,
+    });
     for (const model of group.models) {
       items.push({
         kind: 'item',
@@ -60,9 +75,15 @@ export const ModelSelector = ({
 
   return (
     <Dropdown
-      items={items}
-      disabled={loading}
+      menu={{
+        items: toAntdMenuItems(items),
+        selectedKeys: toSelectedKeys(items),
+        onClick: ({ key }) => findItem(items, key)?.onSelect(),
+        selectable: true,
+      }}
+      trigger={['click']}
       placement="topLeft"
+      disabled={loading}
       // 列表还没回来时不给开：那时候面板里只有「默认」一条，点它等于清空选择
     >
       <button
@@ -72,8 +93,9 @@ export const ModelSelector = ({
         aria-label="选择模型"
         disabled={loading}
       >
+        {/* 参照的 nano 触发钮只有模型名，没有箭头；这里保持同样的视觉，
+           但用 button 而不是参照的 div——点击目标需要可聚焦、可读屏 */}
         <span className={styles.triggerLabel}>{label}</span>
-        <ChevronDown className={styles.triggerChevron} aria-hidden />
       </button>
     </Dropdown>
   );

@@ -16,6 +16,11 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react';
+import { Empty as SharedEmpty } from '@/shared/ui/empty';
+import { Progress } from '@/shared/ui/progress';
+import { Button, Dropdown, Input, Select, Spin } from 'antd';
+import { useNotifications } from '@/shared/ui/notifications';
+import { useConfirm } from '@/shared/ui/confirm-dialog';
 
 import type { EvaluationDataset, EvaluationRun } from '../api/evaluation-api';
 import {
@@ -48,26 +53,6 @@ import {
   useEvaluationRunResults,
   useRunEvaluation,
 } from '../model/evaluation-queries';
-import { Button } from '@/shared/ui/button';
-import { confirm } from '@/shared/ui/confirm-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/shared/ui/dropdown-menu';
-import { Empty } from '@/shared/ui/empty';
-import { Input } from '@/shared/ui/input';
-import { Progress } from '@/shared/ui/progress';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/ui/select';
-import { Spinner } from '@/shared/ui/spinner';
-import { useNotifications } from '@/shared/ui/notifications';
 import { useExtractorModels } from '../model/graph-queries';
 
 const HISTORY_PAGE_SIZE = 10;
@@ -125,6 +110,7 @@ export const RagEvaluationPanel = ({
   readOnly,
   onGoToBenchmarks,
 }: RagEvaluationPanelProps) => {
+  const { confirm } = useConfirm();
   const notifications = useNotifications();
   const runs = useEvaluationRuns(kbId);
   const datasets = useEvaluationDatasets(kbId);
@@ -231,7 +217,7 @@ export const RagEvaluationPanel = ({
   if (runs.isLoading || datasets.isLoading) {
     return (
       <div className="flex h-[420px] items-center justify-center gap-2 text-sm text-color-text-2">
-        <Spinner />
+        <Spin />
         加载中…
       </div>
     );
@@ -253,7 +239,11 @@ export const RagEvaluationPanel = ({
           {failedQuery.label}：
           {error instanceof Error ? error.message : '未知错误'}
         </p>
-        <Button type="button" variant="outline" onClick={failedQuery.retry}>
+        <Button
+          htmlType="button"
+          variant="outlined"
+          onClick={failedQuery.retry}
+        >
           <RefreshCw className="size-4" />
           重试
         </Button>
@@ -267,10 +257,10 @@ export const RagEvaluationPanel = ({
         <p className="text-sm font-medium text-color-text-1">
           暂无可用评估基准
         </p>
-        <Empty
+        <SharedEmpty
           description="先上传或生成评估基准，再运行 RAG 评估。"
           action={
-            <Button type="button" onClick={onGoToBenchmarks}>
+            <Button htmlType="button" onClick={onGoToBenchmarks}>
               前往基准管理
             </Button>
           }
@@ -308,25 +298,17 @@ export const RagEvaluationPanel = ({
       <span>{label}</span>
       <Select
         value={value || undefined}
-        onValueChange={onChange}
+        onChange={onChange}
         disabled={disabled}
-      >
-        <SelectTrigger aria-label={label}>
-          <SelectValue
-            placeholder={disabled ? '该基准不需要模型' : '选择模型'}
-          />
-        </SelectTrigger>
-        <SelectContent>
-          {modelGroups.flatMap((group) =>
-            group.models.map((model) => (
-              <SelectItem key={model.spec} value={model.spec}>
-                {group.provider_display_name} ·{' '}
-                {model.display_name || model.model_id}
-              </SelectItem>
-            )),
-          )}
-        </SelectContent>
-      </Select>
+        aria-label={label}
+        virtual={false}
+        options={modelGroups.flatMap((group) =>
+          group.models.map((model) => ({
+            value: model.spec,
+            label: `${group.provider_display_name} · ${model.display_name || model.model_id}`,
+          })),
+        )}
+      />
     </div>
   );
 
@@ -338,15 +320,15 @@ export const RagEvaluationPanel = ({
         </span>
         <div className="flex gap-2">
           <Button
-            type="button"
-            variant="outline"
+            htmlType="button"
+            variant="outlined"
             onClick={() => void runs.refetch()}
           >
             <RefreshCw className="size-4" />
             刷新
           </Button>
           {readOnly ? null : (
-            <Button type="button" onClick={toggleConfig}>
+            <Button htmlType="button" onClick={toggleConfig}>
               <Play className="size-4" />
               新建评估
             </Button>
@@ -376,7 +358,7 @@ export const RagEvaluationPanel = ({
             <span>评估基准</span>
             <Select
               value={datasetId}
-              onValueChange={(value) => {
+              onChange={(value) => {
                 setError('');
                 setDatasetId(value);
                 const next = available.find(
@@ -387,18 +369,14 @@ export const RagEvaluationPanel = ({
                   setJudgeLlm('');
                 }
               }}
-            >
-              <SelectTrigger aria-label="评估基准">
-                <SelectValue placeholder="选择评估基准" />
-              </SelectTrigger>
-              <SelectContent>
-                {available.map((item) => (
-                  <SelectItem key={item.dataset_id} value={item.dataset_id}>
-                    {item.name} ({item.item_count} 个问题)
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              aria-label="评估基准"
+              placeholder="选择评估基准"
+              virtual={false}
+              options={available.map((item) => ({
+                value: item.dataset_id,
+                label: `${item.name} (${item.item_count} 个问题)`,
+              }))}
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -430,19 +408,19 @@ export const RagEvaluationPanel = ({
           ) : null}
           <div className="flex justify-end gap-2">
             <Button
-              type="button"
-              variant="outline"
+              htmlType="button"
+              variant="outlined"
               disabled={start.isPending}
               onClick={() => setConfigOpen(false)}
             >
               取消
             </Button>
             <Button
-              type="button"
+              htmlType="button"
               disabled={start.isPending}
               onClick={() => void submit()}
             >
-              {start.isPending ? <Spinner /> : <Play className="size-4" />}
+              {start.isPending ? <Spin /> : <Play className="size-4" />}
               开始评估
             </Button>
           </div>
@@ -578,9 +556,9 @@ export const RagEvaluationPanel = ({
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1">
                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
+                        htmlType="button"
+                        variant="text"
+                        size="small"
                         onClick={() => {
                           setDetailRunId(run.run_id);
                           setDetailPage(1);
@@ -590,26 +568,35 @@ export const RagEvaluationPanel = ({
                         查看
                       </Button>
                       {readOnly ? null : (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              aria-label={`${run.name} 操作`}
-                            >
-                              <MoreHorizontal className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onSelect={() => void runDelete(run)}
-                            >
-                              <Trash2 className="size-4" />
-                              删除
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <Dropdown
+                          trigger={['click']}
+                          menu={{
+                            items: [
+                              {
+                                key: 'delete',
+                                label: (
+                                  <span className="flex items-center gap-2">
+                                    <Trash2 className="size-4" />
+                                    删除
+                                  </span>
+                                ),
+                                danger: true,
+                              },
+                            ],
+                            onClick: ({ key }) => {
+                              if (key === 'delete') void runDelete(run);
+                            },
+                          }}
+                        >
+                          <Button
+                            htmlType="button"
+                            type="text"
+                            size="small"
+                            aria-label={`${run.name} 操作`}
+                          >
+                            <MoreHorizontal className="size-4" />
+                          </Button>
+                        </Dropdown>
                       )}
                     </div>
                   </td>
@@ -635,9 +622,9 @@ export const RagEvaluationPanel = ({
           </span>
           <div className="flex gap-2">
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
+              htmlType="button"
+              variant="outlined"
+              size="small"
               disabled={historyPage <= 1}
               onClick={() =>
                 setHistoryPage((current) => Math.max(1, current - 1))
@@ -647,9 +634,9 @@ export const RagEvaluationPanel = ({
               上一页
             </Button>
             <Button
-              type="button"
-              variant="outline"
-              size="sm"
+              htmlType="button"
+              variant="outlined"
+              size="small"
               disabled={historyPage >= historyTotalPages}
               onClick={() => setHistoryPage((current) => current + 1)}
             >
@@ -686,9 +673,9 @@ export const RagEvaluationPanel = ({
             </div>
             <div className="flex items-center gap-2">
               <Button
-                type="button"
-                variant="outline"
-                size="sm"
+                htmlType="button"
+                variant="outlined"
+                size="small"
                 onClick={() => {
                   setErrorOnly((current) => !current);
                   setDetailPage(1);
@@ -697,9 +684,9 @@ export const RagEvaluationPanel = ({
                 {errorOnly ? '显示全部' : '仅查看错误'}
               </Button>
               <Button
-                type="button"
-                variant="outline"
-                size="sm"
+                htmlType="button"
+                variant="outlined"
+                size="small"
                 onClick={() => setDetailRunId(null)}
               >
                 关闭
@@ -709,7 +696,7 @@ export const RagEvaluationPanel = ({
 
           {detail.isLoading ? (
             <div className="flex h-[200px] items-center justify-center gap-2 text-sm text-color-text-2">
-              <Spinner />
+              <Spin />
               加载中…
             </div>
           ) : detail.isError ? (
@@ -773,9 +760,9 @@ export const RagEvaluationPanel = ({
                 </span>
                 <div className="flex gap-2">
                   <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
+                    htmlType="button"
+                    variant="outlined"
+                    size="small"
                     disabled={detailPage <= 1 || detail.isFetching}
                     onClick={() =>
                       setDetailPage((current) => Math.max(1, current - 1))
@@ -784,9 +771,9 @@ export const RagEvaluationPanel = ({
                     上一页
                   </Button>
                   <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
+                    htmlType="button"
+                    variant="outlined"
+                    size="small"
                     disabled={detailPage >= detailPages || detail.isFetching}
                     onClick={() => setDetailPage((current) => current + 1)}
                   >

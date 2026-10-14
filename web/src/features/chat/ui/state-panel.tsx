@@ -5,18 +5,15 @@
  * `agent_state` 读取（`lib/agent-state-readers.ts`），本组件只管渲染与折叠。
  */
 import * as React from 'react';
-import {
-  Bot,
-  CheckCircle2,
-  ChevronDown,
-  FileText,
-  Loader2,
-  XCircle,
-} from 'lucide-react';
+import { CheckCircle2, ChevronDown, Loader2, XCircle } from 'lucide-react';
+import { avatarBackground, avatarInitials } from '@/shared/lib/avatar';
+import { resolveFileIconUrl } from '@/shared/lib/file-icon';
+
 import styles from './panel-sections.module.css';
 
 import type { AgentStateFile } from '../lib/agent-state-readers';
 import { todoStatusLabel } from '../lib/agent-state-readers';
+import { artifactMetaLabel } from '../lib/artifacts';
 import type { SubagentRun } from '../lib/subagent-run';
 import { isFailedRunStatus, isTerminalRunStatus } from '../lib/subagent-run';
 import type { TodoItem } from '../lib/todo-list';
@@ -101,14 +98,12 @@ export const StatePanel = ({
   const hasUsage = tokenUsage !== null && tokenUsage !== undefined;
 
   if (isEmpty && !hasUsage) {
-    return (
-      <div className={styles.stateEmpty}>
-        暂无状态内容
-      </div>
-    );
+    return <div className={styles.stateEmpty}>暂无状态内容</div>;
   }
 
-  const completedTodos = todos.filter((todo) => todo.status === 'completed').length;
+  const completedTodos = todos.filter(
+    (todo) => todo.status === 'completed',
+  ).length;
 
   return (
     <div className={styles.stateBodyColumn}>
@@ -124,7 +119,9 @@ export const StatePanel = ({
       {todos.length > 0 ? (
         <CollapsibleSection
           title="待办"
-          count={todos.length > 0 ? `${completedTodos}/${todos.length}` : undefined}
+          count={
+            todos.length > 0 ? `${completedTodos}/${todos.length}` : undefined
+          }
         >
           <ul className={styles.stateListCompact}>
             {todos.map((todo, index) => (
@@ -147,7 +144,7 @@ export const StatePanel = ({
                         : ''
                   }`}
                 >
-                  {todo.status === 'in_progress' || todo.status === 'pending' ? (
+                  {todo.status === 'in_progress' ? (
                     <span className={styles.todoIndicatorPulse} />
                   ) : null}
                 </span>
@@ -171,10 +168,14 @@ export const StatePanel = ({
                 <button
                   type="button"
                   className={`${styles.stateRow} ${styles.stateRowCompact}`}
-                  title={file.path}
+                  title={`打开 ${file.name}`}
                   onClick={() => onOpenFile?.(file)}
                 >
-                  <FileText className={styles.stateListItemIcon} aria-hidden />
+                  <img
+                    className={styles.stateFileIcon}
+                    src={resolveFileIconUrl(file.name || file.path)}
+                    alt=""
+                  />
                   <span className={styles.stateItemText}>{file.name}</span>
                 </button>
               </li>
@@ -191,11 +192,21 @@ export const StatePanel = ({
                 <button
                   type="button"
                   className={`${styles.stateRow} ${styles.stateRowCompact}`}
-                  title={file.path}
+                  title={`打开 ${file.name}`}
                   onClick={() => onOpenFile?.(file)}
                 >
-                  <FileText className={styles.stateListItemIcon} aria-hidden />
-                  <span className={styles.stateItemText}>{file.name}</span>
+                  <img
+                    className={styles.stateFileIcon}
+                    src={resolveFileIconUrl(file.name || file.path)}
+                    alt=""
+                  />
+                  {/* 产物行两行：文件名 + 类型描述（参照 .state-list-item-meta） */}
+                  <span className={styles.stateRowBody}>
+                    <span className={styles.stateItemText}>{file.name}</span>
+                    <span className={styles.stateMeta}>
+                      {artifactMetaLabel(file.path)}
+                    </span>
+                  </span>
                 </button>
               </li>
             ))}
@@ -221,9 +232,19 @@ export const StatePanel = ({
               const clickable = Boolean(run.child_thread_id);
               const body = (
                 <>
-                  {/* 参照 .state-subagent-icon：24px 头像框 */}
-                  <span className={styles.stateSubagentIcon} aria-hidden>
-                    <Bot className="size-3.5" />
+                  {/* 参照 .state-subagent-icon：24px 头像框，内容是首字母兜底 */}
+                  <span
+                    className={styles.stateSubagentIcon}
+                    style={{
+                      background: avatarBackground(
+                        run.subagent_slug || run.subagent_name || '',
+                      ),
+                    }}
+                    aria-hidden
+                  >
+                    <span className={styles.stateSubagentInitials}>
+                      {avatarInitials(run.subagent_name || run.subagent_slug)}
+                    </span>
                   </span>
                   <span className={styles.stateRowBody}>
                     <span className={styles.stateItem}>
@@ -244,7 +265,10 @@ export const StatePanel = ({
                       ) : null}
                     </span>
                     {run.description ? (
-                      <span className={styles.stateMeta} title={run.description}>
+                      <span
+                        className={styles.stateMeta}
+                        title={run.description}
+                      >
                         {run.description}
                       </span>
                     ) : null}
@@ -262,7 +286,11 @@ export const StatePanel = ({
                       {body}
                     </button>
                   ) : (
-                    <div className={`${styles.stateRow} ${styles.stateRowStatic}`}>{body}</div>
+                    <div
+                      className={`${styles.stateRow} ${styles.stateRowStatic}`}
+                    >
+                      {body}
+                    </div>
                   )}
                 </li>
               );

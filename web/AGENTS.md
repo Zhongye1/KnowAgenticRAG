@@ -1,6 +1,6 @@
 # Web 约定
 
-本目录是 ARS 前端（React 19 + Vite + TypeScript + Tailwind 4 + shadcn/Radix）。分层与依赖规则由[本目录架构说明](./ARCHITECTURE.md)拥有；另见根 [AGENTS.md](../AGENTS.md) 与[设计规范](../docs/develop-guides/design.md)。
+本目录是 ARS 前端（React 19 + Vite + TypeScript + Tailwind 4 + antd 5）。分层与依赖规则由[本目录架构说明](./ARCHITECTURE.md)拥有；另见根 [AGENTS.md](../AGENTS.md) 与[设计规范](../docs/develop-guides/design.md)。
 
 ## 边界
 

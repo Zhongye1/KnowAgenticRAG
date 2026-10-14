@@ -5,6 +5,7 @@ export type {
   CurrentUser,
   InitializeAdminInput,
   LoginResult,
+  ProfileUpdate,
   Discovery,
   OidcConfig,
 } from './api/session-api';
@@ -42,13 +43,20 @@ export {
   useSystemInfo,
 } from './model/system-info';
 export {
+  AUTHENTICATED_USER_KEY,
+  refreshAccountData,
   useCheckFirstRun,
   useInitializeAdmin,
+  useIsAdmin,
   useIsSuperuser,
   useLogin,
   useLogout,
   useOidcConfig,
   useOidcLoginUrl,
   useUnauthorizedReset,
+  useUpdateProfile,
+  useUpdateUserConfig,
+  useUploadAvatar,
   useUser,
+  useUserConfig,
 } from './model/session';

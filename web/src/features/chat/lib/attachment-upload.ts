@@ -15,11 +15,7 @@ export const MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024;
 export const DEFAULT_OCR_ENGINE = 'rapid_ocr';
 
 export type AttachmentStatus =
-  | 'uploading'
-  | 'uploaded'
-  | 'parsing'
-  | 'parsed'
-  | 'error';
+  'uploading' | 'uploaded' | 'parsing' | 'parsed' | 'error';
 
 export type AttachmentItem = {
   /** 本地标识：同一个文件可以被选两次，文件名不能当键。 */
@@ -49,7 +45,9 @@ export const hasBusyItems = (items: AttachmentItem[]): boolean =>
 
 /** 可以被确认到会话的条目。 */
 export const confirmableItems = (items: AttachmentItem[]): AttachmentItem[] =>
-  items.filter((item) => item.status === 'uploaded' || item.status === 'parsed');
+  items.filter(
+    (item) => item.status === 'uploaded' || item.status === 'parsed',
+  );
 
 /** 有在途条目或没有可确认条目时不能确认。 */
 export const canConfirm = (items: AttachmentItem[]): boolean =>
@@ -58,7 +56,11 @@ export const canConfirm = (items: AttachmentItem[]): boolean =>
 /** 确认载荷：只带可确认的条目，解析过的带上解析结果对象名。 */
 export const toConfirmPayload = (
   items: AttachmentItem[],
-): Array<{ file_type: string; object_name: string; parsed_object_name: string | null }> =>
+): Array<{
+  file_type: string;
+  object_name: string;
+  parsed_object_name: string | null;
+}> =>
   confirmableItems(items).map((item) => ({
     file_type: item.fileType,
     object_name: item.objectName,
@@ -90,7 +92,8 @@ export function getDefaultParseMethod(
   configuredEngine: unknown,
 ): string | null {
   const methods = (Array.isArray(parseMethods) ? parseMethods : []).filter(
-    (method): method is string => typeof method === 'string' && method.length > 0,
+    (method): method is string =>
+      typeof method === 'string' && method.length > 0,
   );
   if (!methods.length) return null;
 
@@ -108,7 +111,8 @@ export function getDefaultParseMethod(
   return selectable[0] ?? null;
 }
 
-const asText = (value: unknown): string => (typeof value === 'string' ? value.trim() : '');
+const asText = (value: unknown): string =>
+  typeof value === 'string' ? value.trim() : '';
 const asSize = (value: unknown): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : 0;
 
@@ -130,8 +134,11 @@ export function normalizeTmpUpload(
     typeof response === 'object' && response !== null
       ? (response as Record<string, unknown>)
       : {};
-  const parseMethods = (Array.isArray(source.parse_methods) ? source.parse_methods : []).filter(
-    (method): method is string => typeof method === 'string' && method.length > 0,
+  const parseMethods = (
+    Array.isArray(source.parse_methods) ? source.parse_methods : []
+  ).filter(
+    (method): method is string =>
+      typeof method === 'string' && method.length > 0,
   );
 
   return {
@@ -165,7 +172,22 @@ export type ThreadAttachment = {
 export const pendingAttachmentFileIds = (
   attachments: ThreadAttachment[],
 ): string[] =>
-  attachments
-    .filter((attachment) => !attachment.requestId)
+  pendingThreadAttachments(attachments)
     .map((attachment) => attachment.fileId)
     .filter(Boolean);
+
+/** 文件大小的短标签；上传弹窗与输入区附件卡片共用同一份换算。 */
+export const formatFileSize = (size: number): string =>
+  size >= 1024 * 1024
+    ? `${(size / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(size / 1024))} KB`;
+
+/**
+ * 还没被用掉的附件条目。
+ *
+ * 输入区的预览与随发送下发的 id 必须用同一条判据，否则会出现「预览显示了却没下发」或反过来。
+ */
+export const pendingThreadAttachments = (
+  attachments: ThreadAttachment[],
+): ThreadAttachment[] =>
+  attachments.filter((attachment) => !attachment.requestId);

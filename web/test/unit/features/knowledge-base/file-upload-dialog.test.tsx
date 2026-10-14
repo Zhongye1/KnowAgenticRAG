@@ -2,6 +2,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
+
+// antd 词汇由应用装配承载，测试同构挂上
+import { AntdProvider } from '@/app/theme/antd-provider';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
@@ -64,15 +67,17 @@ const renderDialog = (props: Record<string, unknown> = {}) => {
   });
   const handlers = { onOpenChange: vi.fn() };
   render(
-    <QueryClientProvider client={queryClient}>
-      <FileUploadDialog
-        kbId="kb-1"
-        parentId={null}
-        parentLabel="根目录"
-        {...handlers}
-        {...props}
-      />
-    </QueryClientProvider>,
+    <AntdProvider>
+      <QueryClientProvider client={queryClient}>
+        <FileUploadDialog
+          kbId="kb-1"
+          parentId={null}
+          parentLabel="根目录"
+          {...handlers}
+          {...props}
+        />
+      </QueryClientProvider>
+    </AntdProvider>,
   );
   return handlers;
 };
@@ -194,9 +199,12 @@ describe('上传弹窗', () => {
 
     await pick([file('a.png')]);
     // 引擎列表来自后端，默认取 default_engine
-    expect(await screen.findByLabelText('OCR 引擎')).toHaveTextContent(
-      'RapidOCR',
-    );
+    // antd Select 的选中值渲染在 selection-item，combobox input 本身无文本
+    expect(
+      await screen.findByText('RapidOCR', {
+        selector: '.ant-select-selection-item',
+      }),
+    ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: '开始上传' }));
 
     await waitFor(() =>

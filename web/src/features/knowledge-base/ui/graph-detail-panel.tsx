@@ -7,6 +7,7 @@
  */
 import * as React from 'react';
 import { X } from 'lucide-react';
+import { Button, Tag } from 'antd';
 
 import type { GraphEdge, GraphNode } from '../api/graph-api';
 import {
@@ -17,8 +18,6 @@ import {
   visibleEdgeProperties,
 } from '../lib/graph-detail';
 import { describeEdgeType, describeNodeType } from '../lib/graph-view';
-import { Badge } from '@/shared/ui/badge';
-import { Button } from '@/shared/ui/button';
 
 export type GraphDetailPanelProps = {
   visible: boolean;
@@ -52,9 +51,9 @@ const DetailRow = ({
         {displayValue(text, expanded)}
         {isTruncatable(text) ? (
           <Button
-            type="button"
-            variant="link"
-            size="sm"
+            htmlType="button"
+            type="link"
+            size="small"
             className="h-auto px-1 py-0 align-baseline text-xs"
             onClick={onToggle}
           >
@@ -108,9 +107,9 @@ const GraphDetailBody = ({
           {isNode ? '节点详情' : '关系详情'}
         </span>
         <Button
-          type="button"
-          variant="ghost"
-          size="icon"
+          htmlType="button"
+          variant="text"
+          size="small"
           aria-label="关闭详情"
           className="size-6"
           onClick={onClose}
@@ -154,9 +153,7 @@ const GraphDetailBody = ({
             <span className="shrink-0 text-color-text-3">标签</span>
             <span className="flex flex-wrap gap-1">
               {node?.labels.map((label) => (
-                <Badge key={label} variant="secondary">
-                  {label}
-                </Badge>
+                <Tag key={label}>{label}</Tag>
               ))}
             </span>
           </div>

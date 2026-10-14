@@ -64,7 +64,9 @@ describe('AttachmentUploadDialog', () => {
     );
 
     expect(upload.addFiles).toHaveBeenCalledTimes(1);
-    expect((upload.addFiles as ReturnType<typeof vi.fn>).mock.calls[0][0]).toHaveLength(1);
+    expect(
+      (upload.addFiles as ReturnType<typeof vi.fn>).mock.calls[0][0],
+    ).toHaveLength(1);
   });
 
   it('列出条目并显示大小与状态', () => {
@@ -85,7 +87,9 @@ describe('AttachmentUploadDialog', () => {
     expect(upload.setParseMethod).toHaveBeenCalledWith('a', 'disable');
 
     await userEvent.click(screen.getByRole('button', { name: '解析' }));
-    expect(upload.parse).toHaveBeenCalledWith(expect.objectContaining({ localId: 'a' }));
+    expect(upload.parse).toHaveBeenCalledWith(
+      expect.objectContaining({ localId: 'a' }),
+    );
   });
 
   it('解析中锁住解析方式与解析按钮', () => {
@@ -95,7 +99,8 @@ describe('AttachmentUploadDialog', () => {
       (screen.getByLabelText('a.pdf 的解析方式') as HTMLSelectElement).disabled,
     ).toBe(true);
     expect(
-      (screen.getByRole('button', { name: '解析' }) as HTMLButtonElement).disabled,
+      (screen.getByRole('button', { name: '解析' }) as HTMLButtonElement)
+        .disabled,
     ).toBe(true);
   });
 
@@ -103,19 +108,25 @@ describe('AttachmentUploadDialog', () => {
     const { props } = setup({ items: [item()], canConfirm: true });
     let resolveConfirm!: () => void;
     (props.onConfirm as ReturnType<typeof vi.fn>).mockImplementation(
-      () => new Promise<void>((resolve) => { resolveConfirm = resolve; }),
+      () =>
+        new Promise<void>((resolve) => {
+          resolveConfirm = resolve;
+        }),
     );
 
-    await userEvent.click(screen.getByRole('button', { name: '添加' }));
+    await userEvent.click(screen.getByRole('button', { name: /^添\s*加$/ }));
 
     // 确认期间不允许再改这一批内容，否则发出去的不是用户看到的
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: '选择附件文件' }).getAttribute('aria-disabled'),
+        screen
+          .getByRole('button', { name: '选择附件文件' })
+          .getAttribute('aria-disabled'),
       ).toBe('true'),
     );
     expect(
-      (screen.getByRole('button', { name: '移除 a.pdf' }) as HTMLButtonElement).disabled,
+      (screen.getByRole('button', { name: '移除 a.pdf' }) as HTMLButtonElement)
+        .disabled,
     ).toBe(true);
     expect(
       (screen.getByLabelText('a.pdf 的解析方式') as HTMLSelectElement).disabled,
@@ -140,14 +151,15 @@ describe('AttachmentUploadDialog', () => {
     setup({ items: [item({ status: 'uploading' })], canConfirm: false });
 
     expect(
-      (screen.getByRole('button', { name: '添加' }) as HTMLButtonElement).disabled,
+      (screen.getByRole('button', { name: /^添\s*加$/ }) as HTMLButtonElement)
+        .disabled,
     ).toBe(true);
   });
 
   it('点「添加」调用确认动作', async () => {
     const { props } = setup({ items: [item()], canConfirm: true });
 
-    await userEvent.click(screen.getByRole('button', { name: '添加' }));
+    await userEvent.click(screen.getByRole('button', { name: /^添\s*加$/ }));
 
     await waitFor(() => expect(props.onConfirm).toHaveBeenCalledTimes(1));
   });
@@ -158,7 +170,7 @@ describe('AttachmentUploadDialog', () => {
       new Error('创建对话失败，无法添加附件'),
     );
 
-    await userEvent.click(screen.getByRole('button', { name: '添加' }));
+    await userEvent.click(screen.getByRole('button', { name: /^添\s*加$/ }));
 
     expect(await screen.findByText('创建对话失败，无法添加附件')).toBeTruthy();
     expect(props.onOpenChange).not.toHaveBeenCalled();
@@ -167,7 +179,7 @@ describe('AttachmentUploadDialog', () => {
   it('关闭时清空条目', async () => {
     const { upload } = setup({ items: [item()] });
 
-    await userEvent.click(screen.getByRole('button', { name: '取消' }));
+    await userEvent.click(screen.getByRole('button', { name: /^取\s*消$/ }));
 
     expect(upload.reset).toHaveBeenCalled();
   });

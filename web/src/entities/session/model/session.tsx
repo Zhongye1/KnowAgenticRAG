@@ -18,15 +18,23 @@ import {
   getCurrentUser,
   getOidcConfig,
   getOidcLoginUrl,
+  getUserConfig as getUserConfigRequest,
   initializeAdmin,
   login as loginRequest,
+  updateProfile as updateProfileRequest,
+  updateUserConfig as updateUserConfigRequest,
+  uploadAvatar as uploadAvatarRequest,
   type InitializeAdminInput,
   type LoginResult,
+  type ProfileUpdate,
 } from '../api/session-api';
+
+/** 身份缓存的 query key；登录、登出与资料写入都围绕它。 */
+export const AUTHENTICATED_USER_KEY = ['authenticated-user'] as const;
 
 export const useUser = () => {
   return useQuery({
-    queryKey: ['authenticated-user'],
+    queryKey: AUTHENTICATED_USER_KEY,
     queryFn: getCurrentUser,
     retry: false,
     staleTime: 5 * 60 * 1000,
@@ -40,7 +48,7 @@ export const useUser = () => {
  * 路由守卫据此把刚登录成功的用户弹回登录页。删除条目让下一次读取重新请求 `/me`。
  */
 function dropCachedIdentity(queryClient: QueryClient): void {
-  queryClient.removeQueries({ queryKey: ['authenticated-user'] });
+  queryClient.removeQueries({ queryKey: AUTHENTICATED_USER_KEY });
 }
 
 export const useLogin = (
@@ -77,6 +85,17 @@ export const useIsSuperuser = (): boolean => {
 };
 
 /**
+ * 管理员判定（超管也算）；同样只影响呈现。
+ *
+ * 与参照 `userStore.isAdmin` 同口径：设置面板里「基本设置 / OCR 配置 / 用户管理」按它门控，
+ * 「部门管理」只对超管开放。
+ */
+export const useIsAdmin = (): boolean => {
+  const user = useUser();
+  return user.data?.role === 'admin' || user.data?.role === 'superadmin';
+};
+
+/**
  * 订阅 401 事件：凭据失效时清空当前用户缓存。
  * 清空后 `useUser` 变为匿名，路由守卫据此把用户送回登录页。
  */
@@ -85,7 +104,7 @@ export function useUnauthorizedReset(): void {
 
   React.useEffect(() => {
     const handler = () => {
-      queryClient.setQueryData(['authenticated-user'], null);
+      queryClient.setQueryData(AUTHENTICATED_USER_KEY, null);
     };
     window.addEventListener(UNAUTHORIZED_EVENT, handler);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, handler);
@@ -136,4 +155,61 @@ export const useOidcLoginUrl = () => {
   return useMutation({
     mutationFn: (redirectPath?: string) => getOidcLoginUrl(redirectPath),
   });
+};
+
+/**
+ * 更新自己的资料。
+ *
+ * 响应是完整用户，但不直接 `setQueryData`：`department_name` 等字段的归一只有 `useUser`
+ * 一处事实，统一失效重取（staleTime 内也一样），避免两份「用户长什么样」。
+ */
+export const useUpdateProfile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: ProfileUpdate) => updateProfileRequest(input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: AUTHENTICATED_USER_KEY });
+    },
+  });
+};
+
+/** 上传头像；服务端已落库，失效身份缓存让遮罩文案与侧栏头像即时跟上。 */
+export const useUploadAvatar = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => uploadAvatarRequest(file),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: AUTHENTICATED_USER_KEY });
+    },
+  });
+};
+
+/** 当前用户的配置；只在弹窗打开时启用，避免每个页面都多发一条请求。 */
+export const useUserConfig = (enabled: boolean) => {
+  return useQuery({
+    queryKey: ['user-config'],
+    queryFn: getUserConfigRequest,
+    enabled,
+    staleTime: 30 * 1000,
+  });
+};
+
+/** 保存用户配置；成功后失效让弹窗内的读数与后端一致。 */
+export const useUpdateUserConfig = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateUserConfigRequest,
+    onSuccess: (saved) => {
+      queryClient.setQueryData(['user-config'], saved);
+    },
+  });
+};
+
+/** 供「刷新」按钮同时重取两份数据：身份与用户配置。 */
+export const refreshAccountData = (queryClient: QueryClient): void => {
+  void queryClient.invalidateQueries({ queryKey: AUTHENTICATED_USER_KEY });
+  void queryClient.invalidateQueries({ queryKey: ['user-config'] });
 };

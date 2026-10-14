@@ -9,6 +9,7 @@
  */
 import * as React from 'react';
 import { BrainCircuit, ScanText } from 'lucide-react';
+import { Button, Input, Modal, Select } from 'antd';
 
 import type { GraphBuildStatus, GraphExtractorOptions } from '../api/graph-api';
 import {
@@ -21,23 +22,6 @@ import {
   validateGraphConfig,
 } from '../lib/graph-config';
 import { useExtractorModels } from '../model/graph-queries';
-import { Button } from '@/shared/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/ui/dialog';
-import { Input } from '@/shared/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/ui/select';
 
 const EXTRACTOR_ICONS: Record<
   string,
@@ -94,160 +78,143 @@ export const GraphConfigDialog = ({
   };
 
   return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[640px]">
-        <DialogHeader>
-          <DialogTitle>
-            {editing ? '修改图谱抽取配置' : '配置图谱抽取器'}
-          </DialogTitle>
-          <DialogDescription>
+    <Modal open onCancel={() => onOpenChange(false)} footer={null}>
+      title=
+      {
+        <div>
+          <div>{editing ? '修改图谱抽取配置' : '配置图谱抽取器'}</div>
+          <div className="text-xs font-normal text-color-text-3">
             锁定后图谱构建会按这份配置从待构建的 Chunk 里抽取实体与关系。
-          </DialogDescription>
-        </DialogHeader>
+          </div>
+        </div>
+      }
+      <div className="flex flex-col gap-3">
+        {editing ? (
+          <output className="rounded border border-color-border-1 bg-color-fill-1 px-2 py-1 text-xs text-color-text-2">
+            修改配置仅影响后续构建；已构建的图谱不会自动重算，如需一致请重置后重新抽取。
+            抽取器类型创建后不可修改。
+          </output>
+        ) : null}
 
-        <div className="flex flex-col gap-3">
-          {editing ? (
-            <output className="rounded border border-color-border-1 bg-color-fill-1 px-2 py-1 text-xs text-color-text-2">
-              修改配置仅影响后续构建；已构建的图谱不会自动重算，如需一致请重置后重新抽取。
-              抽取器类型创建后不可修改。
-            </output>
-          ) : null}
+        <fieldset className="flex flex-col gap-2">
+          <legend className="sr-only">抽取器类型</legend>
+          {EXTRACTOR_TYPE_OPTIONS.map((option) => {
+            const Icon = EXTRACTOR_ICONS[option.value];
+            const selected = form.extractorType === option.value;
+            const locked = editing || option.disabled;
+            return (
+              <label
+                key={option.value}
+                className={`flex flex-col items-start gap-0.5 rounded border px-3 py-2 ${
+                  selected
+                    ? 'border-primary-6 bg-primary-1'
+                    : 'border-color-border-1'
+                } ${locked ? 'opacity-60' : ''}`}
+              >
+                <span className="flex items-center gap-2 text-sm text-color-text-1">
+                  <input
+                    type="radio"
+                    name="graph-extractor-type"
+                    value={option.value}
+                    checked={selected}
+                    disabled={locked}
+                    onChange={() => setField('extractorType', option.value)}
+                  />
+                  <Icon className="size-4" />
+                  {option.label}
+                </span>
+                <span className="text-xs text-color-text-3">
+                  {option.description}
+                </span>
+                <span className="text-xs text-color-text-3">
+                  {option.helper}
+                </span>
+              </label>
+            );
+          })}
+        </fieldset>
 
-          <fieldset className="flex flex-col gap-2">
-            <legend className="sr-only">抽取器类型</legend>
-            {EXTRACTOR_TYPE_OPTIONS.map((option) => {
-              const Icon = EXTRACTOR_ICONS[option.value];
-              const selected = form.extractorType === option.value;
-              const locked = editing || option.disabled;
-              return (
-                <label
-                  key={option.value}
-                  className={`flex flex-col items-start gap-0.5 rounded border px-3 py-2 ${
-                    selected
-                      ? 'border-primary-6 bg-primary-1'
-                      : 'border-color-border-1'
-                  } ${locked ? 'opacity-60' : ''}`}
-                >
-                  <span className="flex items-center gap-2 text-sm text-color-text-1">
-                    <input
-                      type="radio"
-                      name="graph-extractor-type"
-                      value={option.value}
-                      checked={selected}
-                      disabled={locked}
-                      onChange={() => setField('extractorType', option.value)}
-                    />
-                    <Icon className="size-4" />
-                    {option.label}
-                  </span>
-                  <span className="text-xs text-color-text-3">
-                    {option.description}
-                  </span>
-                  <span className="text-xs text-color-text-3">
-                    {option.helper}
-                  </span>
-                </label>
-              );
-            })}
-          </fieldset>
-
-          <div className="flex flex-col gap-1 text-xs text-color-text-2">
-            <span>
-              模型<span className="text-danger-6"> *</span>
+        <div className="flex flex-col gap-1 text-xs text-color-text-2">
+          <span>
+            模型<span className="text-danger-6"> *</span>
+          </span>
+          <Select
+            value={form.modelSpec}
+            onChange={(value) => setField('modelSpec', value)}
+            aria-label="抽取模型"
+            virtual={false}
+            options={modelGroups.flatMap((group) =>
+              group.models.map((model) => ({
+                value: model.spec,
+                label: `${group.provider_display_name} · ${model.display_name || model.model_id}`,
+              })),
+            )}
+          />
+          {models.isError ? (
+            <span className="text-danger-6">
+              模型列表加载失败，先确认模型供应商可用再配置抽取器。
             </span>
-            <Select
-              value={form.modelSpec}
-              onValueChange={(value) => setField('modelSpec', value)}
-            >
-              <SelectTrigger aria-label="抽取模型">
-                <SelectValue
-                  placeholder={
-                    models.isLoading
-                      ? '正在加载模型…'
-                      : models.isError
-                        ? '模型列表加载失败'
-                        : '选择抽取模型'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {modelGroups.flatMap((group) =>
-                  group.models.map((model) => (
-                    <SelectItem key={model.spec} value={model.spec}>
-                      {group.provider_display_name} ·{' '}
-                      {model.display_name || model.model_id}
-                    </SelectItem>
-                  )),
-                )}
-              </SelectContent>
-            </Select>
-            {models.isError ? (
-              <span className="text-danger-6">
-                模型列表加载失败，先确认模型供应商可用再配置抽取器。
-              </span>
-            ) : null}
-          </div>
-
-          <div className="flex flex-col gap-1 text-xs text-color-text-2">
-            <label htmlFor="graph-schema">Schema</label>
-            <textarea
-              id="graph-schema"
-              rows={6}
-              className="rounded border border-color-border-1 bg-color-bg-1 px-2 py-1 text-sm text-color-text-1"
-              placeholder="描述实体类型、关系类型和属性约束。后端会把 Schema 拼接到固定抽取 Prompt 中。"
-              value={form.schema}
-              onChange={(event) => setField('schema', event.target.value)}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1 text-xs text-color-text-2">
-              <label htmlFor="graph-concurrency">LLM 抽取并发数</label>
-              <Input
-                id="graph-concurrency"
-                type="number"
-                min={MIN_CONCURRENCY}
-                max={MAX_CONCURRENCY}
-                value={form.concurrencyCount}
-                onChange={(event) =>
-                  setField('concurrencyCount', Number(event.target.value))
-                }
-              />
-            </div>
-            <div className="flex flex-col gap-1 text-xs text-color-text-2">
-              <label htmlFor="graph-model-params">模型参数 JSON</label>
-              <Input
-                id="graph-model-params"
-                placeholder='例如 {"temperature":0.1}'
-                value={form.modelParamsText}
-                onChange={(event) =>
-                  setField('modelParamsText', event.target.value)
-                }
-              />
-            </div>
-          </div>
-
-          {error ? (
-            <p role="alert" className="text-xs text-danger-6">
-              {error}
-            </p>
           ) : null}
         </div>
 
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={saving}
-            onClick={() => onOpenChange(false)}
-          >
-            取消
-          </Button>
-          <Button type="button" disabled={saving} onClick={submit}>
-            {editing ? '保存配置' : '锁定配置'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="flex flex-col gap-1 text-xs text-color-text-2">
+          <label htmlFor="graph-schema">Schema</label>
+          <textarea
+            id="graph-schema"
+            rows={6}
+            className="rounded border border-color-border-1 bg-color-bg-1 px-2 py-1 text-sm text-color-text-1"
+            placeholder="描述实体类型、关系类型和属性约束。后端会把 Schema 拼接到固定抽取 Prompt 中。"
+            value={form.schema}
+            onChange={(event) => setField('schema', event.target.value)}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-1 text-xs text-color-text-2">
+            <label htmlFor="graph-concurrency">LLM 抽取并发数</label>
+            <Input
+              id="graph-concurrency"
+              type="number"
+              min={MIN_CONCURRENCY}
+              max={MAX_CONCURRENCY}
+              value={form.concurrencyCount}
+              onChange={(event) =>
+                setField('concurrencyCount', Number(event.target.value))
+              }
+            />
+          </div>
+          <div className="flex flex-col gap-1 text-xs text-color-text-2">
+            <label htmlFor="graph-model-params">模型参数 JSON</label>
+            <Input
+              id="graph-model-params"
+              placeholder='例如 {"temperature":0.1}'
+              value={form.modelParamsText}
+              onChange={(event) =>
+                setField('modelParamsText', event.target.value)
+              }
+            />
+          </div>
+        </div>
+
+        {error ? (
+          <p role="alert" className="text-xs text-danger-6">
+            {error}
+          </p>
+        ) : null}
+      </div>
+      <div>
+        <Button
+          htmlType="button"
+          variant="outlined"
+          disabled={saving}
+          onClick={() => onOpenChange(false)}
+        >
+          取消
+        </Button>
+        <Button htmlType="button" disabled={saving} onClick={submit}>
+          {editing ? '保存配置' : '锁定配置'}
+        </Button>
+      </div>
+    </Modal>
   );
 };

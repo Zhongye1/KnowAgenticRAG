@@ -53,35 +53,45 @@ describe('文件与命令类工具的头部', () => {
       call('list_directory', { dir_path: '/a', path: '/b' }),
     );
 
-    expect(segmentTexts(call('list_directory', { dir_path: '/a', path: '/b' })))
-      .toEqual(['/a']);
+    expect(
+      segmentTexts(call('list_directory', { dir_path: '/a', path: '/b' })),
+    ).toEqual(['/a']);
     expect(header?.hideParams).toBe(true);
   });
 
   it('读取文件展示文件名并带上行范围', () => {
     expect(
       segmentTexts(
-        call('read_file', { file_path: '/deep/dir/app.ts', offset: 10, limit: 5 }),
+        call('read_file', {
+          file_path: '/deep/dir/app.ts',
+          offset: 10,
+          limit: 5,
+        }),
       ),
     ).toEqual(['app.ts', 'Lines 10-15']);
   });
 
   it('只给 limit 或只给 offset 时给单边范围', () => {
-    expect(segmentTexts(call('read_file', { file_path: 'a.ts', limit: 5 })))
-      .toEqual(['a.ts', 'Lines 5']);
-    expect(segmentTexts(call('read_file', { file_path: 'a.ts', offset: 3 })))
-      .toEqual(['a.ts', 'From 3']);
+    expect(
+      segmentTexts(call('read_file', { file_path: 'a.ts', limit: 5 })),
+    ).toEqual(['a.ts', 'Lines 5']);
+    expect(
+      segmentTexts(call('read_file', { file_path: 'a.ts', offset: 3 })),
+    ).toEqual(['a.ts', 'From 3']);
   });
 
   it('写入文件展示路径与新增行数', () => {
     expect(
-      segmentTexts(call('write_file', { file_path: '/a/b.ts', content: '1\n2\n3' })),
+      segmentTexts(
+        call('write_file', { file_path: '/a/b.ts', content: '1\n2\n3' }),
+      ),
     ).toEqual(['/a/b.ts', '+3']);
   });
 
   it('写入内容为空时不给行数片段', () => {
-    expect(segmentTexts(call('write_file', { file_path: '/a/b.ts', content: '' })))
-      .toEqual(['/a/b.ts']);
+    expect(
+      segmentTexts(call('write_file', { file_path: '/a/b.ts', content: '' })),
+    ).toEqual(['/a/b.ts']);
   });
 
   it('搜索文件内容同时展示模式与目标路径', () => {
@@ -106,7 +116,9 @@ describe('网络与数据类工具的头部', () => {
     const toolCall = call(
       'web_search',
       { query: '参数里的词' },
-      { tool_call_result: { content: JSON.stringify({ query: '结果里的词' }) } },
+      {
+        tool_call_result: { content: JSON.stringify({ query: '结果里的词' }) },
+      },
     );
 
     expect(segmentTexts(toolCall)).toEqual(['结果里的词']);
@@ -134,8 +146,9 @@ describe('网络与数据类工具的头部', () => {
   });
 
   it('查看表结构展示表名', () => {
-    expect(segmentTexts(call('mysql_describe_table', { table_name: 'users' })))
-      .toEqual(['users']);
+    expect(
+      segmentTexts(call('mysql_describe_table', { table_name: 'users' })),
+    ).toEqual(['users']);
   });
 
   it('计算器与图表只有主文案', () => {
@@ -176,8 +189,9 @@ describe('记忆与提问的头部', () => {
   });
 
   it('结果里没有问题题干时退到参数', () => {
-    expect(segmentTexts(call('ask_user_question', { question: '选哪个' })))
-      .toEqual(['选哪个']);
+    expect(
+      segmentTexts(call('ask_user_question', { question: '选哪个' })),
+    ).toEqual(['选哪个']);
   });
 });
 
@@ -185,7 +199,9 @@ describe('知识库类工具的头部', () => {
   it('搜索知识库：知识库名取参数，带上查询词与结果摘要', () => {
     // 调用状态是 success，结果为空，因此摘要为「未找到结果」
     expect(
-      segmentTexts(call('query_kb', { kb_name: '产品文档', query_text: '退款' })),
+      segmentTexts(
+        call('query_kb', { kb_name: '产品文档', query_text: '退款' }),
+      ),
     ).toEqual(['知识库: 产品文档', '退款', '未找到结果']);
   });
 
@@ -239,11 +255,15 @@ describe('知识库类工具的头部', () => {
 
   it('查看知识库列表：三个以内列全，超过三个折成等 N 个', () => {
     const result = (names: string[]) =>
-      call('list_kbs', {}, {
-        tool_call_result: {
-          content: JSON.stringify(names.map((name) => ({ name }))),
+      call(
+        'list_kbs',
+        {},
+        {
+          tool_call_result: {
+            content: JSON.stringify(names.map((name) => ({ name }))),
+          },
         },
-      });
+      );
 
     expect(segmentTexts(result(['a', 'b']))).toEqual(['2个知识库：a，b']);
     expect(segmentTexts(result(['a', 'b', 'c', 'd', 'e']))).toEqual([
@@ -261,8 +281,9 @@ describe('知识库类工具的头部', () => {
 
 describe('MySQL 类工具不在主体里重复参数', () => {
   it('列出数据库表与查看表结构都隐藏参数', () => {
-    expect(buildToolHeader(call('mysql_list_tables', { host: 'x' }))?.hideParams)
-      .toBe(true);
+    expect(
+      buildToolHeader(call('mysql_list_tables', { host: 'x' }))?.hideParams,
+    ).toBe(true);
     expect(
       buildToolHeader(call('mysql_describe_table', { table_name: 'users' }))
         ?.hideParams,

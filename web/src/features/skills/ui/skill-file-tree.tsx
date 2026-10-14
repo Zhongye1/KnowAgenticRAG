@@ -11,9 +11,9 @@ import {
   Folder,
   FolderOpen,
 } from 'lucide-react';
+import { Button } from 'antd';
 
 import type { SkillFileNode } from '../api/skill-api';
-import { Button } from '@/shared/ui/button';
 import { cn } from '@/shared/lib';
 
 type SkillFileTreeProps = {
@@ -45,9 +45,10 @@ export const SkillFileTree = ({
           >
             {node.is_dir ? (
               <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
+                htmlType="button"
+                variant="text"
+                size="small"
+                className="size-6 [&_svg]:size-3"
                 aria-label={`${isOpen ? '折叠' : '展开'}目录 ${node.name}`}
                 aria-expanded={isOpen}
                 onClick={() => onToggleExpand(node.path)}

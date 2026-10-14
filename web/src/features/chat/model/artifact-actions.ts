@@ -6,13 +6,19 @@
  */
 import * as React from 'react';
 
-import { downloadThreadArtifact, saveThreadArtifact } from '../api/artifacts-api';
+import {
+  downloadThreadArtifact,
+  saveThreadArtifact,
+} from '../api/artifacts-api';
 import type { ArtifactItem } from '../lib/artifacts';
 
 export type ArtifactActions = {
   /** 正在保存到个人空间的产物路径；卡片按钮据此显示保存中。 */
   savingPaths: ReadonlySet<string>;
-  download: (threadId: string | null | undefined, artifact: ArtifactItem) => void;
+  download: (
+    threadId: string | null | undefined,
+    artifact: ArtifactItem,
+  ) => void;
   save: (threadId: string | null | undefined, artifact: ArtifactItem) => void;
 };
 

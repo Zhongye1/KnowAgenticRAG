@@ -13,7 +13,7 @@ describe('ArtifactsCard', () => {
     render(<ArtifactsCard artifacts={artifacts} threadId="t1" />);
     expect(screen.getByText('report.md')).toBeInTheDocument();
     expect(screen.getByText('data.csv')).toBeInTheDocument();
-    expect(screen.getByText('Markdown 文档')).toBeInTheDocument();
+    expect(screen.getByText('交付文件 · MD')).toBeInTheDocument();
   });
 
   it('没有产物时不渲染', () => {
@@ -70,8 +70,6 @@ describe('ArtifactsCard', () => {
 
   it('没有线程时不允许保存', () => {
     render(<ArtifactsCard artifacts={artifacts} threadId={null} />);
-    expect(
-      screen.getByLabelText('保存 report.md 到个人空间'),
-    ).toBeDisabled();
+    expect(screen.getByLabelText('保存 report.md 到个人空间')).toBeDisabled();
   });
 });

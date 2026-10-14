@@ -63,7 +63,10 @@ export const KbChunkGroups = ({
                   ) : (
                     <ChevronRight className="size-4 shrink-0" aria-hidden />
                   )}
-                  <span className="min-w-0 flex-1 truncate text-[var(--gray-1000)]" title={group.filename}>
+                  <span
+                    className="min-w-0 flex-1 truncate text-[var(--gray-1000)]"
+                    title={group.filename}
+                  >
                     {group.filename}
                   </span>
                   <span className="shrink-0 text-[var(--gray-500)]">

@@ -49,7 +49,9 @@ export const SubagentLifecycleRow = ({
             <span className="shrink-0 text-[var(--gray-500)]" aria-hidden>
               |
             </span>
-            <span className="truncate text-[var(--gray-800)]">{view.detail}</span>
+            <span className="truncate text-[var(--gray-800)]">
+              {view.detail}
+            </span>
           </>
         ) : null}
       </button>
@@ -60,7 +62,10 @@ export const SubagentLifecycleRow = ({
               {view.meta.map((item) => (
                 <React.Fragment key={item.label}>
                   <dt className="text-[var(--gray-500)]">{item.label}</dt>
-                  <dd className="truncate font-mono text-[var(--gray-800)]" title={item.value}>
+                  <dd
+                    className="truncate font-mono text-[var(--gray-800)]"
+                    title={item.value}
+                  >
                     {item.value}
                   </dd>
                 </React.Fragment>
@@ -71,8 +76,12 @@ export const SubagentLifecycleRow = ({
             <ul className="flex flex-col gap-1">
               {view.progressMessages.map((message, index) => (
                 <li key={`${message.kind}-${index}`} className="flex gap-2">
-                  <span className="shrink-0 text-[var(--gray-500)]">{message.kind}</span>
-                  <span className="truncate text-[var(--gray-800)]">{message.content}</span>
+                  <span className="shrink-0 text-[var(--gray-500)]">
+                    {message.kind}
+                  </span>
+                  <span className="truncate text-[var(--gray-800)]">
+                    {message.content}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -80,7 +89,10 @@ export const SubagentLifecycleRow = ({
           {view.events.length ? (
             <ul className="flex flex-col gap-1 font-mono">
               {view.events.map((event, index) => (
-                <li key={`${event.seq}-${index}`} className="flex gap-2 text-[var(--gray-500)]">
+                <li
+                  key={`${event.seq}-${index}`}
+                  className="flex gap-2 text-[var(--gray-500)]"
+                >
                   <span className="w-10 shrink-0">{event.seq}</span>
                   <span className="truncate">{event.name}</span>
                 </li>

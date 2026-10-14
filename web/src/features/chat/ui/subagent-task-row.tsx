@@ -57,7 +57,10 @@ export const SubagentTaskRow = ({
             <p className="text-[var(--gray-800)]">{view.description}</p>
           ) : null}
           {view.childThreadId ? (
-            <p className="truncate font-mono text-[var(--gray-500)]" title={view.childThreadId}>
+            <p
+              className="truncate font-mono text-[var(--gray-500)]"
+              title={view.childThreadId}
+            >
               thread: {view.childThreadId}
             </p>
           ) : null}

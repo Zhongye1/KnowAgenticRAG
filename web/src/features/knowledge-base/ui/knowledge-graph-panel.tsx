@@ -8,6 +8,10 @@
  */
 import * as React from 'react';
 import { Database, RefreshCw, Search, Settings } from 'lucide-react';
+import { Empty as SharedEmpty } from '@/shared/ui/empty';
+import { Button, Input, Spin } from 'antd';
+import { useNotifications } from '@/shared/ui/notifications';
+import { useConfirm } from '@/shared/ui/confirm-dialog';
 
 import type { GraphEdge, GraphNode } from '../api/graph-api';
 import { hasPendingGraphChunks, isGraphBuildRunning } from '../lib/graph-build';
@@ -27,12 +31,6 @@ import { GraphCanvas } from './graph-canvas';
 import { GraphConfigDialog } from './graph-config-dialog';
 import { GraphDetailPanel } from './graph-detail-panel';
 import { GraphFailedChunksDialog } from './graph-failed-chunks-dialog';
-import { Button } from '@/shared/ui/button';
-import { Empty } from '@/shared/ui/empty';
-import { Input } from '@/shared/ui/input';
-import { useNotifications } from '@/shared/ui/notifications';
-import { confirm } from '@/shared/ui/confirm-dialog';
-import { Spinner } from '@/shared/ui/spinner';
 
 /** 后端把 `max_depth` 夹在 3，因此界面最大值与它一致。 */
 const MAX_DEPTH = 3;
@@ -69,7 +67,7 @@ const GraphEmptyActions = ({
 }: GraphEmptyActionsProps) => {
   if (!locked && !readOnly) {
     return (
-      <Button type="button" onClick={onConfigure}>
+      <Button htmlType="button" onClick={onConfigure}>
         <Settings className="size-4" />
         配置抽取器
       </Button>
@@ -77,7 +75,7 @@ const GraphEmptyActions = ({
   }
   if (searching) {
     return (
-      <Button type="button" variant="outline" onClick={onClearSearch}>
+      <Button htmlType="button" variant="outlined" onClick={onClearSearch}>
         <Search className="size-4" />
         清空搜索
       </Button>
@@ -85,14 +83,14 @@ const GraphEmptyActions = ({
   }
   if (!readOnly && pending && !buildRunning) {
     return (
-      <Button type="button" disabled={busy} onClick={onStartIndex}>
+      <Button htmlType="button" disabled={busy} onClick={onStartIndex}>
         <Database className="size-4" />
         开始索引
       </Button>
     );
   }
   return (
-    <Button type="button" variant="outline" onClick={onRefresh}>
+    <Button htmlType="button" variant="outlined" onClick={onRefresh}>
       <RefreshCw className="size-4" />
       刷新图谱
     </Button>
@@ -108,6 +106,7 @@ export const KnowledgeGraphPanel = ({
   kbId,
   readOnly,
 }: KnowledgeGraphPanelProps) => {
+  const { confirm } = useConfirm();
   const notifications = useNotifications();
   const status = useGraphBuildStatus(kbId);
   const [searchInput, setSearchInput] = React.useState('');
@@ -258,16 +257,16 @@ export const KnowledgeGraphPanel = ({
               onClick={applySearch}
             >
               {subgraph.isFetching ? (
-                <Spinner className="size-3.5" />
+                <Spin className="size-3.5" />
               ) : (
                 <Search className="size-3.5" />
               )}
             </button>
           </div>
           <Button
-            type="button"
-            variant="outline"
-            size="icon"
+            htmlType="button"
+            variant="outlined"
+            size="small"
             aria-label="刷新图谱"
             onClick={() => void subgraph.refetch()}
           >
@@ -280,8 +279,8 @@ export const KnowledgeGraphPanel = ({
         <div className="flex items-center gap-2">
           {!readOnly ? (
             <Button
-              type="button"
-              variant="outline"
+              htmlType="button"
+              variant="outlined"
               aria-label="索引管理"
               className={locked ? 'gap-2' : undefined}
               onClick={() => setShowBuildPanel((current) => !current)}
@@ -291,9 +290,9 @@ export const KnowledgeGraphPanel = ({
             </Button>
           ) : null}
           <Button
-            type="button"
-            variant="outline"
-            size="icon"
+            htmlType="button"
+            variant="outlined"
+            size="small"
             aria-label="图谱设置"
             onClick={() => {
               setDraftParams(appliedParams);
@@ -315,8 +314,8 @@ export const KnowledgeGraphPanel = ({
                 : '未知错误'}
             </p>
             <Button
-              type="button"
-              variant="outline"
+              htmlType="button"
+              variant="outlined"
               onClick={() => void subgraph.refetch()}
             >
               <RefreshCw className="size-4" />
@@ -325,7 +324,7 @@ export const KnowledgeGraphPanel = ({
           </div>
         ) : status.isLoading || subgraph.isLoading ? (
           <div className="flex h-[520px] items-center justify-center rounded-large border border-color-border-1">
-            <Spinner size="lg" />
+            <Spin size="large" />
           </div>
         ) : (
           <GraphCanvas
@@ -341,7 +340,7 @@ export const KnowledgeGraphPanel = ({
         !subgraph.isLoading &&
         !hasNodes ? (
           <div className="absolute inset-0 flex items-center justify-center rounded-large bg-color-bg-1/80">
-            <Empty
+            <SharedEmpty
               icon={Database}
               description={
                 !locked
@@ -470,7 +469,7 @@ export const KnowledgeGraphPanel = ({
               />
               排除 Chunk 节点
             </label>
-            <Button type="button" onClick={applySettings}>
+            <Button htmlType="button" onClick={applySettings}>
               应用
             </Button>
           </section>

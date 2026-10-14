@@ -14,7 +14,10 @@ export type GeneratingStatusProps = {
   elapsedSeconds: number;
 };
 
-export const GeneratingStatus = ({ text, elapsedSeconds }: GeneratingStatusProps) => {
+export const GeneratingStatus = ({
+  text,
+  elapsedSeconds,
+}: GeneratingStatusProps) => {
   const elapsedLabel = buildElapsedLabel(elapsedSeconds);
   return (
     <div
@@ -29,7 +32,9 @@ export const GeneratingStatus = ({ text, elapsedSeconds }: GeneratingStatusProps
         <span className={`${styles.generatingDot} ${styles.generatingDot3}`} />
       </span>
       <span className={styles.generatingText}>{text}</span>
-      {elapsedLabel ? <span className={styles.generatingElapsed}>{elapsedLabel}</span> : null}
+      {elapsedLabel ? (
+        <span className={styles.generatingElapsed}>{elapsedLabel}</span>
+      ) : null}
     </div>
   );
 };

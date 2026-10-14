@@ -195,7 +195,14 @@ class LogoImg {
           const sum = r + g + b + a;
           if (sum >= 100) {
             this.particleData.push(
-              new Particle(x, y + offsetY, ANIMATE_TIME, [r, g, b, a], width, height),
+              new Particle(
+                x,
+                y + offsetY,
+                ANIMATE_TIME,
+                [r, g, b, a],
+                width,
+                height,
+              ),
             );
           }
         }
@@ -454,12 +461,7 @@ export const ArkParticleAnimation = ({
   }, [readyTick, imagesKey, intervalMs]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      aria-hidden="true"
-    />
+    <canvas ref={canvasRef} width={width} height={height} aria-hidden="true" />
   );
 };
 

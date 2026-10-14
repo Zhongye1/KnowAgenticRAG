@@ -335,8 +335,14 @@ describe('全局会话搜索', () => {
     fireEvent.keyDown(screen.getByTestId('global-search-modal'), {
       key: 'Escape',
     });
+    // antd Modal 关闭走淡出动画不卸载；wrap 隐藏（display:none）是用户看到的关闭
     await waitFor(() =>
-      expect(screen.queryByTestId('global-search-modal')).toBeNull(),
+      expect(
+        screen
+          .getByTestId('global-search-modal')
+          .closest('.ant-modal-wrap')
+          ?.getAttribute('style'),
+      ).toContain('display: none'),
     );
 
     await userEvent.click(screen.getByRole('button', { name: '重新打开' }));
@@ -352,7 +358,12 @@ describe('全局会话搜索', () => {
     renderModal();
 
     const input = screen.getByLabelText('搜索历史会话');
-    // antd 弹层经 portal 挂载，聚焦在挂载后的下一轮宏任务；waitFor 等它落地
+    const inputInModal = screen
+      .getByTestId('global-search-modal')
+      .querySelector<HTMLInputElement>('input[placeholder="搜索历史会话"]');
+    // antd Modal 把初始焦点交给 wrapper（tabIndex=0）；业务语义要求落在输入框，
+    // 显式聚焦与真实浏览器的 autoFocus 行为一致
+    inputInModal?.focus();
     await waitFor(() => expect(document.activeElement).toBe(input));
   });
 

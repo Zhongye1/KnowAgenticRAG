@@ -7,6 +7,9 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// antd 词汇由应用装配承载，测试同构挂上
+import { AntdProvider } from '@/app/theme/antd-provider';
 import * as React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -112,9 +115,11 @@ const renderFlow = (
   });
   const handlers = { onClose: vi.fn(), onCompleted: vi.fn() };
   render(
-    <QueryClientProvider client={queryClient}>
-      <SkillInstallFlowDialog flow={flow} {...handlers} />
-    </QueryClientProvider>,
+    <AntdProvider>
+      <QueryClientProvider client={queryClient}>
+        <SkillInstallFlowDialog flow={flow} {...handlers} />
+      </QueryClientProvider>
+    </AntdProvider>,
   );
   return handlers;
 };

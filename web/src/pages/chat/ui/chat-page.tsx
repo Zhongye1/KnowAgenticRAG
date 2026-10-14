@@ -50,7 +50,6 @@ import {
   useImageUploadSlot,
   useModelOverride,
   useModelSelection,
-  useNotifications,
   usePanelFileSearch,
   usePanelFilesystem,
   usePanelPreview,
@@ -66,15 +65,18 @@ import {
   AUTO_PROJECT_ID,
   shouldPollPanelFilesystem,
   pendingAttachmentFileIds,
+  pendingThreadAttachments,
   type Conversation,
   type DebugMessage,
   type MentionResourceItem,
   type ToolApprovalMode,
 } from '@/features/chat';
 import { useIsSuperuser } from '@/entities/session';
+import { useNotifications } from '@/shared/ui/notifications';
 import { useKnowledgeBases } from '@/features/knowledge-base';
 import { paths } from '@/shared/config';
 import { ContentLayout } from '@/shared/ui/content-layout';
+import { pathBreadcrumbs } from '@/shared/lib/workspace-path';
 import { useNavigate, useParams } from 'react-router';
 
 import { useChatSubmission } from '../model/use-chat-submission';
@@ -112,15 +114,23 @@ export const ChatPage = () => {
 
   const { addNotification } = useNotifications();
   const notify = React.useCallback(
-    (notice: { type: 'error' | 'info' | 'success'; title: string; message: string }) => {
+    (notice: {
+      type: 'error' | 'info' | 'success';
+      title: string;
+      message: string;
+    }) => {
       addNotification(notice);
     },
     [addNotification],
   );
 
   // 草稿输入与单槽图片上传：状态层在 features/chat/model，页面只消费
-  const { input, currentInput, updateInput, switchThread: switchDraftThread } =
-    useThreadDraftInput(routeThreadId);
+  const {
+    input,
+    currentInput,
+    updateInput,
+    switchThread: switchDraftThread,
+  } = useThreadDraftInput(routeThreadId);
   const imageSlot = useImageUploadSlot({
     notifyError: (message) => notify({ type: 'error', title: '对话', message }),
   });
@@ -171,11 +181,14 @@ export const ChatPage = () => {
   // 产物动作：下载与保存到个人空间，在途集合也在 hook 里
   const artifactActions = useArtifactActions({
     notifyError: (message) => notify({ type: 'error', title: '对话', message }),
-    notifySuccess: (message) => notify({ type: 'success', title: '对话', message }),
+    notifySuccess: (message) =>
+      notify({ type: 'success', title: '对话', message }),
   });
 
   // 面板文件系统：两套树的状态与轮询都在这里
-  const [treeScope, setTreeScope] = React.useState<'thread' | 'workspace'>('thread');
+  const [treeScope, setTreeScope] = React.useState<'thread' | 'workspace'>(
+    'thread',
+  );
   const activePanelSection = panel.sections.find(
     (section) => section.key === panel.activeSectionKey,
   );
@@ -188,7 +201,9 @@ export const ChatPage = () => {
       activeSection: activePanelSection,
       // 预览由树点开：身份跟随当前树的作用域（个人空间的文件不随生成变化）
       activePreview:
-        activePanelSection?.type === 'file' ? { workdir: treeScope === 'thread' } : null,
+        activePanelSection?.type === 'file'
+          ? { workdir: treeScope === 'thread' }
+          : null,
     }),
   });
   const panelPreview = usePanelPreview({ threadId });
@@ -221,7 +236,8 @@ export const ChatPage = () => {
   );
   // 模型按四级回退：按会话的覆盖 → 会话 metadata 的绑定 → 智能体配置 → 系统默认
   const threadMetadata = useThreadList(
-    (state) => state.threads.find((item) => item.id === routeThreadId)?.metadata,
+    (state) =>
+      state.threads.find((item) => item.id === routeThreadId)?.metadata,
   );
   const modelOverride = useModelOverride(routeThreadId);
   const setModelOverride = useModelSelection((state) => state.setOverride);
@@ -230,15 +246,20 @@ export const ChatPage = () => {
   const chatModels = useChatModels();
   const systemDefaultModel = useSystemDefaultModel();
 
+  // 状态面板的手动刷新在途标记；刷新按钮据此禁用并转圈
+  const [stateRefreshing, setStateRefreshing] = React.useState(false);
   // 附件上传：条目只在弹窗打开期间存在，关闭即清空
   const [attachmentOpen, setAttachmentOpen] = React.useState(false);
   const attachmentUpload = useAttachmentUpload({
     configuredEngine: useDefaultOcrEngine(),
   });
-  // 会话里已确认的附件：还没被请求用掉的那些要随下一次发送下发
+  // 会话里已确认的附件：还没被请求用掉的那些要随下一次发送下发，同时也是输入区的预览
   const threadAttachments = useThreadAttachments(threadId);
   const cacheThreadAttachments = useCacheThreadAttachments();
-  const pendingAttachmentIds = pendingAttachmentFileIds(threadAttachments.data ?? []);
+  const pendingAttachments = pendingThreadAttachments(
+    threadAttachments.data ?? [],
+  );
+  const pendingAttachmentIds = pendingAttachmentFileIds(pendingAttachments);
 
   // 项目只在还没有会话时可选：它决定这条会话的工作目录，建出来就改不了
   const [selectedProjectId, setSelectedProjectId] =
@@ -256,7 +277,9 @@ export const ChatPage = () => {
       state.threads.find((item) => item.id === routeThreadId)?.metadata
         ?.tool_approval_mode,
   );
-  const threadToolApprovalMode = isToolApprovalMode(storedThreadToolApprovalMode)
+  const threadToolApprovalMode = isToolApprovalMode(
+    storedThreadToolApprovalMode,
+  )
     ? storedThreadToolApprovalMode
     : null;
   const [savedToolApprovalMode, setSavedToolApprovalMode] =
@@ -320,7 +343,9 @@ export const ChatPage = () => {
   const chatMainRef = React.useRef<HTMLDivElement>(null);
   const scrollControllerRef = React.useRef<ScrollController | null>(null);
   if (!scrollControllerRef.current) {
-    scrollControllerRef.current = new ScrollController(() => chatMainRef.current);
+    scrollControllerRef.current = new ScrollController(
+      () => chatMainRef.current,
+    );
   }
   const scrollController = scrollControllerRef.current;
   React.useEffect(() => {
@@ -525,7 +550,9 @@ export const ChatPage = () => {
               name: artifact.name,
             });
           }}
-          onDownload={(artifact) => artifactActions.download(threadId, artifact)}
+          onDownload={(artifact) =>
+            artifactActions.download(threadId, artifact)
+          }
           onSave={(artifact) => artifactActions.save(threadId, artifact)}
         />
       );
@@ -544,6 +571,79 @@ export const ChatPage = () => {
     panel.syncSubagentRuns(runtime?.agentState);
   }, [panel.syncSubagentRuns, runtime?.agentState]);
 
+  /**
+   * 打开线程文件的预览分区；状态面板的产物/文件列表用它。
+   *
+   * 必须同时把文件面板打开并收起状态面板（参照 openPanelPreview → showFilePanel 与
+   * openSubagentThread 的 `isFilePanelOpen = true; statePanelOpen = false`）：
+   * 分区只是加进列表，面板不打开的话用户点了没有任何可见变化。
+   */
+  const openThreadPreview = (path: string, name: string) => {
+    panel.openSection({
+      key: `file:thread:${path}`,
+      type: 'file',
+      title: name,
+      path,
+      scope: 'thread',
+    });
+    panelPreview.open({ scope: 'thread', path, name });
+    panel.setOpen(true);
+    panel.setStateOpen(false);
+  };
+
+  /** 打开子智能体线程分区；状态面板的子智能体列表用它（同样要把文件面板打开）。 */
+  const openSubagentSection = ({
+    runId,
+    childThreadId,
+    name,
+    status,
+  }: {
+    runId: string | null;
+    childThreadId: string;
+    name: string;
+    status: string | undefined;
+  }) => {
+    panel.openSection({
+      key: `subagent:${runId ?? childThreadId}`,
+      type: 'subagent',
+      title: name,
+      threadId: childThreadId,
+      runId: runId ?? undefined,
+      runStatus: status,
+    });
+    panel.setOpen(true);
+    panel.setStateOpen(false);
+  };
+
+  /** 拉一次 agent_state；状态面板的刷新按钮与打开面板时的补拉都用它。 */
+  const refreshState = async () => {
+    if (!threadId) return;
+    setStateRefreshing(true);
+    try {
+      await fetchAgentState(threadId);
+    } finally {
+      setStateRefreshing(false);
+    }
+  };
+
+  /**
+   * 开关状态面板。
+   *
+   * 打开时补拉一次状态：参照在「有会话但还没有状态」时刷新，否则新开的空面板要等
+   * 下一次运行时回调才有内容。
+   */
+  const toggleStatePanel = () => {
+    const next = !panel.stateOpen;
+    panel.setStateOpen(next);
+    if (next && threadId && !runtime?.agentState) void refreshState();
+  };
+
+  /** 当前激活的分区是文件预览时的那个分区；用于按 path 解析预览内容。 */
+  const activeFileSection = panel.sections.find(
+    (section) =>
+      section.key === panel.activeSectionKey && section.type === 'file',
+  );
+
   return (
     <ContentLayout title="智能体对话" fullHeight>
       <ChatPageView
@@ -559,18 +659,11 @@ export const ChatPage = () => {
                 title: '文件',
               });
             }
+            // 参照里打开文件面板会收起状态面板：两块面板不同时占横向空间
+            panel.setStateOpen(false);
             panel.setOpen((current) => !current);
           },
-          onToggleState: () => {
-            if (!panel.open) {
-              panel.openSection({
-                key: 'state',
-                type: 'state',
-                title: '状态',
-              });
-            }
-            panel.setOpen((current) => !current);
-          },
+          onToggleState: toggleStatePanel,
         }}
         conversation={{
           messages,
@@ -593,7 +686,7 @@ export const ChatPage = () => {
           toolApprovalMode,
           onChangeToolApprovalMode,
           tokenUsage: readTokenUsage(runtime?.agentState),
-          onContextRingClick: panel.toggleWithDebugSection,
+          onContextRingClick: toggleStatePanel,
           modelSelected: currentModelSpec,
           modelGroups: chatModels.data ?? [],
           modelsLoading: chatModels.isPending,
@@ -604,6 +697,9 @@ export const ChatPage = () => {
           imagePending: imageSlot.pendingUploads > 0,
           imageFileInputRef: imageSlot.fileInputRef,
           onImageFileChange: imageSlot.onFileInputChange,
+          image: imageSlot.image,
+          onRemoveImage: imageSlot.clear,
+          pendingAttachments,
           input,
           onInputPaste: imageSlot.onPaste,
           onInputChange: updateInput,
@@ -640,42 +736,50 @@ export const ChatPage = () => {
           chat,
           agentSlug: agentSlug ?? null,
           pendingInterrupt: (pendingInterrupt ?? null) as
-            | import('@/features/chat').PendingInterrupt
-            | null,
+            import('@/features/chat').PendingInterrupt | null,
           greeting,
           currentAgentName,
-          projectSelector:
-            threadId ? null : (
-              <ProjectSelector
-                projects={projects.data ?? []}
-                projectsLoading={projects.isPending}
-                projectsError={
-                  projects.error instanceof Error ? projects.error.message : null
-                }
-                selected={selectedProjectId}
-                disabled={creatingThread}
-                onChange={setSelectedProjectId}
-                history={{
-                  query: historyQuery,
-                  items: historyCandidates.data?.items ?? [],
-                  loading: historyCandidates.isPending,
-                  error:
-                    historyCandidates.error instanceof Error
-                      ? historyCandidates.error.message
-                      : null,
-                  onQueryChange: setHistoryQuery,
-                }}
-                onCreateProject={async ({ name, path, requestId }) => {
-                  const project = await createProject.mutateAsync({
-                    requestId,
-                    name,
-                    path,
-                  });
-                  // 新项目建好就直接选中它：用户点「创建」的意图就是要用它
-                  setSelectedProjectId(project.id);
-                }}
-              />
-            ),
+          projectSelector: threadId ? null : (
+            <ProjectSelector
+              projects={projects.data ?? []}
+              projectsLoading={projects.isPending}
+              projectsError={
+                projects.error instanceof Error ? projects.error.message : null
+              }
+              onReloadProjects={() => void projects.refetch()}
+              selected={selectedProjectId}
+              disabled={creatingThread}
+              onChange={setSelectedProjectId}
+              history={{
+                query: historyQuery,
+                items: historyCandidates.data?.items ?? [],
+                loading: historyCandidates.isPending,
+                error:
+                  historyCandidates.error instanceof Error
+                    ? historyCandidates.error.message
+                    : null,
+                onQueryChange: setHistoryQuery,
+              }}
+              onCreateProject={async ({ name, path, requestId }) => {
+                const project = await createProject.mutateAsync({
+                  requestId,
+                  name,
+                  path,
+                });
+                // 新项目建好就直接选中它：用户点「创建」的意图就是要用它
+                setSelectedProjectId(project.id);
+              }}
+            />
+          ),
+        }}
+        statePanel={{
+          open: panel.stateOpen,
+          mode: panel.stateMode,
+          agentState: runtime?.agentState ?? null,
+          refreshing: stateRefreshing,
+          onRefresh: () => void refreshState(),
+          onOpenPreviewFile: openThreadPreview,
+          onOpenSubagent: openSubagentSection,
         }}
         sidePanel={{
           ...panel,
@@ -692,27 +796,14 @@ export const ChatPage = () => {
           onClose: () => panel.setOpen(false),
           onResize: panel.onResize,
           onResizeEnd: panel.endResize,
-          agentState: runtime?.agentState ?? null,
-          onOpenPreviewFile: (path: string, name: string) => {
-            panel.openSection({
-              key: `file:thread:${path}`,
-              type: 'file',
-              title: name,
-              path,
-            });
-            panelPreview.open({ scope: 'thread', path, name });
-          },
-          onOpenSubagent: ({ runId, childThreadId, name, status }) => {
-            panel.openSection({
-              key: `subagent:${runId ?? childThreadId}`,
-              type: 'subagent',
-              title: name,
-              threadId: childThreadId,
-              runId: runId ?? undefined,
-              runStatus: status,
-            });
-          },
-          previewFile: panelPreview.current,
+          // 按当前激活的文件分区取内容：用 panelPreview.current 会让每个预览 tab
+          // 都显示「最后打开的那个文件」
+          previewFile: activeFileSection
+            ? panelPreview.previewFor({
+                scope: activeFileSection.scope ?? 'thread',
+                path: activeFileSection.path ?? '',
+              })
+            : panelPreview.current,
           onPreviewDownload: (file) => {
             void panelPreview.download({
               scope: treeScope,
@@ -742,11 +833,30 @@ export const ChatPage = () => {
               type: 'file',
               title: name,
               path,
+              scope,
             });
             panelPreview.open({ scope, path, name });
           },
           onPreviewDownloadByScope: (scope, path, name) => {
             void panelPreview.download({ scope, path, name });
+          },
+          onSelectPath: (path) => {
+            // 面包屑点某一段：展开它的祖先（目录自身也展开）并选中它，不动其它分支。
+            // 空路径是「回到作用域根」：只清选中，不动展开态
+            panelFilesystem.setScopeState(treeScope, (current) =>
+              path
+                ? {
+                    ...current,
+                    expandedKeys: [
+                      ...new Set([
+                        ...current.expandedKeys,
+                        ...pathBreadcrumbs(path).map((crumb) => crumb.path),
+                      ]),
+                    ],
+                    selectedKeys: [path],
+                  }
+                : { ...current, selectedKeys: [] },
+            );
           },
           onNodeExpand: (node) => {
             panelFilesystem.setScopeState(treeScope, (current) => ({
@@ -755,6 +865,12 @@ export const ChatPage = () => {
                 ? current.expandedKeys.filter((key) => key !== node.key)
                 : [...current.expandedKeys, node.key],
               selectedKeys: [node.key],
+            }));
+          },
+          onExpandedKeysChange: (keys) => {
+            panelFilesystem.setScopeState(treeScope, (current) => ({
+              ...current,
+              expandedKeys: keys,
             }));
           },
           onLoadChildren: (node) => {
@@ -787,8 +903,6 @@ export const ChatPage = () => {
         overlays={{
           attachmentOpen,
           onAttachmentOpenChange: setAttachmentOpen,
-          image: imageSlot.image,
-          onImageRemove: imageSlot.clear,
         }}
       />
     </ContentLayout>

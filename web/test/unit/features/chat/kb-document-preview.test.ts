@@ -52,7 +52,9 @@ describe('parseDocumentPreview', () => {
       'open',
     );
 
-    expect(preview?.summary).toBe('打开文档: 第 1-9 行 / 共 100 行，下一段 offset 9');
+    expect(preview?.summary).toBe(
+      '打开文档: 第 1-9 行 / 共 100 行，下一段 offset 9',
+    );
   });
 
   it('查找模式给匹配数与窗口数，正则会写明', () => {
@@ -64,7 +66,11 @@ describe('parseDocumentPreview', () => {
     expect(preview?.summary).toBe('关键词查找: 3 处匹配，2 个上下文窗口');
     expect(
       parseDocumentPreview(
-        { windows: [{ content: '1\tA' }], total_matches: 0, match_mode: 'regex' },
+        {
+          windows: [{ content: '1\tA' }],
+          total_matches: 0,
+          match_mode: 'regex',
+        },
         'find',
       )?.summary,
     ).toBe('正则查找: 0 处匹配，1 个上下文窗口');
@@ -121,7 +127,9 @@ describe('行号与窗口辅助', () => {
     const window = { content: '', startLine: 2, endLine: 5, matchedLines: [] };
 
     expect(windowTitle(window, 0)).toBe('窗口 1: 第 2-5 行');
-    expect(windowTitle({ ...window, startLine: 0, endLine: 0 }, 1)).toBe('窗口 2');
+    expect(windowTitle({ ...window, startLine: 0, endLine: 0 }, 1)).toBe(
+      '窗口 2',
+    );
     expect(windowKey(window, 0)).toBe('2-5-0');
   });
 });

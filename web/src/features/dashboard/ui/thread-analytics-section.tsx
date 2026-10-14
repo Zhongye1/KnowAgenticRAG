@@ -32,7 +32,7 @@ import { EChart } from './echart';
 import { MetricCard, MetricGrid } from './metric-card';
 import { PanelBody, PanelCard, PanelSectionTitle } from './panel-card';
 import { ToggleGroup } from './toggle-group';
-import { Button } from '@/shared/ui/button';
+import { Button } from 'antd';
 import { Empty } from '@/shared/ui/empty';
 
 const TIME_RANGE_OPTIONS: { value: ThreadTimeRange; label: string }[] = [
@@ -77,9 +77,10 @@ export const ThreadAnalyticsSection = ({
           testId="thread-time-range"
         />
         <Button
-          type="button"
-          variant={includeSubagents ? 'default' : 'outline'}
-          size="sm"
+          htmlType="button"
+          variant={includeSubagents ? 'solid' : 'outlined'}
+          color="primary"
+          size="small"
           aria-pressed={includeSubagents}
           disabled={analytics.isFetching}
           onClick={() => setIncludeSubagents((value) => !value)}
@@ -88,9 +89,9 @@ export const ThreadAnalyticsSection = ({
           子智能体{includeSubagents ? '包含' : '不含'}
         </Button>
         <Button
-          type="button"
-          variant="outline"
-          size="sm"
+          htmlType="button"
+          variant="outlined"
+          size="small"
           disabled={analytics.isFetching}
           onClick={() => void analytics.refetch()}
         >
@@ -98,9 +99,9 @@ export const ThreadAnalyticsSection = ({
           刷新
         </Button>
         <Button
-          type="button"
-          variant="outline"
-          size="sm"
+          htmlType="button"
+          variant="outlined"
+          size="small"
           onClick={onOpenFeedback}
         >
           反馈列表

@@ -95,7 +95,9 @@ describe('tryAutoStartOIDC', () => {
 
   it('条件齐备时记录站内回跳地址并跳转到 provider', async () => {
     setSearch('?autostartOidc&redirect=/agent?thread=1');
-    getLoginUrl.mockResolvedValue({ login_url: 'https://idp.example.com/auth' });
+    getLoginUrl.mockResolvedValue({
+      login_url: 'https://idp.example.com/auth',
+    });
 
     await expect(
       tryAutoStartOIDC(true, { getLoginUrl, navigate }),
@@ -108,7 +110,9 @@ describe('tryAutoStartOIDC', () => {
 
   it('回跳地址是站外地址时只存首页', async () => {
     setSearch('?autostartOidc&redirect=//evil.example.com');
-    getLoginUrl.mockResolvedValue({ login_url: 'https://idp.example.com/auth' });
+    getLoginUrl.mockResolvedValue({
+      login_url: 'https://idp.example.com/auth',
+    });
 
     await expect(
       tryAutoStartOIDC(true, { getLoginUrl, navigate }),

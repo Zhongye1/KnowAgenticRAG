@@ -52,7 +52,9 @@ export const useModelSelection = create<ModelSelectionState>((set) => ({
 
 /** 会话级覆盖；没有时返回空串。 */
 export const useModelOverride = (threadId: string | null | undefined): string =>
-  useModelSelection((state) => state.overrideByKey[modelOverrideKey(threadId)] ?? '');
+  useModelSelection(
+    (state) => state.overrideByKey[modelOverrideKey(threadId)] ?? '',
+  );
 
 /** 可选的对话模型列表，按供应商分组。 */
 export const useChatModels = () =>

@@ -15,6 +15,9 @@ import {
   RefreshCw,
   Sparkles,
 } from 'lucide-react';
+import { Empty as SharedEmpty } from '@/shared/ui/empty';
+import { Button, Spin } from 'antd';
+import { useNotifications } from '@/shared/ui/notifications';
 import type { Markmap as MarkmapInstance } from 'markmap-view';
 
 import type { MindmapNode } from '../api/mindmap-api';
@@ -30,10 +33,6 @@ import {
   useMindmap,
   useMindmapDiff,
 } from '../model/mindmap-queries';
-import { Button } from '@/shared/ui/button';
-import { Empty } from '@/shared/ui/empty';
-import { Spinner } from '@/shared/ui/spinner';
-import { useNotifications } from '@/shared/ui/notifications';
 
 /**
  * markmap 自带一套 `--markmap-*` 变量（只在系统级暗色偏好下换暗色），把它们指到 `tokens.css`
@@ -171,7 +170,7 @@ export const KnowledgeMindmapPanel = ({
   if (documentQuery.isLoading) {
     return (
       <div className="flex h-[520px] items-center justify-center gap-2 text-sm text-color-text-2">
-        <Spinner />
+        <Spin />
         加载中…
       </div>
     );
@@ -187,8 +186,8 @@ export const KnowledgeMindmapPanel = ({
             : '未知错误'}
         </p>
         <Button
-          type="button"
-          variant="outline"
+          htmlType="button"
+          variant="outlined"
           onClick={() => void documentQuery.refetch()}
         >
           <RefreshCw className="size-4" />
@@ -201,7 +200,7 @@ export const KnowledgeMindmapPanel = ({
   if (generate.isPending) {
     return (
       <div className="flex h-[520px] items-center justify-center gap-2 text-sm text-color-text-2">
-        <Spinner />
+        <Spin />
         AI 正在生成思维导图…
       </div>
     );
@@ -211,7 +210,7 @@ export const KnowledgeMindmapPanel = ({
     return (
       <div className="flex h-[520px] flex-col items-center justify-center gap-1 rounded-large border border-color-border-1">
         <p className="text-sm font-medium text-color-text-1">暂无思维导图</p>
-        <Empty
+        <SharedEmpty
           icon={MapIcon}
           description={
             readOnly
@@ -220,7 +219,7 @@ export const KnowledgeMindmapPanel = ({
           }
           action={
             readOnly ? null : (
-              <Button type="button" onClick={() => void runGenerate(false)}>
+              <Button htmlType="button" onClick={() => void runGenerate(false)}>
                 <Sparkles className="size-4" />
                 生成思维导图
               </Button>
@@ -239,8 +238,8 @@ export const KnowledgeMindmapPanel = ({
       <div className="flex flex-wrap items-center gap-2">
         {readOnly ? null : (
           <Button
-            type="button"
-            variant="outline"
+            htmlType="button"
+            variant="outlined"
             disabled={generate.isPending}
             onClick={() => void runGenerate(false)}
           >
@@ -250,8 +249,8 @@ export const KnowledgeMindmapPanel = ({
         )}
         {!readOnly && canIncrementalUpdate(diff.data) ? (
           <Button
-            type="button"
-            variant="outline"
+            htmlType="button"
+            variant="outlined"
             disabled={generate.isPending}
             onClick={() => void runGenerate(true)}
           >
@@ -265,8 +264,8 @@ export const KnowledgeMindmapPanel = ({
           </Button>
         ) : null}
         <Button
-          type="button"
-          variant="outline"
+          htmlType="button"
+          variant="outlined"
           onClick={() => void markmapRef.current?.fit()}
         >
           <Maximize2 className="size-4" />

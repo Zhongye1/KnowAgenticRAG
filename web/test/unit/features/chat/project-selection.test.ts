@@ -20,12 +20,20 @@ const project = (id: string, name: string, mode = 'managed'): ProjectItem => ({
   directoryMode: mode,
 });
 
-const projects = [project('a', 'Alpha'), project('b', 'beta'), project('c', 'Gamma')];
+const projects = [
+  project('a', 'Alpha'),
+  project('b', 'beta'),
+  project('c', 'Gamma'),
+];
 
 describe('filterProjects', () => {
   it('按名称过滤，大小写不敏感', () => {
-    expect(filterProjects(projects, 'alp').map((item) => item.id)).toEqual(['a']);
-    expect(filterProjects(projects, 'BET').map((item) => item.id)).toEqual(['b']);
+    expect(filterProjects(projects, 'alp').map((item) => item.id)).toEqual([
+      'a',
+    ]);
+    expect(filterProjects(projects, 'BET').map((item) => item.id)).toEqual([
+      'b',
+    ]);
   });
 
   it('空白查询返回原列表', () => {
@@ -37,8 +45,12 @@ describe('filterProjects', () => {
   it('非 ASCII 名称也按大小写不敏感匹配', () => {
     const named = [project('d', 'Ärger')];
 
-    expect(filterProjects(named, 'ärger').map((item) => item.id)).toEqual(['d']);
-    expect(filterProjects(named, 'ÄRGER').map((item) => item.id)).toEqual(['d']);
+    expect(filterProjects(named, 'ärger').map((item) => item.id)).toEqual([
+      'd',
+    ]);
+    expect(filterProjects(named, 'ÄRGER').map((item) => item.id)).toEqual([
+      'd',
+    ]);
   });
 
   it('没有命中时返回空数组', () => {
@@ -65,7 +77,9 @@ describe('formatRelativeTime', () => {
   it('无法解析时返回空串，未来时间按刚刚处理', () => {
     expect(formatRelativeTime('nope', now)).toBe('');
     expect(formatRelativeTime(null, now)).toBe('');
-    expect(formatRelativeTime(new Date(now + 10 * minute).toISOString(), now)).toBe('刚刚');
+    expect(
+      formatRelativeTime(new Date(now + 10 * minute).toISOString(), now),
+    ).toBe('刚刚');
   });
 });
 

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, within, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
@@ -33,8 +33,7 @@ vi.mock('@/shared/ui/notifications', () => ({
 
 const { KnowledgeList } =
   await import('@/features/knowledge-base/ui/knowledge-list');
-const { ConfirmDialogHost } = await import('@/shared/ui/confirm-dialog-host');
-const { useConfirmStore } = await import('@/shared/ui/confirm-dialog');
+const { AntdProvider } = await import('@/app/theme/antd-provider');
 
 const database = (id: string, extra: Record<string, unknown> = {}) => ({
   kb_id: id,
@@ -61,18 +60,18 @@ const renderList = (onOpen = vi.fn()) => {
     defaultOptions: { queries: { retry: false } },
   });
   render(
-    <QueryClientProvider client={queryClient}>
-      <KnowledgeList onOpen={onOpen} />
-      {/* 删除走命令式确认框，测试里挂上它的渲染出口 */}
-      <ConfirmDialogHost />
-    </QueryClientProvider>,
+    <AntdProvider>
+      <QueryClientProvider client={queryClient}>
+        <KnowledgeList onOpen={onOpen} />
+        {/* 删除走命令式确认框，测试里挂上它的渲染出口 */}
+      </QueryClientProvider>
+    </AntdProvider>,
   );
   return { onOpen };
 };
 
 describe('知识库列表', () => {
   beforeEach(() => {
-    useConfirmStore.setState({ pending: null });
     api.list.mockReset().mockResolvedValue([database('a'), database('b')]);
     api.remove.mockReset().mockResolvedValue(undefined);
     api.listTypes.mockReset().mockResolvedValue({ milvus: { name: 'ARS' } });
@@ -171,8 +170,16 @@ describe('知识库列表', () => {
     );
     expect(api.remove).not.toHaveBeenCalled();
 
-    expect(await screen.findByText('删除知识库「库-a」？')).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: '删除' }));
+    expect(
+      await screen.findByText('删除知识库「库-a」？', {
+        selector: '.ant-modal-confirm-title',
+      }),
+    ).toBeTruthy();
+    await userEvent.click(
+      within(
+        document.querySelector('.ant-modal-confirm') as HTMLElement,
+      ).getByRole('button', { name: '删除' }),
+    );
 
     await waitFor(() => expect(api.remove).toHaveBeenCalledWith('a'));
     await waitFor(() =>
@@ -195,7 +202,11 @@ describe('知识库列表', () => {
     await userEvent.click(
       await screen.findByRole('menuitem', { name: '删除' }),
     );
-    await userEvent.click(await screen.findByRole('button', { name: '取消' }));
+    await userEvent.click(
+      within(
+        document.querySelector('.ant-modal-confirm') as HTMLElement,
+      ).getByRole('button', { name: '取消' }),
+    );
 
     expect(api.remove).not.toHaveBeenCalled();
   });
