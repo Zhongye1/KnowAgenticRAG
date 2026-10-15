@@ -64,7 +64,7 @@ vi.mock('@/shared/ui/notifications', async () => {
 });
 
 const { KnowledgeMindmapPanel } =
-  await import('@/features/knowledge-base/ui/knowledge-mindmap-panel');
+  await import('@/features/knowledge-base/ui/mindmap/knowledge-mindmap-panel');
 
 const MINDMAP = {
   content: '研发知识库',
@@ -88,7 +88,7 @@ const renderPanel = (readOnly = false) => {
   });
   render(
     <QueryClientProvider client={queryClient}>
-      <KnowledgeMindmapPanel kbId="kb-1" readOnly={readOnly} />
+      <KnowledgeMindmapPanel kbId="kb-1" readOnly={readOnly} active />
     </QueryClientProvider>,
   );
 };
@@ -352,7 +352,7 @@ describe('知识导图分区', () => {
     });
     const { unmount } = render(
       <QueryClientProvider client={queryClient}>
-        <KnowledgeMindmapPanel kbId="kb-1" readOnly={false} />
+        <KnowledgeMindmapPanel kbId="kb-1" readOnly={false} active />
       </QueryClientProvider>,
     );
 
@@ -362,5 +362,34 @@ describe('知识导图分区', () => {
     unmount();
 
     expect(markmap.instances[0].destroy).toHaveBeenCalledTimes(1);
+  });
+
+  it('重新激活分区时重取导图与差异，没重新激活就不重取', async () => {
+    api.get.mockResolvedValue({ mindmap: MINDMAP, kb_id: 'kb-1' });
+    api.diff.mockResolvedValue(DIFF());
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const tree = (active: boolean) => (
+      <QueryClientProvider client={queryClient}>
+        <KnowledgeMindmapPanel kbId="kb-1" readOnly={false} active={active} />
+      </QueryClientProvider>
+    );
+
+    // 第一次挂载时分区还没激活：查询自己取一次，但不该有「重新激活」带来的额外取数
+    const { rerender } = render(tree(false));
+    await waitFor(() => expect(api.get).toHaveBeenCalled());
+    const afterMount = api.get.mock.calls.length;
+
+    rerender(tree(true));
+    await waitFor(() =>
+      expect(api.get.mock.calls.length).toBeGreaterThan(afterMount),
+    );
+    const afterReactivate = api.get.mock.calls.length;
+
+    // 已经激活着再渲染一次不算「重新激活」
+    rerender(tree(true));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(api.get.mock.calls.length).toBe(afterReactivate);
   });
 });

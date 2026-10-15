@@ -36,25 +36,30 @@ export const CallStatsPanel = ({ className }: { className?: string } = {}) => {
   const [timeRange, setTimeRange] = React.useState<CallTimeRange>('14days');
   const [metricType, setMetricType] = React.useState<CallMetricType>('agents');
   const timeseries = useCallTimeseries(metricType, timeRange);
-  const data = timeseries.data;
+  // 展示口径跟着数据走：取数期间 data 仍是上一份，配套口径也是上一份，
+  // 否则汇总单位与峰值分桶标签会按新口径去渲染旧数据
+  const shown = timeseries.data;
+  const data = shown?.stats;
+  const shownType = shown?.type ?? metricType;
+  const shownRange = shown?.timeRange ?? timeRange;
 
   const summary = [
     {
       label: '总调用量',
-      value: formatCallValue(Number(data?.total_count ?? 0), metricType),
+      value: formatCallValue(Number(data?.total_count ?? 0), shownType),
     },
     {
       label: '每单位均值',
-      value: formatCallValue(Number(data?.average_count ?? 0), metricType),
+      value: formatCallValue(Number(data?.average_count ?? 0), shownType),
     },
     {
       label: '峰值',
       value:
         data?.peak_count === undefined
           ? '—'
-          : `${formatCallValue(Number(data.peak_count), metricType)}（${
+          : `${formatCallValue(Number(data.peak_count), shownType)}（${
               data.peak_date
-                ? formatCallBucketLabel(data.peak_date, timeRange)
+                ? formatCallBucketLabel(data.peak_date, shownRange)
                 : '无'
             }）`,
     },
@@ -112,13 +117,13 @@ export const CallStatsPanel = ({ className }: { className?: string } = {}) => {
         {data && !isCallTimeseriesEmpty(data) ? (
           <EChart
             testId="call-stats-chart"
-            ariaLabel={`${METRIC_TYPE_OPTIONS.find((option) => option.value === metricType)?.label ?? ''}调用量堆叠柱图`}
+            ariaLabel={`${METRIC_TYPE_OPTIONS.find((option) => option.value === shownType)?.label ?? ''}调用量堆叠柱图`}
             height={280}
             option={(palette) =>
               buildCallTimeseriesOption({
                 timeseries: data,
-                timeRange,
-                metricType,
+                timeRange: shownRange,
+                metricType: shownType,
                 palette,
               })
             }

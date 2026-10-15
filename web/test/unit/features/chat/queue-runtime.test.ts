@@ -60,7 +60,7 @@ const snapshot = (content: string): QueuePayload => ({
   },
 });
 
-/** 真实分帧的 SSE 响应体，交给 `processRunSseResponse` 解析。 */
+/** 真实分帧的 SSE 响应体，交给 `processSseResponse` 解析。 */
 const sseResponse = (frames: string) =>
   new Response(frames, {
     status: 200,

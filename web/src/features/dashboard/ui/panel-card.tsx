@@ -1,15 +1,21 @@
 /**
  * 数据总览的区块外壳与面板状态。
  *
- * `PanelCard` 给标题、右上角操作与内容，统一走 `--color-bg-1` + `--color-border-1`
- * + 8px 圆角，不加阴影（普通内容卡片）。
+ * 直接用 antd `Card`，标题、描述与操作都放在它的 `title` 槽位：`extra` 会把操作
+ * 摆在标题同一行的右端，而这里要的是标题与描述「下面」的一整行工具栏。
+ * 头部下边框由 antd 主题给出，不再自绘。五处需要显式指定：
+ * 操作行在 `title` 槽位内占第二行，要让 `ant-card-head-title` 默认的单行省略让位，
+ * 用 `classNames.title` 放回换行；`ant-card-head` 按单行标题设计，多行内容会顶到
+ * 边框，用 `styles.header` 补回纵向内边距；body 内边距沿用自绘版本的数值；
+ * `ant-card-head` 自带 `fontWeightStrong`，标题要常规字重，用 `font-normal` 压掉；
+ * 头部内容字号是 16px，工具栏要压回 14px 才与同排控件对齐。
  * `PanelBody` 承担加载/失败两态：失败必须能重试，而不是留一块空白。
  */
 import type * as React from 'react';
 
+import { Button, Card, Flex, Spin, Typography } from 'antd';
+
 import { cn } from '@/shared/lib';
-import { Button } from 'antd';
-import { Spinner } from '@/shared/ui/spinner';
 
 export const PanelCard = ({
   title,
@@ -26,28 +32,46 @@ export const PanelCard = ({
   className?: string;
   testId?: string;
 }) => (
-  <section
+  <Card
     data-testid={testId}
-    className={cn(
-      'flex min-w-0 flex-col rounded-large border border-color-border-1 bg-color-bg-1',
-      className,
-    )}
-  >
-    <header className="flex flex-wrap items-start justify-between gap-3 border-b border-color-border-1 px-4 py-3">
-      <div className="min-w-0">
-        <h3 className="text-base font-semibold text-color-text-1">{title}</h3>
-        {description ? (
-          <p className="mt-0.5 text-xs text-color-text-3">{description}</p>
+    className={cn('flex min-w-0 flex-col', className)}
+    styles={{
+      // 头部按 antd 单行标题设计，标题下多一行描述会顶到边框，补回纵向内边距；
+      // 数值与自绘版本一致（原先 header 是 px-4 py-3、body 是 px-4 py-4）
+      header: { paddingBlock: 12, paddingInline: 16 },
+      body: { flex: 1, minWidth: 0, padding: 16 },
+    }}
+    classNames={{ title: 'whitespace-normal' }}
+    title={
+      <Flex vertical gap={8} className="min-w-0">
+        <Flex vertical gap={2} className="min-w-0">
+          <Typography.Text className="text-base">
+            {title}
+          </Typography.Text>
+          {description ? (
+            // 次级说明同样继承了 `ant-card-head` 的 `fontWeightStrong`，压回常规
+            <Typography.Text
+              type="secondary"
+              className="text-xs font-normal"
+            >
+              {description}
+            </Typography.Text>
+          ) : null}
+        </Flex>
+        {actions ? (
+          // `ant-card-head` 给头部内容定的是 16px / `fontWeightStrong`；工具栏跟着它会
+          // 比同排控件更粗更大（Segmented 的标签不自带字重，直接继承成 600），压回常规
+          <Flex align="center" gap={8} wrap className="text-sm font-normal">
+            {actions}
+          </Flex>
         ) : null}
-      </div>
-      {actions ? (
-        <div className="flex flex-wrap items-center gap-2">{actions}</div>
-      ) : null}
-    </header>
-    <div className="flex min-w-0 flex-1 flex-col gap-4 px-4 py-4">
+      </Flex>
+    }
+  >
+    <Flex vertical gap={16} className="min-w-0">
       {children}
-    </div>
-  </section>
+    </Flex>
+  </Card>
 );
 
 /** 面板内的分组小标题（与卡片标题区分层级）。 */
@@ -58,12 +82,16 @@ export const PanelSectionTitle = ({
   children: React.ReactNode;
   hint?: string;
 }) => (
-  <div className="flex flex-wrap items-baseline gap-2">
-    <h4 className="text-sm font-semibold text-color-text-1">{children}</h4>
+  <Flex align="baseline" gap={8} wrap>
+    <Typography.Title level={4} className="mb-0 text-sm">
+      {children}
+    </Typography.Title>
     {hint ? (
-      <span className="text-[11px] text-color-text-3">{hint}</span>
+      <Typography.Text type="secondary" className="text-[11px]">
+        {hint}
+      </Typography.Text>
     ) : null}
-  </div>
+  </Flex>
 );
 
 /**
@@ -91,13 +119,18 @@ export const PanelBody = ({
 }) => {
   if (error) {
     return (
-      <div
+      <Flex
         data-testid={testId ? `${testId}-error` : undefined}
         role="alert"
-        className="flex flex-col items-center justify-center gap-3 text-xs text-danger-7"
+        vertical
+        align="center"
+        justify="center"
+        gap={12}
         style={{ minHeight: height }}
       >
-        <span>{errorText}</span>
+        <Typography.Text type="danger" className="text-xs">
+          {errorText}
+        </Typography.Text>
         {onRetry ? (
           <Button
             htmlType="button"
@@ -108,23 +141,24 @@ export const PanelBody = ({
             重新加载
           </Button>
         ) : null}
-      </div>
+      </Flex>
     );
   }
   if (loading) {
     return (
-      <div
+      <Flex
         data-testid={testId ? `${testId}-loading` : undefined}
-        className="flex items-center justify-center"
+        align="center"
+        justify="center"
         style={{ minHeight: height }}
       >
-        <Spinner size="md" className="text-color-text-3" />
-      </div>
+        <Spin size="small" />
+      </Flex>
     );
   }
   return (
-    <div data-testid={testId} className="flex min-w-0 flex-col gap-4">
+    <Flex data-testid={testId} vertical gap={16} className="min-w-0">
       {children}
-    </div>
+    </Flex>
   );
 };

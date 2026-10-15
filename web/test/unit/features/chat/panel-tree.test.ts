@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
+import type { FileEntry } from '@/shared/lib/files/filesystem-entry';
 import {
   applyPrefetchedVisibility,
   buildDisplayName,

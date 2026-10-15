@@ -7,7 +7,7 @@
 import * as React from 'react';
 import { CheckCircle2, ChevronDown, Loader2, XCircle } from 'lucide-react';
 import { avatarBackground, avatarInitials } from '@/shared/lib/avatar';
-import { resolveFileIconUrl } from '@/shared/lib/file-icon';
+import { resolveFileIconUrl } from '@/shared/lib/files';
 
 import styles from './panel-sections.module.css';
 

@@ -20,9 +20,9 @@ import {
   useWorkspaceEntries,
 } from '@/entities/workspace';
 import { describeFailure } from '@/shared/api';
-import type { PreviewFile } from '@/shared/lib/file-preview';
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
-import { isSameOrChildPath } from '@/shared/lib/workspace-path';
+import type { PreviewFile } from '@/shared/lib/files';
+import type { FileEntry } from '@/shared/lib/files';
+import { isSameOrChildPath } from '@/shared/lib/files';
 
 import { isEditableWorkspaceFile } from '../lib/file-format';
 import {

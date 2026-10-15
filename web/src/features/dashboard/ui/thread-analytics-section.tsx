@@ -7,7 +7,6 @@
  */
 import {
   Activity,
-  Bot,
   Layers,
   Mail,
   MessageSquare,
@@ -40,6 +39,12 @@ const TIME_RANGE_OPTIONS: { value: ThreadTimeRange; label: string }[] = [
   { value: '14days', label: '近 14 天' },
   { value: '30days', label: '近 30 天' },
   { value: '90days', label: '近 90 天' },
+];
+
+/** 子智能体会话是否计入统计；与时间范围一样是查询键的一部分。 */
+const SUBAGENT_OPTIONS: { value: 'include' | 'exclude'; label: string }[] = [
+  { value: 'include', label: '包含子智能体' },
+  { value: 'exclude', label: '不包含子智能体' },
 ];
 
 const hasTrendData = (
@@ -76,18 +81,14 @@ export const ThreadAnalyticsSection = ({
           disabled={analytics.isFetching}
           testId="thread-time-range"
         />
-        <Button
-          htmlType="button"
-          variant={includeSubagents ? 'solid' : 'outlined'}
-          color="primary"
-          size="small"
-          aria-pressed={includeSubagents}
+        <ToggleGroup
+          label="子智能体"
+          value={includeSubagents ? 'include' : 'exclude'}
+          options={SUBAGENT_OPTIONS}
+          onChange={(value) => setIncludeSubagents(value === 'include')}
           disabled={analytics.isFetching}
-          onClick={() => setIncludeSubagents((value) => !value)}
-        >
-          <Bot className="size-3.5" aria-hidden />
-          子智能体{includeSubagents ? '包含' : '不含'}
-        </Button>
+          testId="thread-subagents"
+        />
         <Button
           htmlType="button"
           variant="outlined"
@@ -221,7 +222,7 @@ export const ThreadAnalyticsSection = ({
               <div className="max-h-[240px] overflow-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="sticky top-0 bg-color-bg-1 text-color-text-3">
-                    <tr className="border-b border-color-border-1">
+                    <tr className="border-b border-color-border-2">
                       <th
                         scope="col"
                         className="w-10 py-2 pr-2 text-center font-medium"
@@ -253,7 +254,7 @@ export const ThreadAnalyticsSection = ({
                       <tr
                         key={user.uid}
                         data-testid="top-user-row"
-                        className="border-b border-color-border-1 last:border-b-0"
+                        className="border-b border-color-border-2 last:border-b-0"
                       >
                         <td className="py-2 pr-2 text-center tabular-nums text-color-text-3">
                           {index + 1}
@@ -287,7 +288,7 @@ export const ThreadAnalyticsSection = ({
           </PanelCard>
         </div>
 
-        <PanelSectionTitle hint="含进行中、已归档与已删除的历史记录">
+        {/* <PanelSectionTitle hint="含进行中、已归档与已删除的历史记录">
           会话状态分布
         </PanelSectionTitle>
         <ul
@@ -301,7 +302,7 @@ export const ThreadAnalyticsSection = ({
               ([status, count]) => (
                 <li
                   key={status}
-                  className="rounded-large border border-color-border-1 bg-color-bg-2 px-3 py-2 text-xs"
+                  className="rounded-large border border-color-border-2 bg-color-bg-2 px-3 py-2 text-xs"
                 >
                   <span className="text-color-text-3">
                     {conversationStatusLabel(status)}
@@ -313,7 +314,7 @@ export const ThreadAnalyticsSection = ({
               ),
             )
           )}
-        </ul>
+        </ul> */}
       </PanelBody>
     </div>
   );

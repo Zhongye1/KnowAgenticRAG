@@ -6,7 +6,7 @@ import type {
   HistoryCandidate,
   ProjectItem,
 } from '@/features/chat/api/projects-api';
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
+import type { FileEntry } from '@/shared/lib/files/filesystem-entry';
 import { AUTO_PROJECT_ID } from '@/features/chat/lib/project-selection';
 import { ProjectSelector } from '@/features/chat/ui/project-selector';
 

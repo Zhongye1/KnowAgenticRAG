@@ -5,7 +5,7 @@
  * 修改时间是相对时间，档位与中文串跟参照（dayjs `fromNow()` 的 zh-cn）逐字一致——「3 天前」
  * 「19 小时前」这种带空格的写法就是参照渲染出来的样子。
  */
-import { getPreviewFileExtension } from '@/shared/lib/file-preview';
+import { getPreviewFileExtension } from '@/shared/lib/files';
 
 const SIZE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
 

@@ -25,7 +25,7 @@ vi.mock('@/features/knowledge-base/api/graph-api', async () => {
 });
 
 const { GraphFailedChunksDialog } =
-  await import('@/features/knowledge-base/ui/graph-failed-chunks-dialog');
+  await import('@/features/knowledge-base/ui/graph/graph-failed-chunks-dialog');
 
 const renderDialog = () => {
   const queryClient = new QueryClient({

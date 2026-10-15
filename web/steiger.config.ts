@@ -32,6 +32,13 @@ export default defineConfig([
     rules: { 'fsd/insignificant-slice': 'off' },
   },
   {
+    // 任务中心的入口只有导航列底部一处（上游同样只有 AppLayout 的 UserInfoComponent 插槽）。
+    // 四个接口、状态与时长文案、轮询装配和面板是一体的：并入 widgets/app-sidebar 会让侧边栏
+    // 同时拥有后台作业轮询与取消/删除写入，因此与 features/debug 同口径只关闭这一条。
+    files: ['**/features/task-center/**'],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
     // 供应商面板的入口只有 /agent-manage 一处（上游同样挂在 AgentManageView 的 tab 里）。
     // api/model/lib/ui 四段与三个对话框是一体的：并入 pages/agent-manage 会让页面直接持有
     // 供应商写入、模型清单与凭据表单，因此与 features/debug 同口径只关闭这一条。
@@ -118,6 +125,17 @@ export default defineConfig([
       '**/entities/department/**',
       '**/entities/user-admin/**',
       '**/entities/system-config/**',
+    ],
+    rules: { 'fsd/insignificant-slice': 'off' },
+  },
+  {
+    // 扩展页的「工具」tab：面板只有 pages/extensions 一个消费方，工具清单只有它读；
+    // 「MCP」面板有 pages/extensions 与 pages/mcp-detail 两个消费方，但 entities/mcp 只有前者读。
+    // 与上面各条同因（本仓的约定是实体持端点、切片持界面），按同一口径关闭。
+    files: [
+      '**/features/tools/**',
+      '**/entities/tool/**',
+      '**/entities/mcp/**',
     ],
     rules: { 'fsd/insignificant-slice': 'off' },
   },

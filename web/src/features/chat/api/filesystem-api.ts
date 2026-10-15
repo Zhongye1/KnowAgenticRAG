@@ -23,10 +23,10 @@ import {
 import {
   parseDownloadFilename,
   saveBlobAsFile,
-} from '@/shared/lib/file-download';
-import type { PreviewFile } from '@/shared/lib/file-preview';
-import { toFileEntries } from '@/shared/lib/filesystem-entry';
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
+} from '@/shared/lib/files';
+import type { PreviewFile } from '@/shared/lib/files';
+import { toFileEntries } from '@/shared/lib/files';
+import type { FileEntry } from '@/shared/lib/files';
 
 /** 两套树的作用域；树模型与 UI 都用这个名字。 */
 export type PanelTreeScope = 'thread' | 'workspace';

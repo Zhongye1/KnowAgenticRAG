@@ -54,7 +54,7 @@ const formatToolPayload = (value: unknown): string => {
 
 /** 单条消息的工具执行记录；折叠区默认收起。 */
 const ToolCallList = ({ calls }: { calls: ToolCallRecord[] }) => (
-  <details className="mt-2 rounded-medium border border-color-border-1 bg-color-bg-2">
+  <details className="mt-2 rounded-medium border border-color-border-2 bg-color-bg-2">
     <summary className="flex cursor-pointer items-center gap-1.5 px-2 py-1.5 text-[11px] text-color-text-3">
       <Wrench className="size-3" aria-hidden />
       工具执行记录（{calls.length}）
@@ -117,7 +117,7 @@ export const ThreadDetailDrawer = ({
       styles={{
         body: { padding: 0, display: 'flex', flexDirection: 'column' },
       }}
-      rootClassName="[&_.ant-drawer-header]:border-b [&_.ant-drawer-header]:border-color-border-1"
+      rootClassName="[&_.ant-drawer-header]:border-b [&_.ant-drawer-header]:border-color-border-2"
       data-testid="thread-detail-drawer"
       title={
         <div>
@@ -141,7 +141,7 @@ export const ThreadDetailDrawer = ({
         >
           {data ? (
             <div className="flex flex-col gap-4">
-              <dl className="grid grid-cols-2 gap-3 rounded-large border border-color-border-1 bg-color-bg-2 p-3 text-xs md:grid-cols-3">
+              <dl className="grid grid-cols-2 gap-3 rounded-large border border-color-border-2 bg-color-bg-2 p-3 text-xs md:grid-cols-3">
                 <div className="min-w-0">
                   <dt className="text-[11px] text-color-text-3">Thread ID</dt>
                   <dd
@@ -209,7 +209,7 @@ export const ThreadDetailDrawer = ({
                       <li
                         key={message.id}
                         data-testid="thread-message"
-                        className="rounded-large border border-color-border-1 bg-color-bg-1 p-3"
+                        className="rounded-large border border-color-border-2 bg-color-bg-1 p-3"
                       >
                         <div className="mb-2 flex flex-wrap items-center gap-2">
                           <span

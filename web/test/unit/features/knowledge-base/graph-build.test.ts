@@ -10,6 +10,8 @@ import {
   graphBuildAction,
   graphBuildStateTag,
   graphBuildStats,
+  graphIndexDot,
+  graphIndexTitle,
   hasPendingGraphChunks,
 } from '@/features/knowledge-base/lib/graph-build';
 
@@ -187,5 +189,47 @@ describe('配置管理入口与索引前提', () => {
     expect(hasPendingGraphChunks(status())).toBe(true);
     expect(hasPendingGraphChunks(status({ pending_chunks: 0 }))).toBe(false);
     expect(hasPendingGraphChunks(undefined)).toBe(false);
+  });
+});
+
+describe('索引按钮的状态角标', () => {
+  it('构建中优先，其次待索引，再是已全部索引', () => {
+    expect(
+      graphIndexDot(
+        status({ build_task_status: 'running', pending_chunks: 2 }),
+      ),
+    ).toBe('active');
+    expect(graphIndexDot(status({ pending_chunks: 2 }))).toBe('pending');
+    expect(graphIndexDot(status({ pending_chunks: 0 }))).toBe('complete');
+  });
+
+  it('既没锁定也没待索引时不给角标', () => {
+    expect(graphIndexDot(status({ locked: false, pending_chunks: 0 }))).toBe(
+      '',
+    );
+    expect(graphIndexDot(undefined)).toBe('');
+  });
+
+  it('状态写进 title，待索引条数优先于「索引中」', () => {
+    expect(graphIndexTitle(status({ pending_chunks: 4 }))).toBe(
+      '索引管理，4 待索引',
+    );
+    expect(graphIndexTitle(status({ pending_chunks: 0 }))).toBe(
+      '索引管理，已全部索引',
+    );
+    // 构建中但还有待索引的 Chunk：文案仍以待索引优先（与参照的次序一致）
+    expect(
+      graphIndexTitle(
+        status({ build_task_status: 'running', pending_chunks: 3 }),
+      ),
+    ).toBe('索引管理，3 待索引');
+    expect(
+      graphIndexTitle(
+        status({ build_task_status: 'running', pending_chunks: 0 }),
+      ),
+    ).toBe('索引管理，索引中');
+    expect(graphIndexTitle(status({ locked: false, pending_chunks: 0 }))).toBe(
+      '索引管理',
+    );
   });
 });

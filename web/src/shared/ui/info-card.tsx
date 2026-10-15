@@ -68,7 +68,7 @@ export const InfoCard = ({
   action?: ReactNode;
   /** 整卡点击；键盘入口由标题按钮或动作区提供。 */
   onOpen: () => void;
-  /** 标签行之后的自定义内容（知识库卡的统计摘要）。 */
+  /** 与标签行同一行的右端内容（知识库卡的统计摘要）。 */
   children?: ReactNode;
   className?: string;
 }) => (
@@ -95,7 +95,7 @@ export const InfoCard = ({
       <div className="flex min-w-0 flex-1 flex-col">
         <button
           type="button"
-          className="max-w-full truncate text-left text-sm font-semibold text-[var(--gray-900)]"
+          className="max-w-full truncate border-0 bg-transparent p-0 text-left text-sm font-semibold text-[var(--gray-900)]"
           title={title}
           onClick={(event) => {
             event.stopPropagation();
@@ -128,22 +128,29 @@ export const InfoCard = ({
       </div>
     ) : null}
 
-    {children}
+    {tags.length || children ? (
+      <div className="flex flex-wrap items-center gap-2">
+        {tags.length ? (
+          <ul className="m-0 flex list-none flex-wrap items-center gap-1.5 p-0">
+            {tags.map((tag, index) => (
+              <li
+                key={`${tag.name}:${index}`}
+                className={cn(
+                  'inline-flex min-h-[22px] items-center rounded-[4px] px-2 text-[11px] leading-none',
+                  TAG_CLASS[tag.color ?? 'gray'],
+                )}
+              >
+                {tag.name}
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
-    {tags.length ? (
-      <ul className="m-0 flex list-none flex-wrap items-center gap-1.5 p-0">
-        {tags.map((tag, index) => (
-          <li
-            key={`${tag.name}:${index}`}
-            className={cn(
-              'inline-flex min-h-[22px] items-center rounded-[4px] px-2 text-[11px] font-semibold leading-none',
-              TAG_CLASS[tag.color ?? 'gray'],
-            )}
-          >
-            {tag.name}
-          </li>
-        ))}
-      </ul>
+        {/* 标签在左、children 靠右：两者同一行；窄卡换行时 children 仍靠右 */}
+        {children ? (
+          <div className={cn('min-w-0', tags.length && 'ml-auto')}>{children}</div>
+        ) : null}
+      </div>
     ) : null}
   </article>
 );

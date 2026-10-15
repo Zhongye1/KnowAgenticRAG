@@ -11,7 +11,7 @@ import * as React from 'react';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 
-import { resolveFileIconUrl } from '@/shared/lib/file-icon';
+import { resolveFileIconUrl } from '@/shared/lib/files';
 import {
   buildEditorFragment,
   getSelectionRawOffset,

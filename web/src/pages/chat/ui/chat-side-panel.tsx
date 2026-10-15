@@ -22,7 +22,7 @@ import {
   type PreviewFile,
   type TreeNode,
 } from '@/features/chat';
-import { pathBreadcrumbs } from '@/shared/lib/workspace-path';
+import { pathBreadcrumbs } from '@/shared/lib/files';
 
 type TreeScopeState = {
   nodes: TreeNode[];

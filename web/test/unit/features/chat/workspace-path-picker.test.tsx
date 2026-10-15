@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
+import type { FileEntry } from '@/shared/lib/files/filesystem-entry';
 import { WorkspacePathPicker } from '@/features/chat/ui/workspace-path-picker';
 
 const notifications = vi.hoisted(() => ({ addNotification: vi.fn() }));

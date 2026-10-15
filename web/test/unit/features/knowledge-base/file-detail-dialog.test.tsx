@@ -34,7 +34,7 @@ vi.mock('@/shared/ui/markdown', () => ({
 }));
 
 const { FileDetailDialog } =
-  await import('@/features/knowledge-base/ui/file-detail-dialog');
+  await import('@/features/knowledge-base/ui/files/dialogs/file-detail-dialog');
 
 const file = (extra: Record<string, unknown> = {}) => ({
   file_id: 'f-1',

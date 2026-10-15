@@ -51,6 +51,15 @@ const { api, notifications } = vi.hoisted(() => ({
     parseDocuments: vi.fn(),
     indexDocuments: vi.fn(),
     downloadDocument: vi.fn(),
+    get: vi.fn(),
+    detectVirtualFolders: vi.fn(),
+    startVirtualFolderMigration: vi.fn(),
+    streamVirtualFolderMigration: vi.fn(),
+    repairStats: vi.fn(),
+    parsePendingDocuments: vi.fn(),
+    indexPendingDocuments: vi.fn(),
+    createFolder: vi.fn(),
+    renameFolder: vi.fn(),
   },
   notifications: { addNotification: vi.fn() },
 }));
@@ -86,6 +95,20 @@ vi.mock('@/features/knowledge-base/api/knowledge-api', async () => {
       parseDocuments: (...args: unknown[]) => api.parseDocuments(...args),
       indexDocuments: (...args: unknown[]) => api.indexDocuments(...args),
       downloadDocument: (...args: unknown[]) => api.downloadDocument(...args),
+      get: (...args: unknown[]) => api.get(...args),
+      detectVirtualFolders: (...args: unknown[]) =>
+        api.detectVirtualFolders(...args),
+      startVirtualFolderMigration: (...args: unknown[]) =>
+        api.startVirtualFolderMigration(...args),
+      streamVirtualFolderMigration: (...args: unknown[]) =>
+        api.streamVirtualFolderMigration(...args),
+      repairStats: (...args: unknown[]) => api.repairStats(...args),
+      parsePendingDocuments: (...args: unknown[]) =>
+        api.parsePendingDocuments(...args),
+      indexPendingDocuments: (...args: unknown[]) =>
+        api.indexPendingDocuments(...args),
+      createFolder: (...args: unknown[]) => api.createFolder(...args),
+      renameFolder: (...args: unknown[]) => api.renameFolder(...args),
     },
   };
 });
@@ -93,7 +116,7 @@ vi.mock('@/features/knowledge-base/api/knowledge-api', async () => {
 const { KnowledgeFileTable, FileSearchModal, openLocation } =
   await import('@/features/knowledge-base');
 const { shouldPollFiles } =
-  await import('@/features/knowledge-base/ui/knowledge-file-table');
+  await import('@/features/knowledge-base/ui/files/table/knowledge-file-table');
 
 /** 要开下拉、翻页或等异步查询的用例自带预算，并行跑整套时不会被 5 秒上限误伤。 */
 const { AntdProvider } = await import('@/app/theme/antd-provider');
@@ -185,6 +208,12 @@ const renderTable = (props: Parameters<typeof Harness>[0] = {}) => {
   );
 };
 
+/** 打开某一行的操作菜单；供行内操作相关的用例共用。 */
+const openRowMenuAt = async (filename: string) =>
+  userEvent.click(
+    await screen.findByRole('button', { name: `文件操作：${filename}.pdf` }),
+  );
+
 describe('知识库文件表', () => {
   beforeEach(() => {
     api.listDocuments.mockReset().mockResolvedValue(page([file('报表')]));
@@ -195,6 +224,40 @@ describe('知识库文件表', () => {
       limit: 100,
       has_more: false,
     });
+    // 面板首行需要详情与虚拟文件夹状态；检测默认「没有虚拟文件夹」
+    api.get.mockReset().mockResolvedValue({
+      kb_id: 'kb-1',
+      name: '研发知识库',
+      kb_type: 'milvus',
+      can_manage: true,
+      stats: {
+        file_count: 2,
+        folder_count: 0,
+        row_count: 2,
+        total_size: 4096,
+        chunk_count: 12,
+        token_count: 3400,
+        pending_parse_count: 1,
+        pending_index_count: 2,
+        processing_count: 0,
+      },
+    });
+    api.detectVirtualFolders.mockReset().mockResolvedValue({
+      has_virtual_folders: false,
+      file_count: 0,
+      remaining_steps: 0,
+    });
+    for (const name of [
+      'startVirtualFolderMigration',
+      'streamVirtualFolderMigration',
+      'repairStats',
+      'parsePendingDocuments',
+      'indexPendingDocuments',
+      'createFolder',
+      'renameFolder',
+    ] as const) {
+      api[name].mockReset();
+    }
   });
 
   it('渲染文件名、状态、创建人与内容量', async () => {
@@ -635,12 +698,49 @@ describe('知识库文件表', () => {
     );
   });
 
-  it('没有文件时给出空态', async () => {
+  /** 表头文案：可排序列里带一个 sr-only 的排序状态，断言列序时要剥掉。 */
+  const headerLabels = () =>
+    screen
+      .getAllByRole('columnheader')
+      .map((header) =>
+        header.textContent?.trim().replace(/(未排序|已升序|已降序)$/, ''),
+      )
+      // 选择列的表头是复选框，没有文本
+      .filter(Boolean);
+
+  it('列序与参照一致：文件名 / 内容量 / 创建人 / 状态 / 时间 / 操作', async () => {
+    // 变异：时间与操作互换后，最后一列变成时间而不是操作入口
+    api.listDocuments.mockResolvedValue(
+      page([file('报表', { status: 'indexed' })]),
+    );
+    renderTable();
+    await screen.findByTestId('file-row');
+
+    expect(headerLabels()).toEqual([
+      '文件名',
+      '内容量',
+      '创建人',
+      '状态',
+      '时间',
+      '操作',
+    ]);
+  });
+
+  it('没有文件时给出空态，但表头照常渲染', async () => {
+    // 变异：把整张表包进 items.length > 0 时，空库看不到有哪些列、能做什么
     api.listDocuments.mockResolvedValue(page([]));
     renderTable();
 
     expect(await screen.findByText('暂无文件')).toBeTruthy();
     expect(screen.queryByTestId('file-row')).toBeNull();
+    expect(headerLabels()).toEqual([
+      '文件名',
+      '内容量',
+      '创建人',
+      '状态',
+      '时间',
+      '操作',
+    ]);
   });
 
   it('加载失败时给出原因与重试', async () => {
@@ -964,11 +1064,7 @@ describe('文件行内操作', () => {
     notifications.addNotification.mockReset();
   });
 
-  const openRowMenu = async (filename: string) =>
-    userEvent.click(
-      await screen.findByRole('button', { name: `文件操作：${filename}.pdf` }),
-    );
-
+  const openRowMenu = openRowMenuAt;
   it('删除要先确认，确认后调文件级端点并提示成功', async () => {
     api.deleteDocument.mockResolvedValue({ message: '删除成功' });
     renderTable();
@@ -1064,6 +1160,47 @@ describe('文件行内操作', () => {
         }),
       ),
     );
+  });
+
+  it('状态 pill 可点：直接提交这一行的主操作，不必先开行内菜单', async () => {
+    // 变异：把 pill 变回不可点的 span 后，解析/入库只能从行内菜单进
+    api.listDocuments.mockResolvedValue(
+      page([
+        file('待解析', { status: 'uploaded', file_id: 'f-3' }),
+        file('待入库', { status: 'parsed', file_id: 'f-4' }),
+      ]),
+    );
+    api.parseDocuments.mockResolvedValue({ status: 'queued' });
+    api.indexDocuments.mockResolvedValue({ status: 'queued' });
+    renderTable();
+    await screen.findAllByTestId('file-row');
+
+    await userEvent.click(
+      screen.getByRole('button', { name: '待解析，点击解析文件：待解析.pdf' }),
+    );
+    await waitFor(() =>
+      expect(api.parseDocuments).toHaveBeenCalledWith('kb-1', ['f-3']),
+    );
+
+    await userEvent.click(
+      screen.getByRole('button', { name: '待入库，点击入库：待入库.pdf' }),
+    );
+    await waitFor(() =>
+      expect(api.indexDocuments).toHaveBeenCalledWith('kb-1', ['f-4']),
+    );
+  });
+
+  it('只读知识库的状态 pill 不可点，只作状态展示', async () => {
+    api.listDocuments.mockResolvedValue(
+      page([file('待解析', { status: 'uploaded', file_id: 'f-3' })]),
+    );
+    renderTable({ readOnly: true });
+    await screen.findAllByTestId('file-row');
+
+    expect(
+      screen.queryByRole('button', { name: /待解析，点击解析文件/ }),
+    ).toBeNull();
+    expect(screen.getByText('待解析')).toBeTruthy();
   });
 
   it('下载用行文件名兜底，并把响应头文件名交给浏览器', async () => {
@@ -1591,5 +1728,249 @@ describe('轮询判定', () => {
     expect(shouldPollFiles(idle, Date.now())).toBe(10_000);
     expect(shouldPollFiles(idle, Date.now() - 120_000)).toBe(false);
     expect(shouldPollFiles(idle)).toBe(false);
+  });
+});
+
+describe('面板首行：上传下拉与统计按钮', () => {
+  beforeEach(() => {
+    // 独立套件要自己准备面板首行的数据面：列表、详情与虚拟文件夹状态
+    api.listDocuments.mockReset().mockResolvedValue(page([file('报表')]));
+    api.get.mockReset().mockResolvedValue({
+      kb_id: 'kb-1',
+      name: '研发知识库',
+      kb_type: 'milvus',
+      can_manage: true,
+      stats: {
+        file_count: 2,
+        folder_count: 0,
+        row_count: 2,
+        total_size: 4096,
+        chunk_count: 12,
+        token_count: 3400,
+        pending_parse_count: 1,
+        pending_index_count: 2,
+        processing_count: 0,
+      },
+    });
+    api.detectVirtualFolders.mockReset().mockResolvedValue({
+      has_virtual_folders: false,
+      file_count: 0,
+      remaining_steps: 0,
+    });
+    for (const name of [
+      'parsePendingDocuments',
+      'indexPendingDocuments',
+      'repairStats',
+      'createFolder',
+      'renameFolder',
+      'startVirtualFolderMigration',
+      'streamVirtualFolderMigration',
+    ] as const) {
+      api[name].mockReset();
+    }
+    notifications.addNotification.mockReset();
+  });
+
+  it('默认显示统计按钮：待解析、待入库为警示态，大小与 Chunks/Tokens 就位', async () => {
+    renderTable();
+    const header = await screen.findByTestId('file-panel-header');
+    // 详情查询与列表查询各自解析：等详情的数字落到按钮上再断言
+    expect(
+      await within(header).findByTestId('stat-pending-parse'),
+    ).toBeTruthy();
+    // 详情里的 pending_parse_count=1、pending_index_count=2
+    expect(within(header).getByTestId('stat-pending-parse').textContent).toContain('1');
+    expect(within(header).getByTestId('stat-pending-index').textContent).toContain('2');
+    expect(within(header).getByTestId('stat-file-count').textContent).toContain('2');
+    expect(within(header).getByText('4.0 KB')).toBeTruthy();
+    expect(within(header).getByText('Chunks')).toBeTruthy();
+    expect(within(header).getByText('Tokens')).toBeTruthy();
+  });
+
+  it('点待解析提交 parse-pending，点待入库提交 index-pending', async () => {
+    // 变异：接错端点（比如仍走逐文件 parse）后这里会看到错误的调用
+    api.parsePendingDocuments.mockResolvedValue({ status: 'queued' });
+    api.indexPendingDocuments.mockResolvedValue({ status: 'queued' });
+    renderTable();
+    const header = await screen.findByTestId('file-panel-header');
+    await within(header).findByTestId('stat-pending-parse');
+
+    await userEvent.click(within(header).getByTestId('stat-pending-parse'));
+    await waitFor(() =>
+      expect(api.parsePendingDocuments).toHaveBeenCalledWith('kb-1', {}),
+    );
+    expect(notifications.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success', message: '已提交待解析文件。' }),
+    );
+
+    await userEvent.click(within(header).getByTestId('stat-pending-index'));
+    await waitFor(() =>
+      expect(api.indexPendingDocuments).toHaveBeenCalledWith('kb-1', {}),
+    );
+  });
+
+  it('点 Chunks 统计按钮触发统计修复，并按修复数量提示', async () => {
+    api.repairStats.mockResolvedValue({
+      stats: { file_count: 2 },
+      updated_chunk_files: 2,
+      updated_token_files: 1,
+      updated_size_files: 0,
+    });
+    renderTable();
+    const header = await screen.findByTestId('file-panel-header');
+
+    await userEvent.click(within(header).getByTestId('stat-repair-chunks'));
+    await waitFor(() =>
+      expect(api.repairStats).toHaveBeenCalledWith('kb-1'),
+    );
+    await waitFor(() =>
+      expect(notifications.addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'success',
+          message: '已修复 1 个 Token 统计，2 个 Chunk 统计',
+        }),
+      ),
+    );
+  });
+
+  it('上传下拉：点上传打开上传弹窗，点新建文件夹打开命名弹窗并创建到当前目录', async () => {
+    api.createFolder.mockResolvedValue({
+      file_id: 'folder-9',
+      filename: '资料',
+      is_folder: true,
+    });
+    renderTable();
+    const header = await screen.findByTestId('file-panel-header');
+
+    await userEvent.click(within(header).getByRole('button', { name: '上传' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: '新建文件夹' }));
+
+    const dialog = await screen.findByLabelText('文件夹名称');
+    await userEvent.type(dialog, '资料');
+    await userEvent.click(screen.getByRole('button', { name: '创建' }));
+
+    await waitFor(() =>
+      expect(api.createFolder).toHaveBeenCalledWith('kb-1', '资料', null),
+    );
+    expect(notifications.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'success', message: '创建成功' }),
+    );
+
+    // 弹窗关闭后再点上传，走的是上传弹窗而不是新建
+    await userEvent.click(within(header).getByRole('button', { name: '上传' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: '上传文件' }));
+    expect(await screen.findByText('选择文件')).toBeTruthy();
+  });
+
+  it('空名不给创建，警告「请输入文件夹名称」', async () => {
+    renderTable();
+    const header = await screen.findByTestId('file-panel-header');
+
+    await userEvent.click(within(header).getByRole('button', { name: '上传' }));
+    await userEvent.click(await screen.findByRole('menuitem', { name: '新建文件夹' }));
+    await screen.findByLabelText('文件夹名称');
+    await userEvent.click(screen.getByRole('button', { name: '创建' }));
+
+    expect(api.createFolder).not.toHaveBeenCalled();
+    expect(notifications.addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'warning', message: '请输入文件夹名称' }),
+    );
+  });
+
+  it('行内菜单给文件夹重命名与新建子文件夹，提交各自的端点', async () => {
+    api.listDocuments.mockResolvedValue(
+      page([
+        file('目录', { is_folder: true, file_id: 'folder-3', status: 'indexed' }),
+      ]),
+    );
+    api.renameFolder.mockResolvedValue({
+      file_id: 'folder-3',
+      filename: '新名字',
+      is_folder: true,
+    });
+    renderTable();
+    await screen.findAllByTestId('file-row');
+
+    await openRowMenuAt('目录');
+    await userEvent.click(screen.getByRole('menuitem', { name: '重命名' }));
+    const input = await screen.findByLabelText('文件夹名称');
+    expect(input).toHaveValue('目录.pdf');
+    await userEvent.clear(input);
+    await userEvent.type(input, '新名字');
+    await userEvent.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() =>
+      expect(api.renameFolder).toHaveBeenCalledWith('kb-1', 'folder-3', '新名字'),
+    );
+
+    await openRowMenuAt('目录');
+    await userEvent.click(screen.getByRole('menuitem', { name: '新建子文件夹' }));
+    await screen.findByLabelText('文件夹名称');
+    // 新建子文件夹的目标父目录是这一行的 file_id
+    await userEvent.type(screen.getByLabelText('文件夹名称'), '子');
+    await userEvent.click(screen.getByRole('button', { name: '创建' }));
+    await waitFor(() =>
+      expect(api.createFolder).toHaveBeenCalledWith('kb-1', '子', 'folder-3'),
+    );
+  });
+
+  it('有虚拟文件夹时文件数按钮进入警示态并可点开转换弹窗，启动后读 SSE 进度', async () => {
+    // 变异：转换流接错 task_id 或没把终态交给回调时，这里的帧序列对不上
+    api.detectVirtualFolders.mockResolvedValue({
+      has_virtual_folders: true,
+      file_count: 2,
+      remaining_steps: 4,
+    });
+    api.startVirtualFolderMigration.mockResolvedValue({
+      task_id: 'task-7',
+      created: true,
+    });
+    api.streamVirtualFolderMigration.mockImplementation(
+      async (_kbId: string, taskId: string, onEvent: (s: { status: string; progress?: number; message?: string }) => void) => {
+        expect(taskId).toBe('task-7');
+        onEvent({ status: 'running', progress: 40, message: '第 1 批' });
+        onEvent({ status: 'success', progress: 100 });
+      },
+    );
+    renderTable();
+    const header = await screen.findByTestId('file-panel-header');
+
+    const fileCount = await within(header).findByTestId('stat-file-count');
+    await waitFor(() => expect(fileCount).not.toBeDisabled());
+    await userEvent.click(fileCount);
+
+    expect(await screen.findByText('转换历史虚拟文件夹')).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: '开始转换' }));
+
+    await waitFor(() =>
+      expect(api.startVirtualFolderMigration).toHaveBeenCalledWith('kb-1'),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole('progressbar')).toBeTruthy(),
+    );
+    // 终态后重新检测虚拟文件夹
+    await waitFor(() =>
+      expect(api.detectVirtualFolders).toHaveBeenCalledTimes(2),
+    );
+  });
+
+  it('没有虚拟文件夹时文件数按钮禁用，不出现警示色', async () => {
+    renderTable();
+    const header = await screen.findByTestId('file-panel-header');
+
+    expect(within(header).getByTestId('stat-file-count')).toBeDisabled();
+  });
+
+  it('只读知识库没有上传下拉，Chunks/Tokens 是纯展示', async () => {
+    renderTable({ readOnly: true });
+    const header = await screen.findByTestId('file-panel-header');
+    // 等详情落地：只读没有可点按钮，但数字仍然展示
+    expect(await within(header).findByText('4.0 KB')).toBeTruthy();
+
+    expect(within(header).queryByRole('button', { name: '上传' })).toBeNull();
+    expect(within(header).queryByTestId('stat-pending-parse')).toBeNull();
+    expect(within(header).queryByTestId('stat-pending-index')).toBeNull();
+    expect(within(header).queryByTestId('stat-repair-chunks')).toBeNull();
+    // 文件数与大小仍然展示
+    expect(within(header).getByTestId('stat-file-count')).toBeTruthy();
   });
 });

@@ -34,6 +34,10 @@ src/features/chat/
 
 分段名描述**目的**。`components`、`hooks`、`types`、`utils` 描述的是本质，检索时帮不上忙，不使用。
 
+段内文件变多时可以再分子目录，判据是**职责或引用簇**而不是文件数：互相引用、对外只有一个入口的一组放一起（`ui/files/table/`），同一类界面物放一起（`ui/files/dialogs/` 收全部弹窗）。只装一个文件的子目录是允许的。文件名保留原有前缀（`table/file-row-actions.tsx`），移动目录时不改名。
+
+**写操作不属于 `ui/`**：`mutate`、确认框、通知文案、分批与门禁这类编排放在 `model/` 的 `use-*.ts` 里（`model/use-file-actions.ts`），组件只把视图事实喂进去、把回调接上。
+
 ## 依赖规则
 
 1. 一个模块只能导入**严格更低**层的模块（`pages` → `widgets` → `features` → `entities` → `shared`）。
@@ -139,16 +143,18 @@ Steiger 的 19 条规则覆盖了 `.dependency-cruiser.cjs` 中手写的三条 F
   绑定，翻页或换目录后自动失效。
 - 移动只写 `parent_id`，因此候选只能是实体目录：虚拟目录是文件名里路径的投影、没有实体记录，
   选它只会把文件移到它的父目录。目标与当前位置相同时不给确认（后端是幂等更新，会返回成功）。
-- 上传：`ui/file-upload-dialog.tsx` 负责界面与队列，判定与参数组装在 `lib/knowledge-upload.ts`
+- 上传：`ui/files/dialogs/file-upload-dialog.tsx` 负责界面与队列，判定与参数组装在 `lib/knowledge-upload.ts`
   （白名单来自 `/files/supported-types`；需要 OCR 的集合是后端 `OCR_FILE_EXTENSIONS` 去掉 `.pdf`，
   而 `ocr_engine` 每批都随参数提交——Office 解析需要它），登记走
   `POST /documents` 的三阶段 ingest。上传成功后新记录由后台任务建立，列表靠查询的函数式
   `refetchInterval`（处理中的行 + 刚上传后的一分钟窗口）自己刷新，不做上传字节百分比。
-- 检索测试与共享：`ui/query-test-panel.tsx` 用后端 `/query-params` 下发的默认值组装参数，
-  失败（200 + `{status:'failed'}`）在 api 层折成异常后按失败提示；`ui/share-config-dialog.tsx`
+- 检索测试与共享：`ui/query/query-test-panel.tsx` 用后端 `/query-params` 下发的默认值组装参数，
+  失败（200 + `{status:'failed'}`）在 api 层折成异常后按失败提示；结果区分「格式化 / 原始 JSON」
+  两态，示例问题打乱后只取 10 条、点一行直接检索，「生成示例问题」是写操作（`POST /sample-questions`）
+  因此只给 `can_manage`（面板收 `readOnly`）。`ui/share-config-dialog.tsx`
   承载 `share_config` v2 的读/管两个范围，纯规则在 `lib/share-config.ts`，保存走
   `PUT /databases/{kb_id}`（该端点要求名称与描述齐全）。
-- 文件详情与预览：位置由 `ui/file-detail-dialog.tsx` 持有三个视图（源文件 / 解析结果 / 分块），
+- 文件详情与预览：位置由 `ui/files/dialogs/file-detail-dialog.tsx` 持有三个视图（源文件 / 解析结果 / 分块），
   预览类型以**后端返回的 `preview_type` 为准**（`lib/file-preview.ts` 的按路径判断只在响应没给
   类型时兜底），二进制预览走 `/api/workspace/knowledge/file` 的 inline 流与 `X-Ars-Preview-Type`。
   代码高亮与正文共用 `shared/markdown/render.ts` 的高亮器（`renderCodeBlock`）。

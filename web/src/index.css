@@ -453,3 +453,17 @@ html.theme-transitioning.dark::view-transition-old(root) {
 html.theme-transitioning.dark::view-transition-new(root) {
   z-index: 1;
 }
+
+/*
+ * 页头加载条（PageHeader 的 loading 态）：与参照 .page-header-loading-bar 同款——
+ * 40% 宽的主色段在 2px 轨道里循环扫过。
+ */
+@keyframes page-loading {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}

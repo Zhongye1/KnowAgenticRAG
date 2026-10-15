@@ -50,7 +50,7 @@ vi.mock('@/shared/ui/notifications', async () => {
 });
 
 const { FileUploadDialog } =
-  await import('@/features/knowledge-base/ui/file-upload-dialog');
+  await import('@/features/knowledge-base/ui/files/dialogs/file-upload-dialog');
 
 // File 的 name/size 是只读 getter，这里用结构相同的替身
 const file = (name: string, size = 1024) =>

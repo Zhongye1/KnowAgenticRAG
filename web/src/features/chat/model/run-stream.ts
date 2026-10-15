@@ -19,7 +19,7 @@ import {
   normalizeRunSeq,
   resolveRunResumeAfterSeq,
 } from '../lib/run-seq';
-import { processRunSseResponse } from '../lib/sse';
+import { processSseResponse } from '@/shared/lib/files';
 import type { StreamSmoother } from '../lib/stream-smoother';
 import { hasPendingInterruptPayload } from '../lib/tool-approval';
 
@@ -348,7 +348,7 @@ export function createRunStream(options: RunStreamOptions) {
         throw new Error(`SSE response not ok: ${response.status}`);
       }
 
-      await processRunSseResponse(response, (event, rawData, eventId) => {
+      await processSseResponse(response, (event, rawData, eventId) => {
         const data = rawData as Record<string, unknown>;
         if (!data || runtime.activeRunId !== runId) return;
 

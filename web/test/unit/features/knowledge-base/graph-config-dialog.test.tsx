@@ -36,7 +36,7 @@ vi.mock('@/features/knowledge-base/api/knowledge-api', async () => {
 });
 
 const { GraphConfigDialog } =
-  await import('@/features/knowledge-base/ui/graph-config-dialog');
+  await import('@/features/knowledge-base/ui/graph/graph-config-dialog');
 
 const CHAT_MODELS = {
   openai: {

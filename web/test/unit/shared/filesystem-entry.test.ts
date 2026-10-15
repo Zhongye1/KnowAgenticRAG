@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { toFileEntries, toFileEntry } from '@/shared/lib/filesystem-entry';
+import { toFileEntries, toFileEntry } from '@/shared/lib/files/filesystem-entry';
 
 describe('toFileEntry', () => {
   it('读接口下发的 snake_case 字段', () => {

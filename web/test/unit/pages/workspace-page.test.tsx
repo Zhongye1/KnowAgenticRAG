@@ -9,7 +9,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
+import type { FileEntry } from '@/shared/lib/files/filesystem-entry';
 
 const rows: FileEntry[] = [
   {

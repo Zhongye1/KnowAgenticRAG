@@ -16,7 +16,7 @@ import {
   type PreviewCache,
   type PreviewCacheEntry,
 } from '../lib/panel-preview';
-import type { PreviewFile } from '@/shared/lib/file-preview';
+import type { PreviewFile } from '@/shared/lib/files';
 
 export type PanelPreview = {
   /** 当前分区正在展示的文件；null 表示还没有可展示的内容。 */

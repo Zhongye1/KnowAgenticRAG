@@ -85,7 +85,7 @@ export const MetricCard = ({
   );
 
   const className = cn(
-    'flex w-full min-w-0 items-center rounded-large border border-color-border-1 bg-color-bg-1 text-left',
+    'flex w-full min-w-0 items-center rounded-large border border-color-border-2 bg-color-bg-1 text-left',
     compact ? 'gap-2.5 p-2.5' : 'gap-3 p-4',
   );
 

@@ -29,9 +29,9 @@ const FeedbackCard = ({ item }: { item: FeedbackItem }) => {
   return (
     <article
       data-testid="feedback-card"
-      className="flex flex-col overflow-hidden rounded-large border border-color-border-1 bg-color-bg-1"
+      className="flex flex-col overflow-hidden rounded-large border border-color-border-2 bg-color-bg-1"
     >
-      <header className="flex items-center justify-between gap-2 border-b border-color-border-1 bg-color-bg-2 px-4 py-3">
+      <header className="flex items-center justify-between gap-2 border-b border-color-border-2 bg-color-bg-2 px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
           <span className="truncate text-sm font-medium text-color-text-1">
             {item.username || '未知用户'}
@@ -103,7 +103,7 @@ const FeedbackCard = ({ item }: { item: FeedbackItem }) => {
         ) : null}
       </div>
 
-      <footer className="flex items-center gap-1 border-t border-color-border-1 bg-color-bg-2 px-4 py-2 text-[11px] text-color-text-3">
+      <footer className="flex items-center gap-1 border-t border-color-border-2 bg-color-bg-2 px-4 py-2 text-[11px] text-color-text-3">
         <Clock className="size-3" aria-hidden />
         <span>{formatFullDateTime(item.created_at)}</span>
       </footer>

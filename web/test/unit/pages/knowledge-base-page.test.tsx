@@ -127,9 +127,15 @@ const filePage = (items: unknown[] = []) => ({
   has_more: false,
 });
 
-const LocationProbe = () => (
-  <span data-testid="path">{useLocation().pathname}</span>
-);
+const LocationProbe = () => {
+  const location = useLocation();
+  return (
+    <>
+      <span data-testid="path">{location.pathname}</span>
+      <span data-testid="search">{location.search}</span>
+    </>
+  );
+};
 
 const renderPage = () => {
   const queryClient = new QueryClient({
@@ -198,7 +204,7 @@ describe('知识库详情页', () => {
     renderPage();
     await screen.findByText('研发知识库');
 
-    await userEvent.click(screen.getByRole('button', { name: 'RAG 评估' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'RAG 评估' }));
 
     expect(await screen.findByText('暂无可用评估基准')).toBeTruthy();
     expect(screen.queryByText(/该分区随/)).toBeNull();
@@ -208,7 +214,7 @@ describe('知识库详情页', () => {
     renderPage();
     await screen.findByText('研发知识库');
 
-    await userEvent.click(screen.getByRole('button', { name: '评估基准' }));
+    await userEvent.click(screen.getByRole('tab', { name: '评估基准' }));
 
     expect(await screen.findByText(/共 \d+ 个评估基准/)).toBeTruthy();
     expect(screen.queryByText(/该分区随/)).toBeNull();
@@ -218,7 +224,7 @@ describe('知识库详情页', () => {
     renderPage();
     await screen.findByText('研发知识库');
 
-    await userEvent.click(screen.getByRole('button', { name: '知识导图' }));
+    await userEvent.click(screen.getByRole('tab', { name: '知识导图' }));
 
     expect(await screen.findByText('暂无思维导图')).toBeTruthy();
     expect(screen.queryByText(/该分区随/)).toBeNull();
@@ -228,7 +234,7 @@ describe('知识库详情页', () => {
     renderPage();
     await screen.findByText('研发知识库');
 
-    await userEvent.click(screen.getByRole('button', { name: '知识图谱' }));
+    await userEvent.click(screen.getByRole('tab', { name: '知识图谱' }));
 
     expect(await screen.findByLabelText('搜索实体')).toBeTruthy();
     expect(screen.getByRole('button', { name: '图谱设置' })).toBeTruthy();
@@ -239,7 +245,7 @@ describe('知识库详情页', () => {
     renderPage();
     await screen.findByText('研发知识库');
 
-    await userEvent.click(screen.getByRole('button', { name: '检索测试' }));
+    await userEvent.click(screen.getByRole('tab', { name: '检索测试' }));
 
     expect(screen.getByLabelText('检索测试查询')).toBeTruthy();
     // 「检索测试」分区按钮与面板里的「检索」按钮重名，这里用精确名区分
@@ -251,9 +257,7 @@ describe('知识库详情页', () => {
     renderPage();
     await screen.findByText('研发知识库');
 
-    const tabs = within(
-      screen.getByRole('navigation', { name: '知识库分区切换' }),
-    ).getAllByRole('button');
+    const tabs = within(screen.getByRole('tablist')).getAllByRole('tab');
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       '文件管理',
       '检索测试',
@@ -264,14 +268,67 @@ describe('知识库详情页', () => {
     ]);
   });
 
+  it('只读知识库只保留四个分区，评估两个分区留给管理员', async () => {
+    // 变异：去掉 visibleTabs 过滤后，只读用户会看到 RAG 评估与评估基准
+    api.get.mockResolvedValue(database({ can_manage: false }));
+    renderPage();
+    await screen.findByText('研发知识库');
+
+    const nav = screen.getByRole('tablist');
+    expect(
+      within(nav)
+        .getAllByRole('tab')
+        .map((tab) => tab.textContent),
+    ).toEqual(['文件管理', '检索测试', '知识图谱', '知识导图']);
+  });
+
+  it('返回列表时带上知识库分区，落回同一个 tab', async () => {
+    renderPage();
+    await screen.findByText('研发知识库');
+
+    await userEvent.click(screen.getByRole('button', { name: /返回/ }));
+
+    expect(await screen.findByText('列表页')).toBeTruthy();
+    expect(screen.getByTestId('search').textContent).toBe('?tab=knowledge');
+  });
+
+  it('带 ?action=edit 进页面直接打开配置弹窗，并消费掉该参数', async () => {
+    // 变异：不消费参数时，关掉弹窗再刷新会又弹一次
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    render(
+      <AntdProvider>
+        <QueryClientProvider client={queryClient}>
+          <MemoryRouter
+            initialEntries={['/extensions/knowledgebase/kb-1?action=edit']}
+          >
+            <Routes>
+              <Route
+                path="/extensions/knowledgebase/:kbId"
+                element={<KnowledgeBasePage />}
+              />
+            </Routes>
+            <LocationProbe />
+          </MemoryRouter>
+        </QueryClientProvider>
+      </AntdProvider>,
+    );
+
+    expect(await screen.findByRole('dialog')).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByTestId('search').textContent).toBe(''),
+    );
+  });
+
   it('连接器类型只给检索测试，不渲染会 400 的文件表', async () => {
     api.get.mockResolvedValue(database({ kb_type: 'dify' }));
     renderPage();
     await screen.findByText('研发知识库');
 
-    const nav = screen.getByRole('navigation', { name: '知识库分区切换' });
-    expect(within(nav).getAllByRole('button')).toHaveLength(1);
-    expect(within(nav).getByRole('button', { name: '检索测试' })).toBeTruthy();
+    const nav = screen.getByRole('tablist');
+    expect(within(nav).getAllByRole('tab')).toHaveLength(1);
+    expect(within(nav).getByRole('tab', { name: '检索测试' })).toBeTruthy();
     // 连接器类型只有检索测试，而这个分区是真实面板，不是占位
     expect(screen.getByLabelText('检索测试查询')).toBeTruthy();
     expect(api.listDocuments).not.toHaveBeenCalled();
@@ -293,7 +350,7 @@ describe('知识库详情页', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '对话线程不存在',
     );
-    await userEvent.click(screen.getByRole('link', { name: '返回知识库列表' }));
+    await userEvent.click(screen.getByRole('button', { name: /返回/ }));
     expect(await screen.findByText('列表页')).toBeTruthy();
   });
 
@@ -353,8 +410,8 @@ describe('知识库详情页', () => {
       ),
     );
 
-    await userEvent.click(screen.getByRole('button', { name: '检索测试' }));
-    await userEvent.click(screen.getByRole('button', { name: '文件管理' }));
+    await userEvent.click(screen.getByRole('tab', { name: '检索测试' }));
+    await userEvent.click(screen.getByRole('tab', { name: '文件管理' }));
 
     // antd Select 的选中值渲染在 selection-item，combobox input 本身无文本
     expect(

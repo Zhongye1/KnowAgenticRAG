@@ -4,7 +4,8 @@
  * jsdom 没有 canvas，因此这里把 `@antv/g6` 换成记录调用的替身——断言的是我们交给 G6 的
  * 选项与调用序列（这正是移植风险所在），真实绘制由浏览器验证负责。
  */
-import { act, render } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import * as React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -52,7 +53,7 @@ vi.mock('@antv/g6', () => ({
 }));
 
 const { GraphCanvas } =
-  await import('@/features/knowledge-base/ui/graph-canvas');
+  await import('@/features/knowledge-base/ui/graph/graph-canvas');
 
 const node = (id: string) => ({
   id,
@@ -289,5 +290,33 @@ describe('图谱画布的 G6 生命周期', () => {
     instances[0].handlers.get('node:click')?.({ target: { id: 'gone' } });
 
     expect(onNodeClick).not.toHaveBeenCalled();
+  });
+});
+
+describe('图例', () => {
+  it('左下角给实体与关系的计数，点开看类型分布', async () => {
+    renderCanvas();
+
+    const entity = screen.getByRole('button', { name: /实体/ });
+    const relation = screen.getByRole('button', { name: /关系/ });
+    expect(entity).toHaveTextContent('2');
+    expect(relation).toHaveTextContent('1');
+
+    // 没点开时没有类型卡
+    expect(screen.queryByText('实体类型')).toBeNull();
+
+    await userEvent.click(entity);
+    expect(await screen.findByText('实体类型')).toBeTruthy();
+    expect(screen.getByText('Person')).toBeTruthy();
+
+    // 再点一次收起
+    await userEvent.click(entity);
+    expect(screen.queryByText('实体类型')).toBeNull();
+  });
+
+  it('空图上不渲染图例', () => {
+    renderCanvas({ view: { nodes: [], edges: [] } });
+
+    expect(screen.queryByRole('button', { name: /实体/ })).toBeNull();
   });
 });

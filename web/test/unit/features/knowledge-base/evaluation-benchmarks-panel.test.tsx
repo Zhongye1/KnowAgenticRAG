@@ -62,7 +62,7 @@ vi.mock('@/features/knowledge-base/lib/file-download', () => ({
 }));
 
 const { EvaluationBenchmarksPanel } =
-  await import('@/features/knowledge-base/ui/evaluation-benchmarks-panel');
+  await import('@/features/knowledge-base/ui/benchmarks/evaluation-benchmarks-panel');
 
 const dataset = (extra: Record<string, unknown> = {}) => ({
   id: 'ds-1',
@@ -275,22 +275,24 @@ describe('评估基准分区', () => {
     );
   });
 
-  it('生成中的数据集不能删除，先给提示不弹确认', async () => {
+  it('生成中的数据集：删除项置灰、不给「继续生成」，点了也不会弹确认', async () => {
     api.listDatasets.mockResolvedValue([
       dataset({ build_metadata: { status: 'running', progress: 10 } }),
     ]);
     renderPanel();
 
     await userEvent.click(await screen.findByRole('button', { name: /操作/ }));
-    await userEvent.click(screen.getByRole('menuitem', { name: /删除/ }));
 
-    expect(confirmMock).not.toHaveBeenCalled();
-    expect(notifications.addNotification).toHaveBeenCalledWith(
-      expect.objectContaining({
-        type: 'error',
-        message: '评估基准生成中，暂不能删除。',
-      }),
+    // 生成中不能删：置灰（参照同口径），而不是点了再报错
+    expect(screen.getByRole('menuitem', { name: /删除/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
     );
+    // 「继续生成」只在生成失败时出现，生成中根本没有这一项
+    expect(screen.queryByRole('menuitem', { name: /继续生成/ })).toBeNull();
+
+    await userEvent.click(screen.getByRole('menuitem', { name: /删除/ }));
+    expect(confirmMock).not.toHaveBeenCalled();
   });
 
   it('删除要确认，确认后调接口并提示', async () => {

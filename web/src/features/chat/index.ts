@@ -142,7 +142,7 @@ export {
 export type { PanelSection } from './lib/panel-sections';
 export type { TreeNode } from './lib/panel-tree';
 export type { TokenUsage } from './lib/token-usage';
-export type { PreviewFile } from '@/shared/lib/file-preview';
+export type { PreviewFile } from '@/shared/lib/files/file-preview';
 export { resizePanelWidth } from './lib/panel-width';
 export {
   extractArtifactsFromConversation,

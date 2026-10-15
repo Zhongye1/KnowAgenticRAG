@@ -76,7 +76,7 @@ import { useNotifications } from '@/shared/ui/notifications';
 import { useKnowledgeBases } from '@/features/knowledge-base';
 import { paths } from '@/shared/config';
 import { ContentLayout } from '@/shared/ui/content-layout';
-import { pathBreadcrumbs } from '@/shared/lib/workspace-path';
+import { pathBreadcrumbs } from '@/shared/lib/files';
 import { useNavigate, useParams } from 'react-router';
 
 import { useChatSubmission } from '../model/use-chat-submission';

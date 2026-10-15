@@ -21,7 +21,7 @@ import {
 import { Tree } from 'antd';
 import type { TreeDataNode } from 'antd';
 
-import { resolveFileIconUrl } from '@/shared/lib/file-icon';
+import { resolveFileIconUrl } from '@/shared/lib/files';
 
 import styles from './file-tree.module.css';
 

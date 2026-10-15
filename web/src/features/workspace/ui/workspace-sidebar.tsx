@@ -6,13 +6,14 @@
  * 快速访问项只在**正好停在**该路径时高亮（进入 `/agents/skills/` 时两项都不亮）。
  *
  * 本切片不含知识库只读浏览，因此没有参照的「我的知识库 / 共享知识库」两段，也没有只读禁用态。
+ * 搜索入口走与上传按钮同一套 `.actionBtn` 词汇，放在「上传文件」上方。
  */
 import * as React from 'react';
-import { ChevronDown, FolderPlus, Loader2, Upload } from 'lucide-react';
+import { ChevronDown, FolderPlus, Loader2, Search, Upload } from 'lucide-react';
 
 import { QUICK_ACCESS, isQuickAccessPath } from '../lib/workspace-view';
-import { isSamePath, normalizePathKey } from '@/shared/lib/workspace-path';
-import { resolveFileIconUrl } from '@/shared/lib/file-icon';
+import { isSamePath, normalizePathKey } from '@/shared/lib/files';
+import { resolveFileIconUrl } from '@/shared/lib/files';
 
 import styles from './workspace-sidebar.module.css';
 
@@ -23,6 +24,7 @@ type WorkspaceSidebarProps = {
   onCreateDirectory: () => void;
   onSelectRoot: () => void;
   onSelectPath: (path: string) => void;
+  onOpenSearch: () => void;
 };
 
 export const WorkspaceSidebar = ({
@@ -32,6 +34,7 @@ export const WorkspaceSidebar = ({
   onCreateDirectory,
   onSelectRoot,
   onSelectPath,
+  onOpenSearch,
 }: WorkspaceSidebarProps) => {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement | null>(null);
@@ -55,6 +58,16 @@ export const WorkspaceSidebar = ({
   return (
     <aside className={styles.sidebar}>
       <div className={styles.actions}>
+        <button
+          type="button"
+          className={styles.actionBtn}
+          aria-label="搜索"
+          onClick={onOpenSearch}
+        >
+          <Search size={16} aria-hidden />
+          <span>搜索</span>
+        </button>
+
         <div className={styles.dropdown} ref={menuRef}>
           <button
             type="button"

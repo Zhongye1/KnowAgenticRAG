@@ -10,7 +10,7 @@
  */
 import * as React from 'react';
 
-import { resolveFileIconUrl } from '@/shared/lib/file-icon';
+import { resolveFileIconUrl } from '@/shared/lib/files';
 import styles from './mention-editor.module.css';
 import { MENTION_GROUP_TITLES, type MentionGroups } from '../lib/mention-query';
 import type { MentionResourceItem } from '../lib/mention-resources';

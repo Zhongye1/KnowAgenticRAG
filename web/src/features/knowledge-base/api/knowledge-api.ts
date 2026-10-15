@@ -9,8 +9,10 @@ import {
   addDocumentsApiKnowledgeDatabasesKbIdDocumentsPost,
   batchDeleteDocumentsApiKnowledgeDatabasesKbIdDocumentsBatchDelete,
   createDatabaseApiKnowledgeDatabasesPost,
+  createFolderApiKnowledgeDatabasesKbIdFoldersPost,
   deleteDatabaseApiKnowledgeDatabasesKbIdDelete,
   deleteDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDelete,
+  detectVirtualFoldersApiKnowledgeDatabasesKbIdVirtualFoldersDetectGet,
   getDatabaseInfoApiKnowledgeDatabasesKbIdGet,
   getDatabasesApiKnowledgeDatabasesGet,
   getDocumentContentApiKnowledgeDatabasesKbIdDocumentsDocIdContentGet,
@@ -18,21 +20,28 @@ import {
   getKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsGet,
   getOcrEngineOptionsApiSystemOcrOptionsGet,
   getSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsGet,
+  generateSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsPost,
   getKnowledgeBaseTypesApiKnowledgeTypesGet,
   indexDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPost,
+  indexPendingDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPendingPost,
   listDocumentsApiKnowledgeDatabasesKbIdDocumentsGet,
   moveDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdMovePut,
   getSupportedFileTypesApiKnowledgeFilesSupportedTypesGet,
   parseDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePost,
+  parsePendingDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePendingPost,
   queryTestApiKnowledgeDatabasesKbIdQueryTestPost,
   readUserAccessOptionsApiAuthUsersAccessOptionsGet,
+  renameFolderApiKnowledgeDatabasesKbIdFoldersFolderIdRenamePut,
+  repairDatabaseStatsApiKnowledgeDatabasesKbIdStatsRepairPost,
   searchDocumentsApiKnowledgeDatabasesKbIdDocumentsSearchGet,
+  startVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigratePost,
   uploadFileApiKnowledgeFilesUploadPost,
   getV2ModelsApiSystemModelProvidersModelsV2Get,
   updateDatabaseInfoApiKnowledgeDatabasesKbIdPut,
 } from '@/shared/api/generated/sdk.gen';
 import { apiFetch } from '@/shared/api';
 import { describeFailure, unwrap, unwrapQueuedTask } from '@/shared/api';
+import { processSseResponse } from '@/shared/lib/files';
 import type { ShareConfig } from '@/shared/lib/share-config';
 import { readFilePreview, type FilePreview } from '../lib/file-preview';
 import type { KnowledgeQueryParams } from '../lib/knowledge-query-params';
@@ -330,6 +339,130 @@ export const knowledgeApi = {
       }),
     ),
 
+  /**
+   * 修复历史文件缺失的 Chunk/Token 统计，返回修复了几个文件并带回重算后的统计。
+   * 字段按 `ars/knowledge/base.py` 的 `repair_missing_file_stats` 返回值手写。
+   */
+  repairStats: async (
+    kbId: string,
+  ): Promise<{
+    stats: KnowledgeBaseStats;
+    updated_chunk_files: number;
+    updated_token_files: number;
+    updated_size_files: number;
+  }> =>
+    unwrap(
+      await repairDatabaseStatsApiKnowledgeDatabasesKbIdStatsRepairPost({
+        path: { kb_id: kbId },
+      }),
+    ),
+
+  /** 检测知识库里是否还有路径型历史记录（虚拟文件夹）。 */
+  detectVirtualFolders: async (
+    kbId: string,
+  ): Promise<{
+    has_virtual_folders: boolean;
+    file_count: number;
+    remaining_steps: number;
+  }> =>
+    unwrap(
+      await detectVirtualFoldersApiKnowledgeDatabasesKbIdVirtualFoldersDetectGet(
+        { path: { kb_id: kbId } },
+      ),
+    ),
+
+  /**
+   * 启动虚拟文件夹转换任务；任务与 SSE 连接解耦，断开不取消。
+   * 返回 `task_id`，进度从 `streamVirtualFolderMigration` 读。
+   */
+  startVirtualFolderMigration: async (
+    kbId: string,
+  ): Promise<{ task_id: string; created: boolean }> =>
+    unwrap(
+      await startVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigratePost(
+        { path: { kb_id: kbId } },
+      ),
+    ),
+
+  /**
+   * 逐帧消费虚拟文件夹转换的进度流。后端按「取任务快照 → 发一帧 → 睡 500ms」循环，
+   * 到 `success`/`failed`/`cancelled` 收口；断开连接不取消任务。
+   */
+  streamVirtualFolderMigration: async (
+    kbId: string,
+    taskId: string,
+    onEvent: (snapshot: {
+      status: string;
+      progress?: number;
+      message?: string;
+    }) => void,
+  ): Promise<void> => {
+    const response = await apiFetch(
+      `/api/knowledge/databases/${encodeURIComponent(kbId)}/virtual-folders/migrations/${encodeURIComponent(taskId)}/events`,
+    );
+    await processSseResponse(response, (_event, data) => {
+      if (data && typeof data === 'object') {
+        onEvent(
+          data as { status: string; progress?: number; message?: string },
+        );
+      }
+    });
+  },
+
+  /** 提交全部待解析文件的解析任务。 */
+  parsePendingDocuments: async (
+    kbId: string,
+    params: Record<string, unknown> = {},
+  ): Promise<KnowledgeTaskResult> =>
+    unwrapQueuedTask(
+      unwrap<KnowledgeTaskResult>(
+        await parsePendingDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePendingPost(
+          { path: { kb_id: kbId }, body: { params } },
+        ),
+      ),
+      '任务提交失败。',
+    ),
+
+  /** 提交全部待入库文件的入库任务。 */
+  indexPendingDocuments: async (
+    kbId: string,
+    params: Record<string, unknown> = {},
+  ): Promise<KnowledgeTaskResult> =>
+    unwrapQueuedTask(
+      unwrap<KnowledgeTaskResult>(
+        await indexPendingDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPendingPost(
+          { path: { kb_id: kbId }, body: { params } },
+        ),
+      ),
+      '任务提交失败。',
+    ),
+
+  /** 新建空文件夹；返回文件夹记录（含 `file_id`），字段按后端 `_serialize_file`。 */
+  createFolder: async (
+    kbId: string,
+    folderName: string,
+    parentId: string | null,
+  ): Promise<KnowledgeFileItem> =>
+    unwrap<KnowledgeFileItem>(
+      await createFolderApiKnowledgeDatabasesKbIdFoldersPost({
+        path: { kb_id: kbId },
+        body: { folder_name: folderName, parent_id: parentId },
+      }),
+    ),
+
+  /** 重命名文件夹；只对实体文件夹有效，虚拟目录没有实体记录改不了。 */
+  renameFolder: async (
+    kbId: string,
+    folderId: string,
+    folderName: string,
+  ): Promise<KnowledgeFileItem> =>
+    unwrap<KnowledgeFileItem>(
+      await renameFolderApiKnowledgeDatabasesKbIdFoldersFolderIdRenamePut({
+        path: { kb_id: kbId, folder_id: folderId },
+        body: { folder_name: folderName },
+      }),
+    ),
+
   /** 支持的知识库类型与各自的创建参数。 */
   listTypes: async (): Promise<Record<string, KnowledgeTypeInfo>> => {
     const response = unwrap<{ kb_types?: Record<string, KnowledgeTypeInfo> }>(
@@ -338,43 +471,43 @@ export const knowledgeApi = {
     return response.kb_types ?? {};
   },
 
-  /** 分页取文件列表；`parentId` 为空表示根目录，`status` 为 `all` 表示不筛。 */
-  listDocuments: async (
-    kbId: string,
-    params: {
-      parentId?: string | null;
-      /** 虚拟目录（来源路径投影）的前缀；只在非递归时生效。 */
-      pathPrefix?: string;
-      status?: string;
-      page?: number;
-      pageSize?: number;
-    } = {},
-  ): Promise<KnowledgeFilePage> => {
-    const page = params.page ?? 1;
-    const pageSize = params.pageSize ?? 100;
-    const status = params.status ?? 'all';
-    // 只有筛状态时才跨目录；递归查询会忽略父目录与路径前缀
-    const recursive = status !== 'all';
-    return unwrap<KnowledgeFilePage>(
-      await listDocumentsApiKnowledgeDatabasesKbIdDocumentsGet({
-        path: { kb_id: kbId },
-        query: {
-          ...(recursive
-            ? {}
-            : {
-                ...(params.parentId ? { parent_id: params.parentId } : {}),
-                ...(params.pathPrefix
-                  ? { path_prefix: params.pathPrefix }
-                  : {}),
-              }),
-          status,
-          page,
-          page_size: pageSize,
-          recursive,
-        },
-      }),
-    );
-  },
+  /** 分页取文件列表；`parentId` 为空表示根目录，`status` 为 `all` 表示不筛。 */ listDocuments:
+    async (
+      kbId: string,
+      params: {
+        parentId?: string | null;
+        /** 虚拟目录（来源路径投影）的前缀；只在非递归时生效。 */
+        pathPrefix?: string;
+        status?: string;
+        page?: number;
+        pageSize?: number;
+      } = {},
+    ): Promise<KnowledgeFilePage> => {
+      const page = params.page ?? 1;
+      const pageSize = params.pageSize ?? 100;
+      const status = params.status ?? 'all';
+      // 只有筛状态时才跨目录；递归查询会忽略父目录与路径前缀
+      const recursive = status !== 'all';
+      return unwrap<KnowledgeFilePage>(
+        await listDocumentsApiKnowledgeDatabasesKbIdDocumentsGet({
+          path: { kb_id: kbId },
+          query: {
+            ...(recursive
+              ? {}
+              : {
+                  ...(params.parentId ? { parent_id: params.parentId } : {}),
+                  ...(params.pathPrefix
+                    ? { path_prefix: params.pathPrefix }
+                    : {}),
+                }),
+            status,
+            page,
+            page_size: pageSize,
+            recursive,
+          },
+        }),
+      );
+    },
 
   /** 删除一个文件或文件夹。 */
   deleteDocument: async (
@@ -575,6 +708,27 @@ export const knowledgeApi = {
       await getSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsGet({
         path: { kb_id: kbId },
       }),
+    );
+    return result.questions ?? [];
+  },
+
+  /**
+   * 生成示例问题。
+   *
+   * 写操作：后端要求知识库管理权限，界面由 `can_manage` 把关。生成走模型，可能几十秒，
+   * 期间调用方要自己表达「正在生成」。
+   */
+  generateSampleQuestions: async (
+    kbId: string,
+    count = 10,
+  ): Promise<string[]> => {
+    const result = unwrap<{ questions?: string[] }>(
+      await generateSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsPost(
+        {
+          path: { kb_id: kbId },
+          body: { count },
+        },
+      ),
     );
     return result.questions ?? [];
   },

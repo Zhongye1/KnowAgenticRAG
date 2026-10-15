@@ -13,18 +13,18 @@ import { SkillCardList } from '@/features/skills';
 import { ToolsPanel } from '@/features/tools';
 import { useKnowledgeEnabled, useUser } from '@/entities/session';
 import { paths } from '@/shared/config';
-import { Button } from 'antd';
 import { ContentLayout } from '@/shared/ui/content-layout';
+import { PageHeader, PageHeaderTabs } from '@/shared/ui/page-header';
 import { useNotifications } from '@/shared/ui/notifications';
 
 type ExtensionsTab = 'knowledge' | 'skills' | 'tools' | 'mcp';
 
-const TAB_LABELS: Record<ExtensionsTab, string> = {
-  knowledge: '知识库',
-  skills: '技能',
-  tools: '工具',
-  mcp: 'MCP',
-};
+const TAB_ITEMS: ReadonlyArray<{ key: ExtensionsTab; label: string }> = [
+  { key: 'knowledge', label: '知识库' },
+  { key: 'skills', label: '技能' },
+  { key: 'tools', label: '工具' },
+  { key: 'mcp', label: 'MCP' },
+];
 
 /** 管理员判定：后端返回的 role 同时用于呈现与入口隐藏；授权仍在后端。 */
 const useExtensionTabs = (): ExtensionsTab[] => {
@@ -55,45 +55,23 @@ export const ExtensionsPage = () => {
     <ContentLayout title="智能体扩展">
       {/* ContentLayout 只给水平留白，页面自己补纵向：不补的话内容会贴到外壳顶端 */}
       <div className="flex flex-col gap-4 py-4">
-        {/* 页头与 /agent-manage 同一形态：标题 + 内联的视图切换 tab，整行带底边 */}
-        <header className="flex flex-wrap items-baseline gap-3 border-b border-color-border-1 py-3">
-          <h1 className="text-base font-semibold text-color-text-1">
-            智能体扩展
-          </h1>
-          <nav
-            className="flex items-center gap-0.5 border-l border-[var(--gray-200)] pl-3"
-            aria-label="智能体扩展视图切换"
-          >
-            {tabs.map((tab) => {
-              const active = tab === current;
-              return (
-                <Button
-                  key={tab}
-                  htmlType="button"
-                  type="text"
-                  className={`h-7 rounded-[6px] border-0 px-2.5 text-sm outline-none ${
-                    active
-                      ? 'bg-[color-mix(in_srgb,var(--gray-800)_6%,var(--gray-0))] font-medium text-color-text-1'
-                      : 'bg-transparent text-color-text-3 hover:bg-[var(--gray-50)] hover:text-color-text-1'
-                  }`}
-                  aria-current={active ? 'page' : undefined}
-                  onClick={() =>
-                    setSearchParams(
-                      (params) => {
-                        const next = new URLSearchParams(params);
-                        next.set('tab', tab);
-                        return next;
-                      },
-                      { replace: true },
-                    )
-                  }
-                >
-                  {TAB_LABELS[tab]}
-                </Button>
-              );
-            })}
-          </nav>
-        </header>
+        <PageHeader title="智能体扩展">
+          <PageHeaderTabs
+            tabs={TAB_ITEMS.filter((tab) => tabs.includes(tab.key))}
+            current={current}
+            ariaLabel="智能体扩展视图切换"
+            onChange={(tab) =>
+              setSearchParams(
+                (params) => {
+                  const next = new URLSearchParams(params);
+                  next.set('tab', tab);
+                  return next;
+                },
+                { replace: true },
+              )
+            }
+          />
+        </PageHeader>
 
         {current === 'knowledge' ? (
           <KnowledgeList

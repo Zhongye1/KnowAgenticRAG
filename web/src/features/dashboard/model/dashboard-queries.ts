@@ -80,17 +80,29 @@ export const useKnowledgeStats = () =>
     queryFn: () => dashboardApi.getKnowledgeStats(),
   });
 
-/** 调用量时间序列；类型或时间范围变化即换查询键。 */
+/**
+ * 调用量时间序列；类型或时间范围变化即换查询键。
+ *
+ * `keepPreviousData` 先留住上一份数据：新键没有缓存，否则 `isPending` 会重新为真，
+ * 面板整块换成加载态，图表闪一下再回来。
+ * 响应与「它属于哪个口径」一起返回：取数期间 `data` 仍是上一份，若按新口径去格式化
+ * 旧分桶，日期桶会被当成周桶渲染成「第9周」，展示口径必须跟着数据走。
+ */
 export const useCallTimeseries = (
   type: CallMetricType,
   timeRange: CallTimeRange,
 ) =>
   useQuery({
     queryKey: dashboardKeys.callTimeseries(type, timeRange),
-    queryFn: () => dashboardApi.getCallTimeseries(type, timeRange),
+    queryFn: async () => ({
+      type,
+      timeRange,
+      stats: await dashboardApi.getCallTimeseries(type, timeRange),
+    }),
+    placeholderData: keepPreviousData,
   });
 
-/** 会话分析；是否包含子智能体会话进查询键。 */
+/** 会话分析；是否包含子智能体会话进查询键。切口径同样保留上一份数据。 */
 export const useThreadAnalytics = (
   timeRange: ThreadTimeRange,
   includeSubagents: boolean,
@@ -98,6 +110,7 @@ export const useThreadAnalytics = (
   useQuery({
     queryKey: dashboardKeys.threadAnalytics(timeRange, includeSubagents),
     queryFn: () => dashboardApi.getThreadStats(timeRange, { includeSubagents }),
+    placeholderData: keepPreviousData,
   });
 
 /** 反馈列表（端点无参数，类型筛选在客户端做）。 */

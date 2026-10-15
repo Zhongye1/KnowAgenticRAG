@@ -73,9 +73,11 @@ export const ShareConfigDialog = ({
   };
 
   return (
-    <Modal open onCancel={() => onOpenChange(false)} footer={null}>
-      title=
-      {
+    <Modal
+      open
+      onCancel={() => onOpenChange(false)}
+      footer={null}
+      title={
         <div>
           <div>共享设置</div>
           <div className="text-xs font-normal text-color-text-3">
@@ -83,6 +85,7 @@ export const ShareConfigDialog = ({
           </div>
         </div>
       }
+    >
       <ShareConfigForm
         value={config}
         onChange={onChange}

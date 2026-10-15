@@ -21,7 +21,7 @@ import {
 } from 'antd';
 
 import type { WorkspaceRow } from '../lib/workspace-view';
-import { resolveFileIconUrl } from '@/shared/lib/file-icon';
+import { resolveFileIconUrl } from '@/shared/lib/files';
 import {
   TableBody,
   TableCell,

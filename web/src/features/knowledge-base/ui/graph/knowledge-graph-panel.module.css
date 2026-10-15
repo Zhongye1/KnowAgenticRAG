@@ -1,0 +1,45 @@
+/* ============================================================================
+ * 知识图谱分区：索引按钮上的状态角标。
+ * ----------------------------------------------------------------------------
+ * 形状与配色对齐参照 `KnowledgeGraphSection.vue` 的 `.status-dot`（`:1026-1047`）：
+ * 7px 圆点贴在按钮右下角，白描边把它从按钮底上摘出来；构建中闪烁。
+ * ========================================================================== */
+
+/* 角标的定位基准是按钮本身 */
+.indexButton {
+  position: relative;
+}
+
+.dot {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--color-trans-light);
+}
+
+.dotPending {
+  background: var(--color-warning-500);
+}
+
+.dotActive {
+  background: var(--color-warning-500);
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+.dotComplete {
+  background: var(--color-success-500);
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.2;
+  }
+}

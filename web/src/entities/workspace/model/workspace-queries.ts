@@ -10,7 +10,7 @@ import {
   listWorkspaceEntries,
   searchWorkspaceEntries,
 } from '../api/workspace-api';
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
+import type { FileEntry } from '@/shared/lib/files';
 
 /** 全部个人空间查询的 key 前缀；写入后按它失效。 */
 export const WORKSPACE_QUERY_ROOT = ['workspace'] as const;

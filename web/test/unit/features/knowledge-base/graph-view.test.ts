@@ -12,9 +12,11 @@ import type {
 import {
   describeEdgeType,
   describeNodeType,
+  edgeTypeColorToken,
   GRAPH_COLOR_TOKENS,
   hashLabel,
   nodeSizeByDegree,
+  nodeTypeColorToken,
   readPalette,
   resolveGraphColors,
   summarizeGraph,
@@ -175,14 +177,49 @@ describe('统计', () => {
     expect(stats.nodeCount).toBe(3);
     expect(stats.edgeCount).toBe(2);
     expect(stats.nodeTypes).toEqual([
-      { label: 'Person', count: 2 },
-      { label: 'Org', count: 1 },
+      { label: 'Person', count: 2, colorToken: nodeTypeColorToken('Person') },
+      { label: 'Org', count: 1, colorToken: nodeTypeColorToken('Org') },
     ]);
     // 数量相同按标签升序：KNOWS 在 WORKS_AT 前
     expect(stats.edgeTypes.map((item) => item.label)).toEqual([
       'KNOWS',
       'WORKS_AT',
     ]);
+    // 图例的色点要与画布同色：色号取自同一处映射
+    expect(stats.edgeTypes[0].colorToken).toBe(edgeTypeColorToken('KNOWS'));
+  });
+
+  it('Chunk 节点与 MENTIONS 边不计入实体/关系口径', () => {
+    const view = toGraphView({
+      nodes: [
+        node({ id: 'a', type: 'Person', name: '张三' }),
+        node({ id: 'c', type: 'Chunk', name: 'chunk-1' }),
+      ],
+      edges: [
+        edge({ id: 'e1', source_id: 'a', target_id: 'a', type: 'KNOWS' }),
+        // MENTIONS 连的是 Chunk，属实现细节
+        edge({ id: 'e2', source_id: 'a', target_id: 'c', type: 'MENTIONS' }),
+      ],
+    });
+
+    const stats = summarizeGraph(view);
+
+    expect(stats.nodeCount).toBe(1);
+    expect(stats.edgeCount).toBe(1);
+    expect(stats.nodeTypes.map((item) => item.label)).toEqual(['Person']);
+    expect(stats.edgeTypes.map((item) => item.label)).toEqual(['KNOWS']);
+  });
+
+  it('全是 Chunk 与 MENTIONS 时统计归零（图例整块不出现）', () => {
+    const view = toGraphView({
+      nodes: [node({ id: 'c', type: 'Chunk', name: 'chunk-1' })],
+      edges: [],
+    });
+
+    const stats = summarizeGraph(view);
+
+    expect(stats.nodeCount).toBe(0);
+    expect(stats.nodeTypes).toEqual([]);
   });
 });
 

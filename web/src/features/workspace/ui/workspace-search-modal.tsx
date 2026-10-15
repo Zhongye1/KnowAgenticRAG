@@ -14,8 +14,8 @@ import { Input, Modal, Spin, type InputRef } from 'antd';
 
 import { useWorkspaceSearch } from '@/entities/workspace';
 import { useDebouncedValue } from '@/shared/lib';
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
-import { resolveFileIconUrl } from '@/shared/lib/file-icon';
+import type { FileEntry } from '@/shared/lib/files';
+import { resolveFileIconUrl } from '@/shared/lib/files';
 import { formatResultDate, splitSnippet } from '@/shared/lib';
 import { describeFailure } from '@/shared/api';
 

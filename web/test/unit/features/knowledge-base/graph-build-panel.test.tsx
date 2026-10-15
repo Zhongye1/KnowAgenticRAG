@@ -18,7 +18,7 @@ vi.setConfig({ testTimeout: 15000 });
 import type { GraphBuildStatus } from '@/features/knowledge-base/api/graph-api';
 
 const { GraphBuildPanel } =
-  await import('@/features/knowledge-base/ui/graph-build-panel');
+  await import('@/features/knowledge-base/ui/graph/graph-build-panel');
 
 const status = (extra: Partial<GraphBuildStatus> = {}): GraphBuildStatus => ({
   kb_id: 'kb-1',

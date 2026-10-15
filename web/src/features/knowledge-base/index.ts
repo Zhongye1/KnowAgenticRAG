@@ -1,23 +1,23 @@
 /** 知识库切片的对外接口。页面与其它切片只从这里引用。 */
-export { KnowledgeList } from './ui/knowledge-list';
-export { KnowledgeFormDialog } from './ui/knowledge-form-dialog';
-export { KnowledgeFileTable } from './ui/knowledge-file-table';
-export { KnowledgeGraphPanel } from './ui/knowledge-graph-panel';
-export { KnowledgeMindmapPanel } from './ui/knowledge-mindmap-panel';
-export { EvaluationBenchmarksPanel } from './ui/evaluation-benchmarks-panel';
-export { RagEvaluationPanel } from './ui/rag-evaluation-panel';
+export { KnowledgeList } from './ui/list/knowledge-list';
+export { KnowledgeFormDialog } from './ui/list/knowledge-form-dialog';
+export { KnowledgeFileTable } from './ui/files/table/knowledge-file-table';
+export { KnowledgeGraphPanel } from './ui/graph/knowledge-graph-panel';
+export { KnowledgeMindmapPanel } from './ui/mindmap/knowledge-mindmap-panel';
+export { EvaluationBenchmarksPanel } from './ui/benchmarks/evaluation-benchmarks-panel';
+export { RagEvaluationPanel } from './ui/evaluation/rag-evaluation-panel';
 export type { FileCrumb, FileLocation, FileView } from './model/file-view';
 export {
   buildSearchHitLocation,
   openLocation,
   UNKNOWN_DIR_CRUMB,
 } from './model/file-view';
-export { FileSearchModal } from './ui/file-search-modal';
-export { FileDetailDialog } from './ui/file-detail-dialog';
-export { FileUploadDialog } from './ui/file-upload-dialog';
-export { QueryTestPanel } from './ui/query-test-panel';
+export { FileSearchModal } from './ui/files/dialogs/file-search-modal';
+export { FileDetailDialog } from './ui/files/dialogs/file-detail-dialog';
+export { FileUploadDialog } from './ui/files/dialogs/file-upload-dialog';
+export { QueryTestPanel } from './ui/query/query-test-panel';
 export { ShareConfigDialog } from './ui/share-config-dialog';
-export { FilePreview as FilePreviewPane } from './ui/file-preview';
+export { FilePreview as FilePreviewPane } from './ui/files/preview/file-preview';
 export {
   useAddDocuments,
   useCreateKnowledgeBase,
@@ -40,6 +40,7 @@ export {
   useKnowledgeTypes,
   useUpdateKnowledgeBase,
 } from './model/knowledge-queries';
+export { useAutoSampleQuestions } from './model/use-auto-sample-questions';
 export { knowledgeApi } from './api/knowledge-api';
 export type {
   CreateKnowledgeBasePayload,
@@ -159,3 +160,4 @@ export {
   getKbTypeLabel,
   parseShanghai,
 } from './lib/knowledge-view';
+export { knowledgeKeys } from './model/knowledge-queries';

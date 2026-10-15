@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   parseDownloadFilename,
   saveBlobAsFile,
-} from '@/shared/lib/file-download';
+} from '@/shared/lib/files/file-download';
 
 describe('parseDownloadFilename', () => {
   it('优先 RFC 5987 的 UTF-8 文件名', () => {

@@ -90,14 +90,17 @@ describe('会话分析', () => {
     );
   });
 
-  it('打开子智能体开关带 include_subagents=true，按钮状态同步', async () => {
+  it('打开子智能体开关带 include_subagents=true，分段控件状态同步', async () => {
     // 变异：开关状态不进查询键，切了也还是旧数据
     renderSection();
     await screen.findByTestId('thread-trend-chart');
 
-    const toggle = screen.getByRole('button', { name: /子智能体/ });
-    expect(toggle.getAttribute('aria-pressed')).toBe('false');
-    await userEvent.click(toggle);
+    const subagents = () => screen.getByTestId('thread-subagents');
+    const includeOption = () =>
+      within(subagents()).getByRole('radio', { name: '包含子智能体' });
+    expect(includeOption()).not.toBeChecked();
+    // 点标签文本而不是 radio input：antd Segmented 的 input 是 `pointer-events: none`
+    await userEvent.click(within(subagents()).getByText('包含子智能体'));
 
     await waitFor(() =>
       expect(api.threads).toHaveBeenLastCalledWith({
@@ -108,11 +111,7 @@ describe('会话分析', () => {
         },
       }),
     );
-    expect(
-      screen
-        .getByRole('button', { name: /子智能体/ })
-        .getAttribute('aria-pressed'),
-    ).toBe('true');
+    expect(includeOption()).toBeChecked();
   });
 
   it('三个图表都画出真实数据系列，深度分布按固定桶顺序', async () => {

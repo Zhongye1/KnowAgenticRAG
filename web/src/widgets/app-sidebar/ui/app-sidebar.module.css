@@ -227,11 +227,30 @@
     max-width 0.18s ease;
 }
 
-.github {
+/* GitHub 与日夜切换同一行：链接占满剩余宽度，开关贴右端。
+   右侧留 3px 与用户行的内边距对齐，两行的右边界落在同一竖线上。 */
+.githubRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   margin-bottom: 8px;
+  padding-right: 3px;
 }
 
-.userInfo {
+.github {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.themeSwitch {
+  flex: 0 0 auto;
+}
+
+/* 用户菜单与任务中心入口同一行；入口由 TaskCenter 自己按权限与折叠态决定是否渲染。 */
+.userRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   margin-bottom: 8px;
   padding: 0 3px;
   overflow: hidden;
@@ -306,6 +325,6 @@
   pointer-events: none;
 }
 
-.sidebarCollapsed .userInfo {
+.sidebarCollapsed .userRow {
   padding: 0 2.5px;
 }

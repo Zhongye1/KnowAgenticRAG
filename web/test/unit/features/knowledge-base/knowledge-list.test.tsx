@@ -32,7 +32,7 @@ vi.mock('@/shared/ui/notifications', () => ({
 }));
 
 const { KnowledgeList } =
-  await import('@/features/knowledge-base/ui/knowledge-list');
+  await import('@/features/knowledge-base/ui/list/knowledge-list');
 const { AntdProvider } = await import('@/app/theme/antd-provider');
 
 const database = (id: string, extra: Record<string, unknown> = {}) => ({
@@ -328,6 +328,38 @@ describe('知识库列表', () => {
 
     await waitFor(() => expect(screen.queryByText('库-a')).toBeNull());
     expect(screen.getByText('库-b')).toBeTruthy();
+  });
+
+  it('类型筛选的选中态用 aria-pressed 表达，切换后跟随', async () => {
+    api.listTypes.mockResolvedValue({
+      milvus: { name: 'ARS' },
+      dify: { name: 'Dify' },
+    });
+    renderList();
+    await screen.findByText('库-a');
+
+    // 默认「全部」选中：只看颜色的话这条会漏
+    expect(
+      (await screen.findByRole('button', { name: '全部' })).getAttribute(
+        'aria-pressed',
+      ),
+    ).toBe('true');
+    expect(
+      screen.getByRole('button', { name: 'ARS' }).getAttribute('aria-pressed'),
+    ).toBe('false');
+
+    await userEvent.click(screen.getByRole('button', { name: 'ARS' }));
+
+    await waitFor(() =>
+      expect(
+        screen
+          .getByRole('button', { name: 'ARS' })
+          .getAttribute('aria-pressed'),
+      ).toBe('true'),
+    );
+    expect(
+      screen.getByRole('button', { name: '全部' }).getAttribute('aria-pressed'),
+    ).toBe('false');
   });
 
   it('编辑入口打开表单对话框并带上当前知识库', async () => {

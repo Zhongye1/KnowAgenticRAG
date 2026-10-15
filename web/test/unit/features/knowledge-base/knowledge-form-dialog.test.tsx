@@ -33,7 +33,7 @@ vi.mock('@/features/knowledge-base/api/knowledge-api', () => ({
 }));
 
 const { KnowledgeFormDialog } =
-  await import('@/features/knowledge-base/ui/knowledge-form-dialog');
+  await import('@/features/knowledge-base/ui/list/knowledge-form-dialog');
 
 const milvusType = {
   name: 'ARS',

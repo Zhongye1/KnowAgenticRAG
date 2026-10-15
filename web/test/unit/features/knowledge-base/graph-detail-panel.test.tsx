@@ -18,7 +18,7 @@ import type {
 import { TRUNCATE_LIMIT } from '@/features/knowledge-base/lib/graph-detail';
 
 const { GraphDetailPanel } =
-  await import('@/features/knowledge-base/ui/graph-detail-panel');
+  await import('@/features/knowledge-base/ui/graph/graph-detail-panel');
 
 const nodeItem = (extra: Partial<GraphNode> = {}): GraphNode => ({
   id: 'n-1',

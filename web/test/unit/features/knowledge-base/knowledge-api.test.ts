@@ -25,6 +25,13 @@ const { api, fetchMock } = vi.hoisted(() => ({
     queryParams: vi.fn(),
     queryTest: vi.fn(),
     sampleQuestions: vi.fn(),
+    repairStats: vi.fn(),
+    detectVirtualFolders: vi.fn(),
+    startVirtualFolderMigration: vi.fn(),
+    parsePendingDocuments: vi.fn(),
+    indexPendingDocuments: vi.fn(),
+    createFolder: vi.fn(),
+    renameFolder: vi.fn(),
   },
 }));
 
@@ -83,6 +90,25 @@ vi.mock('@/shared/api/generated/sdk.gen', () => ({
   getSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsGet: (
     ...args: unknown[]
   ) => api.sampleQuestions(...args),
+  repairDatabaseStatsApiKnowledgeDatabasesKbIdStatsRepairPost: (
+    ...args: unknown[]
+  ) => api.repairStats(...args),
+  detectVirtualFoldersApiKnowledgeDatabasesKbIdVirtualFoldersDetectGet: (
+    ...args: unknown[]
+  ) => api.detectVirtualFolders(...args),
+  startVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigratePost:
+    (...args: unknown[]) => api.startVirtualFolderMigration(...args),
+  parsePendingDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePendingPost: (
+    ...args: unknown[]
+  ) => api.parsePendingDocuments(...args),
+  indexPendingDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPendingPost: (
+    ...args: unknown[]
+  ) => api.indexPendingDocuments(...args),
+  createFolderApiKnowledgeDatabasesKbIdFoldersPost: (...args: unknown[]) =>
+    api.createFolder(...args),
+  renameFolderApiKnowledgeDatabasesKbIdFoldersFolderIdRenamePut: (
+    ...args: unknown[]
+  ) => api.renameFolder(...args),
 }));
 
 vi.mock('@/shared/api', async () => {
@@ -615,5 +641,126 @@ describe('检索测试与查询参数', () => {
     await expect(knowledgeApi.queryTest('kb-1', '问题', {})).rejects.toThrow(
       '测试查询失败: 未配置检索服务',
     );
+  });
+});
+
+describe('B1 新增的文件管理接口', () => {
+  beforeEach(() => {
+    for (const fn of Object.values(api)) fn.mockReset();
+    fetchMock.mockReset();
+  });
+
+  it('统计修复把请求打到 stats/repair 并带回修复计数', async () => {
+    api.repairStats.mockResolvedValue({
+      data: {
+        stats: { file_count: 3, token_count: 100 },
+        updated_chunk_files: 2,
+        updated_token_files: 1,
+        updated_size_files: 0,
+      },
+    });
+
+    const result = await knowledgeApi.repairStats('kb-1');
+
+    expect(api.repairStats).toHaveBeenCalledWith({ path: { kb_id: 'kb-1' } });
+    expect(result.updated_chunk_files).toBe(2);
+    expect(result.updated_token_files).toBe(1);
+    expect(result.stats.file_count).toBe(3);
+  });
+
+  it('虚拟文件夹检测原样返回 has_virtual_folders', async () => {
+    api.detectVirtualFolders.mockResolvedValue({
+      data: { has_virtual_folders: true, file_count: 2, remaining_steps: 4 },
+    });
+
+    const result = await knowledgeApi.detectVirtualFolders('kb-1');
+
+    expect(api.detectVirtualFolders).toHaveBeenCalledWith({
+      path: { kb_id: 'kb-1' },
+    });
+    expect(result.has_virtual_folders).toBe(true);
+    expect(result.remaining_steps).toBe(4);
+  });
+
+  it('启动转换任务拿 task_id，进度流按帧回调并在终态收口', async () => {
+    api.startVirtualFolderMigration.mockResolvedValue({
+      data: { task_id: 'task-9', created: true },
+    });
+
+    const snapshots: Array<{ status: string; progress?: number }> = [];
+    // 模拟 SSE：三帧（running→running→success），按空行分帧
+    const encoder = new TextEncoder();
+    fetchMock.mockResolvedValue({
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(
+            encoder.encode(
+              'data: {"status":"running","progress":10}\n\ndata: {"status":"running","progress":50}\n\ndata: {"status":"success","progress":100}\n\n',
+            ),
+          );
+          controller.close();
+        },
+      }),
+    });
+
+    const { task_id } =
+      await knowledgeApi.startVirtualFolderMigration('kb-1');
+    expect(api.startVirtualFolderMigration).toHaveBeenCalledWith({
+      path: { kb_id: 'kb-1' },
+    });
+
+    await knowledgeApi.streamVirtualFolderMigration(
+      'kb-1',
+      task_id,
+      (snapshot) => snapshots.push(snapshot),
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/knowledge/databases/kb-1/virtual-folders/migrations/task-9/events',
+    );
+    expect(snapshots.map((s) => s.status)).toEqual([
+      'running',
+      'running',
+      'success',
+    ]);
+    expect(snapshots[2]?.progress).toBe(100);
+  });
+
+  it('待解析与待入库提交带 params 的任务体', async () => {
+    api.parsePendingDocuments.mockResolvedValue({ data: { status: 'queued' } });
+    api.indexPendingDocuments.mockResolvedValue({ data: { status: 'queued' } });
+
+    await knowledgeApi.parsePendingDocuments('kb-1', { ocr_engine: 'default' });
+    await knowledgeApi.indexPendingDocuments('kb-1');
+
+    expect(api.parsePendingDocuments).toHaveBeenCalledWith({
+      path: { kb_id: 'kb-1' },
+      body: { params: { ocr_engine: 'default' } },
+    });
+    expect(api.indexPendingDocuments).toHaveBeenCalledWith({
+      path: { kb_id: 'kb-1' },
+      body: { params: {} },
+    });
+  });
+
+  it('新建文件夹传名称与父目录，重命名传新名称', async () => {
+    api.createFolder.mockResolvedValue({
+      data: { file_id: 'folder-1', filename: '资料', is_folder: true },
+    });
+    api.renameFolder.mockResolvedValue({
+      data: { file_id: 'folder-1', filename: '新名字', is_folder: true },
+    });
+
+    const folder = await knowledgeApi.createFolder('kb-1', '资料', null);
+    expect(api.createFolder).toHaveBeenCalledWith({
+      path: { kb_id: 'kb-1' },
+      body: { folder_name: '资料', parent_id: null },
+    });
+    expect(folder.file_id).toBe('folder-1');
+
+    await knowledgeApi.renameFolder('kb-1', 'folder-1', '新名字');
+    expect(api.renameFolder).toHaveBeenCalledWith({
+      path: { kb_id: 'kb-1', folder_id: 'folder-1' },
+      body: { folder_name: '新名字' },
+    });
   });
 });

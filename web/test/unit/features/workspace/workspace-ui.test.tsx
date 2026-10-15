@@ -13,7 +13,7 @@ import { WorkspacePreviewPane } from '@/features/workspace/ui/workspace-preview-
 import { WorkspaceSidebar } from '@/features/workspace/ui/workspace-sidebar';
 import type { WorkspaceRow } from '@/features/workspace/lib/workspace-view';
 import type { WorkspacePreview } from '@/features/workspace/model/use-workspace-browser';
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
+import type { FileEntry } from '@/shared/lib/files/filesystem-entry';
 
 const entry = (path: string, isDir = false, size = 10): FileEntry => ({
   path,

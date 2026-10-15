@@ -14,7 +14,7 @@ import {
   saveWorkspaceFile,
   uploadWorkspaceFiles,
 } from '../api/workspace-api';
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
+import type { FileEntry } from '@/shared/lib/files';
 import { WORKSPACE_QUERY_ROOT } from './workspace-queries';
 
 const useInvalidateWorkspace = (): (() => void) => {

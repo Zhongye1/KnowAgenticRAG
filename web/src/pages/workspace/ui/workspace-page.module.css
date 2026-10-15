@@ -11,61 +11,8 @@
   min-height: 0;
 }
 
+/* 页头只留高度约束：形态（标题、动作区、底边框、加载条）都走 PageHeader */
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  min-height: 44px;
-  padding: 10px var(--page-padding);
-  border-bottom: 1px solid var(--gray-100);
-  flex: 0 0 auto;
-  position: relative;
-}
-
-/* 加载中在页头下沿走一条 2px 进度条（参照的 .page-header-loading-bar） */
-.loadingBar {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  overflow: hidden;
-  background: var(--main-50);
-}
-
-.loadingBar::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  width: 40%;
-  background: var(--main-500);
-  animation: page-loading 1.5s infinite linear;
-}
-
-@keyframes page-loading {
-  from {
-    transform: translateX(-100%);
-  }
-
-  to {
-    transform: translateX(250%);
-  }
-}
-
-.title {
-  flex: 0 0 auto;
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--gray-2000);
-  white-space: nowrap;
-}
-
-.headerActions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   flex: 0 0 auto;
 }
 

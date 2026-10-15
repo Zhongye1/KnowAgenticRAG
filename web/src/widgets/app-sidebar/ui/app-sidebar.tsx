@@ -1,9 +1,9 @@
 /**
  * 登录后的全站导航列。
  *
- * 结构对齐参照实现的 `AppLayout.vue`：品牌区、导航、会话列表、底部（GitHub、日夜切换、
- * 用户菜单），右侧内容区由 `app/layouts` 装配。导航项的权限与能力门禁只影响入口可见性，
- * 授权仍由后端执行。
+ * 结构对齐参照实现的 `AppLayout.vue`：品牌区、导航、会话列表、底部（GitHub 与日夜切换
+ * 同一行，用户菜单与任务中心同一行），右侧内容区由 `app/layouts` 装配。导航项的权限与
+ * 能力门禁只影响入口可见性，授权仍由后端执行。
  */
 import { Tooltip } from 'antd';
 import { Search } from 'lucide-react';
@@ -21,6 +21,7 @@ import {
   GlobalSearchModal,
   useThreadList,
 } from '@/features/chat';
+import { TaskCenter } from '@/features/task-center';
 import { REPO_URL, paths } from '@/shared/config';
 import { DayNightSwitcher } from '@/shared/ui/DayNightSwitcher';
 
@@ -142,40 +143,41 @@ export function AppSidebar() {
       </div>
 
       <div className={styles.footer}>
-        <a
-          className={`${styles.navItem} ${styles.github}`}
-          href={REPO_URL}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {/* lucide 不再带品牌图标，这里沿用参照实现的内联 GitHub 图形 */}
-          <svg
-            className={styles.icon}
-            viewBox="0 0 16 16"
-            width="16"
-            height="16"
-            fill="currentColor"
-            aria-hidden
+        <div className={styles.githubRow}>
+          <a
+            className={`${styles.navItem} ${styles.github}`}
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer"
           >
-            <path
-              fillRule="evenodd"
-              d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
-            />
-          </svg>
-          <span className={styles.navText}>GitHub</span>
-        </a>
-        {/* 折叠态只有 39px 内容宽，44px 的开关放不下，会被 overflow 裁掉；参照也没有这一行 */}
-        {collapsed ? null : (
-          <div className={styles.navItem}>
-            <DayNightSwitcher />
-            <span className={styles.navText}>日夜模式</span>
-          </div>
-        )}
-        <div className={styles.userInfo}>
+            {/* lucide 不再带品牌图标，这里沿用参照实现的内联 GitHub 图形 */}
+            <svg
+              className={styles.icon}
+              viewBox="0 0 16 16"
+              width="16"
+              height="16"
+              fill="currentColor"
+              aria-hidden
+            >
+              <path
+                fillRule="evenodd"
+                d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+              />
+            </svg>
+            <span className={styles.navText}>GitHub</span>
+          </a>
+          {/* 折叠态只有 39px 内容宽，44px 的开关放不下，会被 overflow 裁掉；
+              主题仍可从用户菜单切换 */}
+          {collapsed ? null : (
+            <DayNightSwitcher className={styles.themeSwitch} />
+          )}
+        </div>
+        <div className={styles.userRow}>
           <UserMenu
             collapsed={collapsed}
             onLogout={() => logout.mutate(undefined)}
           />
+          <TaskCenter collapsed={collapsed} />
         </div>
       </div>
 

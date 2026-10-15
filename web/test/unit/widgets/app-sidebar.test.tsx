@@ -49,6 +49,13 @@ vi.mock('@/features/account-settings', () => ({
     open ? <div>账户设置弹窗</div> : null,
 }));
 
+vi.mock('@/features/task-center', () => ({
+  // 入口与面板在 features 里单独测，这里只验证它落在用户行里、拿到了折叠态
+  TaskCenter: ({ collapsed }: { collapsed: boolean }) => (
+    <span data-testid="task-center">{collapsed ? 'collapsed' : 'expanded'}</span>
+  ),
+}));
+
 vi.mock('@/features/chat', () => ({
   ConversationList: () => null,
   useThreadList: (selector: (state: unknown) => unknown) =>
@@ -289,6 +296,18 @@ describe('导航列的折叠态', () => {
     expect(screen.getAllByRole('button', { name: '搜索' })).toHaveLength(1);
   });
 
+  it('展开态把日夜切换开关放在 GitHub 那一行', () => {
+    renderSidebar();
+
+    const githubRow = screen.getByRole('link', { name: /GitHub/ }).parentElement;
+
+    expect(
+      within(githubRow as HTMLElement).getByRole('switch', {
+        name: '切换日间/夜间模式',
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('折叠态不渲染放不下的日夜切换开关', () => {
     window.localStorage.setItem('ars_sidebar_collapsed', 'true');
     renderSidebar();
@@ -296,6 +315,17 @@ describe('导航列的折叠态', () => {
     expect(
       screen.queryByRole('switch', { name: '切换日间/夜间模式' }),
     ).toBeNull();
+  });
+
+  it('任务中心入口与用户菜单同一行，并按折叠态传参', () => {
+    renderSidebar();
+
+    const userRow = screen.getByRole('button', { name: '用户菜单' })
+      .parentElement;
+
+    expect(
+      within(userRow as HTMLElement).getByTestId('task-center').textContent,
+    ).toBe('expanded');
   });
 
   it('折叠态仍能从用户菜单切主题，补回被隐藏的开关', async () => {

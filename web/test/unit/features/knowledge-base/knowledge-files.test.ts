@@ -37,18 +37,23 @@ import {
 
 describe('文件状态展示', () => {
   it('已知状态给出中文标签与语义色', () => {
-    expect(getFileStatusView('uploaded')).toMatchObject({ label: '待解析' });
+    expect(getFileStatusView('uploaded')).toMatchObject({
+      label: '待解析',
+      color: 'warning',
+    });
     expect(getFileStatusView('error_indexing').label).toBe('重试入库');
-    expect(getFileStatusView('indexed').className).toContain('text-success-6');
-    expect(getFileStatusView('error_parsing').className).toContain(
-      'text-danger-6',
-    );
+    // 四个色调各落到一个 antd Tag 状态色：进行中 → processing，完成 → success，失败 → error
+    expect(getFileStatusView('indexed').color).toBe('success');
+    expect(getFileStatusView('parsing').color).toBe('processing');
+    expect(getFileStatusView('error_parsing').color).toBe('error');
+    // 待入库在参照里是主色（青系），antd 预设里取 cyan，与「进行中」的 processing 区分开
+    expect(getFileStatusView('parsed').color).toBe('cyan');
   });
 
   it('未知状态原样显示标签并走中性色', () => {
     expect(getFileStatusView('unknown_state')).toMatchObject({
       label: 'unknown_state',
-      className: 'bg-color-fill-2 text-color-text-2',
+      color: 'default',
     });
   });
 

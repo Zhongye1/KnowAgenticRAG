@@ -5,7 +5,7 @@
  * 超过上限按最旧淘汰，淘汰与替换都必须 `revokeObjectURL`——对象 URL 不回收就是内存泄漏。
  * 载荷形状与类型判定在 `@/shared/lib/file-preview`，个人空间页面共用同一份。
  */
-import type { PreviewFile } from '@/shared/lib/file-preview';
+import type { PreviewFile } from '@/shared/lib/files';
 
 /** 预览缓存最多保留多少条就绪条目。 */
 export const PREVIEW_CACHE_LIMIT = 12;

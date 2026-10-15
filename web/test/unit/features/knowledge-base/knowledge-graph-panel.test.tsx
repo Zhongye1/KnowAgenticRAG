@@ -51,7 +51,7 @@ vi.mock('@/features/knowledge-base/api/graph-api', async () => {
   };
 });
 
-vi.mock('@/features/knowledge-base/ui/graph-canvas', () => ({
+vi.mock('@/features/knowledge-base/ui/graph/graph-canvas', () => ({
   GraphCanvas: ({
     view,
     onNodeClick,
@@ -72,7 +72,7 @@ vi.mock('@/shared/ui/notifications', async () => {
 });
 
 const { KnowledgeGraphPanel } =
-  await import('@/features/knowledge-base/ui/knowledge-graph-panel');
+  await import('@/features/knowledge-base/ui/graph/knowledge-graph-panel');
 
 const status = (extra: Partial<GraphBuildStatus> = {}): GraphBuildStatus => ({
   kb_id: 'kb-1',
@@ -110,7 +110,7 @@ const renderPanel = (readOnly = false) => {
   });
   render(
     <QueryClientProvider client={queryClient}>
-      <KnowledgeGraphPanel kbId="kb-1" readOnly={readOnly} />
+      <KnowledgeGraphPanel kbId="kb-1" readOnly={readOnly} active />
     </QueryClientProvider>,
   );
 };
@@ -221,5 +221,32 @@ describe('图谱分区', () => {
 
     await userEvent.click(button);
     expect(await screen.findByText('索引管理')).toBeTruthy();
+  });
+
+  it('重新激活分区时重取图谱与构建状态，没重新激活就不重取', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const tree = (active: boolean) => (
+      <QueryClientProvider client={queryClient}>
+        <KnowledgeGraphPanel kbId="kb-1" readOnly={false} active={active} />
+      </QueryClientProvider>
+    );
+
+    // 第一次挂载时分区还没被激活：查询自己会取一次，但不该有「重新激活」带来的额外取数
+    const { rerender } = render(tree(false));
+    await waitFor(() => expect(api.status).toHaveBeenCalled());
+    const afterMount = api.status.mock.calls.length;
+
+    rerender(tree(true));
+    await waitFor(() =>
+      expect(api.status.mock.calls.length).toBeGreaterThan(afterMount),
+    );
+    const afterReactivate = api.status.mock.calls.length;
+
+    // 已经激活着再渲染一次不算「重新激活」
+    rerender(tree(true));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(api.status.mock.calls.length).toBe(afterReactivate);
   });
 });

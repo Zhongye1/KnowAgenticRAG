@@ -86,6 +86,16 @@ export const describeEdgeType = (edge: GraphEdge): string =>
 export const nodeSizeByDegree = (degree: number): number =>
   Math.min(15 + degree * 5, 50);
 
+/** 节点颜色 token：Chunk 固定灰，其余按类型哈希落槽。画布与图例共用这一处。 */
+export const nodeTypeColorToken = (type: string): string =>
+  type === 'Chunk'
+    ? CHUNK_COLOR_TOKEN
+    : NODE_COLOR_TOKENS[hashLabel(type) % NODE_COLOR_TOKENS.length];
+
+/** 边颜色 token：按类型标签哈希落槽。 */
+export const edgeTypeColorToken = (label: string): string =>
+  EDGE_COLOR_TOKENS[hashLabel(label) % EDGE_COLOR_TOKENS.length];
+
 /**
  * 转换子图：算度数、挑颜色 token、过滤掉端点缺失的边。
  *
@@ -106,10 +116,7 @@ export const toGraphView = (subgraph: GraphSubgraph): GraphView => {
       // 画布上写的是实体名；类型只用来挑颜色与统计
       label: node.name || type,
       type,
-      colorToken:
-        type === 'Chunk'
-          ? CHUNK_COLOR_TOKEN
-          : NODE_COLOR_TOKENS[hashLabel(type) % NODE_COLOR_TOKENS.length],
+      colorToken: nodeTypeColorToken(type),
       degree: degrees.get(String(node.id)) ?? 0,
       original: node,
     };
@@ -129,8 +136,7 @@ export const toGraphView = (subgraph: GraphSubgraph): GraphView => {
         id: String(edge.id || `edge-${index}`),
         label,
         type: label,
-        colorToken:
-          EDGE_COLOR_TOKENS[hashLabel(label) % EDGE_COLOR_TOKENS.length],
+        colorToken: edgeTypeColorToken(label),
         source: String(edge.source_id),
         target: String(edge.target_id),
         original: edge,
@@ -140,7 +146,11 @@ export const toGraphView = (subgraph: GraphSubgraph): GraphView => {
   return { nodes, edges };
 };
 
-export type GraphTypeCount = { label: string; count: number };
+export type GraphTypeCount = {
+  label: string;
+  count: number;
+  colorToken: string;
+};
 
 export type GraphViewStats = {
   nodeCount: number;
@@ -150,24 +160,50 @@ export type GraphViewStats = {
 };
 
 /** 按类型聚合计数，数量降序、同数量按类型名升序，保证展示顺序稳定。 */
-const countByType = (items: Array<{ type: string }>): GraphTypeCount[] => {
+const countByType = (
+  items: Array<{ type: string }>,
+  colorOf: (type: string) => string,
+): GraphTypeCount[] => {
   const counts = new Map<string, number>();
   for (const item of items) {
     counts.set(item.type, (counts.get(item.type) ?? 0) + 1);
   }
-  return Array.from(counts, ([label, count]) => ({ label, count })).sort(
+  return Array.from(counts, ([label, count]) => ({
+    label,
+    count,
+    colorToken: colorOf(label),
+  })).sort(
     (left, right) =>
       right.count - left.count || left.label.localeCompare(right.label),
   );
 };
 
-/** 画布底部的实体/关系统计（全部来自当前这份子图，不再请求后端）。 */
-export const summarizeGraph = (view: GraphView): GraphViewStats => ({
-  nodeCount: view.nodes.length,
-  edgeCount: view.edges.length,
-  nodeTypes: countByType(view.nodes),
-  edgeTypes: countByType(view.edges),
-});
+/** 实体节点：Chunk 是实现细节，不算实体（参照的 `isEntityNode`）。 */
+export const isEntityNode = (node: GraphNode): boolean =>
+  describeNodeType(node) !== 'Chunk';
+
+/** 实体关系：MENTIONS 连的是 Chunk，同样不进图例（参照的 `isEntityRelationEdge`）。 */
+export const isEntityRelationEdge = (edge: GraphEdge): boolean =>
+  describeEdgeType(edge) !== 'MENTIONS';
+
+/**
+ * 画布图例与计数（全部来自当前这份子图，不再请求后端）。
+ *
+ * Chunk 节点与 MENTIONS 边不计入：图例只谈实体与实体间的关系。带 `exclude_chunk=false`
+ * 取到整图时，这里的数字才与用户的直觉一致。
+ */
+export const summarizeGraph = (view: GraphView): GraphViewStats => {
+  const nodes = view.nodes.filter((node) => isEntityNode(node.original));
+  const edges = view.edges.filter((edge) =>
+    isEntityRelationEdge(edge.original),
+  );
+  return {
+    nodeCount: nodes.length,
+    edgeCount: edges.length,
+    nodeTypes: countByType(nodes, nodeTypeColorToken),
+    edgeTypes: countByType(edges, edgeTypeColorToken),
+  };
+};
 
 /** 画布固定要用的语义色：标签、标签底色、节点描边、阴影、画布底色。 */
 export const GRAPH_PALETTE_TOKENS = {

@@ -13,7 +13,8 @@ vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({
   default: 'pdf.worker.js',
 }));
 
-const { PdfPreview } = await import('@/features/knowledge-base/ui/pdf-preview');
+const { PdfPreview } =
+  await import('@/features/knowledge-base/ui/files/preview/pdf-preview');
 
 /**
  * jsdom 的 Blob 没有 `arrayBuffer()`（浏览器有），这里给出最小替身。

@@ -4,11 +4,11 @@
  * 对齐参照 `WorkspaceSidebar.vue` 与 `WorkspaceFileList.vue`：面包屑第一段固定是「全部文件」，
  * 侧栏的快速访问是 `/agents/` 与 `/saved_artifacts` 两处，行菜单只有下载与删除（目录不下载）。
  */
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
+import type { FileEntry } from '@/shared/lib/files';
 import {
   isSameOrChildPath,
   pathBreadcrumbs,
-} from '@/shared/lib/workspace-path';
+} from '@/shared/lib/files';
 
 import {
   formatFileSize,

@@ -24,6 +24,7 @@ import {
   isDatasetGenerating,
   isErrorRunItem,
   metricShortName,
+  metricPlaceholder,
   metricTone,
   retrievalMetricEntries,
   runProgress,
@@ -152,7 +153,8 @@ describe('耗时、完成率与数据集投影', () => {
   });
 
   it('耗时：跑完算差值，运行中显示进行中，缺时间给 -', () => {
-    expect(runDuration(run())).toBe('12.3s');
+    // 口径与参照的 formatDuration 一致：秒 / 分秒 / 小时分，中文
+    expect(runDuration(run())).toBe('12秒');
     expect(runDuration(run({ status: 'running', completed_at: null }))).toBe(
       '进行中',
     );
@@ -164,7 +166,22 @@ describe('耗时、完成率与数据集投影', () => {
           completed_at: '2026-10-09T02:03:05Z',
         }),
       ),
-    ).toBe('3m 5s');
+    ).toBe('3分5秒');
+    expect(
+      runDuration(
+        run({
+          started_at: '2026-10-09T02:00:00Z',
+          completed_at: '2026-10-09T03:05:00Z',
+        }),
+      ),
+    ).toBe('1小时5分');
+  });
+
+  it('指标无值时按运行状态给文案：运行中在算、已完成没算出来、其余给 -', () => {
+    expect(metricPlaceholder('running')).toBe('计算中');
+    expect(metricPlaceholder('completed')).toBe('无数据');
+    expect(metricPlaceholder('failed')).toBe('-');
+    expect(metricPlaceholder(null)).toBe('-');
   });
 
   it('完成率：总数为 0 时不给值，否则四舍五入', () => {

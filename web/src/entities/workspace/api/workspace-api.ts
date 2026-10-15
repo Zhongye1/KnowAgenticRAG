@@ -19,10 +19,10 @@ import {
 import {
   parseDownloadFilename,
   saveBlobAsFile,
-} from '@/shared/lib/file-download';
-import type { PreviewFile } from '@/shared/lib/file-preview';
-import { toFileEntries, toFileEntry } from '@/shared/lib/filesystem-entry';
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
+} from '@/shared/lib/files';
+import type { PreviewFile } from '@/shared/lib/files';
+import { toFileEntries, toFileEntry } from '@/shared/lib/files';
+import type { FileEntry } from '@/shared/lib/files';
 
 /** 单次上传的文件数上限；与后端 `workspace_service` 的 400 条件一致。 */
 export const MAX_UPLOAD_FILE_COUNT = 50;

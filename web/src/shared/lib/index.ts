@@ -23,3 +23,5 @@ export {
 export type { Theme } from './theme';
 export { useCopyToClipboard, useDebouncedValue, useDisclosure } from './hooks';
 export { validatePhoneNumber, validateUsername } from './user-identity';
+export { processSseResponse } from './files/sse';
+export type { SseEvent } from './files/sse';

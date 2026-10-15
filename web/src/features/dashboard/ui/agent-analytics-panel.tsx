@@ -81,7 +81,7 @@ export const AgentAnalyticsPanel = ({
           />
         </MetricGrid>
 
-        <div className="border-t border-color-border-1 pt-3.5">
+        <div className="border-t border-color-border-2 pt-3.5">
           <PanelSectionTitle hint="按对话数与工具调用数取前 3">
             对话 / 工具调用分布
           </PanelSectionTitle>
@@ -102,7 +102,7 @@ export const AgentAnalyticsPanel = ({
           )}
         </div>
 
-        <div className="border-t border-color-border-1 pt-3.5">
+        <div className="border-t border-color-border-2 pt-3.5">
           <PanelSectionTitle hint="有反馈的排在前面">
             智能体满意度
           </PanelSectionTitle>
@@ -113,7 +113,7 @@ export const AgentAnalyticsPanel = ({
               {/* 面板在 1/3 宽里，列少而窄：不设 min-width，避免满意度列被挤出视口 */}
               <table className="w-full text-left text-xs">
                 <thead className="text-color-text-3">
-                  <tr className="border-b border-color-border-1">
+                  <tr className="border-b border-color-border-2">
                     <th scope="col" className="py-2 pr-3 font-medium">
                       智能体
                     </th>
@@ -139,7 +139,7 @@ export const AgentAnalyticsPanel = ({
                     <tr
                       key={agent.agent_id}
                       data-testid="agent-satisfaction-row"
-                      className="border-b border-color-border-1 last:border-b-0"
+                      className="border-b border-color-border-2 last:border-b-0"
                     >
                       <td
                         className="max-w-[220px] truncate py-2 pr-3 text-color-text-1"

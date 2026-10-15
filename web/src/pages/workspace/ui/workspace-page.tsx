@@ -2,11 +2,12 @@
  * 个人空间页面。
  *
  * 装配层：控制器（`features/workspace`）接上三段式布局——168px 侧栏 / 文件表 / 预览面板。
- * 预览在内容区宽于 960px 时内联（可拖拽 30–70%），窄屏走模态；删除确认的三段文案与参照逐字
- * 一致；`/agents` 下页头多一个「使用说明」入口。
+ * 页头用 `PageHeader`（fullHeight 页自带水平留白），取数进度条挂页头 loading；
+ * 预览在内容区宽于 960px 时内联（可拖拽 30–70%），窄屏走模态；删除确认的三段文案与参照
+ * 逐字一致；`/agents` 下页头多一个「使用说明」入口。搜索入口在侧栏「上传文件」上方。
  */
 import * as React from 'react';
-import { ChevronLeft, ChevronRight, HelpCircle, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
 
 import { Button, Modal } from 'antd';
 
@@ -20,10 +21,11 @@ import {
   WorkspaceSidebar,
   type WorkspaceRow,
 } from '@/features/workspace';
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
-import { normalizePathKey } from '@/shared/lib/workspace-path';
+import type { FileEntry } from '@/shared/lib/files';
+import { normalizePathKey } from '@/shared/lib/files';
 import { ContentLayout } from '@/shared/ui/content-layout';
 import { useConfirm } from '@/shared/ui/confirm-dialog';
+import { PageHeader } from '@/shared/ui/page-header';
 import { useNotifications } from '@/shared/ui/notifications';
 
 import styles from './workspace-page.module.css';
@@ -143,11 +145,15 @@ export const WorkspacePage = () => {
 
   return (
     <ContentLayout title="个人空间" fullHeight>
-      <div className={styles.view}>
-        <header className={styles.header}>
-          <h1 className={styles.title}>个人空间</h1>
-          <div className={styles.headerActions}>
-            {isAgentsPath ? (
+      {/* fullHeight 不吃 ContentLayout 的留白；水平留白与文档流页同款响应式档位，
+          顶部 pt-4 让标题落点与其他页一致，纵向贴底是 fullHeight 形态（对话页同款） */}
+      <div className={`${styles.view} px-2 pt-4 sm:px-6 md:px-8`}>
+        <PageHeader
+          title="个人空间"
+          loading={browser.isLoading}
+          className={styles.header}
+          actions={
+            isAgentsPath ? (
               <Button
                 size="small"
                 icon={<HelpCircle size={14} aria-hidden />}
@@ -155,18 +161,9 @@ export const WorkspacePage = () => {
               >
                 使用说明
               </Button>
-            ) : null}
-            <Button
-              size="small"
-              aria-label="搜索"
-              icon={<Search size={14} aria-hidden />}
-              onClick={() => setSearchOpen(true)}
-            >
-              搜索
-            </Button>
-          </div>
-          {browser.isLoading ? <span className={styles.loadingBar} /> : null}
-        </header>
+            ) : undefined
+          }
+        />
 
         <div
           className={`${styles.shell} ${
@@ -182,6 +179,7 @@ export const WorkspacePage = () => {
                 onCreateDirectory={() => setCreateOpen(true)}
                 onSelectRoot={() => browser.openDirectory('/')}
                 onSelectPath={(path) => browser.openDirectory(path)}
+                onOpenSearch={() => setSearchOpen(true)}
               />
               <button
                 type="button"

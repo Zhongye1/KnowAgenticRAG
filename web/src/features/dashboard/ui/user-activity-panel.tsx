@@ -58,7 +58,7 @@ export const UserActivityPanel = ({
           />
         </MetricGrid>
 
-        <div className="border-t border-color-border-1 pt-3.5">
+        <div className="border-t border-color-border-2 pt-3.5">
           <div className="mb-2 flex flex-wrap items-baseline justify-between gap-3">
             <div>
               <span className="text-sm font-semibold text-color-text-1">

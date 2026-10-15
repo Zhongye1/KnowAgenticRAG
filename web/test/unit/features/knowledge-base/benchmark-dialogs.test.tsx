@@ -63,9 +63,9 @@ vi.mock('@/features/knowledge-base/api/knowledge-api', async () => {
 });
 
 const { BenchmarkUploadDialog } =
-  await import('@/features/knowledge-base/ui/benchmark-upload-dialog');
+  await import('@/features/knowledge-base/ui/benchmarks/benchmark-upload-dialog');
 const { BenchmarkGenerateDialog } =
-  await import('@/features/knowledge-base/ui/benchmark-generate-dialog');
+  await import('@/features/knowledge-base/ui/benchmarks/benchmark-generate-dialog');
 
 const renderDialog = (
   node: (onOpenChange: (open: boolean) => void) => React.ReactElement,

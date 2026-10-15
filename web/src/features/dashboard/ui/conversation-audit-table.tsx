@@ -32,6 +32,7 @@ import {
 } from '../model/dashboard-queries';
 import { PanelBody, PanelCard } from './panel-card';
 import { Empty as SharedEmpty } from '@/shared/ui/empty';
+import { useNotifications } from '@/shared/ui/notifications';
 import { Select } from 'antd';
 
 /** 状态标签的配色：与设计规范的状态色表一致。 */
@@ -72,6 +73,7 @@ export const ConversationAuditTable = ({
   const query = buildConversationQuery(applied, page, pageSize);
   const list = useConversationList(query);
   const options = useConversationOptions();
+  const { addNotification } = useNotifications();
 
   const items = list.data?.items ?? [];
   const total = list.data?.total ?? 0;
@@ -85,9 +87,35 @@ export const ConversationAuditTable = ({
     setPage(FILTER_CHANGE_PAGE);
   };
 
+  /**
+   * 工具栏三个按钮都只改筛选/翻页状态，真正的「成功」是随后那次取数落定——数据还没
+   * 回来就提示成功是假话。这里记下文案，等这次取数结束再报。
+   * 判据用查询状态而不是「有没有观察到取数」：重置会回到已经缓存过的口径，
+   * 那种情况根本不发请求，等取数就永远等不到。失败不报成功，失败由面板错误态表达。
+   */
+  const [pendingNotice, setPendingNotice] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (!pendingNotice) return;
+    // 仍在取数，或还停在上一份数据的过渡期，都先等
+    if (list.isFetching || list.isPending || list.isPlaceholderData) return;
+    setPendingNotice(null);
+    if (!list.isError) {
+      addNotification({ type: 'success', title: pendingNotice });
+    }
+  }, [
+    addNotification,
+    list.isError,
+    list.isFetching,
+    list.isPending,
+    list.isPlaceholderData,
+    pendingNotice,
+  ]);
+
   const submitSearch = () => {
     setSubmittedSearch(filters.search);
     setPage(FILTER_CHANGE_PAGE);
+    setPendingNotice('查询成功');
   };
 
   const resetFilters = () => {
@@ -95,6 +123,7 @@ export const ConversationAuditTable = ({
     setSubmittedSearch('');
     setPage(FILTER_CHANGE_PAGE);
     setPageSize(DEFAULT_CONVERSATION_PAGE_SIZE);
+    setPendingNotice('重置成功');
   };
 
   return (
@@ -104,34 +133,36 @@ export const ConversationAuditTable = ({
       testId="conversation-audit"
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
-            <Search
-              className="pointer-events-none absolute top-1/2 left-2 size-3.5 -translate-y-1/2 text-color-text-4"
-              aria-hidden
-            />
-            <Input
-              value={filters.search}
-              aria-label="搜索会话"
-              placeholder="搜索标题、Thread ID、用户名或 UID"
-              className="h-8 w-[240px] pl-7 text-xs"
-              onChange={(event) =>
-                setFilters((current) => ({
-                  ...current,
-                  search: event.target.value,
-                }))
-              }
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') submitSearch();
-              }}
-            />
-          </div>
+          {/* 图标走 antd `prefix`：内边距、垂直居中与图标色由 antd 给，
+              自绘绝对定位要自己挑颜色，`--color-text-4` 在白底上几乎看不见 */}
+          <Input
+            value={filters.search}
+            aria-label="搜索会话"
+            placeholder="搜索标题、Thread ID、用户名或 UID"
+            prefix={
+              <Search className="size-3.5 text-color-text-3" aria-hidden />
+            }
+            // 聚焦不要 antd 的 2px 主色外环，改成边框变色：affix 包裹层本来不参与
+            // antd 的聚焦边框规则，去掉环后就没有任何聚焦指示了。`--main-600` 与
+            // antd 算出的聚焦边框色同值
+            className="w-56 focus-within:border-[var(--main-600)] focus-within:shadow-none"
+            onChange={(event) =>
+              setFilters((current) => ({
+                ...current,
+                search: event.target.value,
+              }))
+            }
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') submitSearch();
+            }}
+          />
 
           <Select
             virtual={false}
             value={filters.status}
             aria-label="按会话状态筛选"
             style={{ width: 168 }}
-            size="small"
+
             options={CONVERSATION_STATUS_OPTIONS.map((option) => ({
               value: option.value,
               label: option.label,
@@ -148,7 +179,7 @@ export const ConversationAuditTable = ({
             value={filters.agentId ?? 'all'}
             aria-label="按智能体筛选"
             style={{ width: 170 }}
-            size="small"
+
             options={[
               { value: 'all', label: '全部智能体' },
               ...(options.data?.agents ?? []).map((agent) => ({
@@ -168,7 +199,7 @@ export const ConversationAuditTable = ({
             value={filters.uid ?? 'all'}
             aria-label="按用户筛选"
             style={{ width: 160 }}
-            size="small"
+
             options={[
               { value: 'all', label: '全部用户' },
               ...(options.data?.users ?? []).map((user) => ({
@@ -184,21 +215,24 @@ export const ConversationAuditTable = ({
           <Button
             htmlType="button"
             variant="outlined"
-            size="small"
+
             disabled={!hasActiveConversationFilters(applied)}
             onClick={resetFilters}
           >
             重置
           </Button>
-          <Button htmlType="button" size="small" onClick={submitSearch}>
+          <Button htmlType="button" onClick={submitSearch}>
             查询
           </Button>
           <Button
             htmlType="button"
             variant="outlined"
-            size="small"
+
             disabled={list.isFetching}
-            onClick={() => void list.refetch()}
+            onClick={() => {
+              setPendingNotice('刷新成功');
+              void list.refetch();
+            }}
           >
             <RefreshCw className="size-3.5" aria-hidden />
             刷新
@@ -225,7 +259,7 @@ export const ConversationAuditTable = ({
             ) : null}
             <table className="w-full min-w-[900px] text-left text-xs">
               <thead className="text-color-text-3">
-                <tr className="border-b border-color-border-1">
+                <tr className="border-b border-color-border-2">
                   <th scope="col" className="py-2 pr-3 font-medium">
                     会话标题 / ID
                   </th>
@@ -259,7 +293,7 @@ export const ConversationAuditTable = ({
                     data-testid="conversation-row"
                     tabIndex={0}
                     aria-label={`查看会话 ${conversation.title || conversation.thread_id} 的详情`}
-                    className="cursor-pointer border-b border-color-border-1 last:border-b-0 hover:bg-color-bg-2 focus-visible:bg-color-bg-2"
+                    className="cursor-pointer border-b border-color-border-2 last:border-b-0 hover:bg-color-bg-2 focus-visible:bg-color-bg-2"
                     onClick={() => {
                       if (!stale) onOpenThread(conversation.thread_id);
                     }}
@@ -335,7 +369,7 @@ export const ConversationAuditTable = ({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-color-border-1 pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-color-border-2 pt-3">
           <span
             className="text-xs text-color-text-3"
             data-testid="conversation-total"

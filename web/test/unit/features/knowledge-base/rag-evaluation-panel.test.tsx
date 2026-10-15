@@ -71,7 +71,7 @@ vi.mock('@/shared/ui/confirm-dialog', () => ({
 }));
 
 const { RagEvaluationPanel } =
-  await import('@/features/knowledge-base/ui/rag-evaluation-panel');
+  await import('@/features/knowledge-base/ui/evaluation/rag-evaluation-panel');
 
 const dataset = (extra: Record<string, unknown> = {}) => ({
   id: 'ds-1',
@@ -117,6 +117,7 @@ const renderPanel = (
         <RagEvaluationPanel
           kbId="kb-1"
           readOnly={false}
+          active
           onGoToBenchmarks={onGoToBenchmarks}
           {...props}
         />
@@ -206,11 +207,14 @@ describe('RAG 评估分区', () => {
     renderPanel();
 
     expect(await screen.findByLabelText('最近一次评估')).toBeTruthy();
-    expect(screen.getByText('87%')).toBeTruthy();
+    // 评分环与历史表的综合评分都是 0 位百分比，所以这里用 getAllByText
+    expect(screen.getAllByText('87%').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/基准甲/).length).toBeGreaterThan(0);
-    // 耗时与数据量在「最近一次」卡片和历史表里各出现一次
-    expect(screen.getAllByText('12.3s').length).toBeGreaterThan(0);
+    // 耗时与数据量在「最近一次」卡片和历史表里各出现一次（耗时按参照口径是中文）
+    expect(screen.getAllByText('12秒').length).toBeGreaterThan(0);
     expect(screen.getAllByText('12/12').length).toBeGreaterThan(0);
+    // 检索指标按参照口径给三位小数，不是百分比
+    expect(screen.getAllByText('0.900').length).toBeGreaterThan(0);
   });
 
   it('两个模型必须同时选：只选一个时拦下', async () => {
@@ -294,7 +298,10 @@ describe('RAG 评估分区', () => {
     const table = await screen.findByRole('table');
     expect(table).toHaveTextContent('eval-20261009-abcdef');
     expect(table).toHaveTextContent('基准甲');
-    expect(table).toHaveTextContent('90.0%');
+    // 检索指标三位小数、综合评分 0 位百分比、耗时中文——都是参照口径
+    expect(table).toHaveTextContent('0.900');
+    expect(table).toHaveTextContent('87%');
+    expect(table).toHaveTextContent('12秒');
     expect(table).toHaveTextContent('已完成');
   });
 

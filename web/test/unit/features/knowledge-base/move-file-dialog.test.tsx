@@ -32,7 +32,7 @@ vi.mock('@/features/knowledge-base/api/knowledge-api', async () => {
 });
 
 const { MoveFileDialog } =
-  await import('@/features/knowledge-base/ui/move-file-dialog');
+  await import('@/features/knowledge-base/ui/files/dialogs/move-file-dialog');
 
 const folder = (
   id: string,

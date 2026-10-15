@@ -107,7 +107,7 @@ export const KnowledgeStatsPanel = ({
           />
         </MetricGrid>
 
-        <div className="border-t border-color-border-1 pt-3.5">
+        <div className="border-t border-color-border-2 pt-3.5">
           <PanelSectionTitle hint={`${databaseTypes.length} 种类型`}>
             知识库类型分布
           </PanelSectionTitle>
@@ -135,7 +135,7 @@ export const KnowledgeStatsPanel = ({
           )}
         </div>
 
-        <div className="border-t border-color-border-1 pt-3.5">
+        <div className="border-t border-color-border-2 pt-3.5">
           <PanelSectionTitle hint="按文件数排序">
             文件类型分布
           </PanelSectionTitle>

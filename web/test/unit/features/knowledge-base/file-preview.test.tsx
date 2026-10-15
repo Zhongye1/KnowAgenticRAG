@@ -31,14 +31,14 @@ vi.mock('@/shared/markdown', () => ({
   renderCodeBlock: (...args: unknown[]) => renderCodeBlock(...args),
 }));
 
-vi.mock('@/features/knowledge-base/ui/pdf-preview', () => ({
+vi.mock('@/features/knowledge-base/ui/files/preview/pdf-preview', () => ({
   PdfPreview: ({ blob }: { blob: Blob }) => (
     <div data-testid="pdf-preview-stub">{blob.size}</div>
   ),
 }));
 
 const { FilePreview: FilePreviewPane } =
-  await import('@/features/knowledge-base/ui/file-preview');
+  await import('@/features/knowledge-base/ui/files/preview/file-preview');
 
 const file = {
   file_id: 'f-1',

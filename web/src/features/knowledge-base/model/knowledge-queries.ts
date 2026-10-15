@@ -41,6 +41,8 @@ export const knowledgeKeys = {
     ] as const,
   fileSearch: (kbId: string, query: string) =>
     [...knowledgeKeys.all, 'file-search', kbId, query] as const,
+  virtualFolders: (kbId: string) =>
+    [...knowledgeKeys.all, 'virtual-folders', kbId] as const,
   filePreview: (kbId: string, fileId: string) =>
     [...knowledgeKeys.all, 'file-preview', kbId, fileId] as const,
   fileContent: (kbId: string, fileId: string) =>
@@ -173,6 +175,70 @@ export const useMoveKnowledgeFile = (kbId: string) => {
   });
 };
 
+/** 新建空文件夹；成功后让文件列表与统计失效。 */
+export const useCreateKnowledgeFolder = (kbId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { folderName: string; parentId: string | null }) =>
+      knowledgeApi.createFolder(kbId, input.folderName, input.parentId),
+    onSuccess: () => invalidateFileViews(queryClient, kbId),
+  });
+};
+
+/** 重命名文件夹；虚拟目录是路径投影没有实体记录，后端会拒绝，这里不拦。 */
+export const useRenameKnowledgeFolder = (kbId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { folderId: string; folderName: string }) =>
+      knowledgeApi.renameFolder(kbId, input.folderId, input.folderName),
+    onSuccess: () => invalidateFileViews(queryClient, kbId),
+  });
+};
+
+/** 修复历史文件缺失的 Chunk/Token 统计；成功后让详情（统计卡）失效。 */
+export const useRepairKnowledgeStats = (kbId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => knowledgeApi.repairStats(kbId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: knowledgeKeys.detail(kbId) }),
+  });
+};
+
+/** 提交全部待解析文件；文件记录还没建出来的部分由后端挑，这里只让列表失效。 */
+export const useParsePendingKnowledgeFiles = (kbId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: Record<string, unknown>) =>
+      knowledgeApi.parsePendingDocuments(kbId, params),
+    onSuccess: () => invalidateFileViews(queryClient, kbId),
+  });
+};
+
+/** 提交全部待入库文件。 */
+export const useIndexPendingKnowledgeFiles = (kbId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (params: Record<string, unknown>) =>
+      knowledgeApi.indexPendingDocuments(kbId, params),
+    onSuccess: () => invalidateFileViews(queryClient, kbId),
+  });
+};
+
+/**
+ * 虚拟文件夹状态：只有管理员才检测（转换入口只给他们）。
+ * 检测完没有虚拟文件夹时数据仍是 `{has_virtual_folders: false}`，不是错误。
+ */
+export const useVirtualFolderStatus = (
+  kbId: string,
+  options: { enabled?: boolean } = {},
+) =>
+  useQuery({
+    queryKey: knowledgeKeys.virtualFolders(kbId),
+    queryFn: () => knowledgeApi.detectVirtualFolders(kbId),
+    enabled: Boolean(kbId) && (options.enabled ?? true),
+  });
+
 /** 部门与可选用户；共享范围选择用，变动很少。 */
 export const useShareTargets = () =>
   useQuery({
@@ -198,6 +264,19 @@ export const useSampleQuestions = (kbId: string, enabled = true) =>
     queryFn: () => knowledgeApi.listSampleQuestions(kbId),
     enabled,
   });
+
+/** 生成示例问题；写操作，成功后让示例问题列表失效。 */
+export const useGenerateSampleQuestions = (kbId: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (count?: number) =>
+      knowledgeApi.generateSampleQuestions(kbId, count),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: knowledgeKeys.sampleQuestions(kbId),
+      }),
+  });
+};
 
 /** 后端允许上传的后缀；变动很少，缓存久一点。 */
 export const useSupportedFileTypes = () =>

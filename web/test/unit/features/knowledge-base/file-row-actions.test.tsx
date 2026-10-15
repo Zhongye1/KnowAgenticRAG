@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { FileRowActions } from '@/features/knowledge-base/ui/file-row-actions';
+import { FileRowActions } from '@/features/knowledge-base/ui/files/table/file-row-actions';
 
 const file = (extra: Record<string, unknown> = {}) => ({
   file_id: 'f-1',

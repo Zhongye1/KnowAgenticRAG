@@ -78,7 +78,7 @@ export const ToolStatsPanel = ({ className }: { className?: string } = {}) => {
           />
         ) : (
           <>
-            <div className="border-t border-color-border-1 pt-3.5">
+            <div className="border-t border-color-border-2 pt-3.5">
               <PanelSectionTitle hint="按调用次数取前 10">
                 最常用工具
               </PanelSectionTitle>
@@ -97,7 +97,7 @@ export const ToolStatsPanel = ({ className }: { className?: string } = {}) => {
               ) : null}
             </div>
 
-            <div className="border-t border-color-border-1 pt-3.5">
+            <div className="border-t border-color-border-2 pt-3.5">
               <PanelSectionTitle hint="按错误次数取前 5">
                 工具错误分析
               </PanelSectionTitle>
@@ -106,7 +106,7 @@ export const ToolStatsPanel = ({ className }: { className?: string } = {}) => {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left text-xs">
                       <thead className="text-color-text-3">
-                        <tr className="border-b border-color-border-1">
+                        <tr className="border-b border-color-border-2">
                           <th scope="col" className="py-2 pr-3 font-medium">
                             工具名称
                           </th>
@@ -123,7 +123,7 @@ export const ToolStatsPanel = ({ className }: { className?: string } = {}) => {
                           <tr
                             key={row.tool_name}
                             data-testid="tool-error-row"
-                            className="border-b border-color-border-1 last:border-b-0"
+                            className="border-b border-color-border-2 last:border-b-0"
                           >
                             <td className="py-2 pr-3 font-mono text-[11px] text-color-text-2">
                               {row.tool_name}

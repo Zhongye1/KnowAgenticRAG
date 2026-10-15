@@ -14,7 +14,7 @@ import { FilePen, FileSearch, LoaderCircle, Maximize2, X } from 'lucide-react';
 import { Button, Tooltip } from 'antd';
 
 import type { WorkspacePreview } from '../model/use-workspace-browser';
-import { resolveFileIconUrl } from '@/shared/lib/file-icon';
+import { resolveFileIconUrl } from '@/shared/lib/files';
 import { Markdown } from '@/shared/ui/markdown';
 
 import styles from './workspace-preview-pane.module.css';

@@ -358,6 +358,42 @@ describe('空态与失败', () => {
   });
 });
 
+describe('工具栏操作通知', () => {
+  it('查询、重置、刷新各自在取数落定后给出对应提示', async () => {
+    renderTable();
+    await screen.findAllByTestId('conversation-row');
+
+    await userEvent.type(
+      screen.getByRole('textbox', { name: '搜索会话' }),
+      '测试',
+    );
+    await userEvent.click(screen.getByRole('button', { name: '查询' }));
+    expect(await screen.findByText('查询成功')).toBeTruthy();
+
+    // 重置回到的是已经缓存过的口径，不发请求，仍要给出确认
+    await userEvent.click(screen.getByRole('button', { name: '重置' }));
+    expect(await screen.findByText('重置成功')).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: '刷新' }));
+    expect(await screen.findByText('刷新成功')).toBeTruthy();
+  });
+
+  it('取数失败不报成功，只留面板的失败态', async () => {
+    // 变异：把失败也报成成功，数据没回来就告诉用户「刷新成功」
+    renderTable();
+    await screen.findAllByTestId('conversation-row');
+
+    api.list.mockResolvedValue({
+      error: { detail: 'boom' },
+      response: { status: 500 },
+    });
+    await userEvent.click(screen.getByRole('button', { name: '刷新' }));
+
+    await screen.findByTestId('conversation-audit-error');
+    expect(screen.queryByText('刷新成功')).toBeNull();
+  });
+});
+
 describe('会话详情抽屉', () => {
   it('点行打开抽屉并按 thread_id 拉详情，消息时间线渲染角色与内容', async () => {
     renderTable(true);

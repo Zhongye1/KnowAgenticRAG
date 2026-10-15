@@ -5,7 +5,7 @@
  */
 import * as React from 'react';
 
-import { processRunSseResponse } from '../lib/sse';
+import { processSseResponse } from '@/shared/lib/files';
 import { createStreamSmoother } from '../lib/stream-smoother';
 import {
   isRunInterruptedConflict,
@@ -422,7 +422,7 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
         signal: controller.signal,
       });
 
-      await processRunSseResponse(response, (event, data) => {
+      await processSseResponse(response, (event, data) => {
         if (!isCurrent()) return;
         const payload = (data ?? {}) as {
           position?: number;

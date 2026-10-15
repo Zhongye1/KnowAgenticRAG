@@ -4,7 +4,7 @@ import {
   isSameOrChildPath,
   normalizePathKey,
   pathBreadcrumbs,
-} from '@/shared/lib/workspace-path';
+} from '@/shared/lib/files/workspace-path';
 
 describe('normalizePathKey / isSameOrChildPath', () => {
   it('去掉尾斜杠', () => {

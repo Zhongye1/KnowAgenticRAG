@@ -6,12 +6,12 @@ import {
   isWorkspaceRoot,
   pruneSelection,
 } from '@/features/workspace';
-import { isSamePath } from '@/shared/lib/workspace-path';
+import { isSamePath } from '@/shared/lib/files/workspace-path';
 import {
   buildWorkspaceRows,
   workspaceBreadcrumbs,
 } from '@/features/workspace/lib/workspace-view';
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
+import type { FileEntry } from '@/shared/lib/files/filesystem-entry';
 
 const entry = (
   path: string,

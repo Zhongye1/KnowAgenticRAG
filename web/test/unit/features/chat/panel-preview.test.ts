@@ -9,7 +9,7 @@ import {
   PREVIEW_CACHE_LIMIT,
   type PreviewCache,
 } from '@/features/chat/lib/panel-preview';
-import type { PreviewFile } from '@/shared/lib/file-preview';
+import type { PreviewFile } from '@/shared/lib/files/file-preview';
 
 const readyFile = (path: string, previewUrl = ''): PreviewFile => ({
   path,

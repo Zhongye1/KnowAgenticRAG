@@ -5,7 +5,8 @@
  * 激活过的 tab 不卸载，来回切换不重发请求、图表实例保留；未激活的 tab 不挂载，其查询
  * 不在首屏发出。反馈弹窗挂在页面级，概览与工具栏两个入口共用同一实例。
  *
- * 页头与外壳（设置、主题、任务中心）属于 AppLayout，本页不重复实现。
+ * 页头用 `PageHeader` + `PageHeaderTabs`，与智能体管理、扩展页同一套形态；tab 上下文
+ * 说明文字放行尾动作位。外壳（设置、主题、任务中心）属于 AppLayout，本页不重复实现。
  */
 import * as React from 'react';
 import { useSearchParams } from 'react-router';
@@ -16,14 +17,14 @@ import {
   FeedbackDialog,
 } from '@/features/dashboard';
 import { ContentLayout } from '@/shared/ui/content-layout';
-import { cn } from '@/shared/lib';
+import { PageHeader, PageHeaderTabs } from '@/shared/ui/page-header';
 
 type DashboardTab = 'overview' | 'threads';
 
-const TAB_LABELS: Record<DashboardTab, string> = {
-  overview: '系统概览',
-  threads: '会话分析',
-};
+const TAB_ITEMS = [
+  { key: 'overview' as const, label: '系统概览' },
+  { key: 'threads' as const, label: '会话分析' },
+];
 
 const TAB_CONTEXT: Record<DashboardTab, string> = {
   overview: '系统运行与资源使用',
@@ -62,31 +63,22 @@ export const DashboardPage = () => {
 
   return (
     <ContentLayout title="数据总览">
-      <div className="flex flex-col gap-4 pb-6">
-        <nav
-          className="flex flex-wrap items-center gap-1 border-b border-color-border-1"
-          aria-label="数据总览视图切换"
+      <div className="flex flex-col gap-4 py-4">
+        <PageHeader
+          title="数据总览"
+          actions={
+            <span className="text-xs text-color-text-3">
+              {TAB_CONTEXT[current]}
+            </span>
+          }
         >
-          {(Object.keys(TAB_LABELS) as DashboardTab[]).map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              aria-current={tab === current ? 'page' : undefined}
-              className={cn(
-                'rounded-t-medium px-3 py-2 text-sm transition-colors',
-                tab === current
-                  ? 'border-b-2 border-primary-6 font-medium text-color-text-1'
-                  : 'text-color-text-3 hover:text-color-text-1',
-              )}
-              onClick={() => selectTab(tab)}
-            >
-              {TAB_LABELS[tab]}
-            </button>
-          ))}
-          <span className="ml-2 text-xs text-color-text-3">
-            {TAB_CONTEXT[current]}
-          </span>
-        </nav>
+          <PageHeaderTabs
+            tabs={TAB_ITEMS}
+            current={current}
+            ariaLabel="数据总览视图切换"
+            onChange={selectTab}
+          />
+        </PageHeader>
 
         {activated.includes('overview') ? (
           <div hidden={current !== 'overview'}>

@@ -174,10 +174,20 @@ describe('调用统计', () => {
     await userEvent.click(
       within(screen.getByTestId('call-time-range')).getByText('近 14 小时'),
     );
+    // 禁用态落在 antd Segmented 的 radio input 上：`ant-segmented-item-label`
+    // 只是文本容器，jest-dom 不认为 div 可禁用
     await waitFor(() =>
       expect(
-        within(screen.getByTestId('call-time-range')).getByText('近 14 天'),
+        within(screen.getByTestId('call-time-range')).getByRole('radio', {
+          name: '近 14 天',
+        }),
       ).toBeDisabled(),
+    );
+    // 取数期间保留上一份图表而不是换成加载态：换掉就是切换时闪一下
+    expect(screen.getByTestId('call-stats-chart')).toBeTruthy();
+    // 横轴仍按上一份数据自己的口径（14days）格式化：按新口径会把日期桶渲染成完整日期
+    expect(screen.getByTestId('call-stats-chart-xaxis').textContent).toBe(
+      '["09-27","09-28"]',
     );
     resolveSecond?.({ data: callTimeseries });
   });

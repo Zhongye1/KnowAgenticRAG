@@ -5,7 +5,7 @@ import {
   getPreviewTypeByContentType,
   getPreviewTypeByPath,
   isMarkdownPreview,
-} from '@/shared/lib/file-preview';
+} from '@/shared/lib/files/file-preview';
 
 describe('getPreviewFileExtension', () => {
   it('取小写扩展名；隐藏文件不算', () => {

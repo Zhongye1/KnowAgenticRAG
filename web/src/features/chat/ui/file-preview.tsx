@@ -11,7 +11,7 @@ import styles from './panel-sections.module.css';
 
 import { Button } from 'antd';
 
-import type { PreviewFile } from '@/shared/lib/file-preview';
+import type { PreviewFile } from '@/shared/lib/files';
 
 type FilePreviewProps = {
   file: PreviewFile | null;

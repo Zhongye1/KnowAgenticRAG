@@ -1,10 +1,12 @@
 /* 用户菜单的触发器样式。参照实现把它压在 `.user-info` 的 `:deep()` 里；
    本仓把用户菜单拆成自己的文件后自带样式，父级只负责外边距。 */
 
+/* 触发器与任务中心入口同处用户行：占满剩余宽度，用户名过长时先被压缩。 */
 .trigger {
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
-  width: 100%;
+  min-width: 0;
   height: 32px;
   padding: 0 4px;
   border: 1px solid transparent;

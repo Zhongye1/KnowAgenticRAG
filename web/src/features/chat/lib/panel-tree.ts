@@ -9,8 +9,8 @@
  * 树的节点键用接口给的原始路径：目录路径带尾斜杠，比较时才归一（比较规则在
  * `@/shared/lib/workspace-path`，个人空间页面共用）。
  */
-import type { FileEntry } from '@/shared/lib/filesystem-entry';
-import { isSameOrChildPath } from '@/shared/lib/workspace-path';
+import type { FileEntry } from '@/shared/lib/files';
+import { isSameOrChildPath } from '@/shared/lib/files';
 
 import type { PanelTreeScope } from '../api/filesystem-api';
 import type { PanelSection } from './panel-sections';
