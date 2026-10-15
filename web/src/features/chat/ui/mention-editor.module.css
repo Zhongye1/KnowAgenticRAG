@@ -1,6 +1,6 @@
 /* 提及输入框与候选弹窗的样式。参照实现 MessageInputComponent.vue 的
    `.user-input.mention-editor` 与 `.mention-popup` 段逐值对齐。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。
    拖放不在这里：参照把 drag/drop 与 `.dragging-files` 都放在整个 `.input-box` 上，
    由持有胶囊的 chat-input-form 负责。 */
 
@@ -231,7 +231,7 @@
   color: var(--main-400);
 }
 
-/* 关键词命中高亮：参照 .query-match（金橘色加粗，变量在 yuxi-tokens.css） */
+/* 关键词命中高亮：参照 .query-match（金橘色加粗，变量在 agentic-tokens.css） */
 .queryMatch {
   color: var(--query-match-color);
   font-weight: 700;

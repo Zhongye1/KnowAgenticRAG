@@ -1,8 +1,8 @@
 /**
  * 首页。
  *
- * 视觉与文案基准是 AusVector 首页克隆（本迁移里唯一不向 Yuxi 对齐的页面，见 tracked
- * 决策记录 `2026-10-11-web-antd-yuxi-alignment.md`）；三态沿用 Yuxi `HomeView.vue`
+ * 视觉与文案基准是 AusVector 首页克隆（本迁移里唯一不向 KnowAgenticRAG 对齐的页面，见 tracked
+ * 决策记录 `2026-10-11-web-antd-yuxi-alignment.md`）；三态沿用 KnowAgenticRAG `HomeView.vue`
  * 的行为契约：先健康检查、通过后才加载配置，失败进错误态并可重试。
  */
 import { useHomeBranding, useSystemHealth, useUser } from '@/entities/session';

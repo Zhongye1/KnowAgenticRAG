@@ -1,5 +1,5 @@
 /* 任务中心弹窗与入口的样式，对齐参照实现 TaskCenterDrawer.vue 的 <style scoped>。
-   颜色只取 yuxi-tokens.css 的语义变量（--gray-* / --main-* / --color-*），深浅两套由
+   颜色只取 agentic-tokens.css 的语义变量（--gray-* / --main-* / --color-*），深浅两套由
    :root.dark 覆盖；状态色只用于状态，不做装饰。 */
 
 /* ---------- 导航列入口 ---------- */

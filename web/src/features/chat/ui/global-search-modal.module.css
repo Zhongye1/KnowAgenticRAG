@@ -2,7 +2,7 @@
    `.global-search-*` 段：680px 弹体、62px 输入行、灰底结果行、主色 mark。
    遮罩（白 72% + blur）与弹体尺寸在 antd-overrides.css 的
    `.global-search-modal-host` 全局覆盖里。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 /* 参照 .global-search-input-row */
 .inputRow {

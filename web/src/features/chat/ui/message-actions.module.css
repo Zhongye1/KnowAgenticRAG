@@ -1,6 +1,6 @@
 /* 消息底部动作条的样式。参照 RefsComponent.vue 的 `.refs` 段：
    灰底圆角胶囊 chip、来源按钮展开态主色高亮、来源面板灰底卡片。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .refs {
   display: flex;

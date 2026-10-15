@@ -52,7 +52,9 @@ vi.mock('@/features/account-settings', () => ({
 vi.mock('@/features/task-center', () => ({
   // 入口与面板在 features 里单独测，这里只验证它落在用户行里、拿到了折叠态
   TaskCenter: ({ collapsed }: { collapsed: boolean }) => (
-    <span data-testid="task-center">{collapsed ? 'collapsed' : 'expanded'}</span>
+    <span data-testid="task-center">
+      {collapsed ? 'collapsed' : 'expanded'}
+    </span>
   ),
 }));
 
@@ -299,7 +301,9 @@ describe('导航列的折叠态', () => {
   it('展开态把日夜切换开关放在 GitHub 那一行', () => {
     renderSidebar();
 
-    const githubRow = screen.getByRole('link', { name: /GitHub/ }).parentElement;
+    const githubRow = screen.getByRole('link', {
+      name: /GitHub/,
+    }).parentElement;
 
     expect(
       within(githubRow as HTMLElement).getByRole('switch', {
@@ -320,8 +324,9 @@ describe('导航列的折叠态', () => {
   it('任务中心入口与用户菜单同一行，并按折叠态传参', () => {
     renderSidebar();
 
-    const userRow = screen.getByRole('button', { name: '用户菜单' })
-      .parentElement;
+    const userRow = screen.getByRole('button', {
+      name: '用户菜单',
+    }).parentElement;
 
     expect(
       within(userRow as HTMLElement).getByTestId('task-center').textContent,

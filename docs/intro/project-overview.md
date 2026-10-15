@@ -1,6 +1,6 @@
 # 项目简介
 
-ARS（语析）是一个知识库、知识图谱与 Agent 开发平台，基于 LangGraph、Vue 3、FastAPI、Milvus 和 Neo4j 构建。平台提供智能体编排、知识检索、图谱检索、工具调用和文件系统能力。
+KnowAgenticRAG 是一个知识库、知识图谱与 Agent 开发平台，基于 LangGraph、Vue 3、FastAPI、Milvus 和 Neo4j 构建。平台提供智能体编排、知识检索、图谱检索、工具调用和文件系统能力。
 
 ## 设计理念
 

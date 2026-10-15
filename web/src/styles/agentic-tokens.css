@@ -1,10 +1,10 @@
 /* ============================================================================
- * Yuxi 设计令牌（来源：Yuxi web/src/assets/css/base.css 与 base.dark.css）
+ * KnowAgenticRAG 设计令牌（来源：KnowAgenticRAG web/src/assets/css/base.css 与 base.dark.css）
  * ----------------------------------------------------------------------------
  * 原样并入，不改命名与值：--main-*、--second-*、--gray-*、--color-*。
  * 位于 src/styles/** 下，check-design-tokens.mjs 对硬编码颜色整体豁免。
  * 迁移期与 tokens.css 的 --primary-* 并存，全部页面迁完后删除旧变量。
- * 重新同步：从 Yuxi 仓库覆盖本文件的 base.css 段与 base.dark.css 段。
+ * 重新同步：从 KnowAgenticRAG 仓库覆盖本文件的 base.css 段与 base.dark.css 段。
  * ========================================================================== */
 
 /* ---------- base.css ---------- */

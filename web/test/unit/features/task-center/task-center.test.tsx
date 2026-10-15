@@ -4,12 +4,7 @@
  * 这里不 mock `task-center-api`，而是 mock 生成的 SDK：`unwrap` 的解包与 `ApiError`
  * 文案都走真实实现。确认框与通知在应用里由 `AntdApp` 承载，测试里替换成桩。
  */
-import {
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as React from 'react';
@@ -30,7 +25,8 @@ const { api, session, notifications, confirmMock } = vi.hoisted(() => ({
 vi.mock('@/shared/api/generated/sdk.gen', () => ({
   listTasksApiTasksGet: (...args: unknown[]) => api.list(...args),
   getTaskApiTasksTaskIdGet: (...args: unknown[]) => api.detail(...args),
-  cancelTaskApiTasksTaskIdCancelPost: (...args: unknown[]) => api.cancel(...args),
+  cancelTaskApiTasksTaskIdCancelPost: (...args: unknown[]) =>
+    api.cancel(...args),
   deleteTaskApiTasksTaskIdDelete: (...args: unknown[]) => api.remove(...args),
 }));
 
@@ -127,7 +123,13 @@ const LIST_RESPONSE = {
   summary: {
     total: 5,
     filtered_total: 5,
-    status_counts: { running: 1, queued: 1, success: 1, failed: 1, cancelled: 1 },
+    status_counts: {
+      running: 1,
+      queued: 1,
+      success: 1,
+      failed: 1,
+      cancelled: 1,
+    },
     type_counts: { knowledge_ingest: 1 },
   },
 };
@@ -135,7 +137,9 @@ const LIST_RESPONSE = {
 const ok = (data: unknown) => ({ data, error: undefined });
 
 const renderCenter = (collapsed = false) => {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  });
   render(
     <AntdProvider>
       <QueryClientProvider client={client}>
@@ -174,7 +178,9 @@ beforeEach(() => {
       },
     }),
   );
-  api.cancel.mockResolvedValue(ok({ task_id: 't-ingest', status: 'cancelled' }));
+  api.cancel.mockResolvedValue(
+    ok({ task_id: 't-ingest', status: 'cancelled' }),
+  );
   api.remove.mockResolvedValue(ok({ task_id: 't-index', status: 'deleted' }));
   confirmMock.mockResolvedValue(true);
 });
@@ -265,7 +271,9 @@ describe('任务中心面板', () => {
     await openPanel();
 
     expect(screen.getByRole('button', { name: '全部 5' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '进行中 2' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '进行中 2' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '失败 2' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: '失败 2' }));
@@ -312,10 +320,14 @@ describe('任务中心的操作', () => {
     renderCenter();
     await openPanel();
 
-    await user.click(within(cardOf('t-ingest')).getByRole('button', { name: '取消' }));
+    await user.click(
+      within(cardOf('t-ingest')).getByRole('button', { name: '取消' }),
+    );
 
     await waitFor(() =>
-      expect(api.cancel).toHaveBeenCalledWith({ path: { task_id: 't-ingest' } }),
+      expect(api.cancel).toHaveBeenCalledWith({
+        path: { task_id: 't-ingest' },
+      }),
     );
     expect(notifications.addNotification).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'success' }),
@@ -331,7 +343,9 @@ describe('任务中心的操作', () => {
     renderCenter();
     await openPanel();
 
-    await user.click(within(cardOf('t-index')).getByRole('button', { name: '删除' }));
+    await user.click(
+      within(cardOf('t-index')).getByRole('button', { name: '删除' }),
+    );
 
     await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1));
     await waitFor(() =>
@@ -347,7 +361,9 @@ describe('任务中心的操作', () => {
     renderCenter();
     await openPanel();
 
-    await user.click(within(cardOf('t-index')).getByRole('button', { name: '删除' }));
+    await user.click(
+      within(cardOf('t-index')).getByRole('button', { name: '删除' }),
+    );
 
     await waitFor(() => expect(confirmMock).toHaveBeenCalledTimes(1));
     expect(api.remove).not.toHaveBeenCalled();
@@ -358,7 +374,9 @@ describe('任务中心的操作', () => {
     renderCenter();
     await openPanel();
 
-    await user.click(within(cardOf('t-index')).getByRole('button', { name: '删除' }));
+    await user.click(
+      within(cardOf('t-index')).getByRole('button', { name: '删除' }),
+    );
 
     await waitFor(() =>
       expect(notifications.addNotification).toHaveBeenCalledWith(

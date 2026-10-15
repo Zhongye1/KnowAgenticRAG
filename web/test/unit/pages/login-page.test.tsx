@@ -62,18 +62,18 @@ vi.setConfig({ testTimeout: 20_000 });
 const { LoginLockedError } = await import('@/entities/session');
 const { LoginPage } = await import('@/pages/login');
 
-/** antd 在两个汉字的按钮里插空格（与 Yuxi 的 ant-design-vue 默认一致）。 */
+/** antd 在两个汉字的按钮里插空格（与 KnowAgenticRAG 的 ant-design-vue 默认一致）。 */
 const LOGIN_BUTTON = /登\s?录/;
 
 const systemInfo = {
   organization: {
-    name: '语析',
+    name: 'KnowAgenticRAG',
     logo: '/favicon.svg',
     login_bg: '/login-bg.jpg',
   },
   branding: { name: 'ARS' },
   footer: {
-    copyright: '© 语析 2026 v0.7.2',
+    copyright: '© KnowAgenticRAG 2026 v0.7.2',
     user_agreement_url: '/protocols/user-agreement.template.html',
     privacy_policy_url: '/protocols/privacy-policy.template.html',
   },
@@ -136,7 +136,7 @@ describe('LoginPage', () => {
     renderLoginPage();
 
     expect(await screen.findByText('欢迎登录')).toBeInTheDocument();
-    expect(await screen.findByText('语析')).toBeInTheDocument();
+    expect(await screen.findByText('KnowAgenticRAG')).toBeInTheDocument();
     expect(screen.getByText('ARS')).toBeInTheDocument();
     expect(screen.getByLabelText('登录账号')).toBeInTheDocument();
     expect(

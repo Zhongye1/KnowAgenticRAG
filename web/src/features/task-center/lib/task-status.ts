@@ -76,7 +76,8 @@ export const isTaskFailed = (status: string): boolean =>
 export const canCancelTask = (task: TaskSummary): boolean =>
   !task.cancel_requested && readMeta(task.status)?.cancelable === true;
 
-export const formatTaskId = (id: string): string => (id ? id.slice(0, 8) : '--');
+export const formatTaskId = (id: string): string =>
+  id ? id.slice(0, 8) : '--';
 
 /** 汇总里的非终态总数，用于角标与「进行中」档位。 */
 export const countActiveTasks = (

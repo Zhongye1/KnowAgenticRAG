@@ -31,7 +31,10 @@ const JsonBlock = ({ title, value }: { title: string; value: unknown }) => (
   </>
 );
 
-export const TaskDetailModal = ({ task, onOpenChange }: TaskDetailModalProps) => {
+export const TaskDetailModal = ({
+  task,
+  onOpenChange,
+}: TaskDetailModalProps) => {
   const detail = useTaskDetail(task?.id ?? null);
 
   return (
@@ -64,7 +67,9 @@ export const TaskDetailModal = ({ task, onOpenChange }: TaskDetailModalProps) =>
           ) : null}
         </div>
       ) : (
-        <Empty description={describeFailure(detail.error, '任务详情加载失败。')} />
+        <Empty
+          description={describeFailure(detail.error, '任务详情加载失败。')}
+        />
       )}
     </Modal>
   );

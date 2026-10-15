@@ -1,6 +1,6 @@
 /* 右侧面板外壳的样式。参照实现 AgentPanel.vue 的
    `.panel-header` / `.section-tab` / `.header-action-btn`。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .shell {
   position: relative;

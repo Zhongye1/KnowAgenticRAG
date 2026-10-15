@@ -17,12 +17,7 @@ import {
 } from '@/shared/api/generated/sdk.gen';
 
 export type TaskStatus =
-  | 'pending'
-  | 'queued'
-  | 'running'
-  | 'success'
-  | 'failed'
-  | 'cancelled';
+  'pending' | 'queued' | 'running' | 'success' | 'failed' | 'cancelled';
 
 /** 列表项；后端 `to_summary_dict()` 的形状。 */
 export type TaskSummary = {
@@ -102,8 +97,6 @@ export const taskCenterApi = {
   },
 
   async remove(taskId: string): Promise<void> {
-    unwrap(
-      await deleteTaskApiTasksTaskIdDelete({ path: { task_id: taskId } }),
-    );
+    unwrap(await deleteTaskApiTasksTaskIdDelete({ path: { task_id: taskId } }));
   },
 };

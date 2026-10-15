@@ -63,9 +63,7 @@ describe('PageHeaderTabs', () => {
       />,
     );
 
-    expect(
-      screen.getByRole('navigation', { name: '视图切换' }),
-    ).toBeTruthy();
+    expect(screen.getByRole('navigation', { name: '视图切换' })).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: '乙' }));
     expect(onChange).toHaveBeenCalledWith('b');
   });

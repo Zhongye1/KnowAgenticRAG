@@ -39,9 +39,9 @@ export type LoginBranding = {
   showAgreementConsent: boolean;
 };
 
-/** 组织名与品牌名相同时只保留一个；品牌名为空时退化为 `ARS`。 */
+/** 组织名与品牌名相同时只保留一个；品牌名为空时退化为 `KnowAgenticRAG`。 */
 function resolveBrandName(orgName: string, rawBrandName: string): string {
-  const brandName = rawBrandName.trim() || 'ARS';
+  const brandName = rawBrandName.trim() || 'KnowAgenticRAG';
   return orgName && orgName !== brandName ? brandName : orgName || brandName;
 }
 
@@ -56,7 +56,7 @@ function resolveCopyright(
   );
 }
 
-/** 组织名与品牌名不同才加分隔点，避免出现「语析 · 语析」。 */
+
 export function selectLoginBranding(
   info: SystemInfoData | undefined,
   year: number = new Date().getFullYear(),
@@ -79,7 +79,7 @@ export function selectLoginBranding(
 }
 
 export type ShellBranding = {
-  /** 导航列品牌名：组织名优先，退到品牌名，再退到 `ARS`。 */
+  /** 导航列品牌名：组织名优先，退到品牌名，再退到 `KnowAgenticRAG`。 */
   brandName: string;
   /** 导航列头像地址；为空时由调用方决定兜底呈现。 */
   avatar: string;
@@ -89,7 +89,7 @@ export type ShellBranding = {
  * 导航列品牌投影。
  *
  * 与登录页、首页的投影分开：导航列只取组织名与组织头像，不消费页脚与品牌标题。
- * 组织名为空时退到品牌名，两者都为空时用 `ARS`，与登录页兜底同值。
+ * 组织名为空时退到品牌名，两者都为空时用 `KnowAgenticRAG`，与登录页兜底同值。
  */
 export function selectShellBranding(
   info: SystemInfoData | undefined,
@@ -97,7 +97,8 @@ export function selectShellBranding(
   const orgName = info?.organization?.name?.trim() ?? '';
 
   return {
-    brandName: orgName || (info?.branding?.name?.trim() ?? '') || 'ARS',
+    brandName:
+      orgName || (info?.branding?.name?.trim() ?? '') || 'KnowAgenticRAG',
     avatar: info?.organization?.avatar?.trim() ?? '',
   };
 }

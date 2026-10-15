@@ -1,7 +1,7 @@
 /* 设置弹窗外壳的样式。
    参照实现 SettingsModal.vue 的 `.settings-modal` / `.settings-sider` / `.settings-content`：
    无标题栏、关闭钮自绘在左上角、左导航 176px / gray-50 底 / 右分隔线，导航项 15px、
-   激活 gray-150 底 + main-700 字。颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   激活 gray-150 底 + main-700 字。颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .shell {
   position: relative;

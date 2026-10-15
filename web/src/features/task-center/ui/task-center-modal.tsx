@@ -10,10 +10,7 @@ import * as React from 'react';
 
 import { describeFailure } from '@/shared/api';
 import { Empty as SharedEmpty } from '@/shared/ui/empty';
-import {
-  FilterGroup,
-  type FilterOption,
-} from '@/shared/ui/filter-group';
+import { FilterGroup, type FilterOption } from '@/shared/ui/filter-group';
 import { ListRefreshButton } from '@/shared/ui/list-toolbar';
 
 import type { TaskListSummary, TaskSummary } from '../api/task-center-api';
@@ -67,15 +64,30 @@ export const TaskCenterModal = ({
   const filterOptions = React.useMemo<ReadonlyArray<FilterOption<TaskFilter>>>(
     () => [
       { value: 'all', label: `全部 ${summary.total}` },
-      { value: 'active', label: `进行中 ${countActiveTasks(summary.status_counts)}` },
-      { value: 'success', label: `已完成 ${summary.status_counts.success ?? 0}` },
-      { value: 'failed', label: `失败 ${countFailedTasks(summary.status_counts)}` },
+      {
+        value: 'active',
+        label: `进行中 ${countActiveTasks(summary.status_counts)}`,
+      },
+      {
+        value: 'success',
+        label: `已完成 ${summary.status_counts.success ?? 0}`,
+      },
+      {
+        value: 'failed',
+        label: `失败 ${countFailedTasks(summary.status_counts)}`,
+      },
     ],
     [summary],
   );
 
   return (
-    <Modal open={open} title="任务中心" width={680} footer={null} onCancel={close}>
+    <Modal
+      open={open}
+      title="任务中心"
+      width={680}
+      footer={null}
+      onCancel={close}
+    >
       <div className={styles.panel}>
         <Alert
           type="info"

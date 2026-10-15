@@ -2,7 +2,7 @@
    `.chat-container` / `.chat` / `.chat-content-container` / `.chat-main` / `.chat-box`：
    .chat 持有 --file-panel-width 变量与页头；页头是 .chat-main 的兄弟、固定不滚；
    滚动只发生在 .chat-main；面板 absolute 全高覆盖在 .chat 右缘，主列用 margin-right 让位。
-   布局与间距走本文件，颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   布局与间距走本文件，颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .container {
   display: flex;

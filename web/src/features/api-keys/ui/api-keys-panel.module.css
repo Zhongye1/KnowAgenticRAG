@@ -1,6 +1,6 @@
 /* API Key 管理面板的样式。
    参照实现 ApiKeyManagementComponent.vue：头部两端对齐、表格五列、掩码徽章、
-   一次性密钥展示。颜色只用 yuxi-tokens.css 的 --gray-* / --main-* / --color-*-。 */
+   一次性密钥展示。颜色只用 agentic-tokens.css 的 --gray-* / --main-* / --color-*-。 */
 
 .panel {
   display: flex;

@@ -1,7 +1,7 @@
 /* 部门管理面板的样式。
    参照实现 DepartmentManagementComponent.vue：头部两端对齐、四列表格（gray-50 表头、
    gray-150 表头分隔线、gray-25 悬停、gray-100 行分隔线）、圆形人数徽章。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-* / --color-*-。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-* / --color-*-。 */
 
 .panel {
   display: flex;

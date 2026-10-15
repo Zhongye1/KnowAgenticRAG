@@ -16,10 +16,7 @@ import {
   updateWorkspaceFileApiWorkspaceFilePut,
   uploadWorkspaceFilesRouteApiWorkspaceUploadPost,
 } from '@/shared/api/generated/sdk.gen';
-import {
-  parseDownloadFilename,
-  saveBlobAsFile,
-} from '@/shared/lib/files';
+import { parseDownloadFilename, saveBlobAsFile } from '@/shared/lib/files';
 import type { PreviewFile } from '@/shared/lib/files';
 import { toFileEntries, toFileEntry } from '@/shared/lib/files';
 import type { FileEntry } from '@/shared/lib/files';

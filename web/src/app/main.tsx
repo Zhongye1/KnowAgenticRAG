@@ -5,7 +5,7 @@ import { createRoot } from 'react-dom/client';
 // index.css 声明层叠顺序并引入 antd reset；antd-overrides.css 放最后，
 // 让全局 `.ant-*` 覆盖压住 antd 自己注入的层内样式。
 import '../index.css';
-import '../styles/yuxi-tokens.css';
+import '../styles/agentic-tokens.css';
 import '../styles/tokens.css';
 import '../styles/brand.css';
 import '../styles/antd-overrides.css';

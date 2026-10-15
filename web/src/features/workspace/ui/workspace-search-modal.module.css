@@ -1,6 +1,6 @@
 /* 个人空间文件搜索弹窗的样式。
    参照实现 GlobalSearchModal.vue：结果行是「图标 + 名称 + 路径 + 日期」，命中片段用 <mark> 高亮
-   （浅主色底、不改字重），选中行用 gray-50 底。颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   （浅主色底、不改字重），选中行用 gray-50 底。颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .shell {
   display: flex;

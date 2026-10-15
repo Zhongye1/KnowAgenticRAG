@@ -1,7 +1,7 @@
 /* 面板里的文件预览与状态分区的样式。
    参照实现 AgentFilePreview.vue 的 `.preview-header` 段与
    AgentChatComponent.vue 状态分区（`.state-section`）的骨架。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-* / --color-error-*。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-* / --color-error-*。 */
 
 /* ---------- 文件预览：参照 AgentFilePreview.vue 的 .preview-header / .file-content ---------- */
 

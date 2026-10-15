@@ -2,9 +2,9 @@
  * 知识库详情页样式：分区切换用 antd `Tabs`，这里把它的皮肤换成参照的
  * `.database-tab-bar` / `.database-tab-item`（`DataBaseInfoView.vue` 的 scoped style）。
  * ----------------------------------------------------------------------------
- * - 页面私有的 antd 覆盖写在这里（`:global(.ant-*)`），与 Yuxi 的 `<style scoped>`
+ * - 页面私有的 antd 覆盖写在这里（`:global(.ant-*)`），与 KnowAgenticRAG 的 `<style scoped>`
  *   加 `:deep()` 同一层，因此不进 `styles/antd-overrides.css`。
- * - 颜色只用 Yuxi token（`--main-*` / `--gray-*`），不写硬编码值。
+ * - 颜色只用 KnowAgenticRAG token（`--main-*` / `--gray-*`），不写硬编码值。
  * - 一处已知偏离：参照的激活底条左右各内缩 12px，antd 的 ink bar 撑满页签宽度，
  *   这里保留 antd 的宽度只改粗细与颜色。
  * ========================================================================== */
@@ -57,8 +57,7 @@
   background: var(--main-20);
 }
 
-.tabBar
-  :global(.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn) {
+.tabBar :global(.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn) {
   color: var(--main-color);
 }
 

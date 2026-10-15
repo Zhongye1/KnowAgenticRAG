@@ -1,7 +1,7 @@
 /**
  * OIDC 自动跳转与重定向安全校验。
  *
- * 与 Yuxi `src/utils/oidcAutoStart.js` 同名同语义：同一会话只自动跳一次，
+ * 与 KnowAgenticRAG `src/utils/oidcAutoStart.js` 同名同语义：同一会话只自动跳一次，
  * 避免回调失败后与登录页来回跳；重定向参数只放行站内相对路径。
  */
 

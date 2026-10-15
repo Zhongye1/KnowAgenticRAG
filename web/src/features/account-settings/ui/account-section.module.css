@@ -1,7 +1,7 @@
 /* 账户设置弹窗的样式。
    参照实现 AccountSettingsComponent.vue 与 SettingsModal.vue 的 `.account-card` / `.profile-*` /
    `.identity-*` 段，数值逐条对照（卡片 18px/12px 圆角 gray-25、头像 80px、行网格 56px+1fr、
-   身份面板 gray-0）。颜色只用 yuxi-tokens.css 的 --gray-* / --main-* / --color-*-。 */
+   身份面板 gray-0）。颜色只用 agentic-tokens.css 的 --gray-* / --main-* / --color-*-。 */
 
 .page {
   display: flex;

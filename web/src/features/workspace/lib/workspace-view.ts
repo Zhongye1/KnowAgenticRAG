@@ -5,10 +5,7 @@
  * 侧栏的快速访问是 `/agents/` 与 `/saved_artifacts` 两处，行菜单只有下载与删除（目录不下载）。
  */
 import type { FileEntry } from '@/shared/lib/files';
-import {
-  isSameOrChildPath,
-  pathBreadcrumbs,
-} from '@/shared/lib/files';
+import { isSameOrChildPath, pathBreadcrumbs } from '@/shared/lib/files';
 
 import {
   formatFileSize,

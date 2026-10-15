@@ -60,7 +60,10 @@ describe('拖拽移动的能力判定', () => {
         enabled: true,
         file: doc('a-1'),
         crumbs: [],
-        files: [doc('a-2'), { file_id: 'v-1', is_folder: true, is_virtual_folder: true }],
+        files: [
+          doc('a-2'),
+          { file_id: 'v-1', is_folder: true, is_virtual_folder: true },
+        ],
       }),
     ).toBe(false);
 
@@ -98,7 +101,9 @@ describe('拖拽移动的能力判定', () => {
   });
 
   it('落点必须是实体文件夹，虚拟目录与自身都不是', () => {
-    expect(canDropKnowledgeFileIntoFolder(doc('a-1'), folder('f-1'))).toBe(true);
+    expect(canDropKnowledgeFileIntoFolder(doc('a-1'), folder('f-1'))).toBe(
+      true,
+    );
     expect(canDropKnowledgeFileIntoFolder(doc('a-1'), doc('a-2'))).toBe(false);
     expect(
       canDropKnowledgeFileIntoFolder(doc('a-1'), {
@@ -108,9 +113,9 @@ describe('拖拽移动的能力判定', () => {
       }),
     ).toBe(false);
     // 自己拖到自己身上不算
-    expect(
-      canDropKnowledgeFileIntoFolder(folder('f-1'), folder('f-1')),
-    ).toBe(false);
+    expect(canDropKnowledgeFileIntoFolder(folder('f-1'), folder('f-1'))).toBe(
+      false,
+    );
     // 没有正在拖的东西时任何目标都不是落点
     expect(canDropKnowledgeFileIntoFolder(null, folder('f-1'))).toBe(false);
   });

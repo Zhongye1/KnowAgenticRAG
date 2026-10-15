@@ -20,10 +20,7 @@ import {
   getViewerTreeApiViewerFilesystemTreeGet,
   searchViewerFilesRouteApiViewerFilesystemSearchGet,
 } from '@/shared/api/generated/sdk.gen';
-import {
-  parseDownloadFilename,
-  saveBlobAsFile,
-} from '@/shared/lib/files';
+import { parseDownloadFilename, saveBlobAsFile } from '@/shared/lib/files';
 import type { PreviewFile } from '@/shared/lib/files';
 import { toFileEntries } from '@/shared/lib/files';
 import type { FileEntry } from '@/shared/lib/files';

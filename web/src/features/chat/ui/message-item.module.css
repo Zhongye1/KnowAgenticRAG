@@ -1,7 +1,7 @@
 /* 单条消息的样式。参照实现 AgentMessageComponent.vue 的
    `.message-box`（human / ai 两态）、`.reasoning-box`、`.message-text-system`、
    `.error-hint`、`.retry-hint`、`.message-image`、`.human-message-attachments`。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 /* ---------- 用户消息：参照 .message-box.human ---------- */
 

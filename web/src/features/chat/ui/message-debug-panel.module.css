@@ -1,7 +1,7 @@
 /* 消息时序调试面板的样式。参照 MessageDebugPanel.vue 的
    `.message-debug-panel` 全段：贴边行式面板（无外框卡片）、gray-25 组头、
    border-bottom 条目行、等宽徽标。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .panel {
   display: flex;

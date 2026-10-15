@@ -2,7 +2,7 @@
    `.config-dropdown-panel` / `.config-dropdown-item`，外加 AttachmentOptionsComponent 的
    `.attachment-options-*`（面板宽度、返回行、资源列表）。
    弹出层挂在 portal 上，类名是模块内自有类名，因此不写进 antd-overrides.css。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 /* 触发钮：28px 透明图标钮（参照 .expand-btn） */
 .expandButton {

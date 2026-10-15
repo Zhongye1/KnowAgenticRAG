@@ -35,7 +35,10 @@ export const FilterGroup = <Value extends string>({
 }) => (
   <fieldset
     aria-label={label}
-    className={cn('m-0 flex flex-wrap items-center gap-1 border-0 p-0', className)}
+    className={cn(
+      'm-0 flex flex-wrap items-center gap-1 border-0 p-0',
+      className,
+    )}
   >
     {options.map((option) => {
       const active = option.value === value;

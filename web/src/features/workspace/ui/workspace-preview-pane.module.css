@@ -1,6 +1,6 @@
 /* 个人空间预览面板的样式。
    参照实现 AgentFilePreview.vue 的 `.preview-header` / `.modal-action-btn` / 编辑条，以及
-   WorkspacePreviewPane.vue 的状态与空态。颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   WorkspacePreviewPane.vue 的状态与空态。颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .pane {
   display: flex;

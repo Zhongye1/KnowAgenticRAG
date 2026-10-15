@@ -703,8 +703,7 @@ describe('B1 新增的文件管理接口', () => {
       }),
     });
 
-    const { task_id } =
-      await knowledgeApi.startVirtualFolderMigration('kb-1');
+    const { task_id } = await knowledgeApi.startVirtualFolderMigration('kb-1');
     expect(api.startVirtualFolderMigration).toHaveBeenCalledWith({
       path: { kb_id: 'kb-1' },
     });

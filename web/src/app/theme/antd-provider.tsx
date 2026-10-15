@@ -4,7 +4,7 @@
  * - `StyleProvider layer` 让 antd 的 CSS-in-JS 注入 `@layer antd`，层序在
  *   `src/index.css` 顶部声明；不加这一层时 antd 是无层注入，会压过 Tailwind
  *   工具类与 CSS Modules。
- * - `ConfigProvider` 按 Yuxi `src/stores/theme.js` 平移主题：种子色、链接色、
+ * - `ConfigProvider` 按 KnowAgenticRAG `src/stores/theme.js` 平移主题：种子色、链接色、
  *   圆角与字体栈；暗色用 `theme.darkAlgorithm` 并跟随 `html.dark`。
  * - 中文包从 `antd/es/locale/zh_CN` 取，不走 `antd/locale/zh_CN`：后者是
  *   `module.exports = require('../lib/locale/zh_CN')` 的 CJS 转发，其命名空间对象
@@ -20,13 +20,13 @@ import * as React from 'react';
 
 import { useIsDarkMode } from '@/shared/lib/theme';
 
-/** 与 Yuxi 的 `fontFamily` token 同值。 */
+/** 与 KnowAgenticRAG 的 `fontFamily` token 同值。 */
 const FONT_FAMILY =
   "'HarmonyOS Sans SC', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif";
 
 /**
  * 从 `:root` 解析具体色值。token 的事实源在 `src/styles/**`（种子色见 brand.css，
- * 链接色见 yuxi-tokens.css），antd 的色板算法需要具体颜色，因此在这里读一次。
+ * 链接色见 agentic-tokens.css），antd 的色板算法需要具体颜色，因此在这里读一次。
  * 读不到时返回 undefined，交给 antd 用自身默认值，不在这里编造颜色。
  */
 function readRootColor(token: string): string | undefined {

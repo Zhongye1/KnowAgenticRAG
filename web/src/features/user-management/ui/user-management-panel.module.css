@@ -1,7 +1,7 @@
 /* 用户管理面板的样式。
    参照实现 UserManagementComponent.vue：头部两端对齐、筛选行（搜索 + 两个下拉）、
    六列表格（gray-50 表头、gray-150 表头分隔线、gray-25 悬停）、右下分页器、角色徽章。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-* / --color-*-。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-* / --color-*-。 */
 
 .panel {
   display: flex;

@@ -2,7 +2,7 @@
    `.tool-call-display.is-timeline`（主对话流用 timeline 形态，见
    ToolCallsGroupComponent.vue:46 的 appearance="timeline"）：
    无边框、header 4px 上下 padding、详情区 border-left 缩进。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .row {
   display: flex;

@@ -1,7 +1,7 @@
 /* OCR 配置面板与引擎选择器的样式。
    参照实现 OCRSettingsSection.vue + OCRSelector.vue：分区标题、卡片式配置面板、只读/编辑
    两态字段网格（编辑钮悬停出现）、带健康结论的下拉面板。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-* / --color-*-。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-* / --color-*-。 */
 
 .panel {
   display: flex;

@@ -148,7 +148,9 @@ export const InfoCard = ({
 
         {/* 标签在左、children 靠右：两者同一行；窄卡换行时 children 仍靠右 */}
         {children ? (
-          <div className={cn('min-w-0', tags.length && 'ml-auto')}>{children}</div>
+          <div className={cn('min-w-0', tags.length && 'ml-auto')}>
+            {children}
+          </div>
         ) : null}
       </div>
     ) : null}

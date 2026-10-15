@@ -5,13 +5,7 @@
  * 「刷新」是显式重取当前口径。过期响应由 react-query 的查询键隔离，
  * 图表尺寸由 `EChart` 的 ResizeObserver 负责，页面不手动调用 resize。
  */
-import {
-  Activity,
-  Layers,
-  Mail,
-  MessageSquare,
-  RefreshCw,
-} from 'lucide-react';
+import { Activity, Layers, Mail, MessageSquare, RefreshCw } from 'lucide-react';
 import * as React from 'react';
 
 import type { ThreadTimeRange } from '../api/dashboard-api';

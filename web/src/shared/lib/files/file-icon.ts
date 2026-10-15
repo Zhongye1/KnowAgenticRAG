@@ -1,7 +1,7 @@
 /**
  * 文件 / 文件夹类型图标（彩色 SVG），用于在文件路径前渲染。
  *
- * 参照实现 `Yuxi/web/src/utils/file_icon.js` 与 `components/common/FileTypeIcon.vue`
+ * 参照实现 `KnowAgenticRAG/web/src/utils/file_icon.js` 与 `components/common/FileTypeIcon.vue`
  * 逐条对齐：扩展名映射、目录变体、回退到通用文件图标。资源是 `assets/icons/files/`
  * 下的 23 个 SVG（从参照工程原样复制）。
  */

@@ -226,7 +226,7 @@ const vReveal = {
       </div>
       <div class="yx-container yx-hero__inner">
         <div class="yx-hero__copy">
-          <span class="yx-badge">语析 ARS · MIT 开源 · 可私有部署</span>
+          <span class="yx-badge">KnowAgenticRAG · MIT 开源 · 可私有部署</span>
           <h1 class="yx-hero__title">让知识被智能体<br/><span class="yx-accent">检索、推理与交付</span></h1>
           <p class="yx-hero__subtitle">可私有部署的多租户知识智能体平台</p>
           <p class="yx-hero__desc">
@@ -243,7 +243,7 @@ const vReveal = {
           <img
             class="yx-hero__img"
             src="https://xerrors.oss-cn-shanghai.aliyuncs.com/github/image-20260608002434299.png"
-            alt="语析 ARS 产品界面预览"
+            alt=" ARS 产品界面预览"
             loading="eager"
             fetchpriority="high"
           />

@@ -9,7 +9,7 @@
 export const getKbTypeLabel = (type?: string | null): string => {
   const normalized = String(type ?? '').toLowerCase();
   const labels: Record<string, string> = {
-    milvus: 'ARS',
+    milvus: 'Milvus',
     dify: 'Dify',
     notion: 'Notion',
   };

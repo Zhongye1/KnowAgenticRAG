@@ -5,5 +5,10 @@ export { getPreviewFileExtension } from './file-preview';
 export type { PreviewFile } from './file-preview';
 export { toFileEntries, toFileEntry } from './filesystem-entry';
 export type { FileEntry } from './filesystem-entry';
-export { isSameOrChildPath, isSamePath, normalizePathKey, pathBreadcrumbs } from './workspace-path';
+export {
+  isSameOrChildPath,
+  isSamePath,
+  normalizePathKey,
+  pathBreadcrumbs,
+} from './workspace-path';
 export { processSseResponse } from './sse';

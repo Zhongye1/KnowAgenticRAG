@@ -41,15 +41,15 @@ vi.mock('@/entities/session/api/session-api', async () => {
 const { HomePage } = await import('@/pages/home');
 
 const systemInfo = {
-  organization: { name: '语析', logo: '/favicon.svg' },
-  branding: { name: 'ARS' },
-  footer: { copyright: '© 语析 2026 v0.7.2' },
+  organization: { name: 'KnowAgenticRAG', logo: '/favicon.svg' },
+  branding: { name: 'KnowAgenticRAG' },
+  footer: { copyright: '© KnowAgenticRAG 2026 v0.7.2' },
 };
 
 const currentUser = {
   id: 1,
-  uid: 'zwj',
-  username: 'zwj',
+  uid: 'zy',
+  username: 'zy',
   phone_number: null,
   avatar: null,
   role: 'superadmin',
@@ -141,7 +141,7 @@ describe('HomePage', () => {
     ).toBeInTheDocument();
 
     // 品牌栏来自系统信息
-    expect(screen.getByText('ARS')).toBeInTheDocument();
+    expect(screen.getByText('KnowAgenticRAG')).toBeInTheDocument();
     expect(screen.queryByText('正在连接服务...')).not.toBeInTheDocument();
   });
 

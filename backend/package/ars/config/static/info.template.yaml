@@ -3,7 +3,7 @@
 
 # 组织信息
 organization:
-  name: "语析"               # 完整组织名称
+  name: "ARS"               # 完整组织名称
   logo: "/favicon.svg"       # Logo文件路径（放在 web/public 目录下）
   avatar: "/avatar.jpg"      # 头像文件路径（放在 web/public 目录下）
   login_bg: "/login-bg.jpg"  # 登录背景图片路径（放在 web/public 目录下）
@@ -21,6 +21,6 @@ branding:
 
 # 页脚信息
 footer:
-  copyright: "© 语析 2026 v{{ARS_VERSION}}"
+  copyright: "RAF v{{ARS_VERSION}}"
   user_agreement_url: "/protocols/user-agreement.template.html"
   privacy_policy_url: "/protocols/privacy-policy.template.html"

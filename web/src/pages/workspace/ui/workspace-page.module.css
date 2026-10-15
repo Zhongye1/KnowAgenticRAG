@@ -2,7 +2,7 @@
    参照实现 WorkspaceView.vue 的 `.workspace-view` / `.workspace-shell` / `.workspace-main` /
    `.workspace-preview-panel` / `.workspace-preview-resizer`，数值逐条对照（168px 侧栏、
    3px 分隔条、280px 预览最小宽、30–70% 拖拽区间、960px 内联断点）。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .view {
   display: flex;

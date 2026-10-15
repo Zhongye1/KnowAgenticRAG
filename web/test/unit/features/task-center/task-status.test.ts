@@ -52,9 +52,9 @@ describe('任务状态判定', () => {
   it('后端新增的状态不算活跃，也不进入可取消集合', () => {
     expect(isTaskActive('paused')).toBe(false);
     expect(isTaskFinished('paused')).toBe(true);
-    expect(canCancelTask(task({ status: 'paused' as TaskSummary['status'] }))).toBe(
-      false,
-    );
+    expect(
+      canCancelTask(task({ status: 'paused' as TaskSummary['status'] })),
+    ).toBe(false);
     // 原值照原样显示，不被折成某个已知状态
     expect(taskStatusLabel('paused')).toBe('paused');
   });

@@ -1,6 +1,6 @@
 /* 对话消息列表的布局骨架。参照实现 AgentChatComponent.vue 的
    `.conv-box`：一轮对话是一条纵向 flex 列，轮与轮之间留 1rem。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。 */
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .list {
   display: flex;

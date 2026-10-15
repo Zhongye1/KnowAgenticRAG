@@ -1,12 +1,12 @@
 /* ============================================================================
  * antd 全局覆盖层
  * ----------------------------------------------------------------------------
- * 承接 Yuxi 的全局 `.ant-*` 覆盖，是唯一允许写覆盖类名与 hex 的文件。
- * 页面私有的 `.ant-*` 覆盖留在页面的 CSS Modules 里（`:global()`），与 Yuxi 的
+ * 承接 KnowAgenticRAG 的全局 `.ant-*` 覆盖，是唯一允许写覆盖类名与 hex 的文件。
+ * 页面私有的 `.ant-*` 覆盖留在页面的 CSS Modules 里（`:global()`），与 KnowAgenticRAG 的
  * `<style scoped>` 加 `:deep()` 同一层，避免全局规则与页面规则互相追尾。
  * ========================================================================== */
 
-/* 按钮内的图标与文字同一行居中（Yuxi main.css 的全局按钮规则） */
+/* 按钮内的图标与文字同一行居中（KnowAgenticRAG main.css 的全局按钮规则） */
 .ant-btn .ant-btn-icon,
 .ant-btn .anticon {
   display: inline-flex;
@@ -16,7 +16,7 @@
 
 /* ---------------------------------------------------------------------------
  * 对话页下拉的弹出层皮肤。
- * 承接 Yuxi AgentView.vue 的 `.config-dropdown-overlay` 段（面板 / item / label /
+ * 承接 KnowAgenticRAG AgentView.vue 的 `.config-dropdown-overlay` 段（面板 / item / label /
  * badge / check / hint / divider）。弹出层挂在 body，只能走全局覆盖。
  * ------------------------------------------------------------------------- */
 

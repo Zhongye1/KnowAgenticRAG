@@ -45,15 +45,10 @@ export const PanelCard = ({
     title={
       <Flex vertical gap={8} className="min-w-0">
         <Flex vertical gap={2} className="min-w-0">
-          <Typography.Text className="text-base">
-            {title}
-          </Typography.Text>
+          <Typography.Text className="text-base">{title}</Typography.Text>
           {description ? (
             // 次级说明同样继承了 `ant-card-head` 的 `fontWeightStrong`，压回常规
-            <Typography.Text
-              type="secondary"
-              className="text-xs font-normal"
-            >
+            <Typography.Text type="secondary" className="text-xs font-normal">
               {description}
             </Typography.Text>
           ) : null}

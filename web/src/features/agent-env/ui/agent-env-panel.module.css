@@ -1,6 +1,6 @@
 /* 沙盒环境变量面板的样式。
    参照实现 AgentEnvSettingsCard.vue + McpEnvEditor.vue：提示条 + KV 行（键 / 值 / 显隐 /
-   删除或锁定）+ 保存钮随脏状态换文案。颜色只用 yuxi-tokens.css 的 --gray-*。 */
+   删除或锁定）+ 保存钮随脏状态换文案。颜色只用 agentic-tokens.css 的 --gray-*。 */
 
 .panel {
   display: flex;

@@ -83,14 +83,7 @@ import { useChatSubmission } from '../model/use-chat-submission';
 import { useChatThreadLifecycle } from '../model/use-chat-thread-lifecycle';
 import { ChatPageView } from './chat-page-view';
 
-/** 空态问候语；与参照同款（语析系列标语）。 */
-const GREETINGS = [
-  '语析，析万物之语',
-  '语析，与知识对话',
-  '答案藏在知识里，我来找',
-  '与知识对话，与答案相遇',
-  '你负责提问，我负责寻找',
-];
+const GREETINGS = ['与知识对话，与答案相遇', '你负责提问，我负责寻找'];
 
 export const ChatPage = () => {
   const { threadId: routeThreadId } = useParams<{ threadId: string }>();

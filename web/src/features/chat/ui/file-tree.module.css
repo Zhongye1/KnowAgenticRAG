@@ -2,7 +2,7 @@
    `.file-tree-container` / `.tree-node-name` / `.node-actions-container` /
    `.tree-action-btn` / `.empty`，以及 FileTreeComponent.vue 的节点行
    （32px 行高、6px 圆角、缩进 14px/级）。
-   颜色只用 yuxi-tokens.css 的 --gray-* / --main-*。
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。
    行结构与键盘交互由 antd `Tree` 承担，因此这里有一组 `.ant-tree-*` 覆盖：
    它们只在本组件的 `.tree` 之下生效，不污染全局（全局覆盖归 antd-overrides.css）。 */
 

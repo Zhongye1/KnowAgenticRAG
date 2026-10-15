@@ -9,10 +9,7 @@ import {
   saveThreadArtifactToWorkspaceApiChatThreadThreadIdArtifactsSavePost,
 } from '@/shared/api/generated/sdk.gen';
 
-import {
-  parseDownloadFilename,
-  saveBlobAsFile,
-} from '@/shared/lib/files';
+import { parseDownloadFilename, saveBlobAsFile } from '@/shared/lib/files';
 
 /** 下载一个交付物；文件名优先取 Content-Disposition（中文走 RFC 5987）。 */
 export async function downloadThreadArtifact(input: {

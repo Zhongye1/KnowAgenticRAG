@@ -1,5 +1,5 @@
 /* 目录选择器。参照 WorkspacePathPicker.vue 的样式段逐值对齐。
-   颜色只用 yuxi-tokens.css 的语义色与 --gray-* / --main-*。
+   颜色只用 agentic-tokens.css 的语义色与 --gray-* / --main-*。
    参照错误文案用的是 --color-error-600，本仓 token 只有 500/700，取 500。 */
 
 .picker {

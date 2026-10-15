@@ -1779,9 +1779,15 @@ describe('面板首行：上传下拉与统计按钮', () => {
       await within(header).findByTestId('stat-pending-parse'),
     ).toBeTruthy();
     // 详情里的 pending_parse_count=1、pending_index_count=2
-    expect(within(header).getByTestId('stat-pending-parse').textContent).toContain('1');
-    expect(within(header).getByTestId('stat-pending-index').textContent).toContain('2');
-    expect(within(header).getByTestId('stat-file-count').textContent).toContain('2');
+    expect(
+      within(header).getByTestId('stat-pending-parse').textContent,
+    ).toContain('1');
+    expect(
+      within(header).getByTestId('stat-pending-index').textContent,
+    ).toContain('2');
+    expect(within(header).getByTestId('stat-file-count').textContent).toContain(
+      '2',
+    );
     expect(within(header).getByText('4.0 KB')).toBeTruthy();
     expect(within(header).getByText('Chunks')).toBeTruthy();
     expect(within(header).getByText('Tokens')).toBeTruthy();
@@ -1800,7 +1806,10 @@ describe('面板首行：上传下拉与统计按钮', () => {
       expect(api.parsePendingDocuments).toHaveBeenCalledWith('kb-1', {}),
     );
     expect(notifications.addNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'success', message: '已提交待解析文件。' }),
+      expect.objectContaining({
+        type: 'success',
+        message: '已提交待解析文件。',
+      }),
     );
 
     await userEvent.click(within(header).getByTestId('stat-pending-index'));
@@ -1820,9 +1829,7 @@ describe('面板首行：上传下拉与统计按钮', () => {
     const header = await screen.findByTestId('file-panel-header');
 
     await userEvent.click(within(header).getByTestId('stat-repair-chunks'));
-    await waitFor(() =>
-      expect(api.repairStats).toHaveBeenCalledWith('kb-1'),
-    );
+    await waitFor(() => expect(api.repairStats).toHaveBeenCalledWith('kb-1'));
     await waitFor(() =>
       expect(notifications.addNotification).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -1843,7 +1850,9 @@ describe('面板首行：上传下拉与统计按钮', () => {
     const header = await screen.findByTestId('file-panel-header');
 
     await userEvent.click(within(header).getByRole('button', { name: '上传' }));
-    await userEvent.click(await screen.findByRole('menuitem', { name: '新建文件夹' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: '新建文件夹' }),
+    );
 
     const dialog = await screen.findByLabelText('文件夹名称');
     await userEvent.type(dialog, '资料');
@@ -1858,7 +1867,9 @@ describe('面板首行：上传下拉与统计按钮', () => {
 
     // 弹窗关闭后再点上传，走的是上传弹窗而不是新建
     await userEvent.click(within(header).getByRole('button', { name: '上传' }));
-    await userEvent.click(await screen.findByRole('menuitem', { name: '上传文件' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: '上传文件' }),
+    );
     expect(await screen.findByText('选择文件')).toBeTruthy();
   });
 
@@ -1867,7 +1878,9 @@ describe('面板首行：上传下拉与统计按钮', () => {
     const header = await screen.findByTestId('file-panel-header');
 
     await userEvent.click(within(header).getByRole('button', { name: '上传' }));
-    await userEvent.click(await screen.findByRole('menuitem', { name: '新建文件夹' }));
+    await userEvent.click(
+      await screen.findByRole('menuitem', { name: '新建文件夹' }),
+    );
     await screen.findByLabelText('文件夹名称');
     await userEvent.click(screen.getByRole('button', { name: '创建' }));
 
@@ -1880,7 +1893,11 @@ describe('面板首行：上传下拉与统计按钮', () => {
   it('行内菜单给文件夹重命名与新建子文件夹，提交各自的端点', async () => {
     api.listDocuments.mockResolvedValue(
       page([
-        file('目录', { is_folder: true, file_id: 'folder-3', status: 'indexed' }),
+        file('目录', {
+          is_folder: true,
+          file_id: 'folder-3',
+          status: 'indexed',
+        }),
       ]),
     );
     api.renameFolder.mockResolvedValue({
@@ -1899,11 +1916,17 @@ describe('面板首行：上传下拉与统计按钮', () => {
     await userEvent.type(input, '新名字');
     await userEvent.click(screen.getByRole('button', { name: '保存' }));
     await waitFor(() =>
-      expect(api.renameFolder).toHaveBeenCalledWith('kb-1', 'folder-3', '新名字'),
+      expect(api.renameFolder).toHaveBeenCalledWith(
+        'kb-1',
+        'folder-3',
+        '新名字',
+      ),
     );
 
     await openRowMenuAt('目录');
-    await userEvent.click(screen.getByRole('menuitem', { name: '新建子文件夹' }));
+    await userEvent.click(
+      screen.getByRole('menuitem', { name: '新建子文件夹' }),
+    );
     await screen.findByLabelText('文件夹名称');
     // 新建子文件夹的目标父目录是这一行的 file_id
     await userEvent.type(screen.getByLabelText('文件夹名称'), '子');
@@ -1925,7 +1948,15 @@ describe('面板首行：上传下拉与统计按钮', () => {
       created: true,
     });
     api.streamVirtualFolderMigration.mockImplementation(
-      async (_kbId: string, taskId: string, onEvent: (s: { status: string; progress?: number; message?: string }) => void) => {
+      async (
+        _kbId: string,
+        taskId: string,
+        onEvent: (s: {
+          status: string;
+          progress?: number;
+          message?: string;
+        }) => void,
+      ) => {
         expect(taskId).toBe('task-7');
         onEvent({ status: 'running', progress: 40, message: '第 1 批' });
         onEvent({ status: 'success', progress: 100 });
@@ -1944,9 +1975,7 @@ describe('面板首行：上传下拉与统计按钮', () => {
     await waitFor(() =>
       expect(api.startVirtualFolderMigration).toHaveBeenCalledWith('kb-1'),
     );
-    await waitFor(() =>
-      expect(screen.getByRole('progressbar')).toBeTruthy(),
-    );
+    await waitFor(() => expect(screen.getByRole('progressbar')).toBeTruthy());
     // 终态后重新检测虚拟文件夹
     await waitFor(() =>
       expect(api.detectVirtualFolders).toHaveBeenCalledTimes(2),
