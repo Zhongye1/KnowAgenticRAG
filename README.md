@@ -4,6 +4,8 @@
 
 [项目主页](https://zhongye1.github.io/KnowAgenticRAG/) · [快速开始](https://zhongye1.github.io/KnowAgenticRAG/intro/quick-start) · [文档](https://zhongye1.github.io/KnowAgenticRAG/intro/project-overview) · [版本变更记录](https://zhongye1.github.io/KnowAgenticRAG/develop-guides/changelog)
 
+[DeepWiki](https://deepwiki.com/Zhongye1/KnowAgenticRAG)
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#许可证)
 [![GitHub stars](https://img.shields.io/github/stars/Zhongye1/KnowAgenticRAG)](https://github.com/Zhongye1/KnowAgenticRAG)
 [![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB.svg)](backend/pyproject.toml)
@@ -14,17 +16,16 @@
 
 给需要自己掌握数据、模型与权限的团队，尤其是要私有部署的多用户 Agent 场景：
 
-- **数据与模型自己管**：MIT 协议，容器拓扑里全是常见组件（PostgreSQL、Redis、Milvus、Neo4j、对象存储），模型走 OpenAI 兼容接口，接哪家由你决定。
-- **知识进得来，回答对得上**：PDF、Office、Markdown、图片交给 MinerU、PaddleX 与 OCR 解析，语义切分后建向量与图谱两套索引，回答附来源引用，能点回原文核对。
-- **一条链路跑完任务**：LangGraph 上的 Agent 直接检索知识、调用工具、进沙盒执行，产出落到持久 Workdir，不需要人在几个系统之间搬数据。
-- **复杂任务有人分工**：主智能体负责拆解与汇总，SubAgents 分头执行，Skills 与 MCP 按任务加载。
-- **调整有指标**：知识库评估量化检索环节，智能体评估覆盖完整任务，换模型或改参数之后能对比出进退。
-- **多人协作有边界**：三级角色加共享范围，权限在后端依赖与 repository 可见性查询处最终执行，前端隐藏不构成授权。
-- **运行看得见**：超级管理员可筛查全平台会话审计，任务中心显示后台任务的排队与运行状态。
+Harness：提供功能完善的云端多用户 Harness，自定义智能体，沉淀企业轨迹。
+Knowledge： 提供高效、精准的 Agentic RAG 套件，上传文档，解析、分块和向量索引。
+执行多步骤任务：提供组合工具、MCP、Skills、子智能体和沙盒，产出可预览、可下载的文件。
+知识图谱：支持从 Milvus 知识库的文档块中抽取实体和关系，写入 Neo4j 并参与检索。
+管理团队使用范围：支持按用户、部门和共享范围管理知识库、智能体、Skills 和模型。
+评估运行质量：支持评估知识库的检索结果，也可以用 Langfuse Dataset 评估完整智能体任务。
 
 ## 快速启动
 
-启动方式只有一条：Docker Compose。后端是 FastAPI 与 LangGraph，前端是 React，中间件用 Milvus、Neo4j、PostgreSQL、Redis，文档解析用 MinerU 与 PaddleOCR。当前仓库默认配置对应 **v0.7.2.beta1**（见 `backend/pyproject.toml` 与 `web/package.json`）。
+基于 Docker 启动，服务和中间件主要包括：LangGraph、React、FastAPI、Milvus、Neo4j、PostgreSQL、MinerU、PaddleOCR
 
 ### 前置条件
 
@@ -92,15 +93,15 @@ task up-lite
 
 从资料进系统到任务出结果，都在同一条链路上发生。下面按七个模块说明这条链路提供了什么：
 
-| 模块 | 解决的问题 | 代表能力 |
-| ---- | ---------- | -------- |
-| 工作台 | 一次提问就能看清执行到了哪一步 | 会话、引用来源、执行状态、上下文用量、子智能体、交付文件 |
-| 知识库与 RAG | 让回答有据可查 | 多格式解析、语义切分、向量与图谱双索引、混合召回与重排、来源引用 |
-| 知识图谱 | 把文档里的关系用起来 | 实体关系抽取、按 schema 建图、同名实体合并、子图浏览、图谱检索 |
-| 多智能体与扩展 | 让复杂任务有人分工 | 主智能体与 SubAgents、Skills、MCP、工具、中间件 |
-| 沙盒与产物 | 让结果落地成文件 | 隔离执行、持久 Workdir、浏览器内预览、文件下载 |
-| 评估 | 让每次调整有指标 | 召回率与 MRR、忠实度与引用准确性、Langfuse Dataset 智能体评估 |
-| 团队治理 | 让多人共用有边界 | 三级角色、共享范围、模型与 API Key 配置、会话审计、任务中心 |
+| 模块           | 解决的问题                     | 代表能力                                                         |
+| -------------- | ------------------------------ | ---------------------------------------------------------------- |
+| 工作台         | 一次提问就能看清执行到了哪一步 | 会话、引用来源、执行状态、上下文用量、子智能体、交付文件         |
+| 知识库与 RAG   | 让回答有据可查                 | 多格式解析、语义切分、向量与图谱双索引、混合召回与重排、来源引用 |
+| 知识图谱       | 把文档里的关系用起来           | 实体关系抽取、按 schema 建图、同名实体合并、子图浏览、图谱检索   |
+| 多智能体与扩展 | 让复杂任务有人分工             | 主智能体与 SubAgents、Skills、MCP、工具、中间件                  |
+| 沙盒与产物     | 让结果落地成文件               | 隔离执行、持久 Workdir、浏览器内预览、文件下载                   |
+| 评估           | 让每次调整有指标               | 召回率与 MRR、忠实度与引用准确性、Langfuse Dataset 智能体评估    |
+| 团队治理       | 让多人共用有边界               | 三级角色、共享范围、模型与 API Key 配置、会话审计、任务中心      |
 
 ### 01 · 工作台
 
@@ -187,10 +188,6 @@ docker compose exec api uv run --group test pytest test/e2e -m e2e
 - 接口契约变更：`task web:api` 刷新快照并重新生成客户端，两个产物都入库。
 - 日常容器命令：`task ps` / `task logs` / `task shell` / `task down`；`task reset` 会删除数据卷，是破坏性操作。
 - 系统边界、目录职责与主链路见 [ARCHITECTURE.md](ARCHITECTURE.md)；测试分层与最低证据要求见[测试规范](https://zhongye1.github.io/KnowAgenticRAG/develop-guides/testing-guidelines)；非平凡改动必须在同一变更里新增或更新一份[决策记录](docs/develop-guides/decisions/README.md)。
-
-## 参与贡献
-
-欢迎提交 Issue、改进文档、修复 Bug 和贡献功能。开发流程（分支、Review、提交信息与 PR 模板）见 [CONTRIBUTING.md](CONTRIBUTING.md)，完整规范见[参与贡献](https://zhongye1.github.io/KnowAgenticRAG/develop-guides/contributing)。
 
 ## 许可证
 
