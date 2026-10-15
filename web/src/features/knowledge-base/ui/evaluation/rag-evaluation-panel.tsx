@@ -113,7 +113,7 @@ const ScoreRing = ({ score }: { score: number | null }) => {
 export type RagEvaluationPanelProps = {
   kbId: string;
   readOnly: boolean;
-  /** 当前分区是否激活；参照每次激活都重新挂载并重取（`DataBaseInfoView.vue:279`）。 */
+  /** 当前分区是否激活。 */
   active: boolean;
   /** 没有可用基准时跳到「评估基准」分区。 */
   onGoToBenchmarks: () => void;
@@ -233,7 +233,6 @@ export const RagEvaluationPanel = ({
   /*
    * 切回分区时重取基准与历史：面板被 antd 常驻（切走不卸载），应用的查询客户端又关掉了
    * 窗口聚焦重取、`staleTime` 是 60 秒——从「评估基准」页签回来常常看到旧数据。
-   * 参照的页签是 `v-if` 卸载，每次进来都重新挂载并重取。
    */
   const firstActivation = React.useRef(true);
   React.useEffect(() => {
@@ -520,7 +519,7 @@ export const RagEvaluationPanel = ({
               >
                 <span className="text-sm text-color-text-1">
                   {item.label === 'Recall@10' ? (
-                    // 检索指标按参照口径给三位小数（`0.900`），不是百分比
+                    // 检索指标给三位小数（`0.900`），不是百分比
                     <MetricValue
                       value={item.value}
                       placeholder={metricPlaceholder(latest.status)}

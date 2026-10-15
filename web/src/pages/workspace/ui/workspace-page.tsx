@@ -1,11 +1,4 @@
-/**
- * 个人空间页面。
- *
- * 装配层：控制器（`features/workspace`）接上三段式布局——168px 侧栏 / 文件表 / 预览面板。
- * 页头用 `PageHeader`（fullHeight 页自带水平留白），取数进度条挂页头 loading；
- * 预览在内容区宽于 960px 时内联（可拖拽 30–70%），窄屏走模态；删除确认的三段文案与参照
- * 逐字一致；`/agents` 下页头多一个「使用说明」入口。搜索入口在侧栏「上传文件」上方。
- */
+/** 个人空间页面。 */
 import * as React from 'react';
 import { ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
 
@@ -30,9 +23,9 @@ import { useNotifications } from '@/shared/ui/notifications';
 
 import styles from './workspace-page.module.css';
 
-/** 内容区宽于这个值时预览内联，否则走模态；与参照同值。 */
+/** 内容区宽于这个值时预览内联，否则走模态。 */
 const INLINE_PREVIEW_MIN_WIDTH = 960;
-/** 拖拽预览面板的宽度区间（百分比）；与参照同值。 */
+/** 拖拽预览面板的宽度区间（百分比）。 */
 const PREVIEW_MIN_PERCENT = 30;
 const PREVIEW_MAX_PERCENT = 70;
 
@@ -59,7 +52,7 @@ export const WorkspacePage = () => {
   const previewOpen = browser.preview.status !== 'idle';
   const isAgentsPath = normalizePathKey(browser.currentPath) === '/agents';
 
-  // 内容区宽度决定内联还是模态；与参照的 ResizeObserver 同口径
+  // 内容区宽度决定内联还是模态
   React.useEffect(() => {
     const node = mainRef.current;
     if (!node) return;
@@ -145,8 +138,8 @@ export const WorkspacePage = () => {
 
   return (
     <ContentLayout title="个人空间" fullHeight>
-      {/* fullHeight 不吃 ContentLayout 的留白；水平留白与文档流页同款响应式档位，
-          顶部 pt-4 让标题落点与其他页一致，纵向贴底是 fullHeight 形态（对话页同款） */}
+      {/* fullHeight 不吃 ContentLayout 的留白；水平留白响应式档位，
+          顶部 pt-4 让标题落点与其他页一致，纵向贴底是 fullHeight 形态 */}
       <div className={`${styles.view} px-2 pt-4 sm:px-6 md:px-8`}>
         <PageHeader
           title="个人空间"
@@ -223,7 +216,7 @@ export const WorkspacePage = () => {
               onDelete={(row) => void requestDelete([row.entry])}
             />
 
-            {/* 面板常驻：宽度在 0 与设定值之间过渡，开与关都有滑入滑出（参照的 enter/leave） */}
+            {/* 面板常驻：宽度在 0 与设定值之间过渡，开与关都有滑入滑出 */}
             {inlinePreview ? (
               <div
                 className={`${styles.previewPanel} ${
@@ -249,7 +242,7 @@ export const WorkspacePage = () => {
         </div>
       </div>
 
-      {/* 窄屏：预览走模态（参照在内容区不足 960px 时切到模态形态） */}
+      {/* 窄屏：预览走模态（内容区不足 960px 时切到模态形态） */}
       <Modal
         open={!inlinePreview && previewOpen}
         footer={null}

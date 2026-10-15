@@ -45,7 +45,7 @@ describe('MentionPopup', () => {
     expect(screen.getByText('文件')).toBeTruthy();
     expect(screen.getByText('知识库')).toBeTruthy();
     expect(screen.getByText('Skills')).toBeTruthy();
-    // 文件行的名字被高亮 mark 与路径列拆开（参照 query-match 形态），用宽松匹配
+    // 文件行的名字被高亮 mark 与路径列拆开，用宽松匹配
     expect(screen.getByRole('option', { name: /a\s*\.?md/ })).toBeTruthy();
   });
 

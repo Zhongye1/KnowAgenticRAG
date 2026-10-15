@@ -107,7 +107,6 @@ if [ "$DEV_MODE" = false ]; then
     echo "  - README.md"
     echo "  - README.en.md"
     echo "  - docs/intro/quick-start.md"
-    echo "  - docs/.vitepress/theme/components/ArsHome.vue"
 fi
 echo ""
 read -rp "确认继续? [y/N] " confirm
@@ -177,11 +176,8 @@ if [ "$DEV_MODE" = false ]; then
     perl -pi -e "s/(git clone --branch v)[0-9]+\\.[0-9]+\\.[0-9]+(\\.[a-zA-Z0-9]+)?/\${1}${NEW_VERSION}/g" \
         "${PROJECT_ROOT}/docs/intro/quick-start.md"
 
-    echo "→ 更新 docs/.vitepress/theme/components/ArsHome.vue"
-    perl -pi -e "s/(git clone --branch v)[0-9]+\\.[0-9]+\\.[0-9]+(\\.[a-zA-Z0-9]+)?/\${1}${NEW_VERSION}/g" \
-        "${PROJECT_ROOT}/docs/.vitepress/theme/components/ArsHome.vue"
 else
-    echo "→ dev 模式，跳过 README.md、README.en.md、docs/intro/quick-start.md 和文档首页的分支版本更新"
+    echo "→ dev 模式，跳过 README.md、README.en.md 和 docs/intro/quick-start.md 的分支版本更新"
 fi
 
 # -----------------------------------------------------------------------------

@@ -4,9 +4,9 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 /**
- * 导航项的层叠顺序必须与参照的 Less 编译结果一致。
+ * 导航项的层叠顺序必须与 Less 编译结果一致。
  *
- * 参照的 `.nav-item` 是嵌套规则，编译后顺序为 `.nav-item.primary-action`(0,2,0) →
+ * `.nav-item` 是嵌套规则，编译后顺序为 `.nav-item.primary-action`(0,2,0) →
  * `.nav-item.primary-action:hover`(0,3,0) → `.nav-item:hover`(0,2,0) →
  * `.nav-item.active`(0,2,0)。本仓用扁平类名，同特异性时靠源码顺序决胜：
  *
@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
  * - 未悬停的激活主操作项由 `active` 胜出（与 `primaryAction` 同特异性且更靠后）；
  * - 激活的普通项被悬停时由 `active` 胜出（与 `hover` 同特异性且更靠后）。
  *
- * 顺序写反时 `/agent` 上的「新建对话」会渲染成主操作外观，而参照给的是激活外观。
+ * 顺序写反时 `/agent` 上的「新建对话」会渲染成主操作外观，而期望的是激活外观。
  */
 const cssPath = join(
   process.cwd(),

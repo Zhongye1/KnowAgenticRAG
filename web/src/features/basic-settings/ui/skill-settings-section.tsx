@@ -1,9 +1,4 @@
-/**
- * Skill 配置区块。
- *
- * 对齐参照 `SkillSettingsSection.vue`：只读态把允许的域名渲染成一排标签（未配置时说明远程
- * 安装已关闭），编辑态换成可自由输入的域名列表；保存用后端规范化后的值刷新展示。
- */
+/** Skill 配置区块。 */
 import * as React from 'react';
 import { Pencil } from 'lucide-react';
 

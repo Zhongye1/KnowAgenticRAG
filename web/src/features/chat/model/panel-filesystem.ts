@@ -154,7 +154,7 @@ export const usePanelFilesystem = (options: {
   const refreshThreadTree = React.useCallback(
     async ({ silent = false, ensure = false } = {}) => {
       const requestedThreadId = threadId;
-      // 参照还比对「刷新发起时的代数」，这里线程相同 + 单飞已经覆盖同一件事：
+      // 这里线程相同 + 单飞已经覆盖同一件事：
       // 切线程会重置状态并让 canCommit 失败，在飞的刷新不会提交。
       if (!requestedThreadId) {
         setThread((current) => ({ ...current, nodes: [], error: null }));

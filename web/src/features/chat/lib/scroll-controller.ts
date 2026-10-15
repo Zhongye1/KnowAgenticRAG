@@ -1,13 +1,4 @@
-/**
- * 对话主列的滚动控制。
- *
- * 参照实现 `KnowAgenticRAG web/src/utils/scrollController.js` 直译：流式输出期间只有用户停在
- * 底部附近才自动跟滚，用户上滚即停；程序性滚动用 `isProgrammaticScroll` 窗口区分，
- * 避免把自动滚动误判成用户上滚。Vue 的 `nextTick` 对应 React 的 flush 后帧，用双
- * requestAnimationFrame 等布局稳定，语义一致。
- *
- * 滚动容器由调用方给（页面持有 `chatMain` 的 ref），不再用选择器查 DOM。
- */
+/** 对话主列的滚动控制。 */
 
 export type ScrollControllerOptions = {
   /** 距底部多少像素内算「在底部」。 */

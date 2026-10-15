@@ -168,11 +168,7 @@ const toMetricNumber = (value: unknown): number | null => {
   return Number.isFinite(numeric) ? numeric : null;
 };
 
-/**
- * 运行耗时：两端时间都有才算；运行中显示「进行中」，缺时间给 `-`。
- *
- * 口径与参照 `formatDuration`（`:1214-1226`）一致：`12秒 / 1分12秒 / 1小时5分`。
- */
+/** 运行耗时：两端时间都有才算；运行中显示「进行中」，缺时间给 `-`。 */
 export const runDuration = (
   run: Pick<EvaluationRun, 'status' | 'started_at' | 'completed_at'>,
 ): string => {
@@ -190,12 +186,7 @@ export const runDuration = (
   return `${hours}小时${Math.floor((seconds % 3600) / 60)}分`;
 };
 
-/**
- * 指标格没有数值时的文案。
- *
- * 与参照的 `renderMetricTag` 同口径：运行中说明还在算，已完成说明这次没算出来，
- * 其余状态（失败/暂停）给 `-`。比一律显示 `-` 更能说明「为什么这里没有数」。
- */
+/** 指标格没有数值时的文案。 */
 export const metricPlaceholder = (status?: string | null): string => {
   if (status === 'running') return '计算中';
   if (status === 'completed') return '无数据';

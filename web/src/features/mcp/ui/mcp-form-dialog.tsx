@@ -1,12 +1,4 @@
-/**
- * MCP 表单弹窗（新建与编辑共用）。
- *
- * 对齐参照 `McpFormModal.vue`：标识 / 名称 / 描述 / 传输类型 + 图标 / URL + 请求头 + 两个超时 /
- * 标签。HTTP 请求头以 JSON 文本编辑，提交前解析，格式错误直接拦下。
- *
- * 与参照的显式偏离（见决策记录）：编辑态的「标识」由后端持有，参照把它放在同一个弹窗里禁用了
- * 输入框，这里同样只读展示。
- */
+/** MCP 表单弹窗（新建与编辑共用）。 */
 import * as React from 'react';
 
 import { Form, Input, InputNumber, Modal, Select } from 'antd';

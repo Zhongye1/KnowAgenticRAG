@@ -4,8 +4,8 @@
  * 来源：用户提供的 Vue3 单文件组件改写版，本仓按首页的需要收口如下（见
  * `web/alembic/pages/home/report.md`）：
  * - 去掉缩略图选项栏与它的点击切换，只保留粒子画布，改为按 `intervalMs` 自动轮播；
- * - 去掉内联 `<style>` 与其中的深色面板配色，画布尺寸与响应式交给页面样式
- *   （`styles/home-panels.css` 的 `.hero-atlas`）；
+ * - 去掉内联 `<style>` 与其中的深色面板配色，画布尺寸与响应式交给调用方：
+ *   组件自身给 `w-[min(480px,100%)]`，窄屏按比例缩小；
  * - 去掉内置的 SVG 示例 logo，`images` 成为必填：示例色是颜色字面量，而
  *   `check-design-tokens.mjs` 禁止 `src/**` 的 `.ts/.tsx` 出现颜色；
  * - 像素颜色改用十六进制拼接、透明度走 `globalAlpha`，同样是为了不出现颜色函数字面量；
@@ -461,7 +461,13 @@ export const ArkParticleAnimation = ({
   }, [readyTick, imagesKey, intervalMs]);
 
   return (
-    <canvas ref={canvasRef} width={width} height={height} aria-hidden="true" />
+    <canvas
+      className="block h-auto w-[min(480px,100%)]"
+      ref={canvasRef}
+      width={width}
+      height={height}
+      aria-hidden="true"
+    />
   );
 };
 

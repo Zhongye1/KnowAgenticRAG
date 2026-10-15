@@ -1,12 +1,4 @@
-/**
- * 输入区左侧的智能体选择器。
- *
- * 结构对齐参照的 `AgentView.vue` 里那个下拉：触发按钮显示当前智能体名，面板里逐条列出
- * 可切换的智能体（内置的挂徽标、当前项打勾）；切换被拒绝时把原因交回调用方提示。
- *
- * **没有做「编辑智能体 / 新建智能体」两个动作**：参照里它们分别跳智能体管理页与打开
- * 智能体编辑弹窗，本仓两者都还没有；渲染一个点了没反应的入口比不渲染更糟。
- */
+/** 输入区左侧的智能体选择器。 */
 import * as React from 'react';
 import { Bot, Check, ChevronDown } from 'lucide-react';
 import styles from './input-selector.module.css';
@@ -100,7 +92,7 @@ export const AgentSelector = ({
         aria-label={label}
         disabled={loading || isCreatingThread}
       >
-        {/* 图标与参照同构：宽屏只留文字与箭头，窄屏（≤640px）收成纯图标钮 */}
+        {/* 宽屏只留文字与箭头，窄屏（≤640px）收成纯图标钮 */}
         <Bot className={styles.triggerCompactIcon} aria-hidden />
         <span className={styles.triggerLabel}>{label}</span>
         <ChevronDown className={styles.triggerChevron} aria-hidden />

@@ -1,10 +1,4 @@
-/**
- * 生成中状态条的文案与计时。
- *
- * 对齐参照 `AgentChatComponent.vue` 的 `replyLoadingText` / `replyElapsedLabel`：
- * 压缩上下文 > 排队中 > 正在生成；队列暂停时不显示（队列有自己的 UI）；
- * 耗时秒数在 60 秒内是 `Ns`，之后是「N分Ms」。
- */
+/** 生成中状态条的文案与计时。 */
 export function buildReplyLoadingStatus(input: {
   replyLoadingVisible: boolean;
   contextCompressing: boolean;
@@ -27,7 +21,7 @@ export function buildReplyLoadingStatus(input: {
   return { visible: true, text: '正在生成回复...' };
 }
 
-/** 耗时标签；非正数返回空串，与参照一致不显示。 */
+/** 耗时标签；非正数返回空串。 */
 export function buildElapsedLabel(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds <= 0) return '';
   if (seconds < 60) return `${seconds}s`;

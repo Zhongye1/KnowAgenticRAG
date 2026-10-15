@@ -109,7 +109,7 @@ ARS 通过 `html.dark` 覆盖同名 token，切换入口是 `web/src/components/
 
 ### 技术栈约束
 
-- 框架：React 19 + Vite，信息架构对齐参照实现
+- 框架：React 19 + Vite
 - 包管理器：`pnpm`
 - 图标库：`lucide-react`
 - UI 基础：antd 5 组件，主题由 `web/src/app/theme/antd-provider.tsx` 提供，全局覆盖写在 `web/src/styles/antd-overrides.css`，页面私有的 `.ant-*` 覆盖写在页面 CSS Modules 的 `:global()` 里。`web/src/shared/ui` 下的 shadcn/ui 组件处于滚动收缩期：只减不增，最后一个使用者消失后删除

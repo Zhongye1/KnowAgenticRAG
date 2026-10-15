@@ -1,15 +1,4 @@
-/**
- * 检索测试面板。
- *
- * 对齐参照 `QuerySection.vue`：一张输入卡片（多行文本域 + 「Enter 检索知识库内容」提示 +
- * 原始数据切换 + 圆形主色提交），下面按状态二选一地铺结果区或示例问题列表。
- *
- * 结果区有两态：格式化（命中摘要 + 结果项）与原始 JSON（整个响应体的 `<pre>`）。
- * 示例问题打乱后只取前 10 条，点一行直接发起检索；生成示例问题是写操作，只给 `can_manage`。
- *
- * 失败不当结果渲染：API 层把 200 + `{status:'failed'}` 折成异常，这里按失败提示；这与参照的
- * `message.error` 不同，是本仓的既有约定（见 gaps 1.11）。
- */
+/** 检索测试面板。 */
 import * as React from 'react';
 import { Braces, RefreshCw, Search } from 'lucide-react';
 import { Button, Input, Spin, Tooltip } from 'antd';
@@ -32,7 +21,7 @@ type QueryTestPanelProps = {
   readOnly: boolean;
 };
 
-/** 示例问题最多显示几条（参照 `MAX_VISIBLE_EXAMPLES`）。 */
+/** 示例问题最多显示几条。 */
 const MAX_VISIBLE_EXAMPLES = 10;
 
 const formatPercent = (value?: number | null): string =>
@@ -86,7 +75,7 @@ export const QueryTestPanel = ({ kbId, readOnly }: QueryTestPanelProps) => {
     [examples.data],
   );
 
-  /** 点一行示例：填进输入框并立刻检索（参照的 `useQueryExample`）。 */
+  /** 点一行示例：填进输入框并立刻检索。 */
   const useExample = (question: string) => {
     setQuery(question);
     void runQuery(question);
@@ -117,7 +106,7 @@ export const QueryTestPanel = ({ kbId, readOnly }: QueryTestPanelProps) => {
 
   const generating = generateQuestions.isPending;
   const questionsLoading = examples.isPending;
-  // 有结果或正在检索时，示例问题让位（参照的 `showQuerySuggestions`）
+  // 有结果或正在检索时，示例问题让位
   const showSuggestions = !loading && chunks === null;
 
   return (

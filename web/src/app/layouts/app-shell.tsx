@@ -1,9 +1,4 @@
-/**
- * 登录后的全站外壳。
- *
- * 单侧边栏加内容区，与参照实现的 `AppLayout.vue` 同构：导航列自己撑满高度，内容区
- * 独立滚动。调试面板与它的全局快捷键在这里挂载一次，用户菜单只切同一个开关。
- */
+/** 登录后的全站外壳。 */
 import * as React from 'react';
 
 import { useIsSuperuser } from '@/entities/session';

@@ -1,9 +1,4 @@
-/**
- * 工具面板（扩展页的「工具」tab）。
- *
- * 对齐参照 `ToolsCardList.vue`：搜索 + 分类筛选 + 刷新，下面是工具卡片网格，点卡片开详情。
- * 工具由代码注册、运行期不变，因此这里是只读面板，没有写入动作。
- */
+/** 工具面板（扩展页的「工具」tab）。 */
 import * as React from 'react';
 import { Wrench } from 'lucide-react';
 

@@ -1,15 +1,6 @@
-/**
- * 当前模型的回退链。
- *
- * 对齐参照 `AgentChatComponent.vue` 的 `currentModelSpec`：按会话的覆盖 → 会话
- * `metadata.model_spec` → 智能体配置里的 `model` → 系统配置的 `default_model`。
- *
- * 覆盖只活在页面会话里（参照也是组件内存），刷新后由后端绑定在会话上的值接手：每次创建 run
- * 时后端都会把最终模型写进会话的 `metadata.model_spec`（`agent_request_queue_service` 的
- * `set_model_spec`），因此前端不需要自己持久化这次选择。
- */
+/** 当前模型的回退链。 */
 
-/** 草稿态（还没有会话）的覆盖键；与参照同值。 */
+/** 草稿态（还没有会话）的覆盖键。 */
 export const DRAFT_MODEL_KEY = '__draft__';
 
 /** 覆盖表的键：有会话用会话 id，没有会话用草稿键。 */
@@ -48,11 +39,7 @@ export function resolveModelSpec(input: {
   );
 }
 
-/**
- * 触发按钮上的文本；与参照 `displayName: 'mini'` 同值：取 `provider:model` 里模型名的最后一段。
- *
- * 悬浮说明用的是完整 spec，因此这里可以只显示短名。
- */
+/** 触发按钮上的文本：取 `provider:model` 里模型名的最后一段。 */
 export function formatModelSpecLabel(
   spec: unknown,
   placeholder: string,

@@ -50,7 +50,7 @@ describe('AttachmentUploadDialog', () => {
   it('显示上限提示与选择文件入口', () => {
     setup();
 
-    // 拖拽区承担「选择文件」入口（参照 a-upload-dragger），大小上限在描述行
+    // 拖拽区承担「选择文件」入口，大小上限在描述行
     expect(screen.getByRole('button', { name: '选择附件文件' })).toBeTruthy();
     expect(screen.getByText(/单个不超过 5 MB/)).toBeTruthy();
   });

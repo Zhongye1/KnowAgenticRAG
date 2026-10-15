@@ -1,12 +1,4 @@
-/**
- * 个人空间文件搜索弹窗。
- *
- * 对齐参照 `GlobalSearchModal.vue` 的文件模式：防抖 250ms、结果行是「文件图标 + 高亮名称 +
- * 完整路径 + 日期」、↑/↓ 循环选择、Enter 打开、Esc 与点遮罩关闭，空结果与失败文案可区分。
- *
- * 与参照的显式差异（见决策记录）：本仓不做「文件 / 会话」双模式共用模态，也不做跨页的
- * `?open=` 深链——选中结果直接在页内进入父目录并预览。
- */
+/** 个人空间文件搜索弹窗。 */
 import * as React from 'react';
 import { FileSearch } from 'lucide-react';
 
@@ -21,7 +13,7 @@ import { describeFailure } from '@/shared/api';
 
 import styles from './workspace-search-modal.module.css';
 
-/** 文件搜索的防抖时长；与参照的文件模式同值。 */
+/** 文件搜索的防抖时长。 */
 const SEARCH_DEBOUNCE_MS = 250;
 
 type WorkspaceSearchModalProps = {

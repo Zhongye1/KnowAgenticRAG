@@ -13,7 +13,7 @@ import {
 
 import type { MentionType } from '../lib/mention-token';
 
-/** 图标尺寸与描边；与参照同值。 */
+/** 图标尺寸与描边。 */
 export const MENTION_ICON_SIZE = 15;
 export const MENTION_ICON_STROKE_WIDTH = 2.2;
 

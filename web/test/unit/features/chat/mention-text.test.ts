@@ -118,7 +118,7 @@ describe('findActiveMentionQuery', () => {
   });
 
   it('以最后一个 @ 为起点，冒号或空白时不算', () => {
-    // 参照用 lastIndexOf，因此第二个 @ 会成为查询起点
+    // 第二个 @ 会成为查询起点
     expect(findActiveMentionQuery('@a@b', 4)).toEqual({
       start: 2,
       end: 4,

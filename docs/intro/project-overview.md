@@ -1,6 +1,6 @@
 # 项目简介
 
-KnowAgenticRAG 是一个知识库、知识图谱与 Agent 开发平台，基于 LangGraph、Vue 3、FastAPI、Milvus 和 Neo4j 构建。平台提供智能体编排、知识检索、图谱检索、工具调用和文件系统能力。
+KnowAgenticRAG 是一个知识库、知识图谱与 Agent 开发平台，基于 LangGraph、React、FastAPI、Milvus 和 Neo4j 构建。平台提供智能体编排、知识检索、图谱检索、工具调用和文件系统能力。
 
 ## 设计理念
 
@@ -14,8 +14,8 @@ KnowAgenticRAG 是一个知识库、知识图谱与 Agent 开发平台，基于 
 
 | 层级 | 技术 | 用途 |
 |------|------|------|
-| 前端 | Vue.js 3, Vite, Ant Design Vue | 前端应用构建、路由与组件库 |
-| 状态管理 | Pinia | 前端集中式状态管理 |
+| 前端 | React 19, Vite, TypeScript, Ant Design (antd 5) | 前端应用构建、路由与组件库 |
+| 状态管理 | TanStack Query, Zustand | 服务端状态缓存与前端跨页面状态 |
 | 后端 API | FastAPI, Uvicorn | 异步 HTTP API 与 ASGI 服务 |
 | Agent 框架 | LangGraph | Agent 编排、状态管理与 checkpoint |
 | 知识库 | Milvus（可建库入库）、Dify / Notion（只读连接器） | 向量知识库 RAG 与外部只读数据源检索 |

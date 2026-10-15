@@ -7,7 +7,7 @@
  */
 import type { ChatToolCall } from '../api/agent-api';
 
-/** 「其他」选项的保留值；与参照同值。 */
+/** 「其他」选项的保留值。 */
 export const OTHER_OPTION_VALUE = '__other__';
 
 const QUESTION_WRAPPER_KEYS = ['questions', 'items', 'item', 'list', 'data'];

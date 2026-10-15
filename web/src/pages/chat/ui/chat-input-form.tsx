@@ -1,22 +1,4 @@
-/**
- * 对话页的输入表单。
- *
- * 从 chat-page.tsx 拆出的静态装配，结构与参照的 `AgentInputArea.vue` +
- * `MessageInputComponent.vue` 逐区对应：
- *
- * ```
- * .agent-composer                    本组件 form
- * ├─ .composer-extra-region          顶灰条（空态落项目选择器），在胶囊**外面**
- * └─ .input-box                      胶囊，grid 四区 top / input / options / send
- *    ├─ .top-slot                    待发送图片与附件预览
- *    ├─ .expand-options              左侧：[+ 展开] [审批模式] [智能体]
- *    ├─ .user-input                  编辑区
- *    └─ .send-button-container       右侧：[引导] [用量环] [模型] [发送]
- * ```
- *
- * 发送、引导、附件、图片、模型、审批模式、用量环等动作全部由页面以 props 注入，
- * 本组件不持有对话状态（拖拽高亮状态除外：拖放事件只发生在编辑器那层，需要在这里画到胶囊上）。
- */
+/** 对话页的输入表单。 */
 import * as React from 'react';
 import { ArrowUp, CornerDownRight, FileText, Pause } from 'lucide-react';
 
@@ -95,10 +77,10 @@ export type ChatInputFormProps = {
   /** 发送区（右下）。 */
   canSend: boolean;
   isStreaming: boolean;
-  /** 审批接管时把整个输入表面置为 inert（参照 .message-input-surface 的 inert）。 */
+  /** 审批接管时把整个输入表面置为 inert。 */
   inert?: boolean;
   onCancelRun: () => void;
-  /** top 区（参照 .composer-extra-region）：胶囊上方的附加行，空态时落项目选择器。 */
+  /** top 区：胶囊上方的附加行，空态时落项目选择器。 */
   top?: React.ReactNode;
 };
 
@@ -143,7 +125,7 @@ export const ChatInputForm = ({
   top,
 }: ChatInputFormProps) => {
   const editorRef = React.useRef<MentionEditorHandle>(null);
-  // 拖拽高亮画在整个胶囊上（参照 .input-box.dragging-files）。
+  // 拖拽高亮画在整个胶囊上。
   // dragover 会连续触发，但 setState 传同值会被 React 直接丢弃，不必自己判重
   const [dragging, setDragging] = React.useState(false);
 
@@ -186,11 +168,11 @@ export const ChatInputForm = ({
         onSubmit();
       }}
     >
-      {/* 顶灰条：参照 .composer-extra-region——贴在胶囊上缘外侧，不是胶囊里的一行 */}
+      {/* 顶灰条：贴在胶囊上缘外侧，不是胶囊里的一行 */}
       {top ? <div className={styles.composerExtra}>{top}</div> : null}
 
-      {/* 大胶囊容器：参照 .input-box 的 grid 四区（top / input / options / send）。
-          拖放挂在胶囊上（参照 MessageInputComponent 的 .input-box），不是编辑器上——
+      {/* 大胶囊容器：grid 四区（top / input / options / send）。
+          拖放挂在胶囊上，不是编辑器上——
           高亮覆盖整块，接受范围就必须是整块 */}
       <div
         className={styles.inputPanel}
@@ -200,7 +182,7 @@ export const ChatInputForm = ({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        {/* top 区：参照 .top-slot 里的 .input-top-stack——图片在上、附件卡片在下，
+        {/* top 区：图片在上、附件卡片在下，
             整块与编辑区留 8px；没有内容时不渲染，否则会白占 8px */}
         {image || pendingAttachments.length > 0 ? (
           <div className={styles.inputTop}>
@@ -235,7 +217,7 @@ export const ChatInputForm = ({
           </div>
         ) : null}
 
-        {/* 选项区（左下）：参照 .expand-options——[+] 与 .input-actions-left */}
+        {/* 选项区（左下）：[+] 与 .input-actions-left */}
         <div className={styles.inputOptions}>
           <ComposerOptions
             disabled={isStreaming}
@@ -264,7 +246,7 @@ export const ChatInputForm = ({
           </div>
         </div>
 
-        {/* 编辑区：参照 .user-input（grid-area: input + margin-bottom 0.5rem） */}
+        {/* 编辑区：grid-area: input + margin-bottom 0.5rem */}
         <div className={styles.inputEditor} onPaste={onInputPaste}>
           <MentionEditor
             ref={editorRef}
@@ -279,10 +261,10 @@ export const ChatInputForm = ({
           />
         </div>
 
-        {/* 发送区（右下）：参照 .send-button-container——[引导] [用量环] [模型] 与发送钮 */}
+        {/* 发送区（右下）：[引导] [用量环] [模型] 与发送钮 */}
         <div className={styles.inputSend}>
           <div className={styles.inputActionsRight}>
-            {/* 运行中把还没发出的输入作为引导插队；文案与悬浮说明同参照 */}
+            {/* 运行中把还没发出的输入作为引导插队 */}
             {canSteerNow ? (
               <button
                 type="button"
@@ -297,7 +279,7 @@ export const ChatInputForm = ({
                 引导
               </button>
             ) : null}
-            {/* 点击环打开右侧面板：参照里它切换的是「状态面板」，且只在有会话时出现
+            {/* 点击环打开右侧面板：只在有会话时出现
               （没有会话就没有状态可看），本仓对应的是这个面板 */}
             {hasActiveThread ? (
               <ContextUsageRing
@@ -313,11 +295,9 @@ export const ChatInputForm = ({
               onSelect={onSelectModel}
             />
           </div>
-          {/* 单颗 32px 圆形主色图标钮，运行中切暂停图标并提示「停止回答」
-            （参照 .send-button.ant-btn-icon-only）。
+          {/* 单颗 32px 圆形主色图标钮，运行中切暂停图标并提示「停止回答」。
             运行中必须保持可点：`canSend` 要求 `!isStreaming`，直接用它会让停止入口
-            永远禁用——而这是页面上唯一的 cancelRun 入口（参照的 isSendButtonDisabled
-            同样把 isProcessing 排除在外） */}
+            永远禁用——而这是页面上唯一的 cancelRun 入口 */}
           <button
             type="submit"
             className={styles.sendButton}

@@ -1,13 +1,4 @@
-/**
- * 输入胶囊左侧的「+」展开面板。
- *
- * 参照 MessageInputComponent 的 `.expand-options`（28px 图标钮，点击展开）与
- * AttachmentOptionsComponent（面板内容）：先列「添加附件 / 上传图片」，再按资源分组
- * 进入二级页选择知识库或技能，选中即把令牌插进输入框。
- *
- * 参照只放知识库与技能两组（`RESOURCE_GROUPS`）：MCP 与子智能体在参照里只出现在 `@`
- * 候选弹窗，不在这里，因此本仓也不重复提供。
- */
+/** 输入胶囊左侧的「+」展开面板。 */
 import * as React from 'react';
 import {
   ArrowLeft,
@@ -39,10 +30,7 @@ const RESOURCE_GROUPS = [
 type ResourceGroupKey = (typeof RESOURCE_GROUPS)[number]['key'];
 
 type ComposerOptionsProps = {
-  /**
-   * 流式中：只锁「上传图片」。参照的 `disabled` 是另一个条件（无智能体或审批接管中），
-   * 且会同时锁住附件与提及选择；本仓的附件走弹窗、提及走 `@` 候选，流式期间都不受影响。
-   */
+  /** 流式中：只锁「上传图片」。 */
   disabled?: boolean;
   mentionItems: MentionResourceItem[];
   imagePending: boolean;

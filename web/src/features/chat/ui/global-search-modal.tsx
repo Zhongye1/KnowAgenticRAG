@@ -370,7 +370,7 @@ export const GlobalSearchModal = ({
         </div>
       )}
     >
-      {/* 参照 .global-search-input-row：62px 高、18px 字 */}
+      {/* 62px 高、18px 字 */}
       <div className={styles.inputRow}>
         <input
           ref={inputRef}

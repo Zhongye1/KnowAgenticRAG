@@ -1,11 +1,4 @@
-/**
- * 会话标题的纯逻辑。
- *
- * 对齐参照 `AgentChatComponent.vue:3242`：线程的第一条消息触发一次标题生成，
- * 用非流式模型调用走 `fast_model`；生成失败回退到截断原文。
- * 网络调用在 `api/agent-api.ts`（契约生成物只允许 api 段引用），这里只有提示词、
- * 清洗与回退。
- */
+/** 会话标题的纯逻辑。 */
 
 /** 标题生成提示词；请求内容封在标签里并显式声明「只当素材」，防注入。 */
 export function buildConversationTitlePrompt(requestContent: string): string {

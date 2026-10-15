@@ -1,7 +1,7 @@
-/* 侧边栏会话列表。参照 ConversationNavSection.vue 的样式段逐值对齐。
+/* 侧边栏会话列表。
    例外是行的悬停/选中底色：本仓侧边栏用 shadcn 的 `--sidebar-*` 调色板（偏冷的浅底），
-   参照的 --gray-50 在这层底色上没有对比，因此底色仍走 sidebar token，
-   其余（尺寸、圆角、字号、遮罩、状态点位置）照参照。 */
+   --gray-50 在这层底色上没有对比，因此底色仍走 sidebar token，
+   其余尺寸、圆角、字号、遮罩与状态点位置不变。 */
 
 .section {
   display: flex;
@@ -19,7 +19,7 @@
   flex-direction: column;
 }
 
-/* 「最近」标题：点一下折叠列表（参照 .history-label） */
+/* 「最近」标题：点一下折叠列表 */
 .label {
   display: flex;
   width: 100%;
@@ -59,7 +59,7 @@
 }
 
 /* 行的容器：会话链接与操作区是兄弟节点，操作区绝对定位覆盖在右侧 */
-/* ul 的默认内边距会把行挤窄（标题因此提前截断），默认项目符号也不是参照的样子 */
+/* ul 的默认内边距会把行挤窄（标题因此提前截断），默认项目符号也不对 */
 .rows {
   margin: 0;
   padding: 0;
@@ -113,7 +113,7 @@
   font-weight: 600;
 }
 
-/* 悬停或已置顶时露出操作区（参照的 .actions-mask / .conversation-actions） */
+/* 悬停或已置顶时露出操作区 */
 .row:hover .actionsMask,
 .row:hover .actions,
 .row:has(.pinnedIndicator) .actionsMask,

@@ -144,11 +144,7 @@ export const hasPendingGraphChunks = (
   status?: GraphBuildStatus | null,
 ): boolean => (status?.pending_chunks ?? 0) > 0;
 
-/**
- * 索引按钮上的状态角标：构建中 > 有待索引 > 已全部索引，都没有则不显示。
- *
- * 与参照 `graphIndexDotStatus` 同口径（`KnowledgeGraphSection.vue:526-533`）。
- */
+/** 索引按钮上的状态角标：构建中 > 有待索引 > 已全部索引，都没有则不显示。 */
 export type GraphIndexDot = 'active' | 'pending' | 'complete' | '';
 
 export const graphIndexDot = (
@@ -160,11 +156,7 @@ export const graphIndexDot = (
   return '';
 };
 
-/**
- * 索引按钮的 `title` / `aria-label`：状态写进无障碍名，只读用户看不到角标时也能读出来。
- *
- * 判定次序与参照 `graphIndexButtonTitle` 一致（先待索引，再已全部索引，最后索引中）。
- */
+/** 索引按钮的 `title` / `aria-label`：状态写进无障碍名，只读用户看不到角标时也能读出来。 */
 export const graphIndexTitle = (status?: GraphBuildStatus | null): string => {
   if (hasPendingGraphChunks(status)) {
     return `索引管理，${status?.pending_chunks ?? 0} 待索引`;

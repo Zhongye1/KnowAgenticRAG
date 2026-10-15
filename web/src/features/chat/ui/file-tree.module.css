@@ -1,12 +1,9 @@
-/* 面板里的文件树样式。参照 AgentPanel.vue 的
-   `.file-tree-container` / `.tree-node-name` / `.node-actions-container` /
-   `.tree-action-btn` / `.empty`，以及 FileTreeComponent.vue 的节点行
-   （32px 行高、6px 圆角、缩进 14px/级）。
+/* 面板里的文件树样式。节点行（32px 行高、6px 圆角、缩进 14px/级）。
    颜色只用 agentic-tokens.css 的 --gray-* / --main-*。
    行结构与键盘交互由 antd `Tree` 承担，因此这里有一组 `.ant-tree-*` 覆盖：
    它们只在本组件的 `.tree` 之下生效，不污染全局（全局覆盖归 antd-overrides.css）。 */
 
-/* 参照 .empty——居中 14px gray-500 */
+/* 居中 14px gray-500 */
 .notice,
 .errorBox {
   flex: 1;
@@ -34,7 +31,7 @@
   cursor: pointer;
 }
 
-/* 参照 .file-tree-container——独立滚动 + 6px 灰滚动条 */
+/* 独立滚动 + 6px 灰滚动条 */
 .tree {
   flex: 1;
   min-height: 0;
@@ -61,13 +58,13 @@
   background: var(--gray-400);
 }
 
-/* 行：antd 自带内边距与选中底色换成参照 FileTreeComponent 的节点行 */
+/* 行：antd 自带内边距与选中底色换成节点行样式 */
 .tree :global(.ant-tree-treenode) {
   width: 100%;
   padding: 0;
 }
 
-/* 参照的展开箭头是自绘的，antd 的 switcher 不占位 */
+/* 展开箭头是自绘的，antd 的 switcher 不占位 */
 .tree :global(.ant-tree-switcher) {
   display: none;
 }
@@ -115,7 +112,7 @@
   text-align: left;
 }
 
-/* 展开箭头：参照隐藏 switcher 后自绘的 chevron，小号灰色 */
+/* 展开箭头：隐藏 switcher 后自绘的 chevron，小号灰色 */
 .nodeChevron {
   width: 12px;
   height: 12px;
@@ -132,7 +129,7 @@
   vertical-align: middle;
 }
 
-/* 目录图标：参照只渲染 18px 目录图标（懒加载 spinner 同尺寸） */
+/* 目录图标：只渲染 18px 目录图标（懒加载 spinner 同尺寸） */
 .nodeFolderIcon {
   width: 18px;
   height: 18px;
@@ -150,7 +147,7 @@
   }
 }
 
-/* 参照 .tree-node-name——14px gray-800；.name-end 同色 */
+/* 14px gray-800；名称末尾同色 */
 .nodeTitle {
   display: flex;
   align-items: center;
@@ -172,7 +169,7 @@
   color: var(--gray-800);
 }
 
-/* 参照 .node-actions-container——hover 显示、gap 4、左距 8px */
+/* hover 显示、gap 4、左距 8px */
 .nodeActions {
   display: none;
   flex-shrink: 0;
@@ -181,7 +178,7 @@
   padding-left: 8px;
 }
 
-/* 参照 .tree-action-btn——24px 方钮；下载 hover 主色、删除 hover 红 */
+/* 24px 方钮；下载 hover 主色、删除 hover 红 */
 .nodeActionBtn {
   display: flex;
   align-items: center;

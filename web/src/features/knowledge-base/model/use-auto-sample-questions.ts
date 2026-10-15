@@ -1,17 +1,4 @@
-/**
- * 文件数变化时的示例问题生命周期。
- *
- * 对齐参照 `DataBaseInfoView.vue` 的 watcher（`:830-869`）：首次观察到的文件数只是加载，
- * 不算新增；之后文件数变化时——大于 0、当前账号可管理、且知识库打开了
- * `auto_generate_questions`——延迟一会儿静默生成一次（等后台把文件记录建出来）。文件归零
- * 或不可管理时反过来清掉列表面。
- *
- * 挂在页面上而不是面板里：分区未激活时面板不会挂载，触发放在面板里就只有在用户点开过
- * 检索测试分区之后才会生效。参照那次「分区还没挂载就再等 2 秒」的重试因此在**本仓不需要**。
- *
- * 「清空」在参照里清的是组件内的本地数组；本仓示例问题住在查询缓存里，所以这里把缓存
- * 置成空数组——面板读同一份缓存，因此同样在下次取数前保持为空（与参照的「刷新会回来」一致）。
- */
+/** 文件数变化时的示例问题生命周期。 */
 import * as React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -21,14 +8,14 @@ import {
   useKnowledgeBase,
 } from './knowledge-queries';
 
-/** 生成前的等待：文件记录的建立是后台任务（参照的 3000ms）。 */
+/** 生成前的等待：文件记录的建立是后台任务。 */
 export const AUTO_GENERATE_DELAY_MS = 3000;
 
-/** 清空前的等待（参照的 1000ms）。 */
+/** 清空前的等待。 */
 export const CLEAR_QUESTIONS_DELAY_MS = 1000;
 
 export type AutoSampleQuestionsOptions = {
-  /** 当前账号可管理这个知识库（参照的 `canManageDatabase`）。 */
+  /** 当前账号可管理这个知识库。 */
   canManage: boolean;
 };
 
@@ -56,7 +43,7 @@ export const useAutoSampleQuestions = (
 
   React.useEffect(() => {
     // 详情还没到就先不动：此时 file_count 取到的是兜底的 0，把它记成「首次观察」会让
-    // 数据到达时的真实值看起来像一次新增（参照的 watcher 也是在 database 有值之后才跑）
+    // 数据到达时的真实值看起来像一次新增
     if (!database.data) return;
 
     if (previousFileCount.current === null) {

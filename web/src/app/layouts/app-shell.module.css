@@ -1,4 +1,4 @@
-/* 外壳的布局容器。参照实现 AppLayout.vue 的 `.app-layout` 与 `#app-router-view`：
+/* 外壳的布局容器。
    横向两栏，导航列自己撑满高度，内容区独立滚动。 */
 
 .layout {

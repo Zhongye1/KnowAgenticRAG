@@ -21,7 +21,7 @@ const RADIUS = 6;
 const STROKE_WIDTH = 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
 
-/** 档位色：参照里进度弧常态是主色，只有告警与危险才换色。 */
+/** 档位色：进度弧常态是主色，只有告警与危险才换色。 */
 const TONE_CLASSES = {
   danger: 'text-[var(--color-error-500)]',
   warning: 'text-[var(--color-warning-500)]',

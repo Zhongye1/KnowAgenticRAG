@@ -1,33 +1,12 @@
-/**
- * 首页顶栏：结构照搬参照实现的 `site-header.tsx`。
- *
- * 与参照的差异：
- * - `next/link` 换成 `react-router` 的 `Link`；
- * - wordmark 的品牌图与「A」标记换成系统信息接口的 `organization.logo` 与品牌名；
- * - 导航链接指向本仓入口（文档站、仓库，以及按登录态的「进入控制台 / 登录」）：
- *   参照的三条链接是它自己的 Playground、文档与 ausdata.ai，本仓没有对应页面。
- * - 移动端面板的 Escape 与断点关闭逻辑照搬。
- *
- * 来源：AI Website Cloner Template 0.6.1（MIT，JCodesMore）里的 AusVector 首页克隆。
- */
+/** 首页顶栏。文案、logo 地址与工具类都写在这里，不读接口。 */
 import * as React from 'react';
 import { Link } from 'react-router';
 
-import { paths } from '@/shared/config';
+import { BRAND_LOGO_URL, paths } from '@/shared/config';
 
 import { outbound } from '../lib/links';
 
-type SiteHeaderProps = {
-  brandName: string;
-  logo: string;
-  isLoggedIn: boolean;
-};
-
-export const SiteHeader = ({
-  brandName,
-  logo,
-  isLoggedIn,
-}: SiteHeaderProps) => {
+export const SiteHeader = ({ isLoggedIn }: { isLoggedIn: boolean }) => {
   const [isOpen, setIsOpen] = React.useState(false);
 
   React.useEffect(() => {
@@ -50,43 +29,28 @@ export const SiteHeader = ({
   }, [isOpen]);
 
   return (
-    <header className="site-shell nav-shell">
+    <header className="nav-shell sticky top-0 z-50 w-full p-0">
       <nav
-        className={`nav-wrap ${isOpen ? 'is-open' : ''}`}
-        aria-label="Primary navigation"
+        className={`nav-wrap home-shell flex min-h-16 items-center py-3 max-[721px]:flex-wrap max-[721px]:gap-0 max-[721px]:py-2.5 ${isOpen ? 'is-open' : ''}`}
+        aria-label="主导航"
       >
-        <Link className="wordmark" to={paths.home.getHref()}>
-          {logo ? (
-            <span className="wordmark-logo-wrap">
-              <img className="wordmark-logo" src={logo} alt="" />
-            </span>
-          ) : null}
-          <span className="wordmark-text-group">
-            <span className="wordmark-title">{brandName}</span>
-            <span className="wordmark-divider" aria-hidden="true">
-              /
-            </span>
-            <span className="wordmark-badge">
-              <span className="wordmark-status-pulse" aria-hidden="true">
-                <span className="pulse-core" />
-                <span className="pulse-ring" />
-              </span>
-              <span className="wordmark-badge-label wordmark-desktop-label">
-                OPEN DATA FOR AI
-              </span>
-              <span className="wordmark-badge-label wordmark-mobile-label">
-                AI DATA
-              </span>
-            </span>
+        <Link className="wordmark flex items-center gap-3" to={paths.home.getHref()}>
+          <img
+            className="block size-8 object-contain max-[721px]:size-[26px]"
+            src={BRAND_LOGO_URL}
+            alt=""
+          />
+          <span className="text-[17px] font-semibold whitespace-nowrap select-none">
+            KnowAgenticRAG
           </span>
         </Link>
 
         <button
-          className="nav-menu-button"
+          className="nav-menu-button hidden size-11 cursor-pointer flex-col items-center justify-center gap-1 rounded-[4px] border-none bg-transparent p-0 max-[721px]:ml-auto max-[721px]:flex max-[721px]:shrink-0"
           type="button"
           aria-expanded={isOpen}
           aria-controls="site-navigation-menu"
-          aria-label={isOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          aria-label={isOpen ? '关闭导航菜单' : '打开导航菜单'}
           onClick={() => setIsOpen((open) => !open)}
         >
           <span aria-hidden="true" />
@@ -94,16 +58,37 @@ export const SiteHeader = ({
           <span aria-hidden="true" />
         </button>
 
-        <div className="nav-actions" id="site-navigation-menu">
-          <div className="nav-links">
-            <a href={outbound.docs}>Documentation</a>
-            <a href={outbound.repo} target="_blank" rel="noreferrer">
+        <div
+          className="nav-actions ml-auto flex items-center gap-3.5"
+          id="site-navigation-menu"
+        >
+          <div className="nav-links flex gap-1 max-[721px]:flex-col max-[721px]:items-stretch max-[721px]:gap-0">
+            <a
+              className="relative whitespace-nowrap px-[13px] py-3 max-[721px]:px-0 max-[721px]:py-[14px]"
+              href={outbound.docs}
+            >
+              文档
+            </a>
+            <a
+              className="relative whitespace-nowrap px-[13px] py-3 max-[721px]:px-0 max-[721px]:py-[14px]"
+              href={outbound.repo}
+              target="_blank"
+              rel="noreferrer"
+            >
               GitHub ↗
             </a>
             {isLoggedIn ? (
-              <Link to={paths.app.chat.getHref()}>进入控制台</Link>
+              <Link
+                className="relative whitespace-nowrap px-[13px] py-3 max-[721px]:px-0 max-[721px]:py-[14px]"
+                to={paths.app.chat.getHref()}
+              >
+                进入控制台
+              </Link>
             ) : (
-              <Link to={paths.auth.login.getHref(paths.home.getHref())}>
+              <Link
+                className="relative whitespace-nowrap px-[13px] py-3 max-[721px]:px-0 max-[721px]:py-[14px]"
+                to={paths.auth.login.getHref(paths.home.getHref())}
+              >
                 登录
               </Link>
             )}

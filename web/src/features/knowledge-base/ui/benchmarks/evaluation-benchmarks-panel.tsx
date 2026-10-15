@@ -275,7 +275,7 @@ export const EvaluationBenchmarksPanel = ({
                         trigger={['click']}
                         menu={{
                           items: [
-                            // 「继续生成」只在生成失败时出现（参照是 `v-if`，不是常驻置灰）
+                            // 「继续生成」只在生成失败时出现
                             ...(dataset.build_metadata.status === 'failed'
                               ? [
                                   {

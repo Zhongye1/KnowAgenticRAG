@@ -1,14 +1,4 @@
-/**
- * 智能体配置的读取与默认值。
- *
- * 后端把配置拆成两份下发：`configurable_items` 是每个配置项的形状（类型、可选项、默认值），
- * `config_json.context` 是当前存下来的值。存下来的只有被改过的那几项，直接读会让没动过的
- * 配置项变成 `undefined`，所以取值前先补默认值。
- *
- * 对齐参照的 `stores/agent.js` 的 `applyConfigDefaults`。参照还会合并 OAP 的
- * `x_oap_ui_config` 覆盖，本仓的 `get_configurable_items` 只下发 `type` / `name` / `options`
- * / `default` / `description` / `kind`，没有这个字段，因此不搬。
- */
+/** 智能体配置的读取与默认值。 */
 
 /**
  * 配置值为 `null` 时表示「默认全部」的种类（后端语义：`null` 即启用当前用户可见的全部）。

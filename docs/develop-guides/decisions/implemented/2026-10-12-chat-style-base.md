@@ -8,7 +8,7 @@ Owner：web/src/pages/chat/ui/chat-page.module.css
 
 ## 问题
 
-阶段二按 [migration-standards.md](../../../alembic/migration-standards.md) 要求组件样式走 CSS Modules、颜色走 `yuxi-tokens.css` 的 `--gray-*` / `--main-*`。对话页此前 0 处 CSS Modules，外层骨架（页面容器、消息主列、正文限宽）是 Tailwind 工具类拼的，与参照 `AgentChatComponent.vue` 的 `.chat-container` / `.chat-content-container` / `.chat-main` / `.chat-box` 不同构：参照的正文限宽 800px 居中、滚动在消息主列上，本仓是外层卡片 + 整页滚动。
+阶段二按 `alembic/migration-standards.md` 要求组件样式走 CSS Modules、颜色走 `yuxi-tokens.css` 的 `--gray-*` / `--main-*`。对话页此前 0 处 CSS Modules，外层骨架（页面容器、消息主列、正文限宽）是 Tailwind 工具类拼的，与参照 `AgentChatComponent.vue` 的 `.chat-container` / `.chat-content-container` / `.chat-main` / `.chat-box` 不同构：参照的正文限宽 800px 居中、滚动在消息主列上，本仓是外层卡片 + 整页滚动。
 
 ## 决策
 

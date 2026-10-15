@@ -1,11 +1,4 @@
-/**
- * 附件上传弹窗。
- *
- * 对齐参照的 `AttachmentTmpUploadModal`：多选文件后逐个上传到临时区，可对支持解析的条目选解析
- * 方式并解析，最后把可确认的条目绑到会话上。关闭即清空列表（与参照一致）。
- *
- * 解析方式用原生 `<select>`：它是语义正确的可访问控件，而外观本来就要在阶段二换成 antd。
- */
+/** 附件上传弹窗。 */
 import * as React from 'react';
 import { FileText, X } from 'lucide-react';
 import styles from './input-selector.module.css';
@@ -85,7 +78,7 @@ export const AttachmentUploadDialog = ({
       }
     >
       <div className="flex flex-col gap-2">
-        {/* 参照 a-upload-dragger 的拖拽区形态：整块可点、主文案 + 描述 */}
+        {/* 拖拽区形态：整块可点、主文案 + 描述 */}
         <div
           className={styles.dropzone}
           role="button"
@@ -150,7 +143,7 @@ export const AttachmentUploadDialog = ({
                     </button>
                   </div>
 
-                  {/* 参照 .attachment-status-row：大小与状态在一行 */}
+                  {/* 大小与状态在一行 */}
                   <div className={styles.attachmentStatusRow}>
                     <span className={styles.attachmentMeta}>
                       {formatFileSize(item.fileSize)}

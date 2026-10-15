@@ -214,7 +214,7 @@ export const useFileActions = ({
     [indexFiles, notifyDone, notifyError, parseFiles],
   );
 
-  /** 删除：目录连内容一起删，两种确认文案由参照给出。 */
+  /** 删除：目录连内容一起删。 */
   const deleteOne = React.useCallback(
     async (file: KnowledgeFileItem) => {
       const confirmed = await confirm(

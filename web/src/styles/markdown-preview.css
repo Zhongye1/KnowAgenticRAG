@@ -1,5 +1,4 @@
-/* Markdown 正文排版。参照 KnowAgenticRAG web/src/components/common/MarkdownPreview.vue 的
-   `.yk-markdown-preview` 段逐值对齐：调用点把该类名传给 Markdown 容器。
+/* Markdown 正文排版。`.yk-markdown-preview` 类名由调用点传给 Markdown 容器。
    非全局文件（按类名前缀选择器书写）；颜色只用 agentic-tokens.css 的变量。 */
 
 .yk-markdown-preview {
@@ -137,8 +136,7 @@
   line-height: 1.5;
 }
 
-/* 代码块复制按钮：本仓 Markdown 组件自插的按钮沿用 shared/ui 旧类名，
-   这里按参照 .markdown-code-copy-btn 的视觉对齐 */
+/* 代码块复制按钮：本仓 Markdown 组件自插的按钮沿用 shared/ui 旧类名 */
 .yk-markdown-preview .markdown-code-copy-btn,
 .yk-markdown-preview code ~ .absolute.right-2 {
   position: absolute;

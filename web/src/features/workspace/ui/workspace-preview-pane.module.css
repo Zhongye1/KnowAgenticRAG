@@ -1,6 +1,5 @@
 /* 个人空间预览面板的样式。
-   参照实现 AgentFilePreview.vue 的 `.preview-header` / `.modal-action-btn` / 编辑条，以及
-   WorkspacePreviewPane.vue 的状态与空态。颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
+   状态与空态。颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .pane {
   display: flex;
@@ -182,7 +181,7 @@
   line-height: 1.6;
 }
 
-/* 全屏预览：参照的 overlay（z-index 1200、灰底、居中卡片） */
+/* 全屏预览：overlay（z-index 1200、灰底、居中卡片） */
 .overlay {
   position: fixed;
   margin: 0;

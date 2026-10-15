@@ -178,11 +178,11 @@ const countByType = (
   );
 };
 
-/** 实体节点：Chunk 是实现细节，不算实体（参照的 `isEntityNode`）。 */
+/** 实体节点：Chunk 是实现细节，不算实体。 */
 export const isEntityNode = (node: GraphNode): boolean =>
   describeNodeType(node) !== 'Chunk';
 
-/** 实体关系：MENTIONS 连的是 Chunk，同样不进图例（参照的 `isEntityRelationEdge`）。 */
+/** 实体关系：MENTIONS 连的是 Chunk，同样不进图例。 */
 export const isEntityRelationEdge = (edge: GraphEdge): boolean =>
   describeEdgeType(edge) !== 'MENTIONS';
 

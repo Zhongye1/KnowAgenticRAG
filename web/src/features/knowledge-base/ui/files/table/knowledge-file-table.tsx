@@ -334,8 +334,8 @@ export const KnowledgeFileTable = ({
 
   return (
     <div className="flex flex-col gap-3 py-2">
-      {/* 面板首行在卡片外（参照把它放在详情页的 `.file-management-info` 里） */}
-      {/* 参照 `.file-management-info`：左边上传下拉、右边统计按钮排。
+      {/* 面板首行在卡片外 */}
+      {/* 左边上传下拉、右边统计按钮排。
           统计来自详情查询；虚拟文件夹转换的进度弹窗也由本组件持有 */}
       <FilePanelHeader
         testId="file-panel-header"
@@ -364,7 +364,7 @@ export const KnowledgeFileTable = ({
         }}
       />
 
-      {/* 参照 `.file-table-container`：FileTable 的根就是这个卡片——12px 圆角 + gray-150 边框、
+      {/* FileTable 的根就是这个卡片——12px 圆角 + gray-150 边框、
           裁剪溢出，并自称具名容器，工具栏按容器宽度（不是视口）决定收不收进溢出菜单 */}
       <div className="@container/file-table flex flex-col gap-2 overflow-hidden rounded-[12px] border border-[var(--gray-150)] bg-[var(--gray-0)] p-2">
         {!readOnly && selectedIds.length > 0 ? (
@@ -415,7 +415,7 @@ export const KnowledgeFileTable = ({
 
                 aria-label="回到根目录"
                 onClick={() => gotoCrumb(-1)}
-                // 根目录也是落点：拖到它上面等于移到根（参照的 handleBreadcrumbDrop）
+                // 根目录也是落点：拖到它上面等于移到根
                 {...(canMutate && dragged
                   ? {
                       onDragOver: (event: React.DragEvent) => {
@@ -561,7 +561,7 @@ export const KnowledgeFileTable = ({
                     {headerGroup.headers.map((header) => (
                       <TableHead
                         key={header.id}
-                        // 参照 `.ant-table-thead > tr > th`：12px/600/gray-500、
+                        // 12px/600/gray-500、
                         // 8px 10px 内边距、gray-100 下边框、sticky
                         className="sticky top-0 z-[2] border-b border-[var(--gray-100)] bg-[var(--gray-0)] px-2.5 py-2 text-xs leading-[18px] font-semibold text-[var(--gray-500)]"
                         aria-sort={
@@ -612,7 +612,7 @@ export const KnowledgeFileTable = ({
                     <TableRow
                       key={row.id}
                       data-testid="file-row"
-                      // 行不带下边框：分隔线落在单元格上（参照在 td 上）
+                      // 行不带下边框：分隔线落在单元格上
                       className="border-b-0 hover:bg-[var(--main-20)] data-[state=selected]:bg-[var(--main-20)]"
                       {...(draggable
                         ? {
@@ -672,7 +672,7 @@ export const KnowledgeFileTable = ({
                       {row.getAllCells().map((cell) => (
                         <TableCell
                           key={cell.id}
-                          // 参照 `.ant-table-tbody > tr > td`：13px/gray-700、
+                          // 13px/gray-700、
                           // 7px 10px 内边距、gray-50 分隔线
                           className="border-b border-[var(--gray-50)] bg-[var(--gray-0)] px-2.5 py-[7px] text-[13px] leading-5 text-[var(--gray-700)]"
                         >
@@ -684,7 +684,7 @@ export const KnowledgeFileTable = ({
                 })}
               </TableBody>
             </TableElement>
-            {/* 参照空库时表头照常渲染、空态落在表体位置：列有哪些、能做什么仍然看得见 */}
+            {/* 空库时表头照常渲染、空态落在表体位置：列有哪些、能做什么仍然看得见 */}
             {!showingStaleRows && files.isSuccess && items.length === 0 ? (
               <Empty description="暂无文件" />
             ) : null}

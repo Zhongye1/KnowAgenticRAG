@@ -70,12 +70,7 @@ export async function listApiKeys(): Promise<ApiKeyItem[]> {
   return result;
 }
 
-/**
- * 创建一个 API Key。
- *
- * `requestId` 是幂等键（参照用 sessionStorage 里的 UUID 重放防重复创建）；`expiresAt`
- * 为 ISO 串（界面不给 = 永不过期）。
- */
+/** 创建一个 API Key。 */
 export async function createApiKey(input: {
   requestId: string;
   name: string;

@@ -1,5 +1,4 @@
 /* 个人空间侧栏的样式。
-   参照实现 WorkspaceSidebar.vue 的 scoped 样式逐条搬过来（嵌套展开成扁平规则）。
    颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .sidebar {

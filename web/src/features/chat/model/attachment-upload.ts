@@ -1,12 +1,4 @@
-/**
- * 附件上传的条目列表与操作。
- *
- * 上传与解析的错误分别落在该条目的 `error` / `parseError` 上，一条失败不影响其它条目。列表只在
- * 弹窗打开期间存在、关闭即清空（与参照一致），因此不进全局 store。
- *
- * 确认动作收在这里，但「还没有会话时先建一条」由页面负责：建线程是页面的编排，hook 只认
- * 已经拿到的 threadId。
- */
+/** 附件上传的条目列表与操作。 */
 import * as React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 

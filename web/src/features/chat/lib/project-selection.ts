@@ -1,12 +1,4 @@
-/**
- * 项目选择的纯逻辑。
- *
- * 对齐参照的 `utils/projectSelection.js` 与 `ProjectSelectionSection.vue`：默认值是
- * `AUTO_PROJECT_ID`，表示「不使用项目，发送时创建独立目录」，建线程时归一成空串交给后端。
- *
- * 过滤用 `toLowerCase()` 而不是参照的 `toLocaleLowerCase()`：后者不带 locale 时随运行环境变化，
- * 同一个项目名在不同机器上可能命中不同结果。与 `lib/message-time.ts` 固定时区同一个理由。
- */
+/** 项目选择的纯逻辑。 */
 import type { ProjectItem } from '../api/projects-api';
 
 /** 没有显式选项目时的取值；下发时归一成空串。 */
@@ -72,11 +64,7 @@ export function projectHint(value: unknown, projects: ProjectItem[]): string {
     : '系统管理目录';
 }
 
-/**
- * 把历史对话的工作目录归一成挂载用的绝对路径。
- *
- * 参照去掉了前导与尾随斜杠再加回一个，这里保持一致；归一后为空表示这条候选没有可用目录。
- */
+/** 把历史对话的工作目录归一成挂载用的绝对路径。 */
 export function normalizeWorkdirPath(path: unknown): string {
   const trimmed = asText(path).replace(/^\/+|\/+$/g, '');
 

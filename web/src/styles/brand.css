@@ -11,7 +11,7 @@
   --brand-google-yellow: #fbbc05;
   --brand-google-red: #ea4335;
 
-  /* antd 主题种子色：与 KnowAgenticRAG `src/stores/theme.js` 的 colorPrimary 同值，
+  /* antd 主题种子色，
      亮暗两套主题共用同一个种子（antd 的色板算法只吃具体色值，不认 var()）。
      事实放在这里而不是 .tsx：check-design-tokens 对样式目录外的硬编码颜色零豁免，
      组件侧只读这个变量名。 */

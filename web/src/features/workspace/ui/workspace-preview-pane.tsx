@@ -1,13 +1,4 @@
-/**
- * 个人空间预览面板。
- *
- * 对齐参照 `WorkspacePreviewPane.vue` + `AgentFilePreview.vue` 的这一屏：头部是图标 + 工作区
- * 路径 + 动作（编辑 / 全屏 / 关闭），正文按预览类型分发（markdown 渲染、代码与文本等宽、
- * 图片与 PDF 用对象 URL、HTML 走沙箱 iframe），可编辑文件带「未保存」编辑条。
- *
- * 与参照的显式差异（见决策记录）：不做 HTML 的缩放控件与「预览 / 源码」切换，也不做
- * LibreOffice 转换后的 office 内嵌预览——这两类在参照里各自带一整套状态，本页给下载提示。
- */
+/** 个人空间预览面板。 */
 import * as React from 'react';
 import { FilePen, FileSearch, LoaderCircle, Maximize2, X } from 'lucide-react';
 
@@ -47,7 +38,7 @@ export const WorkspacePreviewPane = ({
   const [fullscreen, setFullscreen] = React.useState(false);
   const file = preview.file;
 
-  // 全屏时锁滚动，与参照的 overlay 行为一致
+  // 全屏时锁滚动
   React.useEffect(() => {
     if (!fullscreen) return;
     const previous = document.body.style.overflow;
@@ -216,7 +207,7 @@ export const WorkspacePreviewPane = ({
   );
 };
 
-/** 空态：没有打开任何文件时占位（参照 `.preview-empty`）。 */
+/** 空态：没有打开任何文件时占位。 */
 export const WorkspacePreviewEmpty = () => (
   <aside className={styles.pane}>
     <div className={styles.empty}>

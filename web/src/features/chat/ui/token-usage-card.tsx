@@ -27,13 +27,7 @@ type TokenUsageCardProps = {
   usage?: TokenUsage | null;
 };
 
-/**
- * 占比档位的轨道着色。
- *
- * 用原生 `<progress>` 而不是参照的 span + `role="progressbar"`：语义元素是本仓 a11y 规则
- * 与 lint 都要求的方向。原生元素的填充只能靠伪元素着色，所以这里把 webkit 与 firefox 两套
- * 伪元素一起写上；常态是主色，只有警告与危险换色（与参照 .token-usage-context-fill 同值）。
- */
+/** 占比档位的轨道着色。 */
 const TONE_BARS: Record<'danger' | 'warning' | 'normal', string> = {
   danger:
     '[&::-webkit-progress-value]:bg-[var(--color-error-500)] [&::-moz-progress-bar]:bg-[var(--color-error-500)]',
@@ -47,12 +41,7 @@ const TONE_BARS: Record<'danger' | 'warning' | 'normal', string> = {
 const PROGRESS_TRACK =
   'block h-[5px] w-full appearance-none overflow-hidden rounded-full bg-[var(--gray-100)] [&::-webkit-progress-bar]:rounded-full [&::-webkit-progress-bar]:bg-[var(--gray-100)] [&::-webkit-progress-value]:rounded-full [&::-webkit-progress-value]:transition-[width,background-color] [&::-webkit-progress-value]:duration-200 [&::-moz-progress-bar]:rounded-full';
 
-/**
- * 构成分段与图例色点的着色（参照 .is-system / .is-tools / … 一组 token）。
- *
- * 分段与图例共用同一张表：同一种 token 在两处必须是同一个颜色。`cut`（被压缩的部分）
- * 在参照里是主色叠斜纹，斜纹用 arbitrary property 写在同一类里。
- */
+/** 构成分段与图例色点的着色。 */
 const SEGMENT_TONES: Record<string, string> = {
   system: 'bg-[var(--chart-palette-2)]',
   tools: 'bg-[var(--chart-palette-3)]',
@@ -92,7 +81,7 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
 
   return (
     <section aria-label="上下文使用情况" data-testid="token-usage">
-      {/* 整张卡就是开关（参照 .token-usage-context-card）：大号占比在左，标签与已用/上限在右 */}
+      {/* 整张卡就是开关：大号占比在左，标签与已用/上限在右 */}
       <button
         type="button"
         className="flex w-full flex-col gap-2 rounded-[10px] border border-[var(--gray-150)] bg-[var(--gray-0)] px-3 py-2.5 text-left transition-colors duration-200 hover:border-[var(--gray-200)]"
@@ -133,7 +122,7 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
           data-testid="token-usage-progress"
         />
 
-        {/* 两项指标两列并排，中间一条分隔线（参照 .token-usage-card-metrics） */}
+        {/* 两项指标两列并排，中间一条分隔线 */}
         {threadTotal !== null || cacheHit !== null ? (
           <span className="grid grid-cols-2 gap-3 [&>*+*]:border-l [&>*+*]:border-[var(--gray-150)] [&>*+*]:pl-3">
             {threadTotal === null ? null : (
@@ -224,7 +213,7 @@ export const TokenUsageCard = ({ usage }: TokenUsageCardProps) => {
             </div>
           ) : null}
 
-          {/* 最近上下文构成：分段着色堆叠条 + 两列图例（参照 .token-usage-composition） */}
+          {/* 最近上下文构成：分段着色堆叠条 + 两列图例 */}
           {segments.length > 0 ? (
             <div className="flex flex-col gap-2 rounded-[9px] border border-[var(--gray-150)] bg-[var(--gray-0)] p-[11px]">
               <span className="text-[11px] font-semibold text-[var(--gray-600)]">

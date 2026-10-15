@@ -283,7 +283,7 @@ describe('评估基准分区', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: /操作/ }));
 
-    // 生成中不能删：置灰（参照同口径），而不是点了再报错
+    // 生成中不能删：置灰，而不是点了再报错
     expect(screen.getByRole('menuitem', { name: /删除/ })).toHaveAttribute(
       'aria-disabled',
       'true',

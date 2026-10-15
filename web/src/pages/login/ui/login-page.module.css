@@ -1,10 +1,9 @@
 /* ============================================================================
- * 登录页样式：承接 KnowAgenticRAG `LoginView.vue` 的 `<style scoped>`（668–1066）
+ * 登录页样式
  * ----------------------------------------------------------------------------
- * - Less 嵌套已展平；`:deep(.ant-*)` 改为 `:global(.ant-*)`，与 KnowAgenticRAG 的 scoped
- *   语义一致，因此页面私有的 antd 覆盖不必进 styles/antd-overrides.css。
- * - 颜色只用 KnowAgenticRAG token（--main-* / --gray-* / --color-error-*），不写硬编码值。
- * - KnowAgenticRAG 里 `.top-logo`、`.back-home-btn` 是模板未引用的死样式，未搬运。
+ * - Less 嵌套已展平；`:deep(.ant-*)` 改为 `:global(.ant-*)`，因此页面私有的 antd 覆盖
+ *   不必进 styles/antd-overrides.css。
+ * - 颜色只用设计 token（--main-* / --gray-* / --color-error-*），不写硬编码值。
  * ========================================================================== */
 
 .loginView {
@@ -161,7 +160,7 @@
   line-height: 1.4;
 }
 
-/* ---------- 表单内的 antd 覆盖（KnowAgenticRAG 的 :deep 段） ---------- */
+/* ---------- 表单内的 antd 覆盖 ---------- */
 
 .loginForm :global(.ant-input-affix-wrapper) {
   padding: 10px 12px;

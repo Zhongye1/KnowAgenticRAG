@@ -1,5 +1,4 @@
-/* 对话页的外层骨架。参照实现 AgentChatComponent.vue 的
-   `.chat-container` / `.chat` / `.chat-content-container` / `.chat-main` / `.chat-box`：
+/* 对话页的外层骨架。
    .chat 持有 --file-panel-width 变量与页头；页头是 .chat-main 的兄弟、固定不滚；
    滚动只发生在 .chat-main；面板 absolute 全高覆盖在 .chat 右缘，主列用 margin-right 让位。
    布局与间距走本文件，颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
@@ -55,7 +54,7 @@
   display: none;
 }
 
-/* 面板打开时主列让位；拖拽中与最大化时不留位（参照 has-file-panel / has-maximized-panel） */
+/* 面板打开时主列让位；拖拽中与最大化时不留位 */
 .contentRowHasPanel .chatMain {
   margin-right: var(--file-panel-width);
 }
@@ -66,13 +65,13 @@
 }
 
 /* 拖拽中冻结过渡：页头让位与主列收窄都要跟手，否则按钮会落后于分栏虚线。
-   参照 .is-resizing-file-panel 把这个类挂在 .chat 上——页头是它的子级才吃得到这条规则 */
+   这个类挂在 .chat 上——页头是它的子级才吃得到这条规则 */
 .chatResizing .chatHeader,
 .chatResizing .chatMain {
   transition: none;
 }
 
-/* 正文限宽：与参照 .chat-box 同值（800px + 上下 1rem 左右 2rem，无 gap） */
+/* 正文限宽（800px + 上下 1rem 左右 2rem，无 gap） */
 .chatBox {
   width: 100%;
   max-width: 800px;
@@ -83,7 +82,7 @@
   flex-direction: column;
 }
 
-/* ---------- 输入停靠区：参照 .bottom ---------- */
+/* ---------- 输入停靠区 ---------- */
 
 /* sticky 贴底 + 渐变白底；空态时整体绝对定位居中（.start-screen） */
 .inputDock {
@@ -116,14 +115,13 @@
   margin: 0 auto;
 }
 
-/* ---------- 输入面板：参照 .agent-composer + .input-box ---------- */
+/* ---------- 输入面板 ---------- */
 
 .composer {
   width: 100%;
 }
 
-/* 顶灰条：参照 composer-top-attachment mixin（AgentInputArea.vue 的 .composer-extra-region）——
-   灰底圆角顶，贴在胶囊**外面**的上缘：左右内缩 12px，底边被胶囊压住 2px */
+/* 顶灰条：灰底圆角顶，贴在胶囊**外面**的上缘：左右内缩 12px，底边被胶囊压住 2px */
 .composerExtra {
   position: relative;
   z-index: 0;
@@ -145,7 +143,7 @@
   display: none;
 }
 
-/* 有顶灰条时胶囊盖住它的下缘（参照 .agent-composer.has-extra :deep(.input-box) 的 z-index: 1） */
+/* 有顶灰条时胶囊盖住它的下缘 */
 .composerExtra + .inputPanel {
   z-index: 1;
 }
@@ -172,7 +170,7 @@
     'options send';
 }
 
-/* 拖入文件：参照 .input-box.dragging-files——整箱主色描边 + 主色浅底 + 虚线叠层 */
+/* 拖入文件：整箱主色描边 + 主色浅底 + 虚线叠层 */
 .inputPanel[data-dragging] {
   border-color: var(--main-color);
   background: var(--main-10);
@@ -195,7 +193,7 @@
   pointer-events: none;
 }
 
-/* top 区：参照 .top-slot 里的 .input-top-stack——图片在上、附件卡片在下，与编辑区留 8px。
+/* top 区：图片在上、附件卡片在下，与编辑区留 8px。
    没有内容时调用方不渲染这个节点，因此不会白占高度 */
 .inputTop {
   grid-area: top;
@@ -206,7 +204,7 @@
   margin-bottom: 8px;
 }
 
-/* 附件卡片列表：参照 .attachment-preview-list */
+/* 附件卡片列表 */
 .attachmentList {
   display: flex;
   flex-wrap: wrap;
@@ -214,8 +212,8 @@
   gap: 8px;
 }
 
-/* 参照 .attachment-file-card——220px 圆角卡；本仓附件不可单独移除（后端没有删除端点），
-   因此不留参照给移除钮的右侧内边距 */
+/* 220px 圆角卡；本仓附件不可单独移除（后端没有删除端点），
+   因此不留移除钮的右侧内边距 */
 .attachmentCard {
   display: flex;
   align-items: center;
@@ -229,7 +227,7 @@
   box-shadow: 0 1px 4px var(--shadow-0);
 }
 
-/* 参照 .attachment-file-icon——40px 圆角图标块 */
+/* 40px 圆角图标块 */
 .attachmentCardIcon {
   width: 40px;
   height: 40px;
@@ -263,7 +261,7 @@
   line-height: 1.3;
 }
 
-/* 选项区（左下）：参照 .expand-options——「+」与它右侧的动作行之间不留间距 */
+/* 选项区（左下）：「+」与它右侧的动作行之间不留间距 */
 .inputOptions {
   grid-area: options;
   justify-self: start;
@@ -272,7 +270,7 @@
   gap: 0;
 }
 
-/* 参照 .input-actions-left：审批模式与智能体之间 2px，窄屏换行 */
+/* 审批模式与智能体之间 2px，窄屏换行 */
 .inputActionsLeft {
   display: flex;
   align-items: center;
@@ -280,7 +278,7 @@
   flex-wrap: wrap;
 }
 
-/* 编辑区：参照 .user-input——显式占 input 区并留 0.5rem 下边距 */
+/* 编辑区：显式占 input 区并留 0.5rem 下边距 */
 .inputEditor {
   grid-area: input;
   display: flex;
@@ -288,7 +286,7 @@
   margin-bottom: 0.5rem;
 }
 
-/* 发送区（右下）：参照 .send-button-container */
+/* 发送区（右下） */
 .inputSend {
   grid-area: send;
   justify-self: end;
@@ -297,7 +295,7 @@
   justify-content: center;
 }
 
-/* 参照 .input-actions-right：与发送钮之间留 8px */
+/* 与发送钮之间留 8px */
 .inputActionsRight {
   display: flex;
   align-items: center;
@@ -305,7 +303,7 @@
   margin-right: 8px;
 }
 
-/* 引导钮：参照 .direct-steer-button——28px 无边框文字钮 */
+/* 引导钮：28px 无边框文字钮 */
 .steerButton {
   display: inline-flex;
   align-items: center;
@@ -344,7 +342,7 @@
   height: 14px;
 }
 
-/* 发送钮：参照 .send-button.ant-btn-icon-only——32px 圆形主色图标钮 */
+/* 发送钮：32px 圆形主色图标钮 */
 .sendButton {
   display: flex;
   align-items: center;
@@ -378,7 +376,7 @@
   height: 14px;
 }
 
-/* 窄屏：参照 .input-box 的 520px 断点——收圆角与内边距 */
+/* 窄屏：520px 断点——收圆角与内边距 */
 @media (max-width: 520px) {
   .inputPanel {
     border-radius: 15px;
@@ -392,7 +390,7 @@
   }
 }
 
-/* ---------- 空态问候语：参照 .chat-greeting-input ---------- */
+/* ---------- 空态问候语 ---------- */
 
 .greeting {
   padding: 10px 0;
@@ -407,7 +405,7 @@
   margin: 0;
 }
 
-/* ---------- 底部提示：参照 .bottom-actions / .note（dock 内、有会话才显示） ---------- */
+/* ---------- 底部提示（dock 内、有会话才显示） ---------- */
 
 .bottomActions {
   display: flex;
@@ -423,7 +421,7 @@
   user-select: none;
 }
 
-/* ---------- 审批叠层：参照 .message-input-stage.has-tool-approval ---------- */
+/* ---------- 审批叠层 ---------- */
 
 /* 输入表面与审批卡同格叠放；审批时输入表面隐去，卡片视觉上「变成」输入框 */
 .inputStage {
@@ -441,13 +439,13 @@
   min-width: 0;
 }
 
-/* 审批时输入表面 opacity:0 + 事件穿透（参照 .message-input-surface 的写法），
+/* 审批时输入表面 opacity:0 + 事件穿透，
    卡片 z-index 2 盖在上面 */
 .inputStage[data-has-approval] > .approvalCard {
   z-index: 2;
 }
 
-/* ---------- 顶栏：参照 .chat-header ---------- */
+/* ---------- 顶栏 ---------- */
 
 .chatHeader {
   user-select: none;
@@ -494,7 +492,7 @@
   margin-left: 8px;
 }
 
-/* 页头导航按钮：参照 .agent-nav-btn（4607 起） */
+/* 页头导航按钮 */
 .navBtn {
   display: flex;
   gap: 5px;
@@ -522,7 +520,7 @@
   background-color: var(--gray-100);
 }
 
-/* 调试按钮独立样式：参照 .agent-debug-mode-btn（5452 起） */
+/* 调试按钮独立样式 */
 .navBtnDebug {
   color: var(--gray-800);
   background-color: var(--gray-100);
@@ -535,9 +533,9 @@
   border-color: var(--gray-400);
 }
 
-/* ---------- 右侧面板：参照 .side-panel / .side-panel--file ---------- */
+/* ---------- 右侧面板 ---------- */
 
-/* 面板外壳：参照 .side-panel--file，是 .chat 的直接子级（与页头、内容行并列），
+/* 面板外壳：是 .chat 的直接子级（与页头、内容行并列），
    absolute 覆盖右缘整高，所以页头那一行也在它下面；背景与分栏虚线由内层
    AgentPanel 给（.shell 的背景 + .resizeHandle 的左边框虚线） */
 .sidePanel {
@@ -566,12 +564,12 @@
   transform: translateX(0);
 }
 
-/* 拖拽中冻结过渡（参照 .no-transition） */
+/* 拖拽中冻结过渡 */
 .sidePanelNoTransition {
   transition: none !important;
 }
 
-/* ---------- 状态面板：参照 .side-panel--state ---------- */
+/* ---------- 状态面板 ---------- */
 
 /* 与文件面板并列的第二个表面：内容行里的 340px 窄列，或右上角的浮卡 */
 .statePanel {
@@ -641,7 +639,7 @@
   background: transparent;
   color: var(--gray-500);
   cursor: pointer;
-  /* 参照 .state-refresh-btn：默认藏着，悬停或焦点进入面板才出现 */
+  /* 默认藏着，悬停或焦点进入面板才出现 */
   opacity: 0;
   pointer-events: none;
   transition:
@@ -693,7 +691,7 @@
   flex-direction: column;
 }
 
-/* ---------- 响应式：参照 1024 / 768 两档 ---------- */
+/* ---------- 响应式：1024 / 768 两档 ---------- */
 
 @media (max-width: 1024px) {
   .contentRowHasPanel .chatMain {

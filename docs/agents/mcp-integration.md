@@ -80,10 +80,11 @@ docker logs worker-dev --tail 100
 确认日志中没有同步异常，并在管理页添加该 MCP，检查能够发现预期工具。验证过程不得执行文件写入、
 Shell 命令或其他无关副作用。
 
-::: danger 安全边界
+:::danger 安全边界
 stdio MCP 与在 API / worker 容器内执行程序等价。提交前必须审查可执行程序、依赖来源、固定版本、参数、
 网络访问和工具副作用；不得从 HTTP 请求、数据库用户配置或环境中的非受信任内容拼接 `command`、`args`
 或 `env`，也不得通过把用户记录改成 `created_by=system` 绕过运行时限制。
+
 :::
 
 ## 服务器管理

@@ -1,10 +1,4 @@
-/**
- * 工具调用组：一行摘要 + 展开后的时间线列表。
- *
- * 摘要文案、名称去重与状态统计集中在纯逻辑里；活跃期间自动展开，活跃结束后收起，
- * 避免正文开始输出时还占着屏幕。结构与动画对齐参照 ToolCallsGroupComponent.vue：
- * 展开面板用 grid-rows 0fr→1fr 过渡，展开体带 border-top 灰线。
- */
+/** 工具调用组：一行摘要 + 展开后的时间线列表。 */
 import * as React from 'react';
 import { Atom, ChevronDown } from 'lucide-react';
 
@@ -96,7 +90,7 @@ export const ToolCallsGroup = ({
         />
       </button>
 
-      {/* 参照 .tool-calls-collapse-panel：常驻节点走 grid-rows 动画，不用条件渲染 */}
+      {/* 常驻节点走 grid-rows 动画，不用条件渲染 */}
       <div
         className={`${styles.groupPanel} ${expanded ? styles.groupPanelExpanded : ''}`}
       >

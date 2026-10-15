@@ -1,12 +1,4 @@
-/**
- * 个人空间页面的控制器。
- *
- * 页面只从这里取状态与动作：目录位置、选中与多选、预览与编辑缓冲、上传/新建/删除/保存的编排，
- * 以及陈旧响应守卫。通知走注入回调，控制器不依赖具体 UI 切片（与 `features/agents` 的面板同口径）。
- *
- * 与参照的差异：参照把「删除确认」写在这里，本仓把确认放在渲染层（文案按文件/目录/批量三种），
- * 控制器只负责确认之后的动作。
- */
+/** 个人空间页面的控制器。 */
 import * as React from 'react';
 
 import {
@@ -56,7 +48,7 @@ const IDLE_PREVIEW: WorkspacePreview = {
 };
 
 export type WorkspaceBrowserInput = {
-  /** 成功文案；上传/删除/新建/保存各自给参照同款句子。 */
+  /** 成功文案。 */
   notifySuccess: (message: string) => void;
   /** 失败与拦截文案（超量上传、只读、空文件夹名）。 */
   notifyError: (message: string) => void;
@@ -279,7 +271,7 @@ export function useWorkspaceBrowser(
   const savePreview = React.useCallback(async () => {
     const current = previewRef.current;
     const entry = current.entry;
-    // 无改动不发请求：参照也没有这个请求
+    // 无改动不发请求
     if (!entry || current.status !== 'ready' || !current.dirty || saving)
       return;
 

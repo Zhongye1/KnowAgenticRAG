@@ -1,6 +1,5 @@
 /* 基本设置面板的样式。
-   参照实现 BasicSettingsSection.vue + SkillSettingsSection.vue：分区标题、默认项配置的两列
-   面板、内容审查的开关卡片、服务链接网格、Skill 来源白名单。
+   分区标题、默认项配置的两列面板、内容审查的开关卡片、服务链接网格、Skill 来源白名单。
    颜色只用 agentic-tokens.css 的 --gray-* / --main-* / --color-*-。 */
 
 .panel {

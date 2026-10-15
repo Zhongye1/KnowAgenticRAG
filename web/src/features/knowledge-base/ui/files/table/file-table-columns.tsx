@@ -227,7 +227,7 @@ export const fileColumns = ({
             {view.label}
           </Tag>
         );
-        // 参照的状态 pill 可点：点了直接走这一行的主操作（解析或入库），不必先开行内菜单。
+        // 状态 pill 可点：点了直接走这一行的主操作（解析或入库），不必先开行内菜单。
         // 只读、有操作在飞行中、或表里还是上一个目录的行不给点。
         if (!primary || readOnly || locked || stale) return tag;
         // 可点的是按钮而不是 `Tag` 自己：`Tag` 渲染成 span，直接挂 onClick 就丢了键盘可达与 role
@@ -247,7 +247,7 @@ export const fileColumns = ({
         );
       },
     }),
-    // 参照的列序是 文件名 / 内容量 / 创建人 / 状态 / 时间 / 操作：时间在操作之前
+    // 列序是 文件名 / 内容量 / 创建人 / 状态 / 时间 / 操作：时间在操作之前
     fileColumn.accessor('created_at', {
       header: '时间',
       sortFn: (left, right) =>

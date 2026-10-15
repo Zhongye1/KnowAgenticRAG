@@ -1,13 +1,4 @@
-/**
- * 输入区右侧的模型选择器。
- *
- * 结构对齐参照的 `ModelSelectorComponent`：触发按钮显示当前模型的短名（`displayName: 'mini'`），
- * 面板按供应商分组列出可选模型，另有一条「默认」用来清空选择、回到会话绑定或智能体默认模型。
- *
- * **没有做参照里的三件事**：候选搜索（本仓的对话模型列表目前只有个位数，搜索的收益要在列表变长
- * 之后才出现）、当前模型的连通性检查、模型缓存刷新。后两者是供应商管理面的能力，本仓已有
- * `useTestModelStatus` 与 `refreshModelCache`，对话页不重复提供。
- */
+/** 输入区右侧的模型选择器。 */
 import * as React from 'react';
 import styles from './input-selector.module.css';
 
@@ -93,8 +84,8 @@ export const ModelSelector = ({
         aria-label="选择模型"
         disabled={loading}
       >
-        {/* 参照的 nano 触发钮只有模型名，没有箭头；这里保持同样的视觉，
-           但用 button 而不是参照的 div——点击目标需要可聚焦、可读屏 */}
+        {/* 触发钮只有模型名，没有箭头；这里保持同样的视觉，
+           但用 button 而不是 div——点击目标需要可聚焦、可读屏 */}
         <span className={styles.triggerLabel}>{label}</span>
       </button>
     </Dropdown>

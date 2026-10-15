@@ -116,7 +116,7 @@ export async function createLinkedProject(input: {
   );
 
   const project = normalizeProjects([response])[0];
-  // 与参照同义：创建结果必须带回 id，否则界面拿不到可下发的项目
+  // 创建结果必须带回 id，否则界面拿不到可下发的项目
   if (!project) throw new Error('项目创建结果缺少 id');
 
   return project;

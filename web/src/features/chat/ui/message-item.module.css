@@ -1,9 +1,7 @@
-/* 单条消息的样式。参照实现 AgentMessageComponent.vue 的
-   `.message-box`（human / ai 两态）、`.reasoning-box`、`.message-text-system`、
-   `.error-hint`、`.retry-hint`、`.message-image`、`.human-message-attachments`。
+/* 单条消息的样式。
    颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
-/* ---------- 用户消息：参照 .message-box.human ---------- */
+/* ---------- 用户消息 ---------- */
 
 .humanRow {
   display: flex;
@@ -12,7 +10,7 @@
   gap: 0.5rem;
 }
 
-/* 参照 .message-image：12px 圆角、暗色描边、图片限高 200px */
+/* 12px 圆角、暗色描边、图片限高 200px */
 .humanImage {
   max-height: 200px;
   max-width: 100%;
@@ -42,7 +40,7 @@
   margin: 0;
 }
 
-/* 参照 .message-copy-btn.human——悬浮在气泡左侧、hover 才显现 */
+/* 悬浮在气泡左侧、hover 才显现 */
 .copyBtn {
   position: absolute;
   left: -28px;
@@ -78,7 +76,7 @@
   height: 14px;
 }
 
-/* 参照 .human-message-attachments——横向 220px 卡片带图标容器 */
+/* 横向 220px 卡片带图标容器 */
 .attachmentList {
   display: flex;
   flex-wrap: wrap;
@@ -137,7 +135,7 @@
   line-height: 1rem;
 }
 
-/* ---------- 系统消息：参照 .message-text-system ---------- */
+/* ---------- 系统消息 ---------- */
 
 .systemText {
   max-width: 100%;
@@ -152,7 +150,7 @@
   border-radius: 4px;
 }
 
-/* ---------- 助手消息：参照 .message-box.assistant + .reasoning-box ---------- */
+/* ---------- 助手消息 ---------- */
 
 .assistantRow {
   display: flex;
@@ -211,7 +209,7 @@
   }
 }
 
-/* 参照 .reasoning-panel / .reasoning-content——无左边框，纯 13px 缩进排版 */
+/* 无左边框，纯 13px 缩进排版 */
 .reasoningContent {
   margin: 4px 0 0;
   padding: 4px 0;
@@ -221,13 +219,13 @@
   white-space: pre-wrap;
 }
 
-/* 参照 .message-md——正文自带 8px 上下外距 */
+/* 正文自带 8px 上下外距 */
 .assistantBody {
   margin: 8px 0;
   max-width: 100%;
 }
 
-/* 参照 .error-hint——14px、浅红底圆角条 */
+/* 14px、浅红底圆角条 */
 .errorHint {
   margin: 10px 0;
   padding: 8px 16px;
@@ -240,7 +238,6 @@
   color: var(--color-error-500);
 }
 
-/* 参照 .retry-hint / .retry-link */
 .stoppedHint {
   margin: 8px 0 0;
   padding: 8px 16px;

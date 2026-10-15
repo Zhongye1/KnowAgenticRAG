@@ -64,7 +64,7 @@ export const getFileExtension = (name: string): string => {
   return normalized.slice(dotIndex);
 };
 
-/** 图片要开 OCR 才能抽文本（后端同款集合）。 */
+/** 图片要开 OCR 才能抽文本。 */
 export const needsOcr = (name: string): boolean =>
   OCR_IMAGE_EXTENSIONS.has(getFileExtension(name));
 

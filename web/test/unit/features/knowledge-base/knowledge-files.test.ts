@@ -46,7 +46,7 @@ describe('文件状态展示', () => {
     expect(getFileStatusView('indexed').color).toBe('success');
     expect(getFileStatusView('parsing').color).toBe('processing');
     expect(getFileStatusView('error_parsing').color).toBe('error');
-    // 待入库在参照里是主色（青系），antd 预设里取 cyan，与「进行中」的 processing 区分开
+    // 待入库取 cyan，与「进行中」的 processing 区分开
     expect(getFileStatusView('parsed').color).toBe('cyan');
   });
 

@@ -1,9 +1,4 @@
-/**
- * 新建文件夹弹窗。
- *
- * 对齐参照 `WorkspaceView.vue` 的同名弹窗：标题「新建文件夹」、确定「创建」、取消「取消」，
- * 输入框占位「请输入文件夹名称」，回车与确定是同一个动作；创建中禁用输入并给按钮加载态。
- */
+/** 新建文件夹弹窗。 */
 import * as React from 'react';
 
 import { Input, Modal } from 'antd';

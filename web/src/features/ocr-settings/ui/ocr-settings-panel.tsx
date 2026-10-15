@@ -1,11 +1,4 @@
-/**
- * OCR 配置分区。
- *
- * 对齐参照 `OCRSettingsSection.vue`：上半是「默认 OCR 方法」（引擎选择器，带健康结论），
- * 下半是「OCR 服务配置」——四组服务凭据各一张卡，卡片平时只读、悬停才出现编辑钮，同一时刻
- * 只允许一张卡在编辑态；敏感字段按 `sensitive_state` 显示「数据库脱敏预览 / 已通过环境变量
- * 配置 / 未配置」，留空保存会清掉数据库里的值、回落到环境变量。
- */
+/** OCR 配置分区。 */
 import * as React from 'react';
 
 import { Button, Input, Spin } from 'antd';
@@ -238,7 +231,7 @@ export const OcrSettingsPanel = ({
 const fieldId = (optionKey: string, fieldKey: string): string =>
   `ocr-${optionKey}-${fieldKey}`;
 
-/** 只读态字段的展示值；与参照的 `getFieldDisplay` 同口径。 */
+/** 只读态字段的展示值。 */
 const fieldDisplay = (
   option: ConfigOption,
   field: ConfigOptionField,

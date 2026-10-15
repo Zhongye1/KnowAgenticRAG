@@ -1,0 +1,28 @@
+/* ============================================================================
+ * 文档站首页样式入口
+ * ----------------------------------------------------------------------------
+ * 三条来源在这里合流，顺序即层序：
+ *
+ * 1. Tailwind v4 的 theme 与 utilities（跳过 preflight）：首页 JSX 的版面工具类
+ *    由它生成。preflight 不能引——文档站的重置由 Rspress 自己的 `rp-base` 层拥有，
+ *    再叠一份会把侧边栏、代码块等既有页面的排版一起改掉。
+ * 2. `@fontsource-variable/jetbrains-mono`：home-tokens.css 的 `--font-plex-mono`
+ *    指向这个字体，SPA 侧由 web/src/index.css 引入。
+ * 3. 首页皮肤与 token：直接引用 web/src/styles 下的同一份文件，不复制。文档站
+ *    的 theme/custom.css 已经用同一种方式引用 tokens.css。
+ *
+ * `@source` 只列本站首页自己的源码：不限定时 Tailwind 会按项目根扫描 docs/ 全站，
+ * 把文档代码块里的类名也生成一遍。
+ * ========================================================================== */
+
+@layer theme, base, components, utilities;
+
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities) source(none);
+@import '@fontsource-variable/jetbrains-mono';
+/* 相对路径写字符串形式（不是 `url(...)`）：`url()` 会被当成外部引用跳过，规则整段丢掉。 */
+@import '../../../../web/src/styles/home-tokens.css';
+@import '../../../../web/src/styles/home.css';
+
+@source '../ui';
+@source '../lib';

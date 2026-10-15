@@ -9,7 +9,7 @@ import type { Department } from '@/entities/department';
  * 部门管理面板：渲染真实组件，只把实体层与确认框换成桩。
  *
  * 覆盖表格渲染、默认部门禁删、创建（含管理员）提交载荷、以及编辑分支真的能提交出去
- * （参照在编辑路径上照样校验不渲染的管理员字段，导致编辑永远失败）。
+ * （编辑路径上会照样校验不渲染的管理员字段，导致编辑永远失败）。
  */
 const mocks = vi.hoisted(() => ({
   departments: [] as Array<Record<string, unknown>>,

@@ -102,8 +102,8 @@ export const ToolCallRow = ({
         aria-expanded={expanded}
         onClick={() => setExpanded((value) => !value)}
       >
-        {/* 参照 .tool-loader：单一状态图标（运行中旋转、失败红叉、完成用工具图标），
-            参照不叠第二个图标 */}
+        {/* 单一状态图标（运行中旋转、失败红叉、完成用工具图标），
+            不叠第二个图标 */}
         {runState === 'error' ? (
           <XCircle
             className={`${styles.stateIcon} ${styles.stateIconError}`}
@@ -162,7 +162,7 @@ export const ToolCallRow = ({
 
         {header ? <span className="sr-only">{statusText}</span> : null}
 
-        {/* 展开箭头：参照 .tool-expand-icon——静态灰图标，不继承旋转 */}
+        {/* 展开箭头：静态灰图标，不继承旋转 */}
         {expanded ? (
           <ChevronsDownUp className={styles.expandIcon} aria-hidden />
         ) : (

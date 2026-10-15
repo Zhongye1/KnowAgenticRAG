@@ -1,10 +1,4 @@
-/**
- * 网络搜索结果的解析。
- *
- * 事实源是工具调用的结果内容：参照按 `{query, results, response_time}` 的形状解析，
- * 解析不出 JSON 时把原文当 `rawText` 兜底展示。本模块只做解析与归一，渲染在
- * `ui/web-search-results.tsx`。
- */
+/** 网络搜索结果的解析。 */
 import type { ChatToolCall } from '../api/agent-api';
 
 export type WebSearchResult = {

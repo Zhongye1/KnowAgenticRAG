@@ -1,13 +1,4 @@
-/**
- * 项目选择器（空态输入面板 top 区）。
- *
- * 参照 `ProjectSelectionSection.vue`：28px 透明触发钮 + 向上弹出的下拉面板（项目列表 /
- * 历史对话两个视图），新建项目走 Modal（名称 + 目录选择器）。
- *
- * 数据仍由页面用 react-query 拉好注入（`projects` / `history` / `onCreateProject`），
- * 组件只做交互：参照把加载放在组件里，是因为它没有数据层；本仓有，重复一份只会让缓存失效
- * 变成两处。
- */
+/** 项目选择器（空态输入面板 top 区）。 */
 import * as React from 'react';
 import {
   ArrowLeft,
@@ -39,18 +30,14 @@ import {
   projectLabel,
 } from '../lib/project-selection';
 
-/**
- * 建项目用的幂等键；与参照同形。
- *
- * 它在进入创建弹窗时生成一次，失败重试复用同一个：后端按它去重，超时重试不会建出两个项目。
- */
+/** 建项目用的幂等键。 */
 const createRequestId = () =>
   typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
     ? crypto.randomUUID()
     : `req-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 import type { HistoryCandidate, ProjectItem } from '../api/projects-api';
 
-/** 打开面板后把焦点放进搜索框的延时；参照同值，等弹层挂载。 */
+/** 打开面板后把焦点放进搜索框的延时，等弹层挂载。 */
 const SEARCH_FOCUS_DELAY_MS = 120;
 
 type PanelView = 'projects' | 'history';

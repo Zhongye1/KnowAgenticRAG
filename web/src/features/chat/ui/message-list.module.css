@@ -1,5 +1,4 @@
-/* 对话消息列表的布局骨架。参照实现 AgentChatComponent.vue 的
-   `.conv-box`：一轮对话是一条纵向 flex 列，轮与轮之间留 1rem。
+/* 对话消息列表的布局骨架。一轮对话是一条纵向 flex 列，轮与轮之间留 1rem。
    颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .list {
@@ -13,14 +12,14 @@
   font-size: 14px;
 }
 
-/* 一轮对话：参照 .conv-box */
+/* 一轮对话 */
 .conversation {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-/* 折叠的过程摘要行：参照 ConversationProcessGroupComponent 的摘要形态 */
+/* 折叠的过程摘要行 */
 .processToggle {
   display: flex;
   width: fit-content;

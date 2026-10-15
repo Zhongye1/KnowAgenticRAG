@@ -1,11 +1,4 @@
-/**
- * 智能体管理面板。
- *
- * 工具栏（搜索 + 新增智能体 + 刷新）+「智能体 / 子智能体」两组卡片。数据、写入与失效都走
- * `entities/agent`；统计芯片在页头（与参照一致），面板不再自己渲染一行统计。
- *
- * 「去对话」由页面接线（面板不依赖对话切片），授权边界在后端（`user_can_manage_agent`）。
- */
+/** 智能体管理面板。 */
 import * as React from 'react';
 import { Plus, RefreshCw, Search } from 'lucide-react';
 

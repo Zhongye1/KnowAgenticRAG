@@ -127,7 +127,7 @@ export const ChatPage = () => {
   const imageSlot = useImageUploadSlot({
     notifyError: (message) => notify({ type: 'error', title: '对话', message }),
   });
-  // 空态标语挂在挂载期选一次（参照同款行为）；写在渲染体内会随每次重渲换文案
+  // 空态标语挂在挂载期选一次；写在渲染体内会随每次重渲换文案
   const [greeting] = React.useState(
     () => GREETINGS[Math.floor(Math.random() * GREETINGS.length)],
   );
@@ -149,7 +149,7 @@ export const ChatPage = () => {
   const renameThread = useThreadList((state) => state.rename);
   const markThreadViewed = useThreadList((state) => state.markViewed);
   const { options: agentOptions, isLoading: agentsLoading } = useAgentOptions();
-  // 底部提示与参照 .bottom-actions 同款：展示当前智能体名
+  // 底部提示：展示当前智能体名
   const currentAgentName = agentOptions.find(
     (option) => option.value === agentSlug,
   )?.label;
@@ -200,7 +200,7 @@ export const ChatPage = () => {
     }),
   });
   const panelPreview = usePanelPreview({ threadId });
-  // 树的文件搜索：防抖 250ms，与参照同值
+  // 树的文件搜索：防抖 250ms
   const [fileSearchOpen, setFileSearchOpen] = React.useState(false);
   const [fileSearchQuery, setFileSearchQuery] = React.useState('');
   const debouncedFileSearchQuery = useDebouncedValue(fileSearchQuery, 250);
@@ -332,7 +332,7 @@ export const ChatPage = () => {
     [fastModel, renameThread],
   );
 
-  // 滚动控制（参照 ScrollController 直译）：流式输出与切线程后的跟滚都在这里
+  // 滚动控制：流式输出与切线程后的跟滚都在这里
   const chatMainRef = React.useRef<HTMLDivElement>(null);
   const scrollControllerRef = React.useRef<ScrollController | null>(null);
   if (!scrollControllerRef.current) {
@@ -475,7 +475,7 @@ export const ChatPage = () => {
   };
   const isWaitingForUserAction = isThreadWaitingForUserAction(runtime);
 
-  // 运行中把还没发出的输入作为引导插队；判定与参照的 canSubmitSteer 同项
+  // 运行中把还没发出的输入作为引导插队
   const canSteerNow = canSubmitDirectSteer({
     isStreaming,
     activeRunSteerable: runtime?.activeRunSteerable ?? false,
@@ -553,7 +553,7 @@ export const ChatPage = () => {
     [notify, panelPreview, artifactActions, threadId],
   );
 
-  // 会话标题：参照 .conversation-title（「新的对话」不显示）
+  // 会话标题：「新的对话」不显示
   const currentThreadTitle = useThreadList(
     (state) => state.threads.find((item) => item.id === routeThreadId)?.title,
   );
@@ -564,13 +564,7 @@ export const ChatPage = () => {
     panel.syncSubagentRuns(runtime?.agentState);
   }, [panel.syncSubagentRuns, runtime?.agentState]);
 
-  /**
-   * 打开线程文件的预览分区；状态面板的产物/文件列表用它。
-   *
-   * 必须同时把文件面板打开并收起状态面板（参照 openPanelPreview → showFilePanel 与
-   * openSubagentThread 的 `isFilePanelOpen = true; statePanelOpen = false`）：
-   * 分区只是加进列表，面板不打开的话用户点了没有任何可见变化。
-   */
+  /** 打开线程文件的预览分区；状态面板的产物/文件列表用它。 */
   const openThreadPreview = (path: string, name: string) => {
     panel.openSection({
       key: `file:thread:${path}`,
@@ -619,12 +613,7 @@ export const ChatPage = () => {
     }
   };
 
-  /**
-   * 开关状态面板。
-   *
-   * 打开时补拉一次状态：参照在「有会话但还没有状态」时刷新，否则新开的空面板要等
-   * 下一次运行时回调才有内容。
-   */
+  /** 开关状态面板。 */
   const toggleStatePanel = () => {
     const next = !panel.stateOpen;
     panel.setStateOpen(next);
@@ -652,7 +641,7 @@ export const ChatPage = () => {
                 title: '文件',
               });
             }
-            // 参照里打开文件面板会收起状态面板：两块面板不同时占横向空间
+            // 两块面板不同时占横向空间
             panel.setStateOpen(false);
             panel.setOpen((current) => !current);
           },

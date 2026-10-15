@@ -1,16 +1,7 @@
-/**
- * 提及候选的过滤与分组。
- *
- * 事实源是 `MessageInputComponent` 里活的实现：本地过滤是**多字段**匹配（标签、值、
- * 描述、资源 id、令牌文本、类型），防抖 250ms；本地文件只在有查询词时才参与，避免
- * 一打出 `@` 就把整个文件列表铺满。
- *
- * 参照里另有一个 `composables/useMention.js`（162 行），只按标签与值两个字段匹配，
- * 且全仓没有任何消费者——那是死代码，本仓不搬。
- */
+/** 提及候选的过滤与分组。 */
 import type { MentionResourceItem } from './mention-resources';
 
-/** 远程文件搜索的防抖时长；与参照同值。 */
+/** 远程文件搜索的防抖时长。 */
 export const MENTION_SEARCH_DEBOUNCE_MS = 250;
 
 export type MentionGroups = {
@@ -29,12 +20,7 @@ const EMPTY_GROUPS = (): MentionGroups => ({
   subagents: [],
 });
 
-/**
- * 按查询词过滤候选项；空查询返回原列表。
- *
- * 匹配字段与参照一致：任意一个字段包含查询词即命中（大小写不敏感）。这样用户既能按
- * 显示名找，也能按 id、路径或类型找。
- */
+/** 按查询词过滤候选项；空查询返回原列表。 */
 export function filterMentionItems(
   items: MentionResourceItem[],
   query: string,
@@ -129,7 +115,7 @@ export function moveMentionSelection(
   return Math.max(0, Math.min(currentIndex + delta, total - 1));
 }
 
-/** 分组标题；与参照同文案（MCP / Skills / Subagents 保持英文）。 */
+/** 分组标题。 */
 export const MENTION_GROUP_TITLES: Array<{
   key: keyof MentionGroups;
   title: string;

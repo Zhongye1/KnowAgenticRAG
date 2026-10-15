@@ -1,11 +1,4 @@
-/**
- * 沙盒环境变量编辑面板。
- *
- * 对齐参照 `AgentEnvSettingsCard.vue` + `McpEnvEditor.vue` 的这一屏：KV 行编辑（键 + 值 +
- * 删除）、新增行、脏状态驱动保存钮文案，顶部提示「保存后只对新建沙盒生效」。校验与后端
- * `validate_agent_env` 同常量（键名模式、键值长度、最多 200 条），已保存的键锁定键名
- * （防误改导致旧变量残留），值可改；值默认掩码显示，点眼睛切换。
- */
+/** 沙盒环境变量编辑面板。 */
 import * as React from 'react';
 import { Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 
@@ -44,7 +37,7 @@ export const AgentEnvPanel = ({
   const [rows, setRows] = React.useState<EnvRow[]>([]);
   const [revealed, setRevealed] = React.useState<Set<string>>(new Set());
 
-  // 服务端数据到达时合成行：已保存的键锁定键名（改键名等于删旧建新，参照的 locked-keys 口径）
+  // 服务端数据到达时合成行：已保存的键锁定键名（改键名等于删旧建新）
   React.useEffect(() => {
     if (!env) return;
     setRows(
@@ -218,7 +211,7 @@ export const AgentEnvPanel = ({
                   }
                   onClick={() => toggleReveal(revealKey)}
                 />
-                {/* 参照的每行都有删除（删行=从保存 payload 里去掉这个键）；锁定只冻结键名与值显隐 */}
+                {/* 每行都有删除（删行=从保存 payload 里去掉这个键）；锁定只冻结键名与值显隐 */}
                 <Tooltip
                   title={
                     row.locked ? '删除已保存变量（保存后生效）' : '删除变量'

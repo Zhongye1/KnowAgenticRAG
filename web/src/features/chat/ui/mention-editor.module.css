@@ -1,8 +1,6 @@
-/* 提及输入框与候选弹窗的样式。参照实现 MessageInputComponent.vue 的
-   `.user-input.mention-editor` 与 `.mention-popup` 段逐值对齐。
+/* 提及输入框与候选弹窗的样式。
    颜色只用 agentic-tokens.css 的 --gray-* / --main-*。
-   拖放不在这里：参照把 drag/drop 与 `.dragging-files` 都放在整个 `.input-box` 上，
-   由持有胶囊的 chat-input-form 负责。 */
+   拖放不在这里：由持有胶囊的 chat-input-form 负责。 */
 
 .wrapper {
   position: relative;
@@ -47,7 +45,7 @@
   cursor: not-allowed;
 }
 
-/* ---------- 提及芯片：参照 .mention-ref-token ---------- */
+/* ---------- 提及芯片 ---------- */
 
 .mentionToken {
   display: inline-flex;
@@ -84,7 +82,7 @@
   font-weight: 500;
 }
 
-/* ---------- 候选弹窗：参照 .mention-popup ---------- */
+/* ---------- 候选弹窗 ---------- */
 
 .popupAnchor {
   position: absolute;
@@ -152,7 +150,7 @@
   transition: all 0.15s ease;
 }
 
-/* 悬停与键盘选中是两档：hover 用主色浅底，active 用灰底（参照 .mention-item） */
+/* 悬停与键盘选中是两档：hover 用主色浅底，active 用灰底 */
 .item:hover {
   background-color: var(--main-10);
 }
@@ -213,7 +211,7 @@
   line-height: 1.35;
 }
 
-/* 文件路径列：参照 .file-parent-dir——11px gray-400 */
+/* 文件路径列：11px gray-400 */
 .itemPath {
   min-width: 0;
   flex: 1 1 auto;
@@ -231,7 +229,7 @@
   color: var(--main-400);
 }
 
-/* 关键词命中高亮：参照 .query-match（金橘色加粗，变量在 agentic-tokens.css） */
+/* 关键词命中高亮：金橘色加粗，变量在 agentic-tokens.css */
 .queryMatch {
   color: var(--query-match-color);
   font-weight: 700;

@@ -1,13 +1,8 @@
-/**
- * 任务清单（`write_todos`）的解析。
- *
- * 结果可能是数组，也可能是 `{todos: [...]}`；状态按参照的五档映射，未登记的状态归到
- * `unknown`。名称截断到 20 个字符，完整内容留给 `title`。
- */
+/** 任务清单（`write_todos`）的解析。 */
 import type { ChatToolCall } from '../api/agent-api';
 import { parseToolCallArgs } from './tool-call';
 
-/** 名称截断长度；与参照同值。 */
+/** 名称截断长度。 */
 export const TODO_NAME_MAX_LENGTH = 20;
 
 export type TodoStatus =

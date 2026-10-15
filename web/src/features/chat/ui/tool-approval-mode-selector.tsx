@@ -77,7 +77,7 @@ export const ToolApprovalModeSelector = ({
           value === 'always_trust' ? styles.triggerWarning : ''
         }`}
       >
-        {/* 图标与参照同构：宽屏只留文字与箭头，窄屏（≤640px）收成纯图标钮 */}
+        {/* 宽屏只留文字与箭头，窄屏（≤640px）收成纯图标钮 */}
         <CurrentIcon className={styles.triggerCompactIcon} aria-hidden />
         <span className={styles.triggerLabel}>{current.label}</span>
         <ChevronDown className={styles.triggerChevron} aria-hidden />

@@ -1,10 +1,4 @@
-/**
- * 账户设置弹窗的控制器。
- *
- * 行内编辑状态机对齐参照 `AccountSettingsComponent.vue`：一次只有一个字段在编辑态，Enter
- * 保存、Esc/失焦取消、保存中失焦不取消、未变更静默取消；头像上传与 Memory 开关各自有独立的
- * 在飞状态；「刷新」同时失效身份与用户配置两份缓存。通知走注入回调，控制器不依赖具体 UI 切片。
- */
+/** 账户设置弹窗的控制器。 */
 import * as React from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -110,7 +104,7 @@ export function useAccountSettings(
     [savingField, user.data?.username, user.data?.phone_number],
   );
 
-  /** 失焦取消；保存中的字段不能被失焦关掉（参照同口径）。 */
+  /** 失焦取消；保存中的字段不能被失焦关掉。 */
   const cancelEditing = React.useCallback(() => {
     if (savingField) return;
     setEditingField(null);
@@ -203,7 +197,7 @@ export function useAccountSettings(
     async (enabled: boolean) => {
       if (updateConfig.isPending) return;
       try {
-        // 开关先翻再发请求（参照的乐观更新）；失败不回滚，重开弹窗时按服务端状态重读
+        // 开关先翻再发请求；失败不回滚，重开弹窗时按服务端状态重读
         await updateConfig.mutateAsync({ enableMemory: enabled });
         notifySuccess('用户配置已保存');
       } catch (error) {

@@ -1,23 +1,4 @@
-/**
- * 提及候选的资源过滤。
- *
- * 对齐参照的 `composables/useAgentMentionConfig.js`：候选取自**当前智能体配置里可用的资源**。
- * 配置项（`configurable_items`）给出每种资源的可选项，智能体配置（`config_json.context`）给出
- * 当前选中值：
- *
- * - 选中值是 `null` 且该种类属于「默认全部」时，该种类的全部可选项参与；
- * - `subagents` 的空数组与 `null` 同义，其余种类的空数组表示一个都不选；
- * - 选中值是非空数组时，只有数组里的值参与；
- * - 其余情况该配置项不贡献候选。
- *
- * 同一个种类可能来自多个配置项（后端的 `skills` 与 `preload_skills` 都是 `kind: 'skills'`），
- * 因此先按种类聚合、再统一取值：值相同的候选项后出现的覆盖先出现的。
- *
- * 文件候选不在这里：它走提及搜索端点，见 `lib/mention-resources.ts` 的 `buildMentionFileItems`。
- *
- * 选中值先过 `applyConfigDefaults`：存下来的配置只有被改过的那几项，不补默认值会让没动过的
- * 配置项读成 `undefined`，四类候选全部落空。
- */
+/** 提及候选的资源过滤。 */
 import {
   applyConfigDefaults,
   asRecord,
@@ -54,7 +35,7 @@ const firstText = (
   return '';
 };
 
-/** 可选项的标识；字段顺序与参照的 `getAgentConfigOptionValue` 同值。 */
+/** 可选项的标识。 */
 const optionValue = (option: unknown): string => {
   if (typeof option === 'string') return option;
   if (typeof option !== 'object' || option === null) return '';
@@ -70,7 +51,7 @@ const optionValue = (option: unknown): string => {
   ]);
 };
 
-/** 可选项的显示名；字段顺序与参照的 `getAgentConfigOptionLabel` 同值。 */
+/** 可选项的显示名。 */
 const optionLabel = (option: unknown, fallback: string): string => {
   if (typeof option !== 'object' || option === null) return fallback;
 
@@ -161,8 +142,7 @@ export function buildMentionConfig({
     if (!kind) continue;
 
     const value = config[key];
-    // `subagents` 的空数组与 `null` 同义，见 `EMPTY_MEANS_ALL_RESOURCE_KINDS`：这处按后端语义
-    // 读，参照的 `useAgentMentionConfig` 把空数组当成「一个都不选」。
+    // `subagents` 的空数组与 `null` 同义，见 `EMPTY_MEANS_ALL_RESOURCE_KINDS`：这处按后端语义读
     const isEmptyAll =
       Array.isArray(value) &&
       value.length === 0 &&

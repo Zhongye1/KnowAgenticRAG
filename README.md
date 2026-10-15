@@ -1,94 +1,181 @@
-# KnowledgeRAG
+# KnowAgenticRAG
 
-可私有部署的多租户知识智能体平台：把 RAG 检索、知识图谱、LangGraph 多智能体编排、MCP / Skills、沙盒工具与权限管理放进同一个工作台。
+**可私有部署的多租户知识智能体平台。** 知识库与 RAG、知识图谱、LangGraph 多智能体、MCP / Skills、沙盒工具与权限管理跑在同一个工作区里。文档、会话与执行轨迹留在自己的基础设施上，模型接哪家、谁能用哪些能力由管理员划定。
 
-本文件只讲**怎么开发和怎么部署**。系统边界、目录职责与主链路见 [ARCHITECTURE.md](ARCHITECTURE.md)；功能说明与完整文档见 [docs/](docs/index.md)。
+[项目主页](https://zhongye1.github.io/KnowAgenticRAG/) · [快速开始](https://zhongye1.github.io/KnowAgenticRAG/intro/quick-start) · [文档](https://zhongye1.github.io/KnowAgenticRAG/intro/project-overview) · [版本变更记录](https://zhongye1.github.io/KnowAgenticRAG/develop-guides/changelog)
 
-## 技术栈与仓库结构
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](#许可证)
+[![GitHub stars](https://img.shields.io/github/stars/Zhongye1/KnowAgenticRAG)](https://github.com/Zhongye1/KnowAgenticRAG)
+[![Python 3.13](https://img.shields.io/badge/Python-3.13-3776AB.svg)](backend/pyproject.toml)
+[![React 19](https://img.shields.io/badge/React-19-61DAFB.svg)](web/package.json)
+[![Docker Compose](https://img.shields.io/badge/Docker-Compose-2496ED.svg)](docker-compose.yml)
 
-| 层           | 技术                                                                                           | 位置                                                                   |
-| ------------ | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| 后端         | Python 3.13 · FastAPI · LangGraph · ARQ worker                                                 | `backend/server`（HTTP 入口）、`backend/package/ars`（业务与基础设施） |
-| 前端         | React 19 · Vite · TypeScript · Tailwind 4 · shadcn/Radix                                       | `web/`                                                                 |
-| 存储         | PostgreSQL · Redis · Silo（MinIO 兼容分支） · Milvus · Neo4j                                   | 由 Compose 提供                                                        |
-| 命令行客户端 | `ars-cli`                                                                                      | `packages/ars-cli`                                                     |
-| 文档站       | VitePress                                                                                      | `docs/`                                                                |
-| 任务入口     | [Taskfile.yml](Taskfile.yml)（便捷封装）；[docker-compose.yml](docker-compose.yml)（事实来源） | 仓库根                                                                 |
+## KnowAgenticRAG 能做什么
 
-开发拓扑是**全容器化**的：`api`、`worker`、`storage-migrator`、`sandbox-provisioner`、`web`、`postgres`、`redis`、`minio`、`milvus`、`etcd`、`graph`。文档解析与 OCR（`mineru-api`、`paddlex`）在 `all` profile 下可选启动。
+给需要自己掌握数据、模型与权限的团队，尤其是要私有部署的多用户 Agent 场景：
 
-## 环境要求
+- **数据与模型自己管**：MIT 协议，容器拓扑里全是常见组件（PostgreSQL、Redis、Milvus、Neo4j、对象存储），模型走 OpenAI 兼容接口，接哪家由你决定。
+- **知识进得来，回答对得上**：PDF、Office、Markdown、图片交给 MinerU、PaddleX 与 OCR 解析，语义切分后建向量与图谱两套索引，回答附来源引用，能点回原文核对。
+- **一条链路跑完任务**：LangGraph 上的 Agent 直接检索知识、调用工具、进沙盒执行，产出落到持久 Workdir，不需要人在几个系统之间搬数据。
+- **复杂任务有人分工**：主智能体负责拆解与汇总，SubAgents 分头执行，Skills 与 MCP 按任务加载。
+- **调整有指标**：知识库评估量化检索环节，智能体评估覆盖完整任务，换模型或改参数之后能对比出进退。
+- **多人协作有边界**：三级角色加共享范围，权限在后端依赖与 repository 可见性查询处最终执行，前端隐藏不构成授权。
+- **运行看得见**：超级管理员可筛查全平台会话审计，任务中心显示后台任务的排队与运行状态。
 
-- Docker Engine 24+ 与 Docker Compose v2.20+
-- 至少一个兼容 OpenAI 接口的模型服务（初始化脚本要求填硅基流动的 `SILICONFLOW_API_KEY`）
-- 文档解析（PDF / Office / 图片）需要 `MINERU_API_KEY`；本地跑解析 / OCR 容器需要 NVIDIA Container Toolkit
-- 可选：`task`（[go-task](https://taskfile.dev/)）。本文的 `task *` 都只是 `docker compose` 的封装，不装也能直接用对应命令
-- 可选：`uv` 与 Python 3.13（`task lint` / `task format` / `task test` 在宿主机跑，需要它们；也可改用下面的容器内命令）
-- 可选：宿主机前端开发需要 Node 22+ 与 `pnpm`（版本见 `web/package.json` 的 `packageManager`）
+## 快速启动
 
-## 开发
+启动方式只有一条：Docker Compose。后端是 FastAPI 与 LangGraph，前端是 React，中间件用 Milvus、Neo4j、PostgreSQL、Redis，文档解析用 MinerU 与 PaddleOCR。当前仓库默认配置对应 **v0.7.2.beta1**（见 `backend/pyproject.toml` 与 `web/package.json`）。
 
-### 1. 准备配置
+### 前置条件
 
-```bash
-git clone https://github.com/Zhongye1/KnowledgeRAG-OGAS.git
-cd KnowledgeRAG-OGAS
+安装 Docker Engine 与 Docker Compose，并准备一个可用的大模型 API Key（初始化脚本按 `.env.template` 读取，默认是硅基流动的 `SILICONFLOW_API_KEY`）。PDF / Office / 图片的解析还需要 `MINERU_API_KEY`。
 
-# 推荐：初始化脚本引导填 Key、生成安全密钥、预拉镜像
-./scripts/init.sh          # Windows: .\scripts\init.ps1
-
-# 或手动：复制模板后按注释填写
-cp .env.template .env
-```
-
-`JWT_SECRET_KEY`、`API_KEY_DERIVATION_SECRET`、`SANDBOX_PROVISIONER_TOKEN` 必须各自独立、至少 32 个非空白字符，并在后续重建与升级中保持原值；三者复用或过短会在启动时被拒绝。完整变量与默认值见 [.env.template](.env.template)。
-
-### 2. 启动
+### 1. 获取代码并初始化
 
 ```bash
-task up                    # 等价于 docker compose up -d
+git clone --depth 1 https://github.com/Zhongye1/KnowAgenticRAG.git
+cd KnowAgenticRAG
+
+# Linux/macOS
+./scripts/init.sh
+
+# Windows PowerShell
+.\scripts\init.ps1
 ```
 
-首次启动需要构建镜像并等 `storage-migrator` 成功；`api` 的 healthcheck 有 180s 的 `start_period`。
+初始化脚本会创建 `.env`、读取模型 API Key，并为 JWT、API Key 派生与 Sandbox provisioner 分别生成独立的安全密钥。也可以手动复制 `.env.template` 填写这些值；三个安全密钥必须各自独立，并在后续重建与升级中保持原值。
 
-| 入口                   | 地址                                    |
-| ---------------------- | --------------------------------------- |
-| Web（Vite 开发服务器） | http://localhost:5173                   |
-| API 文档               | http://localhost:5050/docs              |
-| 进程存活               | http://localhost:5050/api/system/health |
-| 接流量就绪             | http://localhost:5050/api/system/ready  |
+### 2. 启动开发环境
 
-`health` 只表示 API 进程活着；`ready` 才表示 PostgreSQL / Redis / 兼容 worker 租约等接流量条件成立，两者都不代表登录、对话、知识库或 Agent Run 的业务链路正确。
+```bash
+docker compose up --build -d
+```
 
-不需要知识库与知识图谱时用 LITE 模式起最小栈（只起 `postgres redis minio api worker`）：
+首次启动需要构建镜像并等 `storage-migrator` 成功。查看服务状态：
+
+```bash
+docker compose ps
+curl --fail http://localhost:5050/api/system/ready
+```
+
+`status` 为 `ready` 后，打开 http://localhost:5173，按页面提示初始化超级管理员并登录。
+
+| 入口       | 地址                                    |
+| ---------- | --------------------------------------- |
+| Web        | http://localhost:5173                   |
+| API 文档   | http://localhost:5050/docs              |
+| 进程存活   | http://localhost:5050/api/system/health |
+| 接流量就绪 | http://localhost:5050/api/system/ready  |
+
+`health` 只表示 API 进程活着，`ready` 只表示接流量条件成立，两者都不代表登录、对话、知识库或 Agent Run 的业务链路正确。
+
+不需要知识库与知识图谱时，用 LITE 模式起最小栈（只启动 `postgres redis minio api worker`）：
 
 ```bash
 task up-lite
 ```
 
-### 3. 日常命令
+从更早的部署升级到当前版本不能直接 `docker compose up`：停机窗口、备份、数据迁移与回滚步骤只在[生产部署](https://zhongye1.github.io/KnowAgenticRAG/advanced/deployment)中维护，升级前请完整阅读。
+
+## 文档导航
+
+- [项目介绍](https://zhongye1.github.io/KnowAgenticRAG/intro/project-overview)：能力、概念与系统边界。
+- [快速开始](https://zhongye1.github.io/KnowAgenticRAG/intro/quick-start)：从零启动本地环境。
+- [模型配置](https://zhongye1.github.io/KnowAgenticRAG/intro/model-config)：接入聊天、嵌入与重排模型。
+- [知识库与知识图谱](https://zhongye1.github.io/KnowAgenticRAG/intro/knowledge-base)：创建知识库并验证检索。
+- [智能体开发](https://zhongye1.github.io/KnowAgenticRAG/agents/agents-config)：配置 Agent、工具、Skills、MCP 与子智能体。
+- [机制详解](https://zhongye1.github.io/KnowAgenticRAG/mechanisms/)：沙盒、上下文压缩与知识库的运行机制。
+- [生产部署](https://zhongye1.github.io/KnowAgenticRAG/advanced/deployment)：部署、升级、备份与排障。
+- [版本变更记录](https://zhongye1.github.io/KnowAgenticRAG/develop-guides/changelog)：查看已发布变更。
+
+## 能力展示
+
+从资料进系统到任务出结果，都在同一条链路上发生。下面按七个模块说明这条链路提供了什么：
+
+| 模块 | 解决的问题 | 代表能力 |
+| ---- | ---------- | -------- |
+| 工作台 | 一次提问就能看清执行到了哪一步 | 会话、引用来源、执行状态、上下文用量、子智能体、交付文件 |
+| 知识库与 RAG | 让回答有据可查 | 多格式解析、语义切分、向量与图谱双索引、混合召回与重排、来源引用 |
+| 知识图谱 | 把文档里的关系用起来 | 实体关系抽取、按 schema 建图、同名实体合并、子图浏览、图谱检索 |
+| 多智能体与扩展 | 让复杂任务有人分工 | 主智能体与 SubAgents、Skills、MCP、工具、中间件 |
+| 沙盒与产物 | 让结果落地成文件 | 隔离执行、持久 Workdir、浏览器内预览、文件下载 |
+| 评估 | 让每次调整有指标 | 召回率与 MRR、忠实度与引用准确性、Langfuse Dataset 智能体评估 |
+| 团队治理 | 让多人共用有边界 | 三级角色、共享范围、模型与 API Key 配置、会话审计、任务中心 |
+
+### 01 · 工作台
+
+一次提问里同时拿到三样东西：检索到的依据、执行到了哪一步、以及最后的产物。任务拆解、子智能体线程、上下文用量与交付文件都在同一个界面，不用切系统。
+
+- `@` 直接引入知识库、个人文件或某个 Skill。
+- 执行过程按步骤展开，工具调用、状态变化与上下文 Token 消耗逐项可见。
+- 生成的文档、表格与页面就地预览或下载。
+
+![工作台](web/public/assets/home/1-1.png)
+
+### 02 · 知识库与 RAG
+
+上传之后是一条自动流水线：解析、语义切分、向量化入 Milvus，需要图谱时再抽实体与关系。检索阶段向量与 BM25 双路召回，重排后把最相关的片段交给模型，回答里的来源可以点回原文。
+
+- 文件与目录集中管理，解析进度、分块与 Token 统计随时可查。
+- Embedding 与 Rerank 模型可选可换，知识库详情页里就能做多路召回测试。
+- 片段带来源标识，按 `file_id` 回到原文核对。
+
+![知识库与可追溯 RAG](web/public/assets/home/1-2.png)
+
+### 03 · 知识图谱
+
+文档入库时顺手把实体和关系抽出来：按 schema 约束建图、同名实体自动合并，图数据落在 Neo4j 与 PostgreSQL，实体与三元组另有 Milvus 语义索引；检索时图谱召回与向量命中融合。
+
+- 实体按关键词可搜，节点属性可查，关联子图可展开浏览。
+- 抽取与索引在知识库详情页配置，失败样例直接看得到。
+- 图谱结果与文档来源可相互定位。
+
+![知识图谱](web/public/assets/home/02-5.png)
+
+### 04 · 多智能体与扩展生态
+
+每个 Agent 有自己的模型、提示词、知识挂载与工具集。遇到需要拆分的任务，主智能体规划，SubAgents 并行执行；能力不够时再加 Skills、MCP 服务器或自定义工具。
+
+- Agent 配置覆盖基座模型、知识库、工具与系统提示词。
+- SubAgents 可并行处理调研、数据分析或内容生成。
+- Skills 与 MCP 按任务加载，个人技能与共享技能分开管理。
+
+![多智能体与扩展能力](web/public/assets/home/1-3.png)
+
+### 05 · 沙盒与产物
+
+读写文件与执行脚本都发生在隔离容器里，工具能碰到的路径由沙盒边界限定，虚拟路径与宿主机路径不混用。产物落到持久 Workdir，浏览器里直接能看。
+
+- 文件操作与命令执行在沙盒内完成，宿主目录不暴露给模型。
+- 产出可以是 Markdown 报告、数据表格、HTML 页面或代码。
+- 文本、表格、图片与 PDF 在浏览器内预览，原始文件可下载。
+
+![沙盒与产物](web/public/assets/home/1-4.png)
+
+### 06 · 评估
+
+调检索参数或换模型之后，用两组指标判断进退：知识库侧看检索与生成质量，智能体侧看完整任务的表现。
+
+- 检索看召回率、命中率与 MRR，生成看忠实度、相关性与引用准确性。
+- 评估基准可上传或生成，跑批与历史结果留在页面上。
+- 智能体任务用 Langfuse Dataset 评估，覆盖研究、编程、文件处理等多步骤场景。
+
+![评估](web/public/assets/home/02-3.png)
+
+### 07 · 团队治理
+
+多人共用一套平台时，能力与数据都要有边界：角色决定能做什么，共享范围决定能看见谁的知识库与 Agent。
+
+- 超级管理员、管理员与普通用户三级角色；会话与文件按账号隔离。
+- 知识库、Agent 与 Skills 按全局、部门或个人范围共享，可只读也可管理。
+- 模型凭据与 API Key 集中配置，会话审计与任务中心在同一条运维入口下。
+
+## 本地开发与验证
 
 ```bash
-task ps          # 服务状态
-task logs        # api 最近日志 + 当前分支与提交
-task shell       # 进入 api 容器
-task down        # 停止
-task reset       # 破坏性：删除数据卷后重建并写入初始用户
+task verify        # 工程契约静态校验 + 其自测
+task web:verify    # 前端 lint、单测、设计 token、分层、契约漂移、构建
 ```
-
-`api-dev`、`worker-dev` 与 `web-dev` 默认热重载，改本地代码通常不需要重启容器。容器名与挂载方式见 [docker-compose.yml](docker-compose.yml)。
-
-### 4. 后端开发
-
-```bash
-task lint               # ruff check + import 排序 + 格式检查（只读）
-task format             # ruff format + ruff check --fix + import 排序修复
-task test               # 单元测试（宿主机 uv，不依赖容器服务）
-task test:integration   # 真实 PostgreSQL / 真实 HTTP
-task test:e2e           # 端到端
-```
-
-容器内等价命令（与[测试规范](docs/develop-guides/testing-guidelines.md)一致）：
 
 ```bash
 docker compose exec api uv run --group test pytest test/unit -m "not slow"
@@ -96,114 +183,15 @@ docker compose exec api uv run --group test pytest test/integration
 docker compose exec api uv run --group test pytest test/e2e -m e2e
 ```
 
-测试按 unit / integration / e2e 分层放在 `backend/test`。改动面与最低证据的对应关系、fixture 与 skip 规则由[测试规范](docs/develop-guides/testing-guidelines.md)拥有。
+- 前端宿主机开发：`task web:dev`，或 `cd web && pnpm install && pnpm run dev`。浏览器只访问同源 `/api/*` 与 `/minio/*`（开发由 vite 代理，生产由反向代理转发），前端代码里没有后端地址配置。
+- 接口契约变更：`task web:api` 刷新快照并重新生成客户端，两个产物都入库。
+- 日常容器命令：`task ps` / `task logs` / `task shell` / `task down`；`task reset` 会删除数据卷，是破坏性操作。
+- 系统边界、目录职责与主链路见 [ARCHITECTURE.md](ARCHITECTURE.md)；测试分层与最低证据要求见[测试规范](https://zhongye1.github.io/KnowAgenticRAG/develop-guides/testing-guidelines)；非平凡改动必须在同一变更里新增或更新一份[决策记录](docs/develop-guides/decisions/README.md)。
 
-### 5. 前端开发
+## 参与贡献
 
-```bash
-task web:dev        # 起 web 服务（5173），/api 与 /minio 由 vite 代理
-task web:logs
-task web:verify     # lint + 单测 + 设计 token + 分层 + 契约漂移 + 构建
-```
-
-容器已在运行时，也可以在宿主机直接跑：
-
-```bash
-cd web && pnpm install && pnpm run dev
-```
-
-浏览器只访问同源路径 `/api/*` 与 `/minio/*`（开发由 vite 代理，生产由你接的反向代理转发，见下文「对外入口」），前端代码里没有后端地址配置。后端接口变化后必须刷新契约快照并重新生成客户端，两个产物都入库：
-
-```bash
-task web:api        # = pnpm run api:snapshot + pnpm run api:gen
-```
-
-前端分层、API 段边界、颜色 token 与契约流水线见 [web/ARCHITECTURE.md](web/ARCHITECTURE.md)、[web/AGENTS.md](web/AGENTS.md) 与[界面设计规范](docs/develop-guides/design.md)。
-
-### 6. 提交前
-
-```bash
-task verify         # 工程契约静态校验 + 其自测
-task web:verify     # 前端全部门禁
-```
-
-仓库带 `.pre-commit-config.yaml`（ruff、uv-lock、工程契约、前端 lint / 类型 / token / 分层 / 依赖边界）。非平凡改动必须在同一变更里新增或更新一份[决策记录](docs/develop-guides/decisions/README.md)；提案、证据与收敛流程见 [Spec Loop](docs/develop-guides/spec-loop.md)，分支与 Review 流程见[贡献指南](docs/develop-guides/contributing.md)。
-
-## 生产部署
-
-生产用 [docker-compose.prod.yml](docker-compose.prod.yml)：`ARS_ENV=production`，关键变量缺失时直接拒绝启动；对外只发布前端 nginx 的 80 端口，数据库与其余内部服务都不映射到宿主机。
-
-### 1. 配置
-
-```bash
-cp .env.template .env.prod
-```
-
-生产 Compose 强制要求下列变量非空，缺失或为空会报出具体变量名：
-
-```
-POSTGRES_PASSWORD
-NEO4J_PASSWORD
-MINIO_ACCESS_KEY
-MINIO_SECRET_KEY
-JWT_SECRET_KEY
-API_KEY_DERIVATION_SECRET
-ARS_INSTANCE_ID
-SANDBOX_PROVISIONER_TOKEN
-```
-
-三个安全密钥分别用 `openssl rand -hex 32` 生成、互不复用并持久保存。`API_KEY_DERIVATION_SECRET` 决定幂等 API Key 的安全重放，轮换后既有创建请求无法重放原 secret。另外还需要模型服务的 Key（默认 `SILICONFLOW_API_KEY`）与文档解析的 `MINERU_API_KEY`，它们不由 Compose 强制校验。
-
-### 2. 启动
-
-```bash
-# 核心服务（CPU）
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
-
-# 追加 GPU 文档解析 / OCR（mineru-api、paddlex）
-docker compose -f docker-compose.prod.yml --env-file .env.prod --profile all up -d --build
-```
-
-从旧文件布局升级到 v0.7.2 不能直接 `up`：停机迁移、失败续跑、成套回滚与 Kubernetes 存储边界只在[生产部署指南](docs/advanced/deployment.md#2-启动服务)中维护，升级前请完整阅读。
-
-### 3. 验证
-
-前端 nginx 同源转发 `/api/`，所以从宿主机直接探：
-
-```bash
-curl -f http://localhost/api/system/health
-curl -f http://localhost/api/system/ready
-```
-
-需要绕过 nginx 直连 API 时用 `docker compose -f docker-compose.prod.yml --env-file .env.prod exec -T api curl -f http://localhost:5050/api/system/ready`。`ready` 只证明接流量条件成立，不替代真实业务链路验收。
-
-### 4. 对外入口
-
-生产 Compose 的 `web` 服务用 [docker/web.Dockerfile](docker/web.Dockerfile) 的 `production` 阶段（nginx，配置在 [docker/nginx/](docker/nginx/)）托管 `web/dist`，并同源转发：
-
-- `/api/` → `api:5050`（关闭缓冲、600s 超时，适配 SSE 流式）
-- `/minio/public/` → `minio:9000/public/`（只允许 GET/HEAD），其余 `/minio/` 返回 404
-
-浏览器访问 `http://localhost` 即可。要换域名或加 TLS，在它前面再加一层反向代理；只有前端与 API 不同源时才需要配置 `ARS_CORS_ORIGINS`。
-
-### 5. 运维要点
-
-- 重建或升级 Redis 容器后必须重启 worker（arq 不会自动重连），否则 `/api/system/ready` 不恢复：`docker compose -f docker-compose.prod.yml --env-file .env.prod restart worker`。
-- `ARS_CORS_ORIGINS` 在生产默认为空：前后端同源留空即可，跨域部署必须显式声明来源，否则浏览器请求被拒。
-- 日志：`docker logs -f api-prod`、`docker logs -f worker-prod`、`docker logs -f web-prod`。
-- 维护数据库等内部服务优先用 `docker compose exec`，不要为了临时调试把端口重新暴露到公网。
-- 第三方组件许可证、再分发义务与商业部署边界见[生产部署指南](docs/advanced/deployment.md#第三方组件与许可证)。
-
-## 文档
-
-文档站是 `docs/`（VitePress）：
-
-```bash
-cd docs && pnpm install && pnpm run dev
-```
-
-常用入口：[项目概览](docs/intro/project-overview.md)、[快速开始](docs/intro/quick-start.md)、[代码地图](ARCHITECTURE.md)、[配置参考](docs/advanced/configuration.md)、[测试规范](docs/develop-guides/testing-guidelines.md)、[工程信任系统](docs/develop-guides/engineering-trust.md)、[版本变更记录](docs/develop-guides/changelog.md)。
+欢迎提交 Issue、改进文档、修复 Bug 和贡献功能。开发流程（分支、Review、提交信息与 PR 模板）见 [CONTRIBUTING.md](CONTRIBUTING.md)，完整规范见[参与贡献](https://zhongye1.github.io/KnowAgenticRAG/develop-guides/contributing)。
 
 ## 许可证
 
-按 `backend/pyproject.toml` 与 `packages/ars-cli/pyproject.toml` 的声明，本项目采用 MIT 许可证。Compose 引入的 Neo4j、Silo、Milvus、etcd、Redis 等第三方组件保留各自原始许可证，部署与再分发的边界见[生产部署指南](docs/advanced/deployment.md#第三方组件与许可证)。
+按 `backend/pyproject.toml` 与 `packages/ars-cli/pyproject.toml` 的声明，本项目采用 MIT 许可证。Compose 引入的 Neo4j、Silo、Milvus、etcd、Redis 等第三方组件保留各自原始许可证，部署与再分发的边界见[生产部署](https://zhongye1.github.io/KnowAgenticRAG/advanced/deployment)的「第三方组件与许可证」一节。

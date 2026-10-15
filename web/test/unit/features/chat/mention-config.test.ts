@@ -206,7 +206,7 @@ describe('buildMentionConfig', () => {
   });
 
   it('可选项缺 key 时退到 name 当标识', () => {
-    // 与参照的 getAgentConfigOptionValue 同序：key → id → value → name → …
+    // 字段顺序：key → id → value → name → …
     const config = buildMentionConfig({
       configurableItems: { skills: item('skills', [{ name: '只有名字' }]) },
       agentConfig: { skills: null },

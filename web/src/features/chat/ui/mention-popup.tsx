@@ -1,13 +1,4 @@
-/**
- * 提及候选弹窗。
- *
- * 按「文件 / 知识库 / MCP / Skills / Subagents」分组展示，但键盘导航用的是**整体第几项**
- * ——用户按上下键时不会意识到分组边界，所以活动下标在一个连续的序列里。
- *
- * 文件组在还没有查询词时只给一句提示：文件搜索是远程的，空查询下本地没有结果可列。
- * 参照实现 `MessageInputComponent.vue` 的 `.mention-popup` 段：文件行用彩色类型图标
- * 与 11px 路径列，资源行不带图标；命中查询词的片段以金橘色加粗（`.query-match`）。
- */
+/** 提及候选弹窗。 */
 import * as React from 'react';
 
 import { resolveFileIconUrl } from '@/shared/lib/files';
@@ -95,7 +86,7 @@ export const MentionPopup = ({
 
             {items.map((item, indexInGroup) => {
               const index = (groupStart[key] ?? 0) + indexInGroup;
-              // 参照：文件行用彩色类型图标 + 路径列；资源行不带图标
+              // 文件行用彩色类型图标 + 路径列；资源行不带图标
               const isFile = item.type === 'file';
               const parentDir = isFile
                 ? item.value.split('/').slice(0, -1).join('/') || '/'

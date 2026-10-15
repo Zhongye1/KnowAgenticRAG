@@ -1,10 +1,8 @@
-/* 「+」展开钮与面板。参照 MessageInputComponent 的 `.expand-btn` 与 AgentView.vue 的
-   `.config-dropdown-panel` / `.config-dropdown-item`，外加 AttachmentOptionsComponent 的
-   `.attachment-options-*`（面板宽度、返回行、资源列表）。
+/* 「+」展开钮与面板。
    弹出层挂在 portal 上，类名是模块内自有类名，因此不写进 antd-overrides.css。
    颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
-/* 触发钮：28px 透明图标钮（参照 .expand-btn） */
+/* 触发钮：28px 透明图标钮 */
 .expandButton {
   width: 28px;
   height: 28px;
@@ -28,7 +26,7 @@
   background: var(--gray-50);
 }
 
-/* 展开态即参照的 `.expand-btn.active` */
+/* 展开态 */
 .expandButton[aria-expanded='true'] {
   color: var(--gray-900);
   background: var(--gray-100);
@@ -39,7 +37,7 @@
   height: 17px;
 }
 
-/* 面板：参照 .config-dropdown-panel + .attachment-options-panel 的 240px 宽 */
+/* 面板：240px 宽 */
 .panel {
   width: 240px;
   min-width: 188px;
@@ -53,7 +51,7 @@
     0 2px 8px var(--shadow-1);
 }
 
-/* 面板项：参照 .config-dropdown-item */
+/* 面板项 */
 .item {
   display: flex;
   align-items: center;
@@ -82,7 +80,7 @@
   background: var(--gray-50);
 }
 
-/* 参照 `.config-dropdown-item:focus-visible`——键盘焦点要有可见环 */
+/* 键盘焦点要有可见环 */
 .item:focus-visible,
 .back:focus-visible {
   outline: 2px solid var(--main-300);
@@ -125,7 +123,7 @@
   color: var(--gray-400);
 }
 
-/* 二级页返回行：参照 .attachment-options-back */
+/* 二级页返回行 */
 .back {
   display: flex;
   align-items: center;
@@ -154,13 +152,13 @@
   flex-shrink: 0;
 }
 
-/* 资源列表：参照 .attachment-resource-list */
+/* 资源列表 */
 .resourceList {
   max-height: min(320px, calc(100vh - 180px));
   overflow-y: auto;
 }
 
-/* 资源项两行：参照 .attachment-resource-item 的 10px 间距 */
+/* 资源项两行：10px 间距 */
 .resourceItem {
   gap: 10px;
 }
@@ -173,7 +171,6 @@
   gap: 2px;
 }
 
-/* 参照 .attachment-resource-description */
 .resourceDescription {
   overflow: hidden;
   color: var(--gray-500);

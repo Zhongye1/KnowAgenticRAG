@@ -1,14 +1,4 @@
-/**
- * 一轮对话里的来源提取：知识库检索片段与网络搜索来源。
- *
- * **与参照的关键差别**：参照的提取假设「每个知识库就是一个同名工具」，因此它拿工具调用名
- * 去和知识库名集合比对。本仓不是这个模型——知识库工具叫 `query_kb`，知识库是它的
- * `kb_name` / `kb_id` 参数，检索结果里也自带 `kb_id`。照搬参照会一条都提取不到，而且
- * 是**静默返回空数组**（界面表现为「没有来源」而不是报错）。
- *
- * 这里按工具名分派，并复用结果解析模块（`kb-query-result` / `web-search-results`），
- * 不另写一套字段读取。
- */
+/** 一轮对话里的来源提取：知识库检索片段与网络搜索来源。 */
 import type { ChatMessage, ChatToolCall } from '../api/agent-api';
 import { parseKbQueryResult } from './kb-query-result';
 import { parseWebSearchResults } from './web-search-results';
@@ -75,11 +65,7 @@ const stringArg = (args: Record<string, unknown>, key: string): string =>
 const byScoreDesc = <T extends { score: number | null }>(a: T, b: T): number =>
   (b.score ?? Number.NEGATIVE_INFINITY) - (a.score ?? Number.NEGATIVE_INFINITY);
 
-/**
- * 提取一轮对话里的全部来源。
- *
- * 去重按「知识库 + 片段 id」（拿不到 id 时退回内容）与网络来源的链接，与参照同口径。
- */
+/** 提取一轮对话里的全部来源。 */
 export function extractSources(
   messages: ChatMessage[] | null | undefined,
   options: ExtractSourcesOptions = {},

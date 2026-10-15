@@ -386,7 +386,7 @@ git branch -d docs/update-contributing-guide
 
 - `intro/` 用于从零得到结果的教程，`advanced/` 用于配置和运维参考，`agents/` 用于 Agent 配置与扩展方法，`mechanisms/` 用于运行机制、状态、权限、失败和源码定位。
 - 一个事实只在 owning page 完整解释；其他页面保留必要上下文并使用相对链接。实质性的教程与参考、配置与机制不能长期混在同一页。
-- 新增正式页面时更新 `docs/.vitepress/config.mts` 的正确父级与阅读顺序；移动或拆分页面同时修复全部入站链接。
+- 新增正式页面时更新 `docs/rspress.config.ts` 侧边栏的正确父级与阅读顺序；移动或拆分页面同时修复全部入站链接。
 - 已完成的用户可见变更更新到 [changelog.md](./changelog.md)，未完成方向更新到 [roadmap.md](./roadmap.md)，不能同时声明同一状态。
 - 非平凡文档信息架构或长期约束变化同样需要 [decision record](./decisions/README.md)；`docs/vibe/` 只保存被忽略的本地临时计划。
 - 文档至少运行工程契约检查、文档构建与 `git diff --check`；构建通过不替代对源码、配置和测试的语义核对。

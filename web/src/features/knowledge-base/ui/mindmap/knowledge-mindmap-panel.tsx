@@ -77,7 +77,7 @@ const MindmapOutline = ({ node }: { node?: MindmapNode | null }) => {
 export type KnowledgeMindmapPanelProps = {
   kbId: string;
   readOnly: boolean;
-  /** 当前分区是否激活；参照每次激活都重新取数与重算差异（`:147-188,236-250`）。 */
+  /** 当前分区是否激活。 */
   active: boolean;
 };
 
@@ -127,7 +127,7 @@ export const KnowledgeMindmapPanel = ({
         applyMarkmapVariables(svgElement);
         const { root } = new markmapLib.Transformer().transform(markdown);
         instance = markmapView.Markmap.create(svgElement, {
-          // 布局参数取参照 `.mindmap-section` 的取值：长文件名按 200px 折行，
+          // 布局参数取值：长文件名按 200px 折行，
           // 层间距 60/5，行高 24——用 markmap 默认（不折行、80/8、16）观感差别明显
           duration: 300,
           maxWidth: 200,
@@ -135,7 +135,7 @@ export const KnowledgeMindmapPanel = ({
           paddingX: 8,
           spacingVertical: 5,
           spacingHorizontal: 60,
-          // 参照用显式 fit()，这里让 autoFit 承担同一件事：数据每次渲染后自动适应视图
+          // 这里让 autoFit 承担同一件事：数据每次渲染后自动适应视图
           autoFit: true,
         });
         markmapRef.current = instance;
@@ -161,7 +161,7 @@ export const KnowledgeMindmapPanel = ({
   /*
    * 切回分区时重新取数并重算差异：面板被 antd 常驻（切走不卸载），应用的查询客户端又关掉了
    * 窗口聚焦重取、`staleTime` 是 60 秒——不主动失效的话，离开期间新增/删除的文件不会反映到
-   * 「增量更新」角标上。参照每次激活都重挂载并重取（`MindMapSection.vue:147-188,236-250`）。
+   * 「增量更新」角标上。
    */
   const firstActivation = React.useRef(true);
   React.useEffect(() => {
@@ -270,7 +270,7 @@ export const KnowledgeMindmapPanel = ({
     <div
       className={`flex flex-col overflow-hidden rounded-[8px] border border-[var(--gray-150)] bg-[var(--gray-0)]`}
     >
-      {/* 工具栏：参照的 `.mindmap-toolbar`——右上对齐、gray-0 底、底部 1px 分隔线、按钮无边框 */}
+      {/* 工具栏：右上对齐、gray-0 底、底部 1px 分隔线、按钮无边框 */}
       <div
         className={`flex flex-wrap items-center gap-2 border-b border-[var(--gray-150)] bg-[var(--gray-0)] px-3 py-2 ${
           diffSummary ? 'justify-between' : 'justify-end'

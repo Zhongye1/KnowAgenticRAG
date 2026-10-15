@@ -31,7 +31,7 @@ Owner：web/src/features/chat/lib/sources.ts
 
 - 来源面板只对带 `query_kb` 或搜索工具调用的消息出现；两类都空时整个入口不渲染。
 - `ui/kb-chunk-groups.tsx` 的 `showSummary` 开关服务两个消费方：工具结果里报片段总数，来源面板里由标题报数量。
-- 模型名与重新生成是本片仅有的两个声明偏离；已在 [contracts.md](../../../alembic/pages/agent/contracts.md) 第 7 片逐条记录。
+- 模型名与重新生成是本片仅有的两个声明偏离；已在 `alembic/pages/agent/contracts.md` 第 7 片逐条记录。
 
 ## 验证
 

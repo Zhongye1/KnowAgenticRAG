@@ -1,10 +1,4 @@
-/**
- * 导航列折叠态的本地持久化。
- *
- * 参照实现把折叠态放在 Pinia 持久化的 `chat-ui-store` 里（`pick: ['sidebarCollapsed']`）；
- * 本仓按 `ars_*` 键名约定落 `ars_sidebar_collapsed`，存 `'true'` / `'false'` 两个字面量。
- * 存储不可用、读取抛错或值损坏时返回 `null`，由调用方决定默认值，不把损坏值当成折叠。
- */
+/** 导航列折叠态的本地持久化。 */
 
 /** 折叠态偏好的 localStorage 键名。 */
 export const SIDEBAR_COLLAPSED_STORAGE_KEY = 'ars_sidebar_collapsed';

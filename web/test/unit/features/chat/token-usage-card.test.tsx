@@ -42,7 +42,7 @@ describe('上下文用量卡片', () => {
     render(<TokenUsageCard usage={usage} />);
 
     const card = screen.getByTestId('token-usage');
-    // 参照的排布：大号占比在左，标签与已用/上限在右
+    // 排布：大号占比在左，标签与已用/上限在右
     expect(card.textContent).toContain('50%');
     expect(card.textContent).toContain('上下文占用');
     expect(card.textContent).toContain('2K / 4K');
@@ -71,7 +71,7 @@ describe('上下文用量卡片', () => {
       />,
     );
 
-    // 轨道填充走危险色 token（参照 .token-usage-context-fill 的 .is-danger）
+    // 轨道填充走危险色 token
     expect(screen.getByTestId('token-usage-progress').className).toContain(
       '--color-error-500',
     );

@@ -11,7 +11,7 @@ export type AgentGroup = {
   agents: Agent[];
 };
 
-/** 搜索：名称、标识、后端任一命中即可（与参照同口径）。 */
+/** 搜索：名称、标识、后端任一命中即可。 */
 export function filterAgents(agents: Agent[], keyword: string): Agent[] {
   const needle = keyword.trim().toLowerCase();
   if (!needle) return agents;
@@ -96,11 +96,7 @@ const asScope = (value: unknown): Record<string, unknown> | null =>
 const idCount = (value: unknown): number =>
   Array.isArray(value) ? value.length : 0;
 
-/**
- * 一段共享范围的短标签；与参照 `getShareConfigLabel` 的 `scopeLabel` 同口径。
- *
- * 没设这一段时返回 `null`（调用方据此判断「只读」还是「读·管」）。
- */
+/** 一段共享范围的短标签。 */
 const scopeLabel = (scope: unknown): string | null => {
   const record = asScope(scope);
   if (!record) return null;
@@ -117,7 +113,7 @@ const scopeLabel = (scope: unknown): string | null => {
   }
 };
 
-/** 卡片上的共享范围标签；与参照 `getShareConfigLabel` 同口径。 */
+/** 卡片上的共享范围标签。 */
 export function agentShareLabel(agent: Agent): string {
   const scope = asScope(agent.shareConfig);
   const read = scopeLabel(scope?.read_scope);

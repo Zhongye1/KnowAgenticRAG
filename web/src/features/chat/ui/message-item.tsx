@@ -27,7 +27,7 @@ import { Markdown } from '@/shared/ui/markdown';
 import styles from './message-item.module.css';
 import { copyTextToClipboard, useIsDarkMode } from '@/shared/lib';
 
-/** 复制成功反馈的保持时长；与参照实现同值。 */
+/** 复制成功反馈的保持时长。 */
 const COPIED_FEEDBACK_MS = 2000;
 
 /** 后端给出的错误码到中文说明；未登记的码原样展示。 */
@@ -131,7 +131,7 @@ export const MessageItem = ({
           <ul className={styles.attachmentList}>
             {attachments.map((attachment) => (
               <li key={attachment.fileId} className={styles.attachmentItem}>
-                {/* 参照 .message-attachment-icon：2rem 主色浅底容器 */}
+                {/* 2rem 主色浅底容器 */}
                 <span className={styles.attachmentIcon} aria-hidden>
                   <FileText className="size-4" />
                 </span>
@@ -211,8 +211,8 @@ export const MessageItem = ({
         <Markdown
           content={body.content}
           theme={markdownTheme}
-          /* 排版走全局 .yk-markdown-preview（styles/markdown-preview.css，对齐参照
-             MarkdownPreview.vue）；样式表按类名前缀书写，CSS Modules 会把此处改写 */
+          /* 排版走全局 .yk-markdown-preview（styles/markdown-preview.css）；样式表按类名前缀书写，
+             CSS Modules 会把此处改写 */
           className="yk-markdown-preview"
           codeCopy
         />

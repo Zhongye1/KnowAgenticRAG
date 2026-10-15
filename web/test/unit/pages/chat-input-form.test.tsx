@@ -144,7 +144,7 @@ describe('ChatInputForm 的顶区', () => {
   it('没有图片与附件时不渲染顶区', () => {
     const { container } = render(<ChatInputForm {...baseProps()} />);
 
-    // 顶区在参照里有 8px 下边距，空着渲染会白占高度
+    // 顶区有 8px 下边距，空着渲染会白占高度
     expect(container.querySelector('img')).toBeNull();
     expect(screen.queryByText('待发送.pdf')).toBeNull();
   });

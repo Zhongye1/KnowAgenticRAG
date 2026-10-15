@@ -1,9 +1,4 @@
-/**
- * 文件夹命名弹窗：新建与重命名共用一个输入形态。
- *
- * 校验与文案对齐参照 `FileTable.vue` 的两个处理器：空名警告「请输入文件夹名称」，
- * 成功提示「创建成功 / 重命名成功」。
- */
+/** 文件夹命名弹窗：新建与重命名共用一个输入形态。 */
 import * as React from 'react';
 import { Button, Input, Modal } from 'antd';
 

@@ -1,13 +1,4 @@
-/**
- * 用户消息附件的展示归一。
- *
- * 事实源是后端 `serialize_attachment` 的输出（`file_id` / `file_name` / `file_type` /
- * `file_size` / `artifact_url` / `original_artifact_url` / `path`）。文案格式与参照实现
- * 的 `file_utils.js` 同口径：大小用「两位小数后去掉尾零」，未知显示 `-`；
- * 类型优先取扩展名，其次取 MIME 子类型，都没有时显示「文件」。
- *
- * 不复用知识库的 `formatBytes`：它是固定一位小数、未知显示 `—`，与参照不是一套格式。
- */
+/** 用户消息附件的展示归一。 */
 
 /** 后端附件记录的字段；只声明展示需要的那些。 */
 export type AttachmentRecord = {

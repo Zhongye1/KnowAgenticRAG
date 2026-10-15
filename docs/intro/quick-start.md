@@ -3,12 +3,15 @@
 本项目是一个智能知识库和知识图谱 Agent 开发平台。
 本指南将帮助你在几分钟内启动并运行系统，使你能够利用 LangGraph、RAG 技术和知识图谱构建 AI 驱动的知识应用。
 
-![系统架构图](https://xerrors.oss-cn-shanghai.aliyuncs.com/github/arch.png)
+<!-- ![系统架构图](https://xerrors.oss-cn-shanghai.aliyuncs.com/github/arch.png) -->
 
 
-::: tip 提示
-除了此文档网站外，你还可以访问 [Zread](https://zread.ai/xerrors/ARS) 或 [DeepWiki](https://deepwiki.com/xerrors/ARS) 查看自动生成的详细项目文档。
+:::tip 提示
+除了此文档网站外，你还可以访问 DeepWiki - Zhongye1/KnowAgenticRAG: https://deepwiki.com/Zhongye1/KnowAgenticRAG 查看自动生成的详细项目文档。
+
 :::
+
+<!-- [Zread](https://zread.ai/xerrors/ARS) 或 -->
 
 ## 环境要求
 
@@ -19,17 +22,12 @@
 ### 步骤一：获取项目代码
 
 ```bash
-# 克隆最新版本
-git clone --branch v0.7.2.beta1 --depth 1 https://github.com/xerrors/ARS.git
-cd ARS
+# 克隆默认分支
+git clone --depth 1 https://github.com/Zhongye1/KnowAgenticRAG.git
+cd KnowAgenticRAG
 ```
 
-`--depth 1` 标志会创建一个浅克隆，仅包含最新的提交，从而显著减少下载时间和磁盘使用量。下表提供了版本选择的指导。
-
-| 版本 | 适用场景 |
-|------|----------|
-| v0.7.1 | 当前稳定版本，推荐生产使用 |
-| main | 开发版本，包含最新特性（可能不稳定） |
+`--depth 1` 标志会创建一个浅克隆，仅包含最新的提交，从而显著减少下载时间和磁盘使用量。本仓库目前只有默认分支 `master`，克隆时不需要指定分支；当前版本号写在 `backend/pyproject.toml` 与 `web/package.json` 里。
 
 ### 步骤二：配置环境变量
 
@@ -53,9 +51,10 @@ cd ARS
 - 设置 `TAVILY_API_KEY`（可选，用于搜索服务）
 - 自动拉取必需的 Docker 镜像
 
-::: tip API Key 获取
+:::tip API Key 获取
 - **硅基流动**：访问 [cloud.siliconflow.cn](https://cloud.siliconflow.cn/i/Eo5yTHGJ)，注册认证即送 16 元额度
 - **Tavily**：访问 [app.tavily.com](https://app.tavily.com/) 获取搜索 API Key（可选）
+
 :::
 
 **方式二：手动配置**
@@ -86,7 +85,7 @@ docker compose up --build -d
 
 服务首次启动需要等待镜像拉取和编译，请耐心等待 2-3 分钟。
 
-::: tip 轻量模式（Lite Mode）
+:::tip 轻量模式（Lite Mode）
 如果你不需要知识库和知识图谱功能，可以使用轻量模式启动，跳过 Milvus、Neo4j、etcd 等服务，节省系统资源：
 
 ```bash
@@ -94,6 +93,7 @@ task up-lite  # macOS or Linux
 ```
 
 轻量模式仅启动核心服务（api、worker、PostgreSQL、Redis、Silo），不加载知识库与图谱能力。切换回完整模式只需运行 `task up`。
+
 :::
 
 ### 步骤四：访问系统
@@ -176,8 +176,9 @@ docker restart api-dev
 ```
 </details>
 
-::: tip 调试面板
+:::tip 调试面板
 前端提供了调试面板（在头像菜单中可找到），可以查看详细的请求和响应信息。生产环境建议关闭此特性。
+
 :::
 
 ## 下一步

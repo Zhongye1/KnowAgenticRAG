@@ -89,3 +89,9 @@ web/src/utils/__tests__/
 .uv-cache/
 .uv-python/
 .pnpm-store/
+
+# Rspress 文档站构建产物（默认 outDir 为 doc_build）
+docs/doc_build/
+
+# ZCode 本地会话产物
+.zcode/

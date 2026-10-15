@@ -1,9 +1,4 @@
-/**
- * 导航列的条目声明与命中判定。
- *
- * 顺序与文案取自参照实现 `AppLayout.vue` 的 `mainList`：新建对话、智能体、个人空间、
- * 扩展，超管再加数据总览。「扩展」的文案随知识库能力切换，与参照一致。
- */
+/** 导航列的条目声明与命中判定。 */
 import {
   BarChart3,
   Box,
@@ -25,7 +20,7 @@ export type NavItem = {
   exactActive?: boolean;
 };
 
-/** 按角色与能力发现拼出导航项；顺序与参照一致。 */
+/** 按角色与能力发现拼出导航项。 */
 export function buildNavItems(options: {
   knowledgeEnabled: boolean;
   isSuperuser: boolean;

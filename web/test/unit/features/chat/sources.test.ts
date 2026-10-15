@@ -128,7 +128,7 @@ describe('extractSources 的知识库来源', () => {
   });
 
   it('拿工具名当知识库名的旧口径不再生效', () => {
-    // 参照会因为工具名不是知识库名而丢掉这条；本仓按 query_kb 正常提取
+    // 按知识库名匹配会丢掉这条；本仓按 query_kb 正常提取
     const sources = extractSources([
       aiMessage([toolCall('query_kb', { results: [{ content: 'A' }] })]),
     ]);

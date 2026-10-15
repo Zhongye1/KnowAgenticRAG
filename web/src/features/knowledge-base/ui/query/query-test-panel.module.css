@@ -1,9 +1,9 @@
 /* ============================================================================
- * 检索测试面板的样式：形状与配色对齐参照 `QuerySection.vue` 的 scoped style。
+ * 检索测试面板的样式。
  * ----------------------------------------------------------------------------
  * - 只有 antd 的内部结构需要覆盖时才写 `:global(.ant-*)`（文本域、圆形提交钮、
- *   清空钮），其余用 Tailwind 工具类 + KnowAgenticRAG token 写在组件里。
- * - 颜色只用 KnowAgenticRAG token（`--main-*` / `--gray-*` / `--shadow-*`），不写硬编码值。
+ *   清空钮），其余用 Tailwind 工具类 + 设计 token 写在组件里。
+ * - 颜色只用设计 token（`--main-*` / `--gray-*` / `--shadow-*`），不写硬编码值。
  * ========================================================================== */
 
 /* 输入卡片：白底、细边框、轻投影；悬停时边框转主色、投影加重 */
@@ -48,7 +48,7 @@
   color: var(--gray-500);
 }
 
-/* 圆形提交钮：主色底，悬停提亮并上移 1px（参照 `.search-button`） */
+/* 圆形提交钮：主色底，悬停提亮并上移 1px */
 .submitButton:global(.ant-btn-primary) {
   background-color: var(--main-color);
   border-color: var(--main-color);
@@ -67,7 +67,7 @@
   transform: translateY(-1px);
 }
 
-/* 禁用时参照只降透明度、不换成灰色：主色底上仍用「主色之上」的颜色 */
+/* 禁用时只降透明度、不换成灰色：主色底上仍用「主色之上」的颜色 */
 .submitButton:global(.ant-btn-primary):disabled {
   color: var(--main-0);
   opacity: 0.5;
@@ -88,7 +88,7 @@
   background-color: var(--main-50);
 }
 
-/* 清空：主色字 + 主色浅底（参照 `.clear-results-btn`） */
+/* 清空：主色字 + 主色浅底 */
 .clearButton:global(.ant-btn) {
   flex: 0 0 auto;
   border-radius: 6px;

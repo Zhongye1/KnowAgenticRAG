@@ -153,7 +153,7 @@ describe('耗时、完成率与数据集投影', () => {
   });
 
   it('耗时：跑完算差值，运行中显示进行中，缺时间给 -', () => {
-    // 口径与参照的 formatDuration 一致：秒 / 分秒 / 小时分，中文
+    // 时长口径：秒 / 分秒 / 小时分，中文
     expect(runDuration(run())).toBe('12秒');
     expect(runDuration(run({ status: 'running', completed_at: null }))).toBe(
       '进行中',

@@ -1,7 +1,4 @@
-/* 单条工具调用行的样式。参照 ToolCallingResult/BaseToolCall.vue 的
-   `.tool-call-display.is-timeline`（主对话流用 timeline 形态，见
-   ToolCallsGroupComponent.vue:46 的 appearance="timeline"）：
-   无边框、header 4px 上下 padding、详情区 border-left 缩进。
+/* 单条工具调用行的样式。无边框、header 4px 上下 padding、详情区 border-left 缩进。
    颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .row {
@@ -41,13 +38,13 @@
   flex-shrink: 0;
 }
 
-/* 运行中：参照 .tool-loader.tool-loading——info 色旋转 2s */
+/* 运行中：info 色旋转 2s */
 .stateIconRunning {
   color: var(--color-info-500);
   animation: rowSpin 2s linear infinite;
 }
 
-/* 完成态的工具图标：参照 .tool-loader.tool-success */
+/* 完成态的工具图标 */
 .stateIconDone {
   color: var(--color-success-500);
 }
@@ -85,7 +82,7 @@
   font-family: var(--font-mono, monospace);
 }
 
-/* 参照 .tag——11px、无底色、左右 4px */
+/* 11px、无底色、左右 4px */
 .segmentTag {
   flex-shrink: 0;
   padding: 0 4px;
@@ -104,7 +101,7 @@
   flex-shrink: 0;
 }
 
-/* 详情区：参照 .is-timeline .tool-content——左缩进 + border-left，hover 变灰 */
+/* 详情区：左缩进 + border-left，hover 变灰 */
 .detail {
   display: flex;
   flex-direction: column;
@@ -132,7 +129,7 @@
   color: var(--gray-700);
 }
 
-/* 结果缺省展示：参照 .default-result .default-content pre */
+/* 结果缺省展示 */
 .detailResultPre {
   margin: 0;
   font-size: 12px;
@@ -147,7 +144,7 @@
   border-radius: 4px;
 }
 
-/* ---------- 工具组（折叠摘要行）：参照 ToolCallsGroupComponent ---------- */
+/* ---------- 工具组（折叠摘要行） ---------- */
 
 .groupContainer {
   width: 100%;
@@ -178,7 +175,7 @@
   }
 }
 
-/* 参照 .summary-content——13px、gap 6px、可收缩 */
+/* 13px、gap 6px、可收缩 */
 .groupSummaryContent {
   min-width: 0;
   display: flex;
@@ -188,7 +185,7 @@
   font-size: 13px;
 }
 
-/* 参照 .summary-title——400 字重不换行 */
+/* 400 字重不换行 */
 .groupSummaryTitle {
   font-weight: 400;
   white-space: nowrap;
@@ -208,13 +205,12 @@
   color: var(--gray-600);
 }
 
-/* 参照 .summary-separator */
 .groupMetaSeparator {
   color: var(--gray-500);
   flex-shrink: 0;
 }
 
-/* 参照 .summary-status-tag——11px 纯色小徽标 */
+/* 11px 纯色小徽标 */
 .groupStatusTag {
   margin-left: 4px;
   font-size: 11px;
@@ -243,7 +239,7 @@
   transform: rotate(-90deg);
 }
 
-/* 展开面板：参照 .tool-calls-collapse-panel 的 grid-rows 动画 */
+/* 展开面板：grid-rows 动画 */
 .groupPanel {
   display: grid;
   grid-template-rows: 0fr;
@@ -274,7 +270,7 @@
   transform: translateY(0);
 }
 
-/* 参照 .tool-calls-panel——上缘灰线 + 6px 间距 */
+/* 上缘灰线 + 6px 间距 */
 .groupList {
   border-top: 1px solid var(--gray-100);
   padding-top: 6px;

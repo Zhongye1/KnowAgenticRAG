@@ -1,7 +1,6 @@
-/* 导航列样式承接参照实现 AppLayout.vue 的 <style scoped>：Less 嵌套改扁平选择器，
-   @变量改成算好的字面量或 token。参照里模板未使用的 .api-docs / .docs /
-   .theme-toggle-nav 是死规则，不搬；GitHub star 徽标属于本轮非目标，不搬。
-   参照 .primary-action 的 box-shadow 用的是带透明度的黑色字面量，这里换成 --shadow-0
+/* 导航列样式：Less 嵌套改扁平选择器，
+   @变量改成算好的字面量或 token。GitHub star 徽标属于本轮非目标，不搬。
+   box-shadow 用带透明度的黑色字面量，这里换成 --shadow-0
    与 --shadow-2：CSS Modules 里不允许写颜色字面量，门禁由 check-design-tokens.mjs 执行。 */
 
 .sidebar {
@@ -183,7 +182,7 @@
   box-shadow: 0 3px 4px var(--shadow-0);
 }
 
-/* 与参照的 `.nav-item.primary-action:hover` 同为三元素特异性，悬停主操作时压过激活态。 */
+/* 三元素特异性，悬停主操作时压过激活态。 */
 .navItem.primaryAction:hover {
   border-color: var(--gray-200);
   background-color: var(--gray-0);
@@ -197,7 +196,7 @@
   color: var(--gray-900);
 }
 
-/* 四条规则的源码顺序照抄参照 Less 编译后的顺序（primary → primary:hover → hover → active）：
+/* 四条规则的源码顺序（primary → primary:hover → hover → active）：
    激活态与 hover 同特异性且更靠后，因此激活项被悬停时仍显示激活外观。 */
 .navItem.navItemActive {
   border-color: transparent;
@@ -257,7 +256,7 @@
 }
 
 /* 折叠态：导航列收到 56px，文字与次要动作让位给图标。
-   参照的 Less 变量在此展开为算好的像素值：
+   Less 变量在此展开为算好的像素值：
    @sidebar-collapsed-content-width = 56 - 2*8 - 1 = 39px
    图标内边距 = (39 - 16 - 2*1) / 2 = 10.5px
    头像内边距 = (39 - 32 - 2*1) / 2 = 2.5px

@@ -1,10 +1,4 @@
-/**
- * 面板预览缓存的纯逻辑。
- *
- * 对齐参照的 `AgentPanel.vue` 里的预览缓存：缓存条目按「作用域 + 路径」为键、带最近访问时间，
- * 超过上限按最旧淘汰，淘汰与替换都必须 `revokeObjectURL`——对象 URL 不回收就是内存泄漏。
- * 载荷形状与类型判定在 `@/shared/lib/file-preview`，个人空间页面共用同一份。
- */
+/** 面板预览缓存的纯逻辑。 */
 import type { PreviewFile } from '@/shared/lib/files';
 
 /** 预览缓存最多保留多少条就绪条目。 */

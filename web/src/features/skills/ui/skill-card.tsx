@@ -1,10 +1,4 @@
-/**
- * 技能卡片：面板里的一张卡。
- *
- * 结构与样式走 `shared/ui` 的 `InfoCard`（对齐参照 `InfoCard.vue`）：32px 图标块 + 名称 +
- * 等宽 slug 副标题 + 两行描述 + 共享范围标签；右上角的启停按钮是参照 `#actions` 插槽的
- * 一钮两态（悬停时显示即将发生的动作）。批量模式下动作区换成勾选框，点击卡片切换选中。
- */
+/** 技能卡片：面板里的一张卡。 */
 import * as React from 'react';
 import { Check, Minus, Plus } from 'lucide-react';
 import { Button, Checkbox, Spin } from 'antd';
@@ -47,7 +41,7 @@ export const SkillCard = ({
   const manageable = canManageSkill(skill);
   const selectable = isDeletableSkill(skill);
   const tags: InfoCardTag[] = skillCardTags(skill).map((name) => ({
-    // 「已被个人版本覆盖」「覆盖共享版本」在参照里是 orange 徽标，其余是灰
+    // 「已被个人版本覆盖」「覆盖共享版本」是 orange 徽标，其余是灰
     name,
     color:
       name.startsWith('已被') || name.startsWith('覆盖') ? 'orange' : 'gray',

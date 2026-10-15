@@ -108,12 +108,7 @@ export type HomeBranding = {
   logo: string;
 };
 
-/**
- * 首页顶栏投影。
- *
- * 首页正文照搬参照实现，顶栏只渲染品牌名与 Logo，因此不投影 `organization.name`、
- * `branding.title` 与 `footer.copyright`：组织名只用于决定品牌名的取值。
- */
+/** 首页顶栏投影。 */
 export function selectHomeBranding(
   info: SystemInfoData | undefined,
 ): HomeBranding {

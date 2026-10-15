@@ -1,12 +1,4 @@
-/**
- * MCP 详情视图（`/extensions/mcp/:slug`）。
- *
- * 对齐参照 `McpDetailView.vue`：顶部返回 + 图标 + 名称 + 传输类型，右侧三个动作（测试 / 编辑 /
- * 添加·移除·删除）；正文两个分区——「信息」是配置只读表（编辑走同一个表单弹窗），「工具」列出
- * 该服务器暴露的工具并逐个启停。需迁移的历史 stdio MCP 不给工具分区，只提示迁移或删除。
- *
- * 与参照的显式偏离（见决策记录）：编辑复用 `McpFormDialog`，而不是在详情页内联一份同样的表单。
- */
+/** MCP 详情视图（`/extensions/mcp/:slug`）。 */
 import * as React from 'react';
 import {
   ArrowLeft,

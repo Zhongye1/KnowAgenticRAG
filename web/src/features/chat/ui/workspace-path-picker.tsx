@@ -1,13 +1,4 @@
-/**
- * 个人空间的目录选择器（只做「选一个目录」）。
- *
- * 参照 `WorkspacePathPicker.vue`：工具栏（面包屑 + 新建文件夹 + 刷新）、可选的新建文件夹行、
- * 当前选择行、目录列表。参照还有 `files` 模式（多选文件）与 `isFileSelectable` 之类的钩子，
- * 本仓没有消费方，因此不做——只有项目选目录这一个用途。
- *
- * 根目录不可选（参照的 `unselectableDirectories` 默认 `['/']`）：项目要挂在子目录上，
- * 挂到个人空间根等于把整个空间当成一个项目。
- */
+/** 个人空间的目录选择器（只做「选一个目录」）。 */
 import * as React from 'react';
 import {
   Check,
@@ -29,7 +20,7 @@ import {
 
 import styles from './workspace-path-picker.module.css';
 
-/** 面包屑第一段的名字；与参照同值。 */
+/** 面包屑第一段的名字。 */
 const ROOT_NAME = 'Workspace';
 
 /** 根路径：能进但不能选。 */

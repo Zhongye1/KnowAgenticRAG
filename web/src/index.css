@@ -455,8 +455,7 @@ html.theme-transitioning.dark::view-transition-new(root) {
 }
 
 /*
- * 页头加载条（PageHeader 的 loading 态）：与参照 .page-header-loading-bar 同款——
- * 40% 宽的主色段在 2px 轨道里循环扫过。
+ * 页头加载条（PageHeader 的 loading 态）：40% 宽的主色段在 2px 轨道里循环扫过。
  */
 @keyframes page-loading {
   from {

@@ -567,7 +567,7 @@ const openAttachmentDialog = async () => {
     await screen.findByRole('button', { name: '添加内容' }),
   );
   await userEvent.click(
-    // 面板项是 role=menuitem 的按钮（与参照同构），显式 role 会盖掉隐式的 button
+    // 面板项是 role=menuitem 的按钮，显式 role 会盖掉隐式的 button
     await screen.findByRole('menuitem', { name: '添加附件' }),
   );
 };
@@ -1855,7 +1855,7 @@ describe('对话页的线程生命周期', () => {
 
     await userEvent.click(screen.getByRole('button', { name: '文件' }));
 
-    // 参照里两块面板不同时占横向空间
+    // 两块面板不同时占横向空间
     expect(document.querySelector('[data-mode]')).toBeNull();
     vi.restoreAllMocks();
   });

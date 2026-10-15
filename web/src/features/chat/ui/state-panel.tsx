@@ -133,7 +133,7 @@ export const StatePanel = ({
                   todo.status === 'unknown' ? undefined : todo.status,
                 )}
               >
-                {/* 参照 .todo-status-indicator：14px 空心圆环，进行中带脉冲点 */}
+                {/* 14px 空心圆环，进行中带脉冲点 */}
                 <span
                   aria-hidden
                   className={`${styles.todoIndicator} ${
@@ -200,7 +200,7 @@ export const StatePanel = ({
                     src={resolveFileIconUrl(file.name || file.path)}
                     alt=""
                   />
-                  {/* 产物行两行：文件名 + 类型描述（参照 .state-list-item-meta） */}
+                  {/* 产物行两行：文件名 + 类型描述 */}
                   <span className={styles.stateRowBody}>
                     <span className={styles.stateItemText}>{file.name}</span>
                     <span className={styles.stateMeta}>
@@ -232,7 +232,7 @@ export const StatePanel = ({
               const clickable = Boolean(run.child_thread_id);
               const body = (
                 <>
-                  {/* 参照 .state-subagent-icon：24px 头像框，内容是首字母兜底 */}
+                  {/* 24px 头像框，内容是首字母兜底 */}
                   <span
                     className={styles.stateSubagentIcon}
                     style={{

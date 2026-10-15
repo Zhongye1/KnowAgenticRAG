@@ -358,7 +358,7 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
       runtime.replyLoadingVisible = false;
       notifyThreadRuntime(threadId);
 
-      // 409 run_interrupted：线程里有一条被打断的 run 正在等审批。参照的处理是
+      // 409 run_interrupted：线程里有一条被打断的 run 正在等审批。
       // 停掉本地流式态、恢复 pendingInterrupt（fetchAgentState 会带回）、并把这次
       // 输入交还给调用方——它决定是把文本拼回输入框还是提示重试。
       if (isRunInterruptedConflict(error)) {
@@ -705,5 +705,5 @@ export function useChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
   );
 }
 
-/** 发送冷却窗口；防止发送后连续触发停止/再发送（参照同款 2s）。 */
+/** 发送冷却窗口；防止发送后连续触发停止/再发送。 */
 export const SEND_COOLDOWN_MS = 2000;

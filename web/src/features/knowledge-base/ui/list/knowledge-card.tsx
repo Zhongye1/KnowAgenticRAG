@@ -1,14 +1,4 @@
-/**
- * 知识库卡片：列表页的一张卡。
- *
- * 结构与样式走 `shared/ui` 的 `InfoCard`（对齐参照 `InfoCard.vue`）：32px 图标块 + 名称 +
- * 副标题（创建时间 · 文件数）+ 两行描述 + 类型/只读标签 + 统计摘要，右上角菜单提供
- * 复制 ID、编辑与删除。「只读」来自 `can_manage`（当前用户的有效权限），不是连接器能力；
- * 只读时不给编辑与删除。
- *
- * 与参照 `DataBaseView.vue` 的显式偏离（见决策记录）：参照的标签行还带共享范围与嵌入模型；
- * 本仓不放共享标签（共享范围在详情页的「共享设置」里改），统计摘要保留在描述下方。
- */
+/** 知识库卡片：列表页的一张卡。 */
 import { Copy, MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import { Button, Dropdown } from 'antd';
 
@@ -51,7 +41,7 @@ export const KnowledgeCard = ({
       testId="knowledge-card"
       title={database.name}
       subtitle={[
-        // 参照的副标题口径：相对时间 + 文件数（创建时间缺失时只留文件数）
+        // 副标题口径：相对时间 + 文件数（创建时间缺失时只留文件数）
         database.created_at
           ? `${formatRelativeTime(database.created_at)}创建`
           : null,

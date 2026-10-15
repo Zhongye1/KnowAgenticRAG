@@ -109,12 +109,7 @@ export async function removeAgent(agentSlug: string): Promise<void> {
   );
 }
 
-/**
- * 上传智能体图标，返回可写进 `icon` 的 URL。
- *
- * 复用通用的用户图片上传端点（与参照同一条路径）。响应是自由 dict，读不到地址就显式抛错，
- * 不把空串写进 `icon`——那样卡片会渲染成一张裂图。
- */
+/** 上传智能体图标，返回可写进 `icon` 的 URL。 */
 export async function uploadAgentIcon(file: File): Promise<string> {
   const data = unwrap<Record<string, unknown>>(
     await uploadUserImageApiUserUploadImagePost({ body: { file } }),

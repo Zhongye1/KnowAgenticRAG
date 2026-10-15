@@ -1,9 +1,4 @@
-/**
- * 对话流里的产物卡片。
- *
- * 参照的 `AgentArtifactsCard`；保存到个人空间的目录选择由页面级
- * 通知与默认目录承担，卡片自身只管条目渲染与三个动作。
- */
+/** 对话流里的产物卡片。 */
 import * as React from 'react';
 import { Download, FolderInput, Loader2 } from 'lucide-react';
 

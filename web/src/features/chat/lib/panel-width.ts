@@ -21,15 +21,12 @@ export const PANEL_GAP_WIDTH = 0;
 export const MOBILE_PANEL_MIN_WIDTH = 280;
 export const DESKTOP_PANEL_MIN_WIDTH = 320;
 
-/** 面板宽度是容器宽度的比例：默认 0.5，夹在 0.25–0.75（参照同值）。 */
+/** 面板宽度是容器宽度的比例：默认 0.5，夹在 0.25–0.75。 */
 export const DEFAULT_PANEL_RATIO = 0.5;
 export const MIN_PANEL_RATIO = 0.25;
 export const MAX_PANEL_RATIO = 0.75;
 
-/**
- * 比例上界：参照 `getMaxPanelRatio`——75% 与「上界像素 / 容器宽」取小，再不低于 25%。
- * 容器没有宽度时直接给 75%。
- */
+/** 比例上界：75% 与「上界像素 / 容器宽」取小，再不低于 25%。 */
 export function maxPanelRatio(containerWidth: number): number {
   if (!containerWidth) return MAX_PANEL_RATIO;
   const byPixels = panelMaxWidth(containerWidth) / containerWidth;
@@ -44,11 +41,7 @@ export function clampPanelRatio(ratio: number, containerWidth: number): number {
   );
 }
 
-/**
- * 比例换算成展示宽度（参照 `filePanelWidthStyle`）。
- *
- * 优先取「容器 × 比例」再夹进像素上下界；容器还没有宽度时退回百分比字符串。
- */
+/** 比例换算成展示宽度。 */
 export function panelWidthFromRatio(
   ratio: number,
   containerWidth: number,
@@ -127,10 +120,7 @@ export function clampPanelWidth(width: number, containerWidth: number): number {
   return Math.max(min, Math.min(width, max));
 }
 
-/**
- * 拖拽结束把最终像素宽回写成持久比例（参照 `handleResizingChange` 的收尾）：
- * `finalWidth / containerWidth` 夹进比例界。容器没有宽度时保持原值。
- */
+/** 拖拽结束把最终像素宽回写成持久比例。 */
 export function panelRatioFromWidth(
   finalWidth: number,
   containerWidth: number,

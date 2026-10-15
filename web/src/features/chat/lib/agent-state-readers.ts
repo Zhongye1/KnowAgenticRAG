@@ -21,7 +21,7 @@ const nonEmptyString = (value: unknown): string =>
 
 const TODO_NAME_MAX_LENGTH = 60;
 
-/** 待办的展示名：按字符截断，对齐参照 `formatTodoName`。 */
+/** 待办的展示名：按字符截断。 */
 export function formatTodoName(content: unknown): string {
   return Array.from(String(content || ''))
     .slice(0, TODO_NAME_MAX_LENGTH)
@@ -64,10 +64,7 @@ export function readAgentStateTodos(agentState: unknown): TodoItem[] {
   return items;
 }
 
-/**
- * `agent_state.files`：后端给的是 `Record<path, 文件元数据>`；附件列表并进同一份，
- * 路径去重，附件在前（参照口径）。
- */
+/** `agent_state.files`：后端给的是 `Record<path, 文件元数据>`；附件列表并进同一份，路径去重，附件在前。 */
 export function readAgentStateFiles(
   agentState: unknown,
   attachments: Array<{ path?: string; name?: string }> = [],

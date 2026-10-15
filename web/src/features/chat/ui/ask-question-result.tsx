@@ -11,7 +11,7 @@ type AskQuestionResultProps = {
   answer: unknown;
 };
 
-/** 推荐项：参照按「首个且标签里带 (Recommended)」判定。 */
+/** 推荐项。 */
 const isRecommended = (label: string, index: number): boolean =>
   index === 0 && label.includes('(Recommended)');
 

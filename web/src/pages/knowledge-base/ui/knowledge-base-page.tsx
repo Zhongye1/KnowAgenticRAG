@@ -1,21 +1,4 @@
-/**
- * 知识库详情页。
- *
- * 自顶向下三层，改这一页时先定位在哪一层：
- *   1. `DetailTopBar`（headnav）：返回 + 图标块 + 名称/副标题 + 动作区，自带通知出口；
- *   2. `KnowledgeBaseTabs`（分区条）：antd `Tabs` 同时承担条与面板容器；
- *   3. `panels`（tabpanel 内容）：按分区 key 映射，作为第 2 层的 `items[].children` 传进去。
- *
- * 结构对齐参照 `DataBaseInfoView.vue` + `extension-detail.less`：顶部一条「返回 + 图标块 +
- * 名称/副标题 + 动作区」，下面是 tab 形态的分区条（激活项 main 色字 + 底部 3px 主色条），
- * 内容区 gray-10 底。六个分区（文件管理、检索测试、知识图谱、知识导图、RAG 评估、评估基准），
- * 只有文档型知识库（`kb_type === 'milvus'`）才有文件管理——连接器类型没有文档全文接口。
- *
- * 动作区按参照带「复制 ID」与「配置」（编辑弹窗复用 `KnowledgeFormDialog` 的编辑态）；
- * 「共享设置」移进配置弹窗所在的一组（本仓的共享范围概念对应参照的权限配置页签）。
- * 参照文件区顶部还有一排「待解析 / 待入库 / 文件 / 大小 / Chunks / Tokens」状态卡，其中
- * 待解析与待入库是批量操作的入口——本仓对应能力在文件表格里，此处不放重复入口。
- */
+/** 知识库详情页。 */
 import * as React from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import {
@@ -93,7 +76,7 @@ const CONNECTOR_TABS: DetailTabDef[] = [
   { key: 'query', label: '检索测试', icon: Search },
 ];
 
-/** 非管理员可见的分区；参照 `visibleTabs` 把 RAG 评估与评估基准留给管理员。 */
+/** 非管理员可见的分区。 */
 const READONLY_VISIBLE_TABS: DetailTab[] = [
   'files',
   'query',
@@ -103,13 +86,13 @@ const READONLY_VISIBLE_TABS: DetailTab[] = [
 
 /* ────────────────────────── 第一层：headnav ────────────────────────── */
 
-/** 类型图标：参照 `getKbTypeIcon`（milvus → DatabaseZap，兜底 Database）；本仓不引品牌图标。 */
+/** 类型图标：milvus → DatabaseZap，兜底 Database；不引品牌图标。 */
 const TYPE_ICONS: Record<string, LucideIcon> = { milvus: Database };
 
 const getTypeIcon = (type: unknown): LucideIcon =>
   TYPE_ICONS[String(type ?? '').toLowerCase()] ?? Database;
 
-/** 复制知识库 ID；成功/失败都给与参照同款的文案。 */
+/** 复制知识库 ID。 */
 const copyDatabaseId = async (
   kbId: string,
   notify: (input: { type: 'success' | 'error'; title: string }) => void,
@@ -122,10 +105,7 @@ const copyDatabaseId = async (
   }
 };
 
-/**
- * 副标题：有描述给描述，否则「{类型} 知识库 · {N} 文件」（连接器是「{类型} 连接器」）。
- * 与参照的 `databaseSubtitle` 同口径。
- */
+/** 副标题：有描述给描述，否则「{类型} 知识库 · {N} 文件」（连接器是「{类型} 连接器」）。 */
 const describeSubtitle = (kb: KnowledgeBase): string => {
   const description = kb.description?.trim();
   if (description) return description;
@@ -146,13 +126,7 @@ type DetailTopBarProps = {
   onEdit: () => void;
 };
 
-/**
- * 详情页头：底边框页头行，与 `PageHeader` 同形态，收在 ContentLayout 的标准留白里
- * （不再用负 margin 逃出留白做全宽白底条）。
- *
- * 令牌走参照的 `--gray-*`：旧 `--color-*` 是未迁移页面的色板，同一处会出现两种灰。
- * 纵向内边距取参照的 7px，横向留白由 ContentLayout 给。通知出口由本层自取。
- */
+/** 详情页头：底边框页头行，与 `PageHeader` 同形态，收在 ContentLayout 的标准留白里。 */
 const DetailTopBar = ({
   kb,
   readOnly,
@@ -308,10 +282,7 @@ const KnowledgeBaseContent = ({ kbId }: { kbId: string }) => {
 
   const database = useKnowledgeBase(kbId);
 
-  /**
-   * `?action=edit` 深链：详情就绪后打开配置弹窗，并把参数消费掉——否则关掉弹窗后
-   * 刷新或回退会再弹一次（与参照 `router.replace` 清参同口径）。
-   */
+  /** `?action=edit` 深链：详情就绪后打开配置弹窗，并把参数消费掉，否则关掉弹窗后刷新或回退会再弹一次。 */
   React.useEffect(() => {
     if (searchParams.get('action') !== 'edit' || !database.data) return;
     setEditOpen(true);
@@ -327,7 +298,7 @@ const KnowledgeBaseContent = ({ kbId }: { kbId: string }) => {
 
   /*
    * 示例问题的自动生成/清空挂在页面这一层：分区没激活时面板不会挂载，放在面板里就只有在
-   * 用户点开过检索测试分区之后才会生效（参照的 QuerySection 是随页面一起挂载的）。
+   * 用户点开过检索测试分区之后才会生效。
    */
   useAutoSampleQuestions(kbId, {
     canManage: database.data?.can_manage === true,

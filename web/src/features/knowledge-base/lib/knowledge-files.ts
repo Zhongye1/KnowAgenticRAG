@@ -28,12 +28,7 @@ const STATUS_VIEW: Record<string, { label: string; tone: string }> = {
 export type FileStatusColor =
   'warning' | 'processing' | 'cyan' | 'success' | 'error' | 'default';
 
-/**
- * 色调 → antd `Tag` 的状态色。
- *
- * `warning` / `success` / `error` 与色调同名；`info` 取 `processing`（antd 对「进行中」的预设）；
- * `primary`（待入库）取 `cyan`——参照给它的是主色（青系），antd 预设里青最接近。
- */
+/** 色调 → antd `Tag` 的状态色。 */
 const TONE_COLORS: Record<string, FileStatusColor> = {
   warning: 'warning',
   info: 'processing',
@@ -375,16 +370,7 @@ export const formatDirname = (dirname?: string | null): string => {
   return `...${dir.slice(dir.length - PATH_PREVIEW_LIMIT + 3)}`;
 };
 
-/**
- * 拖拽移动的能力判定，对齐参照 `knowledgeFileMutations.js`。
- *
- * 三层门禁：整个文件区能不能改（只读 / 有操作在飞行 / 跨目录筛选 / 虚拟层）、
- * 这一行能不能拖、这个目标能不能成为落点。拆成纯函数是因为判定条件与
- * 「哪个 DOM 元素可拖」无关，可在无浏览器环境里逐条验证。
- *
- * 类型用本地结构定义而不是 import api/model 的类型：这一层不依赖上层，
- * 判定只看 `file_id` / `is_folder` / `is_virtual_folder` 三个字段。
- */
+/** 拖拽移动的能力判定。 */
 
 /** 拖拽判定要的行字段。 */
 export type DraggableFileTarget = {
@@ -409,13 +395,7 @@ export const canMutateKnowledgeFiles = ({
   virtualPath: boolean;
 }): boolean => !readOnly && !locked && !filtered && !virtualPath;
 
-/**
- * 这一行可拖？虚拟目录不可拖，且要存在至少一个可落点。
- *
- * 落点有两类：**根目录**（不在根目录时它总在，面包屑非空即意味着不在根），
- * 以及**同层的实体目录**。参照那边把根作为面包屑的第一节、用 `slice(0,-1)`
- * 取上层，效果相同；本仓的面包屑不含根（根是单独按钮），所以直接看 `crumbs` 是否为空。
- */
+/** 这一行可拖？虚拟目录不可拖，且要存在至少一个可落点。 */
 export const canDragKnowledgeFile = ({
   enabled,
   file,

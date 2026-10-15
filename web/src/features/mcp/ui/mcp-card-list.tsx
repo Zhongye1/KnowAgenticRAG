@@ -1,9 +1,4 @@
-/**
- * MCP 面板（扩展页的「MCP」tab）。
- *
- * 对齐参照 `McpCardList.vue`：搜索 + 添加 MCP + 刷新，卡片分「已添加」与「可添加」两组。
- * 卡片动作按三态分流——需迁移的只能删、已停用的可添加、内置的只能从当前配置移除（不删库）。
- */
+/** MCP 面板（扩展页的「MCP」tab）。 */
 import * as React from 'react';
 import { Plug, Plus } from 'lucide-react';
 

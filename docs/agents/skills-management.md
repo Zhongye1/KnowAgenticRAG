@@ -46,9 +46,10 @@ UserWorkspace，按 uid 隔离，不进入共享 Skill 数据表，并使用 Red
 - **个人来源**：`user-data/shared/<uid>/workspace/agents/skills/<slug>` 保存当前用户个人 Skill，不创建数据库记录
 - **个人缓存**：解析后的名称、slug 和描述按用户缓存到 Redis，默认 5 分钟失效
 
-::: tip 两种存储边界
+:::tip 两种存储边界
 共享 Skill 必须通过系统导入并写入数据库；个人 Skill 由个人安装、删除与刷新接口管理。共享/内置 Skill
 通过只读投影访问，个人 Skill 通过 UserWorkspace 的既有挂载直接访问。
+
 :::
 
 ## 创建方式
@@ -174,8 +175,9 @@ description: 这是一个用于处理特定任务的技能
 
 来源白名单用于限制产品允许的远程仓库，并不等同于 Sandbox 网络出口防火墙。
 
-::: tip ModelScope 合集适合批量安装
+:::tip ModelScope 合集适合批量安装
 ModelScope 合集地址可以作为远程来源填写，例如 `https://modelscope.cn/collections/MiniMax/MiniMax-Office-skills`。拉取后在列表中勾选需要的 Skills，再统一解析为安装草稿。
+
 :::
 
 **方式四：在线编辑已有 Skill**
@@ -187,8 +189,9 @@ ModelScope 合集地址可以作为远程来源填写，例如 `https://modelsco
 
 只有具备 `can_manage` 权限的用户才能编辑文件、依赖、共享范围和启用状态。
 
-::: tip 安装位置决定管理能力
+:::tip 安装位置决定管理能力
 个人 Skill 适合平台无关或用户自定义能力；共享 Skill 适合需要工具、MCP、Skill 依赖以及部门或全局共享的能力。
+
 :::
 
 ## 依赖系统
@@ -301,8 +304,9 @@ Agent 配置还可以用 `preload_skills` 指定需要首轮直接使用的少�
 - **禁止写入**：不能创建、修改或删除文件
 - **路径安全**：所有路径都经过安全校验，防止目录穿越攻击
 
-::: tip 只读不等于不可执行
+:::tip 只读不等于不可执行
 `/home/gem/skills` 对 Agent 是只读的，但沙盒命令工具仍可执行其中的脚本。Skill 应把依赖、运行方式和产物位置写清楚；脚本若需要写文件，应写入当前 Project Workdir 或 User Data，而不是 Skill 目录。
+
 :::
 
 个人 Skill 的来源和运行时文件都位于 UserWorkspace 的 `agents/skills/<slug>`。Run 初始化不会复制或

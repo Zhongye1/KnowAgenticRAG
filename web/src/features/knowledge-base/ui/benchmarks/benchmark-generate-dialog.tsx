@@ -80,7 +80,7 @@ export const BenchmarkGenerateDialog = ({
   const [error, setError] = React.useState('');
 
   /*
-   * LLM 模型回填系统默认值（参照取 `config.default_model`）。
+   * LLM 模型回填系统默认值。
    *
    * 不做状态同步：`form.llmModelSpec` 只装用户的选择，提交与渲染都用「用户选过就用它，
    * 否则用默认」的派生值——配置查询比弹窗晚到、或用户中途改选，都不需要 effect 去补。

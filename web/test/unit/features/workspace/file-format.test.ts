@@ -36,7 +36,7 @@ describe('formatRelativeTime', () => {
 
   /**
    * 期望值取自真实 dayjs（zh-cn + relativeTime）在同一基准时刻的输出：
-   * 参照的这一列就是 `dayjs(modified_at).fromNow()`，档位与串必须逐字一致。
+   * 这一列就是 `dayjs(modified_at).fromNow()`，档位与串必须逐字一致。
    */
   it('档位边界与参照（dayjs fromNow，zh-cn）逐字一致', () => {
     expect(ago(0)).toBe('几秒前');

@@ -1,11 +1,4 @@
-/**
- * 文件面板的首行：左边主色「上传」下拉（上传文件 / 新建文件夹），右边一排统计按钮。
- *
- * 形态与动作对齐参照 `DataBaseInfoView.vue` 的 `.file-management-info`：
- * 待解析 → 批量解析（parse-pending）、待入库 → 批量入库（index-pending）、
- * 文件数 → 虚拟文件夹转换、Chunks/Tokens → 统计修复。
- * 大小是纯展示（参照里就是 div，不是按钮）；处理中数量是自动刷新的输入，不展示。
- */
+/** 文件面板的首行：左边主色「上传」下拉（上传文件 / 新建文件夹），右边一排统计按钮。 */
 import * as React from 'react';
 import {
   Blocks,
@@ -21,7 +14,7 @@ import { Dropdown } from 'antd';
 
 import { cn } from '@/shared/lib';
 
-/** 参照 `.file-stat-card`：30px 高、12px 横向内边距、6px 圆角、白底细边框。 */
+/** 统计卡：30px 高、12px 横向内边距、6px 圆角、白底细边框。 */
 const statCardClass =
   'inline-flex min-h-[30px] min-w-[87px] items-center justify-center gap-1.5 rounded-[6px] border border-[var(--gray-200)] bg-[var(--gray-0)] px-3 text-xs font-normal text-[var(--gray-700)] transition-colors';
 
@@ -87,7 +80,7 @@ export const FilePanelHeader = ({
 }: {
   stats: FilePanelStats;
   actions: FilePanelActions;
-  /** 任一批量入口在飞行中：解析/入库按钮禁用（与参照的 chunkLoading 同口径）。 */
+  /** 任一批量入口在飞行中：解析/入库按钮禁用。 */
   busy?: boolean;
   /** 统计修复在飞行中：修复按钮转圈。 */
   repairing?: boolean;

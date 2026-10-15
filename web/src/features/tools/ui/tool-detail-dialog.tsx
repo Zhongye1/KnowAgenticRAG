@@ -1,9 +1,4 @@
-/**
- * 工具详情弹窗。
- *
- * 对齐参照 `ToolsCardList.vue` 的详情弹窗：描述、配置说明（有才显示）、分类、标签与参数表。
- * 参数表用原生 `table` + Tailwind 复刻参照的 antd 表格外观。
- */
+/** 工具详情弹窗。 */
 import { FileText, List, Tag as TagIcon, Tags } from 'lucide-react';
 
 import { Modal, Tag } from 'antd';

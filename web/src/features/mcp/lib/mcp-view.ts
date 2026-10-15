@@ -1,10 +1,4 @@
-/**
- * MCP 面板与详情页的展示与表单逻辑。
- *
- * 文案与分组对齐参照 `McpCardList.vue` / `McpFormModal.vue` / `McpDetailView.vue`：
- * 已启用与可添加分两组、卡片右侧的动作按钮按「内置 / 需迁移 / 已停用」三态换文案与图标，
- * 传输类型只保留后端接受的 `streamable_http` 与 `sse`。
- */
+/** MCP 面板与详情页的展示与表单逻辑。 */
 import type { McpServer } from '@/entities/mcp';
 
 /** 后端接受的传输类型；顺序即下拉顺序。 */
@@ -53,7 +47,7 @@ export const filterMcpServers = (
   );
 };
 
-/** 拆成「已添加」与「可添加」两组；顺序与参照一致。 */
+/** 拆成「已添加」与「可添加」两组。 */
 export const splitMcpServers = (
   servers: McpServer[],
 ): { enabled: McpServer[]; disabled: McpServer[] } => ({

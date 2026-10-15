@@ -1,17 +1,9 @@
-/**
- * 附件上传的纯逻辑。
- *
- * 对齐参照的 `AttachmentTmpUploadModal.vue`：三步是「上传到临时区 → 可选解析 → 确认到会话」，
- * 条目的可用状态是「已上传」与「已解析」，有任一条在上传或解析中时不能确认。
- *
- * 上限与后端同值（`MAX_ATTACHMENT_SIZE_BYTES`）：本地先拦一次只是不让用户白等一次上传，最终
- * 判定仍在后端。格式不在这里校验——参照的提示是「支持任意文件格式」，允许哪些扩展名由后端决定。
- */
+/** 附件上传的纯逻辑。 */
 
 /** 单文件上限；与后端 `MAX_ATTACHMENT_SIZE_BYTES` 同值。 */
 export const MAX_ATTACHMENT_SIZE_BYTES = 5 * 1024 * 1024;
 
-/** 配置里没写默认 OCR 引擎时的回退值；与参照同值。 */
+/** 配置里没写默认 OCR 引擎时的回退值。 */
 export const DEFAULT_OCR_ENGINE = 'rapid_ocr';
 
 export type AttachmentStatus =
@@ -79,14 +71,7 @@ export function validateAttachmentFile(
   return null;
 }
 
-/**
- * 解析方式的默认值；与参照同序。
- *
- * 1. 配置里写了 `disable` 且可选里有它 → `disable`；
- * 2. 配置值在可选项里 → 用它；
- * 3. 可选项里有 `rapid_ocr` → 用它；
- * 4. 否则取第一个可选项；都没有时返回 `null`（这一条不支持解析）。
- */
+/** 解析方式的默认值。 */
 export function getDefaultParseMethod(
   parseMethods: unknown,
   configuredEngine: unknown,

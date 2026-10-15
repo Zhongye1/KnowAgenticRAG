@@ -170,7 +170,7 @@ describe('记忆与提问的头部', () => {
 
     // 60 个字符 + 省略号
     expect(Array.from(text)).toHaveLength(61);
-    // 不含落单的代理项（参照用 String.slice 会截出半个字符）
+    // 不含落单的代理项（朴素 String.slice 会截出半个字符）
     expect(text).not.toMatch(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/);
   });
 

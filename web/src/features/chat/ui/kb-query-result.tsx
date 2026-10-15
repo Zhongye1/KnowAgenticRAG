@@ -1,12 +1,4 @@
-/**
- * 知识库检索（`query_kb`）的结果主体。
- *
- * 三块内容：命中片段（按来源文件分组，展开后看片段正文与分数）、图谱数据
- * （实体 / 关系 / 引用的摘要与列表）、以及都没有时的空态。
- *
- * 与参照的差别：参照点开文件会弹「片段」与「文件详情」两个弹窗，后者属于知识库切片；
- * 这里改成行内展开，避免 `features/chat` 反向依赖知识库，也省掉一个跨切片的中间层。
- */
+/** 知识库检索（`query_kb`）的结果主体。 */
 import type { KbQueryResult } from '../lib/kb-query-result';
 import { KbChunkGroups } from './kb-chunk-groups';
 

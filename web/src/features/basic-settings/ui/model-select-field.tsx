@@ -1,10 +1,4 @@
-/**
- * 模型选择字段。
- *
- * 对齐参照 `ModelSelectorComponent` / `EmbeddingModelSelector` / `RerankModelSelector` 的
- * 共同形态：一个显示当前 spec 的触发钮 + 按供应商分组的菜单；embedding 的菜单项额外显示
- * 向量维度。候选搜索与连通性检查没有做——那两项属于供应商管理面（`features/model-providers`）。
- */
+/** 模型选择字段。 */
 import * as React from 'react';
 import { ChevronDown } from 'lucide-react';
 

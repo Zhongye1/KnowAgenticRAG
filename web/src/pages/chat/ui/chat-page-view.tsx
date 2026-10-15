@@ -88,12 +88,7 @@ export type ChatPageViewProps = {
     debugMessages: DebugMessage[];
     fetchLangfuseUrl: (runId: string) => Promise<string | null>;
   };
-  /**
-   * 状态面板：与文件面板独立的第二个表面。
-   *
-   * 参照里它是一块可停靠（容器放得下时占 340px 窄列）也可浮动（放不下时成为卡片）
-   * 的面板，内容是 agent_state 的五个只读段；文件面板是另一个表面。
-   */
+  /** 状态面板：与文件面板独立的第二个表面。 */
   statePanel: {
     open: boolean;
     mode: 'docked' | 'floating';
@@ -170,7 +165,7 @@ export const ChatPageView = ({
           } as React.CSSProperties
         }
       >
-        {/* 顶栏：参照 .chat-header——滚动容器（chatMain）的兄弟，固定不滚 */}
+        {/* 顶栏：滚动容器（chatMain）的兄弟，固定不滚 */}
         <div
           className={`${styles.chatHeader} ${
             threadId ? styles.chatHeaderHasThread : ''
@@ -252,8 +247,8 @@ export const ChatPageView = ({
               ) : null}
             </div>
 
-            {/* 输入停靠区：参照 .bottom——sticky 贴底；空态时整体居中（start-screen）。
-                审批卡与输入表面同格叠放（参照 .message-input-stage.has-tool-approval）：
+            {/* 输入停靠区：sticky 贴底；空态时整体居中（start-screen）。
+                审批卡与输入表面同格叠放：
                 审批时输入表面 opacity:0 + inert，卡片视觉上「变成」输入框。 */}
             <div
               className={`${styles.inputDock} ${
@@ -262,7 +257,7 @@ export const ChatPageView = ({
             >
               <div className={styles.inputDockInner}>
                 {!hasContent ? (
-                  /* 空态问候语：参照 .chat-greeting-input（随机标语在输入框上方） */
+                  /* 空态问候语：随机标语在输入框上方 */
                   <div className={styles.greeting}>
                     <h1 className={styles.greetingTitle}>{greeting}</h1>
                   </div>
@@ -336,7 +331,7 @@ export const ChatPageView = ({
                   agentSlug={agentSlug ?? null}
                   top={threadId ? null : (projectSelector ?? null)}
                 />
-                {/* 底部提示：参照 .bottom-actions——在 dock 内、有会话才显示 */}
+                {/* 底部提示：在 dock 内、有会话才显示 */}
                 {threadId ? (
                   <div className={styles.bottomActions}>
                     <p className={styles.bottomNote}>
@@ -349,7 +344,7 @@ export const ChatPageView = ({
             </div>
           </div>
 
-          {/* 状态面板：参照 .side-panel--state——停靠时是内容行里的 340px 窄列，
+          {/* 状态面板：停靠时是内容行里的 340px 窄列，
               浮动时是右上角的卡片 */}
           {statePanel.open ? (
             <div
@@ -416,7 +411,7 @@ export const ChatPageView = ({
           ) : null}
         </div>
 
-        {/* 文件面板：参照 .side-panel--file——.chat 的直接子级（与页头、内容行并列），
+        {/* 文件面板：.chat 的直接子级（与页头、内容行并列），
             absolute 覆盖右缘整高；页头靠 padding-right 让位，按钮留在分栏虚线左侧 */}
         <div
           className={`${styles.sidePanel} ${sidePanel.open ? styles.sidePanelVisible : ''} ${

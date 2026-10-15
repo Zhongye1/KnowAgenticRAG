@@ -1,15 +1,4 @@
-/**
- * 助手消息的底部工具条。
- *
- * 结构对齐参照的 `RefsComponent`：一行图标（点赞 / 点踩 / 复制 / 时间 / 重新生成）
- * 加右侧对齐的「来源 N」按钮，展开后在下方显示来源详情。
- *
- * 三处与参照的有意差别：
- * - **模型名不显示**：参照读 `response_metadata.model_name`，本仓的消息模型里没有这个字段。
- * - **重新生成只在调用方给了回调时渲染**：本仓还没有重发机制，渲染一个点了没反应的按钮
- *   比不渲染更糟。
- * - **点踩原因用本仓的 Dialog**（参照用 antd Modal），字段与文案（空态、500 字上限）一致。
- */
+/** 助手消息的底部工具条。 */
 import * as React from 'react';
 import {
   BookOpen,
@@ -40,10 +29,10 @@ import type { ConversationSources } from '../lib/sources';
 import { KbChunkGroups } from './kb-chunk-groups';
 import { WebSearchResults } from './web-search-results';
 
-/** 点踩原因的字符上限；与参照同值。 */
+/** 点踩原因的字符上限。 */
 const DISLIKE_REASON_MAX_LENGTH = 500;
 
-/** 复制成功反馈的保持时长；与参照同值。 */
+/** 复制成功反馈的保持时长。 */
 const COPIED_FEEDBACK_MS = 2000;
 
 type MessageActionsProps = {

@@ -82,8 +82,7 @@ function normalizeChunks(payload: Record<string, unknown>): KbQueryChunk[] {
         return '';
       };
 
-      // 本仓的检索结果把 `file_id` 放在条目顶层（`SearchResultSchema`），参照放在
-      // metadata 里，两处都要认
+      // 本仓的检索结果把 `file_id` 放在条目顶层（`SearchResultSchema`），两处都要认
       const topLevelFileId =
         typeof chunk?.file_id === 'string' ? chunk.file_id : '';
 
@@ -95,7 +94,7 @@ function normalizeChunks(payload: Record<string, unknown>): KbQueryChunk[] {
             : typeof metadata.score === 'number'
               ? metadata.score
               : null,
-        // 来源的兜底链与参照一致；全都没有时归到「未知来源」而不是空串
+        // 来源的兜底链；全都没有时归到「未知来源」而不是空串
         source:
           pick(
             'source',

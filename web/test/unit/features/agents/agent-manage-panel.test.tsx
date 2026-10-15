@@ -110,7 +110,7 @@ describe('AgentManagePanel', () => {
     const card = await screen.findByTestId('agent-card-alpha');
     expect(card.textContent).toContain('alpha');
     expect(card.textContent).toContain('第一个智能体');
-    // 只设读范围时是「只读X」（与参照 getShareConfigLabel 同口径）
+    // 只设读范围时是「只读X」
     expect(card.textContent).toContain('只读全局');
   });
 

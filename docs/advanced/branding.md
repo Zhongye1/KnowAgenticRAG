@@ -24,12 +24,13 @@ cp backend/package/ars/config/static/info.template.yaml backend/package/ars/conf
 
 在 `.env` 中指定配置文件路径：
 
-```env
+```dotenv
 ARS_BRAND_FILE_PATH=package/ars/config/static/info.local.yaml
 ```
 
-::: tip 配置优先级
+:::tip 配置优先级
 `info.local.yaml` > `info.template.yaml`（默认）
+
 :::
 
 ## 登录协议配置
@@ -76,4 +77,4 @@ footer:
 
 品牌标识里不随主题变化的固定配色（如第三方登录图标）放在 `web/src/styles/brand.css`，该校验脚本默认豁免该文件。
 
-文档站的品牌色与主色刻度联动：`docs/.vitepress/theme/custom.css` 直接导入 `tokens.css` 并用 `rgb(var(--primary-6))` 等形式映射到 VitePress 变量。
+文档站的品牌色与主色刻度联动：`docs/theme/custom.css` 直接导入 `tokens.css`，并用 `rgb(var(--primary-6))` 等形式映射到 Rspress 的 `--rp-c-brand*` 变量。

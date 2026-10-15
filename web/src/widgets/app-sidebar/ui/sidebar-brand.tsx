@@ -1,10 +1,4 @@
-/**
- * 导航列品牌区。
- *
- * 展开态渲染组织头像、品牌名，以及搜索与折叠两个动作；折叠态整块换成一个按钮，
- * 悬停时头像让位给展开图标——与参照的 `.brand-expand-button` 行为一致。
- * 品牌名与头像来自系统信息接口，取不到时品牌名兜底 `KnowAgenticRAG`。
- */
+/** 导航列品牌区。 */
 import { PanelLeft, PanelLeftOpen, Search } from 'lucide-react';
 import { Link } from 'react-router';
 

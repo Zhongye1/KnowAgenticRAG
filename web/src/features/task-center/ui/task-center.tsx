@@ -1,10 +1,4 @@
-/**
- * 导航列底部的任务中心入口与面板。
- *
- * 入口只对管理员渲染（后端任务端点用 `get_admin_user` 兜底）；折叠态只有 39px
- * 内容宽，放不下 28px 的角标按钮，与参照同样隐藏。列表查询挂在这里而不是面板里：
- * 面板关着的时候角标也要跟着任务状态更新。
- */
+/** 导航列底部的任务中心入口与面板。 */
 import { Badge, Tooltip } from 'antd';
 import { ClipboardList } from 'lucide-react';
 import * as React from 'react';

@@ -1,12 +1,4 @@
-/**
- * 用户菜单。
- *
- * 参照实现把用户信息、文档中心、日夜切换、调试面板、设置与退出登录收在同一个下拉菜单里。
- * 本仓照此保留主题项：`DayNightSwitcher` 在展开态的 GitHub 行，折叠态放不下开关，
- * 这里的菜单项是那时唯一的切换入口。调试面板的开关放在 `features/debug` 的 store 里，
- * 与全局快捷键共用。
- * 「设置」打开账户设置弹窗（账户资料、头像、Memory 开关），入口只在登录后的外壳存在。
- */
+/** 用户菜单。 */
 import { Dropdown, type MenuProps } from 'antd';
 import { BookOpen, Bug, LogOut, Moon, Settings, Sun } from 'lucide-react';
 import * as React from 'react';
@@ -23,7 +15,7 @@ import styles from './user-menu.module.css';
 
 type UserMenuProps = {
   onLogout: () => void;
-  /** 折叠态只渲染头像，与参照的 `.sidebar-collapsed` 行为一致。 */
+  /** 折叠态只渲染头像。 */
   collapsed?: boolean;
 };
 

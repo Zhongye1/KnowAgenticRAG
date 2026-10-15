@@ -9,7 +9,7 @@ import { validatePhoneNumber, validateUsername } from '@/shared/lib';
 
 export const DEFAULT_PAGE_SIZE = 20;
 
-/** 分页器可选的每页条数；与参照的 `page-size-options` 同值。 */
+/** 分页器可选的每页条数。 */
 export const PAGE_SIZE_OPTIONS = ['20', '50', '100'];
 
 /** 角色筛选下拉；空串表示不筛选。 */

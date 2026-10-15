@@ -1,9 +1,4 @@
-/**
- * `Agents 目录说明` 弹窗。
- *
- * 对齐参照 `WorkspaceView.vue` 的同一弹窗：只有在 `/agents` 目录下才从页头进入，文案逐字照搬
- * （说明 `AGENTS.md` / `USER.md` / `MEMORY.md` 会在会话里注入到 Agent Prompt）。
- */
+/** `Agents 目录说明` 弹窗。 */
 import { Modal } from 'antd';
 
 import styles from './agents-guide-dialog.module.css';

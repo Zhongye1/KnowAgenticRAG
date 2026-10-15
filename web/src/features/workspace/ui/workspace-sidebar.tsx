@@ -1,13 +1,4 @@
-/**
- * 个人空间侧栏。
- *
- * 对齐参照 `WorkspaceSidebar.vue`：顶部「上传文件」下拉（上传文件 / 新建文件夹），下面依次是
- * 个人空间根与快速访问两项。高亮规则与参照同口径——「个人空间」在非快速访问路径下高亮，
- * 快速访问项只在**正好停在**该路径时高亮（进入 `/agents/skills/` 时两项都不亮）。
- *
- * 本切片不含知识库只读浏览，因此没有参照的「我的知识库 / 共享知识库」两段，也没有只读禁用态。
- * 搜索入口走与上传按钮同一套 `.actionBtn` 词汇，放在「上传文件」上方。
- */
+/** 个人空间侧栏。 */
 import * as React from 'react';
 import { ChevronDown, FolderPlus, Loader2, Search, Upload } from 'lucide-react';
 
@@ -39,7 +30,7 @@ export const WorkspaceSidebar = ({
   const [menuOpen, setMenuOpen] = React.useState(false);
   const menuRef = React.useRef<HTMLDivElement | null>(null);
 
-  // 点外面收起菜单；用 pointerdown 与参照的 useOutsidePointerdown 同口径
+  // 点外面收起菜单；用 pointerdown
   React.useEffect(() => {
     if (!menuOpen) return;
 

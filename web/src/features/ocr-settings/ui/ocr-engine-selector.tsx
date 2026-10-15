@@ -1,11 +1,4 @@
-/**
- * OCR 引擎选择器。
- *
- * 对齐参照 `OCRSelector.vue`：触发钮显示当前引擎名（检测中时换成转动图标），面板按健康结论
- * 把引擎分成可用与不可用两组，不可用的一组折叠在「不可用（N）」下面。引擎清单挂载时就取
- * （触发钮要拿它把 `engine_id` 翻成展示名，参照同样在 `onMounted` 里 `loadOptions`），
- * 健康检测只在面板打开时发起——它要真的去探每个服务，不适合随面板常驻。
- */
+/** OCR 引擎选择器。 */
 import * as React from 'react';
 import { ChevronDown, ChevronRight, RefreshCw } from 'lucide-react';
 
@@ -21,7 +14,7 @@ type OcrEngineSelectorProps = {
   onChange: (engineId: string) => void;
 };
 
-/** 视为可用的健康状态；与参照的 `isHealthy` 同集。 */
+/** 视为可用的健康状态。 */
 const HEALTHY_STATUSES = new Set(['healthy', 'configured', 'ok']);
 
 export const OcrEngineSelector = ({

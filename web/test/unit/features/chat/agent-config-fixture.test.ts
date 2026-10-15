@@ -71,7 +71,7 @@ describe('真实后端响应的提及候选', () => {
     expect(items.skills[0]).toMatchObject({
       value: 'mysql-reporter',
       type: 'skill',
-      // 展示名里有空格，令牌按参照的规则加引号
+      // 展示名里有空格，令牌加引号
       tokenLabel: '@skill:"mysql reporter"',
     });
   });

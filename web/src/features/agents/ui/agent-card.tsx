@@ -1,11 +1,4 @@
-/**
- * 智能体卡片。
- *
- * 结构对齐参照的 `InfoCard`：32px 图标 + 名称/标识 + 两行描述 + 标签行（共享范围标签在左、
- * 「去对话」在右）+ 右上角的更多操作菜单。可管理的卡片整块可点开编辑，菜单是键盘可达的那条路径。
- *
- * 图标先试配置里的图标（上传接口给的 URL），取不到再落到首字母兜底。
- */
+/** 智能体卡片。 */
 import { ChevronRight, MoreHorizontal } from 'lucide-react';
 
 import { Button, Dropdown } from 'antd';

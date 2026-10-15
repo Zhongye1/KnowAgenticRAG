@@ -84,12 +84,7 @@ export const useIsSuperuser = (): boolean => {
   return user.data?.role === 'superadmin';
 };
 
-/**
- * 管理员判定（超管也算）；同样只影响呈现。
- *
- * 与参照 `userStore.isAdmin` 同口径：设置面板里「基本设置 / OCR 配置 / 用户管理」按它门控，
- * 「部门管理」只对超管开放。
- */
+/** 管理员判定（超管也算）；同样只影响呈现。 */
 export const useIsAdmin = (): boolean => {
   const user = useUser();
   return user.data?.role === 'admin' || user.data?.role === 'superadmin';

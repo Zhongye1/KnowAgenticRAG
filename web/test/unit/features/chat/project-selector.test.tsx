@@ -129,7 +129,7 @@ describe('ProjectSelector', () => {
     expect(
       screen.getByRole('button', { name: '选择项目' }).textContent,
     ).toContain('选择项目');
-    // 提示挂在文字上（参照 .project-trigger-label 的 title）
+    // 提示挂在文字上
     expect(screen.getByTitle('不使用项目（发送时创建独立目录）')).toBeTruthy();
   });
 

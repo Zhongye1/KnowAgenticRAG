@@ -1,9 +1,4 @@
-/**
- * 工具面板的展示逻辑。
- *
- * 分类文案与配色对齐参照 `ToolsCardList.vue`；分类下拉从**数据里实际出现的分类**推导，
- * 而不是参照那份写死的四类列表——后端注册新分类时不用改前端。
- */
+/** 工具面板的展示逻辑。 */
 import type { Tool } from '@/entities/tool';
 
 /** 已知分类的中文名；未登记的按原始键显示。 */
@@ -17,12 +12,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 export const toolCategoryLabel = (category: string): string =>
   CATEGORY_LABELS[category] || category;
 
-/**
- * 工具卡片上的标签：分类在最前，其余标签取前两个。
- *
- * 去重是相对参照的一处小偏离：知识库类工具的 tags 里本来就有「知识库」，参照会渲染出两个
- * 同名标签。语义不变，只是不重复画同一个词。
- */
+/** 工具卡片上的标签：分类在最前，其余标签取前两个。 */
 export const toolCardTags = (tool: Tool): string[] => {
   const tags = [
     ...(tool.category ? [toolCategoryLabel(tool.category)] : []),

@@ -1,14 +1,9 @@
-/**
- * 423 锁定倒计时。
- *
- * 与 KnowAgenticRAG `LoginView.vue` 的 `startLockCountdown` 同语义：拿到剩余秒数就每秒递减，
- * 归零自动解锁；再次提交或卸载时清掉定时器。
- */
+/** 423 锁定倒计时。 */
 import * as React from 'react';
 
 import { formatLockRemaining } from '../lib/login-lock';
 
-/** 倒计时步长，与 KnowAgenticRAG 的 `setInterval(..., 1000)` 同值。 */
+/** 倒计时步长。 */
 export const LOCK_TICK_MS = 1000;
 
 export type LoginLock = {

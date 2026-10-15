@@ -1,9 +1,4 @@
-/**
- * 可添加 MCP 的简介弹窗。
- *
- * 对齐参照 `McpCardList.vue` 的 basic-info 弹窗：未启用的服务器点卡片先看简介，再决定是否添加。
- * 需迁移的历史 stdio MCP 不走这里——它们只能删除，卡片直接进详情页。
- */
+/** 可添加 MCP 的简介弹窗。 */
 import { Button, Modal, Tag } from 'antd';
 
 import type { McpServer } from '@/entities/mcp';

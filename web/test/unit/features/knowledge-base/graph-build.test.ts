@@ -217,7 +217,7 @@ describe('索引按钮的状态角标', () => {
     expect(graphIndexTitle(status({ pending_chunks: 0 }))).toBe(
       '索引管理，已全部索引',
     );
-    // 构建中但还有待索引的 Chunk：文案仍以待索引优先（与参照的次序一致）
+    // 构建中但还有待索引的 Chunk：文案仍以待索引优先
     expect(
       graphIndexTitle(
         status({ build_task_status: 'running', pending_chunks: 3 }),

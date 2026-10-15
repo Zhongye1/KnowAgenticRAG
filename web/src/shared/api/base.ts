@@ -75,10 +75,7 @@ export async function toApiError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, detail);
 }
 
-/**
- * 未认证入口。登录是唯一不需要凭据的写接口，带上旧 token 会让「密码错误」的 401
- * 被当成会话失效（参照实现的登录请求同样不带 token）。
- */
+/** 未认证入口。登录是唯一不需要凭据的写接口，带上旧 token 会让「密码错误」的 401 被当成会话失效。 */
 const UNAUTHENTICATED_PATHS = ['/api/auth/token'];
 
 const isUnauthenticated = (url: string): boolean =>

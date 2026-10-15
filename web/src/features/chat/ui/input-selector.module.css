@@ -1,6 +1,5 @@
-/* 输入区选择器的触发按钮样式。参照实现 AgentInputArea.vue 的 `.input-action-btn`
-   （30px、无边框、13px、gray-600、hover gray-50）与 AgentView.vue /
-   ToolApprovalModeSelector.vue 的 `.config-dropdown-trigger`（宽度上限、窄屏收成图标）。 */
+/* 输入区选择器的触发按钮样式（30px、无边框、13px、gray-600、hover gray-50；
+   宽度上限、窄屏收成图标）。 */
 
 .trigger {
   display: flex;
@@ -10,7 +9,7 @@
   gap: 6px;
   height: 30px;
   min-width: 0;
-  /* 默认宽度上限取自参照的 .input-model-selector；智能体与审批模式另有两个上限 */
+  /* 默认宽度上限；智能体与审批模式另有两个上限 */
   max-width: min(168px, calc(100vw - 160px));
   padding: 6px 8px;
   border: none;
@@ -37,12 +36,11 @@
   }
 }
 
-/* 参照 AgentView.vue 的 `.config-dropdown-trigger`——智能体名允许更长 */
+/* 智能体名允许更长 */
 .triggerAgent {
   max-width: min(240px, calc(100vw - 160px));
 }
 
-/* 参照 ToolApprovalModeSelector.vue 的 `.config-dropdown-trigger` */
 .triggerApproval {
   max-width: min(180px, calc(100vw - 160px));
 }
@@ -52,7 +50,7 @@
   height: 15px;
 }
 
-/* 窄屏时才出现的图标：参照 `.config-dropdown-compact-icon`（宽屏隐藏、只留文字） */
+/* 窄屏时才出现的图标（宽屏隐藏、只留文字） */
 .triggerCompactIcon {
   display: none;
   width: 16px;
@@ -72,7 +70,7 @@
   white-space: nowrap;
 }
 
-/* 窄屏：参照 `.config-dropdown-trigger` 的 @container 收缩——30px 纯图标钮。
+/* 窄屏：@container 收缩——30px 纯图标钮。
    容器是输入胶囊（.inputPanel 的 container-type: inline-size）。 */
 @container (max-width: 640px) {
   .triggerAgent,
@@ -94,7 +92,7 @@
   }
 }
 
-/* 参照 AgentView.vue 的 520px 断点 */
+/* 520px 断点 */
 @media (max-width: 520px) {
   .triggerAgent {
     max-width: calc(100vw - 112px);
@@ -137,12 +135,12 @@
   margin: 0;
 }
 
-/* 完全信任态的告警色：参照 `.config-dropdown-trigger.is-trusted` */
+/* 完全信任态的告警色 */
 .triggerWarning {
   color: var(--color-warning-700);
 }
 
-/* ---------- 项目选择器：参照 ProjectSelectionSection.vue ---------- */
+/* ---------- 项目选择器 ---------- */
 
 .projectSelection {
   display: inline-flex;
@@ -150,7 +148,7 @@
   text-align: left;
 }
 
-/* 参照 .project-trigger——28px 透明钮；宽屏只有图标与文字，没有箭头 */
+/* 28px 透明钮；宽屏只有图标与文字，没有箭头 */
 .projectTrigger {
   display: flex;
   align-items: center;
@@ -207,7 +205,7 @@
   white-space: nowrap;
 }
 
-/* 面板：参照 .project-dropdown-panel */
+/* 面板 */
 .projectPanel {
   width: min(300px, calc(100vw - 24px));
   overflow: hidden;
@@ -217,7 +215,7 @@
   box-shadow: 0 8px 24px var(--shadow-4);
 }
 
-/* 参照 .project-search——带放大镜的 28px 输入行 */
+/* 带放大镜的 28px 输入行 */
 .projectSearch {
   display: flex;
   align-items: center;
@@ -342,7 +340,7 @@
   text-align: center;
 }
 
-/* 加载失败：文案与重试按钮同一行（参照 .project-error） */
+/* 加载失败：文案与重试按钮同一行 */
 .projectError {
   display: flex;
   align-items: center;
@@ -364,7 +362,6 @@
   font-weight: 600;
 }
 
-/* 参照 .project-dropdown-actions */
 .projectActions {
   display: flex;
   flex-direction: column;
@@ -400,7 +397,7 @@
   color: var(--color-text-tertiary);
 }
 
-/* 历史视图：返回钮与搜索框同一行（参照 .history-search-row） */
+/* 历史视图：返回钮与搜索框同一行 */
 .historySearchRow {
   display: flex;
   align-items: center;
@@ -503,7 +500,7 @@
   text-align: center;
 }
 
-/* 新建项目的弹窗正文：参照 .project-form / .project-form-field */
+/* 新建项目的弹窗正文 */
 .projectForm {
   display: flex;
   flex-direction: column;
@@ -531,9 +528,9 @@
   }
 }
 
-/* ---------- 附件上传弹窗：参照 AttachmentTmpUploadModal.vue ---------- */
+/* ---------- 附件上传弹窗 ---------- */
 
-/* 参照 a-upload-dragger 的拖拽区（.dropzone-title / .dropzone-desc） */
+/* 拖拽区 */
 .dropzone {
   display: flex;
   flex-direction: column;
@@ -575,7 +572,7 @@
   margin: 0;
 }
 
-/* 参照 .attachment-list——360px 上限、10px 间距 */
+/* 360px 上限、10px 间距 */
 .attachmentList {
   display: flex;
   flex-direction: column;
@@ -588,7 +585,7 @@
   margin-bottom: 0;
 }
 
-/* 参照 .attachment-item——12px padding、gray-50 底圆角卡 */
+/* 12px padding、gray-50 底圆角卡 */
 .attachmentItem {
   display: flex;
   align-items: flex-start;
@@ -599,7 +596,7 @@
   background: var(--gray-50);
 }
 
-/* 参照 .attachment-file-icon——32px 圆角容器 */
+/* 32px 圆角容器 */
 .attachmentFileIcon {
   width: 32px;
   height: 32px;
@@ -638,7 +635,7 @@
   font-weight: 500;
 }
 
-/* 参照 .remove-btn——hover 变红 */
+/* hover 变红 */
 .attachmentRemove {
   flex-shrink: 0;
   display: inline-flex;

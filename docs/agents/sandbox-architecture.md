@@ -200,7 +200,7 @@ API 的 Viewer、附件和 artifact 不复用 execution runtime，也不创建 f
 
 最小必要配置通常就是下面这几项：
 
-```env
+```dotenv
 SANDBOX_PROVIDER=provisioner
 SANDBOX_PROVISIONER_URL=http://sandbox-provisioner:8002
 SANDBOX_PROVISIONER_TOKEN=<至少 32 个随机字符>
@@ -323,7 +323,7 @@ sandbox-provisioner:
 
 也就是说，`sandbox.env` 配置的是沙盒容器内部可见的环境变量，而不是 provisioner 本身的配置。当前该文件内容为：
 
-```env
+```dotenv
 CHECK_ARS_SANDBOX_ENV_EXISTS=True
 ```
 

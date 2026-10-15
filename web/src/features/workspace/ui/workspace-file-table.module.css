@@ -1,6 +1,5 @@
 /* 个人空间文件表的样式。
-   参照实现 FileBrowserTable.vue 的 `.file-browser-*` 与 WorkspaceFileList.vue 的正文样式，
-   表格外观按 `.file-browser-ant-table` 的逐值（表头 8/10、单元格 7/10、行高与悬停底色）。
+   表格外观：表头 8/10、单元格 7/10、行高与悬停底色。
    颜色只用 agentic-tokens.css 的 --gray-* / --main-* / --shadow-*。 */
 
 .shell {

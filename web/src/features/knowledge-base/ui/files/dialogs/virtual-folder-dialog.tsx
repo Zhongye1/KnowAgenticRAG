@@ -1,10 +1,4 @@
-/**
- * 虚拟文件夹转换弹窗。
- *
- * 对齐参照 `DataBaseInfoView.vue` 的转换流程：启动任务拿 `task_id` → SSE 读进度 →
- * 终态后重新检测。任务与连接解耦：关弹窗或连接中断不撤销已转换的部分，
- * 再次执行会从剩余数据继续，所以中断只给警示不给失败态。
- */
+/** 虚拟文件夹转换弹窗。 */
 import * as React from 'react';
 import { Button, Modal, Progress } from 'antd';
 

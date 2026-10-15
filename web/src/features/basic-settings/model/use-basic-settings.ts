@@ -1,10 +1,4 @@
-/**
- * 基本设置面板的状态与动作。
- *
- * 配置值直接读 `useSystemConfig` 的缓存；每改一项就写一项（后端 `config/update` 是批量接口，
- * 单键走同一路径），成功后由写入层把响应回写缓存。标签取后端的 `_config_items`，缺失时用
- * 参照的文案兜底。
- */
+/** 基本设置面板的状态与动作。 */
 import * as React from 'react';
 
 import {

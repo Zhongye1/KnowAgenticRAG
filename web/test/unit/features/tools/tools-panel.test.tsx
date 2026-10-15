@@ -111,7 +111,7 @@ describe('搜索与筛选', () => {
     await user.type(screen.getByLabelText('搜索工具'), 'mysql');
 
     expect(screen.queryByText('联网搜索')).toBeNull();
-    // 标题按参照格式化：MySQL → Mysql（只有 2–3 字全大写词原样保留）
+    // 标题格式化：MySQL → Mysql（只有 2–3 字全大写词原样保留）
     expect(screen.getByText('Mysql 查询')).toBeTruthy();
   });
 

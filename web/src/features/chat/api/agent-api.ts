@@ -508,7 +508,7 @@ export const chatThreadApi = {
 /** 用 fast_model 生成一次会话标题；调用失败由调用方回退截断文案。 */
 export async function generateConversationTitle(input: {
   query: string;
-  /** `meta.model_spec`；参照传系统配置的 `fast_model`。 */
+  /** `meta.model_spec`。 */
   modelSpec: unknown;
 }): Promise<string> {
   const response = unwrap<unknown>(
@@ -519,7 +519,7 @@ export async function generateConversationTitle(input: {
       },
     }),
   );
-  // 参照取 `response.response`；后端没有 response_model，字段按不可信数据处理
+  // 后端没有 response_model，字段按不可信数据处理
   const payload =
     typeof response === 'object' && response !== null && 'response' in response
       ? (response as { response?: unknown }).response

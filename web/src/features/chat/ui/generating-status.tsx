@@ -1,10 +1,4 @@
-/**
- * 生成中状态条。
- *
- * 对齐参照的 `generating-status`：文案随状态变化（压缩上下文 / 排队中 / 正在生成），
- * 并带流逝时间；圆点与呼吸动画同参照 `.loading-dots` / `.generating-text`。
- * 纯展示，状态判定在 `buildReplyLoadingStatus`。
- */
+/** 生成中状态条。 */
 import { buildElapsedLabel } from '../lib/reply-status';
 import styles from './panel-sections.module.css';
 

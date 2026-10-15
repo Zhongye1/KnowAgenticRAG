@@ -1,15 +1,4 @@
-/**
- * 鼠标轨迹装饰层（照搬参照实现 `mouse-trail.tsx`）。
- *
- * 与参照的差异：颜色不再写死在组件里，改成从页面 token `--home-trail` 解析，
- * 透明度用 `globalAlpha` 表达。`check-design-tokens.mjs` 对样式目录以外的颜色函数
- * 字面量零豁免（按文本扫描，注释同样命中），画布取色因此沿用
- * `features/dashboard/lib/chart-palette.ts` 的「CSS 变量交给浏览器解析后读回」做法。
- * 首页固定浅色，参照的暗色分支不保留。
- *
- * 来源：AI Website Cloner Template 0.6.1（MIT，JCodesMore）里的 AusVector 首页克隆。
- * 样式在 `src/styles/home.css`，作用域 `.home-site`。
- */
+/** 鼠标轨迹装饰层。 */
 import { useEffect, useRef } from 'react';
 
 type TrailPoint = { x: number; y: number; life: number };
@@ -39,9 +28,7 @@ export function MouseTrail() {
     let frame = 0;
 
     // 从 `.home-site` 作用域里的 token 取轨迹色；取不到时不画（不给画布编造颜色）
-    const trailColor = getComputedStyle(canvas)
-      .getPropertyValue('--home-trail')
-      .trim();
+    const trailColor = getComputedStyle(canvas).getPropertyValue('--brand').trim();
     if (!trailColor) return;
 
     const resize = () => {
@@ -145,5 +132,11 @@ export function MouseTrail() {
     };
   }, []);
 
-  return <canvas ref={canvasRef} className="mouse-trail" aria-hidden="true" />;
+  return (
+    <canvas
+      ref={canvasRef}
+      className="pointer-events-none fixed inset-0 z-[100] h-screen w-screen"
+      aria-hidden="true"
+    />
+  );
 }

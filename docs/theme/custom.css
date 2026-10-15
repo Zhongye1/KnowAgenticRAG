@@ -1,0 +1,39 @@
+/* 导入前端设计 Token（:root 为亮色，.dark 为暗色，随 html.dark 生效） */
+@import url('../../web/src/styles/tokens.css');
+
+/*
+ * RSPress 品牌色跟随前端主色刻度。Token 存 RGB 三元组，必须用 rgb() 求值；
+ * 亮暗两套取值由 tokens.css 的 .dark 块提供，这里只写一次。
+ */
+:root {
+  --rp-c-brand: rgb(var(--primary-6));
+  --rp-c-brand-light: rgb(var(--primary-5));
+  --rp-c-brand-lighter: rgb(var(--primary-4));
+  --rp-c-brand-dark: rgb(var(--primary-7));
+  --rp-c-brand-darker: rgb(var(--primary-7));
+  --rp-c-brand-tint: rgb(var(--primary-6) / 0.12);
+  /* 少数组件按 rgba(var(--rp-c-brand-rgb), a) 消费，需要逗号分隔的三元组。 */
+  --rp-c-brand-rgb: 22, 93, 255;
+}
+
+html.dark {
+  --rp-c-brand-rgb: 60, 126, 255;
+}
+
+/* Mermaid 图表容器：居中，溢出时可横向滚动。 */
+.rp-mermaid {
+  display: flex;
+  justify-content: center;
+  margin: 16px 0;
+  overflow-x: auto;
+}
+
+.rp-mermaid svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.rp-mermaid--failed {
+  white-space: pre;
+  overflow-x: auto;
+}

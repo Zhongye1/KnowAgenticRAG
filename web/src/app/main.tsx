@@ -9,13 +9,11 @@ import '../styles/agentic-tokens.css';
 import '../styles/tokens.css';
 import '../styles/brand.css';
 import '../styles/antd-overrides.css';
-// 对话页的 markdown 正文排版：参照 MarkdownPreview.vue 的 .yk-markdown-preview 段
+// 对话页的 markdown 正文排版
 import '../styles/markdown-preview.css';
-// 首页的页面级样式：token 与字体映射一份，参照样式一份，接入面板与上下文段一份
-// （见 tracked 决策记录）
+// 首页的页面级样式：token 与字体映射一份，主题/皮肤一份（见 tracked 决策记录）
 import '../styles/home-tokens.css';
 import '../styles/home.css';
-import '../styles/home-panels.css';
 import { App } from './index';
 
 const root = document.getElementById('root');

@@ -1,13 +1,4 @@
-/**
- * 基本设置分区。
- *
- * 对齐参照 `BasicSettingsSection.vue` 的四段：超管可见的「默认项配置」（四个模型）与
- * 「内容审查配置」（级联开关），管理员可见的「Skill 配置」与「服务链接」。
- *
- * 与参照的显式偏离（见决策记录）：模型选择用 antd Dropdown + 分组菜单自绘（参照是三个各写
- * 一遍的自定义下拉，含候选搜索与连通性检查——那两项属于供应商管理面）；服务链接用带 `href`
- * 的按钮而不是 `window.open`，避免弹窗拦截。
- */
+/** 基本设置分区。 */
 import * as React from 'react';
 import { Globe } from 'lucide-react';
 

@@ -1,10 +1,4 @@
-/**
- * MCP 卡片。
- *
- * 结构与样式走 `shared/ui` 的 `InfoCard`（对齐参照 `McpCardList.vue` 的 mini 形态）：
- * emoji 图标块 + 名称 + 单行描述，右侧一个动作钮。动作钮是「一钮两态」：常态显示当前语义的
- * 图标，悬停时换成即将发生的动作（添加 ↔ 移除/删除）。
- */
+/** MCP 卡片。 */
 import { Check, Plus, Trash2 } from 'lucide-react';
 
 import type { McpServer } from '@/entities/mcp';

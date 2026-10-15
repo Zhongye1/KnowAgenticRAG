@@ -91,7 +91,7 @@ export default defineConfig([
     rules: { 'fsd/insignificant-slice': 'off' },
   },
   {
-    // 账户设置弹窗的入口只有用户菜单一处（参照同样只有 UserInfoComponent 引 SettingsModal）。
+    // 账户设置弹窗的入口只有用户菜单一处。
     // 资料写入、头像上传、Memory 开关与校验是一体的：并入 widgets/app-sidebar 会让侧边栏
     // 同时拥有身份展示与用户资料写入，因此保留切片，只关掉「单引用建议合并」这一条。
     files: ['**/features/account-settings/**'],

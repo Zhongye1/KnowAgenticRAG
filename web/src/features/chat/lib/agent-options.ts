@@ -33,7 +33,7 @@ export function buildAgentOptions(agents: Agent[]): AgentOption[] {
     }));
 }
 
-/** 选择器上显示的当前智能体名：加载中、找不到时的兜底文案与参照一致。 */
+/** 选择器上显示的当前智能体名。 */
 export function currentAgentLabel(
   options: AgentOption[],
   selected: string | null | undefined,

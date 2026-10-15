@@ -1,18 +1,4 @@
-/**
- * 侧边栏里的会话列表。
- *
- * 参照 `ConversationNavSection.vue`：可折叠的「最近」标题、32px 会话行（悬停露出渐隐遮罩与
- * 「更多」按钮）、行状态点、置顶标记、底部的「加载更多」。
- *
- * 行的手势与参照一致：单击进入、双击重命名、中键删除，另有悬停出现的「更多」菜单
- * （置顶 / 重命名 / 删除）。
- *
- * 与参照的两处不同：
- * - 行仍是 `<Link>` 而不是 `<div>`：可聚焦、可读屏、可新标签页打开；手势挂在它上面，
- *   中键的默认行为（新标签页）被拦下。
- * - 悬停/选中的底色走本仓侧边栏的 `--sidebar-*` 调色板：参照的 `--gray-50` 在这层底色上
- *   没有对比。
- */
+/** 侧边栏里的会话列表。 */
 import * as React from 'react';
 import {
   ChevronDown,
@@ -37,7 +23,7 @@ import { useThreadList } from '../model/thread-list-store';
 
 import styles from './conversation-list.module.css';
 
-/** 标题缺省时的占位；与参照同值，也与本仓页头的「新的对话」一致。 */
+/** 标题缺省时的占位，与本仓页头的「新的对话」一致。 */
 const UNTITLED = '新的对话';
 
 type ConversationListProps = {
@@ -107,7 +93,7 @@ const ThreadRow = ({
         to={paths.app.chat.getHref(thread.id)}
         aria-current={isCurrent ? 'page' : undefined}
         className={`${styles.item} ${isCurrent ? styles.itemActive : ''}`}
-        /* 双击重命名。第一次点击已经进入这条会话（与参照一致），改名弹窗随后打开 */
+        /* 双击重命名。第一次点击已经进入这条会话，改名弹窗随后打开 */
         onDoubleClick={(event) => {
           event.preventDefault();
           event.stopPropagation();

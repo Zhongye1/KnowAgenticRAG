@@ -4,8 +4,7 @@
  * - `StyleProvider layer` 让 antd 的 CSS-in-JS 注入 `@layer antd`，层序在
  *   `src/index.css` 顶部声明；不加这一层时 antd 是无层注入，会压过 Tailwind
  *   工具类与 CSS Modules。
- * - `ConfigProvider` 按 KnowAgenticRAG `src/stores/theme.js` 平移主题：种子色、链接色、
- *   圆角与字体栈；暗色用 `theme.darkAlgorithm` 并跟随 `html.dark`。
+ * - `ConfigProvider` 平移主题：种子色、链接色、圆角与字体栈；暗色用 `theme.darkAlgorithm` 并跟随 `html.dark`。
  * - 中文包从 `antd/es/locale/zh_CN` 取，不走 `antd/locale/zh_CN`：后者是
  *   `module.exports = require('../lib/locale/zh_CN')` 的 CJS 转发，其命名空间对象
  *   （`{default, __esModule}`）会整份到达 `ConfigProvider`，antd 读不到 `Modal.okText`
@@ -20,7 +19,7 @@ import * as React from 'react';
 
 import { useIsDarkMode } from '@/shared/lib/theme';
 
-/** 与 KnowAgenticRAG 的 `fontFamily` token 同值。 */
+/** 全局字体栈。 */
 const FONT_FAMILY =
   "'HarmonyOS Sans SC', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif";
 
@@ -43,7 +42,7 @@ export const AntdProvider = ({ children }: { children: React.ReactNode }) => {
   const theme = React.useMemo(
     () => ({
       algorithm: isDark ? antdTheme.darkAlgorithm : undefined,
-      // 参照的按钮文案没有两字间距（antd 默认在两个汉字间插空格）；
+      // antd 默认在两个汉字间插空格；
       // 关掉它，否则「删除」的可访问名会变成「删 除」，测试与读屏都受影响
       token: {
         fontFamily: FONT_FAMILY,
@@ -61,7 +60,7 @@ export const AntdProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <StyleProvider layer>
       {/* 中文按钮不插空格：antd 默认在两个汉字间插空格（「删除」变「删 除」），
-          与参照的紧凑文案、读屏与测试的可访问名都不一致，全局关掉 */}
+          否则紧凑文案、读屏与测试的可访问名都会受影响，全局关掉 */}
       <ConfigProvider
         theme={theme}
         locale={zhCN}

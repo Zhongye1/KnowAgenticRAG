@@ -41,8 +41,9 @@
 
 JSONL 只是导入和导出的交换格式。导入后，系统会把评估数据集、题目、评估运行和逐题结果保存到数据库中，不依赖本地 JSONL 文件作为内部存储。
 
-::: tip 推荐工具
+:::tip 推荐工具
 可以使用 [EasyDataset](https://github.com/ConardLi/easy-dataset) 从文档批量生成问答对。注意导出时将字段名改为 `query` 和 `gold_answer`。
+
 :::
 
 ### 自动生成

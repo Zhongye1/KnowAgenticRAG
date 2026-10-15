@@ -1,9 +1,4 @@
-/**
- * 项目列表、历史候选与创建。
- *
- * 历史候选按查询词分 key：换了词就是另一条查询，迟到的旧响应落在旧 key 上，不会覆盖当前结果
- * （参照用请求序号达到同一效果）。防抖由调用方在 250ms 上做。
- */
+/** 项目列表、历史候选与创建。 */
 import * as React from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
@@ -15,10 +10,10 @@ import {
   type ProjectItem,
 } from '../api/projects-api';
 
-/** 历史候选一次取多少条；与参照同值。 */
+/** 历史候选一次取多少条。 */
 export const HISTORY_CANDIDATE_LIMIT = 20;
 
-/** 历史候选搜索的防抖时长；与参照同值。 */
+/** 历史候选搜索的防抖时长。 */
 export const HISTORY_SEARCH_DEBOUNCE_MS = 250;
 
 /**

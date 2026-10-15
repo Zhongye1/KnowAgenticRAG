@@ -1,10 +1,4 @@
-/**
- * 产物提取与展示归一。
- *
- * `present_artifacts` 是有意不展示的工具调用（`HIDDEN_TOOL_CALL_IDS`），
- * 交付物改由对话流里的产物卡片呈现；提取规则对齐参照的
- * `MessageProcessor.extractArtifactsFromConversation`。
- */
+/** 产物提取与展示归一。 */
 import type { Conversation } from './message-processor';
 
 /** 卡片展示用的一条产物：去重后的路径与文件名。 */
@@ -85,12 +79,7 @@ export function normalizeArtifactItems(paths: unknown): ArtifactItem[] {
   return items;
 }
 
-/**
- * 产物行的类型描述；识别不出扩展名时是「交付文件」。
- *
- * 与参照同一条规则（`AgentArtifactsCard.vue` 的 `getArtifactMetaLabel`）：有扩展名就是
- * `交付文件 · 大写扩展名`。产物卡片与状态面板的产物行共用这一条文案，不各写一套。
- */
+/** 产物行的类型描述；识别不出扩展名时是「交付文件」。 */
 export function artifactMetaLabel(path: string): string {
   const filename = path.split('/').filter(Boolean).pop() || '';
   if (!filename.includes('.')) return '交付文件';

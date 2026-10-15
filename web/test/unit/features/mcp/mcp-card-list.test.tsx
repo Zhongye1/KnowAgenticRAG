@@ -98,7 +98,7 @@ describe('分组与渲染', () => {
 
     expect(screen.getByText('已添加')).toBeTruthy();
     expect(screen.getByText('可添加')).toBeTruthy();
-    // 标题按参照格式化：GitHub → Github
+    // 标题格式化：GitHub → Github
     expect(screen.getByText('Github')).toBeTruthy();
     expect(screen.getByText('Slack')).toBeTruthy();
   });

@@ -43,7 +43,7 @@ export const SubagentThreadView = ({
   const isStreaming = streamingMessages.length > 0;
 
   return (
-    /* 参照 SubagentThreadView.vue：滚动区 16px 28px 28px 内距、内容限宽 800px 居中 */
+    /* 滚动区 16px 28px 28px 内距、内容限宽 800px 居中 */
     <div className="min-h-0 flex-1 overflow-y-auto px-7 pt-4 pb-7">
       {loading && messages.length === 0 && streamingMessages.length === 0 ? (
         <p className={styles.stateEmpty}>正在加载子智能体消息...</p>

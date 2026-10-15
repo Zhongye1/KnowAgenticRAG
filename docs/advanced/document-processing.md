@@ -35,8 +35,9 @@ ARS 将上传文件先保存为原文件，再解析为 Markdown 并按知识库
 2. 系统自动将 HTML 转换为 Markdown
 3. 内置去重机制，避免重复抓取
 
-::: tip URL 白名单配置
+:::tip URL 白名单配置
 示例：`ARS_URL_WHITELIST=github.com,*.wikipedia.org,docs.python.org`
+
 :::
 
 ## OCR 方案选择
@@ -95,15 +96,16 @@ docker compose --profile all up -d --build mineru-api
 
 该服务在 `30001` 端口提供 `/file_parse` 接口，后端 `api` / `worker` 默认通过 `MINERU_API_URI=http://mineru-api:30001` 连接，通常无需额外配置。
 
-::: tip 显存不足
+:::tip 显存不足
 若显存有限导致启动失败，可在 `docker-compose.yml` 的 `mineru-api` 服务下放开 `--gpu-memory-utilization` 参数（如 `0.5`，必要时进一步降低）。
+
 :::
 
 ### MinerU Official（云服务）
 
 从 [MinerU 官网](https://mineru.net) 获取 API 密钥，在 .env 配置环境变量
 
-```env
+```dotenv
 MINERU_API_KEY=your-api-key-here
 ```
 
@@ -127,13 +129,13 @@ PaddleOCR API 使用百度 AI Studio 的 Access Token。获取方式：
 2. 在页面中复制 Access Token
 3. 在 `.env` 中配置为 `PADDLEOCR_API_TOKEN`
 
-```env
+```dotenv
 PADDLEOCR_API_TOKEN=your-access-token-here
 ```
 
 如需使用自定义 PaddleOCR API 地址，可额外配置：
 
-```env
+```dotenv
 PADDLEOCR_API_URL=https://paddleocr.aistudio-app.com/api/v2/ocr/jobs
 ```
 

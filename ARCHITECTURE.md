@@ -6,13 +6,13 @@
 
 ## 鸟瞰
 
-ARS 是一个面向 RAG、知识图谱和多智能体工作流的知识库平台。用户通过 Vue 前端管理智能体、知识库、模型、工具、Skills、MCP 与 SubAgents；前端通过 `/api` 调用 FastAPI；后端服务层协调 PostgreSQL、Redis、Silo（MinIO 兼容分支）、Milvus、Neo4j、LangGraph 和沙盒。
+ARS 是一个面向 RAG、知识图谱和多智能体工作流的知识库平台。用户通过 React 前端管理智能体、知识库、模型、工具、Skills、MCP 与 SubAgents；前端通过 `/api` 调用 FastAPI；后端服务层协调 PostgreSQL、Redis、Silo（MinIO 兼容分支）、Milvus、Neo4j、LangGraph 和沙盒。
 
 普通智能体请求先在 PostgreSQL 中保存为请求和消息，再立即派发或进入线程级 FIFO 队列。派发后的 `AgentRun` 通过 Redis/ARQ 交给独立 worker 执行，运行事件写入 Redis Stream，最终状态和业务记录写回 PostgreSQL，前端通过 SSE 消费排队与运行事件。
 
 核心开发服务包括：
 
-- `web-dev`：Vue 3 / Vite 前端，挂载 `web/src` 并热重载。
+- `web-dev`：React 19 / Vite 前端，挂载 `web/src` 并热重载。
 - `api-dev`：FastAPI API 服务，挂载 `backend/server`、`backend/package` 和测试目录并热重载。
 - `worker-dev`：ARQ worker，执行已经派发的 AgentRun，通过 attempt ownership 与 heartbeat 维护运行租约，并周期收敛失联 Run。
 - `storage-migrator`：Compose 中唯一修改 ARS 数据库 Schema 的一次性迁移进程，同时处理受支持的历史存储切换；API 与 worker 等待其成功后只校验 Schema 版本。
@@ -63,15 +63,15 @@ ARS 是一个面向 RAG、知识图谱和多智能体工作流的知识库平台
 
 ## 前端代码地图
 
-前端是 Vue 3 + Vite 应用，业务入口集中在 `web/src`。
+前端是 React 19 + Vite + TypeScript 应用，采用 Feature-Sliced Design，业务入口集中在 `web/src`。
 
-- `main.js` 挂载应用，`App.vue` 是根组件。
-- `router` 定义公开首页、登录、智能体、工作区、智能体管理、扩展和仪表盘路由，并负责认证、管理员和超级管理员守卫。
-- `apis` 是后端接口封装边界。新增接口应在这里定义，复用 `base.js` 的请求、鉴权和错误处理。
-- `stores` 保存用户、智能体配置、主题和其他跨页面状态。
-- `views` 是页面级入口，`components` 是可复用界面块。智能体对话的主要交互位于 `AgentChatComponent`，由 `AgentView` 负责页面组合。
-- `composables` 封装请求排队、Run SSE、流式消息、审批、线程状态、提及和其他可组合逻辑。
-- `utils` 放轻量转换和展示辅助；全局样式集中在 `assets/css`，颜色和基础规范优先复用 `base.css`。
+- `app/main.tsx` 是 `createRoot` 入口，`app/index.tsx` 装配全局 provider，`app/layouts/app-shell.tsx` 是登录后的外壳。
+- `app/routing/` 定义公开首页、登录、对话、工作区、智能体管理、扩展和数据总览路由，并负责认证、管理员与超级管理员守卫，以及 LITE 模式下的能力降级。
+- `shared/api` 是后端接口封装边界：手写层复用 `base.ts` 的请求、鉴权和错误处理，契约生成物在 `shared/api/generated`。
+- 跨页面状态由 `@tanstack/react-query`（服务端状态）与 `zustand`（前端状态）承担，查询客户端在 `app/index.tsx` 装配。
+- 页面在 `pages/`，跨页面复用的自包含块在 `widgets/`，用户交互在 `features/`，业务实体在 `entities/`，与业务无关的底座在 `shared/`。依赖只允许单向向下，分层与依赖规则由 `web/ARCHITECTURE.md` 拥有。
+- 智能体对话的主要交互在 `features/chat`：消息渲染、Run SSE 订阅与续传、审批与提问、排队与插队、提及与线程状态；页面容器在 `pages/chat`。
+- 全局样式在 `src/index.css` 与 `src/styles/`，Tailwind 工具类与设计 token 由 `scripts/check-design-tokens.mjs` 校验。
 
 `/` 是公开首页；登录后的核心工作区是 `/agent`。`/extensions` 对所有登录用户开放，其中 Skills 对普通用户可见，知识库、工具和 MCP 管理能力仅管理员可见；Dashboard 仅超级管理员可访问。后端权限检查始终是最终边界，前端守卫只负责页面体验。
 
@@ -79,8 +79,8 @@ ARS 是一个面向 RAG、知识图谱和多智能体工作流的知识库平台
 
 一次普通智能体请求经过以下边界：
 
-1. `AgentView` 和 `AgentChatComponent` 收集文本、图片、附件、模型与审批配置。
-2. `web/src/apis/agent_api.js` 调用 `POST /api/agent/runs`。
+1. `pages/chat` 与 `features/chat` 收集文本、图片、附件、模型与审批配置。
+2. `features/chat/api/agent-api.ts` 调用 `POST /api/agent/runs`。
 3. `server/routers/agent_router.py` 校验用户和智能体，将请求交给 `agent_request_queue_service`。
 4. 服务在同一数据库事务中创建用户消息和 AgentRunRequest，并按用户、智能体和线程检查活跃 Run 与 FIFO 队头。
 5. 请求可以立即派发、进入等待队列或按 `reject` 策略拒绝；只有数据库提交成功后才向 ARQ 投递 Run。

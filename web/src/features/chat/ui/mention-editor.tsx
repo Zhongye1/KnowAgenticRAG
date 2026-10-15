@@ -39,13 +39,7 @@ import {
 import { MentionPopup } from './mention-popup';
 import styles from './mention-editor.module.css';
 
-/**
- * 给芯片里的图标占位节点填上真实图标（参照 MessageInputComponent 的 render(h(...))）。
- *
- * 芯片 DOM 由 lib 层创建，React 图标组件进不去，因此挂载/内容重建后走一遍命令式填充：
- * lucide 图标经 renderToStaticMarkup 变成 SVG 标记直接注入，文件类型用彩色 SVG
- * （resolveFileIconUrl，同参照 FileTypeIcon）。
- */
+/** 给芯片里的图标占位节点填上真实图标。 */
 const ICON_MARKUP_CACHE = new Map<string, string>();
 
 const mentionIconMarkup = (type: string): string => {

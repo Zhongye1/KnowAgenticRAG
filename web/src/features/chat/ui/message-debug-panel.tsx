@@ -56,7 +56,7 @@ const ROLE_ICONS = {
   other: Clock,
 } as const;
 
-/* 参照 .role-pill：纯文字色（只有 error 红），不做彩底 */
+/* 纯文字色（只有 error 红），不做彩底 */
 const ROLE_CLASSES = {
   human: styles.pillHuman,
   ai: styles.pillAi,

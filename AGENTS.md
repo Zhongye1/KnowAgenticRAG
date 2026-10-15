@@ -1,6 +1,6 @@
 # ARS Agent 开发约定
 
-ARS 是基于 LangGraph、FastAPI、Vue 和多种持久化服务构建的知识库与多智能体平台。Docker Compose 是开发拓扑的事实来源；修改不熟悉的模块前先阅读 [ARCHITECTURE.md](ARCHITECTURE.md)，再用符号搜索确认真实实现。
+基于 LangGraph、FastAPI、React 和多种持久化服务构建的知识库与多智能体平台。Docker Compose 是开发拓扑的事实来源；修改不熟悉的模块前先阅读 [ARCHITECTURE.md](ARCHITECTURE.md)，再用符号搜索确认真实实现。
 
 ## 每次任务先加载什么
 

@@ -28,11 +28,7 @@ let initializeInFlight: Promise<void> | null = null;
 /** 列表读取的发起序号；用于丢弃被后发请求超越的旧响应。 */
 let loadGeneration = 0;
 
-/**
- * 一次拉多少条会话；与参照同值。
- *
- * 后端默认也是 100（`limit` 上限 500），这里显式传，让「加载更多」的页大小只有一个事实源。
- */
+/** 一次拉多少条会话。 */
 export const THREAD_PAGE_SIZE = 100;
 
 /** 置顶的排前面，其余保持后端给的 `updated_at` 倒序。 */

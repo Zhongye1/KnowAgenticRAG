@@ -29,14 +29,14 @@
 - 不手写易漂移的完整文件、API、测试或配置清单；保留稳定分类并链接源码、schema、Compose 或生成 Owner。不要按函数逐行复述控制流。
 - 机制页必须覆盖适用范围、真实装配、状态与事实 Owner、权限/隔离、失败/恢复、可观察结果、配置边界和“源码定位与验证”；配置页保留参数、操作与排障，不复制机制全景。
 - 教程的关键步骤给出页面、状态、文件或协议等可观察结果；参考字段写清读取者、默认值、条件、限制和生效时机。实质性的教程与参考内容不能长期共居一页。
-- 图只用于三项以上关系、状态或时序，使用能由 VitePress 渲染的最小 Mermaid；图不能替代正文中的条件、异常和安全语义。尚未实现的方向不进入当前机制图。
+- 图只用于三项以上关系、状态或时序，使用能由 Rspress 渲染的最小 Mermaid；图不能替代正文中的条件、异常和安全语义。尚未实现的方向不进入当前机制图。
 - 站内页面使用相对 Markdown 链接；站点外公开源码使用项目 GitHub `blob/main` 文件链接。禁止本地绝对路径、易漂移行号和只写文件名不说明职责的源码清单。
 - 示例只使用占位凭据、保留域名或假 ID；禁止写入 `.env`、Token、真实账号、用户数据、本地绝对路径或不可公开的内部地址。不要建议把 provisioner/数据库等管理凭据注入 Agent 沙盒。
 - 决策记录遵循[生命周期与格式](develop-guides/decisions/README.md)；implemented 记录使用现在时，不保留提案 checklist。用户可见完成项与 roadmap 不得同时声明同一状态。
 
 ## 导航、预算与验证
 
-- 新增正式页面时更新 `.vitepress/config.mts` 的正确父级和阅读顺序；内部 `AGENTS.md`、decision 与 postmortem 不因位于 `docs/` 就自动成为用户导航入口。
+- 新增正式页面时更新 `rspress.config.ts` 侧边栏的正确父级和阅读顺序；内部 `AGENTS.md`、decision 与 postmortem 不因位于 `docs/` 就自动成为用户导航入口。
 - `scripts/verify_engineering_contracts.py` 的 AGENTS 字符预算是 standing-order guardrail。超限时先下沉示例、背景和专题解释，再压缩重复；确需提高预算时同步更新 decision 和 gate，不能静默删掉必要约束或关闭检查。
 - 修改配置、API、状态、权限或机制说明时检查相关测试；文档构建只证明 Markdown、导航和链接有效，不证明语义正确。Reviewer 必须逐页对照当前源码、配置和风险相称的 oracle。
 - 构建失败要修正文档、锚点或导航，不扩大 `ignoreDeadLinks` 掩盖问题。报告只写实际执行的命令、结果和未验证范围。

@@ -1,14 +1,4 @@
-/**
- * 设置弹窗（多分区外壳）。
- *
- * 对齐参照 `SettingsModal.vue` 的信息架构：左侧导航（图标 + 文案）+ 右侧内容区，分区按角色
- * 门控——账户设置 / API Keys / 环境变量对所有登录用户开放，基本设置 / OCR 配置 / 用户管理
- * 对管理员开放，部门管理只对超管开放；导航顺序与参照的桌面端一致（环境变量排在最后）。
- *
- * 与参照的显式偏离（见决策记录）：没有 Star 推广卡；内容单栏（参照的内容区占
- * `calc(100% - 176px)` 是为了给导航让位，本仓导航在弹窗内部左栏，内容区自适应）；
- * 分区条件渲染而不是参照的 `v-show` 保活，切回时会复用缓存并后台重取。
- */
+/** 设置弹窗（多分区外壳）。 */
 import * as React from 'react';
 import {
   CircleUser,
@@ -34,16 +24,11 @@ import { useIsAdmin, useIsSuperuser } from '@/entities/session';
 
 import styles from './settings-modal.module.css';
 
-/** 导航项的键；与参照的 tab 键同语义。 */
+/** 导航项的键。 */
 type SettingsTab =
   'account' | 'apiKeys' | 'base' | 'ocr' | 'user' | 'department' | 'agentEnv';
 
-/**
- * 打开时落在哪个分区。
- *
- * 参照由调用方给 `initialTab`；它自己的用户菜单固定传 `account`，因此本仓固定账户设置。
- * 参照里 `isAdmin ? 'base'` 那条回退只在没有指定分区时生效，当前没有调用方走那条路径。
- */
+/** 打开时落在哪个分区。 */
 const DEFAULT_TAB: SettingsTab = 'account';
 
 type SettingsModalProps = {
@@ -63,7 +48,7 @@ export const SettingsModal = ({
   const isAdmin = useIsAdmin();
   const isSuperuser = useIsSuperuser();
 
-  // 每次打开都回到默认分区（参照在 visible 变化时 setActiveTab）
+  // 每次打开都回到默认分区
   React.useEffect(() => {
     if (open) setActiveTab(DEFAULT_TAB);
   }, [open]);
@@ -90,7 +75,7 @@ export const SettingsModal = ({
   return (
     <Modal
       open={open}
-      // 无标题栏、无 antd 关闭钮：参照的弹窗 `title={null}` + `closable={false}`，
+      // 无标题栏、无 antd 关闭钮：
       // 关闭钮自绘在左上角（见 `.closeButton`）
       title={null}
       closable={false}

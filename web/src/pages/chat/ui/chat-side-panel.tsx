@@ -1,12 +1,4 @@
-/**
- * 对话页右侧面板的分区渲染。
- *
- * 从 chat-page.tsx 拆出的装配：把 AgentPanel 的 `renderSection` 回调落成具体分区
- * （子智能体 / 文件预览 / 文件树），动作通过回调交回页面，本组件不持有分区列表与预览状态。
- *
- * 状态不在这里：参照把它放在独立的 `.side-panel--state` 上，本仓对应
- * `chat-page-view.tsx` 里的状态面板。
- */
+/** 对话页右侧面板的分区渲染。 */
 import * as React from 'react';
 import { RotateCw } from 'lucide-react';
 
@@ -194,7 +186,7 @@ export const ChatSidePanel = ({
                 openSearchResult(String(value), entry?.name);
               }}
             />
-            {/* 参照 .tree-toolbar-actions 的刷新钮：手动重拉当前作用域的树。
+            {/* 手动重拉当前作用域的树。
                 显式声明透明底：本仓不引 preflight，原生按钮不声明就会露出浏览器默认灰底 */}
             <button
               type="button"
@@ -212,7 +204,7 @@ export const ChatSidePanel = ({
 
         {/* 面包屑：当前选中项的路径，点一段回到那一层。
             antd 的 item 无 href 时渲染成 span（不是 button），因此不会带上浏览器默认的
-            按钮灰底；与参照的差异（12px、分隔线间距、末段加重）用外层 arbitrary variant 收口。 */}
+            按钮灰底；（12px、分隔线间距、末段加重）用外层 arbitrary variant 收口。 */}
         {crumbs.length > 0 ? (
           <Breadcrumb
             aria-label="当前路径"

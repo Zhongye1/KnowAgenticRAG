@@ -107,7 +107,7 @@ export const AgentPanel = ({
       setResizing(false);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
-      // 收尾顺序同参照 stopResize：先 flush 最后一次位置，再让调用方回写比例
+      // 收尾顺序：先 flush 最后一次位置，再让调用方回写比例
       if (event) onResize(pendingXRef.current);
       onResizeEnd?.();
     },
@@ -197,7 +197,7 @@ export const AgentPanel = ({
                   <span aria-hidden className={styles.sectionTabDivider} />
                 ) : null}
                 {/* 激活态挂在外层：底色由它给，挂在按钮上会被 .sectionTabMain 的
-                    background: transparent 盖掉（参照里这个类也在外层） */}
+                    background: transparent 盖掉 */}
                 <div
                   className={`${styles.sectionTab} ${
                     active ? styles.sectionTabActive : ''

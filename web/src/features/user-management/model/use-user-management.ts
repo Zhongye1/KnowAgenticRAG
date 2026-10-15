@@ -1,10 +1,4 @@
-/**
- * 用户管理面板的状态与动作。
- *
- * 筛选（搜索 / 部门 / 权限）与分页一起进 query key：改筛选等于换数据源，由 TanStack Query
- * 负责取数；搜索框另加 250ms 防抖（与参照同值）。编辑态默认不改密码，勾选「修改密码」后才
- * 要求填写。用户名在失焦时向后端换一次校验与生成的登录 ID。
- */
+/** 用户管理面板的状态与动作。 */
 import * as React from 'react';
 
 import { useDepartments } from '@/entities/department';
@@ -37,7 +31,7 @@ const EMPTY_FORM: UserFormValues = {
   departmentId: null,
 };
 
-/** 搜索防抖时长；与参照的 250ms 同值。 */
+/** 搜索防抖时长。 */
 const SEARCH_DEBOUNCE_MS = 250;
 
 export type UserManagement = {

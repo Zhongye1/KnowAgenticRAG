@@ -1,6 +1,6 @@
 /* Agents 目录说明弹窗的正文样式。
-   参照实现 WorkspaceView.vue 的 `.agents-guide-content`：段落 13px/1.7、代码块用等宽浅底、
-   小节标题 13px 加粗、建议列表 13px。颜色只用 agentic-tokens.css 的 --gray-*。 */
+   段落 13px/1.7、代码块用等宽浅底、小节标题 13px 加粗、建议列表 13px。
+   颜色只用 agentic-tokens.css 的 --gray-*。 */
 
 .content {
   display: flex;

@@ -1,20 +1,9 @@
-/**
- * 个人空间表格里的取值格式化。
- *
- * 对齐参照 `utils/file_utils.js` 与 `utils/time.js`：大小按 1024 进制两位小数、目录显示 `-`；
- * 修改时间是相对时间，档位与中文串跟参照（dayjs `fromNow()` 的 zh-cn）逐字一致——「3 天前」
- * 「19 小时前」这种带空格的写法就是参照渲染出来的样子。
- */
+/** 个人空间表格里的取值格式化。 */
 import { getPreviewFileExtension } from '@/shared/lib/files';
 
 const SIZE_UNITS = ['B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
 
-/**
- * 大小：目录与无效值显示 `-`，0 显示 `0 B`。
- *
- * 两位小数后去掉多余的零（`parseFloat(toFixed(2))`），与参照的 `formatFileSize` 逐字一致：
- * 1024 字节是 `1 KB` 而不是 `1.00 KB`。
- */
+/** 大小：目录与无效值显示 `-`，0 显示 `0 B`。 */
 export function formatFileSize(size: number, isDir: boolean): string {
   if (isDir) return '-';
   if (size === 0) return '0 B';
@@ -32,12 +21,7 @@ const MS_DAY = 24 * 60 * 60 * 1000;
 
 type RelativeUnit = 'second' | 'minute' | 'hour' | 'day' | 'month' | 'year';
 
-/**
- * dayjs `relativeTime` 的档位表（`plugin/relativeTime.js` 的 thresholds）。
- *
- * `unit` 缺省时沿用上一档的单位，`limit` 缺省表示最后一档（按年，无上限）。这张表必须原样照抄：
- * 参照的「3 天前」「21 小时前」全部由它决定，改一个数字就会在某些瞬间与参照差一档。
- */
+/** dayjs `relativeTime` 的档位表（`plugin/relativeTime.js` 的 thresholds）。 */
 const RELATIVE_THRESHOLDS: Array<{
   key: keyof typeof RELATIVE_LABELS;
   limit?: number;
@@ -86,13 +70,7 @@ const addMonths = (date: Date, months: number): Date => {
   return shifted;
 };
 
-/**
- * 两个时刻之间的月数，带小数（逐字照抄 dayjs 的 `monthDiff`）。
- *
- * 月差是日历量而不是「天数 ÷ 30」，而且含一个「日号小的那侧先换位再取负」的规则：把这条规则
- * 改成近似（例如固定 30 天）会在月末前后整整差一档——参照的「1 个月前」出现在第 26–45 个
- * 日历日之间，近似实现会把 45 天附近算成「2 个月前」。
- */
+/** 两个时刻之间的月数，带小数（逐字照抄 dayjs 的 `monthDiff`）。 */
 const monthDiff = (a: Date, b: Date): number => {
   if (a.getDate() < b.getDate()) return -monthDiff(b, a);
 

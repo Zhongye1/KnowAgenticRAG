@@ -1,10 +1,4 @@
-/**
- * 子智能体运行态的解析与展示视图。
- *
- * 数据源是 `agent_state.subagent_runs`（`SubAgentRunState`）与工具调用自身的结果；
- * 参照对齐 `toolRegistry.js` 的 `enrichSubagentToolCall`、`TaskTool.vue` 与
- * `SubagentLifecycleTool.vue`。
- */
+/** 子智能体运行态的解析与展示视图。 */
 import type { ChatToolCall } from '../api/agent-api';
 import { parseToolCallArgs } from './tool-call';
 
@@ -172,11 +166,7 @@ export const isSubagentToolCall = (
     getSubagentToolId(toolCall),
   );
 
-/**
- * 展示名：结果里的名字优先，其次参数的 slug，最后退回「子智能体」。
- *
- * 参照的解析链在这里收敛成一个函数，渲染层不再各自取。
- */
+/** 展示名：结果里的名字优先，其次参数的 slug，最后退回「子智能体」。 */
 export function resolveSubagentDisplayName(
   toolCall: ChatToolCall | null | undefined,
 ): string {
@@ -218,12 +208,7 @@ export const isTerminalRunStatus = (status: string): boolean =>
 export const isFailedRunStatus = (status: string): boolean =>
   FAILED_RUN_STATUSES.has(status.trim());
 
-/**
- * task 调用的运行状态。
- *
- * 参照口径：有结果即完成（结果里标 failed 的算失败）；没有结果时只有活跃调用
- * 算运行中，同一子线程的 steer 历史调用视为已完成（结果待整轮结束后回填）。
- */
+/** task 调用的运行状态。 */
 export function resolveTaskRunStatus(
   toolCall: ChatToolCall,
   options: { activeToolCallIds?: ReadonlySet<string> } = {},
@@ -249,7 +234,7 @@ const firstNonEmpty = (...values: unknown[]): string => {
   return '';
 };
 
-/** 概览里最多展示 8 条事件的截断口径，与参照一致。 */
+/** 概览里最多展示 8 条事件的截断口径。 */
 const EVENT_PREVIEW_LIMIT = 8;
 
 const compactWhitespace = (value: string): string =>
@@ -405,7 +390,7 @@ export type SubagentTaskView = {
   name: string;
   runStatus: ReturnType<typeof resolveTaskRunStatus>;
   runStatusLabel: string;
-  /** 参数或运行态里的描述；截断口径与参照一致（50）。 */
+  /** 参数或运行态里的描述。 */
   description: string;
   /** 子线程 id：运行态优先，其次参数 `thread_id`。 */
   childThreadId: string;

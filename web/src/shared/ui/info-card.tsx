@@ -1,20 +1,9 @@
-/**
- * 扩展卡片。
- *
- * 词汇的事实源是参照 `components/shared/InfoCard.vue` 的 default 形态：32px 图标块
- * （gray-50 底 + gray-150 边框 + 7px 圆角）、名称 14px/600 + 副标题 12px 等宽、描述最多
- * 两行（`min-height: 2.8em` 保证单行描述的卡片不塌）、底部标签行（11px/600、22px 高、
- * 4px 圆角，颜色键映射到参照 main.css 的 `.card-tag.tag-*`）。整卡 hover 换
- * gray-300 边框 + gray-25 底。
- *
- * 标签用自绘的 `<span>` 而不是 antd `Tag`：参照的标签更小更扁（11px/22px vs antd 的
- * 12px/24px），颜色键也要按参照的映射走。
- */
+/** 扩展卡片。 */
 import type { ReactNode } from 'react';
 
 import { cn } from '@/shared/lib';
 
-/** 标签的语义色；键与参照 `main.css` 的 `.card-tag.tag-*` 同集。 */
+/** 标签的语义色。 */
 export type InfoCardTagColor =
   'gray' | 'blue' | 'purple' | 'cyan' | 'red' | 'orange' | 'green' | 'gold';
 
@@ -34,7 +23,7 @@ const TAG_CLASS: Record<InfoCardTagColor, string> = {
   gold: 'bg-[var(--color-warning-50)] text-[var(--color-warning-900)]',
 };
 
-/** 卡片右上的动作区内容；参照的 `#actions` 插槽（启停按钮、状态点等）。 */
+/** 卡片右上的动作区内容。 */
 export const InfoCard = ({
   /** 可选的卡片标识（slug 等），挂到根节点供测试与读屏定位。 */
   slug,
@@ -78,7 +67,7 @@ export const InfoCard = ({
     data-testid={testId}
     {...(slug ? { 'data-slug': slug } : {})}
     className={cn(
-      // group/card：动作区里的「一钮两态」按钮靠它做悬停切换（与参照的 .info-card:hover 同语义）
+      // group/card：动作区里的「一钮两态」按钮靠它做悬停切换
       'group/card flex cursor-pointer flex-col gap-2.5 overflow-hidden rounded-[8px] border border-[var(--gray-150)] bg-[var(--gray-0)] p-4 transition-colors hover:border-[var(--gray-300)] hover:bg-[var(--gray-25)]',
       className,
     )}

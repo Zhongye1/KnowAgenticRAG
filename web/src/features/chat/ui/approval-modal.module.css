@@ -1,5 +1,4 @@
-/* 审批卡片的样式。参照实现 HumanApprovalModal.vue 的 `<style scoped>` 段逐条对应：
-   .approval-modal / .tool-approval-* / .question-tabs / .option-* / .approval-actions。
+/* 审批卡片的样式。
    颜色只用 agentic-tokens.css 的语义变量；--color-text-* 由 tokens 提供。 */
 
 /* ---------- 外壳 ---------- */

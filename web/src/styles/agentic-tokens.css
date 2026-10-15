@@ -1,10 +1,9 @@
 /* ============================================================================
- * KnowAgenticRAG 设计令牌（来源：KnowAgenticRAG web/src/assets/css/base.css 与 base.dark.css）
+ * 设计令牌。
  * ----------------------------------------------------------------------------
  * 原样并入，不改命名与值：--main-*、--second-*、--gray-*、--color-*。
  * 位于 src/styles/** 下，check-design-tokens.mjs 对硬编码颜色整体豁免。
  * 迁移期与 tokens.css 的 --primary-* 并存，全部页面迁完后删除旧变量。
- * 重新同步：从 KnowAgenticRAG 仓库覆盖本文件的 base.css 段与 base.dark.css 段。
  * ========================================================================== */
 
 /* ---------- base.css ---------- */
@@ -109,8 +108,7 @@
   --color-warning-700: #d48806; /* 警告色-深 */
   --color-warning-900: #ad6800; /* 警告色-最深 */
 
-  /* 提及候选的关键词命中色：参照 MessageInputComponent.vue 的 .query-match（#fa8c16，
-     金橘色）。参照没有给这个值命名，这里收编成正式变量供 token 门禁校验。 */
+  /* 提及候选的关键词命中色：#fa8c16，金橘色。这里收编成正式变量供 token 门禁校验。 */
   --query-match-color: #fa8c16;
 
   --color-info-10: #f5fbff; /* 信息色-极浅 */

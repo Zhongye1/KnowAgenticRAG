@@ -1,5 +1,4 @@
-/* 消息底部动作条的样式。参照 RefsComponent.vue 的 `.refs` 段：
-   灰底圆角胶囊 chip、来源按钮展开态主色高亮、来源面板灰底卡片。
+/* 消息底部动作条的样式。灰底圆角胶囊 chip、来源按钮展开态主色高亮、来源面板灰底卡片。
    颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .refs {
@@ -19,7 +18,7 @@
   width: 100%;
 }
 
-/* 参照 .refs .item——灰底胶囊 */
+/* 灰底胶囊 */
 .item {
   background: var(--gray-50);
   color: var(--gray-700);
@@ -49,7 +48,7 @@
   background: var(--gray-200);
 }
 
-/* 已提交后的禁用态：保持原底色（参照 .item.btn.disabled:hover） */
+/* 已提交后的禁用态：保持原底色 */
 .disabled {
   cursor: default;
 }
@@ -85,7 +84,7 @@
   flex-grow: 1;
 }
 
-/* 参照 .sources-btn——透明边框、展开态主色高亮 */
+/* 透明边框、展开态主色高亮 */
 .sourcesBtn {
   margin-left: auto;
   background: var(--gray-50);
@@ -119,7 +118,7 @@
   transform: rotate(180deg);
 }
 
-/* 参照 .sources-panel-body——灰底卡片 + slideDown */
+/* 灰底卡片 + slideDown */
 .sourcesPanel {
   background: var(--gray-25);
   border: 1px solid var(--gray-150);

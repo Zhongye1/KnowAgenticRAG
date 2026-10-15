@@ -64,20 +64,10 @@ export type AgentPanelSections = {
   };
   /** 点击调试入口：未开面板时先带上调试分区，再翻转开关。 */
   toggleWithDebugSection: () => void;
-  /**
-   * 状态面板是否打开。
-   *
-   * 它与文件面板是**两个独立表面**（参照 `.side-panel--state` 与 `.side-panel--file`）：
-   * 文件面板是贴着右缘的工作区，状态面板是「智能体现在在干什么」的窄列或浮卡。
-   */
+  /** 状态面板是否打开。 */
   stateOpen: boolean;
   setStateOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  /**
-   * 状态面板的呈现方式。
-   *
-   * 参照只在「文件面板关着且容器放得下 340px 面板 + 800px 聊天列」时停靠，
-   * 其余情况浮动成卡片——所以两个面板不会同时占掉横向空间。
-   */
+  /** 状态面板的呈现方式。 */
   stateMode: 'docked' | 'floating';
   /**
    * 子智能体分区随 `agent_state.subagent_runs` 同步：有运行态就有分区，
@@ -88,7 +78,7 @@ export type AgentPanelSections = {
 
 export const useAgentPanelSections = (): AgentPanelSections => {
   const [open, setOpen] = React.useState(false);
-  // 文件面板初始只有文件树；预览、子智能体、调试分区按需追加（参照 agentPanelSections）
+  // 文件面板初始只有文件树；预览、子智能体、调试分区按需追加
   const [sections, setSections] = React.useState<PanelSection[]>(() => [
     FILE_TREE_SECTION,
   ]);
@@ -97,7 +87,7 @@ export const useAgentPanelSections = (): AgentPanelSections => {
     FILE_TREE_SECTION.key,
   );
   const [maximized, setMaximized] = React.useState(false);
-  // 持久宽度是容器比例（参照 panelRatio），拖拽期间临时落成像素
+  // 持久宽度是容器比例，拖拽期间临时落成像素
   const [panelRatio, setPanelRatio] = React.useState(DEFAULT_PANEL_RATIO);
   const [dragWidth, setDragWidth] = React.useState<number | null>(null);
   // 最近一次真正应用的拖拽宽度。收尾回写比例要读它而不是 dragWidth：
@@ -135,7 +125,7 @@ export const useAgentPanelSections = (): AgentPanelSections => {
       dragWidth ?? panelWidthPxFromRatio(panelRatio, containerWidth);
   }, [dragWidth, panelRatio, containerWidth]);
 
-  /** 停靠所需的横向空间；与参照同值。 */
+  /** 停靠所需的横向空间。 */
   const STATE_PANEL_DOCK_WIDTH = 340;
   const STATE_PANEL_MIN_CHAT_WIDTH = 800;
 
@@ -176,7 +166,7 @@ export const useAgentPanelSections = (): AgentPanelSections => {
 
   const onResize = React.useCallback((clientX: number) => {
     const container = rowRef.current?.clientWidth ?? 0;
-    // 拖拽锚点第一次移动时从**面板当前宽度**起算（参照 handleResizingChange 的起始锚定）。
+    // 拖拽锚点第一次移动时从**面板当前宽度**起算。
     // 量不到宽度（容器还没布局）时不改宽度：拿 0 当锚点会把面板压没
     const anchor =
       resizeRef.current.startWidth === 0
@@ -194,7 +184,7 @@ export const useAgentPanelSections = (): AgentPanelSections => {
     setDragWidth(next.width);
   }, []);
 
-  /** 拖拽结束：最终像素回写成持久比例，锚点清零（参照 handleResizingChange 收尾）。 */
+  /** 拖拽结束：最终像素回写成持久比例，锚点清零。 */
   const endResize = React.useCallback(() => {
     const finalWidth = dragWidthRef.current;
     setPanelRatio((current) => {

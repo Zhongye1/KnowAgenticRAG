@@ -86,13 +86,7 @@ export async function searchEntries(input: {
   );
 }
 
-/**
- * 读一个文件用于预览。
- *
- * 后端对文本与 markdown 返回 JSON（`{content, preview_type, supported, message, truncated, limit}`），
- * 对图片与 PDF 返回二进制流（`X-Ars-Preview-Type` 头带类型）——这与参照的两个归一分支一致。
- * 个人空间那一侧走 `@/entities/workspace`；二进制分支的对象 URL 由预览缓存负责回收。
- */
+/** 读一个文件用于预览。 */
 export async function fetchFileContent(input: {
   scope: PanelTreeScope;
   threadId?: string;

@@ -1,8 +1,4 @@
-/**
- * 登录锁定（HTTP 423）的纯逻辑：剩余秒数解析与中文时长格式化。
- *
- * 展示契约与 KnowAgenticRAG `LoginView.vue` 的 `formatTime` 一致，四档文案固定。
- */
+/** 登录锁定（HTTP 423）的纯逻辑：剩余秒数解析与中文时长格式化。 */
 
 /** 锁定提示文案里的剩余秒数，例如「请等待 300 秒后再试」。 */
 const REMAINING_SECONDS_RE = /(\d+)\s*秒/;

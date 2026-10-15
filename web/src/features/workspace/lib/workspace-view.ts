@@ -1,9 +1,4 @@
-/**
- * 个人空间页面的取值与判定。
- *
- * 对齐参照 `WorkspaceSidebar.vue` 与 `WorkspaceFileList.vue`：面包屑第一段固定是「全部文件」，
- * 侧栏的快速访问是 `/agents/` 与 `/saved_artifacts` 两处，行菜单只有下载与删除（目录不下载）。
- */
+/** 个人空间页面的取值与判定。 */
 import type { FileEntry } from '@/shared/lib/files';
 import { isSameOrChildPath, pathBreadcrumbs } from '@/shared/lib/files';
 
@@ -13,7 +8,7 @@ import {
   isEditableWorkspaceFile,
 } from './file-format';
 
-/** 面包屑第一段的名字；与参照同值。 */
+/** 面包屑第一段的名字。 */
 export const WORKSPACE_ROOT_LABEL = '全部文件';
 
 /**
@@ -37,13 +32,7 @@ export const workspaceBreadcrumbs = (
   ...pathBreadcrumbs(path),
 ];
 
-/**
- * 当前路径算不算落在一个快速访问入口下。
- *
- * 参照用它把「个人空间」根项的高亮让给快速访问项：在 `/agents/…` 里时根项不再高亮。
- * 注意参照对快速访问项本身用的是**严格同层**判定（`isSamePath`），所以进入
- * `/agents/skills/` 时没有任何一项高亮——这是参照的行为，不是遗漏。
- */
+/** 当前路径算不算落在一个快速访问入口下。 */
 export const isQuickAccessPath = (path: string): boolean =>
   QUICK_ACCESS.some((item) => isSameOrChildPath(path, item.path));
 

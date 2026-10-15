@@ -1,12 +1,4 @@
-/**
- * 知识库片段的文件分组列表。
- *
- * 检索结果主体与「来源」面板共用它。`showSummary` 控制那句「找到 N 个相关文档片段，
- * 来自 M 个文件」——来源面板里已有「知识库来源 (N)」标题，再报一次数量是重复的。
- *
- * 与参照的差别：参照点开文件会弹「片段」与「文件详情」两个弹窗，后者属于知识库切片；
- * 这里改成行内展开，避免 `features/chat` 反向依赖知识库。
- */
+/** 知识库片段的文件分组列表。 */
 import * as React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 

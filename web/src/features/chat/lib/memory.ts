@@ -7,7 +7,7 @@
 import type { ChatToolCall } from '../api/agent-api';
 import { parseToolCallArgs, parseToolCallResultForDisplay } from './tool-call';
 
-/** 头部预览的截断长度；与参照同值。 */
+/** 头部预览的截断长度。 */
 export const MEMORY_PREVIEW_MAX_LENGTH = 60;
 
 export type MemoryView = {
@@ -33,7 +33,7 @@ export function memoryContentPreview(content: unknown): string {
     .replace(/\s+/g, ' ')
     .trim();
 
-  // 按 Unicode 切分：参照用 String.slice，会把代理对截成半个字符
+  // 按 Unicode 切分
   const characters = Array.from(collapsed);
 
   return characters.length > MEMORY_PREVIEW_MAX_LENGTH

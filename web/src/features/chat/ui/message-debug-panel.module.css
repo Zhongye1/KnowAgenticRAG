@@ -1,5 +1,4 @@
-/* 消息时序调试面板的样式。参照 MessageDebugPanel.vue 的
-   `.message-debug-panel` 全段：贴边行式面板（无外框卡片）、gray-25 组头、
+/* 消息时序调试面板的样式。贴边行式面板（无外框卡片）、gray-25 组头、
    border-bottom 条目行、等宽徽标。
    颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
@@ -13,7 +12,6 @@
     Arial, sans-serif;
 }
 
-/* 参照 .debug-panel-toolbar */
 .toolbar {
   display: flex;
   flex-direction: column;
@@ -54,7 +52,7 @@
   margin-left: auto;
 }
 
-/* 参照 .action-btn——24px 高描边小钮 */
+/* 24px 高描边小钮 */
 .actionBtn {
   display: inline-flex;
   align-items: center;
@@ -91,7 +89,7 @@
   margin: 0;
 }
 
-/* 参照 .filter-chip——22px 高、active 灰底描边 */
+/* 22px 高、active 灰底描边 */
 .filterChip {
   height: 22px;
   padding: 0 6px;
@@ -123,7 +121,7 @@
   opacity: 0.75;
 }
 
-/* 参照 .search-box——24px 高描边框，focus 主色光环 */
+/* 24px 高描边框，focus 主色光环 */
 .searchBox {
   display: flex;
   align-items: center;
@@ -185,7 +183,7 @@
   color: var(--gray-500);
 }
 
-/* 参照 .run-group：组间 4px 灰分隔；组头 gray-25 底 + 底线 */
+/* 组间 4px 灰分隔；组头 gray-25 底 + 底线 */
 .runGroup + .runGroup {
   border-top: 4px solid var(--gray-50);
 }
@@ -258,7 +256,7 @@
   margin: 0;
 }
 
-/* 参照 .timeline-item——border-bottom 行、hover 灰底；error 行浅红底 */
+/* border-bottom 行、hover 灰底；error 行浅红底 */
 .timelineItem {
   background: var(--gray-0);
   border-bottom: 1px solid var(--gray-150);
@@ -288,7 +286,7 @@
   flex-shrink: 0;
 }
 
-/* 参照 .role-pill：12.5px/600 纯文字色 */
+/* 12.5px/600 纯文字色 */
 .rolePill {
   font-size: 12.5px;
   font-weight: 600;
@@ -353,7 +351,7 @@
   }
 }
 
-/* 参照 .item-body——左侧 35px 缩进 */
+/* 左侧 35px 缩进 */
 .itemBody {
   padding: 0 12px 10px 35px;
 }

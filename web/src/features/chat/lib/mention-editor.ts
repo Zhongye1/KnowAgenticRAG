@@ -109,7 +109,7 @@ export function createMentionChip(
   chip.title = token;
   chip.setAttribute('contenteditable', 'false');
 
-  // 芯片带类型图标（参照 .mention-ref-icon）：文件用彩色类型图标，其余用线稿图标；
+  // 芯片带类型图标：文件用彩色类型图标，其余用线稿图标；
   // 图标节点由 MentionEditor 挂载后异步填充（React 图标无法直接进 DOM 字符串）
   const icon = document.createElement('span');
   icon.className = 'mention-ref-icon';

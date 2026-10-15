@@ -1,14 +1,4 @@
-/**
- * 右侧面板文件树的纯逻辑。
- *
- * 对齐参照的 `FileTreeComponent.vue`、`AgentPanel.vue` 里的树相关脚本，以及
- * `utils/agentPanelFilesystemPolling.js`、`utils/agentPanelSections.js` 的两个判定：
- * 刷新门（按线程单飞、合并待办、只在请求线程仍是当前线程时提交）与轮询判定
- * （面板打开、页面可见、正在生成，且当前分区需要看到文件系统变化）。
- *
- * 树的节点键用接口给的原始路径：目录路径带尾斜杠，比较时才归一（比较规则在
- * `@/shared/lib/workspace-path`，个人空间页面共用）。
- */
+/** 右侧面板文件树的纯逻辑。 */
 import type { FileEntry } from '@/shared/lib/files';
 import { isSameOrChildPath } from '@/shared/lib/files';
 
@@ -23,7 +13,7 @@ export const PANEL_TREE_SCOPES = [
 
 export type { PanelTreeScope };
 
-/** 轮询间隔；与参照同值。 */
+/** 轮询间隔。 */
 export const FILESYSTEM_REFRESH_INTERVAL_MS = 1000;
 
 /** 根刷新时预取的目录名；它们的子项决定空目录是否展示。 */
@@ -59,7 +49,7 @@ export function buildDisplayName(fullPath: unknown): string {
   return parts[parts.length - 1] || normalized;
 }
 
-/** 目录在前，再按名称排；用 `zh-Hans-CN` 排序，与参照同。 */
+/** 目录在前，再按名称排；用 `zh-Hans-CN` 排序。 */
 export function sortEntries(entries: FileEntry[]): FileEntry[] {
   return [...entries].sort((left, right) => {
     if (left.isDir !== right.isDir) return left.isDir ? -1 : 1;

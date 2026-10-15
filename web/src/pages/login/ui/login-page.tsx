@@ -30,12 +30,7 @@ import styles from './login-page.module.css';
 
 const LOGIN_ERROR_FALLBACK = '登录失败，请检查用户名和密码';
 
-/**
- * 登录页。
- *
- * 挂载顺序与 KnowAgenticRAG `LoginView.vue` 的 `onMounted` 一致：先看会话与 `oidc_error`，
- * 再查服务端健康，再判首次运行，最后才探测 OIDC 并尝试自动跳转。
- */
+/** 登录页。 */
 export const LoginPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -229,7 +224,7 @@ export const LoginPage = () => {
               {branding.orgName && branding.brandName !== branding.orgName ? (
                 <span className={styles.brandSeparator} />
               ) : null}
-              <span className={styles.brandMain}>{branding.brandName}</span>
+              {/* <span className={styles.brandMain}>{branding.brandName}</span> */}
             </h1>
           </Link>
         </div>

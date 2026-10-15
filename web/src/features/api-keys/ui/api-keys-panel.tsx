@@ -1,11 +1,4 @@
-/**
- * API Key 管理面板。
- *
- * 对齐参照 `ApiKeyManagementComponent.vue`：头部（标题 + 说明 + 刷新 + 创建），表格五列
- * （名称 / 前缀掩码 / 启停开关 / 最后使用 / 过期时间 + 删除），创建弹窗（名称 + 可选过期
- * 时间），创建成功后的一次性密钥弹窗（警告 + 复制）。创建幂等靠 `request_id`（UUID 存
- * sessionStorage，创建成功或取消后移除——重开弹窗换新键，页面刷新不会重复建 Key）。
- */
+/** API Key 管理面板。 */
 import * as React from 'react';
 import { Copy, Key, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
@@ -33,7 +26,7 @@ import { copyTextToClipboard, formatMinuteStamp } from '@/shared/lib';
 
 import styles from './api-keys-panel.module.css';
 
-/** 创建幂等键的 sessionStorage 位置；与参照同机制（键名换成本仓前缀）。 */
+/** 创建幂等键的 sessionStorage 位置。 */
 const CREATE_REQUEST_STORAGE_KEY = 'ars_pending_api_key_request_id';
 
 type ApiKeysPanelProps = {

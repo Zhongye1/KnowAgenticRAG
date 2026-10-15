@@ -1,12 +1,4 @@
-/**
- * 工具调用的头部文案。
- *
- * 参照实现把每个工具的头部做成一个专用组件（`ToolCallingResult/tools/*.vue`），
- * 但其中绝大多数只是「主文案 + `|` + 关键参数」的变体。本仓用一张按工具 id 分派的
- * 表表达同一套行为，通用外壳只消费这里的结果。
- *
- * 返回 `null` 表示没有专用头部，调用方回落到通用文案（「工具 X 执行完成」）。
- */
+/** 工具调用的头部文案。 */
 import type { ChatToolCall } from '../api/agent-api';
 import {
   answeredSummary,

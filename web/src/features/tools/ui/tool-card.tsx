@@ -1,9 +1,4 @@
-/**
- * 工具卡片：工具面板里的一张卡。
- *
- * 结构与样式走 `shared/ui` 的 `InfoCard`（对齐参照 `ToolsCardList.vue` 的 `InfoCard`）：
- * 32px 图标块 + 名称 + 等宽 slug 副标题 + 两行描述 + 分类/标签；点击卡片打开详情。
- */
+/** 工具卡片：工具面板里的一张卡。 */
 import * as React from 'react';
 
 import type { Tool } from '@/entities/tool';
@@ -20,7 +15,7 @@ type ToolCardProps = {
 
 export const ToolCard = ({ tool, onOpen }: ToolCardProps) => {
   const tags: InfoCardTag[] = toolCardTags(tool).map((name) => ({
-    // 分类标签参照里带颜色键（内置 blue / 知识库 purple），其余灰
+    // 分类标签带颜色键（内置 blue / 知识库 purple），其余灰
     name,
     color: name === '内置工具' || name === 'MySQL' ? 'blue' : 'gray',
   }));

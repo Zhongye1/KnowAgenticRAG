@@ -210,10 +210,10 @@ describe('RAG 评估分区', () => {
     // 评分环与历史表的综合评分都是 0 位百分比，所以这里用 getAllByText
     expect(screen.getAllByText('87%').length).toBeGreaterThan(0);
     expect(screen.getAllByText(/基准甲/).length).toBeGreaterThan(0);
-    // 耗时与数据量在「最近一次」卡片和历史表里各出现一次（耗时按参照口径是中文）
+    // 耗时与数据量在「最近一次」卡片和历史表里各出现一次（耗时是中文）
     expect(screen.getAllByText('12秒').length).toBeGreaterThan(0);
     expect(screen.getAllByText('12/12').length).toBeGreaterThan(0);
-    // 检索指标按参照口径给三位小数，不是百分比
+    // 检索指标给三位小数，不是百分比
     expect(screen.getAllByText('0.900').length).toBeGreaterThan(0);
   });
 
@@ -298,7 +298,7 @@ describe('RAG 评估分区', () => {
     const table = await screen.findByRole('table');
     expect(table).toHaveTextContent('eval-20261009-abcdef');
     expect(table).toHaveTextContent('基准甲');
-    // 检索指标三位小数、综合评分 0 位百分比、耗时中文——都是参照口径
+    // 检索指标三位小数、综合评分 0 位百分比、耗时中文
     expect(table).toHaveTextContent('0.900');
     expect(table).toHaveTextContent('87%');
     expect(table).toHaveTextContent('12秒');

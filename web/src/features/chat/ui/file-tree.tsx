@@ -1,14 +1,4 @@
-/**
- * 面板里的文件树。
- *
- * 两套树（对话目录 / 个人空间）共用这个组件：区别只在是否带节点动作（下载与删除只在对话目录有），
- * 以及空态文案。目录点击展开或收起，并按需加载子项；文件点击交回调用方去打开预览。
- *
- * 用 antd `Tree` 承载结构与键盘交互（↑↓ 移动、←→ 收起/展开、Home/End、`role="tree"` 与
- * 焦点管理都由组件给；展开态是受控的，因此 `onExpand` 必须把新的键交回调用方，
- * 否则 ←/→ 在受控模式下是空操作），节点行仍由本组件画：参照 AgentPanel.vue 的树段是彩色类型图标 +
- * 自绘 chevron + hover 显示 24px 动作钮，antd 自带的 switcher 与行样式因此在 CSS 里让位。
- */
+/** 面板里的文件树。 */
 import * as React from 'react';
 import {
   ChevronDown,
@@ -215,7 +205,7 @@ const FileTree = ({
       expandedKeys={expandedKeys}
       blockNode
       selectable
-      // 参照的箭头是自绘的：让 antd 的 switcher 不占位
+      // 箭头是自绘的：让 antd 的 switcher 不占位
       switcherIcon={null}
       aria-label={emptyText}
       titleRender={(dataNode) => {

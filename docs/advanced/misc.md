@@ -28,8 +28,9 @@
 
 使用大模型对内容进行审查，可以更好地识别提示词注入等复杂问题，但会增加响应延迟。
 
-::: warning 性能考虑
+:::warning 性能考虑
 LLM 检测会增加用户交互的延迟，请根据实际需求选择是否启用。
+
 :::
 
 ## 网页搜索
@@ -40,7 +41,7 @@ LLM 检测会增加用户交互的延迟，请根据实际需求选择是否启�
 
 1. 访问 [LangSearch Dashboard](https://langsearch.com/dashboard) 注册并创建 API Key
 2. 在 `.env` 文件中添加：
-   ```env
+   ```dotenv
    WEB_SEARCH_PROVIDER=langsearch
    LANGSEARCH_API_KEY=sk-xxxxxxxxxxxxxxxx
    ```

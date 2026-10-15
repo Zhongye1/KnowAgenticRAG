@@ -1,10 +1,4 @@
-/**
- * 登录后的全站导航列。
- *
- * 结构对齐参照实现的 `AppLayout.vue`：品牌区、导航、会话列表、底部（GitHub 与日夜切换
- * 同一行，用户菜单与任务中心同一行），右侧内容区由 `app/layouts` 装配。导航项的权限与
- * 能力门禁只影响入口可见性，授权仍由后端执行。
- */
+/** 登录后的全站导航列。 */
 import { Tooltip } from 'antd';
 import { Search } from 'lucide-react';
 import * as React from 'react';
@@ -22,7 +16,7 @@ import {
   useThreadList,
 } from '@/features/chat';
 import { TaskCenter } from '@/features/task-center';
-import { REPO_URL, paths } from '@/shared/config';
+import { BRAND_LOGO_URL, REPO_URL, paths } from '@/shared/config';
 import { DayNightSwitcher } from '@/shared/ui/DayNightSwitcher';
 
 import { buildNavItems, isNavItemActive } from '../lib/nav-items';
@@ -82,7 +76,7 @@ export function AppSidebar() {
     >
       <SidebarBrand
         brandName={branding.brandName}
-        avatar={branding.avatar}
+        avatar={BRAND_LOGO_URL}
         collapsed={collapsed}
         searchActive={searchOpen}
         onToggle={toggleSidebar}
@@ -115,7 +109,7 @@ export function AppSidebar() {
                   <span className={styles.navText}>{item.title}</span>
                 </Link>
               </Tooltip>
-              {/* 参照在折叠态把搜索入口放在主导航项之后；展开态由品牌区的搜索按钮承担 */}
+              {/* 折叠态把搜索入口放在主导航项之后；展开态由品牌区的搜索按钮承担 */}
               {item.primary && collapsed ? (
                 <Tooltip title="搜索" placement="right">
                   <button
@@ -134,7 +128,7 @@ export function AppSidebar() {
       </nav>
 
       <div className={styles.fill}>
-        {/* 参照在折叠态不渲染会话列表，只留空白填充区 */}
+        {/* 折叠态不渲染会话列表，只留空白填充区 */}
         {collapsed ? null : (
           <div className={styles.conversations}>
             <ConversationList currentThreadId={threadId} />
@@ -150,7 +144,7 @@ export function AppSidebar() {
             target="_blank"
             rel="noreferrer"
           >
-            {/* lucide 不再带品牌图标，这里沿用参照实现的内联 GitHub 图形 */}
+            {/* lucide 不再带品牌图标，这里沿用内联 GitHub 图形 */}
             <svg
               className={styles.icon}
               viewBox="0 0 16 16"

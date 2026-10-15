@@ -1,13 +1,4 @@
-/**
- * 账户设置分区。
- *
- * 对齐参照 `AccountSettingsComponent.vue`：gray-25 资料卡片、80px 圆头像悬停遮罩（无头像
- * 「上传」/有头像「更换」）、用户名与手机号行内编辑（Enter 保存、Esc/失焦取消）、UID/权限/
- * 部门只读、底部「是否启用 Memory」开关。文案逐字对齐参照。
- *
- * 与参照的显式偏离（见决策记录）：头像兜底用首字母渐变，不走 DiceBear 外部头像。
- * 弹窗外壳（导航、关闭钮）由 `SettingsModal` 统一拥有，这里只渲染分区内容。
- */
+/** 账户设置分区。 */
 import * as React from 'react';
 import { Building2, RefreshCw, ShieldCheck, Upload } from 'lucide-react';
 
@@ -47,7 +38,7 @@ export const AccountSection = ({
   const isEditing = (field: 'username' | 'phone_number') =>
     editing === field && !settings.savingField;
 
-  // 进编辑态时把焦点交给输入框（参照的 nextTick + focus）
+  // 进编辑态时把焦点交给输入框
   React.useEffect(() => {
     if (editing) usernameInputRef.current?.focus();
   }, [editing]);
@@ -232,7 +223,7 @@ export const AccountSection = ({
   );
 };
 
-/** 角色 → 文案；与参照的 `userRoleText` 同表。 */
+/** 角色 → 文案。 */
 const roleText = (role: string | null | undefined): string => {
   switch (role) {
     case 'superadmin':

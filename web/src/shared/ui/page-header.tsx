@@ -67,12 +67,7 @@ type PageHeaderTabsProps<K extends string> = {
   ariaLabel: string;
 };
 
-/**
- * 竖线分隔的 pill 式视图切换 tab。
- *
- * 参照 `.tab-item`：悬停 gray-50，选中是 gray-800 混 6% 的更深的灰；两种状态都不要
- * outline。URL 同步归页面自己——深链参数的默认值语义（删默认、恒写）不属于这里。
- */
+/** 竖线分隔的 pill 式视图切换 tab。 */
 export const PageHeaderTabs = <K extends string>({
   tabs,
   current,

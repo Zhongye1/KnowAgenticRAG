@@ -116,7 +116,7 @@ const GraphEmptyActions = ({
 export type KnowledgeGraphPanelProps = {
   kbId: string;
   readOnly: boolean;
-  /** 当前分区是否激活；参照每次激活都重取（`KnowledgeGraphSection.vue:859-870`）。 */
+  /** 当前分区是否激活。 */
   active: boolean;
 };
 
@@ -261,7 +261,6 @@ export const KnowledgeGraphPanel = ({
   /*
    * 重新进入分区时重取：本仓的面板被 antd 保留挂载（切走不卸载），而应用的查询客户端
    * 关掉了窗口聚焦重取、`staleTime` 是 60 秒，不主动失效就会一直看着旧图与旧状态。
-   * 参照每次激活都重取（`KnowledgeGraphSection.vue:859-870`）。
    * 跳过首次：分区第一次激活时面板刚挂载，查询本来就会取一次。
    */
   const firstActivation = React.useRef(true);

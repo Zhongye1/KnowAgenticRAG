@@ -1,12 +1,4 @@
-/**
- * 工具结果的展示视图。
- *
- * 参照里只有少数工具需要专门的结果渲染：图片类返回 URL 就直接画图，图表类把
- * `[{type:'text', text:'<url>'}]` 里的 URL 取出来画图。其余工具沿用通用外壳的
- * 「参数 + 结果文本」，不在这里重复。
- *
- * 返回 `null` 表示沿用通用结果渲染。
- */
+/** 工具结果的展示视图。 */
 import type { ChatToolCall } from '../api/agent-api';
 import {
   buildDocumentPreview,

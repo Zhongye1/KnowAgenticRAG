@@ -6,11 +6,12 @@
 
 ## v0.7.2.beta1 (2026-08-23)
 
-::: danger Beta 版本与数据风险
+:::danger Beta 版本与数据风险
 v0.7.2.beta1 包含不可逆的数据与文件布局迁移，主要影响历史对话线程、附件、Agent 产物和运行状态。本版本用于验证升级路径，不建议在重要、生产或缺少可恢复备份的环境中运行。
+
 :::
 
-::: warning 升级前检查与迁移
+:::warning 升级前检查与迁移
 1. 自动迁移只支持从 v0.7.1 正式版或当前 v0.7.2 schema 升级；运行过未发布 Workdir 中间 schema 的实例会被明确拒绝，不能直接原地升级。
 2. 安排维护窗口并停止业务写入，在同一停机时点完整备份 PostgreSQL、MinIO 和 `docker/volumes/ars`，并确认备份可以成套恢复。迁移会修改 Conversation/Project 关系、附件路径、旧 thread 文件布局及持久目录所有权。
 3. 检出 `v0.7.2.beta1` 后，先使用与重启时完全相同的 Compose、env file 和 profile 参数运行 `bash scripts/migrate-storage.sh ...`；迁移成功前不要启动新 API 或 worker。完整命令见[生产部署指南](../advanced/deployment.md#部署步骤)。
@@ -22,6 +23,7 @@ v0.7.2.beta1 包含不可逆的数据与文件布局迁移，主要影响历史�
 9. 历史知识库 Markdown 与 `public` bucket 图片不会自动迁移到私有 bucket；升级后这些旧 URL 仍可能匿名可读。重要知识库应重新解析生成私有图片，并在核对新结果后清理旧公开对象。
 10. 管理员此前创建的 stdio MCP 会被禁用且无法重新启用。请迁移为 SSE 或 Streamable HTTP，或直接删除；代码内置的系统 stdio MCP 不受影响。
 11. 重建或升级 Redis 后需重启 worker，并等待 `/api/system/ready` 恢复后再接入流量。
+
 :::
 
 - 锁定 Neo4j 5.26.29 与 Redis 7.4.10 镜像版本，补充第三方组件许可证、镜像再分发义务与商业部署边界；完整镜像许可证以实际软件物料清单为准。

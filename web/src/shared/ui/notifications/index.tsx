@@ -1,13 +1,4 @@
-/**
- * 应用级通知。
- *
- * antd `App.useApp()` 的 `message` 轻提示（顶部居中、自动消失），与参照主力用法一致
- * （KnowAgenticRAG `message.*` 483 处）。旧的自绘右上角堆叠宿主已删除；`dismiss` API 没有外部
- * 消费者，不保留。
- *
- * 词汇是 `{type, title, message}`：title 并进正文（「标题：正文」），message 尊重
- * antd 对 ReactNode 的渲染。非字符串 payload 在调用点自行折叠成字符串。
- */
+/** 应用级通知。 */
 import { App as AntdApp } from 'antd';
 
 export type NotificationType = 'info' | 'warning' | 'success' | 'error';

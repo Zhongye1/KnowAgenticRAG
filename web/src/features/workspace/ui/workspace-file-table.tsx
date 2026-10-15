@@ -1,13 +1,4 @@
-/**
- * 个人空间文件表。
- *
- * 对齐参照 `WorkspaceFileList.vue` + `FileBrowserTable.vue`：表头是一条 44px 的工具条
- * （左侧面包屑、右侧条目计数与「多选 / 删除选中」），下面是四列表格，行内操作收在
- * 「更多操作」菜单里（下载只在文件行出现，删除在可写行出现）。单击行即进入目录或预览。
- *
- * 本仓没有 antd Table（结构走 `shared/ui/table` 的原语），表格外观按参照的
- * `.file-browser-ant-table` 逐值搬进 CSS Module。
- */
+/** 个人空间文件表。 */
 import * as React from 'react';
 import { Download, ListChecks, MoreHorizontal, Trash2 } from 'lucide-react';
 

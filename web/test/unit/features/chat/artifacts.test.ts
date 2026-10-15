@@ -125,7 +125,7 @@ describe('normalizeArtifactItems', () => {
 
 describe('artifactMetaLabel', () => {
   it('按扩展名给标签', () => {
-    // 与参照同一条规则：有扩展名就是「交付文件 · 大写扩展名」，不另做中文友好名
+    // 规则：有扩展名就是「交付文件 · 大写扩展名」，不另做中文友好名
     expect(artifactMetaLabel('/out/report.md')).toBe('交付文件 · MD');
     expect(artifactMetaLabel('/out/a.CSV')).toBe('交付文件 · CSV');
     expect(artifactMetaLabel('/out/pic.webp')).toBe('交付文件 · WEBP');

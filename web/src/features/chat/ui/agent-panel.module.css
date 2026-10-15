@@ -1,5 +1,4 @@
-/* 右侧面板外壳的样式。参照实现 AgentPanel.vue 的
-   `.panel-header` / `.section-tab` / `.header-action-btn`。
+/* 右侧面板外壳的样式。
    颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
 
 .shell {
@@ -12,7 +11,7 @@
   background: var(--gray-0);
 }
 
-/* 拖拽把手：参照 .resize-handle——4×32px 居中灰条，hover 变主色 */
+/* 拖拽把手：4×32px 居中灰条，hover 变主色 */
 /* 拖拽把手同时是面板左右两侧的分界：整高的 1px 虚线。
    元素本身留 6px 命中区（虚线画在左边框上），否则 1px 太细抓不住。
    虚线画在面板**内侧**（left: 0）：负偏移会让它落到聊天列里，被 z-index 更高的
@@ -130,7 +129,7 @@
 }
 
 /* 没有关闭钮时（常驻的文件分区）按钮就是唯一/最后一个子元素：
-   右侧补 7px，否则激活底色会贴着文字（参照 .section-tab-main 的 only-child 规则） */
+   右侧补 7px，否则激活底色会贴着文字 */
 .sectionTabMain:only-child,
 .sectionTabMain:last-child {
   margin-right: 7px;

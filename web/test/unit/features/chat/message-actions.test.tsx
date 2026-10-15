@@ -98,7 +98,7 @@ describe('MessageActions 的基本项', () => {
     expect(screen.getByRole('button', { name: '点赞' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '点踩' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '复制' })).toBeTruthy();
-    // 时间条是 span（参照 .time-entry），按文本找
+    // 时间条是 span，按文本找
     expect(screen.getByText('09:00')).toBeTruthy();
   });
 
@@ -106,11 +106,11 @@ describe('MessageActions 的基本项', () => {
     render(<MessageActions message={message()} sources={sources()} />);
 
     await userEvent.click(screen.getByText('09:00'));
-    // 65 秒按参照文案折成「1分5s」，不是「65s」
+    // 65 秒折成「1分5s」，不是「65s」
     expect(screen.getByText('耗时 1分5s')).toBeTruthy();
 
     await userEvent.click(screen.getByText('耗时 1分5s'));
-    // 时间条是 span（参照 .time-entry），按文本找
+    // 时间条是 span，按文本找
     expect(screen.getByText('09:00')).toBeTruthy();
   });
 

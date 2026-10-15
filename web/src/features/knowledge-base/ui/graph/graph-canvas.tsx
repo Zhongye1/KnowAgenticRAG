@@ -310,7 +310,7 @@ export const GraphCanvas = ({
       </p>
       {/*
         图例：左下浮层，两个可切的分组（实体 / 关系）各带计数，展开看类型分布。
-        计数与类型列都剔除 Chunk 与 MENTIONS——那是实现细节，参照的 `visibleEntityNodes` 同口径。
+        计数与类型列都剔除 Chunk 与 MENTIONS——那是实现细节。
       */}
       {stats.nodeCount + stats.edgeCount > 0 ? (
         <div className="absolute bottom-3 left-3 z-10 flex flex-col items-start gap-2">

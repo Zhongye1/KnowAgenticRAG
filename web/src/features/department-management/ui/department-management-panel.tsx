@@ -1,13 +1,4 @@
-/**
- * 部门管理分区。
- *
- * 对齐参照 `DepartmentManagementComponent.vue`：头部（标题 + 说明 + 刷新 + 添加部门）、
- * 四列表格（部门名称 / 描述 / 用户数量 / 操作）、创建与编辑共用的弹窗。创建时必须同时建出
- * 该部门的管理员（UID 失焦预检重名、密码二次确认、手机号可选），编辑只改名称与描述。
- *
- * 与参照的显式偏离（见决策记录）：表格用原生 `table` + CSS Module 复刻参照的 antd 表格外观，
- * 与 `features/api-keys` 同口径；参照在编辑分支照样校验不渲染的管理员字段，这里按编辑语义跳过。
- */
+/** 部门管理分区。 */
 import * as React from 'react';
 import { Building2, Plus, RefreshCw, SquarePen, Trash2 } from 'lucide-react';
 

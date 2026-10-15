@@ -15,7 +15,7 @@ const MIN_DEPARTMENT_NAME_LENGTH = 2;
 const MIN_ADMIN_UID_LENGTH = 3;
 export const MAX_ADMIN_UID_LENGTH = 20;
 
-/** 输入框长度上限；与参照的 `maxlength` 同值。 */
+/** 输入框长度上限。 */
 export const MAX_DEPARTMENT_NAME_LENGTH = 50;
 export const MAX_DEPARTMENT_DESCRIPTION_LENGTH = 255;
 export const MAX_PHONE_LENGTH = 11;
@@ -44,12 +44,7 @@ export const validateAdminUid = (uid: string): string | null => {
 export const validateAdminPhone = (phone: string): string | null =>
   validatePhoneNumber(phone);
 
-/**
- * 提交前的整表校验；通过时返回 null。
- *
- * `editing` 为真时跳过管理员字段：编辑只改名称与描述，管理员输入框并不渲染。参照在这条路径
- * 上照样校验隐藏的管理员字段，编辑分支因此永远提交不出去（见决策记录）。
- */
+/** 提交前的整表校验；通过时返回 null。 */
 export const validateDepartmentForm = (
   values: DepartmentFormValues,
   options: { editing: boolean },

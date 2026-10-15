@@ -90,7 +90,7 @@ describe('StatePanel', () => {
       />,
     );
 
-    // 参照 .state-list-item-meta：产物行两行——文件名 + 类型描述
+    // 产物行两行：文件名 + 类型描述
     expect(screen.getByTitle('打开 r.md').textContent).toContain(
       '交付文件 · MD',
     );
@@ -157,7 +157,7 @@ describe('StatePanel', () => {
       />,
     );
     const toggle = screen.getByRole('button', { name: /待办/ });
-    // 折叠面板常驻 DOM（grid-rows 0fr + visibility 动画，参照 .state-collapse-panel）；
+    // 折叠面板常驻 DOM（grid-rows 0fr + visibility 动画）；
     // jsdom 不应用 CSS Modules 的样式表，这里断言状态语义：aria-expanded 翻转 +
     // 面板节点去掉展开类
     expect(toggle.getAttribute('aria-expanded')).toBe('true');

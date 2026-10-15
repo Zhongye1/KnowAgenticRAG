@@ -1,14 +1,4 @@
-/**
- * 审批卡片的交互逻辑与装配。
- *
- * 参照实现 HumanApprovalModal.vue：工具审批与提问共用一张卡，落在输入框位置的
- * grid 叠层上（页面装配见 pages/chat/ui/chat-page.tsx 的 `.inputStage`）。审批发
- * `{ decisions }`（与 actionRequests 一一对应），提问发「问题 id → 选项」映射，
- * 取消统一发 `'reject'`。
- *
- * 与参照的差异：参照的多步审批支持逐条「允许」后回退，本仓的审批窗口是模态的，
- * 逐条没有可撤销语义，保留 N/M 进度但决定即推进。
- */
+/** 审批卡片的交互逻辑与装配。 */
 import * as React from 'react';
 import { ChevronDown, Wrench } from 'lucide-react';
 
@@ -84,7 +74,7 @@ const formatToolArgs = (args: unknown): string => {
   }
 };
 
-/** 工具审批的问题文案：参照按工具名给出固定问句。 */
+/** 工具审批的问题文案。 */
 const getToolApprovalQuestion = (request: { name?: unknown }): string => {
   const name = typeof request?.name === 'string' ? request.name : '';
   if (name === 'execute') return '要执行这条命令吗？';
@@ -279,11 +269,11 @@ type QuestionCardProps = {
   interrupt: QuestionInterrupt;
   disabled: boolean;
   onSubmit: (resume: unknown) => void;
-  /** 参照的「取消」即 reject 提交，本卡片没有独立的取消路径。 */
+  /** 「取消」即 reject 提交，本卡片没有独立的取消路径。 */
   onCancel?: () => void;
 };
 
-/** 多题 tab 逐题作答；单选/多选/「其他」自由文本与参照同构。 */
+/** 多题 tab 逐题作答。 */
 const QuestionCard = ({ interrupt, disabled, onSubmit }: QuestionCardProps) => {
   const [activeIndex, setActiveIndex] = React.useState(0);
   const [selections, setSelections] = React.useState<
