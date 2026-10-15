@@ -1,0 +1,223 @@
+/* Markdown 正文排版。`.yk-markdown-preview` 类名由调用点传给 Markdown 容器。
+   非全局文件（按类名前缀选择器书写）；颜色只用 agentic-tokens.css 的变量。 */
+
+.yk-markdown-preview {
+  max-width: 100%;
+  color: var(--gray-1000);
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Noto Sans SC', 'PingFang SC',
+    'Microsoft YaHei', 'Hiragino Sans GB', 'Source Han Sans CN', sans-serif;
+  font-size: 0.9rem;
+  line-height: 1.75;
+  word-break: break-word;
+  padding: 0;
+}
+
+.yk-markdown-preview h1,
+.yk-markdown-preview h2 {
+  font-size: 1rem;
+}
+
+.yk-markdown-preview h3,
+.yk-markdown-preview h4 {
+  font-size: 0.95rem;
+}
+
+.yk-markdown-preview h5,
+.yk-markdown-preview h6 {
+  font-size: 0.9rem;
+}
+
+.yk-markdown-preview strong {
+  font-weight: 500;
+}
+
+.yk-markdown-preview p:last-child {
+  margin-bottom: 0;
+}
+
+.yk-markdown-preview li > p,
+.yk-markdown-preview ol > p,
+.yk-markdown-preview ul > p {
+  margin: 0.25rem 0;
+}
+
+.yk-markdown-preview ul,
+.yk-markdown-preview ol {
+  padding-left: 1.625rem;
+}
+
+.yk-markdown-preview ul li::marker,
+.yk-markdown-preview ol li::marker {
+  color: var(--main-bright);
+}
+
+.yk-markdown-preview .contains-task-list {
+  padding-left: 0;
+  list-style: none;
+}
+
+.yk-markdown-preview .task-list-item {
+  list-style: none;
+}
+
+.yk-markdown-preview .task-list-item-checkbox {
+  margin-right: 8px;
+  transform: translateY(1px);
+}
+
+.yk-markdown-preview a {
+  color: var(--main-700);
+}
+
+.yk-markdown-preview hr {
+  height: 1px;
+  margin: 1.25rem 0;
+  border: 0;
+  background: linear-gradient(90deg, transparent, var(--gray-200), transparent);
+}
+
+.yk-markdown-preview blockquote {
+  margin: 1rem 0;
+  padding: 0.25rem 0 0.25rem 1rem;
+  border-left: 3px solid var(--gray-200);
+  color: var(--gray-700);
+}
+
+.yk-markdown-preview code {
+  font-family:
+    'Menlo', 'Monaco', 'Consolas', 'PingFang SC', 'Noto Sans SC',
+    'Microsoft YaHei', 'Hiragino Sans GB', 'Source Han Sans CN', 'Courier New',
+    monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0.025em;
+  tab-size: 4;
+}
+
+.yk-markdown-preview :not(pre) > code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background-color: var(--gray-25);
+}
+
+.yk-markdown-preview pre.shiki {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border: 1px solid var(--gray-100);
+  border-radius: 8px;
+  overflow: auto;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.yk-markdown-preview pre.shiki {
+  background: var(--gray-25) !important;
+}
+
+.yk-markdown-preview .markdown-code-block {
+  position: relative;
+  max-width: 100%;
+  margin: 12px 0;
+}
+
+.yk-markdown-preview .markdown-code-block > pre {
+  margin: 0;
+  padding-right: 64px;
+}
+
+.yk-markdown-preview .markdown-code-block > pre:not(.shiki) {
+  padding: 12px 64px 12px 14px;
+  border: 1px solid var(--gray-100);
+  border-radius: 8px;
+  overflow: auto;
+  background: var(--gray-25);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* 代码块复制按钮：本仓 Markdown 组件自插的按钮沿用 shared/ui 旧类名 */
+.yk-markdown-preview .markdown-code-copy-btn,
+.yk-markdown-preview code ~ .absolute.right-2 {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: 5px;
+  background: var(--gray-0);
+  color: var(--gray-600);
+  box-shadow: 0 1px 4px var(--shadow-1);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.72;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    opacity 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.yk-markdown-preview .markdown-code-copy-btn:hover,
+.yk-markdown-preview .markdown-code-copy-btn.is-copied {
+  border-color: var(--gray-300);
+  color: var(--gray-900);
+  opacity: 1;
+}
+
+.yk-markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 0.8rem;
+  display: table;
+}
+
+.yk-markdown-preview th,
+.yk-markdown-preview td {
+  padding: 0.5rem 0;
+  text-align: left;
+  border: none;
+}
+
+.yk-markdown-preview td {
+  border-bottom: 1px solid var(--gray-100);
+  color: var(--gray-800);
+}
+
+.yk-markdown-preview tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.yk-markdown-preview th {
+  border-bottom: 1px solid var(--gray-200);
+  color: var(--gray-800);
+  font-weight: 600;
+}
+
+.yk-markdown-preview tr {
+  background-color: var(--gray-0);
+}
+
+.yk-markdown-preview img {
+  max-width: 100%;
+  height: auto;
+}
+
+.yk-markdown-preview .katex {
+  font-size: 1.05em;
+}
+
+.yk-markdown-preview .katex-display {
+  margin: 1rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}

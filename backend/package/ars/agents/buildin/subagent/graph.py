@@ -1,0 +1,155 @@
+from typing import Any
+
+from deepagents.middleware.patch_tool_calls import PatchToolCallsMiddleware
+from langchain.agents import create_agent
+from langchain.agents.middleware import ModelRetryMiddleware, TodoListMiddleware
+from langchain.agents.middleware.types import AgentMiddleware
+
+from ars.agents import BaseAgent, BaseState, load_chat_model, resolve_chat_model_spec
+from ars.agents.backends import (
+    create_agent_composite_backend,
+    create_agent_filesystem_middleware,
+    sync_agent_context_skills,
+)
+from ars.agents.buildin.chatbot.prompt import TODO_MID_PROMPT, build_prompt_with_context
+from ars.agents.buildin.subagent.context import SubAgentContext
+from ars.agents.context import (
+    DEFAULT_ARS_SUMMARY_PROMPT,
+    DEFAULT_SUMMARY_KEEP_MESSAGES,
+    DEFAULT_SUMMARY_L2_TRIGGER_RATIO,
+    DEFAULT_SUMMARY_THRESHOLD_K,
+    DEFAULT_SUMMARY_TOOL_RESULT_TOKEN_LIMIT,
+    DEFAULT_TOOL_RESULT_EVICTION_K_TOKENS,
+    prepare_agent_runtime_context,
+)
+from ars.agents.middlewares import (
+    ImageInputCompatibilityMiddleware,
+    TokenUsageMiddleware,
+    create_summary_middleware,
+)
+from ars.agents.middlewares.skills import SkillsMiddleware
+from ars.agents.tool_approval import SENSITIVE_BACKEND_TOOLS, normalize_tool_approval_mode
+from ars.agents.toolkits.service import resolve_configured_runtime_tools
+
+_SUBAGENT_DISABLED_TOOLS = frozenset({"present_artifacts", "ask_user_question", "install_skill"})
+# 默认审批模式额外隐藏敏感 backend 工具，避免子智能体绕过主线程逐项审批。
+_SUBAGENT_DISABLED_TOOLS_DEFAULT_MODE = _SUBAGENT_DISABLED_TOOLS | SENSITIVE_BACKEND_TOOLS
+
+
+def _tool_name(tool) -> str | None:
+    if isinstance(tool, dict):
+        name = tool.get("name")
+    else:
+        name = getattr(tool, "name", None)
+    return name if isinstance(name, str) else None
+
+
+def _disabled_tools_for(mode: str) -> frozenset[str]:
+    # 调用方已在边界 normalize 过 mode，这里直接按值选择隐藏集合。
+    if mode == "always_trust":
+        return _SUBAGENT_DISABLED_TOOLS
+    return _SUBAGENT_DISABLED_TOOLS_DEFAULT_MODE
+
+
+def _filter_disabled_tools(tools, disabled_tools: frozenset[str]):
+    return [tool for tool in tools if _tool_name(tool) not in disabled_tools]
+
+
+class _SubAgentToolFilterMiddleware(AgentMiddleware[Any, Any, Any]):
+    def __init__(self, tool_approval_mode: str = "default"):
+        self.disabled_tools = _disabled_tools_for(tool_approval_mode)
+
+    def wrap_model_call(self, request, handler):
+        return handler(request.override(tools=_filter_disabled_tools(request.tools or [], self.disabled_tools)))
+
+    async def awrap_model_call(self, request, handler):
+        return await handler(request.override(tools=_filter_disabled_tools(request.tools or [], self.disabled_tools)))
+
+
+async def _build_middlewares(context, backend, tool_approval_mode: str):
+    # tool_approval_mode is normalized once by the caller (get_graph / SubAgentBackend.get_graph).
+
+    summary_trigger_tokens = getattr(context, "summary_threshold", DEFAULT_SUMMARY_THRESHOLD_K) * 1024
+    summary_keep_messages = getattr(context, "summary_keep_messages", DEFAULT_SUMMARY_KEEP_MESSAGES)
+    summary_prompt = getattr(context, "summary_prompt", None) or DEFAULT_ARS_SUMMARY_PROMPT
+    summary_tool_result_token_limit = getattr(
+        context,
+        "summary_tool_result_token_limit",
+        DEFAULT_SUMMARY_TOOL_RESULT_TOKEN_LIMIT,
+    )
+    summary_l2_trigger_ratio = getattr(context, "summary_l2_trigger_ratio", DEFAULT_SUMMARY_L2_TRIGGER_RATIO)
+    model_spec = resolve_chat_model_spec(context.model)
+    summary_middleware = create_summary_middleware(
+        model=load_chat_model(fully_specified_name=model_spec),
+        backend=backend,
+        trigger=("tokens", summary_trigger_tokens),
+        keep=("messages", summary_keep_messages),
+        summary_prompt=summary_prompt,
+        trim_tokens_to_summarize=summary_trigger_tokens,
+        tool_result_offload_token_limit=summary_tool_result_token_limit,
+        l1_l2_trigger_ratio=summary_l2_trigger_ratio,
+    )
+
+    return [
+        create_agent_filesystem_middleware(
+            getattr(context, "tool_token_limit", DEFAULT_TOOL_RESULT_EVICTION_K_TOKENS) * 1024,
+            backend=backend,
+        ),
+        SkillsMiddleware(),
+        summary_middleware,
+        TodoListMiddleware(system_prompt=TODO_MID_PROMPT),
+        PatchToolCallsMiddleware(),
+        _SubAgentToolFilterMiddleware(tool_approval_mode),
+        ModelRetryMiddleware(),
+        ImageInputCompatibilityMiddleware(),
+        TokenUsageMiddleware(),
+    ]
+
+
+class SubAgentBackend(BaseAgent):
+    name = "子智能体"
+    description = "用于被主智能体通过 task 工具调用的专用智能体后端。"
+    capabilities = ["file_upload", "files"]
+    context_schema = SubAgentContext
+
+    async def get_info(
+        self,
+        include_configurable_items: bool = True,
+        user_role: str | None = None,
+        db=None,
+        user=None,
+    ):
+        info = await super().get_info(
+            include_configurable_items=include_configurable_items,
+            user_role=user_role,
+            db=db,
+            user=user,
+        )
+        tools_item = (info.get("configurable_items") or {}).get("tools")
+        if isinstance(tools_item, dict):
+            tools_item["options"] = [
+                option
+                for option in tools_item.get("options") or []
+                if option.get("key") not in _SUBAGENT_DISABLED_TOOLS
+            ]
+        return info
+
+    async def get_graph(self, context=None, **kwargs):
+        context = await prepare_agent_runtime_context(
+            context or self.context_schema(),
+            context_schema=self.context_schema,
+        )
+        await sync_agent_context_skills(context)
+        model_spec = resolve_chat_model_spec(context.model)
+        tool_approval_mode = normalize_tool_approval_mode(getattr(context, "tool_approval_mode", "default"))
+        disabled_tools = _disabled_tools_for(tool_approval_mode)
+        backend = create_agent_composite_backend(context)
+
+        return create_agent(
+            model=load_chat_model(fully_specified_name=model_spec),
+            tools=_filter_disabled_tools(await resolve_configured_runtime_tools(context), disabled_tools),
+            system_prompt=build_prompt_with_context(context),
+            middleware=await _build_middlewares(context, backend, tool_approval_mode),
+            state_schema=BaseState,
+            checkpointer=await self._get_checkpointer(),
+        )

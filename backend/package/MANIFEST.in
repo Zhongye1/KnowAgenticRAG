@@ -1,0 +1,3 @@
+recursive-include ars/config/static *.txt *.yaml
+recursive-include ars/agents/skills *.md
+recursive-include ars/agents/skills/buildin/mysql-reporter/scripts *.py

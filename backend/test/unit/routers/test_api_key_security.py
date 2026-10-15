@@ -1,0 +1,224 @@
+from __future__ import annotations
+
+import pytest
+import pytest_asyncio
+from fastapi import HTTPException
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+
+from server.routers.auth_router import delete_user
+from server.routers.user_router import APIKeyCreate, create_api_key, get_accessible_api_key
+from server.utils.auth_middleware import _verify_api_key
+from ars.repositories.api_key_repository import APIKeyRepository
+from ars.storage.postgres.models_business import APIKey, Base, Department, User
+from ars.utils.auth_utils import AuthUtils
+
+pytestmark = [pytest.mark.asyncio, pytest.mark.unit]
+
+
+@pytest.fixture(autouse=True)
+def api_key_derivation_secret(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("API_KEY_DERIVATION_SECRET", "test-api-key-derivation-secret-32-chars")
+
+
+class _ScalarResult:
+    def __init__(self, value):
+        self.value = value
+
+    def scalar_one_or_none(self):
+        return self.value
+
+
+class _FakeApiKeySession:
+    def __init__(self, api_key: APIKey):
+        self.api_key = api_key
+        self.execute_calls = 0
+
+    async def execute(self, _statement):
+        self.execute_calls += 1
+        return _ScalarResult(self.api_key)
+
+
+@pytest_asyncio.fixture()
+async def session():
+    engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(engine, expire_on_commit=False)
+    async with factory() as db:
+        dept_a = Department(name="Dept A")
+        dept_b = Department(name="Dept B")
+        superadmin = User(
+            username="Super Admin",
+            uid="superadmin",
+            password_hash="$argon2id$placeholder",
+            role="superadmin",
+            department=dept_a,
+        )
+        dept_b_admin = User(
+            username="Dept B Admin",
+            uid="dept_b_admin",
+            password_hash="$argon2id$placeholder",
+            role="admin",
+            department=dept_b,
+        )
+        regular_user = User(
+            username="Regular",
+            uid="regular",
+            password_hash="$argon2id$placeholder",
+            role="user",
+            department=dept_a,
+        )
+        deleted_user = User(
+            username="Deleted",
+            uid="deleted",
+            password_hash="$argon2id$placeholder",
+            role="user",
+            department=dept_a,
+            is_deleted=1,
+        )
+        db.add_all([dept_a, dept_b, superadmin, dept_b_admin, regular_user, deleted_user])
+        await db.commit()
+        for item in [dept_a, dept_b, superadmin, dept_b_admin, regular_user, deleted_user]:
+            await db.refresh(item)
+        yield {
+            "db": db,
+            "dept_a": dept_a,
+            "dept_b": dept_b,
+            "superadmin": superadmin,
+            "dept_b_admin": dept_b_admin,
+            "regular_user": regular_user,
+            "deleted_user": deleted_user,
+        }
+    await engine.dispose()
+
+
+async def test_api_key_rejects_deleted_bound_user_without_department_or_superadmin_fallback(session):
+    db = session["db"]
+    secret, key_hash, key_prefix = AuthUtils.generate_api_key()
+    api_key = APIKey(
+        key_hash=key_hash,
+        key_prefix=key_prefix,
+        name="deleted user key",
+        user_id=session["deleted_user"].id,
+        department_id=session["dept_b"].id,
+        created_by=str(session["deleted_user"].id),
+    )
+    db.add(api_key)
+    await db.commit()
+
+    user, verified_key = await _verify_api_key(secret, db)
+
+    assert user is None
+    assert verified_key is None
+
+
+async def test_api_key_without_user_binding_is_rejected_before_department_mapping(session):
+    secret, key_hash, key_prefix = AuthUtils.generate_api_key()
+    api_key = APIKey(
+        key_hash=key_hash,
+        key_prefix=key_prefix,
+        name="department key",
+        user_id=None,
+        department_id=session["dept_b"].id,
+        created_by=str(session["superadmin"].id),
+    )
+    fake_db = _FakeApiKeySession(api_key)
+
+    user, verified_key = await _verify_api_key(secret, fake_db)
+
+    assert user is None
+    assert verified_key is None
+    assert fake_db.execute_calls == 1
+
+
+async def test_create_api_key_rejects_mismatched_department(session):
+    db = session["db"]
+
+    with pytest.raises(HTTPException) as exc:
+        await create_api_key(
+            APIKeyCreate(
+                request_id="request-wrong-department",
+                name="wrong department",
+                department_id=session["dept_b"].id,
+            ),
+            current_user=session["regular_user"],
+            db=db,
+        )
+
+    assert exc.value.status_code == 403
+
+
+async def test_create_api_key_allows_current_user_department(session):
+    db = session["db"]
+
+    response = await create_api_key(
+        APIKeyCreate(
+            request_id="request-own-department",
+            name="own department",
+            department_id=session["dept_a"].id,
+        ),
+        current_user=session["regular_user"],
+        db=db,
+    )
+
+    assert response.api_key.user_id == session["regular_user"].id
+    assert response.api_key.department_id == session["dept_a"].id
+    assert response.secret.startswith(response.api_key.key_prefix)
+
+
+async def test_api_key_repository_enforces_requester_visibility(session):
+    """非超级管理员的查询必须在 repository 层过滤其他用户的 Key。"""
+    db = session["db"]
+    _secret, key_hash, key_prefix = AuthUtils.generate_api_key()
+    api_key = APIKey(
+        key_hash=key_hash,
+        key_prefix=key_prefix,
+        name="regular user key",
+        user_id=session["regular_user"].id,
+        department_id=session["dept_a"].id,
+        created_by=str(session["regular_user"].id),
+    )
+    db.add(api_key)
+    await db.commit()
+    await db.refresh(api_key)
+    repository = APIKeyRepository(db)
+
+    foreign_access = await repository.get_accessible(
+        api_key_id=api_key.id,
+        requester_user_id=session["dept_b_admin"].id,
+        is_superadmin=False,
+    )
+    assert foreign_access.api_key is None
+    assert foreign_access.exists is True
+
+    with pytest.raises(HTTPException) as exc:
+        await get_accessible_api_key(repository, api_key.id, session["dept_b_admin"])
+    assert exc.value.status_code == 403
+
+    superadmin_access = await repository.get_accessible(
+        api_key_id=api_key.id,
+        requester_user_id=session["superadmin"].id,
+        is_superadmin=True,
+    )
+    assert superadmin_access.api_key is api_key
+
+
+async def test_delete_user_disables_owned_api_keys(session):
+    db = session["db"]
+    _secret, key_hash, key_prefix = AuthUtils.generate_api_key()
+    api_key = APIKey(
+        key_hash=key_hash,
+        key_prefix=key_prefix,
+        name="owned key",
+        user_id=session["regular_user"].id,
+        created_by=str(session["regular_user"].id),
+    )
+    db.add(api_key)
+    await db.commit()
+    await db.refresh(api_key)
+
+    result = await delete_user(session["regular_user"].id, None, session["superadmin"], db)
+    await db.refresh(api_key)
+
+    assert result["success"] is True
+    assert api_key.is_enabled is False

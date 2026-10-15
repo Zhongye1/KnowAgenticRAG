@@ -1,0 +1,243 @@
+/* 提及输入框与候选弹窗的样式。
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。
+   拖放不在这里：由持有胶囊的 chat-input-form 负责。 */
+
+.wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.editor {
+  width: 100%;
+  min-height: 2.75rem;
+  max-height: 12.5rem;
+  padding: 0;
+  background: transparent;
+  border: none;
+  margin: 0;
+  color: var(--gray-1000);
+  font-size: 15px;
+  line-height: 1.5;
+  font-family: inherit;
+  outline: none;
+  resize: none;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: text;
+}
+
+.editor:focus {
+  outline: none;
+}
+
+.editor:empty::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--gray-400);
+  pointer-events: none;
+}
+
+.editor:disabled,
+.editor[contenteditable='false'] {
+  cursor: not-allowed;
+}
+
+/* ---------- 提及芯片 ---------- */
+
+.mentionToken {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  max-width: min(100%, 360px);
+  color: var(--main-700);
+  line-height: normal;
+  vertical-align: baseline;
+  white-space: nowrap;
+  user-select: all;
+}
+
+.mentionTokenIcon {
+  position: relative;
+  top: 2px;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1;
+  margin-left: 4px;
+}
+
+.mentionTokenIcon svg {
+  display: block;
+}
+
+.mentionTokenLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: normal;
+  font-weight: 500;
+}
+
+/* ---------- 候选弹窗 ---------- */
+
+.popupAnchor {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  margin-bottom: 8px;
+  width: 100%;
+}
+
+.popup {
+  width: 100%;
+  max-height: 280px;
+  overflow-y: auto;
+  background: var(--gray-0);
+  border-radius: 8px;
+  box-shadow:
+    0 -4px 16px var(--shadow-2),
+    0 4px 16px var(--shadow-3);
+  border: 1px solid var(--gray-200);
+  padding: 8px 0;
+  font-size: 13px;
+}
+
+.group {
+  margin-bottom: 4px;
+}
+
+.group:last-child {
+  margin-bottom: 0;
+}
+
+.groupTitle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--gray-500);
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--gray-100);
+  margin-bottom: 2px;
+}
+
+.searchPlaceholder {
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--gray-400);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin: 1px 4px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  text-align: left;
+  font-size: 13px;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+/* 悬停与键盘选中是两档：hover 用主色浅底，active 用灰底 */
+.item:hover {
+  background-color: var(--main-10);
+}
+
+.item:hover .itemName {
+  color: var(--main-600);
+}
+
+.item:hover .itemDescription {
+  color: var(--main-400);
+}
+
+.itemActive {
+  background-color: var(--gray-50);
+}
+
+.itemActive .itemName {
+  color: var(--main-600);
+}
+
+.itemActive .itemDescription {
+  color: var(--main-400);
+}
+
+.itemIcon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+/* 文件类型图标是彩色 SVG <img>（FileTypeIcon），不用着色 */
+.itemFileIcon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.itemName {
+  min-width: 0;
+  flex: 0 0 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gray-800);
+  font-weight: 500;
+}
+
+.itemDescription {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gray-500);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* 文件路径列：11px gray-400 */
+.itemPath {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gray-400);
+  font-size: 11px;
+  margin-left: 8px;
+  transition: color 0.15s ease;
+}
+
+.item:hover .itemPath,
+.itemActive .itemPath {
+  color: var(--main-400);
+}
+
+/* 关键词命中高亮：金橘色加粗，变量在 agentic-tokens.css */
+.queryMatch {
+  color: var(--query-match-color);
+  font-weight: 700;
+}
+
+.empty {
+  text-align: center;
+  padding: 12px 8px;
+  color: var(--gray-400);
+  font-size: 13px;
+}

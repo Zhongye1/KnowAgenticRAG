@@ -1,0 +1,166 @@
+/* API Key 管理面板的样式。
+   头部两端对齐、表格五列、掩码徽章、一次性密钥展示。
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-* / --color-*-。 */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title {
+  margin: 0 0 4px;
+  color: var(--gray-900);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.description {
+  margin: 0;
+  color: var(--gray-600);
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--gray-100);
+  background: var(--gray-0);
+  color: var(--gray-500);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--gray-50);
+  color: var(--gray-700);
+  font-size: 13px;
+}
+
+.nameCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--gray-900);
+  font-weight: 500;
+}
+
+.nameCell > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codeBadge {
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: var(--gray-50);
+  color: var(--gray-800);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.statusCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.enabled {
+  color: var(--color-success-700);
+}
+
+.disabled {
+  color: var(--gray-500);
+}
+
+.timeText {
+  color: var(--gray-600);
+  font-size: 12px;
+}
+
+.actionCol {
+  width: 64px;
+  text-align: center;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.formLabel {
+  margin-top: 6px;
+  color: var(--gray-700);
+  font-size: 13px;
+}
+
+.secretDisplay {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.secretRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.secretValue {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 10px 12px;
+  overflow-wrap: anywhere;
+  border-radius: 8px;
+  background: var(--gray-50);
+  color: var(--gray-900);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.spinning {
+  animation: apikey-spin 1s linear infinite;
+}
+
+@keyframes apikey-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

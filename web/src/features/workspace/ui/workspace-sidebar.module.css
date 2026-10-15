@@ -1,0 +1,197 @@
+/* 个人空间侧栏的样式。
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  padding: 8px 8px 12px;
+  border-right: 1px solid var(--gray-100);
+  background: var(--gray-0);
+  overflow-y: auto;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 2px;
+}
+
+.dropdown {
+  position: relative;
+  width: 100%;
+}
+
+.actionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  width: 100%;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 6px;
+  background: var(--gray-0);
+  border: 1px solid var(--gray-150);
+  color: var(--gray-800);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.16s ease;
+}
+
+.actionBtn > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.actionBtn:hover:not(:disabled) {
+  background: var(--gray-50);
+  border-color: var(--gray-200);
+  color: var(--gray-2000);
+}
+
+.actionBtn:active:not(:disabled) {
+  background: var(--gray-100);
+}
+
+.actionBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.chevron {
+  flex: 0 0 auto;
+  margin-left: auto;
+  transition: transform 0.15s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 130px;
+  padding: 4px;
+  background: var(--gray-0);
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px var(--shadow-2);
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-700);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: var(--gray-50);
+  color: var(--gray-900);
+  outline: none;
+}
+
+.menuItem:active {
+  transform: scale(0.97);
+}
+
+.spinner {
+  animation: action-spin 1s linear infinite;
+}
+
+@keyframes action-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionTitle {
+  padding: 3px 6px;
+  color: var(--gray-500);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-700);
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.navItem > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navItem:hover:not(:disabled) {
+  border-color: transparent;
+  color: var(--gray-2000);
+  background-color: var(--gray-50);
+}
+
+.navItemActive {
+  border-color: transparent;
+  color: var(--gray-2000);
+  background-color: color-mix(in srgb, var(--gray-800) 6%, var(--gray-0));
+  font-weight: 600;
+}
+
+.navItemSecondary {
+  min-height: 28px;
+  font-size: 12.5px;
+}
+
+.navIcon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}

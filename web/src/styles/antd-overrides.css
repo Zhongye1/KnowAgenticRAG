@@ -1,0 +1,116 @@
+/* ============================================================================
+ * antd 全局覆盖层
+ * ----------------------------------------------------------------------------
+ * 全局 `.ant-*` 覆盖层，是唯一允许写覆盖类名与 hex 的文件。
+ * 页面私有的 `.ant-*` 覆盖留在页面的 CSS Modules 里（`:global()`），与 scoped 加 `:deep()`
+ * 同一层，避免全局规则与页面规则互相追尾。
+ * ========================================================================== */
+
+/* 按钮内的图标与文字同一行居中 */
+.ant-btn .ant-btn-icon,
+.ant-btn .anticon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------------------------------------------------------------------------
+ * 对话页下拉的弹出层皮肤（面板 / item / label / badge / check / hint / divider）。
+ * 弹出层挂在 body，只能走全局覆盖。
+ * ------------------------------------------------------------------------- */
+
+.chat-dropdown-overlay .ant-dropdown-menu {
+  min-width: 188px;
+  max-width: min(260px, calc(100vw - 24px));
+  padding: 4px;
+  background: var(--gray-0);
+  border: 1px solid var(--gray-100);
+  border-radius: 8px;
+  box-shadow:
+    0 8px 24px var(--shadow-2),
+    0 2px 8px var(--shadow-1);
+}
+
+.chat-dropdown-overlay .ant-dropdown-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 6px 8px;
+  margin: 3px 0;
+  border-radius: 6px;
+  color: var(--gray-800);
+  font-size: 13px;
+  line-height: 1.35;
+  transition: background-color 0.15s ease;
+}
+
+.chat-dropdown-overlay .ant-dropdown-menu-item:first-child {
+  margin-top: 0;
+}
+
+.chat-dropdown-overlay .ant-dropdown-menu-item:last-child {
+  margin-bottom: 0;
+}
+
+.chat-dropdown-overlay .ant-dropdown-menu-item:hover {
+  background: var(--gray-50);
+}
+
+.chat-dropdown-overlay .ant-dropdown-menu-item-selected {
+  background: var(--gray-50);
+  color: var(--gray-800);
+}
+
+.chat-dropdown-overlay .ant-dropdown-menu-item-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.chat-dropdown-overlay .ant-dropdown-menu-item-group-title {
+  padding: 6px 8px;
+  color: var(--gray-500);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.chat-dropdown-overlay .ant-dropdown-menu-item-divider {
+  height: 1px;
+  margin: 4px;
+  background: var(--gray-100);
+}
+
+/* 选中项的对勾（适配层渲染）：主色、紧凑 */
+.chat-dropdown-item-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.chat-dropdown-item-check {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  color: var(--main-600);
+}
+
+/* ---------------------------------------------------------------------------
+ * 全局搜索弹窗：遮罩与弹体。
+ * ------------------------------------------------------------------------- */
+
+.global-search-modal-host .ant-modal-content {
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid var(--gray-150);
+  box-shadow:
+    0 24px 60px var(--shadow-1),
+    0 2px 12px var(--shadow-0);
+}
+
+.global-search-modal-host .ant-modal-mask {
+  background: color-mix(in srgb, var(--gray-0) 72%, transparent);
+  backdrop-filter: blur(2px);
+}

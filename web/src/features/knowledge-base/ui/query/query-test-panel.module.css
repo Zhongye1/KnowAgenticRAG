@@ -1,0 +1,160 @@
+/* ============================================================================
+ * 检索测试面板的样式。
+ * ----------------------------------------------------------------------------
+ * - 只有 antd 的内部结构需要覆盖时才写 `:global(.ant-*)`（文本域、圆形提交钮、
+ *   清空钮），其余用 Tailwind 工具类 + 设计 token 写在组件里。
+ * - 颜色只用设计 token（`--main-*` / `--gray-*` / `--shadow-*`），不写硬编码值。
+ * ========================================================================== */
+
+/* 输入卡片：白底、细边框、轻投影；悬停时边框转主色、投影加重 */
+.inputCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 16px 8px;
+  border: 1px solid var(--gray-200);
+  border-radius: 12px;
+  background-color: var(--gray-0);
+  box-shadow: 0 1px 3px var(--shadow-1);
+  transition:
+    border-color 0.5s ease,
+    box-shadow 0.5s ease;
+}
+
+.inputCard:hover {
+  border-color: var(--main-400);
+  box-shadow: 0 4px 12px var(--shadow-2);
+}
+
+/* 文本域：边框与投影都收进卡片，输入区自己不再画一层 */
+.inputCard :global(.ant-input) {
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--gray-0);
+  box-shadow: none;
+  color: var(--gray-1000);
+  outline: none;
+}
+
+.inputCard :global(.ant-input:focus),
+.inputCard :global(.ant-input-focused) {
+  border: none;
+  box-shadow: none;
+  outline: none;
+}
+
+.inputCard :global(.ant-input::placeholder) {
+  color: var(--gray-500);
+}
+
+/* 圆形提交钮：主色底，悬停提亮并上移 1px */
+.submitButton:global(.ant-btn-primary) {
+  background-color: var(--main-color);
+  border-color: var(--main-color);
+  /* 主色之上的颜色（浅色下白、暗色下黑），图标与文案都跟着它走 */
+  color: var(--main-0);
+  box-shadow: 0 2px 4px var(--shadow-3);
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.submitButton:global(.ant-btn-primary):hover:not(:disabled) {
+  background-color: var(--main-bright);
+  border-color: var(--main-bright);
+  transform: translateY(-1px);
+}
+
+/* 禁用时只降透明度、不换成灰色：主色底上仍用「主色之上」的颜色 */
+.submitButton:global(.ant-btn-primary):disabled {
+  color: var(--main-0);
+  opacity: 0.5;
+}
+
+/* 原始数据切换：常态灰，悬停与激活都是主色字 + 主色浅底 */
+.formatToggle:global(.ant-btn) {
+  color: var(--gray-500);
+}
+
+.formatToggle:global(.ant-btn):hover {
+  color: var(--main-color);
+  background-color: var(--main-50);
+}
+
+.formatToggleActive:global(.ant-btn) {
+  color: var(--main-color);
+  background-color: var(--main-50);
+}
+
+/* 清空：主色字 + 主色浅底 */
+.clearButton:global(.ant-btn) {
+  flex: 0 0 auto;
+  border-radius: 6px;
+  background-color: var(--main-100);
+  color: var(--main-color);
+}
+
+.clearButton:global(.ant-btn):hover {
+  background-color: var(--main-200);
+  color: var(--main-800);
+}
+
+/* 示例问题的一行：胶囊按钮，宽度随内容；悬停起投影并把图标点亮 */
+.suggestionRow {
+  display: flex;
+  width: fit-content;
+  max-width: 100%;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 30px;
+  background-color: var(--gray-0);
+  color: var(--gray-800);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.suggestionRow:hover {
+  box-shadow: 0 2px 8px var(--shadow-1);
+}
+
+.suggestionRow:hover .suggestionIcon {
+  color: var(--main-800);
+  opacity: 1;
+}
+
+.suggestionRow:active {
+  background-color: var(--main-50);
+}
+
+.suggestionRow:focus-visible {
+  outline: 2px solid var(--main-300);
+  outline-offset: 2px;
+}
+
+.suggestionIcon {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  color: var(--main-color);
+  opacity: 0.82;
+  transition:
+    color 0.2s ease,
+    opacity 0.2s ease;
+}
+
+@media (max-width: 767px) {
+  .suggestionRow {
+    align-items: flex-start;
+  }
+
+  .suggestionIcon {
+    margin-top: 3px;
+  }
+}

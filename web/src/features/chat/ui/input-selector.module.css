@@ -1,0 +1,699 @@
+/* 输入区选择器的触发按钮样式（30px、无边框、13px、gray-600、hover gray-50；
+   宽度上限、窄屏收成图标）。 */
+
+.trigger {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 30px;
+  min-width: 0;
+  /* 默认宽度上限；智能体与审批模式另有两个上限 */
+  max-width: min(168px, calc(100vw - 160px));
+  padding: 6px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--gray-600);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+
+  &:hover {
+    color: var(--gray-900);
+    background: var(--gray-50);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  span {
+    line-height: 1;
+  }
+}
+
+/* 智能体名允许更长 */
+.triggerAgent {
+  max-width: min(240px, calc(100vw - 160px));
+}
+
+.triggerApproval {
+  max-width: min(180px, calc(100vw - 160px));
+}
+
+.triggerIcon {
+  width: 15px;
+  height: 15px;
+}
+
+/* 窄屏时才出现的图标（宽屏隐藏、只留文字） */
+.triggerCompactIcon {
+  display: none;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.triggerChevron {
+  width: 15px;
+  height: 15px;
+}
+
+.triggerLabel {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 窄屏：@container 收缩——30px 纯图标钮。
+   容器是输入胶囊（.inputPanel 的 container-type: inline-size）。 */
+@container (max-width: 640px) {
+  .triggerAgent,
+  .triggerApproval {
+    width: 30px;
+    padding-inline: 0;
+  }
+
+  .triggerAgent .triggerCompactIcon,
+  .triggerApproval .triggerCompactIcon {
+    display: block;
+  }
+
+  .triggerAgent .triggerLabel,
+  .triggerAgent .triggerChevron,
+  .triggerApproval .triggerLabel,
+  .triggerApproval .triggerChevron {
+    display: none;
+  }
+}
+
+/* 520px 断点 */
+@media (max-width: 520px) {
+  .triggerAgent {
+    max-width: calc(100vw - 112px);
+  }
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.menuItemLabel {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menuItemTag {
+  flex-shrink: 0;
+  border-radius: 0.25rem;
+  background-color: var(--gray-100);
+  padding: 0 0.25rem;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.menuItemCheck {
+  width: 0.875rem;
+  height: 0.875rem;
+  flex-shrink: 0;
+}
+
+.menuHint {
+  padding: 0.25rem 0.5rem;
+  font-size: 12px;
+  color: var(--gray-500);
+  margin: 0;
+}
+
+/* 完全信任态的告警色 */
+.triggerWarning {
+  color: var(--color-warning-700);
+}
+
+/* ---------- 项目选择器 ---------- */
+
+.projectSelection {
+  display: inline-flex;
+  min-width: 0;
+  text-align: left;
+}
+
+/* 28px 透明钮；宽屏只有图标与文字，没有箭头 */
+.projectTrigger {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  max-width: min(280px, calc(100vw - 64px));
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--gray-600);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.projectTrigger:hover:not(:disabled),
+.projectTriggerActive:not(:disabled) {
+  background: var(--gray-100);
+  color: var(--gray-900);
+}
+
+.projectTrigger:focus-visible {
+  outline: 2px solid var(--main-color);
+  outline-offset: 2px;
+}
+
+.projectTrigger:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.projectTriggerIcon {
+  flex-shrink: 0;
+  color: var(--gray-500);
+  transition: color 0.15s ease;
+}
+
+.projectTrigger:hover:not(:disabled) .projectTriggerIcon,
+.projectTriggerActive:not(:disabled) .projectTriggerIcon {
+  color: var(--gray-800);
+}
+
+.projectTriggerLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 面板 */
+.projectPanel {
+  width: min(300px, calc(100vw - 24px));
+  overflow: hidden;
+  border: 1px solid var(--gray-150);
+  border-radius: 10px;
+  background: var(--gray-0);
+  box-shadow: 0 8px 24px var(--shadow-4);
+}
+
+/* 带放大镜的 28px 输入行 */
+.projectSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 6px 0;
+  padding: 0 6px;
+  color: var(--color-text-tertiary);
+}
+
+.projectSearchIcon {
+  flex: 0 0 auto;
+}
+
+.projectSearch input {
+  width: 100%;
+  min-width: 0;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.projectSearch input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.projectOptionList {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 120px;
+  max-height: min(260px, calc(100vh - 220px));
+  overflow-y: auto;
+  border-bottom: 1px solid var(--gray-100);
+  padding: 4px 6px;
+}
+
+.projectLoading,
+.historyLoading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 120px;
+}
+
+.projectOption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+}
+
+.projectOption:hover:not(:disabled) {
+  background: var(--gray-50);
+}
+
+.projectOptionSelected {
+  background: var(--gray-50);
+}
+
+.projectOption:focus-visible,
+.historyOption:focus-visible,
+.historySearchRow > button:focus-visible {
+  outline: 2px solid var(--main-color);
+  outline-offset: 2px;
+}
+
+.projectOption:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.projectOptionIcon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+}
+
+.projectOptionSelected .projectOptionIcon,
+.projectOptionSelected > svg {
+  color: var(--main-color);
+}
+
+.projectOptionBody {
+  flex: 1;
+  min-width: 0;
+}
+
+.projectOptionBody strong {
+  display: block;
+  overflow: hidden;
+  font-size: 12.5px;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.projectOptionCheck {
+  flex: 0 0 auto;
+  color: var(--main-color);
+}
+
+.projectEmpty {
+  padding: 14px 8px 12px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* 加载失败：文案与重试按钮同一行 */
+.projectError {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 6px 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--color-error-50);
+  color: var(--color-error-700);
+  font-size: 12px;
+}
+
+.projectError button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.projectActions {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 4px 6px;
+}
+
+.projectActions button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--gray-0);
+  color: var(--color-text);
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.projectActions button:hover {
+  background: var(--gray-50);
+  color: var(--gray-1000);
+}
+
+.projectActionChevron {
+  margin-left: auto;
+  color: var(--color-text-tertiary);
+}
+
+/* 历史视图：返回钮与搜索框同一行 */
+.historySearchRow {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+}
+
+.historySearchRow > button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.historySearchRow > button:hover {
+  background: var(--gray-50);
+  color: var(--color-text);
+}
+
+.historySearchRow .projectSearch {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+
+.historyOptionList {
+  display: flex;
+  min-height: 140px;
+  max-height: 240px;
+  flex-direction: column;
+  overflow-y: auto;
+  border-top: 1px solid var(--gray-100);
+  background: var(--gray-0);
+  padding: 2px 4px;
+}
+
+.historyOption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--gray-100);
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.historyOption:last-child {
+  border-bottom: 0;
+}
+
+.historyOption:hover:not(:disabled) {
+  background: var(--gray-50);
+}
+
+.historyOption:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.historyOption > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyOptionIcon {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+}
+
+.historyOption time {
+  flex: 0 0 auto;
+  color: var(--color-text-tertiary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.historyEmpty {
+  margin: auto;
+  padding: 16px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* 新建项目的弹窗正文 */
+.projectForm {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.projectFormField {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--color-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .projectTrigger {
+    max-width: calc(100vw - 72px);
+  }
+}
+
+@media (max-width: 520px) {
+  .projectPanel {
+    width: min(270px, calc(100vw - 105px));
+  }
+}
+
+/* ---------- 附件上传弹窗 ---------- */
+
+/* 拖拽区 */
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 28px 16px;
+  border: 1px dashed var(--gray-200);
+  border-radius: 10px;
+  background: var(--gray-25);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+
+  &:hover {
+    border-color: var(--main-400);
+    background: var(--main-5);
+  }
+}
+
+.dropzoneTitle {
+  margin: 0 0 4px;
+  color: var(--gray-800);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dropzoneDesc {
+  margin: 0;
+  color: var(--gray-500);
+  font-size: 12px;
+}
+
+.attachmentHint {
+  font-size: 12px;
+  color: var(--gray-500);
+  margin: 0;
+}
+
+/* 360px 上限、10px 间距 */
+.attachmentList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 360px;
+  margin-top: 16px;
+  overflow-y: auto;
+  list-style: none;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+/* 12px padding、gray-50 底圆角卡 */
+.attachmentItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--gray-100);
+  border-radius: 10px;
+  background: var(--gray-50);
+}
+
+/* 32px 圆角容器 */
+.attachmentFileIcon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 8px;
+  background: var(--gray-0);
+  color: var(--main-color);
+}
+
+.attachmentItemContent {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.attachmentNameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.attachmentName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--gray-900);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* hover 变红 */
+.attachmentRemove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: 0.25rem;
+  padding: 0.25rem;
+  color: var(--gray-500);
+  cursor: pointer;
+
+  &:hover {
+    color: var(--color-error-500);
+    background: var(--color-error-50);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.attachmentMeta {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.attachmentSelect {
+  border: 1px solid var(--gray-200);
+  border-radius: 0.25rem;
+  background: var(--gray-0);
+  padding: 0.125rem 0.25rem;
+  font-size: 12px;
+  color: var(--gray-1000);
+
+  &:disabled {
+    opacity: 0.5;
+  }
+}
+
+.attachmentStatus {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.attachmentStatusRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: var(--gray-500);
+  font-size: 11px;
+}
+
+.attachmentParseControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: min(260px, 100%);
+}

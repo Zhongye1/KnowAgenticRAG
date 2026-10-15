@@ -1,0 +1,104 @@
+name: Dependency Supply Chain Audit
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/dependency-audit.yml"
+      - "Makefile"
+      - "backend/pyproject.toml"
+      - "backend/package/pyproject.toml"
+      - "backend/uv.lock"
+      - "packages/ars-cli/pyproject.toml"
+      - "packages/ars-cli/uv.lock"
+      - "web/package.json"
+      - "web/pnpm-lock.yaml"
+      - "docs/package.json"
+      - "docs/pnpm-lock.yaml"
+      - "scripts/dependency-audit-fixtures/**"
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/dependency-audit.yml"
+      - "Makefile"
+      - "backend/pyproject.toml"
+      - "backend/package/pyproject.toml"
+      - "backend/uv.lock"
+      - "packages/ars-cli/pyproject.toml"
+      - "packages/ars-cli/uv.lock"
+      - "web/package.json"
+      - "web/pnpm-lock.yaml"
+      - "docs/package.json"
+      - "docs/pnpm-lock.yaml"
+      - "scripts/dependency-audit-fixtures/**"
+  workflow_dispatch:
+
+concurrency:
+  group: dependency-audit-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python vulnerabilities and licenses
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.11.7"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Audit locked Python vulnerabilities
+        working-directory: backend
+        # The locked PyTorch 2.12.1 wheels require setuptools<82 and no compatible 2.13 CPU pair is available yet.
+        run: uv audit --locked --no-dev --ignore GHSA-h35f-9h28-mq5c --ignore GHSA-rrmf-rvhw-rf47
+      - name: Exercise Python audit negative control
+        run: |
+          if uv audit --script scripts/dependency-audit-fixtures/vulnerable.py >python-audit-negative.log 2>&1; then
+            echo "Expected the vulnerable Python fixture to fail." >&2
+            exit 1
+          fi
+          grep -q "aiohttp 3.14.1 has" python-audit-negative.log
+          grep -q "GHSA-cq5v-8q36-5273" python-audit-negative.log
+      - name: Audit Python transitive licenses
+        working-directory: backend
+        run: uv run --isolated --no-dev --with pip-licenses pip-licenses --from mixed --format markdown
+      - name: Audit ars-cli locked vulnerabilities
+        working-directory: packages/ars-cli
+        run: uv audit --locked --no-dev
+      - name: Audit ars-cli transitive licenses
+        working-directory: packages/ars-cli
+        run: uv run --isolated --no-dev --with pip-licenses pip-licenses --from mixed --format markdown
+
+  node:
+    name: Node.js production vulnerabilities
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        project: [web, docs]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 10.11.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      - name: Audit locked Node.js production dependencies
+        working-directory: ${{ matrix.project }}
+        run: pnpm audit --audit-level=high --prod
+      - name: Exercise Node.js audit negative control
+        working-directory: scripts/dependency-audit-fixtures/node
+        run: |
+          if pnpm audit --audit-level=high --prod >node-audit-negative.log 2>&1; then
+            echo "Expected the vulnerable Node.js fixture to fail." >&2
+            exit 1
+          fi
+          grep -q "js-yaml" node-audit-negative.log
+          grep -q "GHSA-5p4m-2wfm-xmqj" node-audit-negative.log

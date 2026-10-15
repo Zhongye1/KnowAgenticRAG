@@ -1,0 +1,311 @@
+/* OCR 配置面板与引擎选择器的样式。
+   分区标题、卡片式配置面板、只读/编辑两态字段网格（编辑钮悬停出现）、带健康结论的下拉面板。
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-* / --color-*-。 */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionTitle {
+  margin: 0 0 10px;
+  color: var(--gray-900);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sectionTitle:not(:first-child) {
+  margin-top: 24px;
+}
+
+.sectionDescription {
+  margin: 0;
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.settingsPanel,
+.optionCard {
+  padding: 16px;
+  border: 1px solid var(--gray-150);
+  border-radius: 8px;
+  background: var(--gray-0);
+}
+
+.settingsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settingLabel {
+  color: var(--gray-700);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.optionList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.optionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.optionHeader h4,
+.optionHeader p {
+  margin: 0;
+}
+
+.optionHeader h4 {
+  color: var(--gray-900);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.optionHeader p {
+  margin-top: 3px;
+  color: var(--gray-600);
+  font-size: 12px;
+}
+
+.optionActions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.optionCard:hover .optionActions,
+.optionCard:focus-within .optionActions,
+.optionActionsEditing {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.optionFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.optionField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.optionField:only-child {
+  grid-column: 1 / -1;
+}
+
+.optionField small {
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.maskedValue {
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 120px;
+}
+
+/* 引擎选择器 */
+
+.selectorTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 11px;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  background: var(--gray-0);
+  color: var(--gray-900);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.selectorTrigger:hover:not(:disabled),
+.selectorTrigger:focus-visible {
+  border-color: var(--main-color);
+  outline: none;
+}
+
+.selectorTrigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.selectorTriggerText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dropdown {
+  width: min(360px, calc(100vw - 24px));
+  overflow: hidden;
+  border: 1px solid var(--gray-100);
+  border-radius: 8px;
+  background: var(--gray-0);
+}
+
+.dropdownHeader {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--gray-100);
+  background: var(--gray-25);
+  color: var(--gray-500);
+  font-size: 11px;
+}
+
+.dropdownOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  padding: 6px;
+  overflow-y: auto;
+}
+
+.option {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.option:hover:not(:disabled),
+.option:focus-visible {
+  background: var(--gray-50);
+  outline: none;
+}
+
+.optionSelected {
+  background: var(--main-50);
+}
+
+.optionUnavailable {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.optionMain {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.optionName {
+  color: var(--gray-900);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.healthLabel {
+  flex: none;
+  font-size: 11px;
+}
+
+.healthHealthy {
+  color: var(--color-success-700);
+}
+
+.healthUnhealthy {
+  color: var(--color-error-700);
+}
+
+.healthChecking,
+.healthUnknown {
+  color: var(--gray-500);
+}
+
+.unavailableToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-top: 1px solid var(--gray-100);
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 11px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.unavailableToggle:hover,
+.unavailableToggle:focus-visible {
+  color: var(--gray-700);
+  outline: none;
+}
+
+.unavailableReason {
+  color: var(--gray-500);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.dropdownEmpty {
+  padding: 20px 12px;
+  color: var(--gray-500);
+  font-size: 11px;
+  line-height: 1.45;
+  text-align: center;
+}
+
+.spinning {
+  animation: ocr-spin 1s linear infinite;
+}
+
+@keyframes ocr-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 680px) {
+  .optionFields {
+    grid-template-columns: 1fr;
+  }
+
+  .optionField:only-child {
+    grid-column: auto;
+  }
+}

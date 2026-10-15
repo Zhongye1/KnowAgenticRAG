@@ -1,0 +1,256 @@
+/* 账户设置弹窗的样式。
+   卡片 18px/12px 圆角 gray-25、头像 80px、行网格 56px+1fr、身份面板 gray-0。
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-* / --color-*-。 */
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.title {
+  margin: 0 0 4px;
+  color: var(--gray-900);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.description {
+  margin: 0;
+  color: var(--gray-600);
+  font-size: 14px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 18px;
+  border: 1px solid var(--gray-150);
+  border-radius: 12px;
+  background: var(--gray-25);
+}
+
+.summary {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.left {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+/* ---------- 头像：80px 圆形 + 悬停遮罩 ---------- */
+
+.avatarUpload {
+  position: relative;
+  display: block;
+  width: 80px;
+  height: 80px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 3px solid var(--gray-0);
+  border-radius: 50%;
+  background: none;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.avatarImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarFallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--gray-0);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.avatarMask {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: var(--gray-0);
+  font-size: 12px;
+  background: var(--shadow-5);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.avatarUpload:hover .avatarMask,
+.avatarUploadingNow .avatarMask {
+  opacity: 1;
+}
+
+.spinning {
+  animation: account-spin 1s linear infinite;
+}
+
+@keyframes account-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ---------- 资料行 ---------- */
+
+.fields {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+}
+
+.label {
+  color: var(--gray-600);
+  font-size: 13px;
+}
+
+.value {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--gray-900);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 24px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mono {
+  font-family: var(--font-mono);
+}
+
+.editableValue {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  padding: 0 6px;
+  margin-left: -6px;
+  overflow: hidden;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-900);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 24px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.editableValue:hover {
+  color: var(--main-color);
+  background: var(--main-5);
+}
+
+.inlineInput {
+  width: min(260px, 100%);
+}
+
+/* ---------- 身份面板 ---------- */
+
+.identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  min-width: 220px;
+  padding: 14px;
+  border-radius: 10px;
+  background: var(--gray-0);
+}
+
+.identityItem {
+  display: grid;
+  grid-template-columns: 20px 42px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+}
+
+.identityIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: var(--gray-50);
+  color: var(--gray-500);
+}
+
+/* ---------- Memory 配置行 ---------- */
+
+.configPanel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--gray-150);
+}
+
+.configRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+}
+
+.configTitle {
+  color: var(--gray-900);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+@media (max-width: 760px) {
+  .summary {
+    flex-direction: column;
+  }
+
+  .identity {
+    min-width: 0;
+    align-items: stretch;
+  }
+}

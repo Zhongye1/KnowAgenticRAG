@@ -1,0 +1,282 @@
+/* 基本设置面板的样式。
+   分区标题、默认项配置的两列面板、内容审查的开关卡片、服务链接网格、Skill 来源白名单。
+   颜色只用 agentic-tokens.css 的 --gray-* / --main-* / --color-*-。 */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.sectionTitle {
+  margin: 0 0 10px;
+  color: var(--gray-900);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sectionTitle:not(:first-child) {
+  margin-top: 24px;
+}
+
+.sectionDescription {
+  margin: 0;
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.settingsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--gray-50);
+}
+
+.settingRow {
+  display: flex;
+  gap: 20px;
+}
+
+.colItem {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.settingLabel {
+  color: var(--gray-700);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 10px 16px;
+  border: 1px solid var(--gray-150);
+  border-radius: 8px;
+  background: var(--gray-0);
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardLabel {
+  flex-shrink: 0;
+  margin-right: 20px;
+  min-width: 140px;
+  color: var(--gray-800);
+  font-weight: 500;
+}
+
+.cardSelect {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cardSelect .cardLabel {
+  margin-right: 0;
+  margin-top: 6px;
+}
+
+.modelTrigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 11px;
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  background: var(--gray-0);
+  color: var(--gray-900);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.modelTrigger:hover:not(:disabled),
+.modelTrigger:focus-visible {
+  border-color: var(--main-color);
+  outline: none;
+}
+
+.modelTrigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.modelTriggerText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.servicesGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.serviceLinkCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 70px;
+  padding: 10px 16px;
+  border: 1px solid var(--gray-150);
+  border-radius: 8px;
+  background: var(--gray-0);
+  transition: all 0.2s;
+}
+
+.serviceLinkCard:hover {
+  border-color: var(--gray-100);
+  box-shadow: 0 1px 8px var(--gray-150);
+}
+
+.serviceInfo {
+  flex: 1;
+  margin-right: 16px;
+}
+
+.serviceInfo h4 {
+  margin: 0 0 4px;
+  color: var(--gray-900);
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.serviceInfo p {
+  margin: 0;
+  color: var(--gray-600);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Skill 配置 */
+
+.skillSection {
+  margin-top: 24px;
+}
+
+.sourcePanel {
+  padding: 14px 16px;
+  border: 1px solid var(--gray-150);
+  border-radius: 8px;
+  background: var(--gray-0);
+}
+
+.sourceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.sourceCopy h4,
+.sourceCopy p {
+  margin: 0;
+}
+
+.sourceCopy h4 {
+  color: var(--gray-900);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.sourceCopy p {
+  margin-top: 4px;
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.sourceContent {
+  margin-top: 14px;
+}
+
+.domainSelect {
+  width: 100%;
+}
+
+.editFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.editFooter > span {
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.editActions {
+  display: flex;
+  flex: none;
+  gap: 8px;
+}
+
+.hostList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.hostTag {
+  padding: 3px 9px;
+  border: 1px solid var(--gray-150);
+  border-radius: 6px;
+  background: var(--gray-50);
+  color: var(--gray-700);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.panelState {
+  color: var(--gray-600);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+}
+
+@media (max-width: 680px) {
+  .settingRow {
+    flex-direction: column;
+  }
+
+  .editFooter {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .editActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+storybook-static
+*.hbs
+
+# 本地临时目录（截图、chrome profile、一次性探针脚本等），不进版本库也不参与格式校验
+tmp

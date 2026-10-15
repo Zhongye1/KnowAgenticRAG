@@ -1,0 +1,82 @@
+/* ============================================================================
+ * 首页 token：只定义值，不带皮肤
+ * ----------------------------------------------------------------------------
+ * 作用域是 `.home-site`，不进 tokens.css / agentic-tokens.css：这套色板只服务首页。
+ *
+ * 页面只有三种表面 + 一种反色，靠「纸白 / 纯白 / 沉一档」分辨段落边界；
+ * 线、墨与两个强调色各一个角色。段落里的色值一律引用这里，不再各写各的近似白。
+ *
+ * 字体：本仓不新增字体依赖，--font-manrope 与 --font-plex-mono 是
+ * 「变量名 → 本仓已加载字体」的映射层。
+ *
+ * 放在 src/styles/** 是因为 check-design-tokens.mjs 只豁免该目录；页面 CSS Modules
+ * 与 .tsx 里出现这些值会被门禁拒绝。
+ * ========================================================================== */
+
+.home-site {
+  /* 表面：纸白（页面与多数段落）/ 纯白（抬起的卡片、列表、玻璃顶栏、页脚）
+     / 沉一档（内嵌面板） */
+  --surface: #faf9f4;
+  --surface-raised: #fff;
+  --surface-sunken: #f1efe7;
+  --surface-glass: #fffdfaf5;
+
+  /* 墨：正文 / 次要。只有两档，对比度见下：
+     --ink 在 --surface 上 17.5:1，--ink-muted 起三种浅色表面上 5.2~6.0:1，都过 AA；
+     --accent 在浅色表面上 5.9~6.2:1。 */
+  --ink: #101418;
+  --ink-muted: #5a6472;
+
+  /* 线：常规分隔 / 需要更明确的结构线 */
+  --line: #e4e1d7;
+  --line-strong: #c9c5b7;
+
+  /* 强调：brand 是交互色（按钮、链接、选中态、标题重音），accent 只给 11px 的
+     mono 眉标与序号，不参与交互；wash 是 brand 的极淡底 */
+  --brand: #0b2a6f;
+  --brand-hover: #123b92;
+  --brand-wash: rgb(11 42 111 / 4.5%);
+  --accent: #855811;
+  --on-brand: #fff;
+
+  /* 字号：display（hero）/ title（段落标题）/ subtitle（列标题）/ lead（导语）
+     / body / small / meta（mono 眉标） */
+  --text-display: clamp(40px, 4.6vw, 72px);
+  --text-title: clamp(28px, 3vw, 40px);
+  --text-subtitle: 20px;
+  --text-lead: 17px;
+  --text-body: 15px;
+  --text-small: 13px;
+  --text-meta: 11px;
+
+  /* 圆角 */
+  --radius-sm: 5px;
+  --radius-md: 10px;
+  --radius-lg: 18px;
+
+  /* 骨架：所有段落共用同一条左右留白、同一个上限宽度、同一段竖向节奏 */
+  --content-gutter: clamp(20px, 4.5vw, 88px);
+  --content-max: 1720px;
+  --band-pad: clamp(72px, 6.5vw, 112px);
+  /* 顶栏总高（含底边）：宽屏下由 home.css 钉死，首屏高度按它扣 */
+  --nav-height: 69px;
+
+  /* 变量名 → 本仓现有字体 */
+  --font-manrope:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans SC',
+    'HarmonyOS Sans SC', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-plex-mono:
+    'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, Monaco,
+    Consolas, monospace;
+
+  background: var(--surface);
+  color: var(--ink);
+  font-family: var(--font-manrope);
+  font-size: var(--text-body);
+  line-height: 1.65;
+}
+
+/* 文档画布同色，避免过卷时露出后台页面的底色 */
+body:has(.home-site) {
+  background: var(--surface);
+}

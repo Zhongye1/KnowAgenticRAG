@@ -1,0 +1,8 @@
+{
+  "name": "dependency-audit-negative-control",
+  "private": true,
+  "dependencies": {
+    "js-yaml": "4.3.0"
+  },
+  "packageManager": "pnpm@10.11.0"
+}

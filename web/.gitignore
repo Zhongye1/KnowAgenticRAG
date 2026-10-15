@@ -1,0 +1,11 @@
+# 依赖与构建产物
+node_modules/
+dist/
+storybook-static/
+coverage/
+
+# 本地环境变量（VITE_API_URL / VITE_MINIO_URL 等开发期代理目标）
+.env
+.env.local
+.env.*.local
+alembic/

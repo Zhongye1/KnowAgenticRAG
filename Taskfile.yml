@@ -1,210 +1,194 @@
 version: '3'
 
-# 项目统一入口 Taskfile
-# 通过 includes 聚合前后端各自独立的子 Taskfile：
-# - backend/Taskfile.yml  后端任务
-# - frontend/Taskfile.yml 前端任务
-
-includes:
-  backend:
-    taskfile: backend/Taskfile.yml
-    dir: backend
-  frontend:
-    taskfile: frontend/Taskfile.yml
-    dir: frontend
+# 项目统一任务入口。执行的事实来源是 docker compose 与各工具的原始命令。
+#
+# 开发拓扑为全容器化（docker compose）：api / worker / storage-migrator /
+# sandbox-provisioner / postgres / redis / minio / milvus / etcd / graph / web。
+# 前端是 web/（React + Vite），任务见本文件末尾的 web:* 分组。
 
 vars:
-  # Docker 依赖服务（本地开发：依赖跑容器，代码跑宿主机）
-  DEPS_SERVICES: ragf_postgres ragf_redis ragf_rabbitmq ragf_minio ragf_milvus
-  # Knowhere 自托管解析栈（独立 compose 项目：app + 专用 postgres/redis/localstack，
-  # 见 docker/knowhere/compose.yaml；解析凭据在 docker/knowhere/.env 配置）
-  KNOWHERE_DIR: ./docker/knowhere
-  # 文档预览转换栈（独立 compose 项目：LibreOffice headless 转换服务，见
-  # docker/libreoffice/compose.yaml；加固参数在 compose 内，可选覆盖见其 .env.example）
-  LIBREOFFICE_DIR: ./docker/libreoffice
+  BACKEND_PYTHON:
+    sh: cat backend/.python-version
+  # 宿主 shell 可能残留旧项目的同名导出；docker compose 的变量优先级是
+  # shell 环境 > .env，残留值会静默覆盖 .env 与 compose 默认值
+  # （实测 POSTGRES_DB 曾把数据库建成旧名，且 /api/system/ready 仍返回 200）。
+  CLEAN_ENV: 'unset POSTGRES_DB POSTGRES_USER;'
 
 tasks:
-  dev:
-    desc: 启动本地开发环境（Docker 依赖 + Knowhere 解析栈 + 宿主机代码）
+  default:
+    desc: 列出全部任务
+    silent: true
     cmds:
-      - task: deps-up
-      - task: backend:dev
-      - task: frontend:dev
+      - task --list
 
-  dev:stop:
-    desc: 停止本地开发环境（结束前后端进程 + 停止 Docker 依赖）
+  # ==================== 生命周期 ====================
+  up:
+    desc: 拉起全栈（docker compose up -d）
+    preconditions:
+      - sh: test -f .env
+        msg: '缺少 .env：请先 cp .env.template .env，并填写必需项（见模板注释）。'
     cmds:
-      - sh -c 'pkill -f "[u]vicorn backend.main:app" 2>/dev/null && echo "后端已停止" || echo "后端未在运行"'
-      - sh -c 'pkill -f "[v]ite" 2>/dev/null && echo "前端已停止" || echo "前端未在运行"'
-      - task: deps-down
+      - sh -c '{{.CLEAN_ENV}} docker compose up -d'
 
-  deps-up:
-    desc: 启动 Docker 依赖并等待健康（PostgreSQL / Redis / RabbitMQ / MinIO / Milvus + Knowhere）
+  up-lite:
+    desc: LITE 模式起最小栈（不注册知识库/图谱/评估）
+    preconditions:
+      - sh: test -f .env
+        msg: '缺少 .env：请先 cp .env.template .env，并填写必需项（见模板注释）。'
     cmds:
-      - sh -c '[ -f .env ] || { echo "缺少根 .env，请先创建：cp .env.example .env（填写 POSTGRES_*/RABBITMQ_* 等）"; exit 1; }'
-      - docker compose up -d --wait {{.DEPS_SERVICES}}
-      - task: knowhere:up
-      - task: libreoffice:up
+      - sh -c '{{.CLEAN_ENV}} LITE_MODE=true docker compose up -d postgres redis minio api worker'
 
-  deps-down:
-    desc: 停止 Docker 依赖
+  down:
+    desc: 停止全栈
     cmds:
-      - docker compose stop {{.DEPS_SERVICES}}
-      - task: knowhere:stop
-      - task: libreoffice:stop
+      - sh -c '{{.CLEAN_ENV}} docker compose down'
 
-  deps-status:
-    desc: 查看 Docker 依赖运行状态
+  reset:
+    desc: 停止、删除数据卷、重启并写入种子（破坏性）
+    preconditions:
+      - sh: test -f .env
+        msg: '缺少 .env：请先 cp .env.template .env，并填写必需项（见模板注释）。'
     cmds:
-      - docker compose ps {{.DEPS_SERVICES}}
-      - task: knowhere:ps
-      - task: libreoffice:ps
+      - sh -c '{{.CLEAN_ENV}} docker compose down'
+      - rm -rf docker/volumes
+      - sh -c '{{.CLEAN_ENV}} docker compose up -d'
+      - sh -c 'until docker compose exec -T api true >/dev/null 2>&1; do sleep 2; done'
+      - task: seed
 
-  deps-logs:
-    desc: 跟踪 Docker 依赖日志（Knowhere 栈日志另用 task knowhere:logs）
+  logs:
+    desc: 查看 api 日志与当前分支/提交
     cmds:
-      - docker compose logs -f --tail=100 {{.DEPS_SERVICES}}
+      - docker logs --tail=50 api-dev
+      - |
+        echo
+        echo "Branch:    $(git branch --show-current)"
+        echo "Commit ID: $(git rev-parse HEAD)"
+        echo "System:    $(uname -a)"
 
-  # ==================== Knowhere 自托管解析栈（独立 compose 项目） ====================
-  # app（ghcr.io/ontos-ai/knowhere，API :5005 / 控制台 :13000）+ 专用 postgres/redis/localstack；
-  # 经外部共享网络 knowhere-net 以 DNS 名 knowhere 暴露。宿主机代码直接用 localhost:5005。
-  knowhere:net:
-    desc: 确保共享外部网络 knowhere-net 存在（ragf 容器经 DNS 名 knowhere 访问）
+  seed:
+    desc: 写入初始用户
+    # --no-sync：容器以 uid 1000 运行而 site-packages 为 root 属主，
+    # 不带此参数会因重建 editable 安装而 Permission denied。
     cmds:
-      - docker network create knowhere-net 2>/dev/null || true
+      - docker compose exec -T api uv run --no-sync python scripts/seed_initial_users.py
 
-  knowhere:up:
-    desc: 拉起 Knowhere 解析栈（首次拉镜像较慢；--wait 超时仅告警不阻塞）
-    dir: '{{.KNOWHERE_DIR}}'
-    deps: [knowhere:net]
+  ps:
+    desc: 查看服务状态
     cmds:
-      # unset 防 shell 残留环境变量覆盖栈自身 env.defaults（如 POSTGRES_PASSWORD）
-      - sh -c 'unset POSTGRES_PASSWORD APP_ENV; docker compose up -d --wait --wait-timeout 240 || echo "⚠️ Knowhere 栈尚未健康（首次拉镜像/预热较慢），就绪前摄取 fail-closed；task knowhere:ps 查看"'
+      - sh -c '{{.CLEAN_ENV}} docker compose ps'
 
-  knowhere:stop:
-    desc: 停止 Knowhere 解析栈（保留容器与数据卷，重启更快）
-    dir: '{{.KNOWHERE_DIR}}'
+  shell:
+    desc: 进入 api 容器
     cmds:
-      - sh -c 'unset POSTGRES_PASSWORD APP_ENV; docker compose stop'
+      - docker compose exec api bash
 
-  knowhere:down:
-    desc: 移除 Knowhere 解析栈容器（保留数据卷：模型缓存/库数据）
-    dir: '{{.KNOWHERE_DIR}}'
-    cmds:
-      - sh -c 'unset POSTGRES_PASSWORD APP_ENV; docker compose down'
-
-  knowhere:ps:
-    desc: 查看 Knowhere 解析栈状态
-    dir: '{{.KNOWHERE_DIR}}'
-    cmds:
-      - sh -c 'unset POSTGRES_PASSWORD APP_ENV; docker compose ps'
-
-  knowhere:logs:
-    desc: 跟踪 Knowhere 解析栈日志
-    dir: '{{.KNOWHERE_DIR}}'
-    cmds:
-      - sh -c 'unset POSTGRES_PASSWORD APP_ENV; docker compose logs -f --tail=100'
-
-  # ==================== 文档预览转换栈（独立 compose 项目，D55） ====================
-  # LibreOffice headless 转换服务（:5030）：Office → 线性化 PDF。
-  # 加固（非 root / rootfs 只读 / cap_drop ALL / tmpfs / 资源上限）见 compose 内注释；
-  # 网络级出网封锁未做，原因与替代方案同样记在该文件头部。
-  libreoffice:up:
-    desc: 拉起预览转换服务（首次构建镜像较慢）
-    dir: '{{.LIBREOFFICE_DIR}}'
-    cmds:
-      - sh -c 'docker compose up -d --build --wait --wait-timeout 240 || echo "⚠️ 转换服务尚未健康，Office 预览会走降级梯（解析产物 Markdown）；task libreoffice:ps 查看"'
-
-  libreoffice:stop:
-    desc: 停止预览转换服务（保留镜像，重启更快）
-    dir: '{{.LIBREOFFICE_DIR}}'
-    cmds:
-      - docker compose stop
-
-  libreoffice:down:
-    desc: 移除预览转换服务容器
-    dir: '{{.LIBREOFFICE_DIR}}'
-    cmds:
-      - docker compose down
-
-  libreoffice:ps:
-    desc: 查看预览转换服务状态
-    dir: '{{.LIBREOFFICE_DIR}}'
-    cmds:
-      - docker compose ps
-
-  libreoffice:logs:
-    desc: 跟踪预览转换服务日志
-    dir: '{{.LIBREOFFICE_DIR}}'
-    cmds:
-      - docker compose logs -f --tail=100
-
-  worker:
-    desc: 启动 Celery Worker（消息队列消费者）
-    cmds:
-      - task: backend:worker
-
-  worker:test:
-    desc: 启动指向测试库的 Celery Worker（接口 e2e chain 用例专用）
-    cmds:
-      - task: backend:worker:test
-
-  beat:
-    desc: 启动 Celery Beat（定时任务调度器）
-    cmds:
-      - task: backend:beat
-
-  db-init:
-    desc: 导入数据库初始化数据（可选）
-    cmds:
-      - task: backend:db-init
-
-  init:
-    desc: 一键初始化项目（安装依赖 → 启动依赖 → 建表 → 种子数据）
-    cmds:
-      - task: install
-      - task: deps-up
-      - task: backend:init-db
-      - task: db-init
-      - task: deps-status
-      - echo '初始化完成。启动项目：task dev；异步任务另开终端：task worker'
-
-  build:
-    desc: 构建后端 Python 安装包（wheel + sdist）
-    cmds:
-      - task: backend:build
-
-  docker-build:
-    desc: 构建 Docker 镜像（默认 ragf_server 与全部 Celery 服务）
-    cmds:
-      - sh -c '[ -f .env ] || { echo "缺少根 .env，请先创建：cp .env.example .env（填写 POSTGRES_*/RABBITMQ_* 等）"; exit 1; }'
-      - docker compose build {{.DOCKER_SERVICES | default "ragf_server ragf_celery_worker ragf_celery_beat ragf_celery_flower"}}
-
-  env:check:
-    desc: 校验各层 env 账号字段一致性
-    cmds:
-      - backend/.venv/bin/python backend/scripts/env_check.py
-
-  install:
-    desc: 安装全部依赖（后端 + 前端）
-    cmds:
-      - task: backend:install
-      - task: frontend:install
-
+  # ==================== 质量门禁 ====================
   lint:
-    desc: 代码检查（后端 + 前端）
+    desc: 只检查不修改（ruff check + import 排序），供提交前与 CI 使用
     cmds:
-      - task: backend:lint
-      - task: frontend:lint
+      - cd backend && UV_PYTHON={{.BACKEND_PYTHON}} uv run ruff check package
+      - cd backend && UV_PYTHON={{.BACKEND_PYTHON}} uv run ruff check --select I package
+      - cd backend && UV_PYTHON={{.BACKEND_PYTHON}} uv run ruff format package --diff
 
   format:
-    desc: 格式化代码（后端 + 前端）
+    desc: 格式化（ruff format + ruff check --fix + import 排序修复）
     cmds:
-      - task: backend:format
-      - task: frontend:format
+      - cd backend && UV_PYTHON={{.BACKEND_PYTHON}} uv run ruff format package
+      - cd backend && UV_PYTHON={{.BACKEND_PYTHON}} uv run ruff check package --fix
+      - cd backend && UV_PYTHON={{.BACKEND_PYTHON}} uv run ruff check --select I package --fix
 
   test:
-    desc: 运行测试（后端 + 前端）
+    desc: 后端单元测试（不依赖容器服务）
     cmds:
-      - task: backend:test
-      - task: frontend:test
+      - cd backend && UV_PYTHON={{.BACKEND_PYTHON}} uv run pytest test/unit -m "not slow" {{.PYTEST_ARGS}}
+
+  test:integration:
+    desc: 后端集成测试（真实 PostgreSQL / 真实 HTTP，需容器内环境）
+    cmds:
+      - docker compose exec -T api uv run --no-sync --group test pytest test/integration
+
+  test:e2e:
+    desc: 后端端到端测试（需容器内环境）
+    cmds:
+      - docker compose exec -T api uv run --no-sync --group test pytest test/e2e -m e2e
+
+  verify:
+    desc: 工程契约校验（verify_engineering_contracts + 其自测）
+    cmds:
+      - python3 scripts/verify_engineering_contracts.py
+      - python3 -m unittest scripts.test_verify_engineering_contracts
+
+  # ==================== 依赖审计 ====================
+  audit-dependencies:
+    desc: 依赖供应链审计（含负向 fixture，验证 gate 的失败路径）
+    cmds:
+      - cd backend && uv audit --locked --no-dev --ignore GHSA-h35f-9h28-mq5c --ignore GHSA-rrmf-rvhw-rf47
+      - cd packages/ars-cli && uv audit --locked --no-dev
+      - cd docs && pnpm audit --audit-level=high --prod
+      - |
+        if uv audit --script scripts/dependency-audit-fixtures/vulnerable.py > /tmp/ars-python-audit-negative.log 2>&1; then
+          echo "Expected the vulnerable Python fixture to fail"; exit 1
+        fi
+        grep -q "aiohttp 3.14.1 has" /tmp/ars-python-audit-negative.log
+        grep -q "GHSA-cq5v-8q36-5273" /tmp/ars-python-audit-negative.log
+      - |
+        if cd scripts/dependency-audit-fixtures/node && pnpm audit --audit-level=high --prod > /tmp/ars-node-audit-negative.log 2>&1; then
+          echo "Expected the vulnerable Node.js fixture to fail"; exit 1
+        fi
+        grep -q "js-yaml" /tmp/ars-node-audit-negative.log
+        grep -q "GHSA-5p4m-2wfm-xmqj" /tmp/ars-node-audit-negative.log
+
+  audit-licenses:
+    desc: 依赖许可证清单
+    cmds:
+      - cd backend && UV_PYTHON={{.BACKEND_PYTHON}} uv run --isolated --no-dev --with pip-licenses pip-licenses --from mixed --format markdown
+      - cd packages/ars-cli && uv run --isolated --no-dev --with pip-licenses pip-licenses --from mixed --format markdown
+
+  # ==================== 前端（web/） ====================
+  # 容器内开发是默认路径（R3 全面容器化）；容器未起时可在 web/ 下直接 pnpm run dev。
+  web:install:
+    desc: 容器内安装前端依赖
+    cmds:
+      - docker compose exec -T web pnpm install --frozen-lockfile
+
+  web:dev:
+    desc: 查看前端开发服务器状态（服务由 docker compose 托管）
+    cmds:
+      - sh -c '{{.CLEAN_ENV}} docker compose up -d web && docker compose ps web'
+
+  web:logs:
+    desc: 前端开发服务器日志
+    cmds:
+      - docker compose logs -f web
+
+  web:lint:
+    desc: 前端 lint（只读）
+    cmds:
+      - docker compose exec -T web pnpm run lint:check
+
+  web:test:
+    desc: 前端单元测试
+    cmds:
+      - docker compose exec -T web pnpm run test:unit
+
+  web:build:
+    desc: 前端生产构建
+    cmds:
+      - docker compose exec -T web pnpm run build
+
+  web:verify:
+    desc: 前端全部门禁（lint / 单测 / 设计 token / 分层 / 契约漂移 / 构建）
+    cmds:
+      - docker compose exec -T web pnpm run lint:check
+      - docker compose exec -T web pnpm run test:unit
+      - docker compose exec -T web pnpm run check:tokens
+      - docker compose exec -T web pnpm run arch:check
+      - docker compose exec -T web pnpm run lint:fsd
+      - docker compose exec -T web pnpm run api:check
+      - docker compose exec -T web pnpm run build
+
+  web:api:
+    desc: 刷新契约快照并重新生成客户端（后端改动后执行）
+    cmds:
+      - docker compose exec -T web pnpm run api:snapshot
+      - docker compose exec -T web pnpm run api:gen

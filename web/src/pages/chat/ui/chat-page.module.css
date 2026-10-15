@@ -1,0 +1,721 @@
+/* 对话页的外层骨架。
+   .chat 持有 --file-panel-width 变量与页头；页头是 .chat-main 的兄弟、固定不滚；
+   滚动只发生在 .chat-main；面板 absolute 全高覆盖在 .chat 右缘，主列用 margin-right 让位。
+   布局与间距走本文件，颜色只用 agentic-tokens.css 的 --gray-* / --main-*。 */
+
+.container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+/* .chat：页头与内容行的共同父级，面板宽度变量挂在这里供页头与主列引用 */
+.chat {
+  --header-height: 40px;
+  --file-panel-width: 0px;
+
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-sizing: border-box;
+  transition: all 0.3s ease;
+}
+
+.contentRow {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  contain: layout;
+}
+
+/* 消息主列：滚动只在这里。面板打开时让位（margin-right 引用面板宽度变量） */
+.chatMain {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  position: relative;
+  transition:
+    flex-basis 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+
+  scrollbar-width: none;
+}
+
+.chatMain::-webkit-scrollbar {
+  display: none;
+}
+
+/* 面板打开时主列让位；拖拽中与最大化时不留位 */
+.contentRowHasPanel .chatMain {
+  margin-right: var(--file-panel-width);
+}
+
+.contentRowMaximized .chatMain {
+  margin-right: 0;
+  min-width: 0;
+}
+
+/* 拖拽中冻结过渡：页头让位与主列收窄都要跟手，否则按钮会落后于分栏虚线。
+   这个类挂在 .chat 上——页头是它的子级才吃得到这条规则 */
+.chatResizing .chatHeader,
+.chatResizing .chatMain {
+  transition: none;
+}
+
+/* 正文限宽（800px + 上下 1rem 左右 2rem，无 gap） */
+.chatBox {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  flex-grow: 1;
+  padding: 1rem 2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- 输入停靠区 ---------- */
+
+/* sticky 贴底 + 渐变白底；空态时整体绝对定位居中（.start-screen） */
+.inputDock {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  margin: 0 auto;
+  padding: 14px 14px 0;
+  z-index: 1000;
+  background: linear-gradient(to bottom, transparent, var(--gray-0) 10%);
+}
+
+/* 空态：问候语在 dock 内、输入框上方，整体居中于页面 45% 处 */
+.inputDockStartScreen {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  bottom: auto;
+  max-width: 800px;
+  width: 90%;
+  background: transparent;
+  padding: 0;
+  z-index: 100;
+}
+
+.inputDockInner {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* ---------- 输入面板 ---------- */
+
+.composer {
+  width: 100%;
+}
+
+/* 顶灰条：灰底圆角顶，贴在胶囊**外面**的上缘：左右内缩 12px，底边被胶囊压住 2px */
+.composerExtra {
+  position: relative;
+  z-index: 0;
+  min-width: 0;
+  display: flex;
+  min-height: 36px;
+  align-items: flex-start;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 0 12px -2px;
+  padding: 4px 14px 2px;
+  border-bottom: 0;
+  border-radius: 16px 16px 0 0;
+  background: var(--gray-25);
+  scrollbar-width: none;
+}
+
+.composerExtra::-webkit-scrollbar {
+  display: none;
+}
+
+/* 有顶灰条时胶囊盖住它的下缘 */
+.composerExtra + .inputPanel {
+  z-index: 1;
+}
+
+/* 大胶囊容器：grid 四区（top / input / options + send） */
+.inputPanel {
+  container-type: inline-size;
+  display: grid;
+  width: 100%;
+  margin: 0 auto;
+  border: 1px solid var(--gray-150);
+  border-radius: 1.4rem;
+  box-shadow: 0 2px 8px var(--shadow-1);
+  transition: all 0.3s ease;
+  background: var(--gray-0);
+  gap: 0;
+  position: relative;
+  padding: 0.8rem 0.75rem 0.6rem;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    'top top'
+    'input input'
+    'options send';
+}
+
+/* 拖入文件：整箱主色描边 + 主色浅底 + 虚线叠层 */
+.inputPanel[data-dragging] {
+  border-color: var(--main-color);
+  background: var(--main-10);
+}
+
+.inputPanel[data-dragging]::after {
+  content: '释放以上传附件';
+  position: absolute;
+  inset: 6px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed var(--main-color);
+  border-radius: 10px;
+  color: var(--main-700);
+  background: color-mix(in srgb, var(--gray-0) 88%, transparent);
+  font-size: 13px;
+  font-weight: 600;
+  pointer-events: none;
+}
+
+/* top 区：图片在上、附件卡片在下，与编辑区留 8px。
+   没有内容时调用方不渲染这个节点，因此不会白占高度 */
+.inputTop {
+  grid-area: top;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* 附件卡片列表 */
+.attachmentList {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 220px 圆角卡；本仓附件不可单独移除（后端没有删除端点），
+   因此不留移除钮的右侧内边距 */
+.attachmentCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 220px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--gray-150);
+  border-radius: 12px;
+  background: var(--gray-0);
+  box-shadow: 0 1px 4px var(--shadow-0);
+}
+
+/* 40px 圆角图标块 */
+.attachmentCardIcon {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 10px;
+  color: var(--main-700);
+  background: var(--main-30);
+}
+
+.attachmentCardBody {
+  min-width: 0;
+}
+
+.attachmentCardName {
+  overflow: hidden;
+  color: var(--gray-900);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachmentCardMeta {
+  margin-top: 2px;
+  color: var(--gray-500);
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+/* 选项区（左下）：「+」与它右侧的动作行之间不留间距 */
+.inputOptions {
+  grid-area: options;
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+/* 审批模式与智能体之间 2px，窄屏换行 */
+.inputActionsLeft {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+/* 编辑区：显式占 input 区并留 0.5rem 下边距 */
+.inputEditor {
+  grid-area: input;
+  display: flex;
+  min-width: 0;
+  margin-bottom: 0.5rem;
+}
+
+/* 发送区（右下） */
+.inputSend {
+  grid-area: send;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 与发送钮之间留 8px */
+.inputActionsRight {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-right: 8px;
+}
+
+/* 引导钮：28px 无边框文字钮 */
+.steerButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-500);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease;
+}
+
+.steerButton:hover:not(:disabled) {
+  color: var(--gray-700);
+  background: var(--gray-100);
+}
+
+.steerButton:focus-visible {
+  outline: 2px solid var(--main-color);
+  outline-offset: 1px;
+}
+
+.steerButton:disabled {
+  opacity: 0.45;
+  cursor: wait;
+}
+
+.steerButtonIcon {
+  width: 14px;
+  height: 14px;
+}
+
+/* 发送钮：32px 圆形主色图标钮 */
+.sendButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background-color: var(--main-500);
+  color: var(--gray-0);
+  cursor: pointer;
+  box-shadow: 0 2px 6px var(--shadow-2);
+  transition: all 0.2s ease;
+}
+
+.sendButton:hover:not(:disabled) {
+  background-color: var(--main-color);
+  box-shadow: 0 4px 8px var(--shadow-3);
+}
+
+.sendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.sendButtonIcon {
+  width: 14px;
+  height: 14px;
+}
+
+/* 窄屏：520px 断点——收圆角与内边距 */
+@media (max-width: 520px) {
+  .inputPanel {
+    border-radius: 15px;
+    padding: 0.625rem 0.875rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .attachmentCard {
+    width: min(220px, 100%);
+  }
+}
+
+/* ---------- 空态问候语 ---------- */
+
+.greeting {
+  padding: 10px 0;
+  text-align: center;
+  margin-bottom: 7vh;
+}
+
+.greetingTitle {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--gray-1000);
+  margin: 0;
+}
+
+/* ---------- 底部提示（dock 内、有会话才显示） ---------- */
+
+.bottomActions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+}
+
+.bottomNote {
+  font-size: small;
+  color: var(--gray-300);
+  margin: 4px 0;
+  user-select: none;
+}
+
+/* ---------- 审批叠层 ---------- */
+
+/* 输入表面与审批卡同格叠放；审批时输入表面隐去，卡片视觉上「变成」输入框 */
+.inputStage {
+  position: relative;
+  min-width: 0;
+  z-index: 1;
+}
+
+.inputStage[data-has-approval] {
+  display: grid;
+}
+
+.inputStage[data-has-approval] > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+/* 审批时输入表面 opacity:0 + 事件穿透，
+   卡片 z-index 2 盖在上面 */
+.inputStage[data-has-approval] > .approvalCard {
+  z-index: 2;
+}
+
+/* ---------- 顶栏 ---------- */
+
+.chatHeader {
+  user-select: none;
+  z-index: 10;
+  height: var(--header-height);
+  min-height: var(--header-height);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 8px;
+  flex-shrink: 0;
+  transition: padding-right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.chatHeaderHasThread {
+  border-bottom: 1px solid var(--gray-150);
+}
+
+/* 面板打开时页头让位（变量挂在 .chat 上）；最大化时回到 8px */
+.chatHasPanel .chatHeader {
+  padding-right: calc(var(--file-panel-width) + 8px);
+}
+
+.chatMaximized .chatHeader {
+  padding-right: 8px;
+}
+
+.chatHeaderLeft,
+.chatHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conversationTitle {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+  color: var(--gray-1000);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
+/* 页头导航按钮 */
+.navBtn {
+  display: flex;
+  gap: 5px;
+  padding: 4px 7px;
+  height: 28px;
+  justify-content: center;
+  align-items: center;
+  border-radius: 6px;
+  color: var(--gray-900);
+  cursor: pointer;
+  width: auto;
+  font-size: 14px;
+  line-height: 20px;
+  transition: background-color 0.3s;
+  border: none;
+  background: transparent;
+}
+
+.navBtn:hover {
+  background-color: var(--gray-100);
+}
+
+.navBtnActive {
+  color: var(--gray-900);
+  background-color: var(--gray-100);
+}
+
+/* 调试按钮独立样式 */
+.navBtnDebug {
+  color: var(--gray-800);
+  background-color: var(--gray-100);
+  border: 1px solid var(--gray-300);
+}
+
+.navBtnDebug:hover {
+  background-color: var(--gray-200);
+  color: var(--gray-1000);
+  border-color: var(--gray-400);
+}
+
+/* ---------- 右侧面板 ---------- */
+
+/* 面板外壳：是 .chat 的直接子级（与页头、内容行并列），
+   absolute 覆盖右缘整高，所以页头那一行也在它下面；背景与分栏虚线由内层
+   AgentPanel 给（.shell 的背景 + .resizeHandle 的左边框虚线） */
+.sidePanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  height: auto;
+  max-width: 100%;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(10px);
+  will-change: width, flex-basis, opacity, transform;
+  transition:
+    width 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    flex-basis 0.24s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.22s ease,
+    transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sidePanelVisible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+/* 拖拽中冻结过渡 */
+.sidePanelNoTransition {
+  transition: none !important;
+}
+
+/* ---------- 状态面板 ---------- */
+
+/* 与文件面板并列的第二个表面：内容行里的 340px 窄列，或右上角的浮卡 */
+.statePanel {
+  z-index: 26;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--gray-150);
+  border-radius: 10px;
+  background: var(--gray-0);
+  box-shadow: 0 4px 16px var(--shadow-0);
+}
+
+/* 停靠：容器放得下 340px 面板 + 800px 聊天列时占一列，主列靠 flex 自然收窄 */
+.statePanelDocked {
+  flex: 0 0 340px;
+  align-self: flex-start;
+  max-height: calc(100% - 16px);
+  margin: 8px 8px 8px 0;
+}
+
+/* 浮动：文件面板开着或容器不够宽时成为卡片，并给文件面板让位 */
+.statePanelFloating {
+  position: absolute;
+  top: 8px;
+  right: calc(var(--file-panel-width) + 8px);
+  width: min(340px, calc(100% - var(--file-panel-width) - 24px));
+  max-height: calc(100vh - 16px);
+  box-shadow:
+    0 12px 28px var(--shadow-1),
+    0 2px 8px var(--shadow-0);
+}
+
+.statePanelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px 0;
+  background: transparent;
+  border-bottom: none;
+}
+
+.statePanelTitle {
+  min-width: 0;
+  color: var(--gray-500);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.statePanelHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.stateRefreshButton {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--gray-500);
+  cursor: pointer;
+  /* 默认藏着，悬停或焦点进入面板才出现 */
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease,
+    color 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.stateRefreshButton:hover:not(:disabled) {
+  background: var(--gray-100);
+  color: var(--main-700);
+}
+
+.stateRefreshButton:disabled {
+  cursor: not-allowed;
+}
+
+/* 鼠标悬停面板、焦点在面板内、或刷新钮自身获得键盘焦点时露出 */
+.statePanel:hover .stateRefreshButton,
+.statePanel:focus-within .stateRefreshButton,
+.stateRefreshButton:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* 触屏没有 hover：常显，否则这颗钮永远摸不到 */
+@media (hover: none) {
+  .stateRefreshButton {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.stateRefreshSpin {
+  animation: stateRefreshSpin 1s linear infinite;
+}
+
+@keyframes stateRefreshSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 内容自己滚动（StatePanel 的根节点带 overflow: auto） */
+.statePanelBody {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+/* ---------- 响应式：1024 / 768 两档 ---------- */
+
+@media (max-width: 1024px) {
+  .contentRowHasPanel .chatMain {
+    min-width: 350px;
+  }
+
+  .sidePanel {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  /* 窄屏面板改为覆盖式：主列不再让位，面板盖在消息上 */
+  .chatHasPanel .chatHeader {
+    padding-right: 8px;
+  }
+
+  .contentRowHasPanel .chatMain {
+    margin-right: 0;
+    min-width: 0;
+  }
+
+  .sidePanel {
+    top: calc(var(--header-height) + 4px);
+    max-width: calc(100% - 16px);
+  }
+}

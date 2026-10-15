@@ -1,0 +1,42 @@
+/* Agents 目录说明弹窗的正文样式。
+   段落 13px/1.7、代码块用等宽浅底、小节标题 13px 加粗、建议列表 13px。
+   颜色只用 agentic-tokens.css 的 --gray-*。 */
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  color: var(--gray-700);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.content code {
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--gray-50);
+  color: var(--gray-900);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.section h3 {
+  margin: 0;
+  color: var(--gray-900);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.section ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

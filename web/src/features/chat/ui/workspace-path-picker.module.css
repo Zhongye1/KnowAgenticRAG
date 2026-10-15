@@ -1,0 +1,248 @@
+/* 目录选择器。
+   颜色只用 agentic-tokens.css 的语义色与 --gray-* / --main-*。
+   错误文案本仓 token 只有 500/700，取 500。 */
+
+.picker {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 30px;
+}
+
+.breadcrumbs {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.breadcrumbs button {
+  padding: 2px 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.breadcrumbs button:not(:last-child)::after {
+  margin: 0 5px;
+  color: var(--color-text-tertiary);
+  content: '/';
+}
+
+.breadcrumbs button:disabled {
+  color: var(--color-text);
+  cursor: default;
+}
+
+.actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+}
+
+.actions button,
+.createRow button {
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+}
+
+.textAction {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  gap: 5px;
+  padding: 0 7px;
+  font-size: 12px;
+}
+
+.iconAction {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.actions button:hover:not(:disabled),
+.createRow button:hover:not(:disabled) {
+  background: var(--gray-50);
+  color: var(--color-text);
+}
+
+.actions button:disabled,
+.createRow button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.createRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--gray-150);
+  border-radius: 7px;
+  color: var(--color-text-secondary);
+}
+
+.createRow input {
+  flex: 1;
+  min-width: 0;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.createRowIcon {
+  flex: 0 0 auto;
+}
+
+.createSubmit {
+  height: 26px;
+  padding: 0 7px;
+  color: var(--main-700);
+  font-size: 12px;
+}
+
+.selection {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.selection span {
+  overflow: hidden;
+  color: var(--color-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.selectionIcon {
+  flex: 0 0 auto;
+}
+
+.list {
+  display: flex;
+  min-height: 180px;
+  max-height: 300px;
+  flex-direction: column;
+  overflow-y: auto;
+  border: 1px solid var(--gray-150);
+  border-radius: 8px;
+  background: var(--gray-0);
+}
+
+.listLoading {
+  align-items: center;
+  justify-content: center;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--gray-100);
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:last-child {
+  border-bottom: 0;
+}
+
+.row:hover:not(:disabled),
+.rowSelected {
+  background: var(--gray-25);
+}
+
+.row:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.row:focus-visible,
+.actions button:focus-visible,
+.createRow button:focus-visible,
+.breadcrumbs button:focus-visible {
+  outline: 2px solid var(--main-color);
+  outline-offset: -2px;
+}
+
+.row > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rowIcon,
+.rowChevron {
+  flex: 0 0 auto;
+  color: var(--color-text-secondary);
+}
+
+.rowCheck {
+  flex: 0 0 auto;
+  color: var(--main-color);
+}
+
+.empty {
+  margin: auto;
+  padding: 20px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+.emptyError {
+  margin: auto;
+  padding: 20px;
+  color: var(--color-error-500);
+  font-size: 12px;
+}
+
+@media (max-width: 520px) {
+  .toolbar {
+    align-items: flex-start;
+  }
+
+  /* 窄屏只留图标，文案让位给面包屑 */
+  .textAction {
+    width: 28px;
+    overflow: hidden;
+    padding: 0 6px;
+    white-space: nowrap;
+  }
+}

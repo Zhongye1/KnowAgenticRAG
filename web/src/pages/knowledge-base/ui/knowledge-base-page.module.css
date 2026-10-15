@@ -1,0 +1,74 @@
+/* ============================================================================
+ * 知识库详情页样式：分区切换用 antd `Tabs`。
+ * ----------------------------------------------------------------------------
+ * - 页面私有的 antd 覆盖写在这里（`:global(.ant-*)`），与 scoped 加 `:deep()` 同一层，
+ *   因此不进 `styles/antd-overrides.css`。
+ * - 颜色只用设计 token（`--main-*` / `--gray-*`），不写硬编码值。
+ * - 注：激活底条左右各内缩 12px，antd 的 ink bar 撑满页签宽度，
+ *   这里保留 antd 的宽度只改粗细与颜色。
+ * ========================================================================== */
+
+/* 条：底色保留；内边距不采用 `8px 12px 0`（页签比页头再外扩 6px），本页横向留白由
+   ContentLayout 给，否则页签会比页头多缩进 12px。
+   下边框在 antd 的 ::before 上；antd 在这层默认只有 margin，没有 padding。 */
+.tabBar :global(.ant-tabs-nav) {
+  margin: 0;
+  background: var(--gray-0);
+}
+
+.tabBar :global(.ant-tabs-nav)::before {
+  border-bottom-color: var(--gray-150);
+}
+
+/* 页签间距：`gap: 6px`，antd 默认 32px */
+.tabBar :global(.ant-tabs-nav-list) {
+  gap: 6px;
+}
+
+/* 页签项：`min-height: 40px; padding: 0 14px 8px; border-radius: 8px 8px 0 0` */
+.tabBar :global(.ant-tabs-tab) {
+  margin: 0;
+  min-height: 40px;
+  padding: 0 14px 0;
+  border-radius: 8px 8px 0 0;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+/* 标签文字：14px/500，未激活 gray-600、悬停 gray-900 */
+.tabBar :global(.ant-tabs-tab .ant-tabs-tab-btn) {
+  color: var(--gray-600);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.tabBar :global(.ant-tabs-tab:hover) {
+  background: var(--gray-50);
+}
+
+.tabBar :global(.ant-tabs-tab:hover .ant-tabs-tab-btn) {
+  color: var(--gray-900);
+}
+
+/* 激活项：`--main-20` 底 + `--main-color` 字 */
+.tabBar :global(.ant-tabs-tab.ant-tabs-tab-active) {
+  background: var(--main-20);
+}
+
+.tabBar :global(.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn) {
+  color: var(--main-color);
+}
+
+/* 激活底条：3px、上圆角、主色 */
+.tabBar :global(.ant-tabs-ink-bar) {
+  height: 3px;
+  border-radius: 3px 3px 0 0;
+  background: var(--main-color);
+}
+
+/* 聚焦环：`outline: 2px solid var(--main-200); outline-offset: 2px` */
+.tabBar :global(.ant-tabs-tab-btn:focus-visible) {
+  outline: 2px solid var(--main-200);
+  outline-offset: 2px;
+}

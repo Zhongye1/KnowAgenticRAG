@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=80", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ars-cli"
+version = "0.1.3"
+description = "ARS command line client"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{ name = "Wenjie Zhang" }]
+license = "MIT"
+keywords = ["ars", "cli", "rag", "knowledge-base", "agent"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Utilities",
+]
+dependencies = [
+    "httpx>=0.27",
+    "langfuse>=4.0.0",
+    "packaging>=24",
+    "questionary>=2.1.0",
+    "rich>=13.7",
+    "typer>=0.16",
+]
+
+[project.urls]
+Homepage = "https://github.com/xerrors/ARS"
+Repository = "https://github.com/xerrors/ARS"
+Issues = "https://github.com/xerrors/ARS/issues"
+
+[project.scripts]
+ars = "ars_cli.main:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+ars_cli = ["chat.html"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[dependency-groups]
+test = [
+    "pytest>=8",
+]

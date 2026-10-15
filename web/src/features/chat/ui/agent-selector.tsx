@@ -1,0 +1,102 @@
+/** 输入区左侧的智能体选择器。 */
+import * as React from 'react';
+import { Bot, Check, ChevronDown } from 'lucide-react';
+import styles from './input-selector.module.css';
+
+import { Dropdown } from 'antd';
+import {
+  toAntdMenuItems,
+  toSelectedKeys,
+  findItem,
+  type ChatDropdownItem,
+} from './chat-dropdown';
+
+import {
+  agentSwitchBlockReason,
+  currentAgentLabel,
+  type AgentOption,
+} from '../lib/agent-options';
+
+type AgentSelectorProps = {
+  options: AgentOption[];
+  selected: string | null;
+  loading?: boolean;
+  /** 当前地址是否已经绑定了一条会话。 */
+  hasActiveThread: boolean;
+  isCreatingThread?: boolean;
+  onSelect: (slug: string) => void;
+  /** 切换被拒绝时回调，用来提示原因。 */
+  onBlocked: (reason: string) => void;
+};
+
+export const AgentSelector = ({
+  options,
+  selected,
+  loading = false,
+  hasActiveThread,
+  isCreatingThread = false,
+  onSelect,
+  onBlocked,
+}: AgentSelectorProps) => {
+  const label = currentAgentLabel(options, selected, loading);
+
+  const handleSelect = (slug: string) => {
+    if (slug === selected) return;
+
+    const reason = agentSwitchBlockReason({
+      hasActiveThread,
+      isCreatingThread,
+    });
+    if (reason) {
+      onBlocked(reason);
+      return;
+    }
+
+    onSelect(slug);
+  };
+
+  const items: ChatDropdownItem[] = options.map((option) => ({
+    kind: 'item',
+    key: option.value,
+    label: (
+      <span className={styles.menuItem}>
+        <span className={styles.menuItemLabel}>{option.label}</span>
+        {option.isBuiltin ? (
+          <span className={styles.menuItemTag}>内置</span>
+        ) : null}
+        {option.value === selected ? (
+          <Check className={styles.menuItemCheck} aria-hidden />
+        ) : null}
+      </span>
+    ),
+    onSelect: () => handleSelect(option.value),
+    // 已选中的项可再点（关掉弹窗），但不能触发切换的请求路径
+    disabled: option.value === selected && Boolean(hasActiveThread),
+  }));
+
+  return (
+    <Dropdown
+      menu={{
+        items: toAntdMenuItems(items),
+        selectedKeys: toSelectedKeys(items),
+        onClick: ({ key }) => findItem(items, key)?.onSelect(),
+        selectable: true,
+      }}
+      trigger={['click']}
+      placement="topLeft"
+      disabled={loading || isCreatingThread}
+    >
+      <button
+        type="button"
+        className={`${styles.trigger} ${styles.triggerAgent}`}
+        aria-label={label}
+        disabled={loading || isCreatingThread}
+      >
+        {/* 宽屏只留文字与箭头，窄屏（≤640px）收成纯图标钮 */}
+        <Bot className={styles.triggerCompactIcon} aria-hidden />
+        <span className={styles.triggerLabel}>{label}</span>
+        <ChevronDown className={styles.triggerChevron} aria-hidden />
+      </button>
+    </Dropdown>
+  );
+};

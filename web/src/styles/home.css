@@ -1,0 +1,1043 @@
+/* ============================================================================
+ * 首页皮肤层
+ * ----------------------------------------------------------------------------
+ * 分工：本文件只负责「皮肤」——类型层重置、颜色/渐变/滤镜/边框/圆角、字体与
+ * 字号、阴影与过渡、伪元素、:hover/:focus/[aria-selected] 状态、@keyframes，
+ * 以及响应式覆盖里属于皮肤的部分。色值全部取 home-tokens.css 的变量。
+ *
+ * 版面骨架同样在这里，因为它是全页共用的三个钩子（.home-shell 容器、
+ * .home-band 竖向节奏、.home-cols 列分隔）；再往下的一段一版用 Tailwind
+ * 工具类写在 src/pages/home/ui/*.tsx。骨架与皮肤一起放进 components 层，
+ * 工具类因此仍能就地覆盖（层序见 index.css）。
+ *
+ * 放在 src/styles/** 是因为 check-design-tokens.mjs 只豁免该目录；页面 CSS
+ * Modules 里出现这些值会被门禁拒绝。
+ * ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * 类型层重置
+ * 放进 base 层（层序见 index.css 的 @layer 声明）：无层的作者样式会压过
+ * utilities 层的工具类，那样 mt-* / p-* 就再也调不动这些元素了。
+ * ------------------------------------------------------------------------ */
+
+@layer base {
+  .home-site :where(*) {
+    box-sizing: border-box;
+  }
+
+  .home-site :where(button, input, select, textarea) {
+    font: inherit;
+  }
+
+  .home-site :where(a) {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* 元素自身不带 UA 间距与列表符号；间距一律由 JSX 的工具类与本文件的排版类给 */
+  .home-site :where(h1, h2, h3, h4, p, figure, blockquote) {
+    margin: 0;
+  }
+
+  .home-site :where(ul, ol) {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 骨架：容器 / 段落节奏 / 列分隔
+ * 本文件除上面的重置外都是无层规则（层序见 index.css）：一个属性只由一处声明，
+ * 这里给了的属性（容器留白、字号、边框、底色…）就不要在 JSX 再加同类工具类。
+ * ------------------------------------------------------------------------ */
+
+.home-site .home-shell {
+  width: 100%;
+  max-width: var(--content-max);
+  margin-inline: auto;
+  padding-inline: var(--content-gutter);
+}
+
+.home-site .home-band {
+  padding-block: var(--band-pad);
+  /* 站内锚点跳转时给吸顶顶栏留位 */
+  scroll-margin-top: 76px;
+}
+
+/* 段底色：纸白是页面默认（.home-site 已铺），只有下沉一档要显式声明。
+   页面上「纸白 / 下沉」交替，段落边界靠这一个明暗差就够，不需要每条边都画线。 */
+.home-site .home-band-sunken {
+  background: var(--surface-sunken);
+}
+
+/* 同一段落内的并排列：竖线分隔；≤1024px 转单列后改成上边框。 */
+.home-site .home-cols > * {
+  padding-right: clamp(0px, 2.2vw, 36px);
+}
+
+.home-site .home-cols > * + * {
+  border-left: 1px solid var(--line);
+  padding-left: clamp(20px, 2.2vw, 36px);
+}
+
+@media (width < 1024px) {
+  .home-site .home-cols > * {
+    padding-right: 0;
+    padding-bottom: clamp(24px, 3vw, 36px);
+  }
+  .home-site .home-cols > * + * {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+    padding-top: clamp(24px, 3vw, 36px);
+    padding-left: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 排版：一句 token 对一个类，段落里不再各写各的字号
+ * ------------------------------------------------------------------------ */
+
+.home-site .home-display {
+  color: var(--ink);
+  font-size: var(--text-display);
+  font-weight: 600;
+  line-height: 0.98;
+  letter-spacing: -0.03em;
+}
+
+.home-site .home-title {
+  color: var(--ink);
+  font-size: var(--text-title);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.home-site .home-subtitle {
+  color: var(--ink);
+  font-size: var(--text-subtitle);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.home-site .home-lead {
+  color: var(--ink-muted);
+  font-size: var(--text-lead);
+  line-height: 1.7;
+}
+
+.home-site .home-body {
+  color: var(--ink-muted);
+  line-height: 1.75;
+}
+
+.home-site .home-small {
+  font-size: var(--text-small);
+}
+
+/* 标题里的重音词；h1/h2 共用 */
+.home-site :where(h1, h2) em {
+  color: var(--brand);
+  font-style: normal;
+  font-weight: 400;
+}
+
+/* mono 三档：眉标（金）/ 标签（墨）/ 元信息（灰） */
+.home-site .home-eyebrow {
+  color: var(--accent);
+  font-family: var(--font-plex-mono);
+  font-size: var(--text-meta);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.home-site .home-label {
+  color: var(--ink);
+  font-family: var(--font-plex-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.home-site .home-meta {
+  color: var(--ink-muted);
+  font-family: var(--font-plex-mono);
+  font-size: var(--text-meta);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* 段落头：眉标 + 标题 + 导语，带一条通栏分隔线 */
+.home-site .home-band-head {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: clamp(20px, 2.2vw, 30px);
+}
+
+/* 标题悬停时从左展开的一条短线（hero 与能力段标题共用） */
+.home-site .home-rule {
+  position: relative;
+}
+
+.home-site .home-rule:after {
+  content: '';
+  background: var(--accent);
+  position: absolute;
+  bottom: -0.14em;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  transform: scaleX(0);
+  transform-origin: 0;
+  transition: transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (hover: hover) {
+  .home-site .home-rule:hover:after {
+    transform: scaleX(1);
+  }
+}
+
+/* 段落内「了解 X →」这类文字链接 */
+.home-site .home-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-size: var(--text-body);
+  font-weight: 600;
+  transition: color 0.2s;
+}
+
+.home-site .home-link:hover {
+  color: var(--brand);
+}
+
+/* 标签与渠道名共用的胶囊：灰底无描边，图标是 Mono 形态的品牌标或 lucide 形状，跟随文字色 */
+.home-site .home-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.home-site .home-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  padding: 7px 11px;
+  font-size: var(--text-small);
+  line-height: 1.4;
+}
+
+.home-site .home-chip svg {
+  flex: none;
+  color: var(--ink-muted);
+}
+
+/* 段落里列标题上面的那枚图标 */
+.home-site .home-icon {
+  color: var(--ink);
+}
+
+/* ---------------------------------------------------------------------------
+ * 顶栏
+ * ------------------------------------------------------------------------ */
+
+.home-site .nav-shell {
+  /* 吸顶毛玻璃：定位与层级在 JSX（sticky + z-50），这里只管底色与模糊 */
+  background: var(--surface-glass);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+
+.home-site .nav-wrap {
+  position: relative;
+}
+
+/* 悬停时从左拉满的强调线 */
+.home-site .nav-wrap:after {
+  content: '';
+  background: var(--brand);
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  opacity: 0.6;
+  transform: scaleX(0);
+  transform-origin: 0;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 指针进入顶栏时从左铺到右的一条强调线（悬停在 header 上，不在单个链接上） */
+.home-site .nav-shell:hover .nav-wrap:after {
+  transform: scaleX(1);
+}
+
+.home-site .wordmark {
+  color: var(--ink);
+  transition: opacity 0.2s;
+}
+
+.home-site .wordmark:hover {
+  opacity: 0.92;
+}
+
+.home-site .nav-links {
+  color: var(--ink-muted);
+  font-family: var(--font-plex-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.home-site .nav-links a {
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+
+.home-site .nav-links a:after {
+  content: '';
+  background: var(--brand);
+  position: absolute;
+  bottom: 6px;
+  left: 13px;
+  width: calc(100% - 26px);
+  height: 1px;
+  transform: scaleX(0);
+  transform-origin: 100%;
+  transition: transform 0.25s;
+}
+
+.home-site .nav-links a:hover {
+  color: var(--brand);
+  background: var(--brand-wash);
+}
+
+.home-site .nav-links a:hover:after {
+  transform: scaleX(1);
+}
+
+.home-site .nav-links a:focus-visible {
+  color: var(--brand);
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}
+
+.home-site .nav-menu-button:hover,
+.home-site .nav-menu-button:focus-visible {
+  background: 0 0;
+  border: 0;
+  outline: none;
+}
+
+.home-site .nav-menu-button span {
+  display: block;
+  flex: 0 0 1.8px;
+  width: 28px;
+  height: 1.8px;
+  background: currentColor;
+  transform-origin: 50%;
+  transition:
+    transform 0.2s,
+    opacity 0.2s;
+}
+
+/* ---------------------------------------------------------------------------
+ * Hero
+ * ------------------------------------------------------------------------ */
+
+.home-site .hero {
+  /* 首屏就是顶栏 + hero：矮屏铺满余下视口，高屏封顶，给下一段留出一角 */
+  min-height: min(calc(100svh - var(--nav-height)), 960px);
+  background-color: var(--surface);
+  background-image:
+    linear-gradient(90deg, rgb(148 163 184 / 8%) 1px, transparent 1px),
+    linear-gradient(rgb(148 163 184 / 8%) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+
+/* 宽屏顶栏钉成固定高度（= --nav-height，含底边），窄屏不钉：移动端菜单展开要长高 */
+@media (min-width: 721px) {
+  .home-site .nav-shell {
+    height: var(--nav-height);
+  }
+}
+
+/* 宽屏换成纸纹：网格线在窄屏当背景更省事，宽屏则由噪点承担质感 */
+@media (min-width: 721px) {
+  .home-site .hero {
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 520' preserveAspectRatio='none'%3E%3Cfilter id='paper'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.075 .42' numOctaves='3' seed='28'/%3E%3CfeColorMatrix type='matrix' values='.13 0 0 0 .12 0 .13 0 0 .15 0 0 .13 0 .2 .09 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23paper)'/%3E%3C/svg%3E"),
+      radial-gradient(86% 58% at 45% 0, rgb(255 255 255 / 82%), transparent 74%),
+      linear-gradient(118deg, rgb(255 255 255 / 52%), transparent 48%, rgb(16 20 24 / 2%));
+    background-size: 100% 100%;
+  }
+}
+
+.home-site .hero-copy {
+  animation: hero-copy-reveal 0.82s cubic-bezier(0.22, 1, 0.36, 1) 80ms both;
+}
+
+/* 标题里可以指针悬停的方块字 */
+.home-site .matrix-word {
+  display: inline-block;
+  position: relative;
+  cursor: crosshair;
+}
+
+.home-site .matrix-word em {
+  position: relative;
+  z-index: 2;
+  display: inline-block;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.home-site .matrix-word:hover em {
+  transform: translateY(-1px);
+}
+
+.home-site .matrix-grid {
+  position: absolute;
+  inset: -6px -12px -6px -10px;
+  z-index: 1;
+  overflow: hidden;
+  border-radius: 6px;
+  opacity: 0.38;
+  transition:
+    opacity 0.4s,
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* 指针压在方块字上时点阵变亮、扫过一条亮线（纯 :hover，不经过组件状态） */
+.home-site .matrix-word:hover .matrix-grid {
+  opacity: 0.88;
+  transform: scale(1.02);
+}
+
+.home-site .matrix-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(
+    circle,
+    var(--brand) 1.15px,
+    transparent 1.15px
+  );
+  background-size: 6.5px 6.5px;
+  -webkit-mask-image: radial-gradient(#000 40%, transparent 88%);
+  mask-image: radial-gradient(#000 40%, transparent 88%);
+}
+
+.home-site .matrix-scanline {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.home-site .matrix-word:hover .matrix-grid .matrix-scanline {
+  opacity: 0.85;
+  animation: matrix-scan 2.4s linear infinite;
+}
+
+/* 阶段条：开放数据 → 向量流转 → AI 上下文，三段静态并排 */
+.home-site .stage {
+  display: grid;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.home-site .stage > * + * {
+  border-left: 1px solid var(--line);
+}
+
+.home-site .stage-label {
+  color: var(--ink);
+  font-family: var(--font-plex-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.025em;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.home-site .stage-detail {
+  color: var(--ink-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.home-site .hero-icon {
+  color: var(--brand);
+}
+
+/* ---------------------------------------------------------------------------
+ * 按钮
+ * ------------------------------------------------------------------------ */
+
+.home-site .button {
+  font-family: var(--font-manrope);
+  font-size: var(--text-small);
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  transition:
+    background 0.2s,
+    border-color 0.2s,
+    color 0.2s;
+}
+
+.home-site .button-primary {
+  background: var(--brand);
+  border: 1px solid var(--brand);
+  color: var(--on-brand);
+  box-shadow: 0 10px 24px rgb(11 42 111 / 18%);
+}
+
+.home-site .button-primary:hover {
+  background: var(--brand-hover);
+  border-color: var(--brand-hover);
+}
+
+.home-site .button-quiet {
+  color: var(--ink-muted);
+  border: 1px solid var(--line-strong);
+}
+
+.home-site .button-quiet:hover {
+  color: var(--ink);
+  border-color: var(--ink);
+}
+
+/* ---------------------------------------------------------------------------
+ * RAG 流程段：左列链路要点 + 右侧五步流程
+ * ------------------------------------------------------------------------ */
+
+/* 行首的圆点标记换成每行自己的图标，这里只留行与行的分隔 */
+/* 右侧五步：每行一条竖杠 + 文字，行间细横线，其余沿用本段原来的语言 */
+.home-site .pipe-list {
+  border-top: 1px solid var(--line);
+}
+
+.home-site .pipe-step {
+  border-bottom: 1px solid var(--line);
+}
+
+.home-site .pipe-step-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 20px;
+  align-items: start;
+  gap: 16px;
+  /* 行首那条竖杠；悬停时转品牌色 */
+  border-left: 2px solid var(--line-strong);
+  padding: clamp(18px, 2vw, 24px) 0 clamp(18px, 2vw, 24px) 16px;
+  transition:
+    background 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.2s;
+}
+
+.home-site .pipe-step-link:hover {
+  background: var(--brand-wash);
+  border-left-color: var(--brand);
+}
+
+.home-site .pipe-step-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--ink);
+  font-size: var(--text-subtitle);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.home-site .pipe-step-icon {
+  flex: none;
+  color: var(--brand);
+}
+
+.home-site .pipe-step-arrow {
+  color: var(--brand);
+  font-size: 18px;
+  text-align: right;
+  transition: transform 0.2s;
+}
+
+.home-site .pipe-step-link:hover .pipe-step-arrow {
+  transform: translate(3px, -3px);
+}
+
+/* 六块能力：三列两行。
+   列间距离交给 grid 的列间距，分隔线画在间距正中——这样三列的内容盒等宽，
+   六张图位尺寸一致（用内边距做间隔时，中列要多付一份，三列就不一样宽了）。 */
+.home-site .pillars {
+  --pillar-gap: clamp(28px, 3.4vw, 56px);
+
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--pillar-gap);
+}
+
+.home-site .pillar {
+  position: relative;
+  padding-block: clamp(24px, 2.6vw, 40px);
+}
+
+.home-site .pillar:not(:nth-child(3n + 1)):before {
+  content: '';
+  background: var(--line);
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(-1 * var(--pillar-gap) / 2);
+  width: 1px;
+}
+
+/* 第二行起与第一行分栏 */
+.home-site .pillar:nth-child(n + 4) {
+  border-top: 1px solid var(--line);
+}
+
+/* 图位：固定画幅比，六张同尺寸；截图整张放进来（contain），不裁掉界面上的按钮与文字 */
+.home-site .pillar-shot {
+  aspect-ratio: 16 / 10;
+  margin-bottom: clamp(20px, 2.2vw, 30px);
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.home-site .pillar-shot img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* 图标与标题同一行，分类标靠右 */
+.home-site .pillar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.home-site .pillar-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  font-size: var(--text-subtitle);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.home-site .pillar-title svg {
+  flex: none;
+  color: var(--ink);
+}
+
+@media (width < 1024px) {
+  .home-site .pillars {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .home-site .pillar:not(:nth-child(3n + 1)):before {
+    content: none;
+  }
+
+  .home-site .pillar + .pillar {
+    border-top: 1px solid var(--line);
+  }
+}
+
+/* 左列四组：组间细横线，组内是「定位名 + 三条支持点」。
+   四组按整列高度摊开，上边与下边因此和右侧五步对齐。 */
+.home-site .pipe-groups {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.home-site .pipe-group {
+  border-top: 1px solid var(--line);
+  padding-block: clamp(14px, 1.5vw, 20px);
+}
+
+.home-site .pipe-group:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.home-site .pipe-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.home-site .pipe-group-title {
+  color: var(--ink);
+  font-size: var(--text-lead);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.home-site .pipe-group-tagline {
+  color: var(--accent);
+  font-size: var(--text-small);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.home-site .pipe-group-points {
+  display: grid;
+  gap: 8px;
+}
+
+.home-site .pipe-point {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  color: var(--ink-muted);
+}
+
+.home-site .pipe-point svg {
+  color: var(--brand);
+  margin-top: 4px;
+}
+
+/* ---------------------------------------------------------------------------
+ * 任务链段：左列环节（竖向 tablist）+ 右侧产品截图
+ * ------------------------------------------------------------------------ */
+
+/* 条目之间是细横线，首条不再加一条（它上面就是段头的分隔线） */
+.home-site .chain-list > li + li {
+  border-top: 1px solid var(--line);
+}
+
+.home-site .chain-tab {
+  position: relative;
+  background: 0 0;
+  /* 当前项的竖条：透明边框常驻，切换时不发生位移 */
+  border: 0;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s;
+}
+
+.home-site .chain-tab-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.home-site .chain-tab-icon {
+  color: var(--ink-muted);
+  transition: color 0.2s;
+}
+
+.home-site .chain-tab-title {
+  color: var(--ink-muted);
+  font-size: var(--text-subtitle);
+  font-weight: 700;
+  line-height: 1.3;
+  transition: color 0.2s;
+}
+
+.home-site .chain-tab:hover .chain-tab-title {
+  color: var(--ink);
+}
+
+.home-site .chain-tab[aria-selected='true'] {
+  border-left-color: var(--brand);
+}
+
+.home-site .chain-tab[aria-selected='true'] .chain-tab-icon {
+  color: var(--brand);
+}
+
+.home-site .chain-tab[aria-selected='true'] .chain-tab-title {
+  color: var(--ink);
+}
+
+/* 截图卡：画幅比写在图自身上，卡跟着图长高，不会把图裁掉。
+   列留白换成一个左侧外边距——卡片内容左右对称，分隔线离卡片仍有一条缝；
+   卡片与左列一起垂直居中，不与列顶对齐。 */
+.home-site .home-cols > .chain-shot {
+  padding-inline: 0;
+  margin-left: clamp(20px, 2.2vw, 36px);
+  align-self: center;
+}
+
+.home-site .chain-shot {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--surface-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  box-shadow: 0 18px 44px rgb(16 20 24 / 6%);
+}
+
+.home-site .chain-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+}
+
+@media (width < 1024px) {
+  .home-site .home-cols > .chain-shot {
+    margin-left: 0;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 集成段
+ * ------------------------------------------------------------------------ */
+
+.home-site .vendor-strip {
+  border-top: 1px solid var(--line);
+}
+
+.home-site .vendor-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px clamp(20px, 2.6vw, 40px);
+  color: var(--ink);
+}
+
+.home-site .vendor-list svg {
+  flex: none;
+  color: var(--ink-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * 页脚：品牌 + 状态与版权 + 右侧入口，单行
+ * ------------------------------------------------------------------------ */
+
+.home-site .home-footer {
+  background: var(--surface-raised);
+  border-top: 1px solid var(--line);
+}
+
+.home-site .footer-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px clamp(24px, 3vw, 48px);
+  padding-block: clamp(24px, 2.8vw, 36px);
+}
+
+.home-site .footer-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px clamp(16px, 2vw, 28px);
+}
+
+.home-site .footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.home-site .footer-logo {
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+}
+
+.home-site .footer-name {
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.home-site .footer-meta {
+  color: var(--ink-muted);
+  font-size: var(--text-small);
+}
+
+.home-site .footer-links {
+  display: flex;
+  align-items: center;
+  gap: clamp(18px, 2.2vw, 32px);
+}
+
+.home-site .footer-links a {
+  color: var(--ink-muted);
+  font-size: var(--text-body);
+  transition: color 0.2s;
+}
+
+.home-site .footer-links a:hover {
+  color: var(--brand);
+}
+
+/* ---------------------------------------------------------------------------
+ * 响应式：窄屏
+ * 边界写成 `width < 721px`，与页面里的 Tailwind `max-[721px]:`（v4 的 max-*
+ * 变体是排他的）严格同界，避免 720px 处两边都失效。
+ * ------------------------------------------------------------------------ */
+
+@media (width < 721px) {
+  .home-site .nav-links {
+    font-size: var(--text-meta);
+  }
+
+  .home-site .nav-actions {
+    flex-direction: column;
+    align-items: stretch;
+    flex-basis: 100%;
+    gap: 14px;
+    margin-top: 14px;
+    padding: 0 16px;
+    max-height: 0;
+    background: var(--surface-raised);
+    border: 1px solid var(--line);
+    box-shadow: 0 18px 44px rgb(16 20 24 / 12%);
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transform: translateY(-8px);
+    transition:
+      max-height 0.3s,
+      opacity 0.2s,
+      padding 0.3s,
+      transform 0.3s;
+  }
+
+  .home-site .nav-wrap.is-open .nav-actions {
+    padding: 10px 16px 14px;
+    max-height: 260px;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .home-site .nav-links a {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .home-site .nav-links a:after {
+    bottom: 0;
+  }
+
+  .home-site .nav-links a:last-child {
+    border-bottom: 0;
+  }
+
+  .home-site .nav-wrap.is-open .nav-links a {
+    animation: nav-link-in 0.35s both;
+  }
+
+  .home-site .nav-wrap.is-open .nav-links a:nth-child(2) {
+    animation-delay: 40ms;
+  }
+
+  .home-site .nav-wrap.is-open .nav-links a:nth-child(3) {
+    animation-delay: 80ms;
+  }
+
+  .home-site .nav-wrap.is-open .nav-menu-button span:first-child {
+    transform: translateY(5px) rotate(45deg);
+  }
+
+  .home-site .nav-wrap.is-open .nav-menu-button span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .home-site .nav-wrap.is-open .nav-menu-button span:last-child {
+    transform: translateY(-5px) rotate(-45deg);
+  }
+
+  .home-site .home-display {
+    font-size: clamp(34px, 9vw, 44px);
+    line-height: 1.05;
+  }
+
+  .home-site .home-lead {
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  .home-site .chain-shot {
+    border-radius: var(--radius-md);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 动画
+ * ------------------------------------------------------------------------ */
+
+@keyframes hero-copy-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes matrix-scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  to {
+    transform: translateY(58px);
+  }
+}
+
+@keyframes nav-link-in {
+  0% {
+    opacity: 0;
+    transform: translate(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-site .hero-copy {
+    animation: none;
+  }
+
+  .home-site .home-rule:after {
+    transition: none;
+  }
+
+  .home-site .matrix-word:hover .matrix-grid .matrix-scanline {
+    animation: none;
+  }
+}

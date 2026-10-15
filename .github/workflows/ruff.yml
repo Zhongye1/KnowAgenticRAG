@@ -1,0 +1,102 @@
+# GitHub Actions workflow for Ruff code formatting and linting
+# 自动运行 Ruff 格式检查
+#
+# 触发场景：
+# 1. Pull Request：发现问题直接标红，要求开发者本地运行 task format
+# 2. Push 到 main：仅检查并在发现问题时标红，不修改仓库内容
+
+name: Ruff Format Check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**/*.py'
+      - 'backend/pyproject.toml'
+      - 'Makefile'
+      - '.github/workflows/ruff.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'backend/**/*.py'
+      - 'backend/pyproject.toml'
+      - 'Makefile'
+      - '.github/workflows/ruff.yml'
+
+jobs:
+  ruff-check:
+    name: Ruff Format & Lint
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      # 1. 检出代码
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      # 2. 安装 uv（项目使用 uv 作为包管理器）
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          version: "0.7.2"
+
+      # 3. 设置 Python 环境
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+
+      # 4. 安装 ruff 依赖（根据项目配置，ruff 在 dev 依赖组中）
+      - name: Install dependencies
+        run: |
+          uv sync --group dev
+
+      # 5. 运行 Ruff 格式检查（与项目的 task lint 命令一致）
+      - name: Run Ruff format check
+        run: |
+          set +e  # 不立即退出失败
+
+          echo "Running ruff check (uv run python -m ruff check package)..."
+          uv run python -m ruff check package
+          ruff_check_result=$?
+
+          echo "Running ruff format diff check (uv run python -m ruff format package --diff)..."
+          uv run python -m ruff format package --diff
+          ruff_format_result=$?
+
+          echo "Running import sorting check (uv run python -m ruff check --select I package)..."
+          uv run python -m ruff check --select I package
+          ruff_import_result=$?
+
+          # 检查是否有任何错误
+          if [ $ruff_check_result -eq 0 ] && [ $ruff_format_result -eq 0 ] && [ $ruff_import_result -eq 0 ]; then
+            echo "✅ Ruff format check passed"
+            exit 0
+          fi
+
+          echo "❌ Ruff format check failed"
+          echo "::error::Ruff format check found issues that must be addressed"
+
+          # 汇总错误信息
+          echo "## Ruff Format Issues Summary" > $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The following formatting issues were found:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # 运行 ruff check 以获取详细错误信息
+          echo "### Detailed Issues:" >> $GITHUB_STEP_SUMMARY
+          uv run python -m ruff check package --output-format=github >> $GITHUB_STEP_SUMMARY 2>&1 || true
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "To fix these issues locally, run:" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo "task format" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          exit 1

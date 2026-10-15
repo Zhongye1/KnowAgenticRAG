@@ -1,0 +1,60 @@
+# Web 前端门禁：lint、单元测试与生产构建
+#
+# 触发场景：
+# 1. Pull Request：涉及 web/ 的改动必须通过三项检查
+# 2. Push 到 main：同上
+#
+# 命令与 scripts/verify_engineering_contracts.py 登记的 workflow 契约一致，
+# 脚本名（lint:check / test:unit / build）属于契约的一部分，改名需同步修改契约。
+
+name: Web Check
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'web/**'
+      - '.github/workflows/web.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'web/**'
+      - '.github/workflows/web.yml'
+
+jobs:
+  web-check:
+    name: Lint / Unit / Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 12.5.1
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint, unit test and build
+        run: pnpm run lint:check && pnpm run test:unit && pnpm run build
+
+      # 只读静态检查：设计 token、分层规则、契约生成物漂移。
+      # 与上面三项共同构成 web/AGENTS.md 承诺的门禁。
+      - name: Design tokens, layering and contract drift
+        run: pnpm run check:tokens && pnpm run arch:check && pnpm run lint:fsd && pnpm run api:check
