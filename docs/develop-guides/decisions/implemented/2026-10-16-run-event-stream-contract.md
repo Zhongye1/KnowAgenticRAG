@@ -37,9 +37,9 @@ Owner：backend/package/ars/services/run_event_models.py
 - 运行事件流在契约里有了形状，生成客户端从 `.get` 变成 `.sse.get`，`200` 是 `RunEvent` 联合；`@tanstack/react-query` 生成物里该端点的 `QueryKey`/`Options` 随之消失（SSE 端点不该包成 query），仓库内无引用。
 - 终态漂移从「前端静默不收尾」变成「产侧构造即失败」。失败被 `_append_run_event_best_effort` 记录并跳过该帧，run 的 PostgreSQL 终态不受影响，前端的 `getRun` 补偿路径仍会收尾。
 - `warnIfUnknownTerminalStatus` 保留：它现在防的是部署错配（仍在跑的旧 worker、契约之外的第三方实现），而不是自家产出的漂移。
-- **仍有 10 条 2xx 完全不声明 `content`**（文件下载与另外两条流），仍在门禁之外。补齐文件下载契约是独立议题；另外两条流可以复用本次的信封建模方式。
+- **当时仍有 10 条 2xx 完全不声明 `content`**（文件下载与另外两条流），仍在门禁之外；这项与门禁按媒体类型判定留下的绕过口已由 [`2026-10-16-sse-contract-completion.md`](./2026-10-16-sse-contract-completion.md) 收口。
 - **联合描述的是本 builder 写出的帧**。`list_run_stream_events` 的归一化分支会把不合规记录补成信封，其中 `event` 取自 Redis 字段、缺省是字面量 `"message"`（不在六个事件名内），`created_at` 为 `null`（模型要求字符串）。这类只可能来自更早版本或外来写入，前端与后端都不会把它们当已知事件处理；契约不覆盖它们，也没有为它们发明第二个形状。
-- 本次未接入生成的 `.sse.get`，前端仍用自己的分帧与游标。
+- 本次未接入生成的 `.sse.get`，前端仍用自己的分帧与游标；这一项由 [`2026-10-16-sse-contract-completion.md`](./2026-10-16-sse-contract-completion.md) 接手（Run 事件流已改用生成的 SSE 客户端）。
 
 ## 验证
 

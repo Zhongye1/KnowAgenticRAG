@@ -232,8 +232,6 @@ import {
   setAgentDefaultApiAgentAgentIdSetDefaultPost,
   startVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigratePost,
   steerRequestApiAgentRequestsRequestIdSteerPost,
-  streamRequestEventsRouteApiAgentRequestsRequestIdEventsGet,
-  streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGet,
   submitMessageFeedbackApiChatMessageMessageIdFeedbackPost,
   syncBuiltinSkillsRouteApiSystemSkillsBuiltinSyncPost,
   testMcpServerApiSystemMcpServersSlugTestPost,
@@ -434,21 +432,28 @@ import type {
   DocumentFileExistsApiKnowledgeDatabasesKbIdDocumentsExistsGetResponse,
   DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetData,
   DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetError,
+  DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetResponse,
   DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetData,
   DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetError,
+  DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetResponse,
   DownloadViewerApiViewerFilesystemDownloadGetData,
   DownloadViewerApiViewerFilesystemDownloadGetError,
+  DownloadViewerApiViewerFilesystemDownloadGetResponse,
   DownloadWorkspaceApiWorkspaceDownloadGetData,
   DownloadWorkspaceApiWorkspaceDownloadGetError,
+  DownloadWorkspaceApiWorkspaceDownloadGetResponse,
   DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetData,
   DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetError,
+  DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetResponse,
   ExchangeCliSessionTokenApiAuthCliSessionsTokenPostData,
   ExchangeCliSessionTokenApiAuthCliSessionsTokenPostError,
   ExchangeCliSessionTokenApiAuthCliSessionsTokenPostResponse,
   ExportDatabaseApiKnowledgeDatabasesKbIdExportGetData,
   ExportDatabaseApiKnowledgeDatabasesKbIdExportGetError,
+  ExportDatabaseApiKnowledgeDatabasesKbIdExportGetResponse,
   ExportSkillRouteApiSystemSkillsSlugExportGetData,
   ExportSkillRouteApiSystemSkillsSlugExportGetError,
+  ExportSkillRouteApiSystemSkillsSlugExportGetResponse,
   FetchUrlApiKnowledgeFilesFetchUrlPostData,
   FetchUrlApiKnowledgeFilesFetchUrlPostError,
   FetchUrlApiKnowledgeFilesFetchUrlPostResponse,
@@ -579,6 +584,7 @@ import type {
   GetInfoConfigApiSystemInfoGetResponse,
   GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetData,
   GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetError,
+  GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetResponse,
   GetKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsGetData,
   GetKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsGetError,
   GetKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsGetResponse,
@@ -918,10 +924,6 @@ import type {
   SteerRequestApiAgentRequestsRequestIdSteerPostData,
   SteerRequestApiAgentRequestsRequestIdSteerPostError,
   SteerRequestApiAgentRequestsRequestIdSteerPostResponse,
-  StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetData,
-  StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetError,
-  StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetData,
-  StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetError,
   SubmitMessageFeedbackApiChatMessageMessageIdFeedbackPostData,
   SubmitMessageFeedbackApiChatMessageMessageIdFeedbackPostError,
   SubmitMessageFeedbackApiChatMessageMessageIdFeedbackPostResponse,
@@ -2665,46 +2667,6 @@ export const steerRequestApiAgentRequestsRequestIdSteerPostMutation = (
   };
   return mutationOptions;
 };
-
-export const streamRequestEventsRouteApiAgentRequestsRequestIdEventsGetQueryKey =
-  (
-    options: Options<StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetData>,
-  ) =>
-    createQueryKey(
-      'streamRequestEventsRouteApiAgentRequestsRequestIdEventsGet',
-      options,
-    );
-
-/**
- * Stream Request Events Route
- */
-export const streamRequestEventsRouteApiAgentRequestsRequestIdEventsGetOptions =
-  (
-    options: Options<StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetData>,
-  ) =>
-    queryOptions<
-      unknown,
-      StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetError,
-      unknown,
-      ReturnType<
-        typeof streamRequestEventsRouteApiAgentRequestsRequestIdEventsGetQueryKey
-      >
-    >({
-      queryFn: async ({ queryKey, signal }) => {
-        const { data } =
-          await streamRequestEventsRouteApiAgentRequestsRequestIdEventsGet({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true,
-          });
-        return data;
-      },
-      queryKey:
-        streamRequestEventsRouteApiAgentRequestsRequestIdEventsGetQueryKey(
-          options,
-        ),
-    });
 
 export const getAgentRunApiAgentRunsRunIdGetQueryKey = (
   options: Options<GetAgentRunApiAgentRunsRunIdGetData>,
@@ -5546,9 +5508,9 @@ export const exportSkillRouteApiSystemSkillsSlugExportGetOptions = (
   options: Options<ExportSkillRouteApiSystemSkillsSlugExportGetData>,
 ) =>
   queryOptions<
-    unknown,
+    ExportSkillRouteApiSystemSkillsSlugExportGetResponse,
     ExportSkillRouteApiSystemSkillsSlugExportGetError,
-    unknown,
+    ExportSkillRouteApiSystemSkillsSlugExportGetResponse,
     ReturnType<typeof exportSkillRouteApiSystemSkillsSlugExportGetQueryKey>
   >({
     queryFn: async ({ queryKey, signal }) => {
@@ -6484,9 +6446,9 @@ export const downloadViewerApiViewerFilesystemDownloadGetOptions = (
   options: Options<DownloadViewerApiViewerFilesystemDownloadGetData>,
 ) =>
   queryOptions<
-    unknown,
+    DownloadViewerApiViewerFilesystemDownloadGetResponse,
     DownloadViewerApiViewerFilesystemDownloadGetError,
-    unknown,
+    DownloadViewerApiViewerFilesystemDownloadGetResponse,
     ReturnType<typeof downloadViewerApiViewerFilesystemDownloadGetQueryKey>
   >({
     queryFn: async ({ queryKey, signal }) => {
@@ -6711,9 +6673,9 @@ export const downloadWorkspaceApiWorkspaceDownloadGetOptions = (
   options: Options<DownloadWorkspaceApiWorkspaceDownloadGetData>,
 ) =>
   queryOptions<
-    unknown,
+    DownloadWorkspaceApiWorkspaceDownloadGetResponse,
     DownloadWorkspaceApiWorkspaceDownloadGetError,
-    unknown,
+    DownloadWorkspaceApiWorkspaceDownloadGetResponse,
     ReturnType<typeof downloadWorkspaceApiWorkspaceDownloadGetQueryKey>
   >({
     queryFn: async ({ queryKey, signal }) => {
@@ -7766,9 +7728,9 @@ export const exportDatabaseApiKnowledgeDatabasesKbIdExportGetOptions = (
   options: Options<ExportDatabaseApiKnowledgeDatabasesKbIdExportGetData>,
 ) =>
   queryOptions<
-    unknown,
+    ExportDatabaseApiKnowledgeDatabasesKbIdExportGetResponse,
     ExportDatabaseApiKnowledgeDatabasesKbIdExportGetError,
-    unknown,
+    ExportDatabaseApiKnowledgeDatabasesKbIdExportGetResponse,
     ReturnType<typeof exportDatabaseApiKnowledgeDatabasesKbIdExportGetQueryKey>
   >({
     queryFn: async ({ queryKey, signal }) => {
@@ -8464,9 +8426,9 @@ export const downloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetO
     options: Options<DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetData>,
   ) =>
     queryOptions<
-      unknown,
+      DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetResponse,
       DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetError,
-      unknown,
+      DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetResponse,
       ReturnType<
         typeof downloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetQueryKey
       >
@@ -8506,9 +8468,9 @@ export const getKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetOptions = (
   options: Options<GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetData>,
 ) =>
   queryOptions<
-    unknown,
+    GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetResponse,
     GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetError,
-    unknown,
+    GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetResponse,
     ReturnType<
       typeof getKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetQueryKey
     >
@@ -8855,50 +8817,6 @@ export const startVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersM
     };
     return mutationOptions;
   };
-
-export const streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetQueryKey =
-  (
-    options: Options<StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetData>,
-  ) =>
-    createQueryKey(
-      'streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGet',
-      options,
-    );
-
-/**
- * Stream Virtual Folder Migration
- *
- * 流式返回迁移任务快照，断开连接不取消任务。
- */
-export const streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetOptions =
-  (
-    options: Options<StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetData>,
-  ) =>
-    queryOptions<
-      unknown,
-      StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetError,
-      unknown,
-      ReturnType<
-        typeof streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetQueryKey
-      >
-    >({
-      queryFn: async ({ queryKey, signal }) => {
-        const { data } =
-          await streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGet(
-            {
-              ...options,
-              ...queryKey[0],
-              signal,
-              throwOnError: true,
-            },
-          );
-        return data;
-      },
-      queryKey:
-        streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetQueryKey(
-          options,
-        ),
-    });
 
 /**
  * Rename Folder
@@ -9470,9 +9388,9 @@ export const downloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetO
     options: Options<DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetData>,
   ) =>
     queryOptions<
-      unknown,
+      DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetResponse,
       DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetError,
-      unknown,
+      DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetResponse,
       ReturnType<
         typeof downloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetQueryKey
       >
@@ -10095,9 +10013,9 @@ export const downloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetOptio
     options: Options<DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetData>,
   ) =>
     queryOptions<
-      unknown,
+      DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetResponse,
       DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetError,
-      unknown,
+      DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetResponse,
       ReturnType<
         typeof downloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetQueryKey
       >

@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import importlib
+import json
 from types import SimpleNamespace
 from typing import Any
 
@@ -1311,17 +1312,39 @@ def test_migrate_virtual_folders_contract(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 def test_stream_virtual_folder_migration_is_event_stream(monkeypatch: pytest.MonkeyPatch) -> None:
-    """迁移事件端点是 SSE 流，不是 JSON 契约。"""
+    """迁移事件端点是 SSE 流，且每帧载荷是任务快照去掉 `payload` 后的形状。"""
 
     async def fake_get_task(task_id: str) -> dict[str, Any]:
-        return {"id": task_id, "type": "knowledge_virtual_folder_migration", "payload": {"kb_id": "kb_1"}, "status": "success"}
+        # 真实路径是 `Task.to_dict()`，字段齐全；这里照它的形状给。
+        return {
+            "id": task_id,
+            "name": "迁移虚拟文件夹",
+            "type": "knowledge_virtual_folder_migration",
+            "status": "success",
+            "progress": 1.0,
+            "message": "完成",
+            "created_at": "2026-10-16T00:00:00+00:00",
+            "updated_at": "2026-10-16T00:00:01+00:00",
+            "started_at": "2026-10-16T00:00:00+00:00",
+            "completed_at": "2026-10-16T00:00:01+00:00",
+            "result": {"moved": 2},
+            "error": None,
+            "cancel_requested": False,
+            "payload": {"kb_id": "kb_1"},
+        }
 
     monkeypatch.setattr(knowledge_router_module.tasker, "get_task", fake_get_task)
     response = _client().get("/api/knowledge/databases/kb_1/virtual-folders/migrations/task_migrate/events")
 
     assert response.status_code == 200, response.text
     assert response.headers["content-type"].startswith("text/event-stream")
-    assert b"data:" in response.content
+
+    frame = json.loads(response.content.split(b"data: ", 1)[1].split(b"\n", 1)[0])
+    assert frame["id"] == "task_migrate"
+    assert frame["status"] == "success"
+    assert frame["type"] == "knowledge_virtual_folder_migration"
+    # `payload` 只对服务端有意义，不进这条流
+    assert "payload" not in frame
 
 
 def test_rename_folder_contract(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -9,7 +9,7 @@ OpenAPI，前端按事件名与字段名读取。这里把信封和六个 wire �
 producer 且仍在演进，保持开放对象，并在载荷基类上允许额外键，避免建模反而丢字段。
 
 信封与事件模型同时是 `GET /api/agent/runs/{run_id}/events` 的响应契约，注册方式见
-`server/utils/openapi_run_events.py`。
+`server/utils/openapi_sse_schemas.py`。
 """
 
 from __future__ import annotations

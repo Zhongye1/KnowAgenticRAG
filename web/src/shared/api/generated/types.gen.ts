@@ -11438,6 +11438,100 @@ export type RunEvent =
       event: 'end';
     } & EndRunEvent);
 
+/**
+ * RequestEventPayload
+ *
+ * 一条请求事件的载荷；`request_id` 恒有，其余字段按事件各自出现。
+ */
+export type RequestEventPayload = {
+  /**
+   * Request Id
+   */
+  request_id: string;
+  /**
+   * Status
+   */
+  status?: string | null;
+  /**
+   * Position
+   */
+  position?: number | null;
+  /**
+   * Run Id
+   */
+  run_id?: string | null;
+  /**
+   * Stream Url
+   */
+  stream_url?: string | null;
+  /**
+   * Message
+   */
+  message?: string | null;
+  [key: string]: unknown;
+};
+
+/**
+ * TaskProgressPayload
+ *
+ * 任务快照去掉 `payload` 后的形状。
+ */
+export type TaskProgressPayload = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Type
+   */
+  type: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Progress
+   */
+  progress: number;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Updated At
+   */
+  updated_at: string;
+  /**
+   * Started At
+   */
+  started_at?: string | null;
+  /**
+   * Completed At
+   */
+  completed_at?: string | null;
+  /**
+   * Result
+   */
+  result?: unknown | null;
+  /**
+   * Error
+   */
+  error?: string | null;
+  /**
+   * Cancel Requested
+   */
+  cancel_requested?: boolean;
+  [key: string]: unknown;
+};
+
 export type HealthCheckApiSystemHealthGetData = {
   body?: never;
   path?: never;
@@ -13229,8 +13323,11 @@ export type StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses 
     /**
      * Successful Response
      */
-    200: unknown;
+    200: RequestEventPayload;
   };
+
+export type StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponse =
+  StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses[keyof StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses];
 
 export type GetAgentRunApiAgentRunsRunIdGetData = {
   body?: never;
@@ -16427,8 +16524,11 @@ export type ExportSkillRouteApiSystemSkillsSlugExportGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: Blob | File;
 };
+
+export type ExportSkillRouteApiSystemSkillsSlugExportGetResponse =
+  ExportSkillRouteApiSystemSkillsSlugExportGetResponses[keyof ExportSkillRouteApiSystemSkillsSlugExportGetResponses];
 
 export type DeleteSkillRouteApiSystemSkillsSlugDeleteData = {
   body?: never;
@@ -17621,8 +17721,11 @@ export type DownloadViewerApiViewerFilesystemDownloadGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: Blob | File;
 };
+
+export type DownloadViewerApiViewerFilesystemDownloadGetResponse =
+  DownloadViewerApiViewerFilesystemDownloadGetResponses[keyof DownloadViewerApiViewerFilesystemDownloadGetResponses];
 
 export type GetWorkspaceTreeApiWorkspaceTreeGetData = {
   body?: never;
@@ -17935,8 +18038,11 @@ export type DownloadWorkspaceApiWorkspaceDownloadGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: Blob | File;
 };
+
+export type DownloadWorkspaceApiWorkspaceDownloadGetResponse =
+  DownloadWorkspaceApiWorkspaceDownloadGetResponses[keyof DownloadWorkspaceApiWorkspaceDownloadGetResponses];
 
 export type SearchMentionFilesApiMentionSearchGetData = {
   body?: never;
@@ -19025,8 +19131,11 @@ export type ExportDatabaseApiKnowledgeDatabasesKbIdExportGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: Blob | File;
 };
+
+export type ExportDatabaseApiKnowledgeDatabasesKbIdExportGetResponse =
+  ExportDatabaseApiKnowledgeDatabasesKbIdExportGetResponses[keyof ExportDatabaseApiKnowledgeDatabasesKbIdExportGetResponses];
 
 export type ListDocumentsApiKnowledgeDatabasesKbIdDocumentsGetData = {
   body?: never;
@@ -19717,8 +19826,11 @@ export type DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetRe
     /**
      * Successful Response
      */
-    200: unknown;
+    200: Blob | File;
   };
+
+export type DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetResponse =
+  DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetResponses[keyof DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetResponses];
 
 export type GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetData = {
   body?: never;
@@ -19756,8 +19868,11 @@ export type GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: Blob | File;
 };
+
+export type GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetResponse =
+  GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetResponses[keyof GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetResponses];
 
 export type QueryKnowledgeBaseApiKnowledgeDatabasesKbIdQueryPostData = {
   body: BodyQueryKnowledgeBaseApiKnowledgeDatabasesKbIdQueryPost;
@@ -20170,8 +20285,11 @@ export type StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersM
     /**
      * Successful Response
      */
-    200: unknown;
+    200: TaskProgressPayload;
   };
+
+export type StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponse =
+  StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponses[keyof StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponses];
 
 export type RenameFolderApiKnowledgeDatabasesKbIdFoldersFolderIdRenamePutData =
   {
@@ -20734,8 +20852,11 @@ export type DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetRe
     /**
      * Successful Response
      */
-    200: unknown;
+    200: Blob | File;
   };
+
+export type DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetResponse =
+  DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetResponses[keyof DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetResponses];
 
 export type DeleteEvaluationDatasetApiEvaluationDatasetsDatasetIdDeleteData = {
   body?: never;
@@ -21383,5 +21504,8 @@ export type DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetRespon
     /**
      * Successful Response
      */
-    200: unknown;
+    200: Blob | File;
   };
+
+export type DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetResponse =
+  DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetResponses[keyof DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetResponses];

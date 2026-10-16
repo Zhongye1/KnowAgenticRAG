@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.utils.auth_middleware import get_admin_user, get_db, get_required_user
+from server.utils.response_contracts import ZIP_DOWNLOAD
 from ars.agents.skills.service import (
     confirm_personal_skill_install_draft,
     confirm_skill_install_draft,
@@ -809,7 +810,7 @@ async def delete_skill_file_route(
         raise HTTPException(status_code=500, detail="删除技能文件失败")
 
 
-@skills.get("/{slug}/export", response_class=FileResponse)
+@skills.get("/{slug}/export", response_class=FileResponse, responses={200: ZIP_DOWNLOAD})
 async def export_skill_route(
     slug: str,
     background_tasks: BackgroundTasks,

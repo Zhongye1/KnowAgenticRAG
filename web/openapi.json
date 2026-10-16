@@ -2839,7 +2839,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestEventPayload"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -8123,7 +8130,15 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -10049,7 +10064,15 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -10552,7 +10575,15 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -12305,7 +12336,15 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -13461,7 +13500,15 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -13522,7 +13569,15 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -14175,7 +14230,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskProgressPayload"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -15115,7 +15177,15 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "application/x-ndjson": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -16174,7 +16244,15 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -34349,6 +34427,182 @@
             "$ref": "#/components/schemas/EndRunEvent"
           }
         ]
+      },
+      "RequestEventPayload": {
+        "additionalProperties": true,
+        "description": "一条请求事件的载荷；`request_id` 恒有，其余字段按事件各自出现。",
+        "properties": {
+          "request_id": {
+            "title": "Request Id",
+            "type": "string"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Status"
+          },
+          "position": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Position"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Run Id"
+          },
+          "stream_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Stream Url"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Message"
+          }
+        },
+        "required": [
+          "request_id"
+        ],
+        "title": "RequestEventPayload",
+        "type": "object"
+      },
+      "TaskProgressPayload": {
+        "additionalProperties": true,
+        "description": "任务快照去掉 `payload` 后的形状。",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Started At"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Completed At"
+          },
+          "result": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Result"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Error"
+          },
+          "cancel_requested": {
+            "default": false,
+            "title": "Cancel Requested",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "status",
+          "progress",
+          "message",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TaskProgressPayload",
+        "type": "object"
       }
     }
   }

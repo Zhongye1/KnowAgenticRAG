@@ -28,6 +28,7 @@ const { api, fetchMock } = vi.hoisted(() => ({
     repairStats: vi.fn(),
     detectVirtualFolders: vi.fn(),
     startVirtualFolderMigration: vi.fn(),
+    streamVirtualFolderMigration: vi.fn(),
     parsePendingDocuments: vi.fn(),
     indexPendingDocuments: vi.fn(),
     createFolder: vi.fn(),
@@ -98,6 +99,8 @@ vi.mock('@/shared/api/generated/sdk.gen', () => ({
   ) => api.detectVirtualFolders(...args),
   startVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigratePost:
     (...args: unknown[]) => api.startVirtualFolderMigration(...args),
+  streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGet:
+    (...args: unknown[]) => api.streamVirtualFolderMigration(...args),
   parsePendingDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePendingPost: (
     ...args: unknown[]
   ) => api.parsePendingDocuments(...args),
@@ -688,19 +691,23 @@ describe('B1 新增的文件管理接口', () => {
     });
 
     const snapshots: Array<{ status: string; progress?: number }> = [];
-    // 模拟 SSE：三帧（running→running→success），按空行分帧
-    const encoder = new TextEncoder();
-    fetchMock.mockResolvedValue({
-      body: new ReadableStream({
-        start(controller) {
-          controller.enqueue(
-            encoder.encode(
-              'data: {"status":"running","progress":10}\n\ndata: {"status":"running","progress":50}\n\ndata: {"status":"success","progress":100}\n\n',
-            ),
-          );
-          controller.close();
-        },
-      }),
+    // 生成客户端取流：三帧（running→running→success），载荷是契约里的 TaskProgressPayload
+    const taskSnapshot = (status: string, progress: number) => ({
+      id: 'task-9',
+      name: '迁移虚拟文件夹',
+      type: 'knowledge_virtual_folder_migration',
+      status,
+      progress,
+      message: '',
+      created_at: '2026-10-17T00:00:00+00:00',
+      updated_at: '2026-10-17T00:00:00+00:00',
+    });
+    api.streamVirtualFolderMigration.mockResolvedValue({
+      stream: (async function* () {
+        yield taskSnapshot('running', 10);
+        yield taskSnapshot('running', 50);
+        yield taskSnapshot('success', 100);
+      })(),
     });
 
     const { task_id } = await knowledgeApi.startVirtualFolderMigration('kb-1');
@@ -713,9 +720,10 @@ describe('B1 新增的文件管理接口', () => {
       task_id,
       (snapshot) => snapshots.push(snapshot),
     );
-    expect(fetchMock).toHaveBeenCalledWith(
-      '/api/knowledge/databases/kb-1/virtual-folders/migrations/task-9/events',
-    );
+    expect(api.streamVirtualFolderMigration).toHaveBeenCalledWith({
+      path: { kb_id: 'kb-1', task_id: 'task-9' },
+      sseMaxRetryAttempts: 0,
+    });
     expect(snapshots.map((s) => s.status)).toEqual([
       'running',
       'running',

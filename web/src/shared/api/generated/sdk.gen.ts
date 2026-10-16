@@ -671,6 +671,7 @@ import type {
   SteerRequestApiAgentRequestsRequestIdSteerPostResponses,
   StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetData,
   StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetErrors,
+  StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponse,
   StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses,
   StreamRunEventsApiAgentRunsRunIdEventsGetData,
   StreamRunEventsApiAgentRunsRunIdEventsGetErrors,
@@ -678,6 +679,7 @@ import type {
   StreamRunEventsApiAgentRunsRunIdEventsGetResponses,
   StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetData,
   StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetErrors,
+  StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponse,
   StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponses,
   SubmitMessageFeedbackApiChatMessageMessageIdFeedbackPostData,
   SubmitMessageFeedbackApiChatMessageMessageIdFeedbackPostErrors,
@@ -1951,14 +1953,13 @@ export const streamRequestEventsRouteApiAgentRequestsRequestIdEventsGet = <
 >(
   options: Options<
     StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetData,
-    ThrowOnError
+    ThrowOnError,
+    StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponse
   >,
-): RequestResult<
-  StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses,
-  StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetErrors,
-  ThrowOnError
+): Promise<
+  ServerSentEventsResult<StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses>
 > =>
-  (options.client ?? client).get<
+  (options.client ?? client).sse.get<
     StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses,
     StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetErrors,
     ThrowOnError
@@ -6165,14 +6166,13 @@ export const streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFolders
   <ThrowOnError extends boolean = false>(
     options: Options<
       StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetData,
-      ThrowOnError
+      ThrowOnError,
+      StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponse
     >,
-  ): RequestResult<
-    StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponses,
-    StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetErrors,
-    ThrowOnError
+  ): Promise<
+    ServerSentEventsResult<StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponses>
   > =>
-    (options.client ?? client).get<
+    (options.client ?? client).sse.get<
       StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponses,
       StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetErrors,
       ThrowOnError

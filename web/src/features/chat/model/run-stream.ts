@@ -20,11 +20,9 @@ import {
   type RunStreamEvent,
 } from '../api/agent-api';
 import {
-  compareRunSeq,
   normalizeRunSeq,
   resolveRunResumeAfterSeq,
 } from '../lib/run-seq';
-import { processSseResponse } from '@/shared/lib/files';
 import type { StreamSmoother } from '../lib/stream-smoother';
 import { hasPendingInterruptPayload } from '../lib/tool-approval';
 
@@ -371,33 +369,28 @@ export function createRunStream(options: RunStreamOptions) {
     let sawTerminalEvent = false;
 
     try {
-      const response = await agentRunApi.streamRunEvents(
+      // 重连由本模块拥有：生成客户端被要求不重试（失败时它结束流，由下面的权威判定接手）。
+      // 游标只在新 `id:` 到达时从 `onCursor` 过来（帧内没有 `id:` 时它不会上报），
+      // 所以这里的推进与旧解析器「每帧没有 id 就不推进」的语义一致。
+      const { stream } = await agentRunApi.streamRunEvents(
         runId,
         runtime.runLastSeq,
         {
           signal: controller.signal,
+          onCursor: (seq) => {
+            runtime.runLastSeq = normalizeRunSeq(seq);
+            saveActiveRunSnapshot(threadId, runId, runtime.runLastSeq);
+          },
         },
       );
-      if (!response.ok) {
-        throw new Error(`SSE response not ok: ${response.status}`);
-      }
 
-      // 帧上的事件名不再参与判断：判别键是信封里的 `event`，两者由后端 builder 保证同源。
-      await processSseResponse(response, (_event, rawData, eventId) => {
-        const data = rawData as Record<string, unknown>;
-        if (!data || runtime.activeRunId !== runId) return;
+      for await (const frame of stream) {
+        if (runtime.activeRunId !== runId) break;
 
-        if (eventId) {
-          const incomingSeq = normalizeRunSeq(eventId);
-          if (compareRunSeq(incomingSeq, runtime.runLastSeq) <= 0) return;
-          runtime.runLastSeq = incomingSeq;
-          saveActiveRunSnapshot(threadId, runId, incomingSeq);
-        }
-
-        // 后端 builder 用同一个值生成帧上的事件名与信封里的 `event`，所以按判别键收窄
-        // 就能拿到该事件的载荷；`payload` 仍以开放对象交给分片路由。
-        const runEvent = data as RunStreamEvent;
-        const payload = (data.payload ?? {}) as Record<string, unknown>;
+        // 帧上的事件名不再参与判断：判别键是信封里的 `event`，两者由后端 builder 保证同源。
+        // `payload` 仍以开放对象交给分片路由。
+        const runEvent = frame as RunStreamEvent;
+        const payload = (runEvent.payload ?? {}) as Record<string, unknown>;
         if (runEvent.event === 'metadata') {
           runtime.activeRunSteerable =
             runEvent.payload.run_type === 'chat' &&
@@ -421,7 +414,7 @@ export function createRunStream(options: RunStreamOptions) {
             retryJobTry !== null &&
             runtime.lastRetryableJobTry === retryJobTry
           ) {
-            return;
+            continue;
           }
           runtime.lastRetryableJobTry = retryJobTry;
           console.warn(
@@ -432,12 +425,13 @@ export function createRunStream(options: RunStreamOptions) {
               retryJobTry,
             },
           );
-          return;
+          // 跳过这一帧：可重试失败不是终态，等 worker 重试后的事件
+          continue;
         }
 
         const routeChunk = (chunk: Record<string, unknown>) => {
           const routeThreadId = resolveChunkThreadId({
-            envelope: data,
+            envelope: runEvent,
             payload,
             chunk,
             fallbackThreadId: threadId,
@@ -446,8 +440,8 @@ export function createRunStream(options: RunStreamOptions) {
           handleStreamChunk(
             {
               ...chunk,
-              request_id: chunk.request_id ?? data.request_id,
-              run_id: chunk.run_id ?? data.run_id ?? runId,
+              request_id: chunk.request_id ?? runEvent.request_id,
+              run_id: chunk.run_id ?? runEvent.run_id ?? runId,
               thread_id: routeThreadId,
             } as StreamChunk,
             routeThreadId,
@@ -488,7 +482,7 @@ export function createRunStream(options: RunStreamOptions) {
             scroll: true,
           });
         }
-      });
+      }
 
       if (
         !sawTerminalEvent &&

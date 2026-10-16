@@ -12,6 +12,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from server.utils.auth_middleware import get_db, get_required_user
+from server.utils.response_contracts import BINARY_DOWNLOAD
 from ars.services.viewer_filesystem_service import (
     create_viewer_directory,
     delete_viewer_file,
@@ -179,7 +180,7 @@ async def search_viewer_files_route(
     )
 
 
-@filesystem_router.get("/download", response_class=FileResponse)
+@filesystem_router.get("/download", response_class=FileResponse, responses={200: BINARY_DOWNLOAD})
 async def download_viewer(
     thread_id: str = Query(..., description="线程 ID"),
     path: str = Query(..., description="文件路径"),

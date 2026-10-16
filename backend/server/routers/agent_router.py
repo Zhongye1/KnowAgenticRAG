@@ -34,6 +34,7 @@ from ars.services.agent_run_service import (
     stream_agent_run_events,
 )
 from ars.services.input_message_service import build_chat_input_message
+from ars.services.request_event_models import REQUEST_EVENT_SCHEMA_REF
 from ars.services.run_event_models import RUN_EVENT_SCHEMA_REF
 from ars.services.run_submission_service import RunOrigin, RunSubmissionCommand, submit_run_command
 from ars.storage.postgres.manager import pg_manager
@@ -662,7 +663,11 @@ async def steer_request(
     }
 
 
-@agent_router.get("/requests/{request_id}/events", response_class=StreamingResponse)
+@agent_router.get(
+    "/requests/{request_id}/events",
+    response_class=StreamingResponse,
+    responses={200: {"content": {"text/event-stream": {"schema": REQUEST_EVENT_SCHEMA_REF}}}},
+)
 async def stream_request_events_route(
     request_id: str,
     current_user: User = Depends(get_required_user),
@@ -728,7 +733,7 @@ async def stream_run_events(
 ):
     """按 Server-Sent Events 推送运行事件；每帧的 `data` 是一个 `RunEvent`，`id` 是续传游标。"""
 
-    # 响应 schema 里的 `$ref RunEvent` 由 install_run_event_schema 注册：FastAPI 不注册手写
+    # 响应 schema 里的 `$ref RunEvent` 由 install_sse_event_schemas 注册：FastAPI 不注册手写
     # `responses` 里的模型。这段说明留在注释里，因为它不属于面向消费者的描述。
     cursor = last_event_id or after_seq
     return StreamingResponse(

@@ -60,12 +60,29 @@ const snapshot = (content: string): QueuePayload => ({
   },
 });
 
-/** 真实分帧的 SSE 响应体，交给 `processSseResponse` 解析。 */
-const sseResponse = (frames: string) =>
-  new Response(frames, {
-    status: 200,
-    headers: { 'Content-Type': 'text/event-stream' },
-  });
+/**
+ * 按 api 段的契约驱动请求事件帧：解析帧文本，逐条产出「帧事件名 + 载荷」。
+ *
+ * 分帧与 JSON 解析在真实链路上由生成的 SSE 客户端负责；这里照它的输出形状复现，好让
+ * `chat-runtime` 的订阅循环跑真实逻辑。载荷里没有事件名，事件名由 api 段从帧上带过来。
+ */
+const sseFrames = (frames: string) =>
+  (async function* () {
+    for (const block of frames.split('\n\n')) {
+      if (!block.trim()) continue;
+      const lines = block.split('\n');
+      const event =
+        lines
+          .find((line) => line.startsWith('event:'))
+          ?.replace(/^event:\s*/, '') ?? 'message';
+      const data = lines
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.replace(/^data:\s*/, ''))
+        .join('\n');
+      if (!data) continue;
+      yield { event, data: JSON.parse(data) };
+    }
+  })();
 
 /** 造一个可手动结算的 promise，用于验证乱序响应。 */
 function deferred<T>() {
@@ -99,9 +116,10 @@ describe('队列运行时', () => {
     for (const fn of Object.values(api)) fn.mockReset();
     threadApi.createThread.mockReset();
     api.getAgentHistory.mockResolvedValue({ history: [] });
-    // 每次调用都要新造一个响应体：ReadableStream 只能被读一次
-    api.streamRequestEvents.mockImplementation(() =>
-      Promise.resolve(sseResponse('')),
+    // 默认订阅保持挂起：真实的请求流会一直开到派发或取消，不会立刻结束。返回已经结束的流会
+    // 让消费方走 finally 里的静默重连分支，多拉一次队列，掩盖各用例真正要断言的东西。
+    api.streamRequestEvents.mockImplementation(
+      () => new Promise(() => {}),
     );
     runStreamMock.startRunStream.mockReset();
     disposeThreadRuntime(THREAD);
@@ -276,7 +294,7 @@ describe('队列运行时', () => {
     api.listThreadRequests.mockResolvedValue(snapshot('第二条问题'));
     api.streamRequestEvents.mockImplementation(() =>
       Promise.resolve(
-        sseResponse(
+        sseFrames(
           'event: queued\ndata: {"request_id":"req-2","status":"queued","position":3}\n\n',
         ),
       ),
@@ -298,7 +316,7 @@ describe('队列运行时', () => {
     api.listThreadRequests.mockResolvedValue(snapshot('第二条问题'));
     api.streamRequestEvents.mockImplementation(() =>
       Promise.resolve(
-        sseResponse(
+        sseFrames(
           'event: run_created\ndata: {"request_id":"req-2","run_id":"run-9"}\n\n',
         ),
       ),
@@ -323,7 +341,7 @@ describe('队列运行时', () => {
     api.listThreadRequests.mockResolvedValue(snapshot('第二条问题'));
     api.streamRequestEvents.mockImplementation(() =>
       Promise.resolve(
-        sseResponse(
+        sseFrames(
           'event: failed\ndata: {"request_id":"req-2","status":"failed"}\n\n',
         ),
       ),
@@ -721,7 +739,7 @@ describe('队列运行时', () => {
   it('短命事件流没有终态就结束时只同步一次，不重新订阅', async () => {
     api.streamRequestEvents.mockImplementation(() =>
       Promise.resolve(
-        sseResponse(
+        sseFrames(
           'event: queued\ndata: {"request_id":"req-2","status":"queued","position":2}\n\n',
         ),
       ),
@@ -740,7 +758,9 @@ describe('队列运行时', () => {
   it('长命事件流静默结束时重新同步并重新订阅', async () => {
     vi.useFakeTimers();
     try {
-      const end = deferred<Response>();
+      const end = deferred<{
+        stream: AsyncGenerator<{ event: string; data: unknown }>;
+      }>();
       api.streamRequestEvents.mockImplementation(() => end.promise);
       const runtime = createRuntime();
       await subscribeThroughQueue(runtime);
@@ -749,11 +769,11 @@ describe('队列运行时', () => {
       );
 
       vi.setSystemTime(Date.now() + 61_000);
-      end.resolve(
-        sseResponse(
+      end.resolve({
+        stream: sseFrames(
           'event: queued\ndata: {"request_id":"req-2","status":"queued","position":2}\n\n',
         ),
-      );
+      });
 
       await vi.waitFor(() =>
         expect(api.streamRequestEvents).toHaveBeenCalledTimes(2),
@@ -766,7 +786,7 @@ describe('队列运行时', () => {
   it('error 帧按终态收尾并提示', async () => {
     api.streamRequestEvents.mockImplementation(() =>
       Promise.resolve(
-        sseResponse(
+        sseFrames(
           'event: error\ndata: {"request_id":"req-2","message":"请求不存在"}\n\n',
         ),
       ),
@@ -787,7 +807,7 @@ describe('队列运行时', () => {
   it('别的 run 在跑时，排队请求的终态不清掉它的收尾状态', async () => {
     api.streamRequestEvents.mockImplementation(() =>
       Promise.resolve(
-        sseResponse(
+        sseFrames(
           'event: failed\ndata: {"request_id":"req-2","status":"failed"}\n\n',
         ),
       ),

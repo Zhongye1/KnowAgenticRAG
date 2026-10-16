@@ -21,16 +21,32 @@ vi.mock('@/features/chat/api/agent-api', () => ({
 
 const { createRunStream } = await import('@/features/chat/model/run-stream');
 
-const sseResponse = (frames: string) =>
-  new Response(
-    new ReadableStream({
-      start(controller) {
-        controller.enqueue(new TextEncoder().encode(frames));
-        controller.close();
-      },
-    }),
-    { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
-  );
+/**
+ * 按 api 段的契约驱动事件：解析帧文本、把 `id:` 交给 `onCursor`，再逐条产出载荷。
+ *
+ * 分帧与 JSON 解析在真实链路上由生成的 SSE 客户端负责，被这一层替身挡掉了；这里照它的
+ * 输出形状（`{ stream }` 与经 `onCursor` 回传的游标）复现，好让订阅循环跑真实逻辑。
+ */
+const driveFrames = (
+  frames: string,
+  options: { onCursor?: (seq: string) => void } = {},
+) =>
+  (async function* () {
+    for (const block of frames.split('\n\n')) {
+      if (!block.trim()) continue;
+      const lines = block.split('\n');
+      const id = lines
+        .find((line) => line.startsWith('id:'))
+        ?.replace(/^id:\s*/, '');
+      const data = lines
+        .filter((line) => line.startsWith('data:'))
+        .map((line) => line.replace(/^data:\s*/, ''))
+        .join('\n');
+      if (!data) continue;
+      if (id) options.onCursor?.(id);
+      yield JSON.parse(data);
+    }
+  })();
 
 const endFrame = (status: string) =>
   `id: 1-0\nevent: end\ndata: ${JSON.stringify({
@@ -42,9 +58,12 @@ const endFrame = (status: string) =>
     payload: { status },
   })}\n\n`;
 
-/** 只桩掉请求层，事件解析、分帧与状态机都跑真实的。 */
+/** 只桩掉 api 段那一层，订阅循环与状态机都跑真实的。 */
 const driveStream = async (frames: string, threadId: string) => {
-  streamRunEvents.mockResolvedValue(sseResponse(frames));
+  streamRunEvents.mockImplementation(
+    (_runId: string, _afterSeq: string, options: { onCursor?: (seq: string) => void }) =>
+      Promise.resolve({ stream: driveFrames(frames, options) }),
+  );
 
   const stream = createRunStream({
     currentAgentId: () => 'chatbot',

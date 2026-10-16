@@ -36,11 +36,13 @@ import {
   repairDatabaseStatsApiKnowledgeDatabasesKbIdStatsRepairPost,
   searchDocumentsApiKnowledgeDatabasesKbIdDocumentsSearchGet,
   startVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigratePost,
+  streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGet,
   uploadFileApiKnowledgeFilesUploadPost,
   getV2ModelsApiSystemModelProvidersModelsV2Get,
   updateDatabaseInfoApiKnowledgeDatabasesKbIdPut,
 } from '@/shared/api/generated/sdk.gen';
 import type {
+  TaskProgressPayload,
   BatchDeleteDocumentsResponse,
   DepartmentResponse,
   DocumentListResponse,
@@ -69,7 +71,6 @@ import type {
 } from '@/shared/api/generated/types.gen';
 import { apiFetch } from '@/shared/api';
 import { describeFailure, unwrap, unwrapQueuedTask } from '@/shared/api';
-import { processSseResponse } from '@/shared/lib/files';
 import type { ShareConfig } from '@/shared/lib/share-config';
 import { readFilePreview, type FilePreview } from '../lib/file-preview';
 import type { KnowledgeQueryParams } from '../lib/knowledge-query-params';
@@ -377,27 +378,25 @@ export const knowledgeApi = {
    * 逐帧消费虚拟文件夹转换的进度流。后端按「取任务快照 → 发一帧 → 睡 500ms」循环，
    * 到 `success`/`failed`/`cancelled` 收口；断开连接不取消任务。
    *
-   * SSE 帧契约里没有模型（该路由是非 JSON 的流），快照形状保留手写。
+   * 载荷是契约里的 `TaskProgressPayload`（任务快照去掉 `payload`）；这条流没有 `id:` 帧，
+   * 因此不需要续传游标。生成客户端的重试关闭，断线由调用方按任务当前状态重新判定。
    */
   streamVirtualFolderMigration: async (
     kbId: string,
     taskId: string,
-    onEvent: (snapshot: {
-      status: string;
-      progress?: number;
-      message?: string;
-    }) => void,
+    onEvent: (snapshot: TaskProgressPayload) => void,
   ): Promise<void> => {
-    const response = await apiFetch(
-      `/api/knowledge/databases/${encodeURIComponent(kbId)}/virtual-folders/migrations/${encodeURIComponent(taskId)}/events`,
-    );
-    await processSseResponse(response, (_event, data) => {
-      if (data && typeof data === 'object') {
-        onEvent(
-          data as { status: string; progress?: number; message?: string },
-        );
-      }
-    });
+    const { stream } =
+      await streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGet(
+        {
+          path: { kb_id: kbId, task_id: taskId },
+          sseMaxRetryAttempts: 0,
+        },
+      );
+
+    for await (const snapshot of stream) {
+      onEvent(snapshot);
+    }
   },
 
   /** 提交全部待解析文件的解析任务；契约生成的 `PendingTaskResponse`。 */

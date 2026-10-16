@@ -7,6 +7,8 @@ const continueMock = vi.fn();
 const createThreadMock = vi.fn();
 const uploadMock = vi.fn();
 const searchThreadsMock = vi.fn();
+const streamRequestEventsMock = vi.fn();
+const streamRunEventsMock = vi.fn();
 
 vi.mock('@/shared/api/generated/sdk.gen', () => ({
   uploadImageApiChatImageUploadPost: (...args: unknown[]) =>
@@ -24,6 +26,11 @@ vi.mock('@/shared/api/generated/sdk.gen', () => ({
   ) => continueMock(...args),
   createThreadApiChatThreadPost: (...args: unknown[]) =>
     createThreadMock(...args),
+  streamRequestEventsRouteApiAgentRequestsRequestIdEventsGet: (
+    ...args: unknown[]
+  ) => streamRequestEventsMock(...args),
+  streamRunEventsApiAgentRunsRunIdEventsGet: (...args: unknown[]) =>
+    streamRunEventsMock(...args),
 }));
 
 const { agentRunApi, chatThreadApi } =
@@ -191,22 +198,76 @@ describe('agentRunApi 队列接口', () => {
     expect((caught as Error).message).toBe('请求失败（HTTP 0）');
   });
 
-  it('请求事件流走对端点，并把 abort signal 透传给 fetch', async () => {
+  it('请求事件流用生成的端点取流，并把帧事件名标注在载荷上', async () => {
     const controller = new AbortController();
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(new Response('', { status: 200 }));
-    vi.stubGlobal('fetch', fetchMock);
+    // 生成客户端在每条载荷 yield 之前回调 `onSseEvent`，这里照它的顺序复现
+    streamRequestEventsMock.mockImplementation(
+      async (options: {
+        onSseEvent?: (event: { data: unknown; event?: string }) => void;
+      }) => ({
+        stream: (async function* () {
+          options.onSseEvent?.({
+            data: { request_id: 'req-1', status: 'queued' },
+            event: 'queued',
+          });
+          yield { request_id: 'req-1', status: 'queued', position: 3 };
+          options.onSseEvent?.({
+            data: { request_id: 'req-1', run_id: 'run-1' },
+            event: 'run_created',
+          });
+          yield { request_id: 'req-1', run_id: 'run-1', stream_url: '/x' };
+        })(),
+      }),
+    );
 
-    const response = await agentRunApi.streamRequestEvents('req-1', {
+    const stream = await agentRunApi.streamRequestEvents('req-1', {
       signal: controller.signal,
     });
+    const frames = [];
+    for await (const frame of stream) frames.push(frame);
 
-    expect(response.status).toBe(200);
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    expect(String(url)).toContain('/api/agent/requests/req-1/events');
-    expect(init.signal).toBe(controller.signal);
-    vi.unstubAllGlobals();
+    expect(streamRequestEventsMock).toHaveBeenCalledWith({
+      path: { request_id: 'req-1' },
+      sseMaxRetryAttempts: 0,
+      signal: controller.signal,
+      onSseEvent: expect.any(Function),
+    });
+    // 载荷里没有事件名，消费方靠这一层标注分支
+    expect(frames.map((frame) => frame.event)).toEqual([
+      'queued',
+      'run_created',
+    ]);
+    expect(frames[1].data.run_id).toBe('run-1');
+  });
+
+  it('粘性 id 只在变化时上报游标：没有 id 行的帧不推进', async () => {
+    // 生成客户端的 `id` 是模块级粘性值：没有 `id:` 行的帧会回传上一帧的 id（心跳也会触发一次
+    // 回调）。若照它逐帧推进游标，消费方会把无 id 的错误帧当重复帧丢掉。
+    streamRunEventsMock.mockImplementation(
+      async (options: { onSseEvent?: (event: { id?: string }) => void }) => ({
+        stream: (async function* () {
+          options.onSseEvent?.({ id: '5-0' });
+          yield { event: 'messages' };
+          options.onSseEvent?.({ id: '5-0' });
+          yield { event: 'error' };
+          options.onSseEvent?.({ id: '5-0' });
+          yield { event: 'error' };
+          options.onSseEvent?.({ id: '6-0' });
+          yield { event: 'end' };
+        })(),
+      }),
+    );
+
+    const cursors: string[] = [];
+    const { stream } = await agentRunApi.streamRunEvents('run-1', '0-0', {
+      onCursor: (seq) => cursors.push(seq),
+    });
+    // `onSseEvent` 随取流过程触发，所以必须把流消费掉
+    const frames: unknown[] = [];
+    for await (const frame of stream) frames.push(frame);
+
+    expect(cursors).toEqual(['5-0', '6-0']);
+    expect(frames).toHaveLength(4);
   });
 
   it('建线程把 agentSlug 映射成后端字段 agent_id，并透传幂等 request_id', async () => {

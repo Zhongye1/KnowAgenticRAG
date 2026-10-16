@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from server.utils.auth_middleware import get_db, get_required_user
+from server.utils.response_contracts import BINARY_DOWNLOAD
 from ars.services.workspace_service import (
     create_workspace_directory,
     delete_workspace_path,
@@ -331,7 +332,7 @@ async def get_workspace_knowledge_file(
         _raise_knowledge_read_error(error)
 
 
-@workspace_knowledge.get("/knowledge/download", response_class=StreamingResponse)
+@workspace_knowledge.get("/knowledge/download", response_class=StreamingResponse, responses={200: BINARY_DOWNLOAD})
 async def download_workspace_knowledge_file(
     kb_id: str = Query(..., description="知识库 ID"),
     file_id: str = Query(..., description="知识库文件 ID"),
@@ -393,7 +394,7 @@ async def upload_workspace_files_route(
     return await upload_workspace_files(parent_path=parent_path, files=files, current_user=current_user)
 
 
-@workspace.get("/download", response_class=FileResponse)
+@workspace.get("/download", response_class=FileResponse, responses={200: BINARY_DOWNLOAD})
 async def download_workspace(
     path: str = Query(..., description="工作区文件路径"),
     current_user: User = Depends(get_required_user),

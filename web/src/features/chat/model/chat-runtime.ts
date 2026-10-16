@@ -5,7 +5,6 @@
  */
 import * as React from 'react';
 
-import { processSseResponse } from '@/shared/lib/files';
 import { createStreamSmoother } from '../lib/stream-smoother';
 import {
   isRunInterruptedConflict,
@@ -418,16 +417,13 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
     const startedAt = Date.now();
 
     try {
-      const response = await agentRunApi.streamRequestEvents(requestId, {
+      const stream = await agentRunApi.streamRequestEvents(requestId, {
         signal: controller.signal,
       });
 
-      await processSseResponse(response, (event, data) => {
-        if (!isCurrent()) return;
-        const payload = (data ?? {}) as {
-          position?: number;
-          run_id?: string;
-        };
+      for await (const { event, data } of stream) {
+        if (!isCurrent()) continue;
+        const payload = data;
         const thread = getThreadRuntime(threadId);
 
         if (event === 'queued') {
@@ -438,7 +434,7 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
             queued.queue_position = payload.position;
             notifyThreadRuntime(threadId);
           }
-          return;
+          continue;
         }
 
         if (event === 'run_created' && payload.run_id) {
@@ -454,11 +450,11 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
           thread.pendingRequestId = requestId;
           notifyThreadRuntime(threadId);
           void runStream.startRunStream(threadId, payload.run_id, '0-0');
-          return;
+          continue;
         }
 
         const notice = REQUEST_TERMINAL_NOTICES[event];
-        if (!notice) return;
+        if (!notice) continue;
         settled = true;
         thread.queuedRequests = thread.queuedRequests.filter(
           (item) => item.request_id !== requestId,
@@ -474,7 +470,7 @@ export function createChatRuntime(options: ChatRuntimeOptions): ChatRuntime {
         notifyThreadRuntime(threadId);
         options.onNotice?.({ level: 'error', message: notice });
         void fetchThreadMessages({ threadId }).catch(() => undefined);
-      });
+      }
     } catch (error) {
       if ((error as Error | null)?.name !== 'AbortError') {
         console.error('Request SSE stream error:', error);

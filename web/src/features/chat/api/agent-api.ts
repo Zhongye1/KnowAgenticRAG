@@ -4,7 +4,11 @@
  * 普通请求走契约生成的 SDK；事件流需要 `Last-Event-ID` 续传游标，
  * 生成物不覆盖该形态，因此经 `apiFetch` 直接发起。
  */
-import { ApiError, apiFetch } from '@/shared/api';
+import {
+  ApiError,
+  UNAUTHORIZED_EVENT,
+  setAccessToken,
+} from '@/shared/api';
 import {
   createThreadApiChatThreadPost,
   deleteThreadApiChatThreadThreadIdDelete,
@@ -23,6 +27,8 @@ import {
   getAgentRunLangfuseLinkRouteApiAgentRunsRunIdLangfuseGet,
   listThreadRequestsApiAgentThreadThreadIdRequestsGet,
   steerRequestApiAgentRequestsRequestIdSteerPost,
+  streamRunEventsApiAgentRunsRunIdEventsGet,
+  streamRequestEventsRouteApiAgentRequestsRequestIdEventsGet,
   getThreadActiveRunApiAgentThreadThreadIdActiveRunGet,
   getThreadStateApiChatThreadThreadIdStateGet,
   uploadImageApiChatImageUploadPost,
@@ -315,15 +321,33 @@ export const agentRunApi = {
   /**
    * 单条请求的事件流：排队位次变化、被派发成 run、或被取消/失败。
    * 端点不接受续传游标，断线后按请求当前状态重新判定即可。
+   *
+   * 帧由生成的 SSE 客户端解析，但这条流的载荷里**没有事件名**（事件名在 SSE 帧上），而消费方
+   * 按事件名分支，所以这里用生成的 `onSseEvent` 把帧名与载荷一并交出。生成客户端的重试关闭，
+   * 断线判定留给调用方。
    */
   streamRequestEvents: async (
     requestId: string,
     options: { signal?: AbortSignal } = {},
-  ): Promise<Response> =>
-    apiFetch(`/api/agent/requests/${encodeURIComponent(requestId)}/events`, {
-      method: 'GET',
-      signal: options.signal,
-    }),
+  ) => {
+    let frameName = 'message';
+    const result =
+      await streamRequestEventsRouteApiAgentRequestsRequestIdEventsGet({
+        path: { request_id: requestId },
+        sseMaxRetryAttempts: 0,
+        signal: options.signal,
+        onSseEvent: (event) => {
+          frameName = event.event ?? 'message';
+        },
+      });
+
+    // `onSseEvent` 在每条载荷 yield 之前触发，因此这里读到的是当前帧的事件名
+    return (async function* () {
+      for await (const data of result.stream) {
+        yield { event: frameName, data };
+      }
+    })();
+  },
 
   cancelRun: async (runId: string) =>
     unwrap<AgentRunResponse>(
@@ -332,21 +356,55 @@ export const agentRunApi = {
       }),
     ),
 
-  /** 打开 run 事件流；调用方负责通过 `signal` 关闭。 */
-  streamRunEvents: async (
+  /**
+   * 打开 run 事件流。
+   *
+   * 帧由生成的 SSE 客户端解析（事件载荷已进契约），但**重连与续传游标仍归本应用**：
+   * `sseMaxRetryAttempts: 0` 只关掉生成客户端的重试，失败时它回调 `onSseError` 后结束流，由
+   * 调用方在流结束后用 `getRun` 判定权威状态再决定重连或收尾，并持久化游标以支持跨会话续传。
+   * 游标经 `Last-Event-ID` 交回服务端（生成客户端的 `lastEventId` 只在进程内），新到的 `id:`
+   * 由 `onCursor` 通知调用方。
+   */
+  streamRunEvents: (
     runId: string,
     afterSeq = '0-0',
-    options: { signal?: AbortSignal; verbose?: boolean } = {},
-  ): Promise<Response> => {
-    const headers: Record<string, string> = {};
+    options: {
+      signal?: AbortSignal;
+      verbose?: boolean;
+      onCursor?: (seq: string) => void;
+    } = {},
+  ) => {
     const cursor = String(afterSeq || '0-0');
-    if (cursor && cursor !== '0-0') headers['Last-Event-ID'] = cursor;
-    const verbose = options.verbose ? 'true' : 'false';
+    // 生成客户端的 `id` 是模块级的「粘性」值：没有 `id:` 行的帧会回传上一帧的 id（心跳也会触发
+    // 一次回调），所以只在它变化时当游标上报——否则那几帧会被消费方误当作重复帧跳过。
+    let forwardedId: string | undefined;
 
-    return apiFetch(
-      `/api/agent/runs/${encodeURIComponent(runId)}/events?verbose=${verbose}`,
-      { method: 'GET', headers, signal: options.signal },
-    );
+    return streamRunEventsApiAgentRunsRunIdEventsGet({
+      path: { run_id: runId },
+      // 后端默认 `verbose=true`（完整载荷）；浏览器要的是紧凑载荷。
+      query: { verbose: options.verbose ?? false },
+      headers: cursor === '0-0' ? {} : { 'Last-Event-ID': cursor },
+      sseMaxRetryAttempts: 0,
+      signal: options.signal,
+      onSseEvent: (event) => {
+        if (event.id && event.id !== forwardedId) {
+          forwardedId = event.id;
+          options.onCursor?.(event.id);
+        }
+      },
+      onSseError: (error) => {
+        // 非 2xx 时生成客户端不抛出，而是回调这里并结束流，所以 401 的副作用必须落在这一层：
+        // 放到调用方 try/catch 或 `.catch` 都是死代码。
+        const status = Number.parseInt(
+          String((error as Error)?.message ?? '').split(' ')[2] ?? '',
+          10,
+        );
+        if (status === 401) {
+          setAccessToken(null);
+          window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+        }
+      },
+    });
   },
 };
 

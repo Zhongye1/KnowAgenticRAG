@@ -10,6 +10,7 @@ from server.utils.knowledge_permissions import (
     require_knowledge_base_manage,
     require_knowledge_base_read,
 )
+from server.utils.response_contracts import NDJSON_DOWNLOAD
 from ars.knowledge.eval.benchmark_generation import (
     DEFAULT_BENCHMARK_GENERATION_CONCURRENCY,
     MAX_BENCHMARK_GENERATION_CONCURRENCY,
@@ -353,7 +354,7 @@ async def get_evaluation_dataset(
         raise HTTPException(status_code=500, detail=f"获取评估数据集详情失败: {str(e)}")
 
 
-@evaluation.get("/datasets/{dataset_id}/download", response_class=Response)
+@evaluation.get("/datasets/{dataset_id}/download", response_class=Response, responses={200: NDJSON_DOWNLOAD})
 async def download_evaluation_dataset(
     dataset_id: str,
     current_user: User = Depends(require_evaluation_dataset_read),

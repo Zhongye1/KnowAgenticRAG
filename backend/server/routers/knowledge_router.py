@@ -39,6 +39,7 @@ from ars.permissions import (
 )
 from ars.services.knowledge_folder_service import knowledge_folder_service
 from ars.services.ocr_service import parse_document
+from ars.services.task_progress_models import TASK_PROGRESS_SCHEMA_REF, TaskProgressPayload
 from ars.services.task_service import TaskContext, tasker
 from ars.services.workspace_service import read_workspace_file_bytes
 from ars.storage.minio.client import MinIOClient, StorageError, aupload_file_to_minio, get_minio_client
@@ -49,6 +50,7 @@ from ars.utils.upload_utils import MAX_UPLOAD_SIZE_BYTES, read_upload_with_limit
 from server.utils.auth_middleware import get_admin_user, get_db, get_required_user
 from sqlalchemy.ext.asyncio import AsyncSession
 from server.utils.knowledge_response import serialize_knowledge_base, serialize_knowledge_base_list
+from server.utils.response_contracts import BINARY_DOWNLOAD
 from server.utils.knowledge_permissions import (
     ensure_knowledge_base_permission as _ensure_database_permission,
     require_knowledge_base_manage,
@@ -1435,7 +1437,7 @@ async def reconcile_graph_build(
         raise HTTPException(status_code=500, detail=f"提交图谱向量索引修复任务失败: {e}")
 
 
-@knowledge.get("/databases/{kb_id}/export", response_class=FileResponse)
+@knowledge.get("/databases/{kb_id}/export", response_class=FileResponse, responses={200: BINARY_DOWNLOAD})
 async def export_database(
     kb_id: str,
     format: str = Query("csv", enum=["csv", "xlsx", "md", "txt"]),
@@ -2463,7 +2465,7 @@ async def delete_document(kb_id: str, doc_id: str, current_user: User = Depends(
         raise HTTPException(status_code=400, detail=f"删除文档失败: {e}")
 
 
-@knowledge.get("/databases/{kb_id}/documents/{doc_id}/download", response_class=StreamingResponse)
+@knowledge.get("/databases/{kb_id}/documents/{doc_id}/download", response_class=StreamingResponse, responses={200: BINARY_DOWNLOAD})
 async def download_document(kb_id: str, doc_id: str, current_user: User = Depends(require_knowledge_base_read)):
     """下载原始文件"""
     logger.debug(f"Download document {doc_id} from {kb_id}")
@@ -2548,7 +2550,7 @@ async def download_document(kb_id: str, doc_id: str, current_user: User = Depend
         raise HTTPException(status_code=500, detail=f"下载失败: {e}")
 
 
-@knowledge.get("/databases/{kb_id}/images/{object_path:path}", response_class=StreamingResponse)
+@knowledge.get("/databases/{kb_id}/images/{object_path:path}", response_class=StreamingResponse, responses={200: BINARY_DOWNLOAD})
 async def get_kb_image(kb_id: str, object_path: str, current_user: User = Depends(require_knowledge_base_read)):
     """经鉴权代理读取知识库图片（图片存放在私有 bucket，禁止匿名访问）"""
     if not object_path.startswith("kb-images/"):
@@ -2787,6 +2789,7 @@ async def start_virtual_folder_migration(
 @knowledge.get(
     "/databases/{kb_id}/virtual-folders/migrations/{task_id}/events",
     response_class=StreamingResponse,
+    responses={200: {"content": {"text/event-stream": {"schema": TASK_PROGRESS_SCHEMA_REF}}}},
 )
 async def stream_virtual_folder_migration(
     kb_id: str,
@@ -2807,7 +2810,10 @@ async def stream_virtual_folder_migration(
             snapshot = await tasker.get_task(task_id)
             if snapshot is None:
                 break
-            public_snapshot = {key: value for key, value in snapshot.items() if key != "payload"}
+            # 这一帧没有事件名，载荷就是快照去掉 payload 后的形状
+            public_snapshot = TaskProgressPayload(
+                **{key: value for key, value in snapshot.items() if key != "payload"}
+            ).model_dump(exclude_unset=True)
             yield f"data: {json.dumps(public_snapshot, ensure_ascii=False)}\n\n"
             if snapshot.get("status") in {"success", "failed", "cancelled"}:
                 break
