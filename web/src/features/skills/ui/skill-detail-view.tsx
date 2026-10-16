@@ -244,10 +244,10 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
 
   if (query.isPending) {
     return (
-      <p className="flex items-center gap-2 p-6 text-sm text-color-text-3">
+      <div className="flex items-center gap-2 p-6 text-sm text-color-text-3">
         <Spin aria-hidden className="size-4" />
         正在加载技能…
-      </p>
+      </div>
     );
   }
 
@@ -412,10 +412,10 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
               {!selectedPath || selectedIsDir ? (
                 <SharedEmpty description="选择文件以开始编辑。" />
               ) : file.isPending ? (
-                <p className="flex items-center gap-2 text-sm text-color-text-3">
+                <div className="flex items-center gap-2 text-sm text-color-text-3">
                   <Spin aria-hidden className="size-4" />
                   正在读取文件…
-                </p>
+                </div>
               ) : file.isError ? (
                 <p role="alert" className="text-sm text-danger-6">
                   {file.error instanceof Error
@@ -487,10 +487,10 @@ export const SkillDetailView = ({ slug }: { slug: string }) => {
             </header>
             <div className="max-h-96 min-h-32 overflow-y-auto p-2">
               {tree.isPending ? (
-                <p className="flex items-center gap-2 p-2 text-xs text-color-text-3">
+                <div className="flex items-center gap-2 p-2 text-xs text-color-text-3">
                   <Spin aria-hidden className="size-3.5" />
                   正在加载目录…
-                </p>
+                </div>
               ) : tree.isError ? (
                 <p role="alert" className="p-2 text-xs text-danger-6">
                   {tree.error instanceof Error

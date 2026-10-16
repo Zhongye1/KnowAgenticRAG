@@ -526,10 +526,10 @@ export const KnowledgeFileTable = ({
         ) : null}
 
         {files.isPending || showingStaleRows ? (
-          <p className="flex items-center gap-2 py-2 text-xs text-color-text-3">
+          <div className="flex items-center gap-2 py-2 text-xs text-color-text-3">
             <Spin aria-hidden className="size-4" />
             正在加载文件…
-          </p>
+          </div>
         ) : null}
 
         {files.isError ? (

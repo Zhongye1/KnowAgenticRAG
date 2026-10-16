@@ -139,10 +139,10 @@ export const MoveFileDialog = ({
       </nav>
       <div className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-large border border-color-border-1 p-1">
         {listing.isPending ? (
-          <p className="flex items-center gap-2 p-3 text-xs text-color-text-3">
+          <div className="flex items-center gap-2 p-3 text-xs text-color-text-3">
             <Spin aria-hidden className="size-4" />
             正在加载目录…
-          </p>
+          </div>
         ) : null}
         {listing.isError ? (
           <p role="alert" className="p-3 text-xs text-danger-6">

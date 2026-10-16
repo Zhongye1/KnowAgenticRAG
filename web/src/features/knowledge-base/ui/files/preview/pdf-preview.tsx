@@ -115,10 +115,10 @@ export const PdfPreview = ({ blob }: PdfPreviewProps) => {
   return (
     <div className="flex flex-col gap-2" data-testid="pdf-preview">
       {state.status === 'loading' ? (
-        <p className="flex items-center gap-2 text-sm text-color-text-3">
+        <div className="flex items-center gap-2 text-sm text-color-text-3">
           <Spin aria-hidden className="size-4" />
           正在加载 PDF 文档…
-        </p>
+        </div>
       ) : null}
       {state.status === 'error' ? (
         <p

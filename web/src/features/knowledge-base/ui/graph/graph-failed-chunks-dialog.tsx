@@ -35,10 +35,10 @@ export const GraphFailedChunksDialog = ({
       }
     >
       {samples.isLoading ? (
-        <p className="flex items-center gap-2 text-sm text-color-text-2">
+        <div className="flex items-center gap-2 text-sm text-color-text-2">
           <Spin />
           正在加载失败 Chunk
-        </p>
+        </div>
       ) : samples.isError ? (
         <p role="alert" className="text-sm text-danger-6">
           失败 Chunk 样例加载失败，稍后重试。

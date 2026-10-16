@@ -153,10 +153,10 @@ export const KnowledgeList = ({ onOpen }: KnowledgeListProps) => {
       />
 
       {databases.isPending ? (
-        <p className="flex items-center gap-2 py-8 text-sm text-color-text-3">
+        <div className="flex items-center gap-2 py-8 text-sm text-color-text-3">
           <Spin aria-hidden className="size-4" />
           正在加载知识库…
-        </p>
+        </div>
       ) : null}
 
       {databases.isError ? (

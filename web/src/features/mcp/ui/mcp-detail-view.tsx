@@ -417,10 +417,10 @@ export const McpDetailView = ({
           </div>
 
           {tools.isLoading ? (
-            <p className="flex items-center gap-2 py-8 text-sm text-color-text-3">
+            <div className="flex items-center gap-2 py-8 text-sm text-color-text-3">
               <Spin aria-hidden className="size-4" />
               正在加载工具…
-            </p>
+            </div>
           ) : visibleTools.length === 0 ? (
             <SharedEmpty
               icon={Wand2}

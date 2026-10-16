@@ -200,10 +200,10 @@ export const KnowledgeMindmapPanel = ({
   if (documentQuery.isLoading) {
     return (
       <PanelStateBox>
-        <p className="flex items-center gap-2 text-sm text-color-text-2">
+        <div className="flex items-center gap-2 text-sm text-color-text-2">
           <Spin />
           加载中…
-        </p>
+        </div>
       </PanelStateBox>
     );
   }
@@ -232,10 +232,10 @@ export const KnowledgeMindmapPanel = ({
   if (generate.isPending) {
     return (
       <PanelStateBox>
-        <p className="flex items-center gap-2 text-sm text-color-text-2">
+        <div className="flex items-center gap-2 text-sm text-color-text-2">
           <Spin />
           AI 正在生成思维导图…
-        </p>
+        </div>
       </PanelStateBox>
     );
   }

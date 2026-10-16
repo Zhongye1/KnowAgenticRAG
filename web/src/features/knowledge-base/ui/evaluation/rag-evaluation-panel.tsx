@@ -250,10 +250,10 @@ export const RagEvaluationPanel = ({
   if (runs.isLoading || datasets.isLoading) {
     return (
       <PanelStateBox>
-        <p className="flex items-center gap-2 text-sm text-color-text-2">
+        <div className="flex items-center gap-2 text-sm text-color-text-2">
           <Spin />
           加载中…
-        </p>
+        </div>
       </PanelStateBox>
     );
   }

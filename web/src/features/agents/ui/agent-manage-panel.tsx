@@ -143,10 +143,10 @@ export const AgentManagePanel = ({ onOpenChat }: AgentManagePanelProps) => {
       </div>
 
       {isLoading ? (
-        <p className="flex items-center gap-2 py-8 text-sm text-color-text-3">
+        <div className="flex items-center gap-2 py-8 text-sm text-color-text-3">
           <Spin aria-hidden className="size-4" />
           正在加载智能体…
-        </p>
+        </div>
       ) : null}
 
       {error ? (
