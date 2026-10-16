@@ -33,6 +33,11 @@ const loginRoute = async () => {
   return { Component: LoginPage };
 };
 
+const registerRoute = async () => {
+  const { RegisterPage } = await import('@/pages/register');
+  return { Component: RegisterPage };
+};
+
 const chatRoute = async () => {
   const { ChatPage } = await import('@/pages/chat');
   return { Component: ChatPage };
@@ -83,6 +88,10 @@ export const appRoutes: RouteObject[] = [
   {
     path: paths.auth.login.path,
     lazy: loginRoute,
+  },
+  {
+    path: paths.auth.register.path,
+    lazy: registerRoute,
   },
   {
     path: paths.auth.oidcCallback.path,

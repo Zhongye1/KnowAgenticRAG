@@ -1,8 +1,8 @@
 /**
  * 系统配置与 OCR 端点（管理员面）。
  *
- * 只走契约生成的 SDK。`/system/config` 与 `/system/config/options` 都没有声明响应模型，
- * 字段按不可信数据归一：只保留形状正确的条目，未知字段不往界面传。
+ * 只走契约生成的 SDK，响应形状复用 `openapi.json` 生成的具名模型；字段仍按不可信数据归一：
+ * 只保留形状正确的条目，未知字段不往界面传。
  */
 import { unwrap } from '@/shared/api';
 import {
@@ -13,6 +13,13 @@ import {
   putConfigOptionApiSystemConfigOptionsKeyPut,
   updateConfigBatchApiSystemConfigUpdatePost,
 } from '@/shared/api/generated/sdk.gen';
+import type {
+  ConfigOptionResponse,
+  ConfigOptionsResponse,
+  OcrHealthResponse,
+  OcrOptionsResponse,
+  SystemConfigResponse,
+} from '@/shared/api/generated/types.gen';
 
 /** 一个配置项的元信息（后端 `_config_items` 的一条）。 */
 export type ConfigItemMeta = {
@@ -145,7 +152,7 @@ const normalizeOption = (raw: unknown): ConfigOption | null => {
 /** 读取系统配置（含每项的标签与类型）。 */
 export async function getSystemConfig(): Promise<SystemConfig> {
   return normalizeSystemConfig(
-    unwrap<unknown>(await getConfigApiSystemConfigGet()),
+    unwrap<SystemConfigResponse>(await getConfigApiSystemConfigGet()),
   );
 }
 
@@ -154,7 +161,7 @@ export async function updateSystemConfig(
   items: Record<string, unknown>,
 ): Promise<SystemConfig> {
   return normalizeSystemConfig(
-    unwrap<unknown>(
+    unwrap<SystemConfigResponse>(
       await updateConfigBatchApiSystemConfigUpdatePost({ body: items }),
     ),
   );
@@ -162,7 +169,7 @@ export async function updateSystemConfig(
 
 /** 通用配置项列表（排除内部的 `system_options`）。 */
 export async function listConfigOptions(): Promise<ConfigOption[]> {
-  const payload = unwrap<{ options?: unknown }>(
+  const payload = unwrap<ConfigOptionsResponse>(
     await getConfigOptionsApiSystemConfigOptionsGet(),
   );
   const rows = Array.isArray(payload.options) ? payload.options : [];
@@ -181,7 +188,7 @@ export async function updateConfigOption(
   key: string,
   value: Record<string, unknown>,
 ): Promise<ConfigOption | null> {
-  const payload = unwrap<{ option?: unknown }>(
+  const payload = unwrap<ConfigOptionResponse>(
     await putConfigOptionApiSystemConfigOptionsKeyPut({
       path: { key },
       body: { value },
@@ -193,7 +200,7 @@ export async function updateConfigOption(
 
 /** 代码支持的全部 OCR 引擎。 */
 export async function listOcrEngines(): Promise<OcrEngine[]> {
-  const payload = unwrap<{ engines?: unknown }>(
+  const payload = unwrap<OcrOptionsResponse>(
     await getOcrEngineOptionsApiSystemOcrOptionsGet(),
   );
   const rows = Array.isArray(payload.engines) ? payload.engines : [];
@@ -214,7 +221,7 @@ export async function listOcrEngines(): Promise<OcrEngine[]> {
 
 /** 用当前有效配置检查全部 OCR 引擎。 */
 export async function getOcrHealth(): Promise<OcrHealth> {
-  const payload = unwrap<{ health?: unknown }>(
+  const payload = unwrap<OcrHealthResponse>(
     await getOcrHealthApiSystemOcrHealthGet(),
   );
   const raw = asRecord(payload.health);

@@ -13,18 +13,50 @@ import {
   type ThreadRuntimeState,
 } from './thread-runtime-store';
 
-import { agentRunApi, type AgentRun } from '../api/agent-api';
 import {
-  compareRunSeq,
+  agentRunApi,
+  type AgentRun,
+  type RunEndStatus,
+  type RunStreamEvent,
+} from '../api/agent-api';
+import {
   normalizeRunSeq,
   resolveRunResumeAfterSeq,
 } from '../lib/run-seq';
-import { processSseResponse } from '@/shared/lib/files';
 import type { StreamSmoother } from '../lib/stream-smoother';
 import { hasPendingInterruptPayload } from '../lib/tool-approval';
 
-const RUN_INTERRUPTED_STATUS = 'interrupted';
-const RUN_TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled']);
+/** `end` 的终态取值由契约给出；写错名字在这里就会编译失败。 */
+const RUN_INTERRUPTED_STATUS: RunEndStatus = 'interrupted';
+const RUN_TERMINAL_STATUSES: ReadonlySet<string> = new Set<RunEndStatus>([
+  'completed',
+  'failed',
+  'cancelled',
+]);
+
+/**
+ * `end` 事件的 status 落在已知集合之外时给一条告警。
+ *
+ * 事件流已进入契约（`RunEvent`）且后端在产侧按终态集合校验，所以这里的未知取值来自部署
+ * 错配：仍在跑的旧 worker，或契约之外的第三方实现。漂移默认是**静默降级**：`end` 的
+ * status 改名后代码会落进兜底分支，那里 `sawTerminalEvent` 已置真（不会再回查 run），但
+ * `finalizeRunStream` 不会被调用，界面停在一个没有收尾的运行上却没有任何信号。把这一步
+ * 变成显式告警，漂移才有出口。
+ *
+ * 只告警不抛错：事件流要前向兼容，后端新增一个状态名不该让整条流断掉。
+ */
+export const warnIfUnknownTerminalStatus = (status: unknown): void => {
+  const known =
+    typeof status === 'string' &&
+    (status === RUN_INTERRUPTED_STATUS || RUN_TERMINAL_STATUSES.has(status));
+  if (known) return;
+
+  console.warn(
+    '[run-stream] `end` 事件的 status 不在已知终态内，这次运行不会被收尾：',
+    status,
+  );
+};
+
 const ACTIVE_RUN_STORAGE_TTL_MS = 60 * 60 * 1000;
 const ACTIVE_RUN_CLIENT_ID = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -337,43 +369,38 @@ export function createRunStream(options: RunStreamOptions) {
     let sawTerminalEvent = false;
 
     try {
-      const response = await agentRunApi.streamRunEvents(
+      // 重连由本模块拥有：生成客户端被要求不重试（失败时它结束流，由下面的权威判定接手）。
+      // 游标只在新 `id:` 到达时从 `onCursor` 过来（帧内没有 `id:` 时它不会上报），
+      // 所以这里的推进与旧解析器「每帧没有 id 就不推进」的语义一致。
+      const { stream } = await agentRunApi.streamRunEvents(
         runId,
         runtime.runLastSeq,
         {
           signal: controller.signal,
+          onCursor: (seq) => {
+            runtime.runLastSeq = normalizeRunSeq(seq);
+            saveActiveRunSnapshot(threadId, runId, runtime.runLastSeq);
+          },
         },
       );
-      if (!response.ok) {
-        throw new Error(`SSE response not ok: ${response.status}`);
-      }
 
-      await processSseResponse(response, (event, rawData, eventId) => {
-        const data = rawData as Record<string, unknown>;
-        if (!data || runtime.activeRunId !== runId) return;
+      for await (const frame of stream) {
+        if (runtime.activeRunId !== runId) break;
 
-        if (eventId) {
-          const incomingSeq = normalizeRunSeq(eventId);
-          if (compareRunSeq(incomingSeq, runtime.runLastSeq) <= 0) return;
-          runtime.runLastSeq = incomingSeq;
-          saveActiveRunSnapshot(threadId, runId, incomingSeq);
-        }
-
-        const payload = (data.payload ?? {}) as Record<string, unknown>;
-        if (event === 'metadata') {
+        // 帧上的事件名不再参与判断：判别键是信封里的 `event`，两者由后端 builder 保证同源。
+        // `payload` 仍以开放对象交给分片路由。
+        const runEvent = frame as RunStreamEvent;
+        const payload = (runEvent.payload ?? {}) as Record<string, unknown>;
+        if (runEvent.event === 'metadata') {
           runtime.activeRunSteerable =
-            payload.run_type === 'chat' && payload.source === 'chat';
+            runEvent.payload.run_type === 'chat' &&
+            runEvent.payload.source === 'chat';
         }
 
-        const terminalStatus =
-          event === 'end'
-            ? (payload.status as string)
-            : (data.status as string);
         const isRetryableError =
-          event === 'error' &&
-          ((payload as { retryable?: boolean }).retryable === true ||
-            (payload.chunk as { retryable?: boolean } | undefined)
-              ?.retryable === true);
+          runEvent.event === 'error' &&
+          (runEvent.payload.retryable === true ||
+            runEvent.payload.chunk?.retryable === true);
         if (isRetryableError) {
           const parsedJobTry = Number.parseInt(
             String(
@@ -387,7 +414,7 @@ export function createRunStream(options: RunStreamOptions) {
             retryJobTry !== null &&
             runtime.lastRetryableJobTry === retryJobTry
           ) {
-            return;
+            continue;
           }
           runtime.lastRetryableJobTry = retryJobTry;
           console.warn(
@@ -398,12 +425,13 @@ export function createRunStream(options: RunStreamOptions) {
               retryJobTry,
             },
           );
-          return;
+          // 跳过这一帧：可重试失败不是终态，等 worker 重试后的事件
+          continue;
         }
 
         const routeChunk = (chunk: Record<string, unknown>) => {
           const routeThreadId = resolveChunkThreadId({
-            envelope: data,
+            envelope: runEvent,
             payload,
             chunk,
             fallbackThreadId: threadId,
@@ -412,8 +440,8 @@ export function createRunStream(options: RunStreamOptions) {
           handleStreamChunk(
             {
               ...chunk,
-              request_id: chunk.request_id ?? data.request_id,
-              run_id: chunk.run_id ?? data.run_id ?? runId,
+              request_id: chunk.request_id ?? runEvent.request_id,
+              run_id: chunk.run_id ?? runEvent.run_id ?? runId,
               thread_id: routeThreadId,
             } as StreamChunk,
             routeThreadId,
@@ -428,8 +456,9 @@ export function createRunStream(options: RunStreamOptions) {
           routeChunk(payload.chunk as Record<string, unknown>);
         }
 
-        if (event === 'end') {
+        if (runEvent.event === 'end') {
           sawTerminalEvent = true;
+          const terminalStatus = runEvent.payload.status;
           if (terminalStatus === RUN_INTERRUPTED_STATUS) {
             finalizeRunStream(threadId, runId, touchedThreadIds, {
               status: terminalStatus,
@@ -439,20 +468,21 @@ export function createRunStream(options: RunStreamOptions) {
               status: terminalStatus,
             });
           } else {
+            warnIfUnknownTerminalStatus(terminalStatus);
             touchedThreadIds.forEach((id) => streamSmoother?.flushThread(id));
             runtime.isStreaming = false;
             notifyThreadRuntime(threadId);
           }
         }
 
-        if (event === 'error') {
+        if (runEvent.event === 'error') {
           sawTerminalEvent = true;
           finalizeRunStream(threadId, runId, touchedThreadIds, {
             delay: 300,
             scroll: true,
           });
         }
-      });
+      }
 
       if (
         !sawTerminalEvent &&

@@ -267,10 +267,10 @@ export const QueryTestPanel = ({ kbId, readOnly }: QueryTestPanelProps) => {
       {showSuggestions ? (
         <div className="flex flex-col">
           {questionsLoading || generating ? (
-            <p className="flex min-h-[72px] items-center justify-center gap-1.5 text-[13px] text-[var(--gray-500)]">
+            <div className="flex min-h-[72px] items-center justify-center gap-1.5 text-[13px] text-[var(--gray-500)]">
               <Spin aria-hidden className="size-4" />
               {generating ? '正在生成示例问题...' : '正在加载示例问题...'}
-            </p>
+            </div>
           ) : sampleQuestions.length > 0 ? (
             <div className="flex flex-col items-start gap-3">
               <span className="text-xs font-semibold leading-5 text-[var(--gray-600)]">

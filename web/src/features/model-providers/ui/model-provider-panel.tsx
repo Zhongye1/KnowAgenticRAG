@@ -305,10 +305,10 @@ export const ModelProviderPanel = () => {
       </div>
 
       {providers.isPending ? (
-        <p className="flex items-center gap-2 py-8 text-sm text-color-text-3">
+        <div className="flex items-center gap-2 py-8 text-sm text-color-text-3">
           <Spin aria-hidden className="size-4" />
           正在加载供应商…
-        </p>
+        </div>
       ) : null}
 
       {providers.isError ? (

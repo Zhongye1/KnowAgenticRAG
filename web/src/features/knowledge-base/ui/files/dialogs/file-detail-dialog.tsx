@@ -132,10 +132,10 @@ export const FileDetailDialog = ({
 
         {view === 'markdown' ? (
           content.isPending ? (
-            <p className="flex items-center gap-2 text-sm text-color-text-3">
+            <div className="flex items-center gap-2 text-sm text-color-text-3">
               <Spin aria-hidden className="size-4" />
               正在加载解析结果…
-            </p>
+            </div>
           ) : content.isError ? (
             <p role="alert" className="text-sm text-danger-6">
               {content.error instanceof Error
@@ -155,10 +155,10 @@ export const FileDetailDialog = ({
 
         {view === 'chunks' ? (
           content.isPending ? (
-            <p className="flex items-center gap-2 text-sm text-color-text-3">
+            <div className="flex items-center gap-2 text-sm text-color-text-3">
               <Spin aria-hidden className="size-4" />
               正在加载分块…
-            </p>
+            </div>
           ) : content.isError ? (
             <p role="alert" className="text-sm text-danger-6">
               {content.error instanceof Error

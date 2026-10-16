@@ -322,10 +322,10 @@ export const SkillCardList = () => {
       />
 
       {cards.isPending ? (
-        <p className="flex items-center gap-2 py-8 text-sm text-color-text-3">
+        <div className="flex items-center gap-2 py-8 text-sm text-color-text-3">
           <Spin aria-hidden className="size-4" />
           正在加载技能…
-        </p>
+        </div>
       ) : cards.isError ? (
         <div className="flex flex-col items-start gap-2 py-8">
           <p role="alert" className="text-sm text-danger-6">

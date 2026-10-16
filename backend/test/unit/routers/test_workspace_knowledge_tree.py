@@ -141,13 +141,20 @@ def test_workspace_knowledge_file_calls_knowledge_preview_directly(monkeypatch):
 
     async def read_preview(*, kb_id: str, file_id: str) -> dict:
         calls.append((kb_id, file_id))
+        # 与 `read_knowledge_file_preview` 的文本预览分支输出一致，含 filename/readonly/message
+        # 等固定键；缺键会让响应模型校验失败，不是模型该放宽容忍的偏差。
         return {
             "source": "knowledge",
             "kb_id": kb_id,
             "file_id": file_id,
+            "filename": "alpha.txt",
+            "readonly": True,
             "content": "preview",
             "preview_type": "text",
             "supported": True,
+            "message": None,
+            "truncated": False,
+            "limit": 250000,
         }
 
     monkeypatch.setattr(preview, "read_knowledge_file_preview", read_preview)

@@ -6,6 +6,7 @@
  */
 import { unwrap } from '@/shared/api';
 import { submitMessageFeedbackApiChatMessageMessageIdFeedbackPost } from '@/shared/api/generated/sdk.gen';
+import type { MessageFeedbackResponse } from '@/shared/api/generated/types.gen';
 
 export type MessageFeedbackRating = 'like' | 'dislike';
 
@@ -15,7 +16,7 @@ export async function submitMessageFeedback(
   rating: MessageFeedbackRating,
   reason?: string | null,
 ): Promise<void> {
-  unwrap(
+  unwrap<MessageFeedbackResponse>(
     await submitMessageFeedbackApiChatMessageMessageIdFeedbackPost({
       path: { message_id: Number(messageId) },
       body: { rating, reason: reason ?? null },

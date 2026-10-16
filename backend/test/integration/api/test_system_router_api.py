@@ -253,7 +253,7 @@ async def test_ocr_health_is_available_to_logged_in_users_and_returns_all_method
 ):
     async def fake_health(db):
         del db
-        return {"rapid_ocr": {"status": "healthy", "message": "ok"}}
+        return {"rapid_ocr": {"status": "healthy", "message": "ok", "details": {}}}
 
     monkeypatch.setattr("ars.services.ocr_service.check_all_ocr_health", fake_health)
 

@@ -17,9 +17,12 @@ def _user(role: str = "admin"):
 
 
 def _agent(slug: str, *, backend_id: str = "ChatbotAgent", is_subagent: bool = False):
+    """假智能体；字段与 `AgentRepository.serialize` 的真实输出保持一致。"""
+
     return SimpleNamespace(
-        id=slug,
+        id=1,
         slug=slug,
+        agent_id=slug,
         name=slug,
         backend_id=backend_id,
         description="",
@@ -28,8 +31,17 @@ def _agent(slug: str, *, backend_id: str = "ChatbotAgent", is_subagent: bool = F
         config_json={},
         share_config={"access_level": "user", "user_uids": ["admin"]},
         is_default=False,
-        is_subagent=is_subagent,
+        is_subagent=bool(is_subagent),
+        created_by="admin",
+        updated_by=None,
+        created_at="2026-01-01 00:00:00",
+        updated_at="2026-01-01 00:00:00",
         can_manage=True,
+        effective_permission="manage",
+        is_builtin=False,
+        permission_locked=False,
+        capabilities=[],
+        metadata={},
     )
 
 

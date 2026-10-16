@@ -6,6 +6,7 @@ import {
   formDataBodySerializer,
   type Options as Options2,
   type RequestResult,
+  type ServerSentEventsResult,
   type TDataShape,
   urlSearchParamsBodySerializer,
 } from './client';
@@ -582,6 +583,7 @@ import type {
   QueryTestApiKnowledgeDatabasesKbIdQueryTestPostErrors,
   QueryTestApiKnowledgeDatabasesKbIdQueryTestPostResponses,
   ReadinessCheckApiSystemReadyGetData,
+  ReadinessCheckApiSystemReadyGetErrors,
   ReadinessCheckApiSystemReadyGetResponses,
   ReadKnowledgeStatsApiDashboardStatsKnowledgeGetData,
   ReadKnowledgeStatsApiDashboardStatsKnowledgeGetErrors,
@@ -616,6 +618,9 @@ import type {
   RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostData,
   RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostErrors,
   RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostResponses,
+  RegisterAccountApiAuthRegisterPostData,
+  RegisterAccountApiAuthRegisterPostErrors,
+  RegisterAccountApiAuthRegisterPostResponses,
   ReloadInfoConfigApiSystemInfoReloadPostData,
   ReloadInfoConfigApiSystemInfoReloadPostErrors,
   ReloadInfoConfigApiSystemInfoReloadPostResponses,
@@ -669,12 +674,15 @@ import type {
   SteerRequestApiAgentRequestsRequestIdSteerPostResponses,
   StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetData,
   StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetErrors,
+  StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponse,
   StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses,
   StreamRunEventsApiAgentRunsRunIdEventsGetData,
   StreamRunEventsApiAgentRunsRunIdEventsGetErrors,
+  StreamRunEventsApiAgentRunsRunIdEventsGetResponse,
   StreamRunEventsApiAgentRunsRunIdEventsGetResponses,
   StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetData,
   StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetErrors,
+  StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponse,
   StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponses,
   SubmitMessageFeedbackApiChatMessageMessageIdFeedbackPostData,
   SubmitMessageFeedbackApiChatMessageMessageIdFeedbackPostErrors,
@@ -826,12 +834,12 @@ export const readinessCheckApiSystemReadyGet = <
   options?: Options<ReadinessCheckApiSystemReadyGetData, ThrowOnError>,
 ): RequestResult<
   ReadinessCheckApiSystemReadyGetResponses,
-  unknown,
+  ReadinessCheckApiSystemReadyGetErrors,
   ThrowOnError
 > =>
   (options?.client ?? client).get<
     ReadinessCheckApiSystemReadyGetResponses,
-    unknown,
+    ReadinessCheckApiSystemReadyGetErrors,
     ThrowOnError
   >({ url: '/api/system/ready', ...options });
 
@@ -1248,6 +1256,35 @@ export const initializeAdminApiAuthInitializePost = <
     ThrowOnError
   >({
     url: '/api/auth/initialize',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+/**
+ * Register Account
+ *
+ * 建一个普通用户（角色 user、落在自助注册部门）并直接下发凭据。
+ *
+ * 公开端点：默认开放注册是当前产品取舍，因此限流与「系统未初始化时拒绝」两条守卫不能去掉。
+ */
+export const registerAccountApiAuthRegisterPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<RegisterAccountApiAuthRegisterPostData, ThrowOnError>,
+): RequestResult<
+  RegisterAccountApiAuthRegisterPostResponses,
+  RegisterAccountApiAuthRegisterPostErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).post<
+    RegisterAccountApiAuthRegisterPostResponses,
+    RegisterAccountApiAuthRegisterPostErrors,
+    ThrowOnError
+  >({
+    url: '/api/auth/register',
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -1948,14 +1985,13 @@ export const streamRequestEventsRouteApiAgentRequestsRequestIdEventsGet = <
 >(
   options: Options<
     StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetData,
-    ThrowOnError
+    ThrowOnError,
+    StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponse
   >,
-): RequestResult<
-  StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses,
-  StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetErrors,
-  ThrowOnError
+): Promise<
+  ServerSentEventsResult<StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses>
 > =>
-  (options.client ?? client).get<
+  (options.client ?? client).sse.get<
     StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses,
     StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetErrors,
     ThrowOnError
@@ -2041,17 +2077,21 @@ export const cancelAgentRunApiAgentRunsRunIdCancelPost = <
 
 /**
  * Stream Run Events
+ *
+ * 按 Server-Sent Events 推送运行事件；每帧的 `data` 是一个 `RunEvent`，`id` 是续传游标。
  */
 export const streamRunEventsApiAgentRunsRunIdEventsGet = <
   ThrowOnError extends boolean = false,
 >(
-  options: Options<StreamRunEventsApiAgentRunsRunIdEventsGetData, ThrowOnError>,
-): RequestResult<
-  StreamRunEventsApiAgentRunsRunIdEventsGetResponses,
-  StreamRunEventsApiAgentRunsRunIdEventsGetErrors,
-  ThrowOnError
+  options: Options<
+    StreamRunEventsApiAgentRunsRunIdEventsGetData,
+    ThrowOnError,
+    StreamRunEventsApiAgentRunsRunIdEventsGetResponse
+  >,
+): Promise<
+  ServerSentEventsResult<StreamRunEventsApiAgentRunsRunIdEventsGetResponses>
 > =>
-  (options.client ?? client).get<
+  (options.client ?? client).sse.get<
     StreamRunEventsApiAgentRunsRunIdEventsGetResponses,
     StreamRunEventsApiAgentRunsRunIdEventsGetErrors,
     ThrowOnError
@@ -6158,14 +6198,13 @@ export const streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFolders
   <ThrowOnError extends boolean = false>(
     options: Options<
       StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetData,
-      ThrowOnError
+      ThrowOnError,
+      StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponse
     >,
-  ): RequestResult<
-    StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponses,
-    StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetErrors,
-    ThrowOnError
+  ): Promise<
+    ServerSentEventsResult<StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponses>
   > =>
-    (options.client ?? client).get<
+    (options.client ?? client).sse.get<
       StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponses,
       StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetErrors,
       ThrowOnError

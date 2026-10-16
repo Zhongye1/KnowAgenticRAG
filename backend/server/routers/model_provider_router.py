@@ -59,7 +59,141 @@ class ModelProviderPayload(BaseModel):
     is_builtin: bool | None = Field(None, description="是否内置")
 
 
-@model_providers.get("")
+class ModelProviderItem(BaseModel):
+    """供应商配置条目；字段对齐 `ModelProvider.to_dict()`。
+
+    `credential_status` 只在列表与详情里派生下发，创建与更新不带它，因此声明为
+    可选默认值并让路由用 `response_model_exclude_unset=True` 保持逐键不变。
+    """
+
+    id: int
+    provider_id: str
+    display_name: str
+    provider_type: str
+    default_protocol: str | None
+    base_url: str
+    embedding_base_url: str | None
+    rerank_base_url: str | None
+    models_endpoint: str | None
+    embedding_models_endpoint: str | None
+    rerank_models_endpoint: str | None
+    api_key_env: str | None
+    api_key: str | None
+    capabilities: list[str]
+    enabled_models: list[dict[str, Any]]
+    headers_json: dict[str, Any]
+    extra_json: dict[str, Any]
+    is_enabled: bool
+    is_builtin: bool
+    created_by: str | None
+    updated_by: str | None
+    created_at: str | None
+    updated_at: str | None
+    credential_status: str | None = None
+
+
+class ModelProviderListResponse(BaseModel):
+    """供应商配置列表响应。"""
+
+    success: bool
+    data: list[ModelProviderItem]
+
+
+class ModelProviderResponse(BaseModel):
+    """单个供应商配置响应。"""
+
+    success: bool
+    data: ModelProviderItem
+
+
+class ModelProviderDeleteResponse(BaseModel):
+    """供应商删除结果。"""
+
+    success: bool
+
+
+class RemoteModelItem(BaseModel):
+    """远端模型条目；`_normalize_remote_model` 会丢掉值为 None 的键。
+
+    因此可空字段都给默认值，由路由的 `response_model_exclude_unset=True` 保证
+    未下发的键不出现在响应里。
+    """
+
+    id: str
+    type: str
+    display_name: str
+    input_modalities: list[Any]
+    output_modalities: list[Any]
+    supported_parameters: list[Any]
+    pricing: dict[str, Any]
+    default_parameters: dict[str, Any]
+    raw_metadata: dict[str, Any]
+    extra: dict[str, Any]
+    object: Any = None
+    created: Any = None
+    owned_by: Any = None
+    description: Any = None
+    context_length: Any = None
+    max_completion_tokens: Any = None
+
+
+class RemoteModelsResponse(BaseModel):
+    """远端模型列表响应。"""
+
+    success: bool
+    data: list[RemoteModelItem]
+
+
+class ModelCacheRefreshResponse(BaseModel):
+    """模型缓存刷新结果。"""
+
+    success: bool
+    message: str
+    model_count: int
+
+
+class V2ModelItem(BaseModel):
+    """v2 模型条目；`dimension`/`batch_size` 键总在但值可为 null。"""
+
+    spec: str
+    model_id: str
+    display_name: str
+    dimension: int | None
+    batch_size: int | None
+
+
+class V2ProviderGroupItem(BaseModel):
+    """v2 中按供应商分组的模型集合。"""
+
+    provider_id: str
+    provider_display_name: str
+    models: list[V2ModelItem]
+
+
+class V2ModelsResponse(BaseModel):
+    """v2 模型列表响应，按供应商 ID 分组。"""
+
+    success: bool
+    data: dict[str, V2ProviderGroupItem]
+
+
+class ModelStatusItem(BaseModel):
+    """模型状态探测结果；`model_type` 仅在找到模型时下发。"""
+
+    spec: str
+    status: str
+    message: str
+    model_type: str | None = None
+
+
+class ModelStatusResponse(BaseModel):
+    """模型状态探测响应。"""
+
+    success: bool
+    data: ModelStatusItem
+
+
+@model_providers.get("", response_model=ModelProviderListResponse, response_model_exclude_unset=True)
 async def list_providers(
     current_user: User = Depends(get_admin_user),
     db: AsyncSession = Depends(get_db),
@@ -74,7 +208,7 @@ async def list_providers(
     return {"success": True, "data": data}
 
 
-@model_providers.post("")
+@model_providers.post("", response_model=ModelProviderResponse, response_model_exclude_unset=True)
 async def create_provider(
     payload: ModelProviderPayload,
     current_user: User = Depends(get_admin_user),
@@ -97,7 +231,7 @@ async def create_provider(
         raise HTTPException(status_code=500, detail="创建模型供应商失败")
 
 
-@model_providers.get("/{provider_id}")
+@model_providers.get("/{provider_id}", response_model=ModelProviderResponse, response_model_exclude_unset=True)
 async def get_provider(
     provider_id: str,
     current_user: User = Depends(get_admin_user),
@@ -112,7 +246,7 @@ async def get_provider(
     return {"success": True, "data": data}
 
 
-@model_providers.put("/{provider_id}")
+@model_providers.put("/{provider_id}", response_model=ModelProviderResponse, response_model_exclude_unset=True)
 async def update_provider(
     provider_id: str,
     payload: ModelProviderPayload,
@@ -151,7 +285,7 @@ async def update_provider(
         raise HTTPException(status_code=500, detail="更新模型供应商失败")
 
 
-@model_providers.delete("/{provider_id}")
+@model_providers.delete("/{provider_id}", response_model=ModelProviderDeleteResponse, response_model_exclude_unset=True)
 async def delete_provider(
     provider_id: str,
     current_user: User = Depends(get_admin_user),
@@ -166,7 +300,11 @@ async def delete_provider(
     return {"success": True}
 
 
-@model_providers.get("/{provider_id}/remote-models")
+@model_providers.get(
+    "/{provider_id}/remote-models",
+    response_model=RemoteModelsResponse,
+    response_model_exclude_unset=True,
+)
 async def get_remote_models(
     provider_id: str,
     current_user: User = Depends(get_admin_user),
@@ -190,7 +328,7 @@ async def get_remote_models(
         raise HTTPException(status_code=400, detail=f"拉取远端模型失败: {e}")
 
 
-@model_providers.post("/models/cache/refresh")
+@model_providers.post("/models/cache/refresh", response_model=ModelCacheRefreshResponse, response_model_exclude_unset=True)
 async def refresh_model_cache(
     current_user: User = Depends(get_admin_user),
 ):
@@ -201,7 +339,7 @@ async def refresh_model_cache(
     return {"success": True, "message": "缓存已刷新", "model_count": len(model_cache.get_all_specs())}
 
 
-@model_providers.get("/models/v2")
+@model_providers.get("/models/v2", response_model=V2ModelsResponse, response_model_exclude_unset=True)
 async def get_v2_models(
     model_type: str = "chat",
     _current_user: User = Depends(get_required_user),
@@ -240,7 +378,7 @@ async def get_v2_models(
     return {"success": True, "data": result}
 
 
-@model_providers.get("/models/status")
+@model_providers.get("/models/status", response_model=ModelStatusResponse, response_model_exclude_unset=True)
 async def get_model_status_by_spec(
     spec: str,
     current_user: User = Depends(get_admin_user),

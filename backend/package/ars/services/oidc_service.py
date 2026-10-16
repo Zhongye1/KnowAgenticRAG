@@ -652,6 +652,15 @@ async def create_oidc_user(db, user_info: dict, department_id: int | None = None
                     status_code=status.HTTP_409_CONFLICT,
                     detail=f"UID {uid} 已存在且OIDC标识 {sub} 已绑定到其他账号，请联系管理员处理冲突",
                 )
+        elif await UserRepository(db).exists_by_phone(uid):
+            # uid 撞上本地账号的手机号：`get_by_login_identifier` 先按 uid 解析，放它进来会让
+            # 那个人的手机号登录落到这个 OIDC 账号上。这里拒绝而不是换一个 uid——换掉会静默改变
+            # 这个人的本地登录标识，交管理员处理更明确（与上面的 sub 冲突同一口径）。
+            logger.warning(f"Cannot create OIDC user with raw uid {uid}: it collides with a local phone number")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"UID {uid} 与本地账号的手机号冲突，请联系管理员处理",
+            )
     else:
         uid = f"oidc:{sub}"
 
@@ -832,7 +841,13 @@ async def oidc_callback_handler(code: str, state: str, db, request: Request | No
             dept_desc = extracted_info.get("department_description")
             dept = await get_or_create_oidc_department(db, dept_name, dept_desc)
             department_id = dept.id if dept else None
-            user = await create_oidc_user(db, extracted_info, department_id)
+            try:
+                user = await create_oidc_user(db, extracted_info, department_id)
+            except HTTPException as exc:
+                # 建号冲突（raw uid 撞本地手机号、sub 已绑到别的账号）发生在浏览器导航里，
+                # 要给回登录页带错误，不能拿裸 JSON 打发用户
+                logger.warning(f"OIDC sign-in refused: {exc.detail}")
+                return _redirect_to_login_with_error(str(exc.detail))
     else:
         return _redirect_to_login_with_error("用户未注册，请联系管理员开通账号")
 

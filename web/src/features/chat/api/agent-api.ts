@@ -4,7 +4,11 @@
  * 普通请求走契约生成的 SDK；事件流需要 `Last-Event-ID` 续传游标，
  * 生成物不覆盖该形态，因此经 `apiFetch` 直接发起。
  */
-import { ApiError, apiFetch } from '@/shared/api';
+import {
+  ApiError,
+  UNAUTHORIZED_EVENT,
+  setAccessToken,
+} from '@/shared/api';
 import {
   createThreadApiChatThreadPost,
   deleteThreadApiChatThreadThreadIdDelete,
@@ -23,43 +27,53 @@ import {
   getAgentRunLangfuseLinkRouteApiAgentRunsRunIdLangfuseGet,
   listThreadRequestsApiAgentThreadThreadIdRequestsGet,
   steerRequestApiAgentRequestsRequestIdSteerPost,
+  streamRunEventsApiAgentRunsRunIdEventsGet,
+  streamRequestEventsRouteApiAgentRequestsRequestIdEventsGet,
   getThreadActiveRunApiAgentThreadThreadIdActiveRunGet,
   getThreadStateApiChatThreadThreadIdStateGet,
   uploadImageApiChatImageUploadPost,
   callApiChatCallPost,
 } from '@/shared/api/generated/sdk.gen';
-import type { ImageUploadResponse } from '@/shared/api/generated/types.gen';
+import type {
+  AgentActiveRunResponse,
+  AgentRequestCancelResponse,
+  AgentRequestQueueState,
+  AgentRequestResponse,
+  AgentRequestSteerResponse,
+  AgentRunCreateResponse,
+  AgentRunItem,
+  AgentRunLangfuseResponse,
+  AgentRunResponse,
+  AgentThreadContinueResponse,
+  AgentThreadRequestsResponse,
+  CallResponse,
+  EndRunEvent,
+  ImageUploadResponse,
+  RunEvent,
+  ThreadDeleteResponse,
+  ThreadHistoryResponse,
+  ThreadResponse,
+  ThreadSearchItem as ThreadSearchItemModel,
+  ThreadSearchResponse,
+  ThreadStateResponse,
+} from '@/shared/api/generated/types.gen';
 import {
   buildConversationTitlePrompt,
   sanitizeGeneratedTitle,
 } from '../lib/thread-title';
 import type { ToolApprovalMode } from '../lib/tool-approval';
 
-export type RunStatus =
-  'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted';
-
-export type AgentRun = {
-  id: string;
-  status: RunStatus;
-  run_type?: string;
-  request_id?: string;
-  agent_slug?: string;
-  /** 后端字段名是 conversation_thread_id；thread_id 只出现在创建响应的顶层。 */
-  conversation_thread_id?: string;
-};
+/** 运行任务条目；字段对齐后端 `AgentRunItem` 契约（状态是后端下发的枚举字符串）。 */
+export type AgentRun = AgentRunItem;
 
 /** 创建 run 的响应：字段在顶层，不套 `{ run }` 外壳。 */
-export type CreateRunResult = {
-  request_id: string;
-  status: string;
-  run_id: string;
-  thread_id: string;
-  message_id?: number;
-  queue_policy?: string;
-  queue_position?: number | null;
-  stream_url?: string;
-  request_events_url?: string | null;
-};
+export type CreateRunResult = AgentRunCreateResponse;
+
+/** 事件流的一帧；判别键是信封上的 `event`，因此按它收窄载荷。 */
+export type RunStreamEvent = RunEvent;
+
+/** `end` 事件的终态取值，与后端 `EndPayload.status` 同一份事实。 */
+export type RunEndStatus = EndRunEvent['payload']['status'];
 
 /** 一条工具调用；后端把结果嵌在同一条 AI 消息里（`tool_call_result`）。 */
 export type ChatToolCall = {
@@ -115,7 +129,8 @@ export type ThreadRequest = {
   source?: string;
   /** 这条请求对应的用户输入，队列条用它做展示文案。 */
   content?: string | null;
-  queue_policy?: string;
+  /** 排队策略；契约允许 null（未下发时）。 */
+  queue_policy?: string | null;
   /** 从 1 开始的排队位次；已派发时为 null。 */
   queue_position?: number | null;
   dispatched_run_id?: string | null;
@@ -123,18 +138,8 @@ export type ThreadRequest = {
   created_at?: string;
 };
 
-/** 线程队列状态；字段与后端 `queue` 对象一致。 */
-export type QueueState = {
-  status: string;
-  paused_reason: string | null;
-  blocking_run_id: string | null;
-  can_continue: boolean;
-};
-
-export type ThreadQueue = {
-  requests: ThreadRequest[];
-  queue: QueueState;
-};
+/** 线程队列状态；字段对齐后端 `AgentRequestQueueState` 契约。 */
+export type QueueState = AgentRequestQueueState;
 
 /** 对话线程；字段取自 `POST /api/chat/thread` 与 `GET /api/chat/threads` 的响应。 */
 export type ChatThread = {
@@ -150,43 +155,8 @@ export type ChatThread = {
   metadata?: Record<string, unknown> | null;
 };
 
-/** 搜索命中的一条消息片段。 */
-export type ThreadSearchSnippet = {
-  message_id?: number | null;
-  content: string;
-  created_at?: string | null;
-};
-
-/** 搜索命中的会话；搜索接口按消息内容匹配，因此带片段与命中数。 */
-export type ThreadSearchItem = ChatThread & {
-  thread_id: string;
-  matched_count: number;
-  message_id?: number | null;
-  latest_match_at?: string | null;
-  snippets: ThreadSearchSnippet[];
-};
-
-export type ThreadSearchResult = {
-  items: ThreadSearchItem[];
-  has_more: boolean;
-  limit: number;
-  offset: number;
-};
-
-/** `GET /api/chat/thread/{id}/state` 的响应；后端没有 response_model，这里只声明用到的字段。 */
-export type AgentStateResponse = {
-  agent_state?: {
-    token_usage?: Record<string, unknown> | null;
-  } | null;
-  interrupt?: unknown;
-};
-
-export type RunRequest = {
-  request_id: string;
-  thread_id?: string;
-  source?: string;
-  status?: string;
-};
+/** 搜索命中的一条会话；字段对齐后端 `ThreadSearchItem` 契约（片段与命中数由搜索接口下发）。 */
+export type ThreadSearchItem = ThreadSearchItemModel;
 
 /**
  * 生成物默认 fields 返回风格：解一层 `{ data, error }`。
@@ -257,25 +227,23 @@ export const agentRunApi = {
       }),
     ),
 
-  getRun: async (runId: string): Promise<{ run: AgentRun }> =>
-    unwrap<{ run: AgentRun }>(
+  getRun: async (runId: string): Promise<AgentRunResponse> =>
+    unwrap<AgentRunResponse>(
       await getAgentRunApiAgentRunsRunIdGet({ path: { run_id: runId } }),
     ),
 
   getThreadActiveRun: async (
     threadId: string,
-  ): Promise<{ run: AgentRun | null }> =>
-    unwrap<{ run: AgentRun | null }>(
+  ): Promise<AgentActiveRunResponse> =>
+    unwrap<AgentActiveRunResponse>(
       await getThreadActiveRunApiAgentThreadThreadIdActiveRunGet({
         path: { thread_id: threadId },
       }),
     ),
 
   /** 线程消息历史；进入已有线程时渲染，终态后重新拉取以对齐权威状态。 */
-  getAgentHistory: async (
-    threadId: string,
-  ): Promise<{ history: ChatMessage[] }> =>
-    unwrap<{ history: ChatMessage[] }>(
+  getAgentHistory: async (threadId: string): Promise<ThreadHistoryResponse> =>
+    unwrap<ThreadHistoryResponse>(
       await getThreadHistoryApiChatThreadThreadIdHistoryGet({
         path: { thread_id: threadId },
       }),
@@ -299,8 +267,8 @@ export const agentRunApi = {
    */
   getRunLangfuseLink: async (
     runId: string,
-  ): Promise<{ available?: boolean; url?: string | null }> =>
-    unwrap<{ available?: boolean; url?: string | null }>(
+  ): Promise<AgentRunLangfuseResponse> =>
+    unwrap<AgentRunLangfuseResponse>(
       await getAgentRunLangfuseLinkRouteApiAgentRunsRunIdLangfuseGet({
         path: { run_id: runId },
       }),
@@ -310,8 +278,8 @@ export const agentRunApi = {
   listThreadRequests: async (
     threadId: string,
     agentSlug: string,
-  ): Promise<ThreadQueue> =>
-    unwrap<ThreadQueue>(
+  ): Promise<AgentThreadRequestsResponse> =>
+    unwrap<AgentThreadRequestsResponse>(
       await listThreadRequestsApiAgentThreadThreadIdRequestsGet({
         path: { thread_id: threadId },
         query: { agent_slug: agentSlug },
@@ -320,14 +288,14 @@ export const agentRunApi = {
 
   /** 把普通排队请求提升为下一条执行的引导请求。 */
   steerRequest: async (requestId: string) =>
-    unwrap<unknown>(
+    unwrap<AgentRequestSteerResponse>(
       await steerRequestApiAgentRequestsRequestIdSteerPost({
         path: { request_id: requestId },
       }),
     ),
 
   cancelRequest: async (requestId: string) =>
-    unwrap<unknown>(
+    unwrap<AgentRequestCancelResponse>(
       await cancelRequestApiAgentRequestsRequestIdCancelPost({
         path: { request_id: requestId },
       }),
@@ -335,7 +303,7 @@ export const agentRunApi = {
 
   /** 手动继续被暂停的线程队列（failed/cancelled 之后）。 */
   continueThreadQueue: async (threadId: string, agentSlug: string) =>
-    unwrap<{ request_id?: string }>(
+    unwrap<AgentThreadContinueResponse>(
       await continueThreadRequestsApiAgentThreadThreadIdRequestsContinuePost({
         path: { thread_id: threadId },
         query: { agent_slug: agentSlug },
@@ -343,8 +311,8 @@ export const agentRunApi = {
     ),
 
   /** 单条请求的权威状态；用于判定 run 是否可被 steer。 */
-  getRequest: async (requestId: string): Promise<{ request: RunRequest }> =>
-    unwrap<{ request: RunRequest }>(
+  getRequest: async (requestId: string): Promise<AgentRequestResponse> =>
+    unwrap<AgentRequestResponse>(
       await getRequestApiAgentRequestsRequestIdGet({
         path: { request_id: requestId },
       }),
@@ -353,38 +321,90 @@ export const agentRunApi = {
   /**
    * 单条请求的事件流：排队位次变化、被派发成 run、或被取消/失败。
    * 端点不接受续传游标，断线后按请求当前状态重新判定即可。
+   *
+   * 帧由生成的 SSE 客户端解析，但这条流的载荷里**没有事件名**（事件名在 SSE 帧上），而消费方
+   * 按事件名分支，所以这里用生成的 `onSseEvent` 把帧名与载荷一并交出。生成客户端的重试关闭，
+   * 断线判定留给调用方。
    */
   streamRequestEvents: async (
     requestId: string,
     options: { signal?: AbortSignal } = {},
-  ): Promise<Response> =>
-    apiFetch(`/api/agent/requests/${encodeURIComponent(requestId)}/events`, {
-      method: 'GET',
-      signal: options.signal,
-    }),
+  ) => {
+    let frameName = 'message';
+    const result =
+      await streamRequestEventsRouteApiAgentRequestsRequestIdEventsGet({
+        path: { request_id: requestId },
+        sseMaxRetryAttempts: 0,
+        signal: options.signal,
+        onSseEvent: (event) => {
+          frameName = event.event ?? 'message';
+        },
+      });
+
+    // `onSseEvent` 在每条载荷 yield 之前触发，因此这里读到的是当前帧的事件名
+    return (async function* () {
+      for await (const data of result.stream) {
+        yield { event: frameName, data };
+      }
+    })();
+  },
 
   cancelRun: async (runId: string) =>
-    unwrap<unknown>(
+    unwrap<AgentRunResponse>(
       await cancelAgentRunApiAgentRunsRunIdCancelPost({
         path: { run_id: runId },
       }),
     ),
 
-  /** 打开 run 事件流；调用方负责通过 `signal` 关闭。 */
-  streamRunEvents: async (
+  /**
+   * 打开 run 事件流。
+   *
+   * 帧由生成的 SSE 客户端解析（事件载荷已进契约），但**重连与续传游标仍归本应用**：
+   * `sseMaxRetryAttempts: 0` 只关掉生成客户端的重试，失败时它回调 `onSseError` 后结束流，由
+   * 调用方在流结束后用 `getRun` 判定权威状态再决定重连或收尾，并持久化游标以支持跨会话续传。
+   * 游标经 `Last-Event-ID` 交回服务端（生成客户端的 `lastEventId` 只在进程内），新到的 `id:`
+   * 由 `onCursor` 通知调用方。
+   */
+  streamRunEvents: (
     runId: string,
     afterSeq = '0-0',
-    options: { signal?: AbortSignal; verbose?: boolean } = {},
-  ): Promise<Response> => {
-    const headers: Record<string, string> = {};
+    options: {
+      signal?: AbortSignal;
+      verbose?: boolean;
+      onCursor?: (seq: string) => void;
+    } = {},
+  ) => {
     const cursor = String(afterSeq || '0-0');
-    if (cursor && cursor !== '0-0') headers['Last-Event-ID'] = cursor;
-    const verbose = options.verbose ? 'true' : 'false';
+    // 生成客户端的 `id` 是模块级的「粘性」值：没有 `id:` 行的帧会回传上一帧的 id（心跳也会触发
+    // 一次回调），所以只在它变化时当游标上报——否则那几帧会被消费方误当作重复帧跳过。
+    let forwardedId: string | undefined;
 
-    return apiFetch(
-      `/api/agent/runs/${encodeURIComponent(runId)}/events?verbose=${verbose}`,
-      { method: 'GET', headers, signal: options.signal },
-    );
+    return streamRunEventsApiAgentRunsRunIdEventsGet({
+      path: { run_id: runId },
+      // 后端默认 `verbose=true`（完整载荷）；浏览器要的是紧凑载荷。
+      query: { verbose: options.verbose ?? false },
+      headers: cursor === '0-0' ? {} : { 'Last-Event-ID': cursor },
+      sseMaxRetryAttempts: 0,
+      signal: options.signal,
+      onSseEvent: (event) => {
+        if (event.id && event.id !== forwardedId) {
+          forwardedId = event.id;
+          options.onCursor?.(event.id);
+        }
+      },
+      onSseError: (error) => {
+        // 非 2xx 时生成客户端不抛出，而是回调这里并结束流，所以 401 的副作用必须落在这一层：
+        // 放到调用方 try/catch 或 `.catch` 都是死代码。
+        const status = Number.parseInt(
+          String((error as Error)?.message ?? '').split(' ')[2] ?? '',
+          10,
+        );
+        if (status === 401) {
+          setAccessToken(null);
+          window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
+        }
+      },
+    });
   },
 };
 
@@ -396,8 +416,8 @@ export const agentRunApi = {
  */
 export const chatThreadApi = {
   /** 线程当前的 agent state：`token_usage` 与可恢复的中断载荷都在这里。 */
-  getAgentState: async (threadId: string): Promise<AgentStateResponse> =>
-    unwrap<AgentStateResponse>(
+  getAgentState: async (threadId: string): Promise<ThreadStateResponse> =>
+    unwrap<ThreadStateResponse>(
       await getThreadStateApiChatThreadThreadIdStateGet({
         path: { thread_id: threadId },
       }),
@@ -411,7 +431,7 @@ export const chatThreadApi = {
       offset?: number;
     } & { signal?: AbortSignal } = {},
   ): Promise<ChatThread[]> =>
-    unwrap<ChatThread[]>(
+    unwrap<ThreadResponse[]>(
       await listThreadsApiChatThreadsGet({
         signal: payload.signal,
         query: {
@@ -431,8 +451,8 @@ export const chatThreadApi = {
     query: string;
     limit?: number;
     offset?: number;
-  }): Promise<ThreadSearchResult> =>
-    unwrap<ThreadSearchResult>(
+  }): Promise<ThreadSearchResponse> =>
+    unwrap<ThreadSearchResponse>(
       await searchThreadsApiChatThreadsSearchGet({
         query: {
           q: payload.query,
@@ -444,7 +464,7 @@ export const chatThreadApi = {
 
   /** 标记已查看该会话最新一次 run，清除侧边栏未读状态。 */
   markViewed: async (threadId: string): Promise<ChatThread> =>
-    unwrap<ChatThread>(
+    unwrap<ThreadResponse>(
       await markThreadViewedApiChatThreadThreadIdViewedPost({
         path: { thread_id: threadId },
       }),
@@ -459,7 +479,7 @@ export const chatThreadApi = {
       toolApprovalMode?: ToolApprovalMode | null;
     },
   ): Promise<ChatThread> =>
-    unwrap<ChatThread>(
+    unwrap<ThreadResponse>(
       await updateThreadApiChatThreadThreadIdPut({
         path: { thread_id: threadId },
         body: {
@@ -476,7 +496,7 @@ export const chatThreadApi = {
 
   /** 删除会话（后端软删，列表随之不再返回它）。 */
   deleteThread: async (threadId: string): Promise<void> => {
-    unwrap<unknown>(
+    unwrap<ThreadDeleteResponse>(
       await deleteThreadApiChatThreadThreadIdDelete({
         path: { thread_id: threadId },
       }),
@@ -492,7 +512,7 @@ export const chatThreadApi = {
     /** 项目 id；空串表示不使用项目，交给后端在发送时创建独立目录。 */
     projectId?: string;
   }): Promise<ChatThread> =>
-    unwrap<ChatThread>(
+    unwrap<ThreadResponse>(
       await createThreadApiChatThreadPost({
         body: {
           agent_id: payload.agentSlug,
@@ -511,7 +531,7 @@ export async function generateConversationTitle(input: {
   /** `meta.model_spec`。 */
   modelSpec: unknown;
 }): Promise<string> {
-  const response = unwrap<unknown>(
+  const response = unwrap<CallResponse>(
     await callApiChatCallPost({
       body: {
         query: buildConversationTitlePrompt(input.query),
@@ -519,7 +539,7 @@ export async function generateConversationTitle(input: {
       },
     }),
   );
-  // 后端没有 response_model，字段按不可信数据处理
+  // 契约声明了 CallResponse，但字段仍按不可信数据处理，防止后端破坏契约时把脏值写进标题
   const payload =
     typeof response === 'object' && response !== null && 'response' in response
       ? (response as { response?: unknown }).response

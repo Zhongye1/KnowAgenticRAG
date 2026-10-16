@@ -1,9 +1,10 @@
 /**
  * 个人空间端点。
  *
- * 只走契约生成的 SDK。**响应在契约里都没有声明模型**（200 是空 schema 或直接是二进制流），因此
- * 条目按不可信 wire 数据归一（`@/shared/lib/filesystem-entry`），预览载荷按 `@/shared/lib/file-preview`
- * 的形状产出。对话页面板与个人空间页面共用这一份，不再各写一份。
+ * 只走契约生成的 SDK，JSON 响应的类型直接复用生成物（目录树、写入、新建目录、上传、删除在契约里
+ * 都有模型），下载是二进制流。条目仍按不可信 wire 数据归一（`@/shared/lib/filesystem-entry`），
+ * 预览载荷按 `@/shared/lib/file-preview` 的形状产出。对话页面板与个人空间页面共用这一份，
+ * 不再各写一份。
  */
 import { unwrap } from '@/shared/api';
 import {
@@ -16,6 +17,13 @@ import {
   updateWorkspaceFileApiWorkspaceFilePut,
   uploadWorkspaceFilesRouteApiWorkspaceUploadPost,
 } from '@/shared/api/generated/sdk.gen';
+import type {
+  WorkspaceDeleteResponse,
+  WorkspaceDirectoryCreateResponse,
+  WorkspaceFileWriteResponse,
+  WorkspaceTreeResponse,
+  WorkspaceUploadResponse,
+} from '@/shared/api/generated/types.gen';
 import { parseDownloadFilename, saveBlobAsFile } from '@/shared/lib/files';
 import type { PreviewFile } from '@/shared/lib/files';
 import { toFileEntries, toFileEntry } from '@/shared/lib/files';
@@ -37,7 +45,7 @@ export async function listWorkspaceEntries(input: {
   includeUnboundProjectDirs?: boolean;
 }): Promise<FileEntry[]> {
   return toFileEntries(
-    unwrap<unknown>(
+    unwrap<WorkspaceTreeResponse>(
       await getWorkspaceTreeApiWorkspaceTreeGet({
         query: {
           path: input.path ?? '/',
@@ -53,7 +61,7 @@ export async function searchWorkspaceEntries(input: {
   query: string;
 }): Promise<FileEntry[]> {
   return toFileEntries(
-    unwrap<unknown>(
+    unwrap<WorkspaceTreeResponse>(
       await searchWorkspaceFilesRouteApiWorkspaceSearchGet({
         query: { query: input.query },
       }),
@@ -140,7 +148,7 @@ export async function saveWorkspaceFile(input: {
   path: string;
   content: string;
 }): Promise<FileEntry | null> {
-  const response = unwrap<unknown>(
+  const response = unwrap<WorkspaceFileWriteResponse>(
     await updateWorkspaceFileApiWorkspaceFilePut({
       body: { path: input.path, content: input.content },
     }),
@@ -158,7 +166,7 @@ export async function createWorkspaceDirectory(input: {
   parentPath: string;
   name: string;
 }): Promise<string> {
-  const response = unwrap<unknown>(
+  const response = unwrap<WorkspaceDirectoryCreateResponse>(
     await createWorkspaceDirectoryRouteApiWorkspaceDirectoryPost({
       body: { parent_path: input.parentPath, name: input.name },
     }),
@@ -175,7 +183,7 @@ export async function createWorkspaceDirectory(input: {
 export async function deleteWorkspaceEntry(input: {
   path: string;
 }): Promise<void> {
-  unwrap<unknown>(
+  unwrap<WorkspaceDeleteResponse>(
     await deleteWorkspaceFileRouteApiWorkspaceFileDelete({
       query: { path: input.path },
     }),
@@ -188,7 +196,7 @@ export async function uploadWorkspaceFiles(input: {
   files: File[];
 }): Promise<FileEntry[]> {
   return toFileEntries(
-    unwrap<unknown>(
+    unwrap<WorkspaceUploadResponse>(
       await uploadWorkspaceFilesRouteApiWorkspaceUploadPost({
         body: { parent_path: input.parentPath, files: input.files },
       }),

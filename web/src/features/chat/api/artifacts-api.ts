@@ -1,7 +1,8 @@
 /**
  * 交付物端点：下载与保存到个人空间。
  *
- * 响应模型后端未声明完整字段，`saved_path` 按不可信数据处理。
+ * 响应形状复用生成物：预览是 `ThreadArtifactPreviewResponse`，保存是
+ * `SaveThreadArtifactResponse`（含 `saved_path`）。
  */
 import { unwrap } from '@/shared/api';
 import {

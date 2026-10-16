@@ -72,10 +72,10 @@ export const FileSearchModal = ({
         onChange={(event) => setKeyword(event.target.value)}
       />
       {submitted && results.isFetching ? (
-        <p className="flex items-center gap-2 py-4 text-sm text-color-text-3">
+        <div className="flex items-center gap-2 py-4 text-sm text-color-text-3">
           <Spin aria-hidden className="size-4" />
           正在搜索…
-        </p>
+        </div>
       ) : null}
       {submitted && results.isError ? (
         <p role="alert" className="py-4 text-sm text-danger-6">

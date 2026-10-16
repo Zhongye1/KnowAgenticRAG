@@ -71,6 +71,41 @@ class AgentEnvResponse(BaseModel):
     updated_at: str | None = None
 
 
+class UserConfigResponse(BaseModel):
+    """用户级配置响应；字段对齐 `UserConfig.dump_config()` 的输出。"""
+
+    uid: str
+    enable_memory: bool
+    updated_at: str | None
+
+
+class UserImageUploadResponse(BaseModel):
+    """用户图片上传结果，`image_url` 与 `url` 内容一致。"""
+
+    success: bool
+    image_url: str
+    url: str
+
+
+class APIKeyDetailResponse(BaseModel):
+    """单个 API Key 的响应。"""
+
+    api_key: APIKeyResponse
+
+
+class APIKeyListResponse(BaseModel):
+    """API Key 分页列表响应；对齐 `APIKeyRepository.list_visible` 的返回。"""
+
+    api_keys: list[APIKeyResponse]
+    total: int
+
+
+class APIKeyDeleteResponse(BaseModel):
+    """API Key 删除结果。"""
+
+    success: bool
+
+
 async def get_logged_in_user(user: User | None = Depends(get_current_user)) -> User:
     if user is None:
         raise HTTPException(
@@ -81,7 +116,7 @@ async def get_logged_in_user(user: User | None = Depends(get_current_user)) -> U
     return user
 
 
-@user_router.get("/config", response_model=dict)
+@user_router.get("/config", response_model=UserConfigResponse, response_model_exclude_unset=True)
 async def get_user_config(
     current_user: User = Depends(get_logged_in_user),
     db: AsyncSession = Depends(get_db),
@@ -90,7 +125,7 @@ async def get_user_config(
     return user_config.dump_config()
 
 
-@user_router.put("/config", response_model=dict)
+@user_router.put("/config", response_model=UserConfigResponse, response_model_exclude_unset=True)
 async def update_user_config(
     data: UserConfigSchema,
     current_user: User = Depends(get_logged_in_user),
@@ -100,7 +135,7 @@ async def update_user_config(
     return user_config.dump_config()
 
 
-@user_router.post("/upload-image", response_model=dict)
+@user_router.post("/upload-image", response_model=UserImageUploadResponse, response_model_exclude_unset=True)
 async def upload_user_image(file: UploadFile = File(...), current_user: User = Depends(get_required_user)):
     try:
         image_url = await upload_image_to_minio(
@@ -154,7 +189,7 @@ async def get_accessible_api_key(repository: APIKeyRepository, api_key_id: int, 
     raise HTTPException(status_code=403, detail="无权操作此 API Key")
 
 
-@user_router.get("/apikey/", response_model=dict)
+@user_router.get("/apikey/", response_model=APIKeyListResponse, response_model_exclude_unset=True)
 async def list_api_keys(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -223,7 +258,7 @@ async def create_api_key(
     )
 
 
-@user_router.get("/apikey/{api_key_id}", response_model=dict)
+@user_router.get("/apikey/{api_key_id}", response_model=APIKeyDetailResponse, response_model_exclude_unset=True)
 async def get_api_key(
     api_key_id: int,
     current_user: User = Depends(get_required_user),
@@ -233,7 +268,7 @@ async def get_api_key(
     return {"api_key": api_key.to_dict()}
 
 
-@user_router.put("/apikey/{api_key_id}", response_model=dict)
+@user_router.put("/apikey/{api_key_id}", response_model=APIKeyDetailResponse, response_model_exclude_unset=True)
 async def update_api_key(
     api_key_id: int,
     data: APIKeyUpdate,
@@ -256,7 +291,7 @@ async def update_api_key(
     return {"api_key": api_key.to_dict()}
 
 
-@user_router.delete("/apikey/{api_key_id}", response_model=dict)
+@user_router.delete("/apikey/{api_key_id}", response_model=APIKeyDeleteResponse, response_model_exclude_unset=True)
 async def delete_api_key(
     api_key_id: int,
     current_user: User = Depends(get_required_user),

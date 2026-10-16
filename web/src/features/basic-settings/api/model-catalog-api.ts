@@ -2,10 +2,12 @@
  * 基本设置用到的模型清单。
  *
  * 与 `features/chat` 同做法：在自己的 api 段调契约生成物的 `/models/v2`，按 `model_type`
- * 分别取 chat / embedding / rerank。响应没有声明模型，字段按不可信数据处理。
+ * 分别取 chat / embedding / rerank。响应契约已声明为 `V2ModelsResponse`，`data` 按供应商
+ * 分组；归一仍把内容当不可信数据处理（缺 `spec`、重复 key 等）。
  */
 import { unwrap } from '@/shared/api';
 import { getV2ModelsApiSystemModelProvidersModelsV2Get } from '@/shared/api/generated/sdk.gen';
+import type { V2ModelsResponse } from '@/shared/api/generated/types.gen';
 
 /** 三类模型；与后端 `model_cache` 的 `model_type` 同集。 */
 export type ModelType = 'chat' | 'embedding' | 'rerank';
@@ -79,7 +81,7 @@ export function normalizeCatalog(raw: unknown): CatalogGroup[] {
 export async function listCatalogModels(
   modelType: ModelType,
 ): Promise<CatalogGroup[]> {
-  const response = unwrap<{ data?: unknown }>(
+  const response = unwrap<V2ModelsResponse>(
     await getV2ModelsApiSystemModelProvidersModelsV2Get({
       query: { model_type: modelType },
     }),

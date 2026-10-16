@@ -42,6 +42,43 @@ export type ApiKeyCreateResponse = {
 };
 
 /**
+ * APIKeyDeleteResponse
+ *
+ * API Key 删除结果。
+ */
+export type ApiKeyDeleteResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+};
+
+/**
+ * APIKeyDetailResponse
+ *
+ * 单个 API Key 的响应。
+ */
+export type ApiKeyDetailResponse = {
+  api_key: ApiKeyResponse;
+};
+
+/**
+ * APIKeyListResponse
+ *
+ * API Key 分页列表响应；对齐 `APIKeyRepository.list_visible` 的返回。
+ */
+export type ApiKeyListResponse = {
+  /**
+   * Api Keys
+   */
+  api_keys: Array<ApiKeyResponse>;
+  /**
+   * Total
+   */
+  total: number;
+};
+
+/**
  * APIKeyResponse
  */
 export type ApiKeyResponse = {
@@ -106,6 +143,54 @@ export type ApiKeyUpdate = {
 };
 
 /**
+ * AccessibleDatabaseItem
+ *
+ * 可访问知识库摘要（智能体配置用）。
+ */
+export type AccessibleDatabaseItem = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Kb Type
+   */
+  kb_type: string;
+  /**
+   * Supports Documents
+   */
+  supports_documents: boolean;
+};
+
+/**
+ * AccessibleDatabasesResponse
+ *
+ * 可访问知识库列表响应；失败兜底分支只多一个 `message`。
+ */
+export type AccessibleDatabasesResponse = {
+  /**
+   * Databases
+   */
+  databases: Array<AccessibleDatabaseItem>;
+  /**
+   * Message
+   */
+  message?: string | null;
+};
+
+/**
  * AddUploadedDocumentsRequest
  */
 export type AddUploadedDocumentsRequest = {
@@ -119,6 +204,77 @@ export type AddUploadedDocumentsRequest = {
   params?: {
     [key: string]: unknown;
   } | null;
+};
+
+/**
+ * AddUploadedDocumentsResponse
+ *
+ * 同步添加已上传文档的结果。
+ */
+export type AddUploadedDocumentsResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Items
+   */
+  items: Array<AddedDocumentItem>;
+  /**
+   * Failed Items
+   */
+  failed_items: Array<FailedDocumentItem>;
+  /**
+   * Added
+   */
+  added: number;
+  /**
+   * Failed
+   */
+  failed: number;
+};
+
+/**
+ * AddedDocumentItem
+ *
+ * 已添加的文档记录。
+ */
+export type AddedDocumentItem = {
+  /**
+   * Index
+   */
+  index: number;
+  /**
+   * Item
+   */
+  item: string;
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Status
+   */
+  status: string | null;
+  /**
+   * File Meta
+   */
+  file_meta?: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
+ * AgentActiveRunResponse
+ *
+ * 线程当前待关注运行响应；线程没有活跃运行时 `run` 为 null。
+ */
+export type AgentActiveRunResponse = {
+  run: AgentRunItem | null;
 };
 
 /**
@@ -161,6 +317,113 @@ export type AgentAnalytics = {
   agent_names?: {
     [key: string]: string;
   };
+};
+
+/**
+ * AgentBackendItem
+ *
+ * 智能体后端条目；字段对齐 `BaseAgent.get_info()` 与 `_backend_info()` 的输出。
+ *
+ * `get_info()` 始终返回 `configurable_items`（列表请求时为空 dict），`_backend_info()`
+ * 再补上 `type` 并把 `id` 改名为 `backend_id`，因此这些键总是出现。
+ */
+export type AgentBackendItem = {
+  /**
+   * Backend Id
+   */
+  backend_id: string;
+  /**
+   * Type
+   */
+  type: 'agent_backend';
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Metadata
+   */
+  metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Configurable Items
+   */
+  configurable_items: {
+    [key: string]: unknown;
+  };
+  /**
+   * Capabilities
+   */
+  capabilities: Array<string>;
+};
+
+/**
+ * AgentBackendListResponse
+ *
+ * 智能体后端列表响应。
+ */
+export type AgentBackendListResponse = {
+  /**
+   * Backends
+   */
+  backends: Array<AgentBackendItem>;
+};
+
+/**
+ * AgentCallChoice
+ *
+ * OpenAI-compatible choices 条目。
+ */
+export type AgentCallChoice = {
+  /**
+   * Index
+   */
+  index: number;
+  /**
+   * Messages
+   */
+  messages: Array<AgentCallChoiceMessage>;
+  /**
+   * Finish Reason
+   */
+  finish_reason: string | null;
+};
+
+/**
+ * AgentCallChoiceMessage
+ *
+ * OpenAI choices 中的消息。
+ */
+export type AgentCallChoiceMessage = {
+  /**
+   * Role
+   */
+  role: string;
+  /**
+   * Content
+   */
+  content: string;
+};
+
+/**
+ * AgentCallError
+ *
+ * 运行失败的分类与消息。
+ */
+export type AgentCallError = {
+  /**
+   * Type
+   */
+  type: string | null;
+  /**
+   * Message
+   */
+  message: string | null;
 };
 
 /**
@@ -236,6 +499,69 @@ export type AgentCallRunCreate = {
 };
 
 /**
+ * AgentCallRunResponse
+ *
+ * Agent Call 响应。
+ *
+ * 同步/异步的 agent-call 结果回 `_build_agent_call_response`（含 choices/usage），
+ * 异步未创建 run（无 run_id）或排队被拒时直接回 `submit_run_command` 的入队结果
+ * （含排队字段，无 choices/usage）。两种形状共用本模型，路由用
+ * `response_model_exclude_unset=True` 保持逐键一致。
+ */
+export type AgentCallRunResponse = {
+  /**
+   * Run Id
+   */
+  run_id: string | null;
+  /**
+   * Thread Id
+   */
+  thread_id: string | null;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Request Id
+   */
+  request_id: string | null;
+  /**
+   * Agent Slug
+   */
+  agent_slug?: string | null;
+  /**
+   * Output
+   */
+  output?: string | null;
+  /**
+   * Choices
+   */
+  choices?: Array<AgentCallChoice> | null;
+  usage?: AgentCallUsage | null;
+  error?: AgentCallError | null;
+  /**
+   * Queue Policy
+   */
+  queue_policy?: string | null;
+  /**
+   * Queue Position
+   */
+  queue_position?: number | null;
+  /**
+   * Message Id
+   */
+  message_id?: number | null;
+  /**
+   * Stream Url
+   */
+  stream_url?: string | null;
+  /**
+   * Request Events Url
+   */
+  request_events_url?: string | null;
+};
+
+/**
  * AgentCallRunResultRequest
  *
  * Agent Call 结果读取请求。
@@ -253,6 +579,26 @@ export type AgentCallRunResultRequest = {
    * 可选，传入时校验 run 归属
    */
   agent_slug?: string | null;
+};
+
+/**
+ * AgentCallUsage
+ *
+ * OpenAI-compatible token 用量。
+ */
+export type AgentCallUsage = {
+  /**
+   * Prompt Tokens
+   */
+  prompt_tokens: number;
+  /**
+   * Completion Tokens
+   */
+  completion_tokens: number;
+  /**
+   * Total Tokens
+   */
+  total_tokens: number;
 };
 
 /**
@@ -303,6 +649,18 @@ export type AgentCreate = {
    * Set Default
    */
   set_default?: boolean;
+};
+
+/**
+ * AgentDeleteResponse
+ *
+ * 智能体删除结果。
+ */
+export type AgentDeleteResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
 };
 
 /**
@@ -396,6 +754,83 @@ export type AgentEvalRunCreate = {
 };
 
 /**
+ * AgentEvalRunError
+ *
+ * 运行失败的分类与消息。
+ */
+export type AgentEvalRunError = {
+  /**
+   * Type
+   */
+  type: string | null;
+  /**
+   * Message
+   */
+  message: string | null;
+};
+
+/**
+ * AgentEvalRunResponse
+ *
+ * Agent Eval 结果。
+ *
+ * Run 不存在时载荷只有 `status/agent_run_id/output/error`；带上
+ * `include_trajectory_summary` 时额外附 `trajectory_summary`。路由用
+ * `response_model_exclude_unset=True` 保持逐键一致。
+ */
+export type AgentEvalRunResponse = {
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Output
+   */
+  output: string;
+  /**
+   * Agent Run Id
+   */
+  agent_run_id: string;
+  /**
+   * Agent Slug
+   */
+  agent_slug?: string | null;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Conversation Id
+   */
+  conversation_id?: number | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Final Message Id
+   */
+  final_message_id?: number | null;
+  /**
+   * Langfuse Trace Id
+   */
+  langfuse_trace_id?: string | null;
+  /**
+   * Token Usage
+   */
+  token_usage?: {
+    [key: string]: unknown;
+  };
+  error?: AgentEvalRunError | null;
+  /**
+   * Trajectory Summary
+   */
+  trajectory_summary?: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
  * AgentEvaluationContext
  *
  * 评估运行关联的 Langfuse 数据集上下文。
@@ -419,6 +854,293 @@ export type AgentEvaluationContext = {
    * Langfuse experiment/run 名称
    */
   experiment_name?: string | null;
+};
+
+/**
+ * AgentItem
+ *
+ * 智能体条目；字段对齐 `AgentRepository.serialize` 与 `Agent.to_dict()` 的实际输出。
+ *
+ * `configurable_items` 只在请求了可配置项时才下发（详情、创建、更新、置默认），
+ * 列表不带它，所以路由用 `response_model_exclude_unset=True` 保持响应体逐键不变。
+ */
+export type AgentItem = {
+  /**
+   * Id
+   */
+  id: number;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Agent Id
+   */
+  agent_id: string;
+  /**
+   * Backend Id
+   */
+  backend_id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string | null;
+  /**
+   * Icon
+   */
+  icon: string | null;
+  /**
+   * Pics
+   */
+  pics: Array<string>;
+  /**
+   * Config Json
+   */
+  config_json: {
+    [key: string]: unknown;
+  };
+  /**
+   * Share Config
+   */
+  share_config: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Is Default
+   */
+  is_default: boolean;
+  /**
+   * Is Subagent
+   */
+  is_subagent: boolean;
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Updated By
+   */
+  updated_by: string | null;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+  /**
+   * Can Manage
+   */
+  can_manage: boolean;
+  /**
+   * Effective Permission
+   */
+  effective_permission: string;
+  /**
+   * Is Builtin
+   */
+  is_builtin: boolean;
+  /**
+   * Permission Locked
+   */
+  permission_locked: boolean;
+  /**
+   * Capabilities
+   */
+  capabilities: Array<unknown>;
+  /**
+   * Metadata
+   */
+  metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Configurable Items
+   */
+  configurable_items?: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * AgentItemResponse
+ *
+ * 单个智能体的响应。
+ */
+export type AgentItemResponse = {
+  agent: AgentItem;
+};
+
+/**
+ * AgentListResponse
+ *
+ * 智能体列表响应。
+ */
+export type AgentListResponse = {
+  /**
+   * Agents
+   */
+  agents: Array<AgentItem>;
+};
+
+/**
+ * AgentRequestCancelResponse
+ *
+ * 排队请求取消结果。
+ */
+export type AgentRequestCancelResponse = {
+  /**
+   * Request Id
+   */
+  request_id: string;
+  /**
+   * Status
+   */
+  status: string;
+};
+
+/**
+ * AgentRequestItem
+ *
+ * 请求条目；字段对齐 `AgentRunRequest.to_dict()`。
+ */
+export type AgentRequestItem = {
+  /**
+   * Request Id
+   */
+  request_id: string;
+  /**
+   * Uid
+   */
+  uid: string;
+  /**
+   * Agent Slug
+   */
+  agent_slug: string;
+  /**
+   * Thread Id
+   */
+  thread_id: string;
+  /**
+   * Source
+   */
+  source: string;
+  /**
+   * Channel
+   */
+  channel: string;
+  /**
+   * External Id
+   */
+  external_id: string | null;
+  /**
+   * Origin Metadata
+   */
+  origin_metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Queue Policy
+   */
+  queue_policy: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Input Message Id
+   */
+  input_message_id: number;
+  /**
+   * Dispatched Run Id
+   */
+  dispatched_run_id: string | null;
+  /**
+   * Error Message
+   */
+  error_message: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Dispatched At
+   */
+  dispatched_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string;
+};
+
+/**
+ * AgentRequestQueueState
+ *
+ * 线程队列状态；字段对齐 `_get_queue_state()` 返回的 metadata。
+ */
+export type AgentRequestQueueState = {
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Paused Reason
+   */
+  paused_reason: string | null;
+  /**
+   * Blocking Run Id
+   */
+  blocking_run_id: string | null;
+  /**
+   * Can Continue
+   */
+  can_continue: boolean;
+};
+
+/**
+ * AgentRequestResponse
+ *
+ * 单个请求响应。
+ */
+export type AgentRequestResponse = {
+  request: AgentRequestItem;
+};
+
+/**
+ * AgentRequestSteerResponse
+ *
+ * 排队请求升级为引导的结果。
+ */
+export type AgentRequestSteerResponse = {
+  /**
+   * Request Id
+   */
+  request_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Queue Policy
+   */
+  queue_policy: string;
+  /**
+   * Queue Position
+   */
+  queue_position: number | null;
+  /**
+   * Request Events Url
+   */
+  request_events_url: string;
 };
 
 /**
@@ -487,6 +1209,406 @@ export type AgentRunCreate = {
    * 排队策略：enqueue（默认排队）、reject（运行中拒绝）或 steer（优先接替）
    */
   queue_policy?: string;
+};
+
+/**
+ * AgentRunCreateResponse
+ *
+ * Chat / Resume 提交结果。
+ *
+ * Resume 路径回 `_build_run_response()`（只有运行基本字段），普通 Chat 回
+ * `submit_run_command()` 的入队结果（多出排队字段，且 run_id/stream_url 可能为 null）。
+ * 两种形状共用本模型，路由用 `response_model_exclude_unset=True` 保持逐键一致。
+ */
+export type AgentRunCreateResponse = {
+  /**
+   * Run Id
+   */
+  run_id: string | null;
+  /**
+   * Thread Id
+   */
+  thread_id: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Request Id
+   */
+  request_id: string;
+  /**
+   * Stream Url
+   */
+  stream_url: string | null;
+  /**
+   * Queue Policy
+   */
+  queue_policy?: string | null;
+  /**
+   * Queue Position
+   */
+  queue_position?: number | null;
+  /**
+   * Message Id
+   */
+  message_id?: number | null;
+  /**
+   * Request Events Url
+   */
+  request_events_url?: string | null;
+};
+
+/**
+ * AgentRunItem
+ *
+ * 运行任务条目；字段对齐 `AgentRun.to_dict()`。
+ */
+export type AgentRunItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Conversation Thread Id
+   */
+  conversation_thread_id: string;
+  /**
+   * Runtime Scope Id
+   */
+  runtime_scope_id: string;
+  /**
+   * Runtime Cleanup Pending
+   */
+  runtime_cleanup_pending: boolean;
+  /**
+   * Agent Slug
+   */
+  agent_slug: string;
+  /**
+   * Uid
+   */
+  uid: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Request Id
+   */
+  request_id: string;
+  /**
+   * Source
+   */
+  source: string;
+  /**
+   * Channel
+   */
+  channel: string;
+  /**
+   * External Id
+   */
+  external_id: string | null;
+  /**
+   * Origin Metadata
+   */
+  origin_metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Conversation Id
+   */
+  conversation_id: number | null;
+  /**
+   * Created By Run Id
+   */
+  created_by_run_id: string | null;
+  /**
+   * Subagent Thread Relation Id
+   */
+  subagent_thread_relation_id: number | null;
+  /**
+   * Run Type
+   */
+  run_type: string;
+  /**
+   * Input Message Id
+   */
+  input_message_id: number | null;
+  /**
+   * Output Message Id
+   */
+  output_message_id: number | null;
+  /**
+   * Last Event Id
+   */
+  last_event_id: string | null;
+  /**
+   * Input Payload
+   */
+  input_payload: {
+    [key: string]: unknown;
+  };
+  /**
+   * Token Usage
+   */
+  token_usage: {
+    [key: string]: unknown;
+  };
+  /**
+   * Error Type
+   */
+  error_type: string | null;
+  /**
+   * Error Message
+   */
+  error_message: string | null;
+  /**
+   * Manifest
+   */
+  manifest: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Manifest Fingerprint
+   */
+  manifest_fingerprint: string | null;
+  /**
+   * Started At
+   */
+  started_at: string | null;
+  /**
+   * Finished At
+   */
+  finished_at: string | null;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+};
+
+/**
+ * AgentRunLangfuseResponse
+ *
+ * Langfuse 跳转地址。
+ *
+ * 可用时回 `url`，不可用时只回 `reason`，因此路由用 `response_model_exclude_unset=True`。
+ */
+export type AgentRunLangfuseResponse = {
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Available
+   */
+  available: boolean;
+  /**
+   * Url
+   */
+  url?: string | null;
+  /**
+   * Reason
+   */
+  reason?: string | null;
+};
+
+/**
+ * AgentRunResponse
+ *
+ * 单个运行任务响应。
+ */
+export type AgentRunResponse = {
+  run: AgentRunItem;
+};
+
+/**
+ * AgentRunResultError
+ *
+ * 运行失败的分类与消息。
+ */
+export type AgentRunResultError = {
+  /**
+   * Type
+   */
+  type: string | null;
+  /**
+   * Message
+   */
+  message: string | null;
+};
+
+/**
+ * AgentRunResultResponse
+ *
+ * 运行最终结果。
+ *
+ * Run 不存在时载荷只有 `status/output/agent_run_id/error`，正常结果也不会带 `error`，
+ * 因此路由用 `response_model_exclude_unset=True`。
+ */
+export type AgentRunResultResponse = {
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Output
+   */
+  output: string;
+  /**
+   * Agent Run Id
+   */
+  agent_run_id: string;
+  /**
+   * Agent Slug
+   */
+  agent_slug?: string | null;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Conversation Id
+   */
+  conversation_id?: number | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Final Message Id
+   */
+  final_message_id?: number | null;
+  /**
+   * Langfuse Trace Id
+   */
+  langfuse_trace_id?: string | null;
+  /**
+   * Token Usage
+   */
+  token_usage?: {
+    [key: string]: unknown;
+  };
+  error?: AgentRunResultError | null;
+};
+
+/**
+ * AgentThreadContinueResponse
+ *
+ * 手动继续队列的派发结果。
+ */
+export type AgentThreadContinueResponse = {
+  /**
+   * Status
+   */
+  status: 'dispatched';
+  /**
+   * Request Id
+   */
+  request_id: string;
+  /**
+   * Run Id
+   */
+  run_id: string;
+};
+
+/**
+ * AgentThreadRequestItem
+ *
+ * 队列请求条目：请求投影再加上消息内容与 FIFO 位置（`get_thread_queue_snapshot`）。
+ */
+export type AgentThreadRequestItem = {
+  /**
+   * Request Id
+   */
+  request_id: string;
+  /**
+   * Uid
+   */
+  uid: string;
+  /**
+   * Agent Slug
+   */
+  agent_slug: string;
+  /**
+   * Thread Id
+   */
+  thread_id: string;
+  /**
+   * Source
+   */
+  source: string;
+  /**
+   * Channel
+   */
+  channel: string;
+  /**
+   * External Id
+   */
+  external_id: string | null;
+  /**
+   * Origin Metadata
+   */
+  origin_metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Queue Policy
+   */
+  queue_policy: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Input Message Id
+   */
+  input_message_id: number;
+  /**
+   * Dispatched Run Id
+   */
+  dispatched_run_id: string | null;
+  /**
+   * Error Message
+   */
+  error_message: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Dispatched At
+   */
+  dispatched_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string;
+  /**
+   * Content
+   */
+  content: string;
+  /**
+   * Queue Position
+   */
+  queue_position: number;
+};
+
+/**
+ * AgentThreadRequestsResponse
+ *
+ * 线程队列快照响应。
+ */
+export type AgentThreadRequestsResponse = {
+  /**
+   * Requests
+   */
+  requests: Array<AgentThreadRequestItem>;
+  queue: AgentRequestQueueState;
 };
 
 /**
@@ -600,6 +1722,71 @@ export type AttachmentResponse = {
    * Request Id
    */
   request_id?: string | null;
+};
+
+/**
+ * AvatarUploadResponse
+ *
+ * 用户头像上传结果。
+ */
+export type AvatarUploadResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Avatar Url
+   */
+  avatar_url: string;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * BasicStatsResponse
+ *
+ * Dashboard 基础统计响应。
+ */
+export type BasicStatsResponse = {
+  /**
+   * Total Conversations
+   */
+  total_conversations: number;
+  /**
+   * Active Conversations
+   */
+  active_conversations: number;
+  /**
+   * Total Messages
+   */
+  total_messages: number;
+  /**
+   * Total Users
+   */
+  total_users: number;
+  feedback_stats: FeedbackSatisfactionStats;
+};
+
+/**
+ * BatchDeleteDocumentsResponse
+ *
+ * 批量删除结果；全部成功时不下发 `failed_items`。
+ */
+export type BatchDeleteDocumentsResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Deleted Count
+   */
+  deleted_count: number;
+  /**
+   * Failed Items
+   */
+  failed_items?: Array<FailedDeleteItem> | null;
 };
 
 /**
@@ -1109,6 +2296,62 @@ export type CliAuthTokenResponse = {
 };
 
 /**
+ * CallResponse
+ *
+ * `POST /call` 的简单问答结果。
+ */
+export type CallResponse = {
+  /**
+   * Response
+   */
+  response: string;
+  /**
+   * Request Id
+   */
+  request_id: string;
+};
+
+/**
+ * ChannelAgentState
+ *
+ * `get_agent_state_view` 的返回结构；仅 `agent_state` 恒有。
+ */
+export type ChannelAgentState = {
+  /**
+   * Agent State
+   */
+  agent_state: {
+    [key: string]: unknown;
+  };
+  /**
+   * Interrupt
+   */
+  interrupt?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Parent Thread Id
+   */
+  parent_thread_id?: string | null;
+  /**
+   * Subagent Thread
+   */
+  subagent_thread?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Subagent Run
+   */
+  subagent_run?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Messages
+   */
+  messages?: Array<unknown> | null;
+};
+
+/**
  * ChannelMessageRequest
  *
  * Channel 消息信封，承载来源账号、线程与幂等标识。
@@ -1170,6 +2413,96 @@ export type ChannelMessageRequest = {
 };
 
 /**
+ * ChannelMessageResponse
+ *
+ * Channel 消息响应。
+ *
+ * 分三种形状：`/state` 命令回 state，`/approve` 命令回 resume run 摘要，
+ * 普通消息回 `submit_run_command` 的入队结果（`kind=run`，附 channel）。
+ * 路由用 `response_model_exclude_unset=True` 保持逐键一致。
+ */
+export type ChannelMessageResponse = {
+  /**
+   * Kind
+   */
+  kind: string;
+  /**
+   * Channel
+   */
+  channel?: string | null;
+  /**
+   * Command
+   */
+  command?: string | null;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  state?: ChannelAgentState | null;
+  run?: ChannelRunBrief | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Status
+   */
+  status?: string | null;
+  /**
+   * Queue Policy
+   */
+  queue_policy?: string | null;
+  /**
+   * Queue Position
+   */
+  queue_position?: number | null;
+  /**
+   * Message Id
+   */
+  message_id?: number | null;
+  /**
+   * Run Id
+   */
+  run_id?: string | null;
+  /**
+   * Stream Url
+   */
+  stream_url?: string | null;
+  /**
+   * Request Events Url
+   */
+  request_events_url?: string | null;
+};
+
+/**
+ * ChannelRunBrief
+ *
+ * Channel 审批创建的 resume run 摘要；字段对齐 `_build_run_response`。
+ */
+export type ChannelRunBrief = {
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Request Id
+   */
+  request_id: string;
+  /**
+   * Stream Url
+   */
+  stream_url: string;
+};
+
+/**
  * ChannelTextMessage
  *
  * Channel 普通文本消息体。
@@ -1188,6 +2521,115 @@ export type ChannelTextMessage = {
 };
 
 /**
+ * ChunkPresetItem
+ *
+ * 分块预设选项。
+ */
+export type ChunkPresetItem = {
+  /**
+   * Value
+   */
+  value: string;
+  /**
+   * Label
+   */
+  label: string;
+  /**
+   * Description
+   */
+  description: string;
+};
+
+/**
+ * ChunkPresetsResponse
+ *
+ * 分块策略列表。
+ */
+export type ChunkPresetsResponse = {
+  /**
+   * Chunk Presets
+   */
+  chunk_presets: Array<ChunkPresetItem>;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * ConfigOptionItem
+ *
+ * 通用配置项的表单定义与值。
+ */
+export type ConfigOptionItem = {
+  /**
+   * Key
+   */
+  key: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Params
+   */
+  params: {
+    [key: string]: unknown;
+  };
+  /**
+   * Value
+   */
+  value: {
+    [key: string]: unknown;
+  };
+  /**
+   * Sensitive Configured
+   */
+  sensitive_configured: {
+    [key: string]: boolean;
+  };
+  /**
+   * Sensitive State
+   */
+  sensitive_state: {
+    [key: string]: ConfigOptionSensitiveStateItem;
+  };
+};
+
+/**
+ * ConfigOptionResponse
+ *
+ * 单个通用配置项保存结果。
+ */
+export type ConfigOptionResponse = {
+  option: ConfigOptionItem;
+};
+
+/**
+ * ConfigOptionSensitiveStateItem
+ *
+ * 敏感配置字段的来源与脱敏预览。
+ */
+export type ConfigOptionSensitiveStateItem = {
+  /**
+   * Source
+   */
+  source: string;
+  /**
+   * Configured
+   */
+  configured: boolean;
+  /**
+   * Preview
+   */
+  preview: string | null;
+};
+
+/**
  * ConfigOptionValuePayload
  *
  * 管理员可更新的通用配置值。
@@ -1199,6 +2641,18 @@ export type ConfigOptionValuePayload = {
   value: {
     [key: string]: unknown;
   };
+};
+
+/**
+ * ConfigOptionsResponse
+ *
+ * 通用配置项列表。
+ */
+export type ConfigOptionsResponse = {
+  /**
+   * Options
+   */
+  options: Array<ConfigOptionItem>;
 };
 
 /**
@@ -1552,6 +3006,22 @@ export type DepartmentCreate = {
 };
 
 /**
+ * DepartmentDeleteResponse
+ *
+ * 删除部门结果。
+ */
+export type DepartmentDeleteResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
  * DepartmentResponse
  *
  * 部门响应
@@ -1596,6 +3066,1184 @@ export type DepartmentUpdate = {
 };
 
 /**
+ * DiscoveryCapabilities
+ *
+ * 能力发现的能力分组。
+ */
+export type DiscoveryCapabilities = {
+  features: DiscoveryFeatureFlags;
+  cli: DiscoveryCliCapabilities;
+};
+
+/**
+ * DiscoveryCliCapabilities
+ *
+ * CLI 客户端可用的能力声明。
+ */
+export type DiscoveryCliCapabilities = {
+  /**
+   * Min Cli Version
+   */
+  min_cli_version: string;
+  /**
+   * Browser Login
+   */
+  browser_login: boolean;
+  /**
+   * Api Key Auth
+   */
+  api_key_auth: boolean;
+  /**
+   * Remote Config
+   */
+  remote_config: boolean;
+  /**
+   * Kb Upload
+   */
+  kb_upload: boolean;
+  /**
+   * Kb List
+   */
+  kb_list: boolean;
+  /**
+   * Kb Files
+   */
+  kb_files: boolean;
+  /**
+   * Kb Query
+   */
+  kb_query: boolean;
+  /**
+   * Kb Open
+   */
+  kb_open: boolean;
+  /**
+   * Kb Find
+   */
+  kb_find: boolean;
+};
+
+/**
+ * DiscoveryEndpoints
+ *
+ * 能力发现暴露的关键端点。
+ */
+export type DiscoveryEndpoints = {
+  /**
+   * Health
+   */
+  health: string;
+  /**
+   * Readiness
+   */
+  readiness: string;
+  /**
+   * Auth Me
+   */
+  auth_me: string;
+  /**
+   * Cli Auth Sessions
+   */
+  cli_auth_sessions: string;
+  /**
+   * Cli Auth Authorize
+   */
+  cli_auth_authorize: string;
+};
+
+/**
+ * DiscoveryFeatureFlags
+ *
+ * 能力发现中的功能开关。
+ */
+export type DiscoveryFeatureFlags = {
+  /**
+   * Knowledge
+   */
+  knowledge: boolean;
+};
+
+/**
+ * DiscoveryResponse
+ *
+ * 系统能力发现响应（公开接口）。
+ */
+export type DiscoveryResponse = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Version
+   */
+  version: string;
+  /**
+   * Api Prefix
+   */
+  api_prefix: string;
+  capabilities: DiscoveryCapabilities;
+  endpoints: DiscoveryEndpoints;
+};
+
+/**
+ * DocumentBasicResponse
+ *
+ * 文档基本信息；读取失败兜底分支只回 message/status。
+ */
+export type DocumentBasicResponse = {
+  meta?: FileMetaItem | null;
+  /**
+   * Message
+   */
+  message?: string | null;
+  /**
+   * Status
+   */
+  status?: string | null;
+};
+
+/**
+ * DocumentContentLineItem
+ *
+ * 文档内容行；`/content` 已剔除 `ent_ids`/`extraction_result` 等内部图谱字段。
+ */
+export type DocumentContentLineItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Content
+   */
+  content: string;
+  /**
+   * Chunk Order Index
+   */
+  chunk_order_index: number | null;
+  /**
+   * Start Char Pos
+   */
+  start_char_pos: number | null;
+  /**
+   * End Char Pos
+   */
+  end_char_pos: number | null;
+  /**
+   * Start Token Pos
+   */
+  start_token_pos: number | null;
+  /**
+   * End Token Pos
+   */
+  end_token_pos: number | null;
+  /**
+   * Graph Indexed
+   */
+  graph_indexed: boolean | null;
+  /**
+   * Tags
+   */
+  tags: unknown;
+};
+
+/**
+ * DocumentContentResponse
+ *
+ * 文档内容（chunks 与可选 markdown）；读取失败兜底分支只回 message/status。
+ */
+export type DocumentContentResponse = {
+  /**
+   * Lines
+   */
+  lines?: Array<DocumentContentLineItem> | null;
+  /**
+   * Content
+   */
+  content?: string | null;
+  /**
+   * Message
+   */
+  message?: string | null;
+  /**
+   * Status
+   */
+  status?: string | null;
+};
+
+/**
+ * DocumentExistsResponse
+ *
+ * 文档存在性检查结果。
+ */
+export type DocumentExistsResponse = {
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Exists
+   */
+  exists: boolean;
+};
+
+/**
+ * DocumentInfoResponse
+ *
+ * 文档完整信息；读取失败兜底分支只回 message/status。
+ */
+export type DocumentInfoResponse = {
+  meta?: FileMetaItem | null;
+  /**
+   * Lines
+   */
+  lines?: Array<DocumentLineItem> | null;
+  /**
+   * Content
+   */
+  content?: string | null;
+  /**
+   * Message
+   */
+  message?: string | null;
+  /**
+   * Status
+   */
+  status?: string | null;
+};
+
+/**
+ * DocumentLineItem
+ *
+ * 文档 Chunk 行（`get_file_info` 的原始行，含内部图谱字段）。
+ */
+export type DocumentLineItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Content
+   */
+  content: string;
+  /**
+   * Chunk Order Index
+   */
+  chunk_order_index: number | null;
+  /**
+   * Start Char Pos
+   */
+  start_char_pos: number | null;
+  /**
+   * End Char Pos
+   */
+  end_char_pos: number | null;
+  /**
+   * Start Token Pos
+   */
+  start_token_pos: number | null;
+  /**
+   * End Token Pos
+   */
+  end_token_pos: number | null;
+  /**
+   * Graph Indexed
+   */
+  graph_indexed: boolean | null;
+  /**
+   * Ent Ids
+   */
+  ent_ids: unknown;
+  /**
+   * Tags
+   */
+  tags: unknown;
+  /**
+   * Extraction Result
+   */
+  extraction_result: unknown;
+};
+
+/**
+ * DocumentListItem
+ *
+ * 文档列表条目；对齐 `KnowledgeBaseManager._file_record_list_item`。
+ */
+export type DocumentListItem = {
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * File Type
+   */
+  file_type: string | null;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+  /**
+   * File Size
+   */
+  file_size: number;
+  /**
+   * Chunk Count
+   */
+  chunk_count: number;
+  /**
+   * Token Count
+   */
+  token_count: number;
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Created By Name
+   */
+  created_by_name: string | null;
+  /**
+   * Created By Avatar
+   */
+  created_by_avatar: string | null;
+  /**
+   * Is Folder
+   */
+  is_folder: boolean;
+  /**
+   * Parent Id
+   */
+  parent_id: string | null;
+  /**
+   * Has Children
+   */
+  has_children: boolean;
+  /**
+   * Children Count
+   */
+  children_count: number;
+  /**
+   * Has Original File
+   */
+  has_original_file: boolean;
+  /**
+   * Has Parsed Markdown
+   */
+  has_parsed_markdown: boolean;
+  /**
+   * Is Virtual Folder
+   */
+  is_virtual_folder: boolean;
+  /**
+   * Path Prefix
+   */
+  path_prefix: string | null;
+};
+
+/**
+ * DocumentListResponse
+ *
+ * 文档分页列表响应；`stats` 仅在请求统计时下发。
+ */
+export type DocumentListResponse = {
+  /**
+   * Items
+   */
+  items: Array<DocumentListItem>;
+  /**
+   * Total
+   */
+  total: number;
+  /**
+   * Page
+   */
+  page: number;
+  /**
+   * Page Size
+   */
+  page_size: number;
+  /**
+   * Has More
+   */
+  has_more: boolean;
+  /**
+   * Parent Id
+   */
+  parent_id: string | null;
+  /**
+   * Path Prefix
+   */
+  path_prefix: string;
+  /**
+   * Recursive
+   */
+  recursive: boolean;
+  stats?: KnowledgeBaseStats | null;
+};
+
+/**
+ * DocumentSearchItem
+ *
+ * 跨库文件名搜索条目；`is_folder`/`parent_id` 由调用方开关决定是否下发。
+ */
+export type DocumentSearchItem = {
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Kb Name
+   */
+  kb_name: string | null;
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * File Type
+   */
+  file_type: string | null;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+  /**
+   * File Size
+   */
+  file_size: number | null;
+  /**
+   * Is Folder
+   */
+  is_folder?: boolean | null;
+  /**
+   * Parent Id
+   */
+  parent_id?: string | null;
+};
+
+/**
+ * DocumentSearchResponse
+ *
+ * 文件名搜索结果。
+ */
+export type DocumentSearchResponse = {
+  /**
+   * Files
+   */
+  files: Array<DocumentSearchItem>;
+  /**
+   * Total
+   */
+  total: number;
+  /**
+   * Offset
+   */
+  offset: number;
+  /**
+   * Limit
+   */
+  limit: number;
+  /**
+   * Has More
+   */
+  has_more: boolean;
+};
+
+/**
+ * EvaluationDatasetDetailItem
+ *
+ * 数据集详情：在摘要之上附带当页题目与分页。
+ */
+export type EvaluationDatasetDetailItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Dataset Id
+   */
+  dataset_id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string | null;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Item Count
+   */
+  item_count: number;
+  /**
+   * Has Gold Chunks
+   */
+  has_gold_chunks: boolean;
+  /**
+   * Has Gold Answers
+   */
+  has_gold_answers: boolean;
+  /**
+   * Build Metadata
+   */
+  build_metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+  /**
+   * Items
+   */
+  items: Array<EvaluationDatasetQuestionItem>;
+  pagination: EvaluationDatasetPagination;
+};
+
+/**
+ * EvaluationDatasetDetailResponse
+ *
+ * 数据集详情响应。
+ */
+export type EvaluationDatasetDetailResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  data: EvaluationDatasetDetailItem;
+};
+
+/**
+ * EvaluationDatasetItem
+ *
+ * 评估数据集读模型；字段对齐 `EvaluationService._dataset_to_dict`。
+ */
+export type EvaluationDatasetItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Dataset Id
+   */
+  dataset_id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string | null;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Item Count
+   */
+  item_count: number;
+  /**
+   * Has Gold Chunks
+   */
+  has_gold_chunks: boolean;
+  /**
+   * Has Gold Answers
+   */
+  has_gold_answers: boolean;
+  /**
+   * Build Metadata
+   */
+  build_metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+};
+
+/**
+ * EvaluationDatasetItemResponse
+ *
+ * 数据集上传结果响应。
+ */
+export type EvaluationDatasetItemResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  data: EvaluationDatasetItem;
+};
+
+/**
+ * EvaluationDatasetListResponse
+ *
+ * 数据集列表响应。
+ */
+export type EvaluationDatasetListResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Data
+   */
+  data: Array<EvaluationDatasetItem>;
+};
+
+/**
+ * EvaluationDatasetPagination
+ *
+ * 数据集详情分页信息。
+ */
+export type EvaluationDatasetPagination = {
+  /**
+   * Current Page
+   */
+  current_page: number;
+  /**
+   * Page Size
+   */
+  page_size: number;
+  /**
+   * Total Items
+   */
+  total_items: number;
+  /**
+   * Total Pages
+   */
+  total_pages: number;
+  /**
+   * Has Next
+   */
+  has_next: boolean;
+  /**
+   * Has Prev
+   */
+  has_prev: boolean;
+};
+
+/**
+ * EvaluationDatasetQuestionItem
+ *
+ * 数据集题目；字段对齐 `EvaluationService._dataset_item_to_dict`。
+ */
+export type EvaluationDatasetQuestionItem = {
+  /**
+   * Item Id
+   */
+  item_id: string;
+  /**
+   * Item Index
+   */
+  item_index: number;
+  /**
+   * Query
+   */
+  query: string;
+  /**
+   * Gold Chunk Ids
+   */
+  gold_chunk_ids: Array<unknown>;
+  /**
+   * Gold Answer
+   */
+  gold_answer: string | null;
+};
+
+/**
+ * EvaluationDeleteResponse
+ *
+ * 评估数据集/运行删除结果；`data` 固定为 null。
+ */
+export type EvaluationDeleteResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Data
+   */
+  data: null;
+};
+
+/**
+ * EvaluationGenerationItem
+ *
+ * 数据集生成任务提交结果。
+ */
+export type EvaluationGenerationItem = {
+  /**
+   * Dataset Id
+   */
+  dataset_id: string;
+  /**
+   * Task Id
+   */
+  task_id: string;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * EvaluationGenerationResponse
+ *
+ * 数据集生成任务提交响应。
+ */
+export type EvaluationGenerationResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  data: EvaluationGenerationItem;
+};
+
+/**
+ * EvaluationResumeItem
+ *
+ * 数据集生成恢复结果；已完成时不下发 `task_id`。
+ */
+export type EvaluationResumeItem = {
+  /**
+   * Dataset Id
+   */
+  dataset_id: string;
+  /**
+   * Task Id
+   */
+  task_id?: string | null;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * EvaluationResumeResponse
+ *
+ * 数据集生成恢复响应。
+ */
+export type EvaluationResumeResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  data: EvaluationResumeItem;
+};
+
+/**
+ * EvaluationRunCreateData
+ *
+ * 评估运行创建结果。
+ */
+export type EvaluationRunCreateData = {
+  /**
+   * Run Id
+   */
+  run_id: string;
+};
+
+/**
+ * EvaluationRunCreateResponse
+ *
+ * 评估运行创建响应。
+ */
+export type EvaluationRunCreateResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  data: EvaluationRunCreateData;
+};
+
+/**
+ * EvaluationRunItem
+ *
+ * 评估运行历史条目；对齐 `EvaluationService.list_runs`。
+ *
+ * `progress`/`message` 仅在运行中任务存在时下发，路由用
+ * `response_model_exclude_unset=True` 保持逐键一致。
+ */
+export type EvaluationRunItem = {
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Dataset Id
+   */
+  dataset_id: string | null;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Started At
+   */
+  started_at: string | null;
+  /**
+   * Completed At
+   */
+  completed_at: string | null;
+  /**
+   * Total Items
+   */
+  total_items: number | null;
+  /**
+   * Completed Items
+   */
+  completed_items: number | null;
+  /**
+   * Overall Score
+   */
+  overall_score: number | null;
+  /**
+   * Retrieval Config
+   */
+  retrieval_config: {
+    [key: string]: unknown;
+  };
+  /**
+   * Metrics
+   */
+  metrics: {
+    [key: string]: unknown;
+  };
+  /**
+   * Progress
+   */
+  progress?: number | null;
+  /**
+   * Message
+   */
+  message?: string | null;
+};
+
+/**
+ * EvaluationRunListResponse
+ *
+ * 评估运行历史响应。
+ */
+export type EvaluationRunListResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Data
+   */
+  data: Array<EvaluationRunItem>;
+};
+
+/**
+ * EvaluationRunResultData
+ *
+ * 评估运行结果；运行未落库时只回任务进度字段（`progress`/`message`）。
+ */
+export type EvaluationRunResultData = {
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Name
+   */
+  name?: string | null;
+  /**
+   * Started At
+   */
+  started_at?: string | null;
+  /**
+   * Completed At
+   */
+  completed_at?: string | null;
+  /**
+   * Total Items
+   */
+  total_items?: number | null;
+  /**
+   * Completed Items
+   */
+  completed_items?: number | null;
+  /**
+   * Overall Score
+   */
+  overall_score?: number | null;
+  /**
+   * Retrieval Config
+   */
+  retrieval_config?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Items
+   */
+  items?: Array<EvaluationRunResultItem> | null;
+  pagination?: EvaluationRunResultPage | null;
+  /**
+   * Progress
+   */
+  progress?: number | null;
+  /**
+   * Message
+   */
+  message?: string | null;
+};
+
+/**
+ * EvaluationRunResultItem
+ *
+ * 逐题结果；字段对齐 `EvaluationService._run_item_to_dict`。
+ */
+export type EvaluationRunResultItem = {
+  /**
+   * Query
+   */
+  query: string;
+  /**
+   * Gold Chunk Ids
+   */
+  gold_chunk_ids: Array<unknown> | null;
+  /**
+   * Gold Answer
+   */
+  gold_answer: string | null;
+  /**
+   * Generated Answer
+   */
+  generated_answer: string | null;
+  /**
+   * Retrieved Chunks
+   */
+  retrieved_chunks: Array<unknown>;
+  /**
+   * Metrics
+   */
+  metrics: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * EvaluationRunResultPage
+ *
+ * 逐题结果分页信息。
+ */
+export type EvaluationRunResultPage = {
+  /**
+   * Current Page
+   */
+  current_page: number;
+  /**
+   * Page Size
+   */
+  page_size: number;
+  /**
+   * Total
+   */
+  total: number;
+  /**
+   * Total Pages
+   */
+  total_pages: number;
+  /**
+   * Error Only
+   */
+  error_only: boolean;
+};
+
+/**
+ * EvaluationRunResultResponse
+ *
+ * 评估运行结果响应。
+ */
+export type EvaluationRunResultResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  data: EvaluationRunResultData;
+};
+
+/**
+ * ExternalDatabaseItem
+ *
+ * CLI 可见的知识库摘要。
+ */
+export type ExternalDatabaseItem = {
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Kb Type
+   */
+  kb_type: string;
+  /**
+   * Supports Documents
+   */
+  supports_documents: boolean;
+};
+
+/**
+ * ExternalDatabasesResponse
+ *
+ * CLI 知识库列表响应。
+ */
+export type ExternalDatabasesResponse = {
+  /**
+   * Databases
+   */
+  databases: Array<ExternalDatabaseItem>;
+};
+
+/**
+ * ExternalFileItem
+ *
+ * CLI 文件列表条目；对齐 `search_document_files(include_is_folder/include_parent_id=True)`。
+ */
+export type ExternalFileItem = {
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Kb Name
+   */
+  kb_name: string | null;
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * File Type
+   */
+  file_type: string | null;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+  /**
+   * File Size
+   */
+  file_size: number | null;
+  /**
+   * Is Folder
+   */
+  is_folder: boolean;
+  /**
+   * Parent Id
+   */
+  parent_id: string | null;
+};
+
+/**
+ * ExternalFileListResponse
+ *
+ * CLI 文件列表响应。
+ */
+export type ExternalFileListResponse = {
+  /**
+   * Files
+   */
+  files: Array<ExternalFileItem>;
+  /**
+   * Total
+   */
+  total: number;
+  /**
+   * Offset
+   */
+  offset: number;
+  /**
+   * Limit
+   */
+  limit: number;
+  /**
+   * Has More
+   */
+  has_more: boolean;
+};
+
+/**
  * ExternalFindRequest
  */
 export type ExternalFindRequest = {
@@ -1622,6 +4270,114 @@ export type ExternalFindRequest = {
 };
 
 /**
+ * ExternalFindResponse
+ *
+ * 文件内查找结果；对齐 `FindOutputSchema`。
+ */
+export type ExternalFindResponse = {
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Semantic
+   */
+  semantic: boolean;
+  /**
+   * Match Mode
+   */
+  match_mode: string;
+  /**
+   * Total Matches
+   */
+  total_matches: number;
+  /**
+   * Windows
+   */
+  windows: Array<ExternalFindWindowItem>;
+};
+
+/**
+ * ExternalFindWindowItem
+ *
+ * 文件内查找的上下文窗口；对齐 `FindWindowSchema`。
+ */
+export type ExternalFindWindowItem = {
+  /**
+   * Start Line
+   */
+  start_line: number;
+  /**
+   * End Line
+   */
+  end_line: number;
+  /**
+   * Matched Lines
+   */
+  matched_lines: Array<number>;
+  /**
+   * Content
+   */
+  content: string;
+};
+
+/**
+ * ExternalOpenResponse
+ *
+ * 按行窗口打开文件的结果；对齐 `OpenOutputSchema`。
+ */
+export type ExternalOpenResponse = {
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Start Line
+   */
+  start_line: number;
+  /**
+   * End Line
+   */
+  end_line: number;
+  /**
+   * Total Lines
+   */
+  total_lines: number;
+  /**
+   * Offset
+   */
+  offset: number;
+  /**
+   * Window Size
+   */
+  window_size: number;
+  /**
+   * Has More Before
+   */
+  has_more_before: boolean;
+  /**
+   * Has More After
+   */
+  has_more_after: boolean;
+  /**
+   * Next Offset
+   */
+  next_offset: number | null;
+  /**
+   * Content
+   */
+  content: string;
+};
+
+/**
  * ExternalRetrieveRequest
  */
 export type ExternalRetrieveRequest = {
@@ -1639,6 +4395,96 @@ export type ExternalRetrieveRequest = {
   options?: {
     [key: string]: unknown;
   } | null;
+};
+
+/**
+ * ExternalRetrieveResponse
+ *
+ * 检索响应；对齐 `SearchOutputSchema`。
+ */
+export type ExternalRetrieveResponse = {
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Results
+   */
+  results: Array<ExternalRetrieveResultItem>;
+};
+
+/**
+ * ExternalRetrieveResultItem
+ *
+ * 检索结果条目；对齐 `SearchResultSchema`。
+ */
+export type ExternalRetrieveResultItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Content
+   */
+  content: string;
+  /**
+   * Metadata
+   */
+  metadata: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * FailedDeleteItem
+ *
+ * 批量删除中失败的文件。
+ */
+export type FailedDeleteItem = {
+  /**
+   * Doc Id
+   */
+  doc_id: string;
+  /**
+   * Error
+   */
+  error: string;
+};
+
+/**
+ * FailedDocumentItem
+ *
+ * 添加失败的文档记录。
+ */
+export type FailedDocumentItem = {
+  /**
+   * Index
+   */
+  index: number;
+  /**
+   * Item
+   */
+  item: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Error
+   */
+  error: string;
+  /**
+   * Error Type
+   */
+  error_type: string;
 };
 
 /**
@@ -1690,6 +4536,224 @@ export type FeedbackListItem = {
 };
 
 /**
+ * FeedbackSatisfactionStats
+ *
+ * 反馈满意度统计；字段对齐 `DashboardRepository.get_basic_stats`。
+ */
+export type FeedbackSatisfactionStats = {
+  /**
+   * Total Feedbacks
+   */
+  total_feedbacks: number;
+  /**
+   * Satisfaction Rate
+   */
+  satisfaction_rate: number;
+};
+
+/**
+ * FetchUrlResponse
+ *
+ * URL 抓取并上传 MinIO 的结果。
+ */
+export type FetchUrlResponse = {
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * File Path
+   */
+  file_path: string;
+  /**
+   * Minio Url
+   */
+  minio_url: string;
+  /**
+   * Content Hash
+   */
+  content_hash: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Final Url
+   */
+  final_url: string;
+  /**
+   * Size
+   */
+  size: number;
+  /**
+   * Has Same Name
+   */
+  has_same_name: boolean;
+  /**
+   * Same Name Files
+   */
+  same_name_files: Array<SameNameFileItem>;
+};
+
+/**
+ * FileMetaItem
+ *
+ * 文件/文件夹元数据；对齐 `KnowledgeBase._file_record_to_meta`。
+ */
+export type FileMetaItem = {
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Parent Id
+   */
+  parent_id: string | null;
+  /**
+   * Filename
+   */
+  filename: string | null;
+  /**
+   * File Type
+   */
+  file_type: string | null;
+  /**
+   * Path
+   */
+  path: string | null;
+  /**
+   * Markdown File
+   */
+  markdown_file: string | null;
+  /**
+   * Status
+   */
+  status: string | null;
+  /**
+   * Content Hash
+   */
+  content_hash: string | null;
+  /**
+   * Size
+   */
+  size: number | null;
+  /**
+   * Chunk Count
+   */
+  chunk_count: number;
+  /**
+   * Token Count
+   */
+  token_count: number;
+  /**
+   * Content Type
+   */
+  content_type: string | null;
+  /**
+   * Processing Params
+   */
+  processing_params: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Is Folder
+   */
+  is_folder: boolean;
+  /**
+   * Error
+   */
+  error: string | null;
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Updated By
+   */
+  updated_by: string | null;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+  /**
+   * Original Filename
+   */
+  original_filename: string | null;
+  /**
+   * Minio Url
+   */
+  minio_url: string | null;
+};
+
+/**
+ * FirstRunStatusResponse
+ *
+ * 首次运行检查结果。
+ */
+export type FirstRunStatusResponse = {
+  /**
+   * First Run
+   */
+  first_run: boolean;
+};
+
+/**
+ * FolderMetaItem
+ *
+ * 新建文件夹元数据；对齐 `KnowledgeBase.create_folder`。
+ */
+export type FolderMetaItem = {
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Is Folder
+   */
+  is_folder: boolean;
+  /**
+   * Parent Id
+   */
+  parent_id: string | null;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Path
+   */
+  path: string;
+  /**
+   * File Type
+   */
+  file_type: string;
+  /**
+   * Created By
+   */
+  created_by: string | null;
+};
+
+/**
  * GenerateDatasetRequest
  */
 export type GenerateDatasetRequest = {
@@ -1728,6 +4792,501 @@ export type GenerateDatasetRequest = {
 };
 
 /**
+ * GenerateDescriptionResponse
+ *
+ * AI 生成的知识库描述。
+ */
+export type GenerateDescriptionResponse = {
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Status
+   */
+  status: string;
+};
+
+/**
+ * GraphBuildConfigItem
+ *
+ * 图谱抽取配置；未更新过时不下发 `updated_at`/`updated_by`。
+ */
+export type GraphBuildConfigItem = {
+  /**
+   * Locked
+   */
+  locked: boolean;
+  /**
+   * Extractor Type
+   */
+  extractor_type: string | null;
+  /**
+   * Extractor Options
+   */
+  extractor_options: {
+    [key: string]: unknown;
+  };
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Updated At
+   */
+  updated_at?: string | null;
+  /**
+   * Updated By
+   */
+  updated_by?: string | null;
+};
+
+/**
+ * GraphBuildConfigResponse
+ *
+ * 图谱抽取配置锁定结果。
+ */
+export type GraphBuildConfigResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Status
+   */
+  status: string;
+  config: GraphBuildConfigItem;
+};
+
+/**
+ * GraphBuildFailedChunkSample
+ *
+ * 图谱抽取失败的 Chunk 样例。
+ */
+export type GraphBuildFailedChunkSample = {
+  /**
+   * Chunk Id
+   */
+  chunk_id: string;
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Chunk Index
+   */
+  chunk_index: number;
+  /**
+   * Content
+   */
+  content: string;
+  /**
+   * Details
+   */
+  details: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * GraphBuildFailedChunksResponse
+ *
+ * 图谱抽取失败样例列表。
+ */
+export type GraphBuildFailedChunksResponse = {
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Samples
+   */
+  samples: Array<GraphBuildFailedChunkSample>;
+};
+
+/**
+ * GraphBuildReconcileResponse
+ *
+ * 图谱向量索引修复任务受理结果。
+ */
+export type GraphBuildReconcileResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Task Id
+   */
+  task_id: string;
+  /**
+   * Mode
+   */
+  mode: string;
+};
+
+/**
+ * GraphBuildResetResponse
+ *
+ * 图谱构建重置结果。
+ */
+export type GraphBuildResetResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Reset Chunks
+   */
+  reset_chunks: number;
+  /**
+   * Clear Extraction Result
+   */
+  clear_extraction_result: boolean;
+  /**
+   * Clear Config
+   */
+  clear_config: boolean;
+};
+
+/**
+ * GraphBuildStatusResponse
+ *
+ * 图谱构建状态。
+ */
+export type GraphBuildStatusResponse = {
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Kb Type
+   */
+  kb_type: string;
+  /**
+   * Configured
+   */
+  configured: boolean;
+  /**
+   * Locked
+   */
+  locked: boolean;
+  config: GraphBuildConfigItem | null;
+  /**
+   * Total Chunks
+   */
+  total_chunks: number;
+  /**
+   * Pending Chunks
+   */
+  pending_chunks: number;
+  /**
+   * Indexed Chunks
+   */
+  indexed_chunks: number;
+  /**
+   * Structured Chunks
+   */
+  structured_chunks: number;
+  /**
+   * Extraction Counts
+   */
+  extraction_counts: {
+    [key: string]: number;
+  };
+  /**
+   * Vector Counts
+   */
+  vector_counts: {
+    [key: string]: number;
+  };
+  /**
+   * Entity Count
+   */
+  entity_count: number;
+  /**
+   * Relationship Count
+   */
+  relationship_count: number;
+  /**
+   * Build Task Status
+   */
+  build_task_status: string | null;
+  /**
+   * Build Task Progress
+   */
+  build_task_progress: number;
+};
+
+/**
+ * GraphBuildTaskResponse
+ *
+ * 图谱构建/修复任务受理结果。
+ */
+export type GraphBuildTaskResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Task Id
+   */
+  task_id: string;
+};
+
+/**
+ * GraphEdge
+ *
+ * 子图边；字段对齐 `MilvusGraphService._normalize_edge`。
+ */
+export type GraphEdge = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Source Id
+   */
+  source_id: string;
+  /**
+   * Target Id
+   */
+  target_id: string;
+  /**
+   * Type
+   */
+  type: string | null;
+  /**
+   * Properties
+   */
+  properties: {
+    [key: string]: unknown;
+  };
+  /**
+   * Normalized
+   */
+  normalized: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * GraphKnowledgeBaseItem
+ *
+ * 支持图谱的 Milvus 知识库条目；`metadata` 为完整知识库序列化结果。
+ */
+export type GraphKnowledgeBaseItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Type
+   */
+  type: string;
+  /**
+   * Description
+   */
+  description: string | null;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Metadata
+   */
+  metadata: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * GraphLabelsData
+ *
+ * 图谱标签集合。
+ */
+export type GraphLabelsData = {
+  /**
+   * Labels
+   */
+  labels: Array<string>;
+};
+
+/**
+ * GraphLabelsResponse
+ *
+ * 图谱标签响应。
+ */
+export type GraphLabelsResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  data: GraphLabelsData;
+};
+
+/**
+ * GraphListResponse
+ *
+ * 支持图谱能力的知识库列表响应。
+ */
+export type GraphListResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<GraphKnowledgeBaseItem>;
+};
+
+/**
+ * GraphNode
+ *
+ * 子图节点；字段对齐 `MilvusGraphService._normalize_node`。
+ */
+export type GraphNode = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Original Id
+   */
+  original_id: string;
+  /**
+   * Type
+   */
+  type: string;
+  /**
+   * Labels
+   */
+  labels: Array<string>;
+  /**
+   * Properties
+   */
+  properties: {
+    [key: string]: unknown;
+  };
+  /**
+   * Normalized
+   */
+  normalized: {
+    [key: string]: unknown;
+  };
+  /**
+   * Graph Type
+   */
+  graph_type: string;
+};
+
+/**
+ * GraphStatsData
+ *
+ * 图谱统计信息；字段对齐 `MilvusGraphService.get_stats`。
+ */
+export type GraphStatsData = {
+  /**
+   * Total Nodes
+   */
+  total_nodes: number;
+  /**
+   * Total Edges
+   */
+  total_edges: number;
+  /**
+   * Entity Types
+   */
+  entity_types: Array<GraphStatsEntityType>;
+};
+
+/**
+ * GraphStatsEntityType
+ *
+ * 按实体标签聚合的节点统计项。
+ */
+export type GraphStatsEntityType = {
+  /**
+   * Type
+   */
+  type: string | null;
+  /**
+   * Count
+   */
+  count: number;
+};
+
+/**
+ * GraphStatsResponse
+ *
+ * 图谱统计响应。
+ */
+export type GraphStatsResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  data: GraphStatsData;
+};
+
+/**
+ * GraphSubgraphData
+ *
+ * 子图数据。
+ */
+export type GraphSubgraphData = {
+  /**
+   * Nodes
+   */
+  nodes: Array<GraphNode>;
+  /**
+   * Edges
+   */
+  edges: Array<GraphEdge>;
+};
+
+/**
+ * GraphSubgraphResponse
+ *
+ * 子图查询响应。
+ */
+export type GraphSubgraphResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  data: GraphSubgraphData;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -1735,6 +5294,26 @@ export type HttpValidationError = {
    * Detail
    */
   detail?: Array<ValidationError>;
+};
+
+/**
+ * HealthResponse
+ *
+ * API 进程 liveness。
+ */
+export type HealthResponse = {
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Version
+   */
+  version: string;
 };
 
 /**
@@ -1780,6 +5359,46 @@ export type ImageUploadResponse = {
 };
 
 /**
+ * InfoReloadResponse
+ *
+ * 信息配置重新加载结果。
+ */
+export type InfoReloadResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Data
+   */
+  data: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * InfoResponse
+ *
+ * 系统信息配置（公开接口）。
+ */
+export type InfoResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: {
+    [key: string]: unknown;
+  };
+};
+
+/**
  * InitializeAdmin
  */
 export type InitializeAdmin = {
@@ -1795,6 +5414,458 @@ export type InitializeAdmin = {
    * Phone Number
    */
   phone_number?: string | null;
+};
+
+/**
+ * KnowledgeBaseItem
+ *
+ * 知识库条目；字段对齐 `serialize_knowledge_base`。
+ *
+ * 列表路径只带摘要字段，详情路径额外下发 `mindmap`/`sample_questions`/`files*`，
+ * 权限派生字段仅在有效权限可知时出现，因此这些键用可选默认值 + `exclude_unset`。
+ */
+export type KnowledgeBaseItem = {
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string | null;
+  /**
+   * Kb Type
+   */
+  kb_type: string;
+  /**
+   * Embedding Model Spec
+   */
+  embedding_model_spec: string | null;
+  /**
+   * Llm Model Spec
+   */
+  llm_model_spec: string | null;
+  /**
+   * Query Params
+   */
+  query_params: {
+    [key: string]: unknown;
+  };
+  /**
+   * Metadata
+   */
+  metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Status
+   */
+  status: string;
+  stats: KnowledgeBaseStats;
+  /**
+   * Row Count
+   */
+  row_count: number;
+  /**
+   * Share Config
+   */
+  share_config: {
+    [key: string]: unknown;
+  };
+  /**
+   * Additional Params
+   */
+  additional_params: {
+    [key: string]: unknown;
+  };
+  /**
+   * Effective Permission
+   */
+  effective_permission?: string | null;
+  /**
+   * Can Manage
+   */
+  can_manage?: boolean | null;
+  /**
+   * Mindmap
+   */
+  mindmap?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Sample Questions
+   */
+  sample_questions?: Array<string> | null;
+  /**
+   * Files
+   */
+  files?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Files Truncated
+   */
+  files_truncated?: boolean | null;
+  /**
+   * Files Page Size
+   */
+  files_page_size?: number | null;
+};
+
+/**
+ * KnowledgeBaseListResponse
+ *
+ * 知识库列表响应；失败兜底分支只多一个 `message`。
+ */
+export type KnowledgeBaseListResponse = {
+  /**
+   * Databases
+   */
+  databases: Array<KnowledgeBaseItem>;
+  /**
+   * Message
+   */
+  message?: string | null;
+};
+
+/**
+ * KnowledgeBaseStats
+ *
+ * 知识库聚合文件统计；对齐 `_knowledge_base_stats` 与 `get_kb_file_stats`。
+ */
+export type KnowledgeBaseStats = {
+  /**
+   * File Count
+   */
+  file_count: number;
+  /**
+   * Folder Count
+   */
+  folder_count: number;
+  /**
+   * Row Count
+   */
+  row_count: number;
+  /**
+   * Total Size
+   */
+  total_size: number;
+  /**
+   * Chunk Count
+   */
+  chunk_count: number;
+  /**
+   * Token Count
+   */
+  token_count: number;
+  /**
+   * Pending Parse Count
+   */
+  pending_parse_count: number;
+  /**
+   * Pending Index Count
+   */
+  pending_index_count: number;
+  /**
+   * Processing Count
+   */
+  processing_count: number;
+};
+
+/**
+ * KnowledgeBaseStatsRepairResponse
+ *
+ * 知识库统计修复结果。
+ */
+export type KnowledgeBaseStatsRepairResponse = {
+  /**
+   * Status
+   */
+  status: string;
+  stats: KnowledgeBaseStats;
+  /**
+   * Scanned Files
+   */
+  scanned_files: number;
+  /**
+   * Scanned Indexed Files
+   */
+  scanned_indexed_files: number;
+  /**
+   * Skipped Unindexed Files
+   */
+  skipped_unindexed_files: number;
+  /**
+   * Scanned Token Files
+   */
+  scanned_token_files: number;
+  /**
+   * Updated Files
+   */
+  updated_files: number;
+  /**
+   * Updated Chunk Files
+   */
+  updated_chunk_files: number;
+  /**
+   * Updated Token Files
+   */
+  updated_token_files: number;
+  /**
+   * Updated Size Files
+   */
+  updated_size_files: number;
+};
+
+/**
+ * KnowledgeBaseTypeItem
+ *
+ * 知识库类型描述；对齐 `KnowledgeBaseFactory.get_available_types`。
+ */
+export type KnowledgeBaseTypeItem = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Requires Embedding Model
+   */
+  requires_embedding_model: boolean;
+  /**
+   * Supports Documents
+   */
+  supports_documents: boolean;
+  /**
+   * Create Params
+   */
+  create_params: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * KnowledgeBaseTypesResponse
+ *
+ * 知识库类型列表；失败兜底分支 `kb_types` 为空对象。
+ */
+export type KnowledgeBaseTypesResponse = {
+  /**
+   * Kb Types
+   */
+  kb_types: {
+    [key: string]: KnowledgeBaseTypeItem;
+  };
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * KnowledgeBaseUpdateResponse
+ *
+ * 知识库更新响应。
+ */
+export type KnowledgeBaseUpdateResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  database: KnowledgeBaseItem;
+};
+
+/**
+ * KnowledgeFilePreviewResponse
+ *
+ * 知识库文件 JSON 预览；对齐 `read_knowledge_file_preview` 的文本/不支持分支。
+ *
+ * 二进制分支（`binary=True`）由 `_preview_response` 转成 StreamingResponse，作为 Response
+ * 实例绕过本模型。`truncated`/`limit` 只在大文件与文本预览分支出现，因此给默认值并由
+ * `response_model_exclude_unset=True` 保证响应键集合与载荷逐键一致。
+ */
+export type KnowledgeFilePreviewResponse = {
+  /**
+   * Source
+   */
+  source: string;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Readonly
+   */
+  readonly: boolean;
+  /**
+   * Content
+   */
+  content: string | null;
+  /**
+   * Preview Type
+   */
+  preview_type: string;
+  /**
+   * Supported
+   */
+  supported: boolean;
+  /**
+   * Message
+   */
+  message: string | null;
+  /**
+   * Truncated
+   */
+  truncated?: boolean;
+  /**
+   * Limit
+   */
+  limit?: number | null;
+};
+
+/**
+ * KnowledgeQueryResponse
+ *
+ * 知识库查询结果；失败兜底分支只回 message/status。
+ */
+export type KnowledgeQueryResponse = {
+  /**
+   * Result
+   */
+  result?: Array<KnowledgeQueryResultItem> | null;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Message
+   */
+  message?: string | null;
+};
+
+/**
+ * KnowledgeQueryResultItem
+ *
+ * 检索结果条目；携带打分/融合等动态派生键，用 `extra="allow"` 原样透传。
+ */
+export type KnowledgeQueryResultItem = {
+  /**
+   * Content
+   */
+  content: string;
+  /**
+   * Metadata
+   */
+  metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Score
+   */
+  score?: number | null;
+  /**
+   * Distance
+   */
+  distance?: number | null;
+  /**
+   * Bm25 Score
+   */
+  bm25_score?: number | null;
+  /**
+   * Hybrid Score
+   */
+  hybrid_score?: number | null;
+  /**
+   * Rerank Score
+   */
+  rerank_score?: number | null;
+  /**
+   * Fusion Score
+   */
+  fusion_score?: number | null;
+  /**
+   * Fusion Sources
+   */
+  fusion_sources?: Array<string> | null;
+  /**
+   * Graph Score
+   */
+  graph_score?: number | null;
+  [key: string]: unknown;
+};
+
+/**
+ * KnowledgeQueryTestFailedResponse
+ *
+ * 查询测试失败的兜底结果。
+ */
+export type KnowledgeQueryTestFailedResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Status
+   */
+  status: string;
+};
+
+/**
+ * KnowledgeStatistics
+ *
+ * 知识库统计；失败兜底分支为空对象，故各键带默认值。
+ */
+export type KnowledgeStatistics = {
+  /**
+   * Total Databases
+   */
+  total_databases?: number;
+  /**
+   * Kb Types
+   */
+  kb_types?: {
+    [key: string]: number;
+  };
+  /**
+   * Total Files
+   */
+  total_files?: number;
+};
+
+/**
+ * KnowledgeStatisticsResponse
+ *
+ * 知识库统计响应。
+ */
+export type KnowledgeStatisticsResponse = {
+  stats: KnowledgeStatistics;
+  /**
+   * Message
+   */
+  message: string;
 };
 
 /**
@@ -1834,6 +5905,432 @@ export type KnowledgeStats = {
 };
 
 /**
+ * ManagedSkillItem
+ *
+ * 管理视图中的 Skill，附带权限派生字段（对齐 `_serialize_skill_for_user`）。
+ */
+export type ManagedSkillItem = {
+  /**
+   * Id
+   */
+  id: number;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Source Type
+   */
+  source_type: string;
+  /**
+   * Tool Dependencies
+   */
+  tool_dependencies: Array<string>;
+  /**
+   * Mcp Dependencies
+   */
+  mcp_dependencies: Array<string>;
+  /**
+   * Skill Dependencies
+   */
+  skill_dependencies: Array<string>;
+  /**
+   * Dir Path
+   */
+  dir_path: string;
+  /**
+   * Version
+   */
+  version: string | null;
+  /**
+   * Content Hash
+   */
+  content_hash: string | null;
+  /**
+   * Share Config
+   */
+  share_config: {
+    [key: string]: unknown;
+  };
+  /**
+   * Enabled
+   */
+  enabled: boolean;
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Updated By
+   */
+  updated_by: string | null;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+  /**
+   * Can Manage
+   */
+  can_manage: boolean;
+  /**
+   * Effective Permission
+   */
+  effective_permission: string;
+  /**
+   * Is Builtin
+   */
+  is_builtin: boolean;
+};
+
+/**
+ * MarkdownParseResponse
+ *
+ * 文件解析为 markdown 的结果。
+ */
+export type MarkdownParseResponse = {
+  /**
+   * Markdown Content
+   */
+  markdown_content: string;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * McpDeleteResponse
+ *
+ * MCP 服务器删除结果。
+ */
+export type McpDeleteResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * McpServerItem
+ *
+ * MCP 服务器完整配置；字段对齐 `MCPServer.to_dict()` 与 `serialize_mcp_server` 补充的键。
+ */
+export type McpServerItem = {
+  /**
+   * Id
+   */
+  id: number;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string | null;
+  /**
+   * Transport
+   */
+  transport: string;
+  /**
+   * Url
+   */
+  url: string | null;
+  /**
+   * Command
+   */
+  command: string | null;
+  /**
+   * Args
+   */
+  args: Array<unknown>;
+  /**
+   * Env
+   */
+  env: {
+    [key: string]: unknown;
+  };
+  /**
+   * Headers
+   */
+  headers: {
+    [key: string]: unknown;
+  };
+  /**
+   * Timeout
+   */
+  timeout: number | null;
+  /**
+   * Sse Read Timeout
+   */
+  sse_read_timeout: number | null;
+  /**
+   * Tags
+   */
+  tags: Array<unknown>;
+  /**
+   * Icon
+   */
+  icon: string | null;
+  /**
+   * Enabled
+   */
+  enabled: boolean;
+  /**
+   * Disabled Tools
+   */
+  disabled_tools: Array<unknown>;
+  /**
+   * Created By
+   */
+  created_by: string;
+  /**
+   * Updated By
+   */
+  updated_by: string;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+  /**
+   * Is Builtin
+   */
+  is_builtin: boolean;
+  /**
+   * Requires Migration
+   */
+  requires_migration: boolean;
+};
+
+/**
+ * McpServerItemResponse
+ *
+ * 单个 MCP 服务器响应。
+ */
+export type McpServerItemResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  data: McpServerItem;
+};
+
+/**
+ * McpServerListResponse
+ *
+ * MCP 服务器列表响应；管理员拿完整配置，普通用户拿脱敏条目。
+ */
+export type McpServerListResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<McpServerItem | McpServerSummaryItem>;
+};
+
+/**
+ * McpServerSummaryItem
+ *
+ * 普通用户可见的脱敏 MCP 条目，只暴露安全的展示字段。
+ */
+export type McpServerSummaryItem = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string | null;
+  /**
+   * Icon
+   */
+  icon: string | null;
+  /**
+   * Enabled
+   */
+  enabled: boolean;
+  /**
+   * Tags
+   */
+  tags: Array<unknown>;
+};
+
+/**
+ * McpStatusResponse
+ *
+ * MCP 启用状态切换结果。
+ */
+export type McpStatusResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Enabled
+   */
+  enabled: boolean;
+  data: McpServerItem;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * McpTestResponse
+ *
+ * MCP 连接测试结果。
+ */
+export type McpTestResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Tool Count
+   */
+  tool_count: number;
+};
+
+/**
+ * McpToolItem
+ *
+ * MCP 服务器暴露的单个工具。
+ */
+export type McpToolItem = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Id
+   */
+  id: string | null;
+  /**
+   * Description
+   */
+  description: string | null;
+  /**
+   * Enabled
+   */
+  enabled: boolean;
+  /**
+   * Parameters
+   */
+  parameters: {
+    [key: string]: unknown;
+  };
+  /**
+   * Required
+   */
+  required: Array<unknown>;
+};
+
+/**
+ * McpToolListResponse
+ *
+ * MCP 工具列表响应。
+ */
+export type McpToolListResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<McpToolItem>;
+  /**
+   * Total
+   */
+  total: number;
+};
+
+/**
+ * McpToolRefreshResponse
+ *
+ * MCP 工具刷新结果。
+ */
+export type McpToolRefreshResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Tool Count
+   */
+  tool_count: number;
+  /**
+   * Enabled Count
+   */
+  enabled_count: number;
+  /**
+   * Disabled Count
+   */
+  disabled_count: number;
+};
+
+/**
+ * McpToolToggleResponse
+ *
+ * 单个 MCP 工具启用状态切换结果。
+ */
+export type McpToolToggleResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Tool Name
+   */
+  tool_name: string;
+  /**
+   * Enabled
+   */
+  enabled: boolean;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
  * MentionFileItem
  *
  * 提及文件搜索结果条目
@@ -1855,6 +6352,30 @@ export type MentionFileItem = {
    * Source
    */
   source: string;
+};
+
+/**
+ * MessageFeedbackItem
+ *
+ * GET 反馈接口读到的反馈记录。
+ */
+export type MessageFeedbackItem = {
+  /**
+   * Id
+   */
+  id: number;
+  /**
+   * Rating
+   */
+  rating: string;
+  /**
+   * Reason
+   */
+  reason: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
 };
 
 /**
@@ -1895,6 +6416,476 @@ export type MessageFeedbackResponse = {
    * Created At
    */
   created_at: string;
+};
+
+/**
+ * MessageFeedbackStatusResponse
+ *
+ * 指定消息的当前用户反馈状态；对齐 `feedback_service.get_message_feedback_view`。
+ */
+export type MessageFeedbackStatusResponse = {
+  /**
+   * Has Feedback
+   */
+  has_feedback: boolean;
+  feedback: MessageFeedbackItem | null;
+};
+
+/**
+ * MessageResponse
+ *
+ * 只回一条消息的操作结果。
+ */
+export type MessageResponse = {
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * MindmapDatabaseFilesResponse
+ *
+ * 思维导图文件列表。
+ */
+export type MindmapDatabaseFilesResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Db Name
+   */
+  db_name: string | null;
+  /**
+   * Files
+   */
+  files: Array<MindmapFileItem>;
+  /**
+   * Total
+   */
+  total: number;
+  /**
+   * Truncated
+   */
+  truncated: boolean;
+};
+
+/**
+ * MindmapDatabaseOverviewItem
+ *
+ * 思维导图界面可选知识库概览。
+ */
+export type MindmapDatabaseOverviewItem = {
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Kb Type
+   */
+  kb_type: string;
+  /**
+   * File Count
+   */
+  file_count: number;
+};
+
+/**
+ * MindmapDatabasesResponse
+ *
+ * 思维导图知识库概览列表。
+ */
+export type MindmapDatabasesResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Databases
+   */
+  databases: Array<MindmapDatabaseOverviewItem>;
+  /**
+   * Total
+   */
+  total: number;
+};
+
+/**
+ * MindmapDetailResponse
+ *
+ * 知识库已保存的思维导图。
+ */
+export type MindmapDetailResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Mindmap
+   */
+  mindmap: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Db Name
+   */
+  db_name: string | null;
+  /**
+   * Mindmap File Ids
+   */
+  mindmap_file_ids: {
+    [key: string]: string;
+  } | null;
+  /**
+   * Mindmap Metadata
+   */
+  mindmap_metadata: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
+ * MindmapDiffAddedFile
+ *
+ * 思维导图差异中的新增文件。
+ */
+export type MindmapDiffAddedFile = {
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Type
+   */
+  type: string;
+};
+
+/**
+ * MindmapDiffResponse
+ *
+ * 思维导图与知识库文件的差异检测结果。
+ */
+export type MindmapDiffResponse = {
+  /**
+   * Has Mindmap
+   */
+  has_mindmap: boolean;
+  /**
+   * Tracked Files
+   */
+  tracked_files: Array<string>;
+  /**
+   * Current Files
+   */
+  current_files: Array<string>;
+  /**
+   * Added Files
+   */
+  added_files: Array<MindmapDiffAddedFile>;
+  /**
+   * Removed File Ids
+   */
+  removed_file_ids: Array<string>;
+  /**
+   * Unchanged Count
+   */
+  unchanged_count: number;
+  /**
+   * Needs Update
+   */
+  needs_update: boolean;
+  /**
+   * Current Total
+   */
+  current_total: number;
+  /**
+   * Current Files Truncated
+   */
+  current_files_truncated: boolean;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * MindmapFileItem
+ *
+ * 思维导图文件条目；对齐 `build_database_file_list`。
+ */
+export type MindmapFileItem = {
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Type
+   */
+  type: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Created At
+   */
+  created_at: string;
+};
+
+/**
+ * MindmapGenerateResponse
+ *
+ * 思维导图生成结果；全量与增量路径的键集合不同，用可选字段 + `exclude_unset`。
+ */
+export type MindmapGenerateResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Mindmap
+   */
+  mindmap: {
+    [key: string]: unknown;
+  };
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Db Name
+   */
+  db_name: string | null;
+  /**
+   * File Count
+   */
+  file_count?: number | null;
+  /**
+   * Original File Count
+   */
+  original_file_count?: number | null;
+  /**
+   * Truncated
+   */
+  truncated?: boolean | null;
+  /**
+   * No Ai Needed
+   */
+  no_ai_needed?: boolean | null;
+  /**
+   * No Changes
+   */
+  no_changes?: boolean | null;
+};
+
+/**
+ * ModelCacheRefreshResponse
+ *
+ * 模型缓存刷新结果。
+ */
+export type ModelCacheRefreshResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Model Count
+   */
+  model_count: number;
+};
+
+/**
+ * ModelProviderDeleteResponse
+ *
+ * 供应商删除结果。
+ */
+export type ModelProviderDeleteResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+};
+
+/**
+ * ModelProviderItem
+ *
+ * 供应商配置条目；字段对齐 `ModelProvider.to_dict()`。
+ *
+ * `credential_status` 只在列表与详情里派生下发，创建与更新不带它，因此声明为
+ * 可选默认值并让路由用 `response_model_exclude_unset=True` 保持逐键不变。
+ */
+export type ModelProviderItem = {
+  /**
+   * Id
+   */
+  id: number;
+  /**
+   * Provider Id
+   */
+  provider_id: string;
+  /**
+   * Display Name
+   */
+  display_name: string;
+  /**
+   * Provider Type
+   */
+  provider_type: string;
+  /**
+   * Default Protocol
+   */
+  default_protocol: string | null;
+  /**
+   * Base Url
+   */
+  base_url: string;
+  /**
+   * Embedding Base Url
+   */
+  embedding_base_url: string | null;
+  /**
+   * Rerank Base Url
+   */
+  rerank_base_url: string | null;
+  /**
+   * Models Endpoint
+   */
+  models_endpoint: string | null;
+  /**
+   * Embedding Models Endpoint
+   */
+  embedding_models_endpoint: string | null;
+  /**
+   * Rerank Models Endpoint
+   */
+  rerank_models_endpoint: string | null;
+  /**
+   * Api Key Env
+   */
+  api_key_env: string | null;
+  /**
+   * Api Key
+   */
+  api_key: string | null;
+  /**
+   * Capabilities
+   */
+  capabilities: Array<string>;
+  /**
+   * Enabled Models
+   */
+  enabled_models: Array<{
+    [key: string]: unknown;
+  }>;
+  /**
+   * Headers Json
+   */
+  headers_json: {
+    [key: string]: unknown;
+  };
+  /**
+   * Extra Json
+   */
+  extra_json: {
+    [key: string]: unknown;
+  };
+  /**
+   * Is Enabled
+   */
+  is_enabled: boolean;
+  /**
+   * Is Builtin
+   */
+  is_builtin: boolean;
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Updated By
+   */
+  updated_by: string | null;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+  /**
+   * Credential Status
+   */
+  credential_status?: string | null;
+};
+
+/**
+ * ModelProviderListResponse
+ *
+ * 供应商配置列表响应。
+ */
+export type ModelProviderListResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<ModelProviderItem>;
 };
 
 /**
@@ -2018,6 +7009,56 @@ export type ModelProviderPayload = {
 };
 
 /**
+ * ModelProviderResponse
+ *
+ * 单个供应商配置响应。
+ */
+export type ModelProviderResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  data: ModelProviderItem;
+};
+
+/**
+ * ModelStatusItem
+ *
+ * 模型状态探测结果；`model_type` 仅在找到模型时下发。
+ */
+export type ModelStatusItem = {
+  /**
+   * Spec
+   */
+  spec: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Model Type
+   */
+  model_type?: string | null;
+};
+
+/**
+ * ModelStatusResponse
+ *
+ * 模型状态探测响应。
+ */
+export type ModelStatusResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  data: ModelStatusItem;
+};
+
+/**
  * MoveDocumentRequest
  */
 export type MoveDocumentRequest = {
@@ -2096,6 +7137,94 @@ export type OidcLoginResponse = {
 };
 
 /**
+ * OIDCLoginUrlResponse
+ *
+ * OIDC 登录 URL 响应。
+ */
+export type OidcLoginUrlResponse = {
+  /**
+   * Login Url
+   */
+  login_url: string;
+};
+
+/**
+ * OcrEngineItem
+ *
+ * 一种 OCR 方法及其静态元数据。
+ */
+export type OcrEngineItem = {
+  /**
+   * Engine Id
+   */
+  engine_id: string;
+  /**
+   * Service Name
+   */
+  service_name: string;
+  /**
+   * Display Name
+   */
+  display_name: string;
+  /**
+   * Supported Extensions
+   */
+  supported_extensions: Array<string>;
+};
+
+/**
+ * OcrHealthItem
+ *
+ * 单个 OCR 方法的健康检查结果。
+ */
+export type OcrHealthItem = {
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Details
+   */
+  details: {
+    [key: string]: unknown;
+  };
+};
+
+/**
+ * OcrHealthResponse
+ *
+ * 全部 OCR 方法的健康检查结果。
+ */
+export type OcrHealthResponse = {
+  /**
+   * Health
+   */
+  health: {
+    [key: string]: OcrHealthItem;
+  };
+};
+
+/**
+ * OcrOptionsResponse
+ *
+ * OCR 方法列表与默认项。
+ */
+export type OcrOptionsResponse = {
+  /**
+   * Default Engine
+   */
+  default_engine: string;
+  /**
+   * Engines
+   */
+  engines: Array<OcrEngineItem>;
+};
+
+/**
  * ParseDocumentsRequest
  */
 export type ParseDocumentsRequest = {
@@ -2136,6 +7265,30 @@ export type PendingParseDocumentsRequest = {
 };
 
 /**
+ * PendingTaskResponse
+ *
+ * 按状态批量任务受理结果；没有待处理文档时不带 `task_id`/`queued_count`。
+ */
+export type PendingTaskResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Task Id
+   */
+  task_id?: string | null;
+  /**
+   * Queued Count
+   */
+  queued_count?: number | null;
+};
+
+/**
  * PersonalSkillDraftConfirmRequest
  */
 export type PersonalSkillDraftConfirmRequest = {
@@ -2165,6 +7318,90 @@ export type ProjectCreate = {
 };
 
 /**
+ * ProjectHistoryCandidateItem
+ *
+ * 可作为目录快捷入口的历史 Conversation；对齐 `list_history_candidates_view`。
+ */
+export type ProjectHistoryCandidateItem = {
+  /**
+   * Thread Id
+   */
+  thread_id: string;
+  /**
+   * Title
+   */
+  title: string | null;
+  /**
+   * Agent Id
+   */
+  agent_id: string;
+  /**
+   * Workdir Path
+   */
+  workdir_path: string;
+  /**
+   * Updated At
+   */
+  updated_at: string;
+};
+
+/**
+ * ProjectHistoryCandidatesResponse
+ *
+ * 历史 Conversation 目录候选列表。
+ */
+export type ProjectHistoryCandidatesResponse = {
+  /**
+   * Items
+   */
+  items: Array<ProjectHistoryCandidateItem>;
+  /**
+   * Has More
+   */
+  has_more: boolean;
+};
+
+/**
+ * ProjectItem
+ *
+ * Project 公开字段；对齐 `Project.to_dict()`。
+ */
+export type ProjectItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Uid
+   */
+  uid: string;
+  /**
+   * Name
+   */
+  name: string | null;
+  /**
+   * Selection Status
+   */
+  selection_status: string;
+  /**
+   * Workdir Path
+   */
+  workdir_path: string;
+  /**
+   * Directory Mode
+   */
+  directory_mode: string;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+};
+
+/**
  * ProjectWorkdirCreate
  *
  * Project Workdir 创建意图。
@@ -2178,6 +7415,276 @@ export type ProjectWorkdirCreate = {
    * Path
    */
   path?: string | null;
+};
+
+/**
+ * QueryParamsConfigItem
+ *
+ * 知识库查询参数定义（`type` 与 `options` 由知识库类型给出）。
+ */
+export type QueryParamsConfigItem = {
+  /**
+   * Type
+   */
+  type: string;
+  /**
+   * Options
+   */
+  options: Array<{
+    [key: string]: unknown;
+  }>;
+};
+
+/**
+ * QueryParamsConfigResponse
+ *
+ * 查询参数定义响应。
+ */
+export type QueryParamsConfigResponse = {
+  params: QueryParamsConfigItem;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * QueuedTaskResponse
+ *
+ * 任务受理结果；提交失败时只回 message/status。
+ */
+export type QueuedTaskResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Task Id
+   */
+  task_id?: string | null;
+};
+
+/**
+ * ReadinessCheckItem
+ *
+ * 单个就绪探针结果；失败时才有 `code`。
+ */
+export type ReadinessCheckItem = {
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Code
+   */
+  code?: string | null;
+};
+
+/**
+ * ReadinessComponentItem
+ *
+ * 启动组件事实；异常时才有 `code`。
+ */
+export type ReadinessComponentItem = {
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Required
+   */
+  required: boolean;
+  /**
+   * Code
+   */
+  code?: string | null;
+};
+
+/**
+ * ReadinessResponse
+ *
+ * 接流量就绪事实，`status` 为 ready/not_ready，后者以 503 返回。
+ */
+export type ReadinessResponse = {
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Degraded
+   */
+  degraded: boolean;
+  /**
+   * Checks
+   */
+  checks: {
+    [key: string]: ReadinessCheckItem;
+  };
+  /**
+   * Components
+   */
+  components: {
+    [key: string]: ReadinessComponentItem;
+  };
+  /**
+   * Version
+   */
+  version: string;
+};
+
+/**
+ * RegisterRequest
+ *
+ * 自助注册载荷。公开端点，多余字段直接拒绝而不是忽略。
+ */
+export type RegisterRequest = {
+  /**
+   * Uid
+   */
+  uid: string;
+  /**
+   * Password
+   */
+  password: string;
+  /**
+   * Phone Number
+   */
+  phone_number?: string | null;
+};
+
+/**
+ * RemoteModelItem
+ *
+ * 远端模型条目；`_normalize_remote_model` 会丢掉值为 None 的键。
+ *
+ * 因此可空字段都给默认值，由路由的 `response_model_exclude_unset=True` 保证
+ * 未下发的键不出现在响应里。
+ */
+export type RemoteModelItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Type
+   */
+  type: string;
+  /**
+   * Display Name
+   */
+  display_name: string;
+  /**
+   * Input Modalities
+   */
+  input_modalities: Array<unknown>;
+  /**
+   * Output Modalities
+   */
+  output_modalities: Array<unknown>;
+  /**
+   * Supported Parameters
+   */
+  supported_parameters: Array<unknown>;
+  /**
+   * Pricing
+   */
+  pricing: {
+    [key: string]: unknown;
+  };
+  /**
+   * Default Parameters
+   */
+  default_parameters: {
+    [key: string]: unknown;
+  };
+  /**
+   * Raw Metadata
+   */
+  raw_metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Extra
+   */
+  extra: {
+    [key: string]: unknown;
+  };
+  /**
+   * Object
+   */
+  object?: unknown;
+  /**
+   * Created
+   */
+  created?: unknown;
+  /**
+   * Owned By
+   */
+  owned_by?: unknown;
+  /**
+   * Description
+   */
+  description?: unknown;
+  /**
+   * Context Length
+   */
+  context_length?: unknown;
+  /**
+   * Max Completion Tokens
+   */
+  max_completion_tokens?: unknown;
+};
+
+/**
+ * RemoteModelsResponse
+ *
+ * 远端模型列表响应。
+ */
+export type RemoteModelsResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<RemoteModelItem>;
+};
+
+/**
+ * RemoteSkillItem
+ *
+ * 远程仓库中可安装的 Skill。
+ */
+export type RemoteSkillItem = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string;
+};
+
+/**
+ * RemoteSkillListResponse
+ *
+ * 远程 Skill 列表响应。
+ */
+export type RemoteSkillListResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<RemoteSkillItem>;
 };
 
 /**
@@ -2199,6 +7706,26 @@ export type RemoteSkillPrepareRequest = {
 };
 
 /**
+ * RemoteSkillSearchItem
+ *
+ * 远程 Skill 搜索结果项。
+ */
+export type RemoteSkillSearchItem = {
+  /**
+   * Source
+   */
+  source: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Installs
+   */
+  installs: string;
+};
+
+/**
  * RemoteSkillSearchRequest
  */
 export type RemoteSkillSearchRequest = {
@@ -2208,6 +7735,22 @@ export type RemoteSkillSearchRequest = {
    * 搜索关键字
    */
   query: string;
+};
+
+/**
+ * RemoteSkillSearchResponse
+ *
+ * 远程 Skill 搜索响应。
+ */
+export type RemoteSkillSearchResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<RemoteSkillSearchItem>;
 };
 
 /**
@@ -2240,6 +7783,86 @@ export type RunEvaluationRequest = {
   model_config?: {
     [key: string]: unknown;
   };
+};
+
+/**
+ * SameNameFileItem
+ *
+ * 同名文件摘要；对齐 `get_same_name_files`。
+ */
+export type SameNameFileItem = {
+  /**
+   * File Id
+   */
+  file_id: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Size
+   */
+  size: number;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Content Hash
+   */
+  content_hash: string;
+};
+
+/**
+ * SampleQuestionsGenerateResponse
+ *
+ * AI 生成测试问题结果。
+ */
+export type SampleQuestionsGenerateResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Questions
+   */
+  questions: Array<string>;
+  /**
+   * Count
+   */
+  count: number;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Db Name
+   */
+  db_name: string | null;
+};
+
+/**
+ * SampleQuestionsResponse
+ *
+ * 已保存的测试问题列表。
+ */
+export type SampleQuestionsResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Questions
+   */
+  questions: Array<string>;
+  /**
+   * Count
+   */
+  count: number;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
 };
 
 /**
@@ -2305,6 +7928,158 @@ export type SkillBatchDeleteRequest = {
 };
 
 /**
+ * SkillBatchDeleteResponse
+ *
+ * 批量删除响应。
+ */
+export type SkillBatchDeleteResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<SkillBatchResultItem>;
+  summary: SkillOperationSummary;
+};
+
+/**
+ * SkillBatchOperationResponse
+ *
+ * 安装确认响应。
+ */
+export type SkillBatchOperationResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<SkillInstallResultItem>;
+  summary: SkillOperationSummary;
+};
+
+/**
+ * SkillBatchResultItem
+ *
+ * 批量删除的单条结果。
+ */
+export type SkillBatchResultItem = {
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Error
+   */
+  error?: string | null;
+};
+
+/**
+ * SkillCardItem
+ *
+ * 用户可访问的 Skill 卡片；在 ResolvedSkill 之上附带 `_serialize_skill_for_user` 的派生键。
+ */
+export type SkillCardItem = {
+  /**
+   * Id
+   */
+  id: unknown;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Source Type
+   */
+  source_type: string;
+  /**
+   * Source Scope
+   */
+  source_scope: string;
+  /**
+   * Enabled
+   */
+  enabled: boolean;
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Tool Dependencies
+   */
+  tool_dependencies: Array<string>;
+  /**
+   * Mcp Dependencies
+   */
+  mcp_dependencies: Array<string>;
+  /**
+   * Skill Dependencies
+   */
+  skill_dependencies: Array<string>;
+  /**
+   * Overrides Shared
+   */
+  overrides_shared: boolean;
+  /**
+   * Shadowed By Personal
+   */
+  shadowed_by_personal: boolean;
+  /**
+   * Share Config
+   */
+  share_config?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Can Manage
+   */
+  can_manage: boolean;
+  /**
+   * Effective Permission
+   */
+  effective_permission: string;
+  /**
+   * Is Builtin
+   */
+  is_builtin: boolean;
+};
+
+/**
+ * SkillCardListResponse
+ *
+ * Skill 卡片列表响应；`allowed_access_levels` 只在管理入口下发。
+ */
+export type SkillCardListResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<SkillCardItem>;
+  /**
+   * Allowed Access Levels
+   */
+  allowed_access_levels?: Array<string> | null;
+};
+
+/**
  * SkillDependenciesUpdateRequest
  */
 export type SkillDependenciesUpdateRequest = {
@@ -2329,6 +8104,39 @@ export type SkillDependenciesUpdateRequest = {
 };
 
 /**
+ * SkillDependencyOptions
+ *
+ * Skill 依赖选项集合。
+ */
+export type SkillDependencyOptions = {
+  /**
+   * Tools
+   */
+  tools: Array<SkillToolOption>;
+  /**
+   * Mcps
+   */
+  mcps: Array<string>;
+  /**
+   * Skills
+   */
+  skills: Array<string>;
+};
+
+/**
+ * SkillDependencyOptionsResponse
+ *
+ * Skill 依赖选项响应。
+ */
+export type SkillDependencyOptionsResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  data: SkillDependencyOptions;
+};
+
+/**
  * SkillDraftConfirmRequest
  */
 export type SkillDraftConfirmRequest = {
@@ -2349,6 +8157,121 @@ export type SkillDraftConfirmRequest = {
 };
 
 /**
+ * SkillDraftItem
+ *
+ * 安装草稿中的单个 Skill；解析失败时只带 slug/success/error。
+ */
+export type SkillDraftItem = {
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Draft Item Id
+   */
+  draft_item_id?: string | null;
+  /**
+   * Source Dir
+   */
+  source_dir?: string | null;
+  /**
+   * Name
+   */
+  name?: string | null;
+  /**
+   * Original Name
+   */
+  original_name?: string | null;
+  /**
+   * Description
+   */
+  description?: string | null;
+  /**
+   * Tool Dependencies
+   */
+  tool_dependencies?: Array<string> | null;
+  /**
+   * Mcp Dependencies
+   */
+  mcp_dependencies?: Array<string> | null;
+  /**
+   * Skill Dependencies
+   */
+  skill_dependencies?: Array<string> | null;
+  /**
+   * Warnings
+   */
+  warnings?: Array<string> | null;
+  /**
+   * Error
+   */
+  error?: string | null;
+};
+
+/**
+ * SkillDraftPreview
+ *
+ * 安装草稿内容；对齐 `prepare_*_skill_install` 的返回结构。
+ */
+export type SkillDraftPreview = {
+  /**
+   * Draft Id
+   */
+  draft_id: string;
+  /**
+   * Created By
+   */
+  created_by: string;
+  /**
+   * Source Type
+   */
+  source_type: string;
+  /**
+   * Source
+   */
+  source: string;
+  /**
+   * Created At
+   */
+  created_at: number;
+  /**
+   * Expires At
+   */
+  expires_at: number;
+  /**
+   * Items
+   */
+  items: Array<SkillDraftItem>;
+  /**
+   * Default Share Config
+   */
+  default_share_config: {
+    [key: string]: unknown;
+  };
+  /**
+   * Allowed Access Levels
+   */
+  allowed_access_levels: Array<string>;
+};
+
+/**
+ * SkillDraftResponse
+ *
+ * 上传/远程解析得到的安装草稿响应。
+ */
+export type SkillDraftResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  data: SkillDraftPreview;
+};
+
+/**
  * SkillEnabledUpdateRequest
  */
 export type SkillEnabledUpdateRequest = {
@@ -2358,6 +8281,35 @@ export type SkillEnabledUpdateRequest = {
    * 是否启用
    */
   enabled: boolean;
+};
+
+/**
+ * SkillFileContent
+ *
+ * Skill 文本文件内容。
+ */
+export type SkillFileContent = {
+  /**
+   * Path
+   */
+  path: string;
+  /**
+   * Content
+   */
+  content: string;
+};
+
+/**
+ * SkillFileResponse
+ *
+ * Skill 文件读取响应。
+ */
+export type SkillFileResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  data: SkillFileContent;
 };
 
 /**
@@ -2376,6 +8328,145 @@ export type SkillFileUpdateRequest = {
    * 文件内容
    */
   content: string;
+};
+
+/**
+ * SkillInstallResultItem
+ *
+ * 安装确认的单条结果；成功带 `skill`，个人安装额外带 `requested_slug`。
+ */
+export type SkillInstallResultItem = {
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Error
+   */
+  error?: string | null;
+  /**
+   * Requested Slug
+   */
+  requested_slug?: string | null;
+  /**
+   * Skill
+   */
+  skill?: SkillItem | SkillResolvedItem | null;
+};
+
+/**
+ * SkillItem
+ *
+ * 数据库 Skill 元数据；字段对齐 `Skill.to_dict()`。
+ */
+export type SkillItem = {
+  /**
+   * Id
+   */
+  id: number;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Source Type
+   */
+  source_type: string;
+  /**
+   * Tool Dependencies
+   */
+  tool_dependencies: Array<string>;
+  /**
+   * Mcp Dependencies
+   */
+  mcp_dependencies: Array<string>;
+  /**
+   * Skill Dependencies
+   */
+  skill_dependencies: Array<string>;
+  /**
+   * Dir Path
+   */
+  dir_path: string;
+  /**
+   * Version
+   */
+  version: string | null;
+  /**
+   * Content Hash
+   */
+  content_hash: string | null;
+  /**
+   * Share Config
+   */
+  share_config: {
+    [key: string]: unknown;
+  };
+  /**
+   * Enabled
+   */
+  enabled: boolean;
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Updated By
+   */
+  updated_by: string | null;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+};
+
+/**
+ * SkillItemResponse
+ *
+ * 单条 Skill 更新结果响应。
+ */
+export type SkillItemResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  data: ManagedSkillItem;
+};
+
+/**
+ * SkillListResponse
+ *
+ * 管理视图 Skill 列表响应。
+ */
+export type SkillListResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<ManagedSkillItem>;
+  /**
+   * Allowed Access Levels
+   */
+  allowed_access_levels?: Array<string> | null;
 };
 
 /**
@@ -2400,6 +8491,490 @@ export type SkillNodeCreateRequest = {
    * 文件内容（仅文件创建时生效）
    */
   content?: string | null;
+};
+
+/**
+ * SkillOperationSummary
+ *
+ * 批量操作的汇总计数。
+ */
+export type SkillOperationSummary = {
+  /**
+   * Total
+   */
+  total: number;
+  /**
+   * Success
+   */
+  success: number;
+  /**
+   * Failed
+   */
+  failed: number;
+};
+
+/**
+ * SkillRecordListResponse
+ *
+ * 内置 Skill 列表/同步响应，直接返回 `Skill.to_dict()` 记录。
+ */
+export type SkillRecordListResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<SkillItem>;
+};
+
+/**
+ * SkillResolvedItem
+ *
+ * `ResolvedSkill.to_dict()` 的原始形态；`share_config` 仅共享 Skill 下发。
+ */
+export type SkillResolvedItem = {
+  /**
+   * Id
+   */
+  id: unknown;
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Source Type
+   */
+  source_type: string;
+  /**
+   * Source Scope
+   */
+  source_scope: string;
+  /**
+   * Enabled
+   */
+  enabled: boolean;
+  /**
+   * Created By
+   */
+  created_by: string | null;
+  /**
+   * Tool Dependencies
+   */
+  tool_dependencies: Array<string>;
+  /**
+   * Mcp Dependencies
+   */
+  mcp_dependencies: Array<string>;
+  /**
+   * Skill Dependencies
+   */
+  skill_dependencies: Array<string>;
+  /**
+   * Overrides Shared
+   */
+  overrides_shared: boolean;
+  /**
+   * Shadowed By Personal
+   */
+  shadowed_by_personal: boolean;
+  /**
+   * Share Config
+   */
+  share_config?: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
+ * SkillToolOption
+ *
+ * 可依赖的内置工具选项。
+ */
+export type SkillToolOption = {
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+};
+
+/**
+ * SkillTreeNode
+ *
+ * Skill 目录树节点；文件节点不下发 `children`。
+ */
+export type SkillTreeNode = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Path
+   */
+  path: string;
+  /**
+   * Is Dir
+   */
+  is_dir: boolean;
+  /**
+   * Children
+   */
+  children?: Array<SkillTreeNode> | null;
+};
+
+/**
+ * SkillTreeResponse
+ *
+ * Skill 目录树响应。
+ */
+export type SkillTreeResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<SkillTreeNode>;
+};
+
+/**
+ * SubagentThreadItem
+ *
+ * 子智能体线程归属关系；对齐 `SubagentThread.to_dict()`。
+ */
+export type SubagentThreadItem = {
+  /**
+   * Id
+   */
+  id: number;
+  /**
+   * Uid
+   */
+  uid: string;
+  /**
+   * Parent Conversation Id
+   */
+  parent_conversation_id: number;
+  /**
+   * Child Conversation Id
+   */
+  child_conversation_id: number;
+  /**
+   * Child Thread Id
+   */
+  child_thread_id: string;
+  /**
+   * Subagent Slug
+   */
+  subagent_slug: string;
+  /**
+   * Created By Run Id
+   */
+  created_by_run_id: string;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+};
+
+/**
+ * SuccessResponse
+ *
+ * 仅表达成功的操作结果。
+ */
+export type SuccessResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+};
+
+/**
+ * SupportedFileTypesResponse
+ *
+ * 支持的文件类型。
+ */
+export type SupportedFileTypesResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * File Types
+   */
+  file_types: Array<string>;
+};
+
+/**
+ * SystemConfigFieldItem
+ *
+ * `_serialize_system_config` 里 `_config_items` 的单字段描述。
+ */
+export type SystemConfigFieldItem = {
+  /**
+   * Des
+   */
+  des: string;
+  /**
+   * Default
+   */
+  default: unknown;
+  /**
+   * Type
+   */
+  type: string;
+  /**
+   * Exclude
+   */
+  exclude: boolean;
+};
+
+/**
+ * SystemConfigResponse
+ *
+ * 系统配置响应：字段值键集合由 `system_options.fields` 动态决定。
+ *
+ * 配置项随版本演进，顶层键无法静态枚举，因此用 `extra="allow"` 原样透传动态键；
+ * `_config_items` 以下划线开头，不能直接作字段名，用别名映射到 `config_items`。
+ */
+export type SystemConfigResponse = {
+  /**
+   * Config Items
+   */
+  _config_items: {
+    [key: string]: SystemConfigFieldItem;
+  };
+  [key: string]: unknown;
+};
+
+/**
+ * SystemLogResponse
+ *
+ * API 进程日志读取结果。
+ */
+export type SystemLogResponse = {
+  /**
+   * Log
+   */
+  log: string;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Log File
+   */
+  log_file: string;
+  /**
+   * Scope
+   */
+  scope: string;
+};
+
+/**
+ * TaskActionResponse
+ *
+ * 任务取消/删除结果。
+ */
+export type TaskActionResponse = {
+  /**
+   * Task Id
+   */
+  task_id: string;
+  /**
+   * Status
+   */
+  status: string;
+};
+
+/**
+ * TaskItem
+ *
+ * 任务详情；对齐 `Task.to_dict()`。
+ */
+export type TaskItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Type
+   */
+  type: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Progress
+   */
+  progress: number;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Updated At
+   */
+  updated_at: string;
+  /**
+   * Started At
+   */
+  started_at: string | null;
+  /**
+   * Completed At
+   */
+  completed_at: string | null;
+  /**
+   * Payload
+   */
+  payload: {
+    [key: string]: unknown;
+  };
+  /**
+   * Result
+   */
+  result: unknown | null;
+  /**
+   * Error
+   */
+  error: string | null;
+  /**
+   * Cancel Requested
+   */
+  cancel_requested: boolean;
+};
+
+/**
+ * TaskItemResponse
+ *
+ * 单个任务响应。
+ */
+export type TaskItemResponse = {
+  task: TaskItem;
+};
+
+/**
+ * TaskListResponse
+ *
+ * 任务列表响应；对齐 `Tasker.list_tasks`。
+ */
+export type TaskListResponse = {
+  /**
+   * Tasks
+   */
+  tasks: Array<TaskSummaryItem>;
+  summary: TaskListSummary;
+};
+
+/**
+ * TaskListSummary
+ *
+ * 任务列表汇总计数。
+ */
+export type TaskListSummary = {
+  /**
+   * Total
+   */
+  total: number;
+  /**
+   * Filtered Total
+   */
+  filtered_total: number;
+  /**
+   * Status Counts
+   */
+  status_counts: {
+    [key: string]: number;
+  };
+  /**
+   * Type Counts
+   */
+  type_counts: {
+    [key: string]: number;
+  };
+};
+
+/**
+ * TaskSummaryItem
+ *
+ * 任务列表条目；对齐 `Task.to_summary_dict()`（不含 payload/result）。
+ */
+export type TaskSummaryItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Type
+   */
+  type: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Progress
+   */
+  progress: number;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Updated At
+   */
+  updated_at: string;
+  /**
+   * Started At
+   */
+  started_at: string | null;
+  /**
+   * Completed At
+   */
+  completed_at: string | null;
+  /**
+   * Error
+   */
+  error: string | null;
+  /**
+   * Cancel Requested
+   */
+  cancel_requested: boolean;
 };
 
 /**
@@ -2439,6 +9014,40 @@ export type ThreadAgentStat = {
 };
 
 /**
+ * ThreadAgentState
+ *
+ * `extract_agent_state` 产出的智能体运行状态。
+ */
+export type ThreadAgentState = {
+  /**
+   * Todos
+   */
+  todos: Array<unknown>;
+  /**
+   * Files
+   */
+  files: {
+    [key: string]: unknown;
+  };
+  /**
+   * Artifacts
+   */
+  artifacts: Array<string>;
+  /**
+   * Subagent Runs
+   */
+  subagent_runs: Array<{
+    [key: string]: unknown;
+  }>;
+  /**
+   * Token Usage
+   */
+  token_usage: {
+    [key: string]: unknown;
+  } | null;
+};
+
+/**
  * ThreadAnalyticsResponse
  *
  * 会话多维分析响应模型。
@@ -2469,6 +9078,54 @@ export type ThreadAnalyticsResponse = {
   status_distribution: {
     [key: string]: number;
   };
+};
+
+/**
+ * ThreadArtifactPreviewResponse
+ *
+ * artifact 文本/不支持预览的 JSON 载荷；对齐 `PreviewResult.payload()`。
+ *
+ * 该路由的主路径是文件下载，返回 FileResponse / StreamingResponse 时由 FastAPI 直接
+ * 透传（Response 实例不经过 response_model）；只有预览落在 JSON 分支时才由本模型序列化，
+ * 并借此为 OpenAPI 声明字段信息。
+ */
+export type ThreadArtifactPreviewResponse = {
+  /**
+   * Content
+   */
+  content: string | null;
+  /**
+   * Preview Type
+   */
+  preview_type: string;
+  /**
+   * Supported
+   */
+  supported: boolean;
+  /**
+   * Message
+   */
+  message: string | null;
+  /**
+   * Truncated
+   */
+  truncated: boolean;
+  /**
+   * Limit
+   */
+  limit: number | null;
+};
+
+/**
+ * ThreadAttachmentDeleteResponse
+ *
+ * 删除线程附件结果。
+ */
+export type ThreadAttachmentDeleteResponse = {
+  /**
+   * Message
+   */
+  message: string;
 };
 
 /**
@@ -2523,6 +9180,129 @@ export type ThreadDailyTrend = {
    * Message Count
    */
   message_count: number;
+};
+
+/**
+ * ThreadDeleteResponse
+ *
+ * 删除对话线程结果。
+ */
+export type ThreadDeleteResponse = {
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * ThreadHistoryFeedbackItem
+ *
+ * 历史消息中当前用户对该消息的反馈。
+ */
+export type ThreadHistoryFeedbackItem = {
+  /**
+   * Id
+   */
+  id: number;
+  /**
+   * Rating
+   */
+  rating: string;
+  /**
+   * Reason
+   */
+  reason: string | null;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+};
+
+/**
+ * ThreadHistoryMessageItem
+ *
+ * 历史消息条目；字段对齐 `conversation_service.get_thread_history_view`。
+ *
+ * `run_started_at`/`run_finished_at` 只对 assistant 消息下发，`tool_calls` 只在该消息
+ * 带工具调用时下发，因此它们有默认值，配合 `response_model_exclude_unset=True`
+ * 保证响应体逐键与载荷一致。
+ */
+export type ThreadHistoryMessageItem = {
+  /**
+   * Id
+   */
+  id: number;
+  /**
+   * Type
+   */
+  type: string;
+  /**
+   * Content
+   */
+  content: string;
+  /**
+   * Created At
+   */
+  created_at: string | null;
+  /**
+   * Run Id
+   */
+  run_id: string | null;
+  /**
+   * Request Id
+   */
+  request_id: string | null;
+  /**
+   * Delivery Status
+   */
+  delivery_status: string;
+  /**
+   * Error Type
+   */
+  error_type: string | null;
+  /**
+   * Error Message
+   */
+  error_message: string | null;
+  /**
+   * Extra Metadata
+   */
+  extra_metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Message Type
+   */
+  message_type: string | null;
+  /**
+   * Image Content
+   */
+  image_content: string | null;
+  feedback: ThreadHistoryFeedbackItem | null;
+  /**
+   * Run Started At
+   */
+  run_started_at?: string | null;
+  /**
+   * Run Finished At
+   */
+  run_finished_at?: string | null;
+  /**
+   * Tool Calls
+   */
+  tool_calls?: Array<ThreadToolCallItem>;
+};
+
+/**
+ * ThreadHistoryResponse
+ *
+ * 对话历史消息响应。
+ */
+export type ThreadHistoryResponse = {
+  /**
+   * History
+   */
+  history: Array<ThreadHistoryMessageItem>;
 };
 
 /**
@@ -2692,6 +9472,42 @@ export type ThreadSearchSnippet = {
 };
 
 /**
+ * ThreadStateResponse
+ *
+ * 对话当前状态；字段对齐 `chat_service.get_agent_state_view`。
+ *
+ * `interrupt`、`parent_thread_id`、`subagent_thread`、`subagent_run` 只在特定场景下发，
+ * `messages` 只在 `include_messages=True` 时下发；它们带默认值并由
+ * `response_model_exclude_unset=True` 维持响应体逐键不变。
+ */
+export type ThreadStateResponse = {
+  agent_state: ThreadAgentState;
+  /**
+   * Interrupt
+   */
+  interrupt?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Parent Thread Id
+   */
+  parent_thread_id?: string | null;
+  subagent_thread?: SubagentThreadItem | null;
+  /**
+   * Subagent Run
+   */
+  subagent_run?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Messages
+   */
+  messages?: Array<{
+    [key: string]: unknown;
+  }>;
+};
+
+/**
  * ThreadSummary
  *
  * 会话汇总指标。
@@ -2725,6 +9541,62 @@ export type ThreadSummary = {
    * Pinned Threads
    */
   pinned_threads?: number;
+};
+
+/**
+ * ThreadToolCallFunction
+ *
+ * 工具调用函数名。
+ */
+export type ThreadToolCallFunction = {
+  /**
+   * Name
+   */
+  name: string;
+};
+
+/**
+ * ThreadToolCallItem
+ *
+ * 历史消息内的一次工具调用。
+ */
+export type ThreadToolCallItem = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Name
+   */
+  name: string;
+  function: ThreadToolCallFunction;
+  /**
+   * Args
+   */
+  args: {
+    [key: string]: unknown;
+  };
+  tool_call_result: ThreadToolCallResult | null;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Error Message
+   */
+  error_message: string | null;
+};
+
+/**
+ * ThreadToolCallResult
+ *
+ * 工具调用成功时的结果摘要。
+ */
+export type ThreadToolCallResult = {
+  /**
+   * Content
+   */
+  content: string;
 };
 
 /**
@@ -2974,6 +9846,26 @@ export type Token = {
 };
 
 /**
+ * ToolArgItem
+ *
+ * 工具单个入参的描述。
+ */
+export type ToolArgItem = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Type
+   */
+  type: string;
+  /**
+   * Description
+   */
+  description: string;
+};
+
+/**
  * ToolCallStats
  *
  * 工具调用统计。
@@ -3013,6 +9905,121 @@ export type ToolCallStats = {
   daily_tool_calls: Array<{
     [key: string]: unknown;
   }>;
+};
+
+/**
+ * ToolItem
+ *
+ * 工具元数据条目；字段对齐 `get_tool_metadata` 装配出的形状。
+ *
+ * `args` 是拍平后的说明（名称/类型/描述），够渲染一行；`args_schema` 是工具自身声明的完整
+ * JSON Schema，调用方据此判断必填、枚举与嵌套结构。
+ */
+export type ToolItem = {
+  /**
+   * Slug
+   */
+  slug: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Description
+   */
+  description: string;
+  /**
+   * Metadata
+   */
+  metadata: {
+    [key: string]: unknown;
+  };
+  /**
+   * Args
+   */
+  args: Array<ToolArgItem>;
+  /**
+   * Args Schema
+   */
+  args_schema: {
+    [key: string]: unknown;
+  };
+  /**
+   * Category
+   */
+  category: string;
+  /**
+   * Tags
+   */
+  tags: Array<string>;
+  /**
+   * Config Guide
+   */
+  config_guide: string;
+};
+
+/**
+ * ToolListResponse
+ *
+ * 工具列表响应。
+ */
+export type ToolListResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<ToolItem>;
+};
+
+/**
+ * ToolOptionItem
+ *
+ * 工具下拉框选项。
+ */
+export type ToolOptionItem = {
+  /**
+   * Label
+   */
+  label: string;
+  /**
+   * Value
+   */
+  value: string;
+};
+
+/**
+ * ToolOptionsResponse
+ *
+ * 工具选项响应。
+ */
+export type ToolOptionsResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: Array<ToolOptionItem>;
+};
+
+/**
+ * UidAvailabilityResponse
+ *
+ * uid 可用性检查结果。
+ */
+export type UidAvailabilityResponse = {
+  /**
+   * Uid
+   */
+  uid: string;
+  /**
+   * Is Available
+   */
+  is_available: boolean;
 };
 
 /**
@@ -3138,6 +10145,24 @@ export type UpdateMcpServerStatusRequest = {
 };
 
 /**
+ * UpdateQueryParamsResponse
+ *
+ * 更新查询参数结果。
+ */
+export type UpdateQueryParamsResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Data
+   */
+  data: {
+    [key: string]: unknown;
+  };
+};
+
+/**
  * UpdateWorkspaceFileContentRequest
  */
 export type UpdateWorkspaceFileContentRequest = {
@@ -3149,6 +10174,66 @@ export type UpdateWorkspaceFileContentRequest = {
    * Content
    */
   content: string;
+};
+
+/**
+ * UploadFileResponse
+ *
+ * 文件上传结果。
+ */
+export type UploadFileResponse = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * File Path
+   */
+  file_path: string;
+  /**
+   * Minio Path
+   */
+  minio_path: string;
+  /**
+   * Kb Id
+   */
+  kb_id: string | null;
+  /**
+   * Content Hash
+   */
+  content_hash: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Original Filename
+   */
+  original_filename: string;
+  /**
+   * Size
+   */
+  size: number;
+  /**
+   * Minio Filename
+   */
+  minio_filename: string;
+  /**
+   * Object Name
+   */
+  object_name: string;
+  /**
+   * Bucket Name
+   */
+  bucket_name: string;
+  /**
+   * Same Name Files
+   */
+  same_name_files: Array<SameNameFileItem>;
+  /**
+   * Has Same Name
+   */
+  has_same_name: boolean;
 };
 
 /**
@@ -3204,6 +10289,26 @@ export type UserActivityStats = {
 };
 
 /**
+ * UserConfigResponse
+ *
+ * 用户级配置响应；字段对齐 `UserConfig.dump_config()` 的输出。
+ */
+export type UserConfigResponse = {
+  /**
+   * Uid
+   */
+  uid: string;
+  /**
+   * Enable Memory
+   */
+  enable_memory: boolean;
+  /**
+   * Updated At
+   */
+  updated_at: string | null;
+};
+
+/**
  * UserConfigSchema
  *
  * 用户专属配置 schema。
@@ -3241,6 +10346,42 @@ export type UserCreate = {
    * Department Id
    */
   department_id?: number | null;
+};
+
+/**
+ * UserDeleteResponse
+ *
+ * 删除用户的结果。
+ */
+export type UserDeleteResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Message
+   */
+  message: string;
+};
+
+/**
+ * UserImageUploadResponse
+ *
+ * 用户图片上传结果，`image_url` 与 `url` 内容一致。
+ */
+export type UserImageUploadResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Image Url
+   */
+  image_url: string;
+  /**
+   * Url
+   */
+  url: string;
 };
 
 /**
@@ -3362,6 +10503,72 @@ export type UsernameValidation = {
 };
 
 /**
+ * V2ModelItem
+ *
+ * v2 模型条目；`dimension`/`batch_size` 键总在但值可为 null。
+ */
+export type V2ModelItem = {
+  /**
+   * Spec
+   */
+  spec: string;
+  /**
+   * Model Id
+   */
+  model_id: string;
+  /**
+   * Display Name
+   */
+  display_name: string;
+  /**
+   * Dimension
+   */
+  dimension: number | null;
+  /**
+   * Batch Size
+   */
+  batch_size: number | null;
+};
+
+/**
+ * V2ModelsResponse
+ *
+ * v2 模型列表响应，按供应商 ID 分组。
+ */
+export type V2ModelsResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Data
+   */
+  data: {
+    [key: string]: V2ProviderGroupItem;
+  };
+};
+
+/**
+ * V2ProviderGroupItem
+ *
+ * v2 中按供应商分组的模型集合。
+ */
+export type V2ProviderGroupItem = {
+  /**
+   * Provider Id
+   */
+  provider_id: string;
+  /**
+   * Provider Display Name
+   */
+  provider_display_name: string;
+  /**
+   * Models
+   */
+  models: Array<V2ModelItem>;
+};
+
+/**
  * ValidationError
  */
 export type ValidationError = {
@@ -3390,6 +10597,338 @@ export type ValidationError = {
 };
 
 /**
+ * ViewerDeleteResponse
+ *
+ * Viewer 文件或目录删除结果。
+ */
+export type ViewerDeleteResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Path
+   */
+  path: string;
+};
+
+/**
+ * ViewerDirectoryCreateResponse
+ *
+ * Viewer 目录创建结果。
+ */
+export type ViewerDirectoryCreateResponse = {
+  entry: ViewerEntryItem;
+};
+
+/**
+ * ViewerEntryItem
+ *
+ * Viewer 文件系统条目；字段对齐 `viewer_filesystem_service._entry` 的输出。
+ *
+ * `artifact_url` 只在列目录、搜索与上传条目中出现（目录项为 null），创建目录不返回该键，
+ * 因此给默认值并由 `response_model_exclude_unset=True` 保持响应键集合与载荷一致。
+ */
+export type ViewerEntryItem = {
+  /**
+   * Path
+   */
+  path: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Is Dir
+   */
+  is_dir: boolean;
+  /**
+   * Size
+   */
+  size: number;
+  /**
+   * Modified At
+   */
+  modified_at: string;
+  /**
+   * Artifact Url
+   */
+  artifact_url?: string | null;
+};
+
+/**
+ * ViewerFilePreviewResponse
+ *
+ * Viewer 文本/不可预览文件的 JSON 预览载荷；对齐 `PreviewResult.payload()`。
+ *
+ * 图片、PDF 与 Office 预览由 `read_viewer_file_content` 直接返回 StreamingResponse，
+ * 作为 Response 实例绕过本模型；本模型只描述 JSON 分支的固定 6 个键。
+ */
+export type ViewerFilePreviewResponse = {
+  /**
+   * Content
+   */
+  content: string | null;
+  /**
+   * Preview Type
+   */
+  preview_type: string;
+  /**
+   * Supported
+   */
+  supported: boolean;
+  /**
+   * Message
+   */
+  message: string | null;
+  /**
+   * Truncated
+   */
+  truncated: boolean;
+  /**
+   * Limit
+   */
+  limit: number | null;
+};
+
+/**
+ * ViewerTreeResponse
+ *
+ * Viewer 目录列表与搜索结果响应。
+ */
+export type ViewerTreeResponse = {
+  /**
+   * Entries
+   */
+  entries: Array<ViewerEntryItem>;
+};
+
+/**
+ * ViewerUploadResponse
+ *
+ * Viewer 文件上传结果。
+ */
+export type ViewerUploadResponse = {
+  /**
+   * Entries
+   */
+  entries: Array<ViewerEntryItem>;
+};
+
+/**
+ * VirtualFolderDetectResponse
+ *
+ * 历史虚拟文件夹检测结果。
+ */
+export type VirtualFolderDetectResponse = {
+  /**
+   * Has Virtual Folders
+   */
+  has_virtual_folders: boolean;
+  /**
+   * File Count
+   */
+  file_count: number;
+  /**
+   * Remaining Steps
+   */
+  remaining_steps: number;
+};
+
+/**
+ * VirtualFolderMigrateResponse
+ *
+ * 历史虚拟文件夹迁移任务受理结果。
+ */
+export type VirtualFolderMigrateResponse = {
+  /**
+   * Task Id
+   */
+  task_id: string;
+  /**
+   * Created
+   */
+  created: boolean;
+};
+
+/**
+ * WorkspaceDeleteResponse
+ *
+ * 工作区文件或目录删除结果。
+ */
+export type WorkspaceDeleteResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Path
+   */
+  path: string;
+};
+
+/**
+ * WorkspaceDirectoryCreateResponse
+ *
+ * 工作区目录创建结果。
+ */
+export type WorkspaceDirectoryCreateResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  entry: WorkspaceEntryItem;
+};
+
+/**
+ * WorkspaceEntryItem
+ *
+ * 工作区树/搜索条目；字段对齐 `workspace_service._entry_from_metadata` 的输出。
+ */
+export type WorkspaceEntryItem = {
+  /**
+   * Path
+   */
+  path: string;
+  /**
+   * Virtual Path
+   */
+  virtual_path: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Is Dir
+   */
+  is_dir: boolean;
+  /**
+   * Size
+   */
+  size: number;
+  /**
+   * Modified At
+   */
+  modified_at: string;
+};
+
+/**
+ * WorkspaceFilePreviewResponse
+ *
+ * 工作区文本/不可预览文件的 JSON 预览载荷；对齐 `PreviewResult.payload()`。
+ *
+ * 图片、PDF 与 Office 预览由 `read_workspace_file_content` 直接返回 StreamingResponse，
+ * 作为 Response 实例绕过本模型；本模型只描述 JSON 分支的固定 6 个键。
+ */
+export type WorkspaceFilePreviewResponse = {
+  /**
+   * Content
+   */
+  content: string | null;
+  /**
+   * Preview Type
+   */
+  preview_type: string;
+  /**
+   * Supported
+   */
+  supported: boolean;
+  /**
+   * Message
+   */
+  message: string | null;
+  /**
+   * Truncated
+   */
+  truncated: boolean;
+  /**
+   * Limit
+   */
+  limit: number | null;
+};
+
+/**
+ * WorkspaceFileWriteResponse
+ *
+ * 工作区文件写入结果。
+ */
+export type WorkspaceFileWriteResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Path
+   */
+  path: string;
+  entry: WorkspaceEntryItem;
+};
+
+/**
+ * WorkspaceImportItem
+ *
+ * 单个工作区文件导入结果。
+ */
+export type WorkspaceImportItem = {
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * File Path
+   */
+  file_path: string;
+  /**
+   * Minio Path
+   */
+  minio_path: string;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * Content Hash
+   */
+  content_hash: string;
+  /**
+   * Filename
+   */
+  filename: string;
+  /**
+   * Original Filename
+   */
+  original_filename: string;
+  /**
+   * Size
+   */
+  size: number;
+  /**
+   * Minio Filename
+   */
+  minio_filename: string;
+  /**
+   * Object Name
+   */
+  object_name: string;
+  /**
+   * Bucket Name
+   */
+  bucket_name: string;
+  /**
+   * Workspace Path
+   */
+  workspace_path: string;
+  /**
+   * Same Name Files
+   */
+  same_name_files: Array<SameNameFileItem>;
+  /**
+   * Has Same Name
+   */
+  has_same_name: boolean;
+};
+
+/**
  * WorkspaceImportRequest
  */
 export type WorkspaceImportRequest = {
@@ -3403,6 +10942,616 @@ export type WorkspaceImportRequest = {
   paths: Array<string>;
 };
 
+/**
+ * WorkspaceImportResponse
+ *
+ * 工作区文件导入结果。
+ */
+export type WorkspaceImportResponse = {
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Items
+   */
+  items: Array<WorkspaceImportItem>;
+};
+
+/**
+ * WorkspaceKnowledgeEntryItem
+ *
+ * 知识库文件在工作区只读视图中的条目；对齐 `_workspace_knowledge_entry` 的输出。
+ */
+export type WorkspaceKnowledgeEntryItem = {
+  /**
+   * Source
+   */
+  source: string;
+  /**
+   * Kb Id
+   */
+  kb_id: string;
+  /**
+   * File Id
+   */
+  file_id: string | null;
+  /**
+   * Parent Id
+   */
+  parent_id: string | null;
+  /**
+   * Path
+   */
+  path: string;
+  /**
+   * Virtual Path
+   */
+  virtual_path: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Is Dir
+   */
+  is_dir: boolean;
+  /**
+   * Size
+   */
+  size: number;
+  /**
+   * Modified At
+   */
+  modified_at: string;
+  /**
+   * Readonly
+   */
+  readonly: boolean;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Has Original File
+   */
+  has_original_file: boolean;
+  /**
+   * Has Parsed Markdown
+   */
+  has_parsed_markdown: boolean;
+  /**
+   * Is Virtual Folder
+   */
+  is_virtual_folder: boolean;
+  /**
+   * Path Prefix
+   */
+  path_prefix: string;
+};
+
+/**
+ * WorkspaceKnowledgeTreeResponse
+ *
+ * 知识库文件只读树响应。
+ */
+export type WorkspaceKnowledgeTreeResponse = {
+  /**
+   * Entries
+   */
+  entries: Array<WorkspaceKnowledgeEntryItem>;
+  /**
+   * Readonly
+   */
+  readonly: boolean;
+  /**
+   * Page
+   */
+  page: number;
+  /**
+   * Page Size
+   */
+  page_size: number;
+  /**
+   * Total
+   */
+  total: number;
+  /**
+   * Has More
+   */
+  has_more: boolean;
+  /**
+   * Parent Id
+   */
+  parent_id: string | null;
+  /**
+   * Path Prefix
+   */
+  path_prefix: string;
+};
+
+/**
+ * WorkspaceTreeResponse
+ *
+ * 工作区目录树与搜索结果响应。
+ */
+export type WorkspaceTreeResponse = {
+  /**
+   * Entries
+   */
+  entries: Array<WorkspaceEntryItem>;
+};
+
+/**
+ * WorkspaceUploadResponse
+ *
+ * 工作区文件上传结果。
+ */
+export type WorkspaceUploadResponse = {
+  /**
+   * Success
+   */
+  success: boolean;
+  /**
+   * Entries
+   */
+  entries: Array<WorkspaceEntryItem>;
+};
+
+/**
+ * CustomPayload
+ *
+ * 自定义事件：`name` 区分 `ars.agent_state`、`ars.warning` 与 `ars.<status>`。
+ */
+export type CustomPayload = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Chunk
+   */
+  chunk?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Agent State
+   */
+  agent_state?: {
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+};
+
+/**
+ * CustomRunEvent
+ */
+export type CustomRunEvent = {
+  /**
+   * Schema Version
+   */
+  schema_version?: 1;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Event
+   */
+  event?: 'custom';
+  payload: CustomPayload;
+};
+
+/**
+ * EndPayload
+ */
+export type EndPayload = {
+  /**
+   * Status
+   */
+  status: 'completed' | 'failed' | 'cancelled' | 'interrupted';
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Chunk
+   */
+  chunk?: {
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+};
+
+/**
+ * EndRunEvent
+ */
+export type EndRunEvent = {
+  /**
+   * Schema Version
+   */
+  schema_version?: 1;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Event
+   */
+  event?: 'end';
+  payload: EndPayload;
+};
+
+/**
+ * ErrorPayload
+ *
+ * 运行错误；`run_id`/`message`/`reason` 来自事件流自身不可用的那条分支。
+ */
+export type ErrorPayload = {
+  /**
+   * Chunk
+   */
+  chunk?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Retryable
+   */
+  retryable?: boolean | null;
+  /**
+   * Run Id
+   */
+  run_id?: string | null;
+  /**
+   * Message
+   */
+  message?: string | null;
+  /**
+   * Reason
+   */
+  reason?: string | null;
+  [key: string]: unknown;
+};
+
+/**
+ * ErrorRunEvent
+ */
+export type ErrorRunEvent = {
+  /**
+   * Schema Version
+   */
+  schema_version?: 1;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Event
+   */
+  event?: 'error';
+  payload: ErrorPayload;
+};
+
+/**
+ * InterruptPayload
+ */
+export type InterruptPayload = {
+  /**
+   * Reason
+   */
+  reason: string;
+  /**
+   * Chunk
+   */
+  chunk?: {
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+};
+
+/**
+ * InterruptRunEvent
+ */
+export type InterruptRunEvent = {
+  /**
+   * Schema Version
+   */
+  schema_version?: 1;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Event
+   */
+  event?: 'interrupt';
+  payload: InterruptPayload;
+};
+
+/**
+ * MessagesPayload
+ *
+ * 进度事件：新增分片走 `items`，单条分片走 `chunk`。
+ */
+export type MessagesPayload = {
+  /**
+   * Items
+   */
+  items?: Array<unknown> | null;
+  /**
+   * Chunk
+   */
+  chunk?: {
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+};
+
+/**
+ * MessagesRunEvent
+ */
+export type MessagesRunEvent = {
+  /**
+   * Schema Version
+   */
+  schema_version?: 1;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Event
+   */
+  event?: 'messages';
+  payload: MessagesPayload;
+};
+
+/**
+ * MetadataPayload
+ */
+export type MetadataPayload = {
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Agent Slug
+   */
+  agent_slug?: string | null;
+  /**
+   * Uid
+   */
+  uid?: string | null;
+  /**
+   * Source
+   */
+  source?: string | null;
+  /**
+   * Run Type
+   */
+  run_type?: string | null;
+  /**
+   * Created By Run Id
+   */
+  created_by_run_id?: string | null;
+  /**
+   * Subagent Slug
+   */
+  subagent_slug?: string | null;
+  /**
+   * Agent Invocation Meta
+   */
+  agent_invocation_meta?: {
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+};
+
+/**
+ * MetadataRunEvent
+ */
+export type MetadataRunEvent = {
+  /**
+   * Schema Version
+   */
+  schema_version?: 1;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Event
+   */
+  event?: 'metadata';
+  payload: MetadataPayload;
+};
+
+export type RunEvent =
+  | ({
+      event: 'metadata';
+    } & MetadataRunEvent)
+  | ({
+      event: 'messages';
+    } & MessagesRunEvent)
+  | ({
+      event: 'custom';
+    } & CustomRunEvent)
+  | ({
+      event: 'interrupt';
+    } & InterruptRunEvent)
+  | ({
+      event: 'error';
+    } & ErrorRunEvent)
+  | ({
+      event: 'end';
+    } & EndRunEvent);
+
+/**
+ * RequestEventPayload
+ *
+ * 一条请求事件的载荷；`request_id` 恒有，其余字段按事件各自出现。
+ */
+export type RequestEventPayload = {
+  /**
+   * Request Id
+   */
+  request_id: string;
+  /**
+   * Status
+   */
+  status?: string | null;
+  /**
+   * Position
+   */
+  position?: number | null;
+  /**
+   * Run Id
+   */
+  run_id?: string | null;
+  /**
+   * Stream Url
+   */
+  stream_url?: string | null;
+  /**
+   * Message
+   */
+  message?: string | null;
+  [key: string]: unknown;
+};
+
+/**
+ * TaskProgressPayload
+ *
+ * 任务快照去掉 `payload` 后的形状。
+ */
+export type TaskProgressPayload = {
+  /**
+   * Id
+   */
+  id: string;
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Type
+   */
+  type: string;
+  /**
+   * Status
+   */
+  status: string;
+  /**
+   * Progress
+   */
+  progress: number;
+  /**
+   * Message
+   */
+  message: string;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Updated At
+   */
+  updated_at: string;
+  /**
+   * Started At
+   */
+  started_at?: string | null;
+  /**
+   * Completed At
+   */
+  completed_at?: string | null;
+  /**
+   * Result
+   */
+  result?: unknown | null;
+  /**
+   * Error
+   */
+  error?: string | null;
+  /**
+   * Cancel Requested
+   */
+  cancel_requested?: boolean;
+  [key: string]: unknown;
+};
+
 export type HealthCheckApiSystemHealthGetData = {
   body?: never;
   path?: never;
@@ -3414,8 +11563,11 @@ export type HealthCheckApiSystemHealthGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: HealthResponse;
 };
+
+export type HealthCheckApiSystemHealthGetResponse =
+  HealthCheckApiSystemHealthGetResponses[keyof HealthCheckApiSystemHealthGetResponses];
 
 export type ReadinessCheckApiSystemReadyGetData = {
   body?: never;
@@ -3424,12 +11576,25 @@ export type ReadinessCheckApiSystemReadyGetData = {
   url: '/api/system/ready';
 };
 
+export type ReadinessCheckApiSystemReadyGetErrors = {
+  /**
+   * 未就绪，status=not_ready
+   */
+  503: ReadinessResponse;
+};
+
+export type ReadinessCheckApiSystemReadyGetError =
+  ReadinessCheckApiSystemReadyGetErrors[keyof ReadinessCheckApiSystemReadyGetErrors];
+
 export type ReadinessCheckApiSystemReadyGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ReadinessResponse;
 };
+
+export type ReadinessCheckApiSystemReadyGetResponse =
+  ReadinessCheckApiSystemReadyGetResponses[keyof ReadinessCheckApiSystemReadyGetResponses];
 
 export type DiscoveryApiSystemDiscoveryGetData = {
   body?: never;
@@ -3442,8 +11607,11 @@ export type DiscoveryApiSystemDiscoveryGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: DiscoveryResponse;
 };
+
+export type DiscoveryApiSystemDiscoveryGetResponse =
+  DiscoveryApiSystemDiscoveryGetResponses[keyof DiscoveryApiSystemDiscoveryGetResponses];
 
 export type GetConfigApiSystemConfigGetData = {
   body?: never;
@@ -3472,8 +11640,11 @@ export type GetConfigApiSystemConfigGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SystemConfigResponse;
 };
+
+export type GetConfigApiSystemConfigGetResponse =
+  GetConfigApiSystemConfigGetResponses[keyof GetConfigApiSystemConfigGetResponses];
 
 export type UpdateConfigSingleApiSystemConfigPostData = {
   body: BodyUpdateConfigSingleApiSystemConfigPost;
@@ -3500,13 +11671,9 @@ export type UpdateConfigSingleApiSystemConfigPostError =
 
 export type UpdateConfigSingleApiSystemConfigPostResponses = {
   /**
-   * Response Update Config Single Api System Config Post
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: SystemConfigResponse;
 };
 
 export type UpdateConfigSingleApiSystemConfigPostResponse =
@@ -3542,13 +11709,9 @@ export type UpdateConfigBatchApiSystemConfigUpdatePostError =
 
 export type UpdateConfigBatchApiSystemConfigUpdatePostResponses = {
   /**
-   * Response Update Config Batch Api System Config Update Post
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: SystemConfigResponse;
 };
 
 export type UpdateConfigBatchApiSystemConfigUpdatePostResponse =
@@ -3586,8 +11749,11 @@ export type GetSystemLogsApiSystemLogsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SystemLogResponse;
 };
+
+export type GetSystemLogsApiSystemLogsGetResponse =
+  GetSystemLogsApiSystemLogsGetResponses[keyof GetSystemLogsApiSystemLogsGetResponses];
 
 export type GetInfoConfigApiSystemInfoGetData = {
   body?: never;
@@ -3600,8 +11766,11 @@ export type GetInfoConfigApiSystemInfoGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: InfoResponse;
 };
+
+export type GetInfoConfigApiSystemInfoGetResponse =
+  GetInfoConfigApiSystemInfoGetResponses[keyof GetInfoConfigApiSystemInfoGetResponses];
 
 export type ReloadInfoConfigApiSystemInfoReloadPostData = {
   body?: never;
@@ -3630,8 +11799,11 @@ export type ReloadInfoConfigApiSystemInfoReloadPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: InfoReloadResponse;
 };
+
+export type ReloadInfoConfigApiSystemInfoReloadPostResponse =
+  ReloadInfoConfigApiSystemInfoReloadPostResponses[keyof ReloadInfoConfigApiSystemInfoReloadPostResponses];
 
 export type GetConfigOptionsApiSystemConfigOptionsGetData = {
   body?: never;
@@ -3660,8 +11832,11 @@ export type GetConfigOptionsApiSystemConfigOptionsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ConfigOptionsResponse;
 };
+
+export type GetConfigOptionsApiSystemConfigOptionsGetResponse =
+  GetConfigOptionsApiSystemConfigOptionsGetResponses[keyof GetConfigOptionsApiSystemConfigOptionsGetResponses];
 
 export type PutConfigOptionApiSystemConfigOptionsKeyPutData = {
   body: ConfigOptionValuePayload;
@@ -3695,8 +11870,11 @@ export type PutConfigOptionApiSystemConfigOptionsKeyPutResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ConfigOptionResponse;
 };
+
+export type PutConfigOptionApiSystemConfigOptionsKeyPutResponse =
+  PutConfigOptionApiSystemConfigOptionsKeyPutResponses[keyof PutConfigOptionApiSystemConfigOptionsKeyPutResponses];
 
 export type GetOcrEngineOptionsApiSystemOcrOptionsGetData = {
   body?: never;
@@ -3725,8 +11903,11 @@ export type GetOcrEngineOptionsApiSystemOcrOptionsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: OcrOptionsResponse;
 };
+
+export type GetOcrEngineOptionsApiSystemOcrOptionsGetResponse =
+  GetOcrEngineOptionsApiSystemOcrOptionsGetResponses[keyof GetOcrEngineOptionsApiSystemOcrOptionsGetResponses];
 
 export type GetOcrHealthApiSystemOcrHealthGetData = {
   body?: never;
@@ -3755,8 +11936,11 @@ export type GetOcrHealthApiSystemOcrHealthGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: OcrHealthResponse;
 };
+
+export type GetOcrHealthApiSystemOcrHealthGetResponse =
+  GetOcrHealthApiSystemOcrHealthGetResponses[keyof GetOcrHealthApiSystemOcrHealthGetResponses];
 
 export type LoginForAccessTokenApiAuthTokenPostData = {
   body: BodyLoginForAccessTokenApiAuthTokenPost;
@@ -3926,8 +12110,11 @@ export type CheckFirstRunApiAuthCheckFirstRunGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: FirstRunStatusResponse;
 };
+
+export type CheckFirstRunApiAuthCheckFirstRunGetResponse =
+  CheckFirstRunApiAuthCheckFirstRunGetResponses[keyof CheckFirstRunApiAuthCheckFirstRunGetResponses];
 
 export type InitializeAdminApiAuthInitializePostData = {
   body: InitializeAdmin;
@@ -3955,6 +12142,33 @@ export type InitializeAdminApiAuthInitializePostResponses = {
 
 export type InitializeAdminApiAuthInitializePostResponse =
   InitializeAdminApiAuthInitializePostResponses[keyof InitializeAdminApiAuthInitializePostResponses];
+
+export type RegisterAccountApiAuthRegisterPostData = {
+  body: RegisterRequest;
+  path?: never;
+  query?: never;
+  url: '/api/auth/register';
+};
+
+export type RegisterAccountApiAuthRegisterPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type RegisterAccountApiAuthRegisterPostError =
+  RegisterAccountApiAuthRegisterPostErrors[keyof RegisterAccountApiAuthRegisterPostErrors];
+
+export type RegisterAccountApiAuthRegisterPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: Token;
+};
+
+export type RegisterAccountApiAuthRegisterPostResponse =
+  RegisterAccountApiAuthRegisterPostResponses[keyof RegisterAccountApiAuthRegisterPostResponses];
 
 export type ReadUsersMeApiAuthMeGetData = {
   body?: never;
@@ -4227,13 +12441,9 @@ export type DeleteUserApiAuthUsersUserIdDeleteError =
 
 export type DeleteUserApiAuthUsersUserIdDeleteResponses = {
   /**
-   * Response Delete User Api Auth Users  User Id  Delete
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: UserDeleteResponse;
 };
 
 export type DeleteUserApiAuthUsersUserIdDeleteResponse =
@@ -4381,8 +12591,11 @@ export type CheckUidAvailabilityApiAuthCheckUidUidGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: UidAvailabilityResponse;
 };
+
+export type CheckUidAvailabilityApiAuthCheckUidUidGetResponse =
+  CheckUidAvailabilityApiAuthCheckUidUidGetResponses[keyof CheckUidAvailabilityApiAuthCheckUidUidGetResponses];
 
 export type UploadUserAvatarApiAuthUploadAvatarPostData = {
   body: BodyUploadUserAvatarApiAuthUploadAvatarPost;
@@ -4411,8 +12624,11 @@ export type UploadUserAvatarApiAuthUploadAvatarPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AvatarUploadResponse;
 };
+
+export type UploadUserAvatarApiAuthUploadAvatarPostResponse =
+  UploadUserAvatarApiAuthUploadAvatarPostResponses[keyof UploadUserAvatarApiAuthUploadAvatarPostResponses];
 
 export type ImpersonateUserApiAuthImpersonateUserIdPostData = {
   body?: never;
@@ -4495,8 +12711,11 @@ export type GetOidcLoginUrlApiAuthOidcLoginUrlGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: OidcLoginUrlResponse;
 };
+
+export type GetOidcLoginUrlApiAuthOidcLoginUrlGetResponse =
+  GetOidcLoginUrlApiAuthOidcLoginUrlGetResponses[keyof GetOidcLoginUrlApiAuthOidcLoginUrlGetResponses];
 
 export type OidcCallbackApiAuthOidcCallbackGetData = {
   body?: never;
@@ -4578,8 +12797,11 @@ export type ListAgentBackendsApiAgentBackendsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentBackendListResponse;
 };
+
+export type ListAgentBackendsApiAgentBackendsGetResponse =
+  ListAgentBackendsApiAgentBackendsGetResponses[keyof ListAgentBackendsApiAgentBackendsGetResponses];
 
 export type GetAgentBackendApiAgentBackendsBackendIdGetData = {
   body?: never;
@@ -4613,8 +12835,11 @@ export type GetAgentBackendApiAgentBackendsBackendIdGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentBackendItem;
 };
+
+export type GetAgentBackendApiAgentBackendsBackendIdGetResponse =
+  GetAgentBackendApiAgentBackendsBackendIdGetResponses[keyof GetAgentBackendApiAgentBackendsBackendIdGetResponses];
 
 export type ListAgentsApiAgentGetData = {
   body?: never;
@@ -4648,8 +12873,11 @@ export type ListAgentsApiAgentGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentListResponse;
 };
+
+export type ListAgentsApiAgentGetResponse =
+  ListAgentsApiAgentGetResponses[keyof ListAgentsApiAgentGetResponses];
 
 export type CreateAgentApiAgentPostData = {
   body: AgentCreate;
@@ -4678,8 +12906,11 @@ export type CreateAgentApiAgentPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentItemResponse;
 };
+
+export type CreateAgentApiAgentPostResponse =
+  CreateAgentApiAgentPostResponses[keyof CreateAgentApiAgentPostResponses];
 
 export type GetDefaultAgentApiAgentDefaultGetData = {
   body?: never;
@@ -4708,8 +12939,11 @@ export type GetDefaultAgentApiAgentDefaultGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentItemResponse;
 };
+
+export type GetDefaultAgentApiAgentDefaultGetResponse =
+  GetDefaultAgentApiAgentDefaultGetResponses[keyof GetDefaultAgentApiAgentDefaultGetResponses];
 
 export type DeleteAgentApiAgentAgentIdDeleteData = {
   body?: never;
@@ -4743,8 +12977,11 @@ export type DeleteAgentApiAgentAgentIdDeleteResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentDeleteResponse;
 };
+
+export type DeleteAgentApiAgentAgentIdDeleteResponse =
+  DeleteAgentApiAgentAgentIdDeleteResponses[keyof DeleteAgentApiAgentAgentIdDeleteResponses];
 
 export type GetAgentApiAgentAgentIdGetData = {
   body?: never;
@@ -4778,8 +13015,11 @@ export type GetAgentApiAgentAgentIdGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentItemResponse;
 };
+
+export type GetAgentApiAgentAgentIdGetResponse =
+  GetAgentApiAgentAgentIdGetResponses[keyof GetAgentApiAgentAgentIdGetResponses];
 
 export type UpdateAgentApiAgentAgentIdPutData = {
   body: AgentUpdate;
@@ -4813,8 +13053,11 @@ export type UpdateAgentApiAgentAgentIdPutResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentItemResponse;
 };
+
+export type UpdateAgentApiAgentAgentIdPutResponse =
+  UpdateAgentApiAgentAgentIdPutResponses[keyof UpdateAgentApiAgentAgentIdPutResponses];
 
 export type SetAgentDefaultApiAgentAgentIdSetDefaultPostData = {
   body?: never;
@@ -4848,8 +13091,11 @@ export type SetAgentDefaultApiAgentAgentIdSetDefaultPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentItemResponse;
 };
+
+export type SetAgentDefaultApiAgentAgentIdSetDefaultPostResponse =
+  SetAgentDefaultApiAgentAgentIdSetDefaultPostResponses[keyof SetAgentDefaultApiAgentAgentIdSetDefaultPostResponses];
 
 export type CreateAgentRunApiAgentRunsPostData = {
   body: AgentRunCreate;
@@ -4878,8 +13124,11 @@ export type CreateAgentRunApiAgentRunsPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentRunCreateResponse;
 };
+
+export type CreateAgentRunApiAgentRunsPostResponse =
+  CreateAgentRunApiAgentRunsPostResponses[keyof CreateAgentRunApiAgentRunsPostResponses];
 
 export type GetRequestApiAgentRequestsRequestIdGetData = {
   body?: never;
@@ -4913,8 +13162,11 @@ export type GetRequestApiAgentRequestsRequestIdGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentRequestResponse;
 };
+
+export type GetRequestApiAgentRequestsRequestIdGetResponse =
+  GetRequestApiAgentRequestsRequestIdGetResponses[keyof GetRequestApiAgentRequestsRequestIdGetResponses];
 
 export type ListThreadRequestsApiAgentThreadThreadIdRequestsGetData = {
   body?: never;
@@ -4955,8 +13207,11 @@ export type ListThreadRequestsApiAgentThreadThreadIdRequestsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentThreadRequestsResponse;
 };
+
+export type ListThreadRequestsApiAgentThreadThreadIdRequestsGetResponse =
+  ListThreadRequestsApiAgentThreadThreadIdRequestsGetResponses[keyof ListThreadRequestsApiAgentThreadThreadIdRequestsGetResponses];
 
 export type ContinueThreadRequestsApiAgentThreadThreadIdRequestsContinuePostData =
   {
@@ -5000,8 +13255,11 @@ export type ContinueThreadRequestsApiAgentThreadThreadIdRequestsContinuePostResp
     /**
      * Successful Response
      */
-    200: unknown;
+    200: AgentThreadContinueResponse;
   };
+
+export type ContinueThreadRequestsApiAgentThreadThreadIdRequestsContinuePostResponse =
+  ContinueThreadRequestsApiAgentThreadThreadIdRequestsContinuePostResponses[keyof ContinueThreadRequestsApiAgentThreadThreadIdRequestsContinuePostResponses];
 
 export type CancelRequestApiAgentRequestsRequestIdCancelPostData = {
   body?: never;
@@ -5035,8 +13293,11 @@ export type CancelRequestApiAgentRequestsRequestIdCancelPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentRequestCancelResponse;
 };
+
+export type CancelRequestApiAgentRequestsRequestIdCancelPostResponse =
+  CancelRequestApiAgentRequestsRequestIdCancelPostResponses[keyof CancelRequestApiAgentRequestsRequestIdCancelPostResponses];
 
 export type SteerRequestApiAgentRequestsRequestIdSteerPostData = {
   body?: never;
@@ -5070,8 +13331,11 @@ export type SteerRequestApiAgentRequestsRequestIdSteerPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentRequestSteerResponse;
 };
+
+export type SteerRequestApiAgentRequestsRequestIdSteerPostResponse =
+  SteerRequestApiAgentRequestsRequestIdSteerPostResponses[keyof SteerRequestApiAgentRequestsRequestIdSteerPostResponses];
 
 export type StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetData = {
   body?: never;
@@ -5106,8 +13370,11 @@ export type StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses 
     /**
      * Successful Response
      */
-    200: unknown;
+    200: RequestEventPayload;
   };
+
+export type StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponse =
+  StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses[keyof StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses];
 
 export type GetAgentRunApiAgentRunsRunIdGetData = {
   body?: never;
@@ -5141,8 +13408,11 @@ export type GetAgentRunApiAgentRunsRunIdGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentRunResponse;
 };
+
+export type GetAgentRunApiAgentRunsRunIdGetResponse =
+  GetAgentRunApiAgentRunsRunIdGetResponses[keyof GetAgentRunApiAgentRunsRunIdGetResponses];
 
 export type GetAgentRunResultRouteApiAgentRunsRunIdResultGetData = {
   body?: never;
@@ -5176,8 +13446,11 @@ export type GetAgentRunResultRouteApiAgentRunsRunIdResultGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentRunResultResponse;
 };
+
+export type GetAgentRunResultRouteApiAgentRunsRunIdResultGetResponse =
+  GetAgentRunResultRouteApiAgentRunsRunIdResultGetResponses[keyof GetAgentRunResultRouteApiAgentRunsRunIdResultGetResponses];
 
 export type GetAgentRunLangfuseLinkRouteApiAgentRunsRunIdLangfuseGetData = {
   body?: never;
@@ -5212,8 +13485,11 @@ export type GetAgentRunLangfuseLinkRouteApiAgentRunsRunIdLangfuseGetResponses =
     /**
      * Successful Response
      */
-    200: unknown;
+    200: AgentRunLangfuseResponse;
   };
+
+export type GetAgentRunLangfuseLinkRouteApiAgentRunsRunIdLangfuseGetResponse =
+  GetAgentRunLangfuseLinkRouteApiAgentRunsRunIdLangfuseGetResponses[keyof GetAgentRunLangfuseLinkRouteApiAgentRunsRunIdLangfuseGetResponses];
 
 export type CancelAgentRunApiAgentRunsRunIdCancelPostData = {
   body?: never;
@@ -5247,8 +13523,11 @@ export type CancelAgentRunApiAgentRunsRunIdCancelPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentRunResponse;
 };
+
+export type CancelAgentRunApiAgentRunsRunIdCancelPostResponse =
+  CancelAgentRunApiAgentRunsRunIdCancelPostResponses[keyof CancelAgentRunApiAgentRunsRunIdCancelPostResponses];
 
 export type StreamRunEventsApiAgentRunsRunIdEventsGetData = {
   body?: never;
@@ -5297,8 +13576,11 @@ export type StreamRunEventsApiAgentRunsRunIdEventsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: RunEvent;
 };
+
+export type StreamRunEventsApiAgentRunsRunIdEventsGetResponse =
+  StreamRunEventsApiAgentRunsRunIdEventsGetResponses[keyof StreamRunEventsApiAgentRunsRunIdEventsGetResponses];
 
 export type GetThreadActiveRunApiAgentThreadThreadIdActiveRunGetData = {
   body?: never;
@@ -5332,8 +13614,11 @@ export type GetThreadActiveRunApiAgentThreadThreadIdActiveRunGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentActiveRunResponse;
 };
+
+export type GetThreadActiveRunApiAgentThreadThreadIdActiveRunGetResponse =
+  GetThreadActiveRunApiAgentThreadThreadIdActiveRunGetResponses[keyof GetThreadActiveRunApiAgentThreadThreadIdActiveRunGetResponses];
 
 export type CreateAgentCallRunApiAgentInvocationAgentCallRunsPostData = {
   body: AgentCallRunCreate;
@@ -5362,8 +13647,11 @@ export type CreateAgentCallRunApiAgentInvocationAgentCallRunsPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentCallRunResponse;
 };
+
+export type CreateAgentCallRunApiAgentInvocationAgentCallRunsPostResponse =
+  CreateAgentCallRunApiAgentInvocationAgentCallRunsPostResponses[keyof CreateAgentCallRunApiAgentInvocationAgentCallRunsPostResponses];
 
 export type GetAgentCallRunResultApiAgentInvocationAgentCallRunsResultPostData =
   {
@@ -5395,8 +13683,11 @@ export type GetAgentCallRunResultApiAgentInvocationAgentCallRunsResultPostRespon
     /**
      * Successful Response
      */
-    200: unknown;
+    200: AgentCallRunResponse;
   };
+
+export type GetAgentCallRunResultApiAgentInvocationAgentCallRunsResultPostResponse =
+  GetAgentCallRunResultApiAgentInvocationAgentCallRunsResultPostResponses[keyof GetAgentCallRunResultApiAgentInvocationAgentCallRunsResultPostResponses];
 
 export type ReceiveChannelMessageApiAgentInvocationChannelMessagesPostData = {
   body: ChannelMessageRequest;
@@ -5426,8 +13717,11 @@ export type ReceiveChannelMessageApiAgentInvocationChannelMessagesPostResponses 
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ChannelMessageResponse;
   };
+
+export type ReceiveChannelMessageApiAgentInvocationChannelMessagesPostResponse =
+  ReceiveChannelMessageApiAgentInvocationChannelMessagesPostResponses[keyof ReceiveChannelMessageApiAgentInvocationChannelMessagesPostResponses];
 
 export type CreateAgentEvalRunApiAgentInvocationEvalRunsPostData = {
   body: AgentEvalRunCreate;
@@ -5456,8 +13750,11 @@ export type CreateAgentEvalRunApiAgentInvocationEvalRunsPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: AgentEvalRunResponse;
 };
+
+export type CreateAgentEvalRunApiAgentInvocationEvalRunsPostResponse =
+  CreateAgentEvalRunApiAgentInvocationEvalRunsPostResponses[keyof CreateAgentEvalRunApiAgentInvocationEvalRunsPostResponses];
 
 export type CallApiChatCallPostData = {
   body: BodyCallApiChatCallPost;
@@ -5486,8 +13783,11 @@ export type CallApiChatCallPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: CallResponse;
 };
+
+export type CallApiChatCallPostResponse =
+  CallApiChatCallPostResponses[keyof CallApiChatCallPostResponses];
 
 export type GetThreadHistoryApiChatThreadThreadIdHistoryGetData = {
   body?: never;
@@ -5521,8 +13821,11 @@ export type GetThreadHistoryApiChatThreadThreadIdHistoryGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ThreadHistoryResponse;
 };
+
+export type GetThreadHistoryApiChatThreadThreadIdHistoryGetResponse =
+  GetThreadHistoryApiChatThreadThreadIdHistoryGetResponses[keyof GetThreadHistoryApiChatThreadThreadIdHistoryGetResponses];
 
 export type GetThreadStateApiChatThreadThreadIdStateGetData = {
   body?: never;
@@ -5561,8 +13864,11 @@ export type GetThreadStateApiChatThreadThreadIdStateGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ThreadStateResponse;
 };
+
+export type GetThreadStateApiChatThreadThreadIdStateGetResponse =
+  GetThreadStateApiChatThreadThreadIdStateGetResponses[keyof GetThreadStateApiChatThreadThreadIdStateGetResponses];
 
 export type CreateThreadApiChatThreadPostData = {
   body: ThreadCreate;
@@ -5727,8 +14033,11 @@ export type DeleteThreadApiChatThreadThreadIdDeleteResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ThreadDeleteResponse;
 };
+
+export type DeleteThreadApiChatThreadThreadIdDeleteResponse =
+  DeleteThreadApiChatThreadThreadIdDeleteResponses[keyof DeleteThreadApiChatThreadThreadIdDeleteResponses];
 
 export type UpdateThreadApiChatThreadThreadIdPutData = {
   body: ThreadUpdate;
@@ -5991,8 +14300,11 @@ export type DeleteThreadAttachmentApiChatThreadThreadIdAttachmentsFileIdDeleteRe
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ThreadAttachmentDeleteResponse;
   };
+
+export type DeleteThreadAttachmentApiChatThreadThreadIdAttachmentsFileIdDeleteResponse =
+  DeleteThreadAttachmentApiChatThreadThreadIdAttachmentsFileIdDeleteResponses[keyof DeleteThreadAttachmentApiChatThreadThreadIdAttachmentsFileIdDeleteResponses];
 
 export type GetThreadArtifactApiChatThreadThreadIdArtifactsPathGetData = {
   body?: never;
@@ -6039,8 +14351,11 @@ export type GetThreadArtifactApiChatThreadThreadIdArtifactsPathGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ThreadArtifactPreviewResponse;
 };
+
+export type GetThreadArtifactApiChatThreadThreadIdArtifactsPathGetResponse =
+  GetThreadArtifactApiChatThreadThreadIdArtifactsPathGetResponses[keyof GetThreadArtifactApiChatThreadThreadIdArtifactsPathGetResponses];
 
 export type SaveThreadArtifactToWorkspaceApiChatThreadThreadIdArtifactsSavePostData =
   {
@@ -6115,8 +14430,11 @@ export type GetMessageFeedbackApiChatMessageMessageIdFeedbackGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: MessageFeedbackStatusResponse;
 };
+
+export type GetMessageFeedbackApiChatMessageMessageIdFeedbackGetResponse =
+  GetMessageFeedbackApiChatMessageMessageIdFeedbackGetResponses[keyof GetMessageFeedbackApiChatMessageMessageIdFeedbackGetResponses];
 
 export type SubmitMessageFeedbackApiChatMessageMessageIdFeedbackPostData = {
   body: MessageFeedbackRequest;
@@ -6215,10 +14533,15 @@ export type ListProjectsApiProjectsGetError =
 
 export type ListProjectsApiProjectsGetResponses = {
   /**
+   * Response List Projects Api Projects Get
+   *
    * Successful Response
    */
-  200: unknown;
+  200: Array<ProjectItem>;
 };
+
+export type ListProjectsApiProjectsGetResponse =
+  ListProjectsApiProjectsGetResponses[keyof ListProjectsApiProjectsGetResponses];
 
 export type CreateProjectApiProjectsPostData = {
   body: ProjectCreate;
@@ -6247,8 +14570,11 @@ export type CreateProjectApiProjectsPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ProjectItem;
 };
+
+export type CreateProjectApiProjectsPostResponse =
+  CreateProjectApiProjectsPostResponses[keyof CreateProjectApiProjectsPostResponses];
 
 export type ListHistoryCandidatesApiProjectsHistoryCandidatesGetData = {
   body?: never;
@@ -6290,8 +14616,11 @@ export type ListHistoryCandidatesApiProjectsHistoryCandidatesGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ProjectHistoryCandidatesResponse;
 };
+
+export type ListHistoryCandidatesApiProjectsHistoryCandidatesGetResponse =
+  ListHistoryCandidatesApiProjectsHistoryCandidatesGetResponses[keyof ListHistoryCandidatesApiProjectsHistoryCandidatesGetResponses];
 
 export type GetDashboardStatsApiDashboardStatsGetData = {
   body?: never;
@@ -6320,8 +14649,11 @@ export type GetDashboardStatsApiDashboardStatsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: BasicStatsResponse;
 };
+
+export type GetDashboardStatsApiDashboardStatsGetResponse =
+  GetDashboardStatsApiDashboardStatsGetResponses[keyof GetDashboardStatsApiDashboardStatsGetResponses];
 
 export type GetUserActivityStatsApiDashboardStatsUsersGetData = {
   body?: never;
@@ -6790,8 +15122,11 @@ export type DeleteDepartmentApiDepartmentsDepartmentIdDeleteResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: DepartmentDeleteResponse;
 };
+
+export type DeleteDepartmentApiDepartmentsDepartmentIdDeleteResponse =
+  DeleteDepartmentApiDepartmentsDepartmentIdDeleteResponses[keyof DeleteDepartmentApiDepartmentsDepartmentIdDeleteResponses];
 
 export type GetDepartmentApiDepartmentsDepartmentIdGetData = {
   body?: never;
@@ -6905,8 +15240,11 @@ export type ListTasksApiTasksGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: TaskListResponse;
 };
+
+export type ListTasksApiTasksGetResponse =
+  ListTasksApiTasksGetResponses[keyof ListTasksApiTasksGetResponses];
 
 export type DeleteTaskApiTasksTaskIdDeleteData = {
   body?: never;
@@ -6940,8 +15278,11 @@ export type DeleteTaskApiTasksTaskIdDeleteResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: TaskActionResponse;
 };
+
+export type DeleteTaskApiTasksTaskIdDeleteResponse =
+  DeleteTaskApiTasksTaskIdDeleteResponses[keyof DeleteTaskApiTasksTaskIdDeleteResponses];
 
 export type GetTaskApiTasksTaskIdGetData = {
   body?: never;
@@ -6975,8 +15316,11 @@ export type GetTaskApiTasksTaskIdGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: TaskItemResponse;
 };
+
+export type GetTaskApiTasksTaskIdGetResponse =
+  GetTaskApiTasksTaskIdGetResponses[keyof GetTaskApiTasksTaskIdGetResponses];
 
 export type CancelTaskApiTasksTaskIdCancelPostData = {
   body?: never;
@@ -7010,8 +15354,11 @@ export type CancelTaskApiTasksTaskIdCancelPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: TaskActionResponse;
 };
+
+export type CancelTaskApiTasksTaskIdCancelPostResponse =
+  CancelTaskApiTasksTaskIdCancelPostResponses[keyof CancelTaskApiTasksTaskIdCancelPostResponses];
 
 export type GetMcpServersApiSystemMcpServersGetData = {
   body?: never;
@@ -7040,8 +15387,11 @@ export type GetMcpServersApiSystemMcpServersGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: McpServerListResponse;
 };
+
+export type GetMcpServersApiSystemMcpServersGetResponse =
+  GetMcpServersApiSystemMcpServersGetResponses[keyof GetMcpServersApiSystemMcpServersGetResponses];
 
 export type CreateMcpServerRouteApiSystemMcpServersPostData = {
   body: CreateMcpServerRequest;
@@ -7070,8 +15420,11 @@ export type CreateMcpServerRouteApiSystemMcpServersPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: McpServerItemResponse;
 };
+
+export type CreateMcpServerRouteApiSystemMcpServersPostResponse =
+  CreateMcpServerRouteApiSystemMcpServersPostResponses[keyof CreateMcpServerRouteApiSystemMcpServersPostResponses];
 
 export type DeleteMcpServerRouteApiSystemMcpServersSlugDeleteData = {
   body?: never;
@@ -7105,8 +15458,11 @@ export type DeleteMcpServerRouteApiSystemMcpServersSlugDeleteResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: McpDeleteResponse;
 };
+
+export type DeleteMcpServerRouteApiSystemMcpServersSlugDeleteResponse =
+  DeleteMcpServerRouteApiSystemMcpServersSlugDeleteResponses[keyof DeleteMcpServerRouteApiSystemMcpServersSlugDeleteResponses];
 
 export type GetMcpServerRouteApiSystemMcpServersSlugGetData = {
   body?: never;
@@ -7140,8 +15496,11 @@ export type GetMcpServerRouteApiSystemMcpServersSlugGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: McpServerItemResponse;
 };
+
+export type GetMcpServerRouteApiSystemMcpServersSlugGetResponse =
+  GetMcpServerRouteApiSystemMcpServersSlugGetResponses[keyof GetMcpServerRouteApiSystemMcpServersSlugGetResponses];
 
 export type UpdateMcpServerRouteApiSystemMcpServersSlugPutData = {
   body: UpdateMcpServerRequest;
@@ -7175,8 +15534,11 @@ export type UpdateMcpServerRouteApiSystemMcpServersSlugPutResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: McpServerItemResponse;
 };
+
+export type UpdateMcpServerRouteApiSystemMcpServersSlugPutResponse =
+  UpdateMcpServerRouteApiSystemMcpServersSlugPutResponses[keyof UpdateMcpServerRouteApiSystemMcpServersSlugPutResponses];
 
 export type TestMcpServerApiSystemMcpServersSlugTestPostData = {
   body?: never;
@@ -7210,8 +15572,11 @@ export type TestMcpServerApiSystemMcpServersSlugTestPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: McpTestResponse;
 };
+
+export type TestMcpServerApiSystemMcpServersSlugTestPostResponse =
+  TestMcpServerApiSystemMcpServersSlugTestPostResponses[keyof TestMcpServerApiSystemMcpServersSlugTestPostResponses];
 
 export type UpdateMcpServerStatusRouteApiSystemMcpServersSlugStatusPutData = {
   body: UpdateMcpServerStatusRequest;
@@ -7246,8 +15611,11 @@ export type UpdateMcpServerStatusRouteApiSystemMcpServersSlugStatusPutResponses 
     /**
      * Successful Response
      */
-    200: unknown;
+    200: McpStatusResponse;
   };
+
+export type UpdateMcpServerStatusRouteApiSystemMcpServersSlugStatusPutResponse =
+  UpdateMcpServerStatusRouteApiSystemMcpServersSlugStatusPutResponses[keyof UpdateMcpServerStatusRouteApiSystemMcpServersSlugStatusPutResponses];
 
 export type GetMcpServerToolsApiSystemMcpServersSlugToolsGetData = {
   body?: never;
@@ -7281,8 +15649,11 @@ export type GetMcpServerToolsApiSystemMcpServersSlugToolsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: McpToolListResponse;
 };
+
+export type GetMcpServerToolsApiSystemMcpServersSlugToolsGetResponse =
+  GetMcpServerToolsApiSystemMcpServersSlugToolsGetResponses[keyof GetMcpServerToolsApiSystemMcpServersSlugToolsGetResponses];
 
 export type RefreshMcpServerToolsApiSystemMcpServersSlugToolsRefreshPostData = {
   body?: never;
@@ -7318,8 +15689,11 @@ export type RefreshMcpServerToolsApiSystemMcpServersSlugToolsRefreshPostResponse
     /**
      * Successful Response
      */
-    200: unknown;
+    200: McpToolRefreshResponse;
   };
+
+export type RefreshMcpServerToolsApiSystemMcpServersSlugToolsRefreshPostResponse =
+  RefreshMcpServerToolsApiSystemMcpServersSlugToolsRefreshPostResponses[keyof RefreshMcpServerToolsApiSystemMcpServersSlugToolsRefreshPostResponses];
 
 export type ToggleMcpServerToolRouteApiSystemMcpServersSlugToolsToolNameTogglePutData =
   {
@@ -7360,8 +15734,11 @@ export type ToggleMcpServerToolRouteApiSystemMcpServersSlugToolsToolNameTogglePu
     /**
      * Successful Response
      */
-    200: unknown;
+    200: McpToolToggleResponse;
   };
+
+export type ToggleMcpServerToolRouteApiSystemMcpServersSlugToolsToolNameTogglePutResponse =
+  ToggleMcpServerToolRouteApiSystemMcpServersSlugToolsToolNameTogglePutResponses[keyof ToggleMcpServerToolRouteApiSystemMcpServersSlugToolsToolNameTogglePutResponses];
 
 export type ListProvidersApiSystemModelProvidersGetData = {
   body?: never;
@@ -7390,8 +15767,11 @@ export type ListProvidersApiSystemModelProvidersGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ModelProviderListResponse;
 };
+
+export type ListProvidersApiSystemModelProvidersGetResponse =
+  ListProvidersApiSystemModelProvidersGetResponses[keyof ListProvidersApiSystemModelProvidersGetResponses];
 
 export type CreateProviderApiSystemModelProvidersPostData = {
   body: ModelProviderPayload;
@@ -7420,8 +15800,11 @@ export type CreateProviderApiSystemModelProvidersPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ModelProviderResponse;
 };
+
+export type CreateProviderApiSystemModelProvidersPostResponse =
+  CreateProviderApiSystemModelProvidersPostResponses[keyof CreateProviderApiSystemModelProvidersPostResponses];
 
 export type DeleteProviderApiSystemModelProvidersProviderIdDeleteData = {
   body?: never;
@@ -7455,8 +15838,11 @@ export type DeleteProviderApiSystemModelProvidersProviderIdDeleteResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ModelProviderDeleteResponse;
 };
+
+export type DeleteProviderApiSystemModelProvidersProviderIdDeleteResponse =
+  DeleteProviderApiSystemModelProvidersProviderIdDeleteResponses[keyof DeleteProviderApiSystemModelProvidersProviderIdDeleteResponses];
 
 export type GetProviderApiSystemModelProvidersProviderIdGetData = {
   body?: never;
@@ -7490,8 +15876,11 @@ export type GetProviderApiSystemModelProvidersProviderIdGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ModelProviderResponse;
 };
+
+export type GetProviderApiSystemModelProvidersProviderIdGetResponse =
+  GetProviderApiSystemModelProvidersProviderIdGetResponses[keyof GetProviderApiSystemModelProvidersProviderIdGetResponses];
 
 export type UpdateProviderApiSystemModelProvidersProviderIdPutData = {
   body: ModelProviderPayload;
@@ -7525,8 +15914,11 @@ export type UpdateProviderApiSystemModelProvidersProviderIdPutResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ModelProviderResponse;
 };
+
+export type UpdateProviderApiSystemModelProvidersProviderIdPutResponse =
+  UpdateProviderApiSystemModelProvidersProviderIdPutResponses[keyof UpdateProviderApiSystemModelProvidersProviderIdPutResponses];
 
 export type GetRemoteModelsApiSystemModelProvidersProviderIdRemoteModelsGetData =
   {
@@ -7563,8 +15955,11 @@ export type GetRemoteModelsApiSystemModelProvidersProviderIdRemoteModelsGetRespo
     /**
      * Successful Response
      */
-    200: unknown;
+    200: RemoteModelsResponse;
   };
+
+export type GetRemoteModelsApiSystemModelProvidersProviderIdRemoteModelsGetResponse =
+  GetRemoteModelsApiSystemModelProvidersProviderIdRemoteModelsGetResponses[keyof GetRemoteModelsApiSystemModelProvidersProviderIdRemoteModelsGetResponses];
 
 export type RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostData =
   {
@@ -7596,8 +15991,11 @@ export type RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostRespon
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ModelCacheRefreshResponse;
   };
+
+export type RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostResponse =
+  RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostResponses[keyof RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostResponses];
 
 export type GetV2ModelsApiSystemModelProvidersModelsV2GetData = {
   body?: never;
@@ -7631,8 +16029,11 @@ export type GetV2ModelsApiSystemModelProvidersModelsV2GetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: V2ModelsResponse;
 };
+
+export type GetV2ModelsApiSystemModelProvidersModelsV2GetResponse =
+  GetV2ModelsApiSystemModelProvidersModelsV2GetResponses[keyof GetV2ModelsApiSystemModelProvidersModelsV2GetResponses];
 
 export type GetModelStatusBySpecApiSystemModelProvidersModelsStatusGetData = {
   body?: never;
@@ -7667,8 +16068,11 @@ export type GetModelStatusBySpecApiSystemModelProvidersModelsStatusGetResponses 
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ModelStatusResponse;
   };
+
+export type GetModelStatusBySpecApiSystemModelProvidersModelsStatusGetResponse =
+  GetModelStatusBySpecApiSystemModelProvidersModelsStatusGetResponses[keyof GetModelStatusBySpecApiSystemModelProvidersModelsStatusGetResponses];
 
 export type ListSkillsRouteApiSystemSkillsGetData = {
   body?: never;
@@ -7697,8 +16101,11 @@ export type ListSkillsRouteApiSystemSkillsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SkillListResponse;
 };
+
+export type ListSkillsRouteApiSystemSkillsGetResponse =
+  ListSkillsRouteApiSystemSkillsGetResponses[keyof ListSkillsRouteApiSystemSkillsGetResponses];
 
 export type GetSkillDependencyOptionsRouteApiSystemSkillsDependencyOptionsGetData =
   {
@@ -7737,8 +16144,11 @@ export type GetSkillDependencyOptionsRouteApiSystemSkillsDependencyOptionsGetRes
     /**
      * Successful Response
      */
-    200: unknown;
+    200: SkillDependencyOptionsResponse;
   };
+
+export type GetSkillDependencyOptionsRouteApiSystemSkillsDependencyOptionsGetResponse =
+  GetSkillDependencyOptionsRouteApiSystemSkillsDependencyOptionsGetResponses[keyof GetSkillDependencyOptionsRouteApiSystemSkillsDependencyOptionsGetResponses];
 
 export type ListBuiltinSkillsRouteApiSystemSkillsBuiltinGetData = {
   body?: never;
@@ -7767,8 +16177,11 @@ export type ListBuiltinSkillsRouteApiSystemSkillsBuiltinGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SkillRecordListResponse;
 };
+
+export type ListBuiltinSkillsRouteApiSystemSkillsBuiltinGetResponse =
+  ListBuiltinSkillsRouteApiSystemSkillsBuiltinGetResponses[keyof ListBuiltinSkillsRouteApiSystemSkillsBuiltinGetResponses];
 
 export type SyncBuiltinSkillsRouteApiSystemSkillsBuiltinSyncPostData = {
   body?: never;
@@ -7797,8 +16210,11 @@ export type SyncBuiltinSkillsRouteApiSystemSkillsBuiltinSyncPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SkillRecordListResponse;
 };
+
+export type SyncBuiltinSkillsRouteApiSystemSkillsBuiltinSyncPostResponse =
+  SyncBuiltinSkillsRouteApiSystemSkillsBuiltinSyncPostResponses[keyof SyncBuiltinSkillsRouteApiSystemSkillsBuiltinSyncPostResponses];
 
 export type UpdateSkillShareConfigRouteApiSystemSkillsSlugShareConfigPutData = {
   body: ShareConfigPayload;
@@ -7834,8 +16250,11 @@ export type UpdateSkillShareConfigRouteApiSystemSkillsSlugShareConfigPutResponse
     /**
      * Successful Response
      */
-    200: unknown;
+    200: SkillItemResponse;
   };
+
+export type UpdateSkillShareConfigRouteApiSystemSkillsSlugShareConfigPutResponse =
+  UpdateSkillShareConfigRouteApiSystemSkillsSlugShareConfigPutResponses[keyof UpdateSkillShareConfigRouteApiSystemSkillsSlugShareConfigPutResponses];
 
 export type UpdateSkillEnabledRouteApiSystemSkillsSlugEnabledPutData = {
   body: SkillEnabledUpdateRequest;
@@ -7869,8 +16288,11 @@ export type UpdateSkillEnabledRouteApiSystemSkillsSlugEnabledPutResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SkillItemResponse;
 };
+
+export type UpdateSkillEnabledRouteApiSystemSkillsSlugEnabledPutResponse =
+  UpdateSkillEnabledRouteApiSystemSkillsSlugEnabledPutResponses[keyof UpdateSkillEnabledRouteApiSystemSkillsSlugEnabledPutResponses];
 
 export type GetSkillTreeRouteApiSystemSkillsSlugTreeGetData = {
   body?: never;
@@ -7904,8 +16326,11 @@ export type GetSkillTreeRouteApiSystemSkillsSlugTreeGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SkillTreeResponse;
 };
+
+export type GetSkillTreeRouteApiSystemSkillsSlugTreeGetResponse =
+  GetSkillTreeRouteApiSystemSkillsSlugTreeGetResponses[keyof GetSkillTreeRouteApiSystemSkillsSlugTreeGetResponses];
 
 export type DeleteSkillFileRouteApiSystemSkillsSlugFileDeleteData = {
   body?: never;
@@ -7946,8 +16371,11 @@ export type DeleteSkillFileRouteApiSystemSkillsSlugFileDeleteResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SuccessResponse;
 };
+
+export type DeleteSkillFileRouteApiSystemSkillsSlugFileDeleteResponse =
+  DeleteSkillFileRouteApiSystemSkillsSlugFileDeleteResponses[keyof DeleteSkillFileRouteApiSystemSkillsSlugFileDeleteResponses];
 
 export type GetSkillFileRouteApiSystemSkillsSlugFileGetData = {
   body?: never;
@@ -7988,8 +16416,11 @@ export type GetSkillFileRouteApiSystemSkillsSlugFileGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SkillFileResponse;
 };
+
+export type GetSkillFileRouteApiSystemSkillsSlugFileGetResponse =
+  GetSkillFileRouteApiSystemSkillsSlugFileGetResponses[keyof GetSkillFileRouteApiSystemSkillsSlugFileGetResponses];
 
 export type CreateSkillFileRouteApiSystemSkillsSlugFilePostData = {
   body: SkillNodeCreateRequest;
@@ -8023,8 +16454,11 @@ export type CreateSkillFileRouteApiSystemSkillsSlugFilePostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SuccessResponse;
 };
+
+export type CreateSkillFileRouteApiSystemSkillsSlugFilePostResponse =
+  CreateSkillFileRouteApiSystemSkillsSlugFilePostResponses[keyof CreateSkillFileRouteApiSystemSkillsSlugFilePostResponses];
 
 export type UpdateSkillFileRouteApiSystemSkillsSlugFilePutData = {
   body: SkillFileUpdateRequest;
@@ -8058,8 +16492,11 @@ export type UpdateSkillFileRouteApiSystemSkillsSlugFilePutResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SuccessResponse;
 };
+
+export type UpdateSkillFileRouteApiSystemSkillsSlugFilePutResponse =
+  UpdateSkillFileRouteApiSystemSkillsSlugFilePutResponses[keyof UpdateSkillFileRouteApiSystemSkillsSlugFilePutResponses];
 
 export type UpdateSkillDependenciesRouteApiSystemSkillsSlugDependenciesPutData =
   {
@@ -8096,8 +16533,11 @@ export type UpdateSkillDependenciesRouteApiSystemSkillsSlugDependenciesPutRespon
     /**
      * Successful Response
      */
-    200: unknown;
+    200: SkillItemResponse;
   };
+
+export type UpdateSkillDependenciesRouteApiSystemSkillsSlugDependenciesPutResponse =
+  UpdateSkillDependenciesRouteApiSystemSkillsSlugDependenciesPutResponses[keyof UpdateSkillDependenciesRouteApiSystemSkillsSlugDependenciesPutResponses];
 
 export type ExportSkillRouteApiSystemSkillsSlugExportGetData = {
   body?: never;
@@ -8131,8 +16571,11 @@ export type ExportSkillRouteApiSystemSkillsSlugExportGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: Blob | File;
 };
+
+export type ExportSkillRouteApiSystemSkillsSlugExportGetResponse =
+  ExportSkillRouteApiSystemSkillsSlugExportGetResponses[keyof ExportSkillRouteApiSystemSkillsSlugExportGetResponses];
 
 export type DeleteSkillRouteApiSystemSkillsSlugDeleteData = {
   body?: never;
@@ -8166,8 +16609,11 @@ export type DeleteSkillRouteApiSystemSkillsSlugDeleteResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SuccessResponse;
 };
+
+export type DeleteSkillRouteApiSystemSkillsSlugDeleteResponse =
+  DeleteSkillRouteApiSystemSkillsSlugDeleteResponses[keyof DeleteSkillRouteApiSystemSkillsSlugDeleteResponses];
 
 export type DeleteSkillsBatchRouteApiSystemSkillsDeleteBatchPostData = {
   body: SkillBatchDeleteRequest;
@@ -8196,8 +16642,11 @@ export type DeleteSkillsBatchRouteApiSystemSkillsDeleteBatchPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SkillBatchDeleteResponse;
 };
+
+export type DeleteSkillsBatchRouteApiSystemSkillsDeleteBatchPostResponse =
+  DeleteSkillsBatchRouteApiSystemSkillsDeleteBatchPostResponses[keyof DeleteSkillsBatchRouteApiSystemSkillsDeleteBatchPostResponses];
 
 export type ListSkillCardsRouteApiSkillsGetData = {
   body?: never;
@@ -8226,8 +16675,11 @@ export type ListSkillCardsRouteApiSkillsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SkillCardListResponse;
 };
+
+export type ListSkillCardsRouteApiSkillsGetResponse =
+  ListSkillCardsRouteApiSkillsGetResponses[keyof ListSkillCardsRouteApiSkillsGetResponses];
 
 export type ListAccessibleSkillsRouteApiSkillsAccessibleGetData = {
   body?: never;
@@ -8256,8 +16708,11 @@ export type ListAccessibleSkillsRouteApiSkillsAccessibleGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SkillCardListResponse;
 };
+
+export type ListAccessibleSkillsRouteApiSkillsAccessibleGetResponse =
+  ListAccessibleSkillsRouteApiSkillsAccessibleGetResponses[keyof ListAccessibleSkillsRouteApiSkillsAccessibleGetResponses];
 
 export type PrepareSkillUploadRouteApiSkillsImportPreparePostData = {
   body: BodyPrepareSkillUploadRouteApiSkillsImportPreparePost;
@@ -8286,8 +16741,11 @@ export type PrepareSkillUploadRouteApiSkillsImportPreparePostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SkillDraftResponse;
 };
+
+export type PrepareSkillUploadRouteApiSkillsImportPreparePostResponse =
+  PrepareSkillUploadRouteApiSkillsImportPreparePostResponses[keyof PrepareSkillUploadRouteApiSkillsImportPreparePostResponses];
 
 export type ListRemoteSkillsRouteApiSkillsRemoteListPostData = {
   body: RemoteSkillSourceRequest;
@@ -8316,8 +16774,11 @@ export type ListRemoteSkillsRouteApiSkillsRemoteListPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: RemoteSkillListResponse;
 };
+
+export type ListRemoteSkillsRouteApiSkillsRemoteListPostResponse =
+  ListRemoteSkillsRouteApiSkillsRemoteListPostResponses[keyof ListRemoteSkillsRouteApiSkillsRemoteListPostResponses];
 
 export type SearchRemoteSkillsRouteApiSkillsRemoteSearchPostData = {
   body: RemoteSkillSearchRequest;
@@ -8346,8 +16807,11 @@ export type SearchRemoteSkillsRouteApiSkillsRemoteSearchPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: RemoteSkillSearchResponse;
 };
+
+export type SearchRemoteSkillsRouteApiSkillsRemoteSearchPostResponse =
+  SearchRemoteSkillsRouteApiSkillsRemoteSearchPostResponses[keyof SearchRemoteSkillsRouteApiSkillsRemoteSearchPostResponses];
 
 export type PrepareRemoteSkillsRouteApiSkillsRemotePreparePostData = {
   body: RemoteSkillPrepareRequest;
@@ -8376,8 +16840,11 @@ export type PrepareRemoteSkillsRouteApiSkillsRemotePreparePostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SkillDraftResponse;
 };
+
+export type PrepareRemoteSkillsRouteApiSkillsRemotePreparePostResponse =
+  PrepareRemoteSkillsRouteApiSkillsRemotePreparePostResponses[keyof PrepareRemoteSkillsRouteApiSkillsRemotePreparePostResponses];
 
 export type ConfirmSkillInstallDraftRouteApiSkillsInstallDraftsDraftIdConfirmPostData =
   {
@@ -8414,8 +16881,11 @@ export type ConfirmSkillInstallDraftRouteApiSkillsInstallDraftsDraftIdConfirmPos
     /**
      * Successful Response
      */
-    200: unknown;
+    200: SkillBatchOperationResponse;
   };
+
+export type ConfirmSkillInstallDraftRouteApiSkillsInstallDraftsDraftIdConfirmPostResponse =
+  ConfirmSkillInstallDraftRouteApiSkillsInstallDraftsDraftIdConfirmPostResponses[keyof ConfirmSkillInstallDraftRouteApiSkillsInstallDraftsDraftIdConfirmPostResponses];
 
 export type ConfirmPersonalSkillInstallDraftRouteApiSkillsPersonalInstallDraftsDraftIdConfirmPostData =
   {
@@ -8452,8 +16922,11 @@ export type ConfirmPersonalSkillInstallDraftRouteApiSkillsPersonalInstallDraftsD
     /**
      * Successful Response
      */
-    200: unknown;
+    200: SkillBatchOperationResponse;
   };
+
+export type ConfirmPersonalSkillInstallDraftRouteApiSkillsPersonalInstallDraftsDraftIdConfirmPostResponse =
+  ConfirmPersonalSkillInstallDraftRouteApiSkillsPersonalInstallDraftsDraftIdConfirmPostResponses[keyof ConfirmPersonalSkillInstallDraftRouteApiSkillsPersonalInstallDraftsDraftIdConfirmPostResponses];
 
 export type ReadPersonalSkillFileRouteApiSkillsPersonalSlugFileGetData = {
   body?: never;
@@ -8494,8 +16967,11 @@ export type ReadPersonalSkillFileRouteApiSkillsPersonalSlugFileGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SkillFileResponse;
 };
+
+export type ReadPersonalSkillFileRouteApiSkillsPersonalSlugFileGetResponse =
+  ReadPersonalSkillFileRouteApiSkillsPersonalSlugFileGetResponses[keyof ReadPersonalSkillFileRouteApiSkillsPersonalSlugFileGetResponses];
 
 export type DeletePersonalSkillRouteApiSkillsPersonalSlugDeleteData = {
   body?: never;
@@ -8529,8 +17005,11 @@ export type DeletePersonalSkillRouteApiSkillsPersonalSlugDeleteResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SuccessResponse;
 };
+
+export type DeletePersonalSkillRouteApiSkillsPersonalSlugDeleteResponse =
+  DeletePersonalSkillRouteApiSkillsPersonalSlugDeleteResponses[keyof DeletePersonalSkillRouteApiSkillsPersonalSlugDeleteResponses];
 
 export type DiscardSkillInstallDraftRouteApiSkillsInstallDraftsDraftIdDeleteData =
   {
@@ -8567,8 +17046,11 @@ export type DiscardSkillInstallDraftRouteApiSkillsInstallDraftsDraftIdDeleteResp
     /**
      * Successful Response
      */
-    200: unknown;
+    200: SuccessResponse;
   };
+
+export type DiscardSkillInstallDraftRouteApiSkillsInstallDraftsDraftIdDeleteResponse =
+  DiscardSkillInstallDraftRouteApiSkillsInstallDraftsDraftIdDeleteResponses[keyof DiscardSkillInstallDraftRouteApiSkillsInstallDraftsDraftIdDeleteResponses];
 
 export type ListToolsApiSystemToolsGetData = {
   body?: never;
@@ -8602,8 +17084,11 @@ export type ListToolsApiSystemToolsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ToolListResponse;
 };
+
+export type ListToolsApiSystemToolsGetResponse =
+  ListToolsApiSystemToolsGetResponses[keyof ListToolsApiSystemToolsGetResponses];
 
 export type GetToolOptionsApiSystemToolsOptionsGetData = {
   body?: never;
@@ -8632,8 +17117,11 @@ export type GetToolOptionsApiSystemToolsOptionsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ToolOptionsResponse;
 };
+
+export type GetToolOptionsApiSystemToolsOptionsGetResponse =
+  GetToolOptionsApiSystemToolsOptionsGetResponses[keyof GetToolOptionsApiSystemToolsOptionsGetResponses];
 
 export type GetUserConfigApiUserConfigGetData = {
   body?: never;
@@ -8660,13 +17148,9 @@ export type GetUserConfigApiUserConfigGetError =
 
 export type GetUserConfigApiUserConfigGetResponses = {
   /**
-   * Response Get User Config Api User Config Get
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: UserConfigResponse;
 };
 
 export type GetUserConfigApiUserConfigGetResponse =
@@ -8697,13 +17181,9 @@ export type UpdateUserConfigApiUserConfigPutError =
 
 export type UpdateUserConfigApiUserConfigPutResponses = {
   /**
-   * Response Update User Config Api User Config Put
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: UserConfigResponse;
 };
 
 export type UpdateUserConfigApiUserConfigPutResponse =
@@ -8734,13 +17214,9 @@ export type UploadUserImageApiUserUploadImagePostError =
 
 export type UploadUserImageApiUserUploadImagePostResponses = {
   /**
-   * Response Upload User Image Api User Upload Image Post
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: UserImageUploadResponse;
 };
 
 export type UploadUserImageApiUserUploadImagePostResponse =
@@ -8780,13 +17256,9 @@ export type ListApiKeysApiUserApikeyGetError =
 
 export type ListApiKeysApiUserApikeyGetResponses = {
   /**
-   * Response List Api Keys Api User Apikey  Get
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: ApiKeyListResponse;
 };
 
 export type ListApiKeysApiUserApikeyGetResponse =
@@ -8855,13 +17327,9 @@ export type DeleteApiKeyApiUserApikeyApiKeyIdDeleteError =
 
 export type DeleteApiKeyApiUserApikeyApiKeyIdDeleteResponses = {
   /**
-   * Response Delete Api Key Api User Apikey  Api Key Id  Delete
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: ApiKeyDeleteResponse;
 };
 
 export type DeleteApiKeyApiUserApikeyApiKeyIdDeleteResponse =
@@ -8897,13 +17365,9 @@ export type GetApiKeyApiUserApikeyApiKeyIdGetError =
 
 export type GetApiKeyApiUserApikeyApiKeyIdGetResponses = {
   /**
-   * Response Get Api Key Api User Apikey  Api Key Id  Get
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: ApiKeyDetailResponse;
 };
 
 export type GetApiKeyApiUserApikeyApiKeyIdGetResponse =
@@ -8939,13 +17403,9 @@ export type UpdateApiKeyApiUserApikeyApiKeyIdPutError =
 
 export type UpdateApiKeyApiUserApikeyApiKeyIdPutResponses = {
   /**
-   * Response Update Api Key Api User Apikey  Api Key Id  Put
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: ApiKeyDetailResponse;
 };
 
 export type UpdateApiKeyApiUserApikeyApiKeyIdPutResponse =
@@ -9055,13 +17515,9 @@ export type GetViewerTreeApiViewerFilesystemTreeGetError =
 
 export type GetViewerTreeApiViewerFilesystemTreeGetResponses = {
   /**
-   * Response Get Viewer Tree Api Viewer Filesystem Tree Get
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: ViewerTreeResponse;
 };
 
 export type GetViewerTreeApiViewerFilesystemTreeGetResponse =
@@ -9105,13 +17561,9 @@ export type DeleteViewerFileRouteApiViewerFilesystemFileDeleteError =
 
 export type DeleteViewerFileRouteApiViewerFilesystemFileDeleteResponses = {
   /**
-   * Response Delete Viewer File Route Api Viewer Filesystem File Delete
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: ViewerDeleteResponse;
 };
 
 export type DeleteViewerFileRouteApiViewerFilesystemFileDeleteResponse =
@@ -9157,8 +17609,11 @@ export type GetViewerFileApiViewerFilesystemFileGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ViewerFilePreviewResponse;
 };
+
+export type GetViewerFileApiViewerFilesystemFileGetResponse =
+  GetViewerFileApiViewerFilesystemFileGetResponses[keyof GetViewerFileApiViewerFilesystemFileGetResponses];
 
 export type CreateViewerDirectoryRouteApiViewerFilesystemDirectoryPostData = {
   body: CreateViewerDirectoryRequest;
@@ -9186,13 +17641,9 @@ export type CreateViewerDirectoryRouteApiViewerFilesystemDirectoryPostError =
 export type CreateViewerDirectoryRouteApiViewerFilesystemDirectoryPostResponses =
   {
     /**
-     * Response Create Viewer Directory Route Api Viewer Filesystem Directory Post
-     *
      * Successful Response
      */
-    200: {
-      [key: string]: unknown;
-    };
+    200: ViewerDirectoryCreateResponse;
   };
 
 export type CreateViewerDirectoryRouteApiViewerFilesystemDirectoryPostResponse =
@@ -9223,13 +17674,9 @@ export type UploadViewerFilesRouteApiViewerFilesystemUploadPostError =
 
 export type UploadViewerFilesRouteApiViewerFilesystemUploadPostResponses = {
   /**
-   * Response Upload Viewer Files Route Api Viewer Filesystem Upload Post
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: ViewerUploadResponse;
 };
 
 export type UploadViewerFilesRouteApiViewerFilesystemUploadPostResponse =
@@ -9273,13 +17720,9 @@ export type SearchViewerFilesRouteApiViewerFilesystemSearchGetError =
 
 export type SearchViewerFilesRouteApiViewerFilesystemSearchGetResponses = {
   /**
-   * Response Search Viewer Files Route Api Viewer Filesystem Search Get
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: ViewerTreeResponse;
 };
 
 export type SearchViewerFilesRouteApiViewerFilesystemSearchGetResponse =
@@ -9325,8 +17768,11 @@ export type DownloadViewerApiViewerFilesystemDownloadGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: Blob | File;
 };
+
+export type DownloadViewerApiViewerFilesystemDownloadGetResponse =
+  DownloadViewerApiViewerFilesystemDownloadGetResponses[keyof DownloadViewerApiViewerFilesystemDownloadGetResponses];
 
 export type GetWorkspaceTreeApiWorkspaceTreeGetData = {
   body?: never;
@@ -9378,13 +17824,9 @@ export type GetWorkspaceTreeApiWorkspaceTreeGetError =
 
 export type GetWorkspaceTreeApiWorkspaceTreeGetResponses = {
   /**
-   * Response Get Workspace Tree Api Workspace Tree Get
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: WorkspaceTreeResponse;
 };
 
 export type GetWorkspaceTreeApiWorkspaceTreeGetResponse =
@@ -9422,13 +17864,9 @@ export type SearchWorkspaceFilesRouteApiWorkspaceSearchGetError =
 
 export type SearchWorkspaceFilesRouteApiWorkspaceSearchGetResponses = {
   /**
-   * Response Search Workspace Files Route Api Workspace Search Get
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: WorkspaceTreeResponse;
 };
 
 export type SearchWorkspaceFilesRouteApiWorkspaceSearchGetResponse =
@@ -9466,13 +17904,9 @@ export type DeleteWorkspaceFileRouteApiWorkspaceFileDeleteError =
 
 export type DeleteWorkspaceFileRouteApiWorkspaceFileDeleteResponses = {
   /**
-   * Response Delete Workspace File Route Api Workspace File Delete
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: WorkspaceDeleteResponse;
 };
 
 export type DeleteWorkspaceFileRouteApiWorkspaceFileDeleteResponse =
@@ -9512,8 +17946,11 @@ export type GetWorkspaceFileApiWorkspaceFileGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: WorkspaceFilePreviewResponse;
 };
+
+export type GetWorkspaceFileApiWorkspaceFileGetResponse =
+  GetWorkspaceFileApiWorkspaceFileGetResponses[keyof GetWorkspaceFileApiWorkspaceFileGetResponses];
 
 export type UpdateWorkspaceFileApiWorkspaceFilePutData = {
   body: UpdateWorkspaceFileContentRequest;
@@ -9540,13 +17977,9 @@ export type UpdateWorkspaceFileApiWorkspaceFilePutError =
 
 export type UpdateWorkspaceFileApiWorkspaceFilePutResponses = {
   /**
-   * Response Update Workspace File Api Workspace File Put
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: WorkspaceFileWriteResponse;
 };
 
 export type UpdateWorkspaceFileApiWorkspaceFilePutResponse =
@@ -9577,13 +18010,9 @@ export type CreateWorkspaceDirectoryRouteApiWorkspaceDirectoryPostError =
 
 export type CreateWorkspaceDirectoryRouteApiWorkspaceDirectoryPostResponses = {
   /**
-   * Response Create Workspace Directory Route Api Workspace Directory Post
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: WorkspaceDirectoryCreateResponse;
 };
 
 export type CreateWorkspaceDirectoryRouteApiWorkspaceDirectoryPostResponse =
@@ -9614,13 +18043,9 @@ export type UploadWorkspaceFilesRouteApiWorkspaceUploadPostError =
 
 export type UploadWorkspaceFilesRouteApiWorkspaceUploadPostResponses = {
   /**
-   * Response Upload Workspace Files Route Api Workspace Upload Post
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: WorkspaceUploadResponse;
 };
 
 export type UploadWorkspaceFilesRouteApiWorkspaceUploadPostResponse =
@@ -9660,8 +18085,11 @@ export type DownloadWorkspaceApiWorkspaceDownloadGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: Blob | File;
 };
+
+export type DownloadWorkspaceApiWorkspaceDownloadGetResponse =
+  DownloadWorkspaceApiWorkspaceDownloadGetResponses[keyof DownloadWorkspaceApiWorkspaceDownloadGetResponses];
 
 export type SearchMentionFilesApiMentionSearchGetData = {
   body?: never;
@@ -9777,8 +18205,11 @@ export type ListExternalDatabasesApiKnowledgeDatabasesExternalGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ExternalDatabasesResponse;
 };
+
+export type ListExternalDatabasesApiKnowledgeDatabasesExternalGetResponse =
+  ListExternalDatabasesApiKnowledgeDatabasesExternalGetResponses[keyof ListExternalDatabasesApiKnowledgeDatabasesExternalGetResponses];
 
 export type ListExternalFilesApiKnowledgeDatabasesExternalKbIdFilesGetData = {
   body?: never;
@@ -9838,8 +18269,11 @@ export type ListExternalFilesApiKnowledgeDatabasesExternalKbIdFilesGetResponses 
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ExternalFileListResponse;
   };
+
+export type ListExternalFilesApiKnowledgeDatabasesExternalKbIdFilesGetResponse =
+  ListExternalFilesApiKnowledgeDatabasesExternalKbIdFilesGetResponses[keyof ListExternalFilesApiKnowledgeDatabasesExternalKbIdFilesGetResponses];
 
 export type RetrieveExternalApiKnowledgeDatabasesExternalKbIdRetrievePostData =
   {
@@ -9876,8 +18310,11 @@ export type RetrieveExternalApiKnowledgeDatabasesExternalKbIdRetrievePostRespons
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ExternalRetrieveResponse;
   };
+
+export type RetrieveExternalApiKnowledgeDatabasesExternalKbIdRetrievePostResponse =
+  RetrieveExternalApiKnowledgeDatabasesExternalKbIdRetrievePostResponses[keyof RetrieveExternalApiKnowledgeDatabasesExternalKbIdRetrievePostResponses];
 
 export type OpenExternalFileApiKnowledgeDatabasesExternalKbIdFilesFileIdOpenGetData =
   {
@@ -9931,8 +18368,11 @@ export type OpenExternalFileApiKnowledgeDatabasesExternalKbIdFilesFileIdOpenGetR
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ExternalOpenResponse;
   };
+
+export type OpenExternalFileApiKnowledgeDatabasesExternalKbIdFilesFileIdOpenGetResponse =
+  OpenExternalFileApiKnowledgeDatabasesExternalKbIdFilesFileIdOpenGetResponses[keyof OpenExternalFileApiKnowledgeDatabasesExternalKbIdFilesFileIdOpenGetResponses];
 
 export type FindExternalFileApiKnowledgeDatabasesExternalKbIdFilesFileIdFindPostData =
   {
@@ -9973,8 +18413,11 @@ export type FindExternalFileApiKnowledgeDatabasesExternalKbIdFilesFileIdFindPost
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ExternalFindResponse;
   };
+
+export type FindExternalFileApiKnowledgeDatabasesExternalKbIdFilesFileIdFindPostResponse =
+  FindExternalFileApiKnowledgeDatabasesExternalKbIdFilesFileIdFindPostResponses[keyof FindExternalFileApiKnowledgeDatabasesExternalKbIdFilesFileIdFindPostResponses];
 
 export type GetDatabasesApiKnowledgeDatabasesGetData = {
   body?: never;
@@ -10003,8 +18446,11 @@ export type GetDatabasesApiKnowledgeDatabasesGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: KnowledgeBaseListResponse;
 };
+
+export type GetDatabasesApiKnowledgeDatabasesGetResponse =
+  GetDatabasesApiKnowledgeDatabasesGetResponses[keyof GetDatabasesApiKnowledgeDatabasesGetResponses];
 
 export type CreateDatabaseApiKnowledgeDatabasesPostData = {
   body: BodyCreateDatabaseApiKnowledgeDatabasesPost;
@@ -10033,8 +18479,11 @@ export type CreateDatabaseApiKnowledgeDatabasesPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: KnowledgeBaseItem;
 };
+
+export type CreateDatabaseApiKnowledgeDatabasesPostResponse =
+  CreateDatabaseApiKnowledgeDatabasesPostResponses[keyof CreateDatabaseApiKnowledgeDatabasesPostResponses];
 
 export type GetAccessibleDatabasesApiKnowledgeDatabasesAccessibleGetData = {
   body?: never;
@@ -10064,8 +18513,11 @@ export type GetAccessibleDatabasesApiKnowledgeDatabasesAccessibleGetResponses =
     /**
      * Successful Response
      */
-    200: unknown;
+    200: AccessibleDatabasesResponse;
   };
+
+export type GetAccessibleDatabasesApiKnowledgeDatabasesAccessibleGetResponse =
+  GetAccessibleDatabasesApiKnowledgeDatabasesAccessibleGetResponses[keyof GetAccessibleDatabasesApiKnowledgeDatabasesAccessibleGetResponses];
 
 export type GetMindmapDatabasesApiKnowledgeMindmapDatabasesGetData = {
   body?: never;
@@ -10094,8 +18546,11 @@ export type GetMindmapDatabasesApiKnowledgeMindmapDatabasesGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: MindmapDatabasesResponse;
 };
+
+export type GetMindmapDatabasesApiKnowledgeMindmapDatabasesGetResponse =
+  GetMindmapDatabasesApiKnowledgeMindmapDatabasesGetResponses[keyof GetMindmapDatabasesApiKnowledgeMindmapDatabasesGetResponses];
 
 export type GetDatabaseMindmapFilesApiKnowledgeDatabasesKbIdMindmapFilesGetData =
   {
@@ -10132,8 +18587,11 @@ export type GetDatabaseMindmapFilesApiKnowledgeDatabasesKbIdMindmapFilesGetRespo
     /**
      * Successful Response
      */
-    200: unknown;
+    200: MindmapDatabaseFilesResponse;
   };
+
+export type GetDatabaseMindmapFilesApiKnowledgeDatabasesKbIdMindmapFilesGetResponse =
+  GetDatabaseMindmapFilesApiKnowledgeDatabasesKbIdMindmapFilesGetResponses[keyof GetDatabaseMindmapFilesApiKnowledgeDatabasesKbIdMindmapFilesGetResponses];
 
 export type GenerateMindmapApiKnowledgeDatabasesKbIdMindmapGeneratePostData = {
   body?: BodyGenerateMindmapApiKnowledgeDatabasesKbIdMindmapGeneratePost;
@@ -10169,8 +18627,11 @@ export type GenerateMindmapApiKnowledgeDatabasesKbIdMindmapGeneratePostResponses
     /**
      * Successful Response
      */
-    200: unknown;
+    200: MindmapGenerateResponse;
   };
+
+export type GenerateMindmapApiKnowledgeDatabasesKbIdMindmapGeneratePostResponse =
+  GenerateMindmapApiKnowledgeDatabasesKbIdMindmapGeneratePostResponses[keyof GenerateMindmapApiKnowledgeDatabasesKbIdMindmapGeneratePostResponses];
 
 export type GetDatabaseMindmapApiKnowledgeDatabasesKbIdMindmapGetData = {
   body?: never;
@@ -10204,8 +18665,11 @@ export type GetDatabaseMindmapApiKnowledgeDatabasesKbIdMindmapGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: MindmapDetailResponse;
 };
+
+export type GetDatabaseMindmapApiKnowledgeDatabasesKbIdMindmapGetResponse =
+  GetDatabaseMindmapApiKnowledgeDatabasesKbIdMindmapGetResponses[keyof GetDatabaseMindmapApiKnowledgeDatabasesKbIdMindmapGetResponses];
 
 export type GetMindmapDiffRouteApiKnowledgeDatabasesKbIdMindmapDiffGetData = {
   body?: never;
@@ -10240,8 +18704,11 @@ export type GetMindmapDiffRouteApiKnowledgeDatabasesKbIdMindmapDiffGetResponses 
     /**
      * Successful Response
      */
-    200: unknown;
+    200: MindmapDiffResponse;
   };
+
+export type GetMindmapDiffRouteApiKnowledgeDatabasesKbIdMindmapDiffGetResponse =
+  GetMindmapDiffRouteApiKnowledgeDatabasesKbIdMindmapDiffGetResponses[keyof GetMindmapDiffRouteApiKnowledgeDatabasesKbIdMindmapDiffGetResponses];
 
 export type DeleteDatabaseApiKnowledgeDatabasesKbIdDeleteData = {
   body?: never;
@@ -10275,8 +18742,11 @@ export type DeleteDatabaseApiKnowledgeDatabasesKbIdDeleteResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: MessageResponse;
 };
+
+export type DeleteDatabaseApiKnowledgeDatabasesKbIdDeleteResponse =
+  DeleteDatabaseApiKnowledgeDatabasesKbIdDeleteResponses[keyof DeleteDatabaseApiKnowledgeDatabasesKbIdDeleteResponses];
 
 export type GetDatabaseInfoApiKnowledgeDatabasesKbIdGetData = {
   body?: never;
@@ -10317,8 +18787,11 @@ export type GetDatabaseInfoApiKnowledgeDatabasesKbIdGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: KnowledgeBaseItem;
 };
+
+export type GetDatabaseInfoApiKnowledgeDatabasesKbIdGetResponse =
+  GetDatabaseInfoApiKnowledgeDatabasesKbIdGetResponses[keyof GetDatabaseInfoApiKnowledgeDatabasesKbIdGetResponses];
 
 export type UpdateDatabaseInfoApiKnowledgeDatabasesKbIdPutData = {
   body: UpdateDatabaseRequest;
@@ -10352,8 +18825,11 @@ export type UpdateDatabaseInfoApiKnowledgeDatabasesKbIdPutResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: KnowledgeBaseUpdateResponse;
 };
+
+export type UpdateDatabaseInfoApiKnowledgeDatabasesKbIdPutResponse =
+  UpdateDatabaseInfoApiKnowledgeDatabasesKbIdPutResponses[keyof UpdateDatabaseInfoApiKnowledgeDatabasesKbIdPutResponses];
 
 export type RepairDatabaseStatsApiKnowledgeDatabasesKbIdStatsRepairPostData = {
   body?: never;
@@ -10389,8 +18865,11 @@ export type RepairDatabaseStatsApiKnowledgeDatabasesKbIdStatsRepairPostResponses
     /**
      * Successful Response
      */
-    200: unknown;
+    200: KnowledgeBaseStatsRepairResponse;
   };
+
+export type RepairDatabaseStatsApiKnowledgeDatabasesKbIdStatsRepairPostResponse =
+  RepairDatabaseStatsApiKnowledgeDatabasesKbIdStatsRepairPostResponses[keyof RepairDatabaseStatsApiKnowledgeDatabasesKbIdStatsRepairPostResponses];
 
 export type GetGraphBuildStatusApiKnowledgeDatabasesKbIdGraphBuildStatusGetData =
   {
@@ -10427,8 +18906,11 @@ export type GetGraphBuildStatusApiKnowledgeDatabasesKbIdGraphBuildStatusGetRespo
     /**
      * Successful Response
      */
-    200: unknown;
+    200: GraphBuildStatusResponse;
   };
+
+export type GetGraphBuildStatusApiKnowledgeDatabasesKbIdGraphBuildStatusGetResponse =
+  GetGraphBuildStatusApiKnowledgeDatabasesKbIdGraphBuildStatusGetResponses[keyof GetGraphBuildStatusApiKnowledgeDatabasesKbIdGraphBuildStatusGetResponses];
 
 export type ConfigureGraphBuildApiKnowledgeDatabasesKbIdGraphBuildConfigPostData =
   {
@@ -10470,8 +18952,11 @@ export type ConfigureGraphBuildApiKnowledgeDatabasesKbIdGraphBuildConfigPostResp
     /**
      * Successful Response
      */
-    200: unknown;
+    200: GraphBuildConfigResponse;
   };
+
+export type ConfigureGraphBuildApiKnowledgeDatabasesKbIdGraphBuildConfigPostResponse =
+  ConfigureGraphBuildApiKnowledgeDatabasesKbIdGraphBuildConfigPostResponses[keyof ConfigureGraphBuildApiKnowledgeDatabasesKbIdGraphBuildConfigPostResponses];
 
 export type IndexGraphBuildApiKnowledgeDatabasesKbIdGraphBuildIndexPostData = {
   body?: never;
@@ -10507,8 +18992,11 @@ export type IndexGraphBuildApiKnowledgeDatabasesKbIdGraphBuildIndexPostResponses
     /**
      * Successful Response
      */
-    200: unknown;
+    200: GraphBuildTaskResponse;
   };
+
+export type IndexGraphBuildApiKnowledgeDatabasesKbIdGraphBuildIndexPostResponse =
+  IndexGraphBuildApiKnowledgeDatabasesKbIdGraphBuildIndexPostResponses[keyof IndexGraphBuildApiKnowledgeDatabasesKbIdGraphBuildIndexPostResponses];
 
 export type GetGraphBuildFailedChunksApiKnowledgeDatabasesKbIdGraphBuildFailedChunksGetData =
   {
@@ -10550,8 +19038,11 @@ export type GetGraphBuildFailedChunksApiKnowledgeDatabasesKbIdGraphBuildFailedCh
     /**
      * Successful Response
      */
-    200: unknown;
+    200: GraphBuildFailedChunksResponse;
   };
+
+export type GetGraphBuildFailedChunksApiKnowledgeDatabasesKbIdGraphBuildFailedChunksGetResponse =
+  GetGraphBuildFailedChunksApiKnowledgeDatabasesKbIdGraphBuildFailedChunksGetResponses[keyof GetGraphBuildFailedChunksApiKnowledgeDatabasesKbIdGraphBuildFailedChunksGetResponses];
 
 export type ResetGraphBuildApiKnowledgeDatabasesKbIdGraphBuildResetPostData = {
   /**
@@ -10592,8 +19083,11 @@ export type ResetGraphBuildApiKnowledgeDatabasesKbIdGraphBuildResetPostResponses
     /**
      * Successful Response
      */
-    200: unknown;
+    200: GraphBuildResetResponse;
   };
+
+export type ResetGraphBuildApiKnowledgeDatabasesKbIdGraphBuildResetPostResponse =
+  ResetGraphBuildApiKnowledgeDatabasesKbIdGraphBuildResetPostResponses[keyof ResetGraphBuildApiKnowledgeDatabasesKbIdGraphBuildResetPostResponses];
 
 export type ReconcileGraphBuildApiKnowledgeDatabasesKbIdGraphBuildReconcilePostData =
   {
@@ -10635,8 +19129,11 @@ export type ReconcileGraphBuildApiKnowledgeDatabasesKbIdGraphBuildReconcilePostR
     /**
      * Successful Response
      */
-    200: unknown;
+    200: GraphBuildReconcileResponse;
   };
+
+export type ReconcileGraphBuildApiKnowledgeDatabasesKbIdGraphBuildReconcilePostResponse =
+  ReconcileGraphBuildApiKnowledgeDatabasesKbIdGraphBuildReconcilePostResponses[keyof ReconcileGraphBuildApiKnowledgeDatabasesKbIdGraphBuildReconcilePostResponses];
 
 export type ExportDatabaseApiKnowledgeDatabasesKbIdExportGetData = {
   body?: never;
@@ -10681,8 +19178,11 @@ export type ExportDatabaseApiKnowledgeDatabasesKbIdExportGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: Blob | File;
 };
+
+export type ExportDatabaseApiKnowledgeDatabasesKbIdExportGetResponse =
+  ExportDatabaseApiKnowledgeDatabasesKbIdExportGetResponses[keyof ExportDatabaseApiKnowledgeDatabasesKbIdExportGetResponses];
 
 export type ListDocumentsApiKnowledgeDatabasesKbIdDocumentsGetData = {
   body?: never;
@@ -10753,8 +19253,11 @@ export type ListDocumentsApiKnowledgeDatabasesKbIdDocumentsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: DocumentListResponse;
 };
+
+export type ListDocumentsApiKnowledgeDatabasesKbIdDocumentsGetResponse =
+  ListDocumentsApiKnowledgeDatabasesKbIdDocumentsGetResponses[keyof ListDocumentsApiKnowledgeDatabasesKbIdDocumentsGetResponses];
 
 export type AddDocumentsApiKnowledgeDatabasesKbIdDocumentsPostData = {
   body: BodyAddDocumentsApiKnowledgeDatabasesKbIdDocumentsPost;
@@ -10788,8 +19291,11 @@ export type AddDocumentsApiKnowledgeDatabasesKbIdDocumentsPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: QueuedTaskResponse;
 };
+
+export type AddDocumentsApiKnowledgeDatabasesKbIdDocumentsPostResponse =
+  AddDocumentsApiKnowledgeDatabasesKbIdDocumentsPostResponses[keyof AddDocumentsApiKnowledgeDatabasesKbIdDocumentsPostResponses];
 
 export type SearchDocumentsApiKnowledgeDatabasesKbIdDocumentsSearchGetData = {
   body?: never;
@@ -10843,8 +19349,11 @@ export type SearchDocumentsApiKnowledgeDatabasesKbIdDocumentsSearchGetResponses 
     /**
      * Successful Response
      */
-    200: unknown;
+    200: DocumentSearchResponse;
   };
+
+export type SearchDocumentsApiKnowledgeDatabasesKbIdDocumentsSearchGetResponse =
+  SearchDocumentsApiKnowledgeDatabasesKbIdDocumentsSearchGetResponses[keyof SearchDocumentsApiKnowledgeDatabasesKbIdDocumentsSearchGetResponses];
 
 export type DocumentFileExistsApiKnowledgeDatabasesKbIdDocumentsExistsGetData =
   {
@@ -10888,8 +19397,11 @@ export type DocumentFileExistsApiKnowledgeDatabasesKbIdDocumentsExistsGetRespons
     /**
      * Successful Response
      */
-    200: unknown;
+    200: DocumentExistsResponse;
   };
+
+export type DocumentFileExistsApiKnowledgeDatabasesKbIdDocumentsExistsGetResponse =
+  DocumentFileExistsApiKnowledgeDatabasesKbIdDocumentsExistsGetResponses[keyof DocumentFileExistsApiKnowledgeDatabasesKbIdDocumentsExistsGetResponses];
 
 export type AddUploadedDocumentsApiKnowledgeDatabasesKbIdDocumentsAddPostData =
   {
@@ -10926,8 +19438,11 @@ export type AddUploadedDocumentsApiKnowledgeDatabasesKbIdDocumentsAddPostRespons
     /**
      * Successful Response
      */
-    200: unknown;
+    200: AddUploadedDocumentsResponse;
   };
+
+export type AddUploadedDocumentsApiKnowledgeDatabasesKbIdDocumentsAddPostResponse =
+  AddUploadedDocumentsApiKnowledgeDatabasesKbIdDocumentsAddPostResponses[keyof AddUploadedDocumentsApiKnowledgeDatabasesKbIdDocumentsAddPostResponses];
 
 export type ParseDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePostData = {
   /**
@@ -10965,8 +19480,11 @@ export type ParseDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePostResponses =
     /**
      * Successful Response
      */
-    200: unknown;
+    200: QueuedTaskResponse;
   };
+
+export type ParseDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePostResponse =
+  ParseDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePostResponses[keyof ParseDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePostResponses];
 
 export type ParsePendingDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePendingPostData =
   {
@@ -11006,8 +19524,11 @@ export type ParsePendingDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePendingP
     /**
      * Successful Response
      */
-    200: unknown;
+    200: PendingTaskResponse;
   };
+
+export type ParsePendingDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePendingPostResponse =
+  ParsePendingDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePendingPostResponses[keyof ParsePendingDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePendingPostResponses];
 
 export type IndexDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPostData = {
   body: BodyIndexDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPost;
@@ -11042,8 +19563,11 @@ export type IndexDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPostResponses =
     /**
      * Successful Response
      */
-    200: unknown;
+    200: QueuedTaskResponse;
   };
+
+export type IndexDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPostResponse =
+  IndexDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPostResponses[keyof IndexDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPostResponses];
 
 export type IndexPendingDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPendingPostData =
   {
@@ -11083,8 +19607,11 @@ export type IndexPendingDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPendingP
     /**
      * Successful Response
      */
-    200: unknown;
+    200: PendingTaskResponse;
   };
+
+export type IndexPendingDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPendingPostResponse =
+  IndexPendingDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPendingPostResponses[keyof IndexPendingDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPendingPostResponses];
 
 export type DeleteDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDeleteData = {
   body?: never;
@@ -11124,8 +19651,11 @@ export type DeleteDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDeleteResponses
     /**
      * Successful Response
      */
-    200: unknown;
+    200: MessageResponse;
   };
+
+export type DeleteDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDeleteResponse =
+  DeleteDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDeleteResponses[keyof DeleteDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDeleteResponses];
 
 export type GetDocumentInfoApiKnowledgeDatabasesKbIdDocumentsDocIdGetData = {
   body?: never;
@@ -11164,8 +19694,11 @@ export type GetDocumentInfoApiKnowledgeDatabasesKbIdDocumentsDocIdGetResponses =
     /**
      * Successful Response
      */
-    200: unknown;
+    200: DocumentInfoResponse;
   };
+
+export type GetDocumentInfoApiKnowledgeDatabasesKbIdDocumentsDocIdGetResponse =
+  GetDocumentInfoApiKnowledgeDatabasesKbIdDocumentsDocIdGetResponses[keyof GetDocumentInfoApiKnowledgeDatabasesKbIdDocumentsDocIdGetResponses];
 
 export type GetDocumentBasicInfoApiKnowledgeDatabasesKbIdDocumentsDocIdBasicGetData =
   {
@@ -11206,8 +19739,11 @@ export type GetDocumentBasicInfoApiKnowledgeDatabasesKbIdDocumentsDocIdBasicGetR
     /**
      * Successful Response
      */
-    200: unknown;
+    200: DocumentBasicResponse;
   };
+
+export type GetDocumentBasicInfoApiKnowledgeDatabasesKbIdDocumentsDocIdBasicGetResponse =
+  GetDocumentBasicInfoApiKnowledgeDatabasesKbIdDocumentsDocIdBasicGetResponses[keyof GetDocumentBasicInfoApiKnowledgeDatabasesKbIdDocumentsDocIdBasicGetResponses];
 
 export type GetDocumentContentApiKnowledgeDatabasesKbIdDocumentsDocIdContentGetData =
   {
@@ -11248,8 +19784,11 @@ export type GetDocumentContentApiKnowledgeDatabasesKbIdDocumentsDocIdContentGetR
     /**
      * Successful Response
      */
-    200: unknown;
+    200: DocumentContentResponse;
   };
+
+export type GetDocumentContentApiKnowledgeDatabasesKbIdDocumentsDocIdContentGetResponse =
+  GetDocumentContentApiKnowledgeDatabasesKbIdDocumentsDocIdContentGetResponses[keyof GetDocumentContentApiKnowledgeDatabasesKbIdDocumentsDocIdContentGetResponses];
 
 export type BatchDeleteDocumentsApiKnowledgeDatabasesKbIdDocumentsBatchDeleteData =
   {
@@ -11289,8 +19828,11 @@ export type BatchDeleteDocumentsApiKnowledgeDatabasesKbIdDocumentsBatchDeleteRes
     /**
      * Successful Response
      */
-    200: unknown;
+    200: BatchDeleteDocumentsResponse;
   };
+
+export type BatchDeleteDocumentsApiKnowledgeDatabasesKbIdDocumentsBatchDeleteResponse =
+  BatchDeleteDocumentsApiKnowledgeDatabasesKbIdDocumentsBatchDeleteResponses[keyof BatchDeleteDocumentsApiKnowledgeDatabasesKbIdDocumentsBatchDeleteResponses];
 
 export type DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetData =
   {
@@ -11331,8 +19873,11 @@ export type DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetRe
     /**
      * Successful Response
      */
-    200: unknown;
+    200: Blob | File;
   };
+
+export type DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetResponse =
+  DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetResponses[keyof DownloadDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDownloadGetResponses];
 
 export type GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetData = {
   body?: never;
@@ -11370,8 +19915,11 @@ export type GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: Blob | File;
 };
+
+export type GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetResponse =
+  GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetResponses[keyof GetKbImageApiKnowledgeDatabasesKbIdImagesObjectPathGetResponses];
 
 export type QueryKnowledgeBaseApiKnowledgeDatabasesKbIdQueryPostData = {
   body: BodyQueryKnowledgeBaseApiKnowledgeDatabasesKbIdQueryPost;
@@ -11405,8 +19953,11 @@ export type QueryKnowledgeBaseApiKnowledgeDatabasesKbIdQueryPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: KnowledgeQueryResponse;
 };
+
+export type QueryKnowledgeBaseApiKnowledgeDatabasesKbIdQueryPostResponse =
+  QueryKnowledgeBaseApiKnowledgeDatabasesKbIdQueryPostResponses[keyof QueryKnowledgeBaseApiKnowledgeDatabasesKbIdQueryPostResponses];
 
 export type QueryTestApiKnowledgeDatabasesKbIdQueryTestPostData = {
   body: BodyQueryTestApiKnowledgeDatabasesKbIdQueryTestPost;
@@ -11438,10 +19989,15 @@ export type QueryTestApiKnowledgeDatabasesKbIdQueryTestPostError =
 
 export type QueryTestApiKnowledgeDatabasesKbIdQueryTestPostResponses = {
   /**
+   * Response Query Test Api Knowledge Databases  Kb Id  Query Test Post
+   *
    * Successful Response
    */
-  200: unknown;
+  200: Array<KnowledgeQueryResultItem> | KnowledgeQueryTestFailedResponse;
 };
+
+export type QueryTestApiKnowledgeDatabasesKbIdQueryTestPostResponse =
+  QueryTestApiKnowledgeDatabasesKbIdQueryTestPostResponses[keyof QueryTestApiKnowledgeDatabasesKbIdQueryTestPostResponses];
 
 export type GetKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsGetData =
   {
@@ -11478,8 +20034,11 @@ export type GetKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsGetRe
     /**
      * Successful Response
      */
-    200: unknown;
+    200: QueryParamsConfigResponse;
   };
+
+export type GetKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsGetResponse =
+  GetKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsGetResponses[keyof GetKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsGetResponses];
 
 export type UpdateKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsPutData =
   {
@@ -11521,8 +20080,11 @@ export type UpdateKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsPu
     /**
      * Successful Response
      */
-    200: unknown;
+    200: UpdateQueryParamsResponse;
   };
+
+export type UpdateKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsPutResponse =
+  UpdateKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsPutResponses[keyof UpdateKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsPutResponses];
 
 export type GetSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsGetData =
   {
@@ -11559,8 +20121,11 @@ export type GetSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsGetRespons
     /**
      * Successful Response
      */
-    200: unknown;
+    200: SampleQuestionsResponse;
   };
+
+export type GetSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsGetResponse =
+  GetSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsGetResponses[keyof GetSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsGetResponses];
 
 export type GenerateSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsPostData =
   {
@@ -11602,8 +20167,11 @@ export type GenerateSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsPostR
     /**
      * Successful Response
      */
-    200: unknown;
+    200: SampleQuestionsGenerateResponse;
   };
+
+export type GenerateSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsPostResponse =
+  GenerateSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsPostResponses[keyof GenerateSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsPostResponses];
 
 export type CreateFolderApiKnowledgeDatabasesKbIdFoldersPostData = {
   body: BodyCreateFolderApiKnowledgeDatabasesKbIdFoldersPost;
@@ -11637,8 +20205,11 @@ export type CreateFolderApiKnowledgeDatabasesKbIdFoldersPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: FolderMetaItem;
 };
+
+export type CreateFolderApiKnowledgeDatabasesKbIdFoldersPostResponse =
+  CreateFolderApiKnowledgeDatabasesKbIdFoldersPostResponses[keyof CreateFolderApiKnowledgeDatabasesKbIdFoldersPostResponses];
 
 export type DetectVirtualFoldersApiKnowledgeDatabasesKbIdVirtualFoldersDetectGetData =
   {
@@ -11675,8 +20246,11 @@ export type DetectVirtualFoldersApiKnowledgeDatabasesKbIdVirtualFoldersDetectGet
     /**
      * Successful Response
      */
-    200: unknown;
+    200: VirtualFolderDetectResponse;
   };
+
+export type DetectVirtualFoldersApiKnowledgeDatabasesKbIdVirtualFoldersDetectGetResponse =
+  DetectVirtualFoldersApiKnowledgeDatabasesKbIdVirtualFoldersDetectGetResponses[keyof DetectVirtualFoldersApiKnowledgeDatabasesKbIdVirtualFoldersDetectGetResponses];
 
 export type StartVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigratePostData =
   {
@@ -11713,8 +20287,11 @@ export type StartVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMi
     /**
      * Successful Response
      */
-    200: unknown;
+    200: VirtualFolderMigrateResponse;
   };
+
+export type StartVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigratePostResponse =
+  StartVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigratePostResponses[keyof StartVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigratePostResponses];
 
 export type StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetData =
   {
@@ -11755,8 +20332,11 @@ export type StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersM
     /**
      * Successful Response
      */
-    200: unknown;
+    200: TaskProgressPayload;
   };
+
+export type StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponse =
+  StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponses[keyof StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetResponses];
 
 export type RenameFolderApiKnowledgeDatabasesKbIdFoldersFolderIdRenamePutData =
   {
@@ -11797,8 +20377,11 @@ export type RenameFolderApiKnowledgeDatabasesKbIdFoldersFolderIdRenamePutRespons
     /**
      * Successful Response
      */
-    200: unknown;
+    200: FileMetaItem;
   };
+
+export type RenameFolderApiKnowledgeDatabasesKbIdFoldersFolderIdRenamePutResponse =
+  RenameFolderApiKnowledgeDatabasesKbIdFoldersFolderIdRenamePutResponses[keyof RenameFolderApiKnowledgeDatabasesKbIdFoldersFolderIdRenamePutResponses];
 
 export type MoveDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdMovePutData = {
   body: MoveDocumentRequest;
@@ -11837,8 +20420,11 @@ export type MoveDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdMovePutResponses 
     /**
      * Successful Response
      */
-    200: unknown;
+    200: FileMetaItem;
   };
+
+export type MoveDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdMovePutResponse =
+  MoveDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdMovePutResponses[keyof MoveDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdMovePutResponses];
 
 export type FetchUrlApiKnowledgeFilesFetchUrlPostData = {
   body: BodyFetchUrlApiKnowledgeFilesFetchUrlPost;
@@ -11867,8 +20453,11 @@ export type FetchUrlApiKnowledgeFilesFetchUrlPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: FetchUrlResponse;
 };
+
+export type FetchUrlApiKnowledgeFilesFetchUrlPostResponse =
+  FetchUrlApiKnowledgeFilesFetchUrlPostResponses[keyof FetchUrlApiKnowledgeFilesFetchUrlPostResponses];
 
 export type ImportWorkspaceFilesApiKnowledgeFilesImportWorkspacePostData = {
   body: WorkspaceImportRequest;
@@ -11898,8 +20487,11 @@ export type ImportWorkspaceFilesApiKnowledgeFilesImportWorkspacePostResponses =
     /**
      * Successful Response
      */
-    200: unknown;
+    200: WorkspaceImportResponse;
   };
+
+export type ImportWorkspaceFilesApiKnowledgeFilesImportWorkspacePostResponse =
+  ImportWorkspaceFilesApiKnowledgeFilesImportWorkspacePostResponses[keyof ImportWorkspaceFilesApiKnowledgeFilesImportWorkspacePostResponses];
 
 export type UploadFileApiKnowledgeFilesUploadPostData = {
   body: BodyUploadFileApiKnowledgeFilesUploadPost;
@@ -11933,8 +20525,11 @@ export type UploadFileApiKnowledgeFilesUploadPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: UploadFileResponse;
 };
+
+export type UploadFileApiKnowledgeFilesUploadPostResponse =
+  UploadFileApiKnowledgeFilesUploadPostResponses[keyof UploadFileApiKnowledgeFilesUploadPostResponses];
 
 export type GetSupportedFileTypesApiKnowledgeFilesSupportedTypesGetData = {
   body?: never;
@@ -11963,8 +20558,11 @@ export type GetSupportedFileTypesApiKnowledgeFilesSupportedTypesGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: SupportedFileTypesResponse;
 };
+
+export type GetSupportedFileTypesApiKnowledgeFilesSupportedTypesGetResponse =
+  GetSupportedFileTypesApiKnowledgeFilesSupportedTypesGetResponses[keyof GetSupportedFileTypesApiKnowledgeFilesSupportedTypesGetResponses];
 
 export type MarkItDownApiKnowledgeFilesMarkdownPostData = {
   body: BodyMarkItDownApiKnowledgeFilesMarkdownPost;
@@ -11993,8 +20591,11 @@ export type MarkItDownApiKnowledgeFilesMarkdownPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: MarkdownParseResponse;
 };
+
+export type MarkItDownApiKnowledgeFilesMarkdownPostResponse =
+  MarkItDownApiKnowledgeFilesMarkdownPostResponses[keyof MarkItDownApiKnowledgeFilesMarkdownPostResponses];
 
 export type GetKnowledgeBaseTypesApiKnowledgeTypesGetData = {
   body?: never;
@@ -12023,8 +20624,11 @@ export type GetKnowledgeBaseTypesApiKnowledgeTypesGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: KnowledgeBaseTypesResponse;
 };
+
+export type GetKnowledgeBaseTypesApiKnowledgeTypesGetResponse =
+  GetKnowledgeBaseTypesApiKnowledgeTypesGetResponses[keyof GetKnowledgeBaseTypesApiKnowledgeTypesGetResponses];
 
 export type GetKnowledgeChunkPresetsApiKnowledgeChunkPresetsGetData = {
   body?: never;
@@ -12053,8 +20657,11 @@ export type GetKnowledgeChunkPresetsApiKnowledgeChunkPresetsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ChunkPresetsResponse;
 };
+
+export type GetKnowledgeChunkPresetsApiKnowledgeChunkPresetsGetResponse =
+  GetKnowledgeChunkPresetsApiKnowledgeChunkPresetsGetResponses[keyof GetKnowledgeChunkPresetsApiKnowledgeChunkPresetsGetResponses];
 
 export type GetKnowledgeBaseStatisticsApiKnowledgeStatsGetData = {
   body?: never;
@@ -12083,8 +20690,11 @@ export type GetKnowledgeBaseStatisticsApiKnowledgeStatsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: KnowledgeStatisticsResponse;
 };
+
+export type GetKnowledgeBaseStatisticsApiKnowledgeStatsGetResponse =
+  GetKnowledgeBaseStatisticsApiKnowledgeStatsGetResponses[keyof GetKnowledgeBaseStatisticsApiKnowledgeStatsGetResponses];
 
 export type GenerateDescriptionApiKnowledgeGenerateDescriptionPostData = {
   body: BodyGenerateDescriptionApiKnowledgeGenerateDescriptionPost;
@@ -12113,8 +20723,11 @@ export type GenerateDescriptionApiKnowledgeGenerateDescriptionPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: GenerateDescriptionResponse;
 };
+
+export type GenerateDescriptionApiKnowledgeGenerateDescriptionPostResponse =
+  GenerateDescriptionApiKnowledgeGenerateDescriptionPostResponses[keyof GenerateDescriptionApiKnowledgeGenerateDescriptionPostResponses];
 
 export type UploadEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsUploadPostData =
   {
@@ -12151,8 +20764,11 @@ export type UploadEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsUploadPostR
     /**
      * Successful Response
      */
-    200: unknown;
+    200: EvaluationDatasetItemResponse;
   };
+
+export type UploadEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsUploadPostResponse =
+  UploadEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsUploadPostResponses[keyof UploadEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsUploadPostResponses];
 
 export type ListEvaluationDatasetsApiEvaluationDatabasesKbIdDatasetsGetData = {
   body?: never;
@@ -12188,8 +20804,11 @@ export type ListEvaluationDatasetsApiEvaluationDatabasesKbIdDatasetsGetResponses
     /**
      * Successful Response
      */
-    200: unknown;
+    200: EvaluationDatasetListResponse;
   };
+
+export type ListEvaluationDatasetsApiEvaluationDatabasesKbIdDatasetsGetResponse =
+  ListEvaluationDatasetsApiEvaluationDatabasesKbIdDatasetsGetResponses[keyof ListEvaluationDatasetsApiEvaluationDatabasesKbIdDatasetsGetResponses];
 
 export type GetEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsDatasetIdGetData =
   {
@@ -12239,8 +20858,11 @@ export type GetEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsDatasetIdGetRe
     /**
      * Successful Response
      */
-    200: unknown;
+    200: EvaluationDatasetDetailResponse;
   };
+
+export type GetEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsDatasetIdGetResponse =
+  GetEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsDatasetIdGetResponses[keyof GetEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsDatasetIdGetResponses];
 
 export type DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetData =
   {
@@ -12277,8 +20899,11 @@ export type DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetRe
     /**
      * Successful Response
      */
-    200: unknown;
+    200: Blob | File;
   };
+
+export type DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetResponse =
+  DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetResponses[keyof DownloadEvaluationDatasetApiEvaluationDatasetsDatasetIdDownloadGetResponses];
 
 export type DeleteEvaluationDatasetApiEvaluationDatasetsDatasetIdDeleteData = {
   body?: never;
@@ -12314,8 +20939,11 @@ export type DeleteEvaluationDatasetApiEvaluationDatasetsDatasetIdDeleteResponses
     /**
      * Successful Response
      */
-    200: unknown;
+    200: EvaluationDeleteResponse;
   };
+
+export type DeleteEvaluationDatasetApiEvaluationDatasetsDatasetIdDeleteResponse =
+  DeleteEvaluationDatasetApiEvaluationDatasetsDatasetIdDeleteResponses[keyof DeleteEvaluationDatasetApiEvaluationDatasetsDatasetIdDeleteResponses];
 
 export type GenerateEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsGeneratePostData =
   {
@@ -12352,8 +20980,11 @@ export type GenerateEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsGenerateP
     /**
      * Successful Response
      */
-    200: unknown;
+    200: EvaluationGenerationResponse;
   };
+
+export type GenerateEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsGeneratePostResponse =
+  GenerateEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsGeneratePostResponses[keyof GenerateEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsGeneratePostResponses];
 
 export type ResumeEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsDatasetIdResumePostData =
   {
@@ -12394,8 +21025,11 @@ export type ResumeEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsDatasetIdRe
     /**
      * Successful Response
      */
-    200: unknown;
+    200: EvaluationResumeResponse;
   };
+
+export type ResumeEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsDatasetIdResumePostResponse =
+  ResumeEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsDatasetIdResumePostResponses[keyof ResumeEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsDatasetIdResumePostResponses];
 
 export type ListEvaluationRunsApiEvaluationDatabasesKbIdRunsGetData = {
   body?: never;
@@ -12429,8 +21063,11 @@ export type ListEvaluationRunsApiEvaluationDatabasesKbIdRunsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: EvaluationRunListResponse;
 };
+
+export type ListEvaluationRunsApiEvaluationDatabasesKbIdRunsGetResponse =
+  ListEvaluationRunsApiEvaluationDatabasesKbIdRunsGetResponses[keyof ListEvaluationRunsApiEvaluationDatabasesKbIdRunsGetResponses];
 
 export type RunEvaluationApiEvaluationDatabasesKbIdRunsPostData = {
   body: RunEvaluationRequest;
@@ -12464,8 +21101,11 @@ export type RunEvaluationApiEvaluationDatabasesKbIdRunsPostResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: EvaluationRunCreateResponse;
 };
+
+export type RunEvaluationApiEvaluationDatabasesKbIdRunsPostResponse =
+  RunEvaluationApiEvaluationDatabasesKbIdRunsPostResponses[keyof RunEvaluationApiEvaluationDatabasesKbIdRunsPostResponses];
 
 export type DeleteEvaluationRunApiEvaluationDatabasesKbIdRunsRunIdDeleteData = {
   body?: never;
@@ -12505,8 +21145,11 @@ export type DeleteEvaluationRunApiEvaluationDatabasesKbIdRunsRunIdDeleteResponse
     /**
      * Successful Response
      */
-    200: unknown;
+    200: EvaluationDeleteResponse;
   };
+
+export type DeleteEvaluationRunApiEvaluationDatabasesKbIdRunsRunIdDeleteResponse =
+  DeleteEvaluationRunApiEvaluationDatabasesKbIdRunsRunIdDeleteResponses[keyof DeleteEvaluationRunApiEvaluationDatabasesKbIdRunsRunIdDeleteResponses];
 
 export type GetEvaluationRunResultsApiEvaluationDatabasesKbIdRunsRunIdGetData =
   {
@@ -12560,8 +21203,11 @@ export type GetEvaluationRunResultsApiEvaluationDatabasesKbIdRunsRunIdGetRespons
     /**
      * Successful Response
      */
-    200: unknown;
+    200: EvaluationRunResultResponse;
   };
+
+export type GetEvaluationRunResultsApiEvaluationDatabasesKbIdRunsRunIdGetResponse =
+  GetEvaluationRunResultsApiEvaluationDatabasesKbIdRunsRunIdGetResponses[keyof GetEvaluationRunResultsApiEvaluationDatabasesKbIdRunsRunIdGetResponses];
 
 export type GetGraphsApiGraphListGetData = {
   body?: never;
@@ -12590,8 +21236,11 @@ export type GetGraphsApiGraphListGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: GraphListResponse;
 };
+
+export type GetGraphsApiGraphListGetResponse =
+  GetGraphsApiGraphListGetResponses[keyof GetGraphsApiGraphListGetResponses];
 
 export type GetSubgraphApiGraphSubgraphGetData = {
   body?: never;
@@ -12649,8 +21298,11 @@ export type GetSubgraphApiGraphSubgraphGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: GraphSubgraphResponse;
 };
+
+export type GetSubgraphApiGraphSubgraphGetResponse =
+  GetSubgraphApiGraphSubgraphGetResponses[keyof GetSubgraphApiGraphSubgraphGetResponses];
 
 export type GetGraphLabelsApiGraphLabelsGetData = {
   body?: never;
@@ -12684,8 +21336,11 @@ export type GetGraphLabelsApiGraphLabelsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: GraphLabelsResponse;
 };
+
+export type GetGraphLabelsApiGraphLabelsGetResponse =
+  GetGraphLabelsApiGraphLabelsGetResponses[keyof GetGraphLabelsApiGraphLabelsGetResponses];
 
 export type GetGraphStatsApiGraphStatsGetData = {
   body?: never;
@@ -12719,8 +21374,11 @@ export type GetGraphStatsApiGraphStatsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: GraphStatsResponse;
 };
+
+export type GetGraphStatsApiGraphStatsGetResponse =
+  GetGraphStatsApiGraphStatsGetResponses[keyof GetGraphStatsApiGraphStatsGetResponses];
 
 export type GetWorkspaceKnowledgeTreeApiWorkspaceKnowledgeTreeGetData = {
   body?: never;
@@ -12790,13 +21448,9 @@ export type GetWorkspaceKnowledgeTreeApiWorkspaceKnowledgeTreeGetError =
 
 export type GetWorkspaceKnowledgeTreeApiWorkspaceKnowledgeTreeGetResponses = {
   /**
-   * Response Get Workspace Knowledge Tree Api Workspace Knowledge Tree Get
-   *
    * Successful Response
    */
-  200: {
-    [key: string]: unknown;
-  };
+  200: WorkspaceKnowledgeTreeResponse;
 };
 
 export type GetWorkspaceKnowledgeTreeApiWorkspaceKnowledgeTreeGetResponse =
@@ -12842,8 +21496,11 @@ export type GetWorkspaceKnowledgeFileApiWorkspaceKnowledgeFileGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: KnowledgeFilePreviewResponse;
 };
+
+export type GetWorkspaceKnowledgeFileApiWorkspaceKnowledgeFileGetResponse =
+  GetWorkspaceKnowledgeFileApiWorkspaceKnowledgeFileGetResponses[keyof GetWorkspaceKnowledgeFileApiWorkspaceKnowledgeFileGetResponses];
 
 export type DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetData =
   {
@@ -12894,5 +21551,8 @@ export type DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetRespon
     /**
      * Successful Response
      */
-    200: unknown;
+    200: Blob | File;
   };
+
+export type DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetResponse =
+  DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetResponses[keyof DownloadWorkspaceKnowledgeFileApiWorkspaceKnowledgeDownloadGetResponses];

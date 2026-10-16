@@ -84,10 +84,10 @@ export const FilePreview = ({ kbId, file }: FilePreviewProps) => {
 
   if (preview.isPending) {
     return (
-      <p className="flex items-center gap-2 text-sm text-color-text-3">
+      <div className="flex items-center gap-2 text-sm text-color-text-3">
         <Spin aria-hidden className="size-4" />
         正在加载文件…
-      </p>
+      </div>
     );
   }
 

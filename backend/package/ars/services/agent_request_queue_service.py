@@ -23,6 +23,7 @@ from ars.services.agent_run_service import (
 )
 from ars.services.input_message_service import AgentRunInputMessage
 from ars.services.workdir_service import resolve_conversation_workdir_binding, resolve_conversation_workdir_path
+from ars.services.request_event_models import build_request_event_payload
 from ars.storage.postgres.manager import pg_manager
 from ars.storage.postgres.models_business import AgentRun, AgentRunRequest, Message
 from ars.utils.datetime_utils import utc_now_naive
@@ -688,23 +689,26 @@ async def stream_request_events(
                 repo = AgentRunRequestRepository(db)
                 request = await repo.get_by_request_id(request_id)
                 if not request or request.uid != str(uid):
-                    yield format_sse({"request_id": request_id, "message": "请求不存在"}, event="error")
+                    yield format_sse(
+                        build_request_event_payload(request_id=request_id, message="请求不存在"),
+                        event="error",
+                    )
                     return
 
                 if request.status == REQUEST_STATUS_DISPATCHED:
                     yield format_sse(
-                        {
-                            "request_id": request_id,
-                            "run_id": request.dispatched_run_id,
-                            "stream_url": f"/api/agent/runs/{request.dispatched_run_id}/events",
-                        },
+                        build_request_event_payload(
+                            request_id=request_id,
+                            run_id=request.dispatched_run_id,
+                            stream_url=f"/api/agent/runs/{request.dispatched_run_id}/events",
+                        ),
                         event="run_created",
                     )
                     return
 
                 if request.status in REQUEST_TERMINAL_STATUSES:
                     yield format_sse(
-                        {"request_id": request_id, "status": request.status},
+                        build_request_event_payload(request_id=request_id, status=request.status),
                         event=request.status,
                     )
                     return
@@ -714,7 +718,11 @@ async def stream_request_events(
                 if position != last_position:
                     last_position = position
                     yield format_sse(
-                        {"request_id": request_id, "status": REQUEST_STATUS_QUEUED, "position": position},
+                        build_request_event_payload(
+                            request_id=request_id,
+                            status=REQUEST_STATUS_QUEUED,
+                            position=position,
+                        ),
                         event=REQUEST_STATUS_QUEUED,
                     )
 

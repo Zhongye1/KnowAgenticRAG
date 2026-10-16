@@ -1,5 +1,5 @@
 /**
- * 生成物漂移检查：用入库的 `openapi.json` 重新生成，与提交的 `src/apis/generated/` 逐文件比对。
+ * 生成物漂移检查：用入库的 `openapi.json` 重新生成，与提交的 `src/shared/api/generated/` 逐文件比对。
  *
  * 不一致说明「改了契约或后端却没重新生成」，退出码 1。
  *
@@ -9,7 +9,7 @@
  *   并在 `.gitignore` 中忽略它，会导致 prettier 静默跳过、格式差异被误报成契约漂移。
  */
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -55,12 +55,19 @@ try {
   );
 
   // `-o` 覆盖输出目录时会丢掉配置里的 postProcess，这里补上同一份 prettier 配置。
+  // 忽略清单指到空文件：`.prettierignore` 的裸模式 `tmp` 会匹配任意路径段叫 tmp 的目录，
+  // 而临时目录就在系统 tmp 下，沿用仓库的忽略清单会让 prettier 静默跳过全部生成文件，
+  // 把它们未格式化的原样当成契约漂移。
+  const ignorePath = `${tempDir}-prettierignore`;
+  writeFileSync(ignorePath, '');
   execFileSync(
     process.execPath,
     [
       path.join(rootDir, 'node_modules/prettier/bin/prettier.cjs'),
       '--config',
       path.join(rootDir, '.prettierrc'),
+      '--ignore-path',
+      ignorePath,
       '--log-level',
       'warn',
       '--write',
@@ -101,4 +108,5 @@ try {
   }
 } finally {
   rmSync(tempDir, { recursive: true, force: true });
+  rmSync(`${tempDir}-prettierignore`, { force: true });
 }

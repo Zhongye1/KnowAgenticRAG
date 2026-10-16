@@ -55,10 +55,10 @@ export const ToolsPanel = () => {
       />
 
       {isLoading ? (
-        <p className="flex items-center gap-2 py-8 text-sm text-color-text-3">
+        <div className="flex items-center gap-2 py-8 text-sm text-color-text-3">
           <Spin aria-hidden className="size-4" />
           正在加载工具…
-        </p>
+        </div>
       ) : error ? (
         <div className="flex flex-col items-start gap-2 py-8">
           <p role="alert" className="text-sm text-danger-6">

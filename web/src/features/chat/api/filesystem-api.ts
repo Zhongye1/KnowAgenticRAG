@@ -3,7 +3,8 @@
  *
  * 两套的读、删、搜走同一组函数，靠作用域参数区分。**个人空间那一侧的事实归 `@/entities/workspace`**
  * （端点、条目归一、预览载荷），这里只把它接到面板的作用域参数上，个人空间页面读的是同一份实现；
- * 对话目录那一侧留在本地，因为它是线程沙箱域，只有面板用。响应没有声明模型，字段按不可信数据处理。
+ * 对话目录那一侧留在本地，因为它是线程沙箱域，只有面板用。树、搜索与删除的响应直接复用契约生成的
+ * `ViewerTreeResponse` / `ViewerDeleteResponse`；文件预览要兼容契约之外的字段名，仍按不可信数据处理。
  */
 import {
   deleteWorkspaceEntry,
@@ -20,6 +21,10 @@ import {
   getViewerTreeApiViewerFilesystemTreeGet,
   searchViewerFilesRouteApiViewerFilesystemSearchGet,
 } from '@/shared/api/generated/sdk.gen';
+import type {
+  ViewerDeleteResponse,
+  ViewerTreeResponse,
+} from '@/shared/api/generated/types.gen';
 import { parseDownloadFilename, saveBlobAsFile } from '@/shared/lib/files';
 import type { PreviewFile } from '@/shared/lib/files';
 import { toFileEntries } from '@/shared/lib/files';
@@ -41,7 +46,7 @@ export async function listDirectory(input: {
   }
 
   return toFileEntries(
-    unwrap<unknown>(
+    unwrap<ViewerTreeResponse>(
       await getViewerTreeApiViewerFilesystemTreeGet({
         query: { thread_id: input.threadId ?? '', path },
       }),
@@ -60,7 +65,7 @@ export async function deleteEntry(input: {
     return;
   }
 
-  unwrap<unknown>(
+  unwrap<ViewerDeleteResponse>(
     await deleteViewerFileRouteApiViewerFilesystemFileDelete({
       query: { thread_id: input.threadId ?? '', path: input.path },
     }),
@@ -78,7 +83,7 @@ export async function searchEntries(input: {
   }
 
   return toFileEntries(
-    unwrap<unknown>(
+    unwrap<ViewerTreeResponse>(
       await searchViewerFilesRouteApiViewerFilesystemSearchGet({
         query: { thread_id: input.threadId ?? '', query: input.query },
       }),

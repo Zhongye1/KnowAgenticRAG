@@ -398,7 +398,7 @@ export const ProviderModelsDialog = ({
             </div>
 
             {remoteModels.length === 0 ? (
-              <p className="py-4 text-sm text-color-text-3">
+              <div className="py-4 text-sm text-color-text-3">
                 {fetchRemote.isPending ? (
                   <span className="flex items-center gap-2">
                     <Spin aria-hidden className="size-4" />
@@ -407,7 +407,7 @@ export const ProviderModelsDialog = ({
                 ) : (
                   '点「获取远程模型」从供应商拉取候选清单；不拉取也可以手动添加。'
                 )}
-              </p>
+              </div>
             ) : (
               <ul className="flex flex-col">
                 {visibleRemote.map((model) => {

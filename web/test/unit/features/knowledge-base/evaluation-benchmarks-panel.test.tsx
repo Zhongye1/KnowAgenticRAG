@@ -132,7 +132,9 @@ describe('评估基准分区', () => {
     api.listDatasets.mockResolvedValue([]);
     renderPanel();
 
-    expect(await screen.findByText('暂无评估基准')).toBeTruthy();
+    expect(
+      await screen.findByText('上传数据集，或从当前知识库自动生成评估问题。'),
+    ).toBeTruthy();
     // 工具栏与空态各给一份入口（空态里的是引导，工具栏的是常驻）
     expect(screen.getAllByRole('button', { name: /上传基准/ })).toHaveLength(2);
     expect(screen.getAllByRole('button', { name: /自动生成/ })).toHaveLength(2);
@@ -142,7 +144,7 @@ describe('评估基准分区', () => {
     api.listDatasets.mockResolvedValue([]);
     renderPanel(true);
 
-    await screen.findByText('暂无评估基准');
+    await screen.findByText('还没有评估基准，请等待知识库管理员上传或生成。');
     expect(screen.queryByRole('button', { name: /上传基准/ })).toBeNull();
     expect(screen.queryByRole('button', { name: /自动生成/ })).toBeNull();
   });

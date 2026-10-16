@@ -8,7 +8,7 @@ import {
 
 describe('知识库类型标签', () => {
   it('已知类型显示产品名，大小写不敏感', () => {
-    expect(getKbTypeLabel('milvus')).toBe('ARS');
+    expect(getKbTypeLabel('milvus')).toBe('Milvus');
     expect(getKbTypeLabel('DIFY')).toBe('Dify');
     expect(getKbTypeLabel('Notion')).toBe('Notion');
   });

@@ -53,6 +53,7 @@ export {
   useLogout,
   useOidcConfig,
   useOidcLoginUrl,
+  useRegister,
   useUnauthorizedReset,
   useUpdateProfile,
   useUpdateUserConfig,

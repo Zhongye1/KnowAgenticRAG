@@ -64,6 +64,9 @@ RUN_PROGRESS_RECENT_EVENT_SCAN_LIMIT = 100
 RUN_PROGRESS_MESSAGE_LIMIT = 3
 RUN_PROGRESS_CONTENT_MAX_CHARS = 800
 
+# 紧凑信封保留的信封字段：裁剪只作用在 payload 上，判别键与版本号不随 verbose 消失。
+_COMPACT_ENVELOPE_KEYS = ("schema_version", "run_id", "thread_id", "event", "created_at")
+
 
 def _resolve_agent_run_request_id(
     *,
@@ -310,21 +313,26 @@ def _is_empty_agent_state(agent_state: object) -> bool:
 
 
 def _compact_run_event_envelope(envelope: dict) -> dict | None:
+    """裁剪 payload 内容，保留信封字段。
+
+    前端默认 `verbose=false`，紧凑信封是浏览器实际收到的形状；判别键 `event` 留在信封上，
+    事件流才能用同一个联合类型收窄。
+    """
     event_type = str(envelope.get("event") or "")
     payload = envelope.get("payload")
-    if event_type == "metadata":
-        compact = {key: envelope[key] for key in ("run_id", "thread_id") if key in envelope}
-        compact["payload"] = {
-            key: payload[key] for key in ("run_type", "source") if isinstance(payload, dict) and key in payload
-        }
-        return compact
     if event_type == "custom" and isinstance(payload, dict) and payload.get("name") == "ars.agent_state":
         state = payload.get("agent_state")
         chunk = payload.get("chunk") if isinstance(payload.get("chunk"), dict) else {}
         if _is_empty_agent_state(state) or _is_empty_agent_state(chunk.get("agent_state")):
             return None
 
-    compact = {key: envelope[key] for key in ("run_id", "thread_id") if key in envelope}
+    compact = {key: envelope[key] for key in _COMPACT_ENVELOPE_KEYS if key in envelope}
+    if event_type == "metadata":
+        compact["payload"] = {
+            key: payload[key] for key in ("run_type", "source") if isinstance(payload, dict) and key in payload
+        }
+        return compact
+
     request_id = _request_id_from_payload(payload)
     if request_id:
         compact["request_id"] = request_id
@@ -942,18 +950,25 @@ async def stream_agent_run_events(
                     repo = AgentRunRepository(db)
                     run = await repo.get_run_for_user(run_id, str(current_uid))
                     if not run:
-                        yield format_sse({"run_id": run_id, "message": "运行任务不存在"}, event="error")
+                        yield format_sse(
+                            build_run_event_envelope(
+                                run_id=run_id,
+                                event_type="error",
+                                payload={"message": "运行任务不存在"},
+                            ),
+                            event="error",
+                        )
                         return
             except asyncio.CancelledError:
                 raise
             except Exception as e:
                 logger.warning(f"Run SSE DB error for run {run_id}: {e}")
                 yield format_sse(
-                    {
-                        "run_id": run_id,
-                        "message": "运行事件流暂时不可用，请重连",
-                        "reason": "db_error",
-                    },
+                    build_run_event_envelope(
+                        run_id=run_id,
+                        event_type="error",
+                        payload={"message": "运行事件流暂时不可用，请重连", "reason": "db_error"},
+                    ),
                     event="error",
                 )
                 return
@@ -963,11 +978,11 @@ async def stream_agent_run_events(
             except Exception as e:
                 logger.warning(f"Run SSE redis error for run {run_id}: {e}")
                 yield format_sse(
-                    {
-                        "run_id": run_id,
-                        "message": "运行事件流暂时不可用，请重连",
-                        "reason": "redis_error",
-                    },
+                    build_run_event_envelope(
+                        run_id=run_id,
+                        event_type="error",
+                        payload={"message": "运行事件流暂时不可用，请重连", "reason": "redis_error"},
+                    ),
                     event="error",
                 )
                 return

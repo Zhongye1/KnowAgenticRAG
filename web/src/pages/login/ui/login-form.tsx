@@ -4,7 +4,8 @@ import { Lock, User } from 'lucide-react';
 import {
   AgreementConsent,
   type AgreementConsentProps,
-} from './agreement-consent';
+} from '@/widgets/auth-shell';
+
 import { OidcLogin, type OidcLoginProps } from './oidc-login';
 import styles from './login-page.module.css';
 

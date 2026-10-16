@@ -27,18 +27,25 @@ vi.mock('@/features/chat/api/agent-api', () => ({
 const { GlobalSearchModal } =
   await import('@/features/chat/ui/global-search-modal');
 
+/**
+ * 会话分组的标签按「距现在多少天」算（≤7 天 / ≤30 天 / 更早），所以夹具必须用相对时间：
+ * 写死日期会在真实日历跨过 7 天边界后开始假失败。
+ */
+const daysAgo = (days: number): string =>
+  new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
+
 const resultItem = (id: string, extra: Record<string, unknown> = {}) => ({
   id,
   thread_id: id,
   agent_id: 'default-chatbot',
   title: id,
   matched_count: 1,
-  latest_match_at: '2026-10-08T00:00:00Z',
+  latest_match_at: daysAgo(3),
   snippets: [
     {
       message_id: 1,
       content: `关于${id}的片段`,
-      created_at: '2026-10-08T00:00:00Z',
+      created_at: daysAgo(3),
     },
   ],
   ...extra,
@@ -65,13 +72,13 @@ const renderModal = (
           id: '最近一',
           agent_id: 'a',
           title: '最近一',
-          updated_at: '2026-10-08T00:00:00Z',
+          updated_at: daysAgo(3),
         },
         {
           id: '更早一',
           agent_id: 'a',
           title: '更早一',
-          updated_at: '2026-01-01T00:00:00Z',
+          updated_at: daysAgo(60),
         },
       ]}
       onSelectThread={onSelectThread}

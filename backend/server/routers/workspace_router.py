@@ -4,10 +4,11 @@ import io
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from server.utils.auth_middleware import get_db, get_required_user
+from server.utils.response_contracts import BINARY_DOWNLOAD
 from ars.services.workspace_service import (
     create_workspace_directory,
     delete_workspace_path,
@@ -32,6 +33,122 @@ class CreateWorkspaceDirectoryRequest(BaseModel):
 class UpdateWorkspaceFileContentRequest(BaseModel):
     path: str
     content: str
+
+
+class WorkspaceEntryItem(BaseModel):
+    """工作区树/搜索条目；字段对齐 `workspace_service._entry_from_metadata` 的输出。"""
+
+    path: str
+    virtual_path: str
+    name: str
+    is_dir: bool
+    size: int
+    modified_at: str
+
+
+class WorkspaceTreeResponse(BaseModel):
+    """工作区目录树与搜索结果响应。"""
+
+    entries: list[WorkspaceEntryItem]
+
+
+class WorkspaceFileWriteResponse(BaseModel):
+    """工作区文件写入结果。"""
+
+    success: bool
+    path: str
+    entry: WorkspaceEntryItem
+
+
+class WorkspaceDeleteResponse(BaseModel):
+    """工作区文件或目录删除结果。"""
+
+    success: bool
+    path: str
+
+
+class WorkspaceDirectoryCreateResponse(BaseModel):
+    """工作区目录创建结果。"""
+
+    success: bool
+    entry: WorkspaceEntryItem
+
+
+class WorkspaceUploadResponse(BaseModel):
+    """工作区文件上传结果。"""
+
+    success: bool
+    entries: list[WorkspaceEntryItem]
+
+
+class WorkspaceFilePreviewResponse(BaseModel):
+    """工作区文本/不可预览文件的 JSON 预览载荷；对齐 `PreviewResult.payload()`。
+
+    图片、PDF 与 Office 预览由 `read_workspace_file_content` 直接返回 StreamingResponse，
+    作为 Response 实例绕过本模型；本模型只描述 JSON 分支的固定 6 个键。
+    """
+
+    content: str | None
+    preview_type: str
+    supported: bool
+    message: str | None
+    truncated: bool
+    limit: int | None
+
+
+class WorkspaceKnowledgeEntryItem(BaseModel):
+    """知识库文件在工作区只读视图中的条目；对齐 `_workspace_knowledge_entry` 的输出。"""
+
+    source: str
+    kb_id: str
+    file_id: str | None
+    parent_id: str | None
+    path: str
+    virtual_path: str
+    name: str
+    is_dir: bool
+    size: int
+    modified_at: str
+    readonly: bool
+    status: str
+    has_original_file: bool
+    has_parsed_markdown: bool
+    is_virtual_folder: bool
+    path_prefix: str
+
+
+class WorkspaceKnowledgeTreeResponse(BaseModel):
+    """知识库文件只读树响应。"""
+
+    entries: list[WorkspaceKnowledgeEntryItem]
+    readonly: bool
+    page: int
+    page_size: int
+    total: int
+    has_more: bool
+    parent_id: str | None
+    path_prefix: str
+
+
+class KnowledgeFilePreviewResponse(BaseModel):
+    """知识库文件 JSON 预览；对齐 `read_knowledge_file_preview` 的文本/不支持分支。
+
+    二进制分支（`binary=True`）由 `_preview_response` 转成 StreamingResponse，作为 Response
+    实例绕过本模型。`truncated`/`limit` 只在大文件与文本预览分支出现，因此给默认值并由
+    `response_model_exclude_unset=True` 保证响应键集合与载荷逐键一致。
+    """
+
+    source: str
+    kb_id: str
+    file_id: str
+    filename: str
+    readonly: bool
+    content: str | None
+    preview_type: str
+    supported: bool
+    message: str | None
+    truncated: bool = False
+    limit: int | None = None
 
 
 def _get_knowledge_base():
@@ -102,7 +219,7 @@ def _workspace_knowledge_entry(kb_id: str, item: dict) -> dict:
     }
 
 
-@workspace.get("/tree", response_model=dict)
+@workspace.get("/tree", response_model=WorkspaceTreeResponse, response_model_exclude_unset=True)
 async def get_workspace_tree(
     path: str = Query("/", description="工作区目录路径"),
     recursive: bool = Query(False, description="是否递归返回子目录文件"),
@@ -121,7 +238,7 @@ async def get_workspace_tree(
     )
 
 
-@workspace.get("/search", response_model=dict)
+@workspace.get("/search", response_model=WorkspaceTreeResponse, response_model_exclude_unset=True)
 async def search_workspace_files_route(
     query: str = Query(..., description="搜索关键词"),
     current_user: User = Depends(get_required_user),
@@ -149,7 +266,7 @@ def _preview_response(data):
     return data
 
 
-@workspace.get("/file")
+@workspace.get("/file", response_model=WorkspaceFilePreviewResponse, response_model_exclude_unset=True)
 async def get_workspace_file(
     path: str = Query(..., description="工作区文件路径"),
     current_user: User = Depends(get_required_user),
@@ -157,7 +274,9 @@ async def get_workspace_file(
     return await read_workspace_file_content(path=path, current_user=current_user)
 
 
-@workspace_knowledge.get("/knowledge/tree", response_model=dict)
+@workspace_knowledge.get(
+    "/knowledge/tree", response_model=WorkspaceKnowledgeTreeResponse, response_model_exclude_unset=True
+)
 async def get_workspace_knowledge_tree(
     kb_id: str = Query(..., description="知识库 ID"),
     parent_id: str | None = Query(None, description="父文件夹 ID"),
@@ -195,7 +314,9 @@ async def get_workspace_knowledge_tree(
         _raise_knowledge_read_error(error)
 
 
-@workspace_knowledge.get("/knowledge/file")
+@workspace_knowledge.get(
+    "/knowledge/file", response_model=KnowledgeFilePreviewResponse, response_model_exclude_unset=True
+)
 async def get_workspace_knowledge_file(
     kb_id: str = Query(..., description="知识库 ID"),
     file_id: str = Query(..., description="知识库文件 ID"),
@@ -211,7 +332,7 @@ async def get_workspace_knowledge_file(
         _raise_knowledge_read_error(error)
 
 
-@workspace_knowledge.get("/knowledge/download")
+@workspace_knowledge.get("/knowledge/download", response_class=StreamingResponse, responses={200: BINARY_DOWNLOAD})
 async def download_workspace_knowledge_file(
     kb_id: str = Query(..., description="知识库 ID"),
     file_id: str = Query(..., description="知识库文件 ID"),
@@ -232,7 +353,7 @@ async def download_workspace_knowledge_file(
     )
 
 
-@workspace.put("/file", response_model=dict)
+@workspace.put("/file", response_model=WorkspaceFileWriteResponse, response_model_exclude_unset=True)
 async def update_workspace_file(
     payload: UpdateWorkspaceFileContentRequest,
     current_user: User = Depends(get_required_user),
@@ -244,7 +365,7 @@ async def update_workspace_file(
     )
 
 
-@workspace.delete("/file", response_model=dict)
+@workspace.delete("/file", response_model=WorkspaceDeleteResponse, response_model_exclude_unset=True)
 async def delete_workspace_file_route(
     path: str = Query(..., description="工作区文件或目录路径"),
     current_user: User = Depends(get_required_user),
@@ -252,7 +373,7 @@ async def delete_workspace_file_route(
     return await delete_workspace_path(path=path, current_user=current_user)
 
 
-@workspace.post("/directory", response_model=dict)
+@workspace.post("/directory", response_model=WorkspaceDirectoryCreateResponse, response_model_exclude_unset=True)
 async def create_workspace_directory_route(
     payload: CreateWorkspaceDirectoryRequest,
     current_user: User = Depends(get_required_user),
@@ -264,7 +385,7 @@ async def create_workspace_directory_route(
     )
 
 
-@workspace.post("/upload", response_model=dict)
+@workspace.post("/upload", response_model=WorkspaceUploadResponse, response_model_exclude_unset=True)
 async def upload_workspace_files_route(
     parent_path: str = Form(..., description="父目录路径"),
     files: list[UploadFile] = File(..., description="上传文件列表"),
@@ -273,7 +394,7 @@ async def upload_workspace_files_route(
     return await upload_workspace_files(parent_path=parent_path, files=files, current_user=current_user)
 
 
-@workspace.get("/download")
+@workspace.get("/download", response_class=FileResponse, responses={200: BINARY_DOWNLOAD})
 async def download_workspace(
     path: str = Query(..., description="工作区文件路径"),
     current_user: User = Depends(get_required_user),

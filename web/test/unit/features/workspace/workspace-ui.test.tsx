@@ -137,6 +137,7 @@ describe('WorkspaceSidebar', () => {
     uploading: false,
     onUploadRequest: vi.fn(),
     onCreateDirectory: vi.fn(),
+    onOpenSearch: vi.fn(),
     onSelectRoot: vi.fn(),
     onSelectPath: vi.fn(),
   };

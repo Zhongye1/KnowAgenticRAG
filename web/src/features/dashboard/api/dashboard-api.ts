@@ -2,9 +2,8 @@
  * 数据总览（Dashboard）接口。
  *
  * 契约在 `backend/server/routers/dashboard_router.py` 与 `knowledge_dashboard_router.py`：
- * 只有 `/api/dashboard/stats` 没有 `response_model`，其余端点的类型直接复用生成物
- * `shared/api/generated/types.gen.ts`；生成器表达不了的两处由 api 段手写——无 schema 的 `/stats`，
- * 以及 `messages[].tool_calls`（后端声明为 `list[dict]`，由 `dashboard_service` 组装）。
+ * 响应类型直接复用生成物 `shared/api/generated/types.gen.ts`；生成器表达不了的一处由 api 段手写——
+ * `messages[].tool_calls`（后端声明为 `list[dict]`，由 `dashboard_service` 组装）。
  *
  * 端点全部要求超管（`get_superadmin_user`），响应没有 `{message, data}` 信封。
  */
@@ -23,6 +22,7 @@ import {
 } from '@/shared/api/generated/sdk.gen';
 import type {
   AgentAnalytics,
+  BasicStatsResponse,
   ConversationDetailResponse,
   ConversationFilterOptionsResponse,
   ConversationListItem,
@@ -63,22 +63,8 @@ export type ThreadTimeRange = '7days' | '14days' | '30days' | '90days';
 export type ConversationStatus =
   'active' | 'archived' | 'deleted' | 'subagent' | 'all';
 
-/**
- * 概览指标。
- *
- * 手写原因：`/api/dashboard/stats` 是唯一没有 `response_model` 的端点，字段按
- * `ars/repositories/dashboard_repository.py` 的返回结构写。
- */
-export type DashboardStats = {
-  total_conversations: number;
-  active_conversations: number;
-  total_messages: number;
-  total_users: number;
-  feedback_stats: {
-    total_feedbacks: number;
-    satisfaction_rate: number;
-  };
-};
+/** 概览指标；契约 `BasicStatsResponse`（`/api/dashboard/stats`）。 */
+export type DashboardStats = BasicStatsResponse;
 
 /** 单条工具调用记录；后端在消息上挂 `tool_calls` 时给出这些键。 */
 export type ToolCallRecord = {

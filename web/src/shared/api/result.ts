@@ -1,9 +1,9 @@
 /**
  * 生成客户端结果的公共折叠，服务所有手写 api 层（知识库切片与调试弹窗都用它）。
  *
- * 契约生成客户端返回 `{data, error, response}`，这里统一折成「值」或 `ApiError`；
- * 这些端点都没有 `response_model`，失败时既可能是非 2xx，也可能是
- * 200 + `{status:'failed', message}`，因此业务状态由各调用点自己判。
+ * 契约生成客户端返回 `{data, error, response}`，这里统一折成「值」或 `ApiError`。
+ * 非 2xx 之外还有一类业务失败：HTTP 200 但载荷是 `{status: 'failed', message}`（后台任务
+ * 受理失败），所以业务状态由各调用点自己判（见 `unwrapQueuedTask`）。
  *
  * 文案只认后端给出的 `detail`：网络层的 `TypeError` 是浏览器英文提示，不当文案
  * （与 `shared/api/base.ts` 的约定一致）。

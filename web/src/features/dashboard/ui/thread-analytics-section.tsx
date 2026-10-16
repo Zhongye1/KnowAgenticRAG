@@ -14,7 +14,6 @@ import {
   buildThreadDepthOption,
   buildThreadTrendOption,
 } from '../lib/chart-options';
-import { conversationStatusLabel } from '../lib/conversation-query';
 import {
   formatFullDateTime,
   formatNumber,
@@ -23,7 +22,7 @@ import {
 import { useThreadAnalytics } from '../model/dashboard-queries';
 import { EChart } from './echart';
 import { MetricCard, MetricGrid } from './metric-card';
-import { PanelBody, PanelCard, PanelSectionTitle } from './panel-card';
+import { PanelBody, PanelCard } from './panel-card';
 import { ToggleGroup } from './toggle-group';
 import { Button } from 'antd';
 import { Empty } from '@/shared/ui/empty';
@@ -282,6 +281,8 @@ export const ThreadAnalyticsSection = ({
           </PanelCard>
         </div>
 
+        {/* 暂不渲染「会话状态分布」；恢复时需一并恢复 `conversationStatusLabel` 与
+            `PanelSectionTitle` 的导入 */}
         {/* <PanelSectionTitle hint="含进行中、已归档与已删除的历史记录">
           会话状态分布
         </PanelSectionTitle>

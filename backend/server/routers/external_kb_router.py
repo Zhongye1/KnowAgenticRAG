@@ -25,7 +25,102 @@ class ExternalFindRequest(BaseModel):
     window_size: int = 80
 
 
-@external_kb.get("/databases/external")
+class ExternalDatabaseItem(BaseModel):
+    """CLI 可见的知识库摘要。"""
+
+    kb_id: str
+    name: str
+    description: str
+    kb_type: str
+    supports_documents: bool
+
+
+class ExternalDatabasesResponse(BaseModel):
+    """CLI 知识库列表响应。"""
+
+    databases: list[ExternalDatabaseItem]
+
+
+class ExternalFileItem(BaseModel):
+    """CLI 文件列表条目；对齐 `search_document_files(include_is_folder/include_parent_id=True)`。"""
+
+    kb_id: str
+    kb_name: str | None
+    file_id: str
+    filename: str
+    file_type: str | None
+    status: str
+    created_at: str | None
+    updated_at: str | None
+    file_size: int | None
+    is_folder: bool
+    parent_id: str | None
+
+
+class ExternalFileListResponse(BaseModel):
+    """CLI 文件列表响应。"""
+
+    files: list[ExternalFileItem]
+    total: int
+    offset: int
+    limit: int
+    has_more: bool
+
+
+class ExternalRetrieveResultItem(BaseModel):
+    """检索结果条目；对齐 `SearchResultSchema`。"""
+
+    id: str
+    kb_id: str
+    file_id: str
+    content: str
+    metadata: dict
+
+
+class ExternalRetrieveResponse(BaseModel):
+    """检索响应；对齐 `SearchOutputSchema`。"""
+
+    kb_id: str
+    results: list[ExternalRetrieveResultItem]
+
+
+class ExternalOpenResponse(BaseModel):
+    """按行窗口打开文件的结果；对齐 `OpenOutputSchema`。"""
+
+    kb_id: str
+    file_id: str
+    start_line: int
+    end_line: int
+    total_lines: int
+    offset: int
+    window_size: int
+    has_more_before: bool
+    has_more_after: bool
+    next_offset: int | None
+    content: str
+
+
+class ExternalFindWindowItem(BaseModel):
+    """文件内查找的上下文窗口；对齐 `FindWindowSchema`。"""
+
+    start_line: int
+    end_line: int
+    matched_lines: list[int]
+    content: str
+
+
+class ExternalFindResponse(BaseModel):
+    """文件内查找结果；对齐 `FindOutputSchema`。"""
+
+    kb_id: str
+    file_id: str
+    semantic: bool
+    match_mode: str
+    total_matches: int
+    windows: list[ExternalFindWindowItem]
+
+
+@external_kb.get("/databases/external", response_model=ExternalDatabasesResponse, response_model_exclude_unset=True)
 async def list_external_databases(current_user: User = Depends(get_required_user)):
     """列出当前登录用户可见的知识库，供 CLI 选择与展示。"""
     databases = await knowledge_base.get_databases_by_uid(current_user.uid)
@@ -44,7 +139,11 @@ async def list_external_databases(current_user: User = Depends(get_required_user
     return {"databases": items}
 
 
-@external_kb.get("/databases/external/{kb_id}/files")
+@external_kb.get(
+    "/databases/external/{kb_id}/files",
+    response_model=ExternalFileListResponse,
+    response_model_exclude_unset=True,
+)
 async def list_external_files(
     kb_id: str,
     query: str | None = Query(None, description="按文件名关键词搜索"),
@@ -73,7 +172,11 @@ async def list_external_files(
     )
 
 
-@external_kb.post("/databases/external/{kb_id}/retrieve")
+@external_kb.post(
+    "/databases/external/{kb_id}/retrieve",
+    response_model=ExternalRetrieveResponse,
+    response_model_exclude_unset=True,
+)
 async def retrieve_external(
     kb_id: str,
     payload: ExternalRetrieveRequest,
@@ -95,7 +198,11 @@ async def retrieve_external(
         raise HTTPException(status_code=400, detail=f"知识库查询失败: {e}") from e
 
 
-@external_kb.get("/databases/external/{kb_id}/files/{file_id}/open")
+@external_kb.get(
+    "/databases/external/{kb_id}/files/{file_id}/open",
+    response_model=ExternalOpenResponse,
+    response_model_exclude_unset=True,
+)
 async def open_external_file(
     kb_id: str,
     file_id: str,
@@ -114,7 +221,11 @@ async def open_external_file(
         raise HTTPException(status_code=400, detail="打开知识库文件失败") from e
 
 
-@external_kb.post("/databases/external/{kb_id}/files/{file_id}/find")
+@external_kb.post(
+    "/databases/external/{kb_id}/files/{file_id}/find",
+    response_model=ExternalFindResponse,
+    response_model_exclude_unset=True,
+)
 async def find_external_file(
     kb_id: str,
     file_id: str,

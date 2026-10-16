@@ -48,6 +48,16 @@ vi.mock('@/shared/ui/notifications', () => ({
   useNotifications: () => notifications,
 }));
 
+/**
+ * 品牌标只影响图形，用例不断言图标；这里整体换成空组件。真实图标走 `@lobehub/icons`，
+ * 它每个品牌的入口都会执行 `Avatar`，依赖链里的 `@emoji-mart/data` JSON 在 Node ESM 下
+ * 需要 import attribute，整个用例文件会因此起不来（与 `pages/home/lib/brand-logos.ts`
+ * 同一原因）。图标本身的渲染由浏览器实测覆盖。
+ */
+vi.mock('@/features/model-providers/ui/provider-icon', () => ({
+  ProviderIcon: () => null,
+}));
+
 const { ModelProviderPanel } = await import('@/features/model-providers');
 const { AntdProvider } = await import('@/app/theme/antd-provider');
 

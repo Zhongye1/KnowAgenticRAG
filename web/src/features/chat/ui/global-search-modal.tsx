@@ -457,10 +457,10 @@ export const GlobalSearchModal = ({
         ) : null}
 
         {status === 'loading-more' ? (
-          <p className="flex items-center justify-center gap-2 px-2 py-3 text-xs text-[var(--gray-500)]">
+          <div className="flex items-center justify-center gap-2 px-2 py-3 text-xs text-[var(--gray-500)]">
             <Spin aria-hidden className="size-3" />
             加载中...
-          </p>
+          </div>
         ) : null}
       </div>
     </Modal>

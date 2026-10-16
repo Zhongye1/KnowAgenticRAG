@@ -53,10 +53,17 @@ class ImageUploadResponse(BaseModel):
     error: str | None = None
 
 
+class CallResponse(BaseModel):
+    """`POST /call` 的简单问答结果。"""
+
+    response: str
+    request_id: str
+
+
 chat = APIRouter(prefix="/chat", tags=["chat"])
 
 
-@chat.post("/call")
+@chat.post("/call", response_model=CallResponse, response_model_exclude_unset=True)
 async def call(
     query: str = Body(...),
     meta: dict = Body(None),
@@ -79,7 +86,76 @@ async def call(
     return {"response": response.content, "request_id": meta["request_id"]}
 
 
-@chat.get("/thread/{thread_id}/history")
+class ThreadHistoryFeedbackItem(BaseModel):
+    """历史消息中当前用户对该消息的反馈。"""
+
+    id: int
+    rating: str
+    reason: str | None
+    created_at: str | None
+
+
+class ThreadToolCallFunction(BaseModel):
+    """工具调用函数名。"""
+
+    name: str
+
+
+class ThreadToolCallResult(BaseModel):
+    """工具调用成功时的结果摘要。"""
+
+    content: str
+
+
+class ThreadToolCallItem(BaseModel):
+    """历史消息内的一次工具调用。"""
+
+    id: str
+    name: str
+    function: ThreadToolCallFunction
+    args: dict[str, Any]
+    tool_call_result: ThreadToolCallResult | None
+    status: str
+    error_message: str | None
+
+
+class ThreadHistoryMessageItem(BaseModel):
+    """历史消息条目；字段对齐 `conversation_service.get_thread_history_view`。
+
+    `run_started_at`/`run_finished_at` 只对 assistant 消息下发，`tool_calls` 只在该消息
+    带工具调用时下发，因此它们有默认值，配合 `response_model_exclude_unset=True`
+    保证响应体逐键与载荷一致。
+    """
+
+    id: int
+    type: str
+    content: str
+    created_at: str | None
+    run_id: str | None
+    request_id: str | None
+    delivery_status: str
+    error_type: str | None
+    error_message: str | None
+    extra_metadata: dict[str, Any]
+    message_type: str | None
+    image_content: str | None
+    feedback: ThreadHistoryFeedbackItem | None
+    run_started_at: str | None = None
+    run_finished_at: str | None = None
+    tool_calls: list[ThreadToolCallItem] = Field(default_factory=list)
+
+
+class ThreadHistoryResponse(BaseModel):
+    """对话历史消息响应。"""
+
+    history: list[ThreadHistoryMessageItem]
+
+
+@chat.get(
+    "/thread/{thread_id}/history",
+    response_model=ThreadHistoryResponse,
+    response_model_exclude_unset=True,
+)
 async def get_thread_history(
     thread_id: str, current_user: User = Depends(get_required_user), db: AsyncSession = Depends(get_db)
 ):
@@ -96,7 +172,51 @@ async def get_thread_history(
         raise HTTPException(status_code=500, detail=f"获取对话历史消息出错: {str(e)}")
 
 
-@chat.get("/thread/{thread_id}/state")
+class ThreadAgentState(BaseModel):
+    """`extract_agent_state` 产出的智能体运行状态。"""
+
+    todos: list[Any]
+    files: dict[str, Any]
+    artifacts: list[str]
+    subagent_runs: list[dict[str, Any]]
+    token_usage: dict[str, Any] | None
+
+
+class SubagentThreadItem(BaseModel):
+    """子智能体线程归属关系；对齐 `SubagentThread.to_dict()`。"""
+
+    id: int
+    uid: str
+    parent_conversation_id: int
+    child_conversation_id: int
+    child_thread_id: str
+    subagent_slug: str
+    created_by_run_id: str
+    created_at: str | None
+    updated_at: str | None
+
+
+class ThreadStateResponse(BaseModel):
+    """对话当前状态；字段对齐 `chat_service.get_agent_state_view`。
+
+    `interrupt`、`parent_thread_id`、`subagent_thread`、`subagent_run` 只在特定场景下发，
+    `messages` 只在 `include_messages=True` 时下发；它们带默认值并由
+    `response_model_exclude_unset=True` 维持响应体逐键不变。
+    """
+
+    agent_state: ThreadAgentState
+    interrupt: dict[str, Any] | None = None
+    parent_thread_id: str | None = None
+    subagent_thread: SubagentThreadItem | None = None
+    subagent_run: dict[str, Any] | None = None
+    messages: list[dict[str, Any]] = Field(default_factory=list)
+
+
+@chat.get(
+    "/thread/{thread_id}/state",
+    response_model=ThreadStateResponse,
+    response_model_exclude_unset=True,
+)
 async def get_thread_state(
     thread_id: str,
     include_messages: bool = Query(False),
@@ -298,7 +418,13 @@ async def search_threads(
     )
 
 
-@chat.delete("/thread/{thread_id}")
+class ThreadDeleteResponse(BaseModel):
+    """删除对话线程结果。"""
+
+    message: str
+
+
+@chat.delete("/thread/{thread_id}", response_model=ThreadDeleteResponse, response_model_exclude_unset=True)
 async def delete_thread(
     thread_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_required_user)
 ):
@@ -402,7 +528,17 @@ async def list_thread_attachments(
     )
 
 
-@chat.delete("/thread/{thread_id}/attachments/{file_id}")
+class ThreadAttachmentDeleteResponse(BaseModel):
+    """删除线程附件结果。"""
+
+    message: str
+
+
+@chat.delete(
+    "/thread/{thread_id}/attachments/{file_id}",
+    response_model=ThreadAttachmentDeleteResponse,
+    response_model_exclude_unset=True,
+)
 async def delete_thread_attachment(
     thread_id: str,
     file_id: str,
@@ -418,7 +554,27 @@ async def delete_thread_attachment(
     )
 
 
-@chat.get("/thread/{thread_id}/artifacts/{path:path}")
+class ThreadArtifactPreviewResponse(BaseModel):
+    """artifact 文本/不支持预览的 JSON 载荷；对齐 `PreviewResult.payload()`。
+
+    该路由的主路径是文件下载，返回 FileResponse / StreamingResponse 时由 FastAPI 直接
+    透传（Response 实例不经过 response_model）；只有预览落在 JSON 分支时才由本模型序列化，
+    并借此为 OpenAPI 声明字段信息。
+    """
+
+    content: str | None
+    preview_type: str
+    supported: bool
+    message: str | None
+    truncated: bool
+    limit: int | None
+
+
+@chat.get(
+    "/thread/{thread_id}/artifacts/{path:path}",
+    response_model=ThreadArtifactPreviewResponse,
+    response_model_exclude_unset=True,
+)
 async def get_thread_artifact(
     thread_id: str,
     path: str,
@@ -491,7 +647,27 @@ async def submit_message_feedback(
     return MessageFeedbackResponse(**result)
 
 
-@chat.get("/message/{message_id}/feedback")
+class MessageFeedbackItem(BaseModel):
+    """GET 反馈接口读到的反馈记录。"""
+
+    id: int
+    rating: str
+    reason: str | None
+    created_at: str
+
+
+class MessageFeedbackStatusResponse(BaseModel):
+    """指定消息的当前用户反馈状态；对齐 `feedback_service.get_message_feedback_view`。"""
+
+    has_feedback: bool
+    feedback: MessageFeedbackItem | None
+
+
+@chat.get(
+    "/message/{message_id}/feedback",
+    response_model=MessageFeedbackStatusResponse,
+    response_model_exclude_unset=True,
+)
 async def get_message_feedback(
     message_id: int,
     db: AsyncSession = Depends(get_db),

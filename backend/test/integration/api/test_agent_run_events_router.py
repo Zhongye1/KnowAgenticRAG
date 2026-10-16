@@ -56,8 +56,9 @@ async def test_run_events_verbose_false_returns_compact_payload(test_client, sta
         await conn.execute(
             """
             INSERT INTO agent_runs
-                (id, conversation_thread_id, agent_slug, uid, request_id, input_payload, status, run_type)
-            VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8)
+                (id, conversation_thread_id, agent_slug, uid, request_id, input_payload, status, run_type,
+                 runtime_scope_id, source, channel, origin_metadata, token_usage)
+            VALUES ($1, $2, $3, $4, $5, $6::jsonb, $7, $8, $9, $10, $11, '{}'::json, '{}'::jsonb)
             """,
             run_id,
             thread_id,
@@ -67,6 +68,10 @@ async def test_run_events_verbose_false_returns_compact_payload(test_client, sta
             json.dumps({"query": "写一个冒泡排序"}, ensure_ascii=False),
             "completed",
             "chat",
+            thread_id,
+            # 与聊天入口一致：`RunOrigin(source="chat", channel="web")`。
+            "chat",
+            "web",
         )
     finally:
         await conn.close()
@@ -157,6 +162,14 @@ async def test_run_events_verbose_false_returns_compact_payload(test_client, sta
             payloads = await _collect_sse_payloads(response)
 
         assert {event for event, _payload, _event_id in payloads} == {"metadata", "messages", "end"}
+
+        # 紧凑载荷仍带信封：判别键与版本号不随 verbose=false 消失，且帧上的事件名与信封上的
+        # `event` 恒等——前端按信封判别键收窄就依赖这一条。
+        for event, body, _event_id in payloads:
+            assert body["event"] == event
+            assert body["schema_version"] == 1
+            assert body["run_id"] == run_id
+            assert body["created_at"]
 
         metadata_event = next(item for item in payloads if item[0] == "metadata")
         assert metadata_event[1]["payload"] == {"run_type": "chat", "source": "chat"}

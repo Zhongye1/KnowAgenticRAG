@@ -1,9 +1,11 @@
 /**
  * HTTP 基础设施：所有请求经这里发出。
  *
- * - `apiClient` 是生成物的实例（`src/apis/generated/client.gen.ts`），在这里完成配置：
+ * - `apiClient` 是生成物的实例（`src/shared/api/generated/client.gen.ts`），在这里完成配置：
  *   生成器把 baseUrl 默认成输入文件名，必须改回同源相对路径。
  * - `apiFetch` 服务手写层：表单编码的登录、流式响应等生成物不覆盖的场景。
+ * - 生成客户端的默认超时与错误折叠也在这里装配：生成物用 `throwOnError` 抛出的是响应体，
+ *   不折成 `ApiError` 的话，各调用点的错误文案会集体退化成兜底文案。
  *
  * 鉴权只在 `Authorization` 头上传输（后端契约）。新后端没有 refresh 端点，
  * 因此 401 的处理是清除凭据并通知应用，不做重放。
@@ -12,6 +14,15 @@ import { client } from './generated/client.gen';
 
 export const TOKEN_STORAGE_KEY = 'ars_access_token';
 export const UNAUTHORIZED_EVENT = 'ars:unauthorized';
+
+/**
+ * 生成客户端的默认请求超时。
+ *
+ * 生成 client 没有 timeout 配置项，只能从请求拦截器注入。取值偏宽松：调用点显式传 `signal`
+ * 就能放宽或收紧（模型生成、知识库入库这类长耗时端点属于前者）。没有它时，一个卡住的后端会
+ * 让界面无限等待——查询层的 `retry` 也是关的，不会自己重试出来。
+ */
+const DEFAULT_TIMEOUT_MS = 120_000;
 
 export function getAccessToken(): string | null {
   return window.localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -34,10 +45,10 @@ export function setAccessToken(token: string | null): void {
  */
 function describeDetail(detail: unknown): string | null {
   if (typeof detail === 'string' && detail) return detail;
-  // 客户端超时：给一句用户能据此行动的话，而不是通用失败文案
-  if (detail instanceof Error && detail.name === 'TimeoutError') {
-    return '请求超时，请重试。';
-  }
+  // 超时与取消由浏览器抛 DOMException，它不是 Error 子类，因此按 name 识别。
+  const name = (detail as { name?: unknown } | null)?.name;
+  if (name === 'TimeoutError') return '请求超时，请重试。';
+  if (name === 'AbortError') return '请求已取消。';
   if (!detail || typeof detail !== 'object' || detail instanceof Error) {
     return null;
   }
@@ -91,7 +102,12 @@ function notifyUnauthorized(response: Response, credentialed: boolean): void {
   window.dispatchEvent(new Event(UNAUTHORIZED_EVENT));
 }
 
-/** 手写层的请求入口：注入 Bearer、统一错误、401 副作用。 */
+/**
+ * 手写层的请求入口：注入 Bearer、统一错误、401 副作用。
+ *
+ * 不设默认超时：SSE 流与文件下载共用这个入口，全局超时会把合法长连接掐断。需要边界的
+ * 调用点自己传 `signal`（生成客户端那条路径的默认超时见 `DEFAULT_TIMEOUT_MS`）。
+ */
 export async function apiFetch(
   input: string,
   init: RequestInit = {},
@@ -111,17 +127,46 @@ export async function apiFetch(
 // 生成物实例的配置：同源相对路径，鉴权与 401 处理统一在这里。
 client.setConfig({ baseUrl: '' });
 
-client.interceptors.request.use((request) => {
-  if (isUnauthenticated(request.url)) return request;
+/**
+ * 给请求挂默认超时；调用点显式传了 `signal` 就让位。
+ *
+ * `Request.signal` 永远存在（浏览器会给一个不会中止的），因此"挂没挂上超时"只能靠这个函数
+ * 的返回是否被重建来判断，而不是看 `request.signal` 是否存在。时长作为参数是为了让该判断
+ * 在测试里可以用毫秒级取值观察，不必等默认的 120 秒。
+ */
+export const applyRequestTimeout = (
+  request: Request,
+  options: { signal?: AbortSignal | null },
+  timeoutMs: number,
+): Request =>
+  options.signal
+    ? request
+    : new Request(request, { signal: AbortSignal.timeout(timeoutMs) });
 
-  const token = getAccessToken();
-  if (token) request.headers.set('Authorization', `Bearer ${token}`);
-  return request;
+client.interceptors.request.use((request, options) => {
+  if (!isUnauthenticated(request.url)) {
+    const token = getAccessToken();
+    if (token) request.headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  return applyRequestTimeout(request, options, DEFAULT_TIMEOUT_MS);
 });
 
 client.interceptors.response.use((response, request) => {
   notifyUnauthorized(response, request.headers.has('Authorization'));
   return response;
+});
+
+/**
+ * 生成客户端在 `throwOnError` 时抛的是响应体本身（`{detail}` 或 `{code, message}`），
+ * 不是 `ApiError`。折成 `ApiError` 后，生成路径与手写路径的错误文案口径一致，调用方的
+ * `describeFailure` 与各处 `error.message` 不需要按来源分支。
+ */
+client.interceptors.error.use((error, response) => {
+  if (error instanceof ApiError) return error;
+
+  const payload = error as { detail?: unknown } | null;
+  return new ApiError(response?.status ?? 0, payload?.detail ?? error ?? null);
 });
 
 export { client as apiClient };

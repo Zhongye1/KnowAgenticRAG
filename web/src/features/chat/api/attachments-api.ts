@@ -1,7 +1,9 @@
 /**
  * 附件的临时上传、解析与确认。
  *
- * 三个端点都没有声明响应模型，字段按不可信数据处理；归一集中在 `lib/attachment-upload.ts`。
+ * 响应形状直接复用契约生成的 `TmpAttachmentResponse` / `TmpAttachmentParseResponse` /
+ * `TmpAttachmentConfirmResponse` / `AttachmentListResponse`；归一集中在 `lib/attachment-upload.ts`，
+ * 在那里仍按不可信数据处理。
  */
 import { unwrap } from '@/shared/api';
 import {
@@ -10,6 +12,12 @@ import {
   parseTmpAttachmentApiChatAttachmentsTmpParsePost,
   uploadTmpAttachmentApiChatAttachmentsTmpPost,
 } from '@/shared/api/generated/sdk.gen';
+import type {
+  AttachmentListResponse,
+  TmpAttachmentConfirmResponse,
+  TmpAttachmentParseResponse,
+  TmpAttachmentResponse,
+} from '@/shared/api/generated/types.gen';
 
 import {
   normalizeTmpUpload,
@@ -33,7 +41,7 @@ export async function uploadTmpAttachment(
     | 'selectedParseMethod'
   >
 > {
-  const response = unwrap<unknown>(
+  const response = unwrap<TmpAttachmentResponse>(
     await uploadTmpAttachmentApiChatAttachmentsTmpPost({ body: { file } }),
   );
 
@@ -45,7 +53,7 @@ export async function parseTmpAttachment(input: {
   objectName: string;
   parseMethod: string;
 }): Promise<string> {
-  const response = unwrap<unknown>(
+  const response = unwrap<TmpAttachmentParseResponse>(
     await parseTmpAttachmentApiChatAttachmentsTmpParsePost({
       body: { object_name: input.objectName, parse_method: input.parseMethod },
     }),
@@ -70,7 +78,7 @@ export async function confirmTmpThreadAttachments(input: {
   }>;
 }): Promise<ThreadAttachment[]> {
   return normalizeThreadAttachments(
-    unwrap<unknown>(
+    unwrap<TmpAttachmentConfirmResponse>(
       await confirmTmpThreadAttachmentsApiChatThreadThreadIdAttachmentsConfirmPost(
         {
           path: { thread_id: input.threadId },
@@ -131,7 +139,7 @@ export async function listThreadAttachments(
   threadId: string,
 ): Promise<ThreadAttachment[]> {
   return normalizeThreadAttachments(
-    unwrap<unknown>(
+    unwrap<AttachmentListResponse>(
       await listThreadAttachmentsApiChatThreadThreadIdAttachmentsGet({
         path: { thread_id: threadId },
       }),

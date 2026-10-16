@@ -36,8 +36,7 @@ export const VirtualFolderDialog = ({
     null,
   );
   const [starting, setStarting] = React.useState(false);
-  // 组件只在 open 期间挂载（父级条件渲染），卸载即断流
-  const abortRef = React.useRef<AbortController | null>(null);
+  // 组件只在 open 期间挂载（父级条件渲染），卸载即断流，因此不需要 abort 控制器
 
   const running = isMigrationRunning(snapshot);
 

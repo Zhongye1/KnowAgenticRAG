@@ -194,10 +194,10 @@ export const SkillDependenciesTab = ({
             />
 
             {options.isPending ? (
-              <p className="flex items-center gap-2 text-xs text-color-text-3">
+              <div className="flex items-center gap-2 text-xs text-color-text-3">
                 <Spin aria-hidden className="size-3.5" />
                 正在加载依赖候选…
-              </p>
+              </div>
             ) : visible.length ? (
               <ul className="flex max-h-52 flex-col overflow-y-auto">
                 {visible.map((option) => (

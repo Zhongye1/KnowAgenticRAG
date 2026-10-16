@@ -51,7 +51,40 @@ class AgentEvalRunCreate(BaseModel):
     include_trajectory_summary: bool = Field(False, description="是否返回轻量工具调用轨迹摘要")
 
 
-@agent_invocation_eval_router.post("/runs")
+class AgentEvalRunError(BaseModel):
+    """运行失败的分类与消息。"""
+
+    type: str | None
+    message: str | None
+
+
+class AgentEvalRunResponse(BaseModel):
+    """Agent Eval 结果。
+
+    Run 不存在时载荷只有 `status/agent_run_id/output/error`；带上
+    `include_trajectory_summary` 时额外附 `trajectory_summary`。路由用
+    `response_model_exclude_unset=True` 保持逐键一致。
+    """
+
+    status: str
+    output: str
+    agent_run_id: str
+    agent_slug: str | None = None
+    thread_id: str | None = None
+    conversation_id: int | None = None
+    request_id: str | None = None
+    final_message_id: int | None = None
+    langfuse_trace_id: str | None = None
+    token_usage: dict[str, Any] = Field(default_factory=dict)
+    error: AgentEvalRunError | None = None
+    trajectory_summary: dict[str, Any] | None = None
+
+
+@agent_invocation_eval_router.post(
+    "/runs",
+    response_model=AgentEvalRunResponse,
+    response_model_exclude_unset=True,
+)
 async def create_agent_eval_run(
     payload: AgentEvalRunCreate,
     current_user: User = Depends(get_required_user),

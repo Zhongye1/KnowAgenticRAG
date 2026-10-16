@@ -1,9 +1,9 @@
 /**
  * `agent_state` 的类型化读取。
  *
- * `AgentStateResponse` 只声明了 `token_usage`，其余字段后端有（`extract_agent_state`
- * 返回 `todos / files / artifacts / subagent_runs / token_usage`）但契约没写；
- * 这里按不可信数据逐字段读取，读不到显式降级为空集合，不猜也不渲染成假数据。
+ * 契约里的 `ThreadAgentState` 已声明 `todos / files / artifacts / subagent_runs / token_usage`
+ * 五个字段，但它们的元素仍是自由结构（`Array<{[key: string]: unknown}>`）；这里按不可信数据
+ * 逐字段读取，读不到显式降级为空集合，不猜也不渲染成假数据。
  */
 import type { SubagentRun } from './subagent-run';
 import { readSubagentRuns } from './subagent-run';

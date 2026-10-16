@@ -2,8 +2,9 @@
  * 模型供应商接口。
  *
  * 契约在 `backend/server/routers/model_provider_router.py`：响应是 `{success, data}`，
- * 除 `/models/v2` 外都要求 admin，且端点没有 response schema，类型按
- * `ars/models/providers/service.py` 的校验与 `ModelProvider.to_dict()` 手写。
+ * 除 `/models/v2` 外都要求 admin。响应的信封与条目模型已由契约声明，直接复用生成物
+ * `shared/api/generated/types.gen.ts`；api 段只保留契约表达不了的两件事——把明文
+ * `api_key` 折成 `has_api_key`，以及把条目收窄成界面用的 `ModelProvider`。
  *
  * 列表项在解包时把明文 `api_key` 折成 `has_api_key`：密钥不出 api 段，界面与断言都拿不到原文。
  */
@@ -16,6 +17,15 @@ import {
   listProvidersApiSystemModelProvidersGet,
   updateProviderApiSystemModelProvidersProviderIdPut,
 } from '@/shared/api/generated/sdk.gen';
+import type {
+  ModelProviderDeleteResponse,
+  ModelProviderItem,
+  ModelProviderListResponse,
+  ModelProviderResponse,
+  ModelStatusResponse,
+  RemoteModelsResponse,
+  SystemConfigResponse,
+} from '@/shared/api/generated/types.gen';
 import { unwrap } from '@/shared/api';
 
 /** 后端 `VALID_MODEL_TYPES`。 */
@@ -41,7 +51,12 @@ export type EnabledModel = {
   extra?: Record<string, unknown>;
 };
 
-/** 远端候选模型；字段来自 `_normalize_remote_model` 的规范化结果。 */
+/**
+ * 远端候选模型；字段来自 `_normalize_remote_model` 的规范化结果。
+ *
+ * 契约 `RemoteModelItem` 把 `type` 声明为 `string`、模态声明为 `unknown[]`，这里收窄成
+ * `ModelType` 与 `string[]`，界面筛选与 `remoteToEnabledModel` 依赖这两个取值。
+ */
 export type RemoteModel = {
   id: string;
   display_name?: string;
@@ -54,7 +69,12 @@ export type RemoteModel = {
   pricing?: Record<string, unknown>;
 };
 
-/** 供应商列表项；`api_key` 已被换成 `has_api_key`。 */
+/**
+ * 界面用的供应商列表项。
+ *
+ * 契约 `ModelProviderItem` 带明文 `api_key`，且 `provider_type`/`capabilities`/`enabled_models`
+ * 是宽类型；这里在 `toProvider` 里折掉密钥并收窄成界面取值，故不能直接用生成物类型。
+ */
 export type ModelProvider = {
   provider_id: string;
   display_name: string;
@@ -99,19 +119,20 @@ export type ProviderPayload = {
   enabled_models?: EnabledModel[];
 };
 
-/** 连通性检查结果；`status` 只有 available / unavailable / error 三种取值。 */
+/**
+ * 连通性检查结果；`status` 只有 available / unavailable / error 三种取值。
+ *
+ * 契约 `ModelStatusItem` 把 `status`/`message` 声明为必填 `string`，这里收窄成三值枚举、
+ * `message` 可选，界面按枚举穷举文案。
+ */
 export type ModelStatus = {
   spec: string;
   status: 'available' | 'unavailable' | 'error';
   message?: string;
 };
 
-type ProviderResponse = { success: boolean; data?: Record<string, unknown> };
-type ListResponse = { success: boolean; data?: Record<string, unknown>[] };
-type StatusResponse = { success: boolean; data?: Record<string, unknown> };
-
 /** 把后端投影折成列表项；密钥原文只在这里出现一次，随即丢弃。 */
-const toProvider = (raw: Record<string, unknown>): ModelProvider => {
+const toProvider = (raw: ModelProviderItem): ModelProvider => {
   const { api_key: apiKey, ...rest } = raw;
   return {
     ...(rest as unknown as Omit<ModelProvider, 'has_api_key'>),
@@ -122,7 +143,7 @@ const toProvider = (raw: Record<string, unknown>): ModelProvider => {
 export const modelProviderApi = {
   /** 全部供应商配置（含已停用）。 */
   async listProviders(): Promise<ModelProvider[]> {
-    const result = unwrap<ListResponse>(
+    const result = unwrap<ModelProviderListResponse>(
       await listProvidersApiSystemModelProvidersGet(),
     );
     return (result.data ?? []).map(toProvider);
@@ -130,7 +151,7 @@ export const modelProviderApi = {
 
   /** 新建供应商；`provider_id` 重复时后端返回 400。 */
   async createProvider(payload: ProviderPayload): Promise<void> {
-    const result = unwrap<ProviderResponse>(
+    const result = unwrap<ModelProviderResponse>(
       await createProviderApiSystemModelProvidersPost({
         body: payload as never,
       }),
@@ -143,7 +164,7 @@ export const modelProviderApi = {
     providerId: string,
     payload: ProviderPayload,
   ): Promise<void> {
-    const result = unwrap<ProviderResponse>(
+    const result = unwrap<ModelProviderResponse>(
       await updateProviderApiSystemModelProvidersProviderIdPut({
         path: { provider_id: providerId },
         body: payload as never,
@@ -154,7 +175,7 @@ export const modelProviderApi = {
 
   /** 删除供应商；内置供应商后端也允许删除（面板按默认模型保护拦截）。 */
   async deleteProvider(providerId: string): Promise<void> {
-    await unwrap<ProviderResponse>(
+    await unwrap<ModelProviderDeleteResponse>(
       await deleteProviderApiSystemModelProvidersProviderIdDelete({
         path: { provider_id: providerId },
       }),
@@ -163,7 +184,7 @@ export const modelProviderApi = {
 
   /** 实时拉取远端 `/models`，不落库；远端 401 会被后端折成 502。 */
   async fetchRemoteModels(providerId: string): Promise<RemoteModel[]> {
-    const result = unwrap<ListResponse>(
+    const result = unwrap<RemoteModelsResponse>(
       await getRemoteModelsApiSystemModelProvidersProviderIdRemoteModelsGet({
         path: { provider_id: providerId },
       }),
@@ -173,7 +194,7 @@ export const modelProviderApi = {
 
   /** 连通性检查；后端即使内部失败也返回 200 + `success:false`，两条路都折成异常。 */
   async testModelStatus(spec: string): Promise<ModelStatus> {
-    const result = unwrap<StatusResponse>(
+    const result = unwrap<ModelStatusResponse>(
       await getModelStatusBySpecApiSystemModelProvidersModelsStatusGet({
         query: { spec },
       }),
@@ -191,7 +212,7 @@ export const modelProviderApi = {
    * 正在被默认模型使用的供应商」——后端没有这条守卫，前端拦不住时也只能如实报告。
    */
   async getDefaultModelSpec(): Promise<string> {
-    const config = unwrap<Record<string, unknown>>(
+    const config = unwrap<SystemConfigResponse>(
       await getConfigApiSystemConfigGet(),
     );
     const spec = config.default_model;

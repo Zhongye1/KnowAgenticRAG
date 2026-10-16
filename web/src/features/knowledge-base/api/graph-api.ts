@@ -2,9 +2,12 @@
  * 知识图谱接口（图谱视图与图谱构建管理）。
  *
  * 契约：`GET /api/graph/subgraph` 在 `backend/server/routers/graph_router.py`，
- * 其余六个 `graph-build/*` 在 `knowledge_router.py`；这些端点没有 `response_model`，
- * 响应是自由 dict，因此类型按 `MilvusGraphService`（`_normalize_node` / `_normalize_edge` /
- * `get_status` / `_public_config`）与两个 repository 的计数函数手写，改动前先核对那份 Owner。
+ * 其余六个 `graph-build/*` 在 `knowledge_router.py`；这些端点在契约里已声明响应模型，
+ * 可直接复用 `openapi.json` 生成的类型。
+ *
+ * 但生成模型对若干「动态派生」字段留成了开放 map（节点的 `normalized`、配置的
+ * `extractor_options`、状态的 `*_counts`、失败样例的 `details`），而图谱视图与配置表单按具体
+ * 键读取这些嵌套值，因此下面保留对应类型的窄投影；其余响应类型直接用生成模型。
  *
  * `graph_router` 还提供 `list`/`labels`/`stats`，图谱分区一个都不用，因此不在这里出现。
  */
@@ -17,9 +20,19 @@ import {
   reconcileGraphBuildApiKnowledgeDatabasesKbIdGraphBuildReconcilePost,
   resetGraphBuildApiKnowledgeDatabasesKbIdGraphBuildResetPost,
 } from '@/shared/api/generated/sdk.gen';
+import type {
+  GraphBuildReconcileResponse,
+  GraphBuildResetResponse,
+  GraphBuildTaskResponse,
+} from '@/shared/api/generated/types.gen';
 import { unwrap, unwrapQueuedTask } from '@/shared/api';
 
-/** 子图节点：`_normalize_node` 的形状。 */
+/**
+ * 子图节点；保留手写。
+ *
+ * 契约的 `GraphNode.normalized` 是 `{[key: string]: unknown}`，`graph-view.ts` 的
+ * `describeNodeType` 直接读 `normalized.type` 当展示类型，生成模型会让它退化成 `unknown`。
+ */
 export type GraphNode = {
   id: string;
   /** 展示名：`name` → `content_preview` → `chunk_id` → Unknown。 */
@@ -33,7 +46,11 @@ export type GraphNode = {
   graph_type: string;
 };
 
-/** 子图边：`_normalize_edge` 的形状。 */
+/**
+ * 子图边；保留手写。
+ *
+ * 同 `GraphNode`：契约的 `normalized` 是开放 map，`describeEdgeType` 读 `normalized.type`。
+ */
 export type GraphEdge = {
   id: string;
   source_id: string;
@@ -43,9 +60,20 @@ export type GraphEdge = {
   normalized: { type: string; direction: string };
 };
 
+/**
+ * 子图；保留手写。
+ *
+ * 契约的 `GraphSubgraphResponse.data` 是 `GraphSubgraphData`，其 `nodes` / `edges` 用上面两份
+ * 窄投影；画布与图例按 `normalized` / `type` 的窄类型工作，因此沿用这份 `data` 投影。
+ */
 export type GraphSubgraph = { nodes: GraphNode[]; edges: GraphEdge[] };
 
-/** 抽取器配置；`prompt` 被后端剔除，不会出现在这里。 */
+/**
+ * 抽取器配置；保留手写。
+ *
+ * 契约的 `GraphBuildConfigItem.extractor_options` 是 `{[key: string]: unknown}`，配置表单按
+ * `model_spec` / `schema` / `concurrency_count` / `model_params` 读取这些键。
+ */
 export type GraphExtractorOptions = {
   model_spec?: string | null;
   schema?: string | null;
@@ -53,7 +81,7 @@ export type GraphExtractorOptions = {
   model_params?: Record<string, unknown> | null;
 };
 
-/** 已锁定的抽取配置（`_public_config`）。 */
+/** 已锁定的抽取配置；保留手写（`extractor_options` 见上）。 */
 export type GraphBuildConfig = {
   locked: boolean;
   extractor_type?: string | null;
@@ -64,7 +92,13 @@ export type GraphBuildConfig = {
   updated_by?: string | null;
 };
 
-/** 图谱构建状态（`MilvusGraphService.get_status`）。 */
+/**
+ * 图谱构建状态；保留手写。
+ *
+ * 契约的 `GraphBuildStatusResponse.config` 是 `GraphBuildConfigItem`，其 `extractor_options` 是
+ * 开放 map；状态面板把 `config` 交给配置表单回填（需要窄的 `GraphBuildConfig`）。`*_counts`
+ * 与 `build_task_status` 也是界面直接读取的窄形状。
+ */
 export type GraphBuildStatus = {
   kb_id: string;
   kb_type: string;
@@ -90,7 +124,12 @@ export type GraphBuildStatus = {
   build_task_progress: number;
 };
 
-/** 抽取失败的 chunk 样例（`get_failed_chunk_samples`）。 */
+/**
+ * 抽取失败的 chunk 样例；保留手写。
+ *
+ * 契约的 `GraphBuildFailedChunkSample.details` 是开放 map，失败样例弹窗读
+ * `attempt_count` / `last_error`。
+ */
 export type GraphFailedChunkSample = {
   chunk_id: string;
   file_id: string;
@@ -103,11 +142,8 @@ export type GraphFailedChunkSample = {
   } | null;
 };
 
-export type GraphBuildTaskResult = {
-  message: string;
-  status: string;
-  task_id?: string;
-};
+/** 图谱构建/修复任务受理结果；契约生成的 `GraphBuildTaskResponse`。 */
+export type GraphBuildTaskResult = GraphBuildTaskResponse;
 
 export const graphApi = {
   /** 查询子图；`nodeLabel` 传 `*` 表示不按关键词过滤。 */
@@ -163,10 +199,10 @@ export const graphApi = {
     return result.config ?? null;
   },
 
-  /** 提交图谱构建任务（后端异步执行，409 表示已有任务在跑）。 */
-  async indexGraphBuild(kbId: string): Promise<GraphBuildTaskResult> {
+  /** 提交图谱构建任务（后端异步执行，409 表示已有任务在跑）；契约生成的 `GraphBuildTaskResponse`。 */
+  async indexGraphBuild(kbId: string): Promise<GraphBuildTaskResponse> {
     return unwrapQueuedTask(
-      unwrap<GraphBuildTaskResult>(
+      unwrap<GraphBuildTaskResponse>(
         await indexGraphBuildApiKnowledgeDatabasesKbIdGraphBuildIndexPost({
           path: { kb_id: kbId },
         }),
@@ -175,12 +211,12 @@ export const graphApi = {
     );
   },
 
-  /** 重置构建状态；是否清抽取结果与配置由调用方明确给出。 */
+  /** 重置构建状态；是否清抽取结果与配置由调用方明确给出；契约生成的 `GraphBuildResetResponse`。 */
   async resetGraphBuild(
     kbId: string,
     options: { clearExtractionResult: boolean; clearConfig: boolean },
-  ): Promise<{ message: string; reset_chunks: number }> {
-    return unwrap<{ message: string; reset_chunks: number }>(
+  ): Promise<GraphBuildResetResponse> {
+    return unwrap<GraphBuildResetResponse>(
       await resetGraphBuildApiKnowledgeDatabasesKbIdGraphBuildResetPost({
         path: { kb_id: kbId },
         body: {
@@ -193,14 +229,15 @@ export const graphApi = {
 
   /**
    * 对账向量记录：后端把它也做成后台任务，返回 `{message, status:'queued', task_id, mode}`，
-   * 因此和索引一样按「只有 queued 算受理」处理。界面只用 `failed`。
+   * 因此和索引一样按「只有 queued 算受理」处理。界面只用 `failed`；契约生成的
+   * `GraphBuildReconcileResponse`。
    */
   async reconcileGraphBuild(
     kbId: string,
     mode: 'failed' | 'all_vectors',
-  ): Promise<GraphBuildTaskResult & { mode: string }> {
+  ): Promise<GraphBuildReconcileResponse> {
     return unwrapQueuedTask(
-      unwrap<GraphBuildTaskResult & { mode: string }>(
+      unwrap<GraphBuildReconcileResponse>(
         await reconcileGraphBuildApiKnowledgeDatabasesKbIdGraphBuildReconcilePost(
           {
             path: { kb_id: kbId },

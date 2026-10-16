@@ -96,10 +96,10 @@ export const SkillPreviewDialog = ({
 
       <div className="min-h-64 max-h-[56vh] overflow-y-auto rounded-medium border border-color-border-1 bg-color-bg-2 p-3">
         {preview.isPending ? (
-          <p className="flex min-h-56 items-center justify-center gap-2 text-sm text-color-text-3">
+          <div className="flex min-h-56 items-center justify-center gap-2 text-sm text-color-text-3">
             <Spin aria-hidden className="size-4" />
             正在读取 SKILL.md…
-          </p>
+          </div>
         ) : markdown ? (
           <MDPreview value={markdown} />
         ) : (

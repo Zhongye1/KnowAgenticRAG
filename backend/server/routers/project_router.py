@@ -15,6 +15,36 @@ from ars.storage.postgres.models_business import User
 projects = APIRouter(prefix="/projects", tags=["projects"])
 
 
+class ProjectItem(BaseModel):
+    """Project 公开字段；对齐 `Project.to_dict()`。"""
+
+    id: str
+    uid: str
+    name: str | None
+    selection_status: str
+    workdir_path: str
+    directory_mode: str
+    created_at: str | None
+    updated_at: str | None
+
+
+class ProjectHistoryCandidateItem(BaseModel):
+    """可作为目录快捷入口的历史 Conversation；对齐 `list_history_candidates_view`。"""
+
+    thread_id: str
+    title: str | None
+    agent_id: str
+    workdir_path: str
+    updated_at: str
+
+
+class ProjectHistoryCandidatesResponse(BaseModel):
+    """历史 Conversation 目录候选列表。"""
+
+    items: list[ProjectHistoryCandidateItem]
+    has_more: bool
+
+
 class ProjectWorkdirCreate(BaseModel):
     """Project Workdir 创建意图。"""
 
@@ -34,7 +64,7 @@ class ProjectCreate(BaseModel):
     workdir: ProjectWorkdirCreate
 
 
-@projects.get("")
+@projects.get("", response_model=list[ProjectItem], response_model_exclude_unset=True)
 async def list_projects(
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
@@ -43,7 +73,7 @@ async def list_projects(
     return await list_projects_view(uid=str(current_user.uid), db=db)
 
 
-@projects.post("")
+@projects.post("", response_model=ProjectItem, response_model_exclude_unset=True)
 async def create_project(
     payload: ProjectCreate,
     current_user: User = Depends(get_required_user),
@@ -60,7 +90,11 @@ async def create_project(
     )
 
 
-@projects.get("/history-candidates")
+@projects.get(
+    "/history-candidates",
+    response_model=ProjectHistoryCandidatesResponse,
+    response_model_exclude_unset=True,
+)
 async def list_history_candidates(
     q: str = Query("", max_length=200),
     limit: int = Query(20, ge=1, le=100),

@@ -668,6 +668,17 @@ describe('知识库文件表', () => {
     expect(await screen.findByText('暂无文件')).toBeTruthy();
   });
 
+  it('加载行用块级容器：块级 Spin 不能落在段落里', async () => {
+    // 变异：把加载行的容器换回 <p>，下面两条断言都会失败
+    api.listDocuments.mockImplementationOnce(() => new Promise(() => {}));
+    renderTable();
+
+    const row = await screen.findByText('正在加载文件…');
+    // <p> 只允许短语内容，装不下块级 Spin（antd Spin 的根是 div）
+    expect(row.closest('p')).toBeNull();
+    expect(document.querySelector('p .ant-spin')).toBeNull();
+  });
+
   it('切目录期间旧行不能继续下钻', async () => {
     api.listDocuments.mockResolvedValueOnce(
       page([

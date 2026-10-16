@@ -20,6 +20,20 @@ def validate_username(username: str) -> tuple[bool, str]:
     return True, ""
 
 
+def validate_uid(uid: str) -> tuple[bool, str]:
+    """登录标识的格式规则：3–20 位字母、数字与下划线。
+
+    自助注册是公开端点，这条规则必须在服务端成立。用 `fullmatch` 而不是 `^…$`：`$` 也匹配
+    结尾换行，`"admin\\n"` 会通过校验并以 `admin` 的样子出现在用户列表里。判定顺序与
+    `/auth/initialize` 的内联版本一致（先字符集、后长度），两处的文案也保持同一份。
+    """
+    if not re.fullmatch(r"[a-zA-Z0-9_]+", uid or ""):
+        return False, "用户ID只能包含字母、数字和下划线"
+    if len(uid) < 3 or len(uid) > 20:
+        return False, "用户ID长度必须在3-20个字符之间"
+    return True, ""
+
+
 def generate_uid(username: str) -> str:
     uid = re.sub(r"[^a-zA-Z0-9_]", "", to_pinyin(username.strip()))
     if uid and uid[0].isdigit():

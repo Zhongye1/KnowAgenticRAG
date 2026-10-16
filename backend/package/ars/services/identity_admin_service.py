@@ -32,6 +32,37 @@ class DepartmentAdminCreation:
     admin: User
 
 
+async def create_managed_user(
+    db: AsyncSession,
+    *,
+    username: str,
+    uid: str,
+    phone_number: str | None,
+    password_hash: str,
+    role: str,
+    department_id: int | None,
+) -> User:
+    """管理员建号的落库：唯一约束冲突折成 `IdentityConflictError`。
+
+    路由不碰 SQLAlchemy（工程信任门禁），而「先读后写」的唯一性检查在并发下仍可能同时通过，
+    所以冲突的折算放在这一层；调用方据此给 400 而不是让它变成 500。
+    """
+    try:
+        return await UserRepository(db).create(
+            {
+                "username": username,
+                "uid": uid,
+                "phone_number": phone_number,
+                "password_hash": password_hash,
+                "role": role,
+                "department_id": department_id,
+            }
+        )
+    except IntegrityError as exc:
+        await db.rollback()
+        raise IdentityConflictError("用户名或手机号已被占用") from exc
+
+
 async def list_managed_users_page(
     db: AsyncSession,
     *,
