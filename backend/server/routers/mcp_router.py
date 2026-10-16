@@ -1,5 +1,7 @@
 """MCP 服务器管理路由"""
 
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,6 +66,124 @@ class UpdateMcpServerStatusRequest(BaseModel):
 
 
 # =============================================================================
+# === Response models ===
+# =============================================================================
+
+
+class McpServerItem(BaseModel):
+    """MCP 服务器完整配置；字段对齐 `MCPServer.to_dict()` 与 `serialize_mcp_server` 补充的键。"""
+
+    id: int
+    slug: str
+    name: str
+    description: str | None
+    transport: str
+    url: str | None
+    command: str | None
+    args: list[Any]
+    env: dict[str, Any]
+    headers: dict[str, Any]
+    timeout: int | None
+    sse_read_timeout: int | None
+    tags: list[Any]
+    icon: str | None
+    enabled: bool
+    disabled_tools: list[Any]
+    created_by: str
+    updated_by: str
+    created_at: str | None
+    updated_at: str | None
+    is_builtin: bool
+    requires_migration: bool
+
+
+class McpServerSummaryItem(BaseModel):
+    """普通用户可见的脱敏 MCP 条目，只暴露安全的展示字段。"""
+
+    name: str
+    description: str | None
+    icon: str | None
+    enabled: bool
+    tags: list[Any]
+
+
+class McpServerListResponse(BaseModel):
+    """MCP 服务器列表响应；管理员拿完整配置，普通用户拿脱敏条目。"""
+
+    success: bool
+    data: list[McpServerItem | McpServerSummaryItem]
+
+
+class McpServerItemResponse(BaseModel):
+    """单个 MCP 服务器响应。"""
+
+    success: bool
+    data: McpServerItem
+
+
+class McpDeleteResponse(BaseModel):
+    """MCP 服务器删除结果。"""
+
+    success: bool
+    message: str
+
+
+class McpTestResponse(BaseModel):
+    """MCP 连接测试结果。"""
+
+    success: bool
+    message: str
+    tool_count: int
+
+
+class McpStatusResponse(BaseModel):
+    """MCP 启用状态切换结果。"""
+
+    success: bool
+    enabled: bool
+    data: McpServerItem
+    message: str
+
+
+class McpToolItem(BaseModel):
+    """MCP 服务器暴露的单个工具。"""
+
+    name: str
+    id: str | None
+    description: str | None
+    enabled: bool
+    parameters: dict[str, Any]
+    required: list[Any]
+
+
+class McpToolListResponse(BaseModel):
+    """MCP 工具列表响应。"""
+
+    success: bool
+    data: list[McpToolItem]
+    total: int
+
+
+class McpToolRefreshResponse(BaseModel):
+    """MCP 工具刷新结果。"""
+
+    success: bool
+    message: str
+    tool_count: int
+    enabled_count: int
+    disabled_count: int
+
+
+class McpToolToggleResponse(BaseModel):
+    """单个 MCP 工具启用状态切换结果。"""
+
+    success: bool
+    tool_name: str
+    enabled: bool
+    message: str
+
+
+# =============================================================================
 # === Helpers ===
 # =============================================================================
 
@@ -97,7 +217,7 @@ def ensure_mcp_server_runnable(server) -> None:
 # =============================================================================
 
 
-@mcp.get("")
+@mcp.get("", response_model=McpServerListResponse, response_model_exclude_unset=True)
 async def get_mcp_servers(
     current_user: User = Depends(get_required_user),
     db: AsyncSession = Depends(get_db),
@@ -125,7 +245,7 @@ async def get_mcp_servers(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@mcp.post("")
+@mcp.post("", response_model=McpServerItemResponse, response_model_exclude_unset=True)
 async def create_mcp_server_route(
     request: CreateMcpServerRequest,
     current_user: User = Depends(get_admin_user),
@@ -164,7 +284,7 @@ async def create_mcp_server_route(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@mcp.get("/{slug}")
+@mcp.get("/{slug}", response_model=McpServerItemResponse, response_model_exclude_unset=True)
 async def get_mcp_server_route(
     slug: str,
     current_user: User = Depends(get_admin_user),
@@ -181,7 +301,7 @@ async def get_mcp_server_route(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@mcp.put("/{slug}")
+@mcp.put("/{slug}", response_model=McpServerItemResponse, response_model_exclude_unset=True)
 async def update_mcp_server_route(
     slug: str,
     request: UpdateMcpServerRequest,
@@ -223,7 +343,7 @@ async def update_mcp_server_route(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@mcp.delete("/{slug}")
+@mcp.delete("/{slug}", response_model=McpDeleteResponse, response_model_exclude_unset=True)
 async def delete_mcp_server_route(
     slug: str,
     current_user: User = Depends(get_admin_user),
@@ -252,7 +372,7 @@ async def delete_mcp_server_route(
 # =============================================================================
 
 
-@mcp.post("/{slug}/test")
+@mcp.post("/{slug}/test", response_model=McpTestResponse, response_model_exclude_unset=True)
 async def test_mcp_server(
     slug: str,
     current_user: User = Depends(get_admin_user),
@@ -279,7 +399,7 @@ async def test_mcp_server(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@mcp.put("/{slug}/status")
+@mcp.put("/{slug}/status", response_model=McpStatusResponse, response_model_exclude_unset=True)
 async def update_mcp_server_status_route(
     slug: str,
     request: UpdateMcpServerStatusRequest,
@@ -309,7 +429,7 @@ async def update_mcp_server_status_route(
 # =============================================================================
 
 
-@mcp.get("/{slug}/tools")
+@mcp.get("/{slug}/tools", response_model=McpToolListResponse, response_model_exclude_unset=True)
 async def get_mcp_server_tools(
     slug: str,
     current_user: User = Depends(get_admin_user),
@@ -361,7 +481,7 @@ async def get_mcp_server_tools(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@mcp.post("/{slug}/tools/refresh")
+@mcp.post("/{slug}/tools/refresh", response_model=McpToolRefreshResponse, response_model_exclude_unset=True)
 async def refresh_mcp_server_tools(
     slug: str,
     current_user: User = Depends(get_admin_user),
@@ -403,7 +523,7 @@ async def refresh_mcp_server_tools(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@mcp.put("/{slug}/tools/{tool_name}/toggle")
+@mcp.put("/{slug}/tools/{tool_name}/toggle", response_model=McpToolToggleResponse, response_model_exclude_unset=True)
 async def toggle_mcp_server_tool_route(
     slug: str,
     tool_name: str,

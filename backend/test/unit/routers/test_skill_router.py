@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
+from ars.agents.skills.service import ResolvedSkill
 from ars.storage.postgres.models_business import Skill, User
 
 from server.routers.skill_router import skills, user_skills
@@ -39,12 +42,14 @@ def _build_app(*, role: str = "admin") -> FastAPI:
 def _skill(
     slug: str = "demo",
     *,
+    id: int = 1,
     source_type: str = "upload",
     created_by: str = "admin",
     enabled: bool = True,
     user_uids: list[str] | None = None,
 ) -> Skill:
     return Skill(
+        id=id,
         slug=slug,
         name=slug,
         description="demo skill",
@@ -59,6 +64,58 @@ def _skill(
         created_by=created_by,
         updated_by=created_by,
     )
+
+
+def _resolved_skill(
+    slug: str = "demo",
+    *,
+    source_type: str = "upload",
+    source_scope: str = "shared",
+    created_by: str = "admin",
+    enabled: bool = True,
+) -> ResolvedSkill:
+    """`list_skill_cards_for_user` / `list_accessible_skills` 的真实返回形态。"""
+
+    share_config = (
+        {
+            "version": 2,
+            "read_scope": {"access_level": "user", "department_ids": [], "user_uids": [created_by]},
+            "manage_scope": {"access_level": "user", "department_ids": [], "user_uids": [created_by]},
+        }
+        if source_scope == "shared"
+        else None
+    )
+    return ResolvedSkill(
+        id=1,
+        slug=slug,
+        name=slug,
+        description="demo skill",
+        source_type=source_type,
+        source_scope=source_scope,
+        source_dir=Path("/tmp") / slug,
+        enabled=enabled,
+        created_by=created_by,
+        share_config=share_config,
+        tool_dependencies=[],
+        mcp_dependencies=[],
+        skill_dependencies=[],
+    )
+
+
+def _draft(draft_id: str, *, created_by: str = "user", items: list[dict] | None = None) -> dict:
+    """`prepare_skill_upload` / `prepare_remote_skill_install` 的真实返回形态。"""
+
+    return {
+        "draft_id": draft_id,
+        "created_by": created_by,
+        "source_type": "remote",
+        "source": "anthropics/skills",
+        "created_at": 1.0,
+        "expires_at": 2.0,
+        "items": items if items is not None else [{"slug": "demo", "success": True}],
+        "default_share_config": {"version": 2, "read_scope": None, "manage_scope": None},
+        "allowed_access_levels": ["user"],
+    }
 
 
 def test_list_visible_skills_route_returns_allowed_levels_and_can_manage(monkeypatch):
@@ -111,7 +168,7 @@ def test_list_visible_skills_route_allows_normal_user_readonly_items(monkeypatch
 def test_list_accessible_skills_route(monkeypatch):
     async def fake_list_accessible_skills(_db, user):
         assert user.uid == "user"
-        return [_skill(created_by="user")]
+        return [_resolved_skill(created_by="user")]
 
     monkeypatch.setattr("server.routers.skill_router.list_accessible_skills", fake_list_accessible_skills)
 
@@ -130,7 +187,7 @@ def test_list_skill_cards_route_scans_personal_source(monkeypatch):
 
     async def fake_list_skill_cards(_db, user):
         captured["uid"] = user.uid
-        item = _skill(source_type="personal", created_by="user")
+        item = _resolved_skill(source_type="personal", source_scope="personal", created_by="user")
         return [item]
 
     monkeypatch.setattr("server.routers.skill_router.list_skill_cards_for_user", fake_list_skill_cards)
@@ -175,7 +232,7 @@ def test_prepare_skill_upload_route(monkeypatch):
         captured["filename"] = filename
         captured["file_bytes"] = file_bytes.decode("utf-8")
         captured["operator_uid"] = operator.uid
-        return {"draft_id": "draft-1", "items": [{"slug": "demo", "success": True}]}
+        return _draft("draft-1", created_by=operator.uid)
 
     monkeypatch.setattr("server.routers.skill_router.prepare_skill_upload", fake_prepare_skill_upload)
 
@@ -199,7 +256,11 @@ def test_remote_skill_prepare_and_admin_confirm_routes(monkeypatch):
 
     async def fake_prepare_remote_skill_install(_db, *, source, skills, operator):
         captured["prepare"] = {"source": source, "skills": skills, "operator_uid": operator.uid}
-        return {"draft_id": "draft-remote", "items": [{"slug": "frontend-design", "success": True}]}
+        return _draft(
+            "draft-remote",
+            created_by=operator.uid,
+            items=[{"slug": "frontend-design", "success": True}],
+        )
 
     async def fake_confirm_skill_install_draft(_db, *, draft_id, share_config, slugs, operator):
         captured["confirm"] = {

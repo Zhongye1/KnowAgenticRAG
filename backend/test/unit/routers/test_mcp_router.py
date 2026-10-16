@@ -9,6 +9,44 @@ from server.routers.mcp_router import mcp
 from server.utils.auth_middleware import get_admin_user, get_db, get_required_user
 
 
+def _mcp_server_dict(
+    *,
+    slug: str = "demo-mcp",
+    name: str = "demo-mcp",
+    transport: str = "streamable_http",
+    enabled: bool = True,
+    url: str = "https://example.com/mcp",
+    command: str | None = None,
+    args: list | None = None,
+    env: dict | None = None,
+    headers: dict | None = None,
+) -> dict:
+    """`MCPServer.to_dict()` 的真实形态；`serialize_mcp_server` 再补 is_builtin/requires_migration。"""
+
+    return {
+        "id": 1,
+        "slug": slug,
+        "name": name,
+        "description": f"{name} description",
+        "transport": transport,
+        "url": url,
+        "command": command,
+        "args": args or [],
+        "env": env or {},
+        "headers": headers or {},
+        "timeout": None,
+        "sse_read_timeout": None,
+        "tags": [],
+        "icon": None,
+        "enabled": bool(enabled),
+        "disabled_tools": [],
+        "created_by": "admin",
+        "updated_by": "admin",
+        "created_at": "2026-10-16 12:00:00",
+        "updated_at": "2026-10-16 12:00:00",
+    }
+
+
 def _build_app(*, allow_admin: bool = True) -> FastAPI:
     app = FastAPI()
     app.include_router(mcp, prefix="/api")
@@ -52,7 +90,7 @@ def test_update_mcp_server_status(monkeypatch):
             self.enabled = enabled
 
         def to_dict(self):
-            return {"name": "demo-mcp", "enabled": self.enabled}
+            return _mcp_server_dict(slug="demo-mcp", enabled=self.enabled)
 
     async def fake_set_server_enabled(db, name, enabled, updated_by=None):
         captured["name"] = name
@@ -109,17 +147,17 @@ def test_get_mcp_servers_normal_user_is_stripped(monkeypatch):
             self.enabled = 1
 
         def to_dict(self):
-            return {
-                "name": self.name,
-                "description": self.description,
-                "transport": self.transport,
-                "url": self.url,
-                "command": self.command,
-                "args": self.args,
-                "env": self.env,
-                "headers": self.headers,
-                "enabled": bool(self.enabled),
-            }
+            return _mcp_server_dict(
+                slug="test-mcp",
+                name="test-mcp",
+                transport=self.transport,
+                enabled=self.enabled,
+                url=self.url,
+                command=self.command,
+                args=self.args,
+                env=self.env,
+                headers=self.headers,
+            )
 
     async def fake_get_all_mcp_servers(db):
         return [DummyServer()]
