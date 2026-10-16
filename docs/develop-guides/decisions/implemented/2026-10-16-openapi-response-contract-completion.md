@@ -42,6 +42,7 @@ Owner：backend/server/routers/__init__.py
 - 用 `response_class=JSONResponse` 配 `openapi_extra` 只写 schema、不改运行时：规避了裁剪风险，代价是 schema 与 handler 实际返回没有强制关联，门禁也查不出遗漏。
 - 从真实响应自动推断 schema 再生成模型：oracle 由被测对象自己产生，违反证据规则，且推断出的可选性会掩盖真实契约。
 - 统一响应信封后再建模：一次性消灭三种形状，但破坏 wire，前端 193 个端点函数的读取路径要同步改，风险与收益不成比例。
+- 按域切分生成的客户端（把快照拆成多份、每份各跑一次生成）：本版本的生成器没有 split 选项，可行做法是 job matrix，`types.gen.ts` 可从 21015 行降到数千行。本地生产构建实测否掉了性能理由：`types.gen.ts` 是纯类型（1664 个 `export type`、零运行时代码），进 bundle 0 字节；`sdk.gen.ts` 编译成 69.0 KB / gzip 19.6 KB 的 `sdk.gen-*.js`，占首屏 gzip 的 2.5%（首屏合计 771.7 KB gzip）；17 个生成文件单独做类型检查只要 0.31 秒，而项目整体 `tsc --noEmit` 是 9.2 秒。切分的收益在可读性与 diff 噪声，代价是每个分片各生成一份 client 与 core、两个脚本与 30 个 import 点都要同步改，因此保留单文件。重新引入条件：单文件导致改一个后端字段就产生难审阅的 diff，或出现生成物相关的类型检查、编辑器索引性能回归。
 
 ## 后果
 
