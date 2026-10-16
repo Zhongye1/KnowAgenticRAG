@@ -106,7 +106,9 @@ describe('知识导图分区', () => {
   it('没有导图时给出空态与生成入口，点击提交非增量生成', async () => {
     renderPanel();
 
-    expect(await screen.findByText('暂无思维导图')).toBeTruthy();
+    expect(
+      await screen.findByText('从当前知识库内容生成结构化导图。'),
+    ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: /生成思维导图/ }));
 
     await waitFor(() =>
@@ -124,7 +126,9 @@ describe('知识导图分区', () => {
     api.get.mockResolvedValue({ mindmap: { content: '' }, kb_id: 'kb-1' });
     renderPanel();
 
-    expect(await screen.findByText('暂无思维导图')).toBeTruthy();
+    expect(
+      await screen.findByText('从当前知识库内容生成结构化导图。'),
+    ).toBeTruthy();
     expect(screen.queryByTestId('mindmap-svg')).toBeNull();
   });
 
@@ -146,7 +150,9 @@ describe('知识导图分区', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '加载思维导图失败：知识库 kb-1 不存在',
     );
-    expect(screen.queryByText('暂无思维导图')).toBeNull();
+    expect(
+      screen.queryByText('从当前知识库内容生成结构化导图。'),
+    ).toBeNull();
   });
 
   it('有导图时渲染 markmap 并给出工具栏', async () => {

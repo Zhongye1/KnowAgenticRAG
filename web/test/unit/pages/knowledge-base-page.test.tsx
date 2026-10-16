@@ -183,21 +183,16 @@ describe('知识库详情页', () => {
     renderPage();
 
     expect(await screen.findByText('研发知识库')).toBeTruthy();
-    expect(screen.getByText('ARS')).toBeTruthy();
+    expect(screen.getByText('Milvus')).toBeTruthy();
     expect(screen.getByText('内部资料')).toBeTruthy();
-    // 待解析 1、文件 2、大小 4.0 KB、Tokens 3400（计数格式化只在过万时折成「万」）
-    expect(screen.getByText('待解析').nextElementSibling?.textContent).toBe(
-      '1',
-    );
-    expect(screen.getByText('文件数').nextElementSibling?.textContent).toBe(
-      '2',
-    );
-    expect(screen.getByText('大小').nextElementSibling?.textContent).toBe(
-      '4.0 KB',
-    );
-    expect(screen.getByText('Tokens').nextElementSibling?.textContent).toBe(
-      '3400',
-    );
+    // 统计卡由 `StatInline` 渲染：数值在前、标签在后，两者是兄弟节点
+    const statValue = (label: string) =>
+      screen.getByText(label).previousElementSibling?.textContent;
+    // 待解析 1、文件 2、Tokens 3400（计数格式化只在过万时折成「万」）；大小卡不带标签
+    expect(statValue('待解析')).toBe('1');
+    expect(statValue('文件')).toBe('2');
+    expect(screen.getByText('4.0 KB')).toBeTruthy();
+    expect(statValue('Tokens')).toBe('3400');
   });
 
   it('RAG 评估分区渲染真实面板（没有基准时引导去基准管理）', async () => {
@@ -206,7 +201,9 @@ describe('知识库详情页', () => {
 
     await userEvent.click(screen.getByRole('tab', { name: 'RAG 评估' }));
 
-    expect(await screen.findByText('暂无可用评估基准')).toBeTruthy();
+    expect(
+      await screen.findByText('先上传或生成评估基准，再运行 RAG 评估。'),
+    ).toBeTruthy();
     expect(screen.queryByText(/该分区随/)).toBeNull();
   });
 
@@ -226,7 +223,9 @@ describe('知识库详情页', () => {
 
     await userEvent.click(screen.getByRole('tab', { name: '知识导图' }));
 
-    expect(await screen.findByText('暂无思维导图')).toBeTruthy();
+    expect(
+      await screen.findByText('从当前知识库内容生成结构化导图。'),
+    ).toBeTruthy();
     expect(screen.queryByText(/该分区随/)).toBeNull();
   });
 
@@ -364,9 +363,13 @@ describe('知识库详情页', () => {
       ),
     );
 
+    const before = api.get.mock.calls.length;
+
     await userEvent.click(screen.getByRole('button', { name: '刷新文件列表' }));
 
-    await waitFor(() => expect(api.get).toHaveBeenCalledTimes(2));
+    // 这条断言的主题是「刷新会连带重取详情」，因此看点击前后的增量；
+    // 挂载时取了几次属于另一条主张，不在这里钉。
+    await waitFor(() => expect(api.get.mock.calls.length).toBe(before + 1));
   });
 
   it('切到其它分区再回来，文件的每页条数不被重置', async () => {

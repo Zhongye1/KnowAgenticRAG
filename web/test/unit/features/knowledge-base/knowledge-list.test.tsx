@@ -345,15 +345,17 @@ describe('知识库列表', () => {
       ),
     ).toBe('true');
     expect(
-      screen.getByRole('button', { name: 'ARS' }).getAttribute('aria-pressed'),
+      screen.getByRole('button', { name: 'Milvus' }).getAttribute(
+        'aria-pressed',
+      ),
     ).toBe('false');
 
-    await userEvent.click(screen.getByRole('button', { name: 'ARS' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Milvus' }));
 
     await waitFor(() =>
       expect(
         screen
-          .getByRole('button', { name: 'ARS' })
+          .getByRole('button', { name: 'Milvus' })
           .getAttribute('aria-pressed'),
       ).toBe('true'),
     );

@@ -180,7 +180,9 @@ describe('RAG 评估分区', () => {
     api.listDatasets.mockResolvedValue([]);
     const { onGoToBenchmarks } = renderPanel();
 
-    expect(await screen.findByText('暂无可用评估基准')).toBeTruthy();
+    expect(
+      await screen.findByText('先上传或生成评估基准，再运行 RAG 评估。'),
+    ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: '前往基准管理' }));
 
     expect(onGoToBenchmarks).toHaveBeenCalledTimes(1);
@@ -193,7 +195,9 @@ describe('RAG 评估分区', () => {
     api.listRuns.mockResolvedValue([]);
     renderPanel();
 
-    expect(await screen.findByText('暂无可用评估基准')).toBeTruthy();
+    expect(
+      await screen.findByText('先上传或生成评估基准，再运行 RAG 评估。'),
+    ).toBeTruthy();
   });
 
   it('没有历史时给空态', async () => {
@@ -389,7 +393,9 @@ describe('RAG 评估分区', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '加载评估基准失败：403 Forbidden',
     );
-    expect(screen.queryByText('暂无可用评估基准')).toBeNull();
+    expect(
+      screen.queryByText('先上传或生成评估基准，再运行 RAG 评估。'),
+    ).toBeNull();
   });
 
   it('加载历史失败给出原因与重试', async () => {
