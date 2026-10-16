@@ -13,7 +13,12 @@ import {
   type ThreadRuntimeState,
 } from './thread-runtime-store';
 
-import { agentRunApi, type AgentRun } from '../api/agent-api';
+import {
+  agentRunApi,
+  type AgentRun,
+  type RunEndStatus,
+  type RunStreamEvent,
+} from '../api/agent-api';
 import {
   compareRunSeq,
   normalizeRunSeq,
@@ -23,16 +28,22 @@ import { processSseResponse } from '@/shared/lib/files';
 import type { StreamSmoother } from '../lib/stream-smoother';
 import { hasPendingInterruptPayload } from '../lib/tool-approval';
 
-const RUN_INTERRUPTED_STATUS = 'interrupted';
-const RUN_TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled']);
+/** `end` 的终态取值由契约给出；写错名字在这里就会编译失败。 */
+const RUN_INTERRUPTED_STATUS: RunEndStatus = 'interrupted';
+const RUN_TERMINAL_STATUSES: ReadonlySet<string> = new Set<RunEndStatus>([
+  'completed',
+  'failed',
+  'cancelled',
+]);
 
 /**
  * `end` 事件的 status 落在已知集合之外时给一条告警。
  *
- * 事件流的形状不在契约里（后端用 `format_sse` 拼 dict，`text/event-stream` 不进 OpenAPI），
- * 前端按约定读。约定漂移时默认是**静默降级**：`end` 的 status 改名后代码会落进兜底分支，
- * 那里 `sawTerminalEvent` 已置真（不会再回查 run），但 `finalizeRunStream` 不会被调用，
- * 界面停在一个没有收尾的运行上却没有任何信号。把这一步变成显式告警，漂移才有出口。
+ * 事件流已进入契约（`RunEvent`）且后端在产侧按终态集合校验，所以这里的未知取值来自部署
+ * 错配：仍在跑的旧 worker，或契约之外的第三方实现。漂移默认是**静默降级**：`end` 的
+ * status 改名后代码会落进兜底分支，那里 `sawTerminalEvent` 已置真（不会再回查 run），但
+ * `finalizeRunStream` 不会被调用，界面停在一个没有收尾的运行上却没有任何信号。把这一步
+ * 变成显式告警，漂移才有出口。
  *
  * 只告警不抛错：事件流要前向兼容，后端新增一个状态名不该让整条流断掉。
  */
@@ -371,7 +382,8 @@ export function createRunStream(options: RunStreamOptions) {
         throw new Error(`SSE response not ok: ${response.status}`);
       }
 
-      await processSseResponse(response, (event, rawData, eventId) => {
+      // 帧上的事件名不再参与判断：判别键是信封里的 `event`，两者由后端 builder 保证同源。
+      await processSseResponse(response, (_event, rawData, eventId) => {
         const data = rawData as Record<string, unknown>;
         if (!data || runtime.activeRunId !== runId) return;
 
@@ -382,21 +394,20 @@ export function createRunStream(options: RunStreamOptions) {
           saveActiveRunSnapshot(threadId, runId, incomingSeq);
         }
 
+        // 后端 builder 用同一个值生成帧上的事件名与信封里的 `event`，所以按判别键收窄
+        // 就能拿到该事件的载荷；`payload` 仍以开放对象交给分片路由。
+        const runEvent = data as RunStreamEvent;
         const payload = (data.payload ?? {}) as Record<string, unknown>;
-        if (event === 'metadata') {
+        if (runEvent.event === 'metadata') {
           runtime.activeRunSteerable =
-            payload.run_type === 'chat' && payload.source === 'chat';
+            runEvent.payload.run_type === 'chat' &&
+            runEvent.payload.source === 'chat';
         }
 
-        const terminalStatus =
-          event === 'end'
-            ? (payload.status as string)
-            : (data.status as string);
         const isRetryableError =
-          event === 'error' &&
-          ((payload as { retryable?: boolean }).retryable === true ||
-            (payload.chunk as { retryable?: boolean } | undefined)
-              ?.retryable === true);
+          runEvent.event === 'error' &&
+          (runEvent.payload.retryable === true ||
+            runEvent.payload.chunk?.retryable === true);
         if (isRetryableError) {
           const parsedJobTry = Number.parseInt(
             String(
@@ -451,8 +462,9 @@ export function createRunStream(options: RunStreamOptions) {
           routeChunk(payload.chunk as Record<string, unknown>);
         }
 
-        if (event === 'end') {
+        if (runEvent.event === 'end') {
           sawTerminalEvent = true;
+          const terminalStatus = runEvent.payload.status;
           if (terminalStatus === RUN_INTERRUPTED_STATUS) {
             finalizeRunStream(threadId, runId, touchedThreadIds, {
               status: terminalStatus,
@@ -469,7 +481,7 @@ export function createRunStream(options: RunStreamOptions) {
           }
         }
 
-        if (event === 'error') {
+        if (runEvent.event === 'error') {
           sawTerminalEvent = true;
           finalizeRunStream(threadId, runId, touchedThreadIds, {
             delay: 300,

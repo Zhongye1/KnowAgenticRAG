@@ -48,17 +48,17 @@ async def test_run_stream_event_roundtrip(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(run_queue_service, "get_async_redis_client", fake_get_async_redis_client)
 
     run_id = "run-1"
-    seq1 = await run_queue_service.append_run_stream_event(run_id, "loading", {"items": [1]})
+    seq1 = await run_queue_service.append_run_stream_event(run_id, "messages", {"items": [1]})
     seq2 = await run_queue_service.append_run_stream_event(
         run_id,
-        "finished",
-        {"chunk": {"status": "finished", "thread_id": "child-thread"}},
+        "end",
+        {"status": "completed", "chunk": {"status": "finished", "thread_id": "child-thread"}},
     )
 
     assert seq1 < seq2
 
     events = await run_queue_service.list_run_stream_events(run_id, after_seq="0-0", limit=100)
-    assert [item["event_type"] for item in events] == ["loading", "finished"]
+    assert [item["event_type"] for item in events] == ["messages", "end"]
     assert events[0]["payload"]["schema_version"] == 1
     assert events[0]["payload"]["run_id"] == run_id
     assert events[0]["payload"]["payload"] == {"items": [1]}
@@ -73,7 +73,7 @@ async def test_run_stream_event_roundtrip(monkeypatch: pytest.MonkeyPatch):
 
     recent_events = await run_queue_service.list_recent_run_stream_events(run_id, limit=2)
     assert [item["seq"] for item in recent_events] == [seq2, seq1]
-    assert [item["event_type"] for item in recent_events] == ["finished", "loading"]
+    assert [item["event_type"] for item in recent_events] == ["end", "messages"]
 
 
 def test_normalize_after_seq_stream_id_only():

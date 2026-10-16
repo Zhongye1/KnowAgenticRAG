@@ -41,7 +41,9 @@ import type {
   AgentThreadContinueResponse,
   AgentThreadRequestsResponse,
   CallResponse,
+  EndRunEvent,
   ImageUploadResponse,
+  RunEvent,
   ThreadDeleteResponse,
   ThreadHistoryResponse,
   ThreadResponse,
@@ -60,6 +62,12 @@ export type AgentRun = AgentRunItem;
 
 /** 创建 run 的响应：字段在顶层，不套 `{ run }` 外壳。 */
 export type CreateRunResult = AgentRunCreateResponse;
+
+/** 事件流的一帧；判别键是信封上的 `event`，因此按它收窄载荷。 */
+export type RunStreamEvent = RunEvent;
+
+/** `end` 事件的终态取值，与后端 `EndPayload.status` 同一份事实。 */
+export type RunEndStatus = EndRunEvent['payload']['status'];
 
 /** 一条工具调用；后端把结果嵌在同一条 AI 消息里（`tool_call_result`）。 */
 export type ChatToolCall = {

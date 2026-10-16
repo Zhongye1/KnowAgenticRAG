@@ -1,11 +1,12 @@
 /**
  * `end` 事件终态守卫的接线。
  *
- * 事件流的形状不在契约里（后端用 `format_sse` 拼 dict，`text/event-stream` 不进 OpenAPI），
- * 前端按约定读。`end` 的 status 改名后代码会落进兜底分支：`sawTerminalEvent` 已置真，
- * 不会再回查 run，但 `finalizeRunStream` 不会被调用——静默地少收尾一次。
+ * 事件流已进入契约（`RunEvent`），后端在产侧按终态集合校验；这里防的是部署错配带来的未知
+ * 取值：`end` 的 status 改名后代码会落进兜底分支，`sawTerminalEvent` 已置真、不会再回查
+ * run，但 `finalizeRunStream` 不会被调用——静默地少收尾一次。
  *
  * 这里驱动真实的 SSE 帧（只桩掉发起请求的那一层），断言未知终态会告警、已知终态不会。
+ * 帧内容照后端紧凑信封的形状写：前端按信封上的 `event` 收窄，缺了它这一帧不会被处理。
  * 把守卫的调用点去掉，第二条用例必须失败。
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -32,7 +33,14 @@ const sseResponse = (frames: string) =>
   );
 
 const endFrame = (status: string) =>
-  `id: 1-0\nevent: end\ndata: ${JSON.stringify({ payload: { status } })}\n\n`;
+  `id: 1-0\nevent: end\ndata: ${JSON.stringify({
+    schema_version: 1,
+    run_id: 'run-1',
+    thread_id: 'th',
+    event: 'end',
+    created_at: '2026-10-16T00:00:00+00:00',
+    payload: { status },
+  })}\n\n`;
 
 /** 只桩掉请求层，事件解析、分帧与状态机都跑真实的。 */
 const driveStream = async (frames: string, threadId: string) => {

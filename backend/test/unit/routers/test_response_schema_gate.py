@@ -1,13 +1,16 @@
-"""路由级响应契约门禁：返回 JSON 的响应必须有可用的 schema。
+"""路由级响应契约门禁：有 schema 可言的 2xx 响应必须有可用的 schema。
 
 空 schema 会一路传到 `web/openapi.json`，再生成成 `unknown`，前端只能手写类型兜底。
 本门禁把「没有字段信息」变成可失败的工程状态，并保证它只能被消除、不能被新增。
 
 判定只读 `app.openapi()`，不依赖 FastAPI 内部的路由对象结构：凡声明了
-`application/json` 的 2xx 响应，其 schema 必须带字段信息。流与文件端点因此必须显式
-声明自己的 `response_class`（媒体类型不再是 JSON），否则会被本门禁拦下。
+`application/json` 或 `text/event-stream` 的 2xx 响应，其 schema 必须带字段信息。流与文件
+端点因此必须显式声明自己的 `response_class`（媒体类型不再是 JSON），否则会被 JSON 那一半
+拦下；运行事件流声明了 `text/event-stream`，因此必须给出事件模型，新增的流式端点无法再
+只留一个 description。两条判定的共同边界是：完全没有声明该媒体类型的 2xx（204、文件下载、
+另一条流）不属于这份契约。
 
-迁移期用 `response_schema_baseline.json` 记录尚未补齐的路由：
+迁移期用 `response_schema_baseline.json` 记录尚未补齐的 JSON 路由：
 
 - 出现基线之外的新缺口 → 失败（新增端点无法再留空 schema）。
 - 基线里有条目已经补好 → 失败（基线只能缩小，必须同步删除，避免它腐烂成豁免名单）。
@@ -17,9 +20,11 @@
 
 from __future__ import annotations
 
+import copy
 import json
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -29,6 +34,9 @@ from server.main import app
 pytestmark = pytest.mark.unit
 
 BASELINE_PATH = Path(__file__).with_name("response_schema_baseline.json")
+JSON_MEDIA_TYPE = "application/json"
+STREAM_MEDIA_TYPE = "text/event-stream"
+RUN_EVENTS_PATH = "/api/agent/runs/{run_id}/events"
 
 
 def _is_usable(schema: object, schemas: Mapping[str, object], seen: frozenset[str] = frozenset()) -> bool:
@@ -64,10 +72,9 @@ def _is_usable(schema: object, schemas: Mapping[str, object], seen: frozenset[st
     return bool(schema.get("type"))
 
 
-def _json_responses_missing_schema() -> list[str]:
-    """缺少可用 schema 的 JSON 响应，形如 `GET /api/agent`。"""
+def _responses_missing_schema(spec: Mapping[str, Any], media_type: str) -> list[str]:
+    """缺少可用 schema 的响应，形如 `GET /api/agent`。"""
 
-    spec = app.openapi()
     schemas = spec.get("components", {}).get("schemas", {})
     missing: list[str] = []
     for path, operations in sorted(spec.get("paths", {}).items()):
@@ -77,12 +84,7 @@ def _json_responses_missing_schema() -> list[str]:
             for code, response in sorted(operation.get("responses", {}).items()):
                 if not code.startswith("2"):
                     continue
-                schema = (
-                    response.get("content", {})
-                    .get("application/json", {})
-                    .get("schema")
-                )
-                # 没有 application/json 的 2xx（流、文件、空体）不属于 JSON 契约。
+                schema = response.get("content", {}).get(media_type, {}).get("schema")
                 if schema is None:
                     continue
                 if not _is_usable(schema, schemas):
@@ -99,7 +101,7 @@ def _load_baseline() -> list[str]:
 
 @pytest.mark.skipif(lite_mode_enabled(), reason="LITE 不注册知识域路由，契约面与完整模式不同")
 def test_json_responses_do_not_introduce_schema_gaps() -> None:
-    missing = _json_responses_missing_schema()
+    missing = _responses_missing_schema(app.openapi(), JSON_MEDIA_TYPE)
     baseline = _load_baseline()
 
     new_gaps = sorted(set(missing) - set(baseline))
@@ -111,10 +113,36 @@ def test_json_responses_do_not_introduce_schema_gaps() -> None:
 
 @pytest.mark.skipif(lite_mode_enabled(), reason="LITE 不注册知识域路由，契约面与完整模式不同")
 def test_schema_baseline_has_no_stale_entries() -> None:
-    missing = set(_json_responses_missing_schema())
+    missing = set(_responses_missing_schema(app.openapi(), JSON_MEDIA_TYPE))
     stale = sorted(set(_load_baseline()) - missing)
 
     assert not stale, f"以下路由已经补好响应 schema，请从 response_schema_baseline.json 删除：{stale}"
+
+
+@pytest.mark.skipif(lite_mode_enabled(), reason="LITE 不注册知识域路由，契约面与完整模式不同")
+def test_run_events_stream_declares_event_schema() -> None:
+    """运行事件流的 200 必须指向事件模型；前端的事件类型只能来自这里。
+
+    这条断言是事件流的锚点：删掉响应里的声明，本用例即失败。
+    """
+
+    content = app.openapi()["paths"][RUN_EVENTS_PATH]["get"]["responses"]["200"]["content"]
+
+    assert content[STREAM_MEDIA_TYPE]["schema"] == {"$ref": "#/components/schemas/RunEvent"}
+
+
+@pytest.mark.skipif(lite_mode_enabled(), reason="LITE 不注册知识域路由，契约面与完整模式不同")
+def test_stream_responses_do_not_introduce_schema_gaps() -> None:
+    assert _responses_missing_schema(app.openapi(), STREAM_MEDIA_TYPE) == []
+
+
+def test_stream_schema_scan_recovers_a_route_without_events() -> None:
+    """负向案例：把事件流的 schema 掏空后，扫描必须报出这条路由。"""
+
+    spec = copy.deepcopy(app.openapi())
+    spec["paths"][RUN_EVENTS_PATH]["get"]["responses"]["200"]["content"][STREAM_MEDIA_TYPE]["schema"] = {}
+
+    assert _responses_missing_schema(spec, STREAM_MEDIA_TYPE) == [f"GET {RUN_EVENTS_PATH}"]
 
 
 def test_is_usable_rejects_a_ref_to_a_zero_field_model() -> None:

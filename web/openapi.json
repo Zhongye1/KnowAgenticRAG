@@ -3092,6 +3092,7 @@
           "agent"
         ],
         "summary": "Stream Run Events",
+        "description": "按 Server-Sent Events 推送运行事件；每帧的 `data` 是一个 `RunEvent`，`id` 是续传游标。",
         "operationId": "stream_run_events_api_agent_runs__run_id__events_get",
         "parameters": [
           {
@@ -3160,7 +3161,14 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful Response"
+            "description": "Successful Response",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunEvent"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -33634,6 +33642,713 @@
         ],
         "title": "WorkspaceUploadResponse",
         "description": "工作区文件上传结果。"
+      },
+      "CustomPayload": {
+        "additionalProperties": true,
+        "description": "自定义事件：`name` 区分 `ars.agent_state`、`ars.warning` 与 `ars.<status>`。",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "chunk": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk"
+          },
+          "agent_state": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Agent State"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "CustomPayload",
+        "type": "object"
+      },
+      "CustomRunEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Thread Id"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Id"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "event": {
+            "const": "custom",
+            "default": "custom",
+            "title": "Event",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/CustomPayload"
+          }
+        },
+        "required": [
+          "run_id",
+          "created_at",
+          "payload"
+        ],
+        "title": "CustomRunEvent",
+        "type": "object"
+      },
+      "EndPayload": {
+        "additionalProperties": true,
+        "properties": {
+          "status": {
+            "enum": [
+              "completed",
+              "failed",
+              "cancelled",
+              "interrupted"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Id"
+          },
+          "chunk": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "EndPayload",
+        "type": "object"
+      },
+      "EndRunEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Thread Id"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Id"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "event": {
+            "const": "end",
+            "default": "end",
+            "title": "Event",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/EndPayload"
+          }
+        },
+        "required": [
+          "run_id",
+          "created_at",
+          "payload"
+        ],
+        "title": "EndRunEvent",
+        "type": "object"
+      },
+      "ErrorPayload": {
+        "additionalProperties": true,
+        "description": "运行错误；`run_id`/`message`/`reason` 来自事件流自身不可用的那条分支。",
+        "properties": {
+          "chunk": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk"
+          },
+          "retryable": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Retryable"
+          },
+          "run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Run Id"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Message"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Reason"
+          }
+        },
+        "title": "ErrorPayload",
+        "type": "object"
+      },
+      "ErrorRunEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Thread Id"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Id"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "event": {
+            "const": "error",
+            "default": "error",
+            "title": "Event",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/ErrorPayload"
+          }
+        },
+        "required": [
+          "run_id",
+          "created_at",
+          "payload"
+        ],
+        "title": "ErrorRunEvent",
+        "type": "object"
+      },
+      "InterruptPayload": {
+        "additionalProperties": true,
+        "properties": {
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "chunk": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "InterruptPayload",
+        "type": "object"
+      },
+      "InterruptRunEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Thread Id"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Id"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "event": {
+            "const": "interrupt",
+            "default": "interrupt",
+            "title": "Event",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/InterruptPayload"
+          }
+        },
+        "required": [
+          "run_id",
+          "created_at",
+          "payload"
+        ],
+        "title": "InterruptRunEvent",
+        "type": "object"
+      },
+      "MessagesPayload": {
+        "additionalProperties": true,
+        "description": "进度事件：新增分片走 `items`，单条分片走 `chunk`。",
+        "properties": {
+          "items": {
+            "anyOf": [
+              {
+                "items": {},
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Items"
+          },
+          "chunk": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Chunk"
+          }
+        },
+        "title": "MessagesPayload",
+        "type": "object"
+      },
+      "MessagesRunEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Thread Id"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Id"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "event": {
+            "const": "messages",
+            "default": "messages",
+            "title": "Event",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/MessagesPayload"
+          }
+        },
+        "required": [
+          "run_id",
+          "created_at",
+          "payload"
+        ],
+        "title": "MessagesRunEvent",
+        "type": "object"
+      },
+      "MetadataPayload": {
+        "additionalProperties": true,
+        "properties": {
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Id"
+          },
+          "agent_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Agent Slug"
+          },
+          "uid": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Uid"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Source"
+          },
+          "run_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Run Type"
+          },
+          "created_by_run_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Created By Run Id"
+          },
+          "subagent_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Subagent Slug"
+          },
+          "agent_invocation_meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Agent Invocation Meta"
+          }
+        },
+        "title": "MetadataPayload",
+        "type": "object"
+      },
+      "MetadataRunEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "thread_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Thread Id"
+          },
+          "request_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Request Id"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "event": {
+            "const": "metadata",
+            "default": "metadata",
+            "title": "Event",
+            "type": "string"
+          },
+          "payload": {
+            "$ref": "#/components/schemas/MetadataPayload"
+          }
+        },
+        "required": [
+          "run_id",
+          "created_at",
+          "payload"
+        ],
+        "title": "MetadataRunEvent",
+        "type": "object"
+      },
+      "RunEvent": {
+        "discriminator": {
+          "mapping": {
+            "custom": "#/components/schemas/CustomRunEvent",
+            "end": "#/components/schemas/EndRunEvent",
+            "error": "#/components/schemas/ErrorRunEvent",
+            "interrupt": "#/components/schemas/InterruptRunEvent",
+            "messages": "#/components/schemas/MessagesRunEvent",
+            "metadata": "#/components/schemas/MetadataRunEvent"
+          },
+          "propertyName": "event"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/MetadataRunEvent"
+          },
+          {
+            "$ref": "#/components/schemas/MessagesRunEvent"
+          },
+          {
+            "$ref": "#/components/schemas/CustomRunEvent"
+          },
+          {
+            "$ref": "#/components/schemas/InterruptRunEvent"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorRunEvent"
+          },
+          {
+            "$ref": "#/components/schemas/EndRunEvent"
+          }
+        ]
       }
     }
   }

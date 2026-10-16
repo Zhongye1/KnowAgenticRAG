@@ -233,7 +233,6 @@ import {
   startVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigratePost,
   steerRequestApiAgentRequestsRequestIdSteerPost,
   streamRequestEventsRouteApiAgentRequestsRequestIdEventsGet,
-  streamRunEventsApiAgentRunsRunIdEventsGet,
   streamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGet,
   submitMessageFeedbackApiChatMessageMessageIdFeedbackPost,
   syncBuiltinSkillsRouteApiSystemSkillsBuiltinSyncPost,
@@ -921,8 +920,6 @@ import type {
   SteerRequestApiAgentRequestsRequestIdSteerPostResponse,
   StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetData,
   StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetError,
-  StreamRunEventsApiAgentRunsRunIdEventsGetData,
-  StreamRunEventsApiAgentRunsRunIdEventsGetError,
   StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetData,
   StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetError,
   SubmitMessageFeedbackApiChatMessageMessageIdFeedbackPostData,
@@ -2829,34 +2826,6 @@ export const cancelAgentRunApiAgentRunsRunIdCancelPostMutation = (
   };
   return mutationOptions;
 };
-
-export const streamRunEventsApiAgentRunsRunIdEventsGetQueryKey = (
-  options: Options<StreamRunEventsApiAgentRunsRunIdEventsGetData>,
-) => createQueryKey('streamRunEventsApiAgentRunsRunIdEventsGet', options);
-
-/**
- * Stream Run Events
- */
-export const streamRunEventsApiAgentRunsRunIdEventsGetOptions = (
-  options: Options<StreamRunEventsApiAgentRunsRunIdEventsGetData>,
-) =>
-  queryOptions<
-    unknown,
-    StreamRunEventsApiAgentRunsRunIdEventsGetError,
-    unknown,
-    ReturnType<typeof streamRunEventsApiAgentRunsRunIdEventsGetQueryKey>
-  >({
-    queryFn: async ({ queryKey, signal }) => {
-      const { data } = await streamRunEventsApiAgentRunsRunIdEventsGet({
-        ...options,
-        ...queryKey[0],
-        signal,
-        throwOnError: true,
-      });
-      return data;
-    },
-    queryKey: streamRunEventsApiAgentRunsRunIdEventsGetQueryKey(options),
-  });
 
 export const getThreadActiveRunApiAgentThreadThreadIdActiveRunGetQueryKey = (
   options: Options<GetThreadActiveRunApiAgentThreadThreadIdActiveRunGetData>,

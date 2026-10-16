@@ -11078,6 +11078,366 @@ export type WorkspaceUploadResponse = {
   entries: Array<WorkspaceEntryItem>;
 };
 
+/**
+ * CustomPayload
+ *
+ * 自定义事件：`name` 区分 `ars.agent_state`、`ars.warning` 与 `ars.<status>`。
+ */
+export type CustomPayload = {
+  /**
+   * Name
+   */
+  name: string;
+  /**
+   * Chunk
+   */
+  chunk?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Agent State
+   */
+  agent_state?: {
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+};
+
+/**
+ * CustomRunEvent
+ */
+export type CustomRunEvent = {
+  /**
+   * Schema Version
+   */
+  schema_version?: 1;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Event
+   */
+  event?: 'custom';
+  payload: CustomPayload;
+};
+
+/**
+ * EndPayload
+ */
+export type EndPayload = {
+  /**
+   * Status
+   */
+  status: 'completed' | 'failed' | 'cancelled' | 'interrupted';
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Chunk
+   */
+  chunk?: {
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+};
+
+/**
+ * EndRunEvent
+ */
+export type EndRunEvent = {
+  /**
+   * Schema Version
+   */
+  schema_version?: 1;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Event
+   */
+  event?: 'end';
+  payload: EndPayload;
+};
+
+/**
+ * ErrorPayload
+ *
+ * 运行错误；`run_id`/`message`/`reason` 来自事件流自身不可用的那条分支。
+ */
+export type ErrorPayload = {
+  /**
+   * Chunk
+   */
+  chunk?: {
+    [key: string]: unknown;
+  } | null;
+  /**
+   * Retryable
+   */
+  retryable?: boolean | null;
+  /**
+   * Run Id
+   */
+  run_id?: string | null;
+  /**
+   * Message
+   */
+  message?: string | null;
+  /**
+   * Reason
+   */
+  reason?: string | null;
+  [key: string]: unknown;
+};
+
+/**
+ * ErrorRunEvent
+ */
+export type ErrorRunEvent = {
+  /**
+   * Schema Version
+   */
+  schema_version?: 1;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Event
+   */
+  event?: 'error';
+  payload: ErrorPayload;
+};
+
+/**
+ * InterruptPayload
+ */
+export type InterruptPayload = {
+  /**
+   * Reason
+   */
+  reason: string;
+  /**
+   * Chunk
+   */
+  chunk?: {
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+};
+
+/**
+ * InterruptRunEvent
+ */
+export type InterruptRunEvent = {
+  /**
+   * Schema Version
+   */
+  schema_version?: 1;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Event
+   */
+  event?: 'interrupt';
+  payload: InterruptPayload;
+};
+
+/**
+ * MessagesPayload
+ *
+ * 进度事件：新增分片走 `items`，单条分片走 `chunk`。
+ */
+export type MessagesPayload = {
+  /**
+   * Items
+   */
+  items?: Array<unknown> | null;
+  /**
+   * Chunk
+   */
+  chunk?: {
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+};
+
+/**
+ * MessagesRunEvent
+ */
+export type MessagesRunEvent = {
+  /**
+   * Schema Version
+   */
+  schema_version?: 1;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Event
+   */
+  event?: 'messages';
+  payload: MessagesPayload;
+};
+
+/**
+ * MetadataPayload
+ */
+export type MetadataPayload = {
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Agent Slug
+   */
+  agent_slug?: string | null;
+  /**
+   * Uid
+   */
+  uid?: string | null;
+  /**
+   * Source
+   */
+  source?: string | null;
+  /**
+   * Run Type
+   */
+  run_type?: string | null;
+  /**
+   * Created By Run Id
+   */
+  created_by_run_id?: string | null;
+  /**
+   * Subagent Slug
+   */
+  subagent_slug?: string | null;
+  /**
+   * Agent Invocation Meta
+   */
+  agent_invocation_meta?: {
+    [key: string]: unknown;
+  } | null;
+  [key: string]: unknown;
+};
+
+/**
+ * MetadataRunEvent
+ */
+export type MetadataRunEvent = {
+  /**
+   * Schema Version
+   */
+  schema_version?: 1;
+  /**
+   * Run Id
+   */
+  run_id: string;
+  /**
+   * Thread Id
+   */
+  thread_id?: string | null;
+  /**
+   * Request Id
+   */
+  request_id?: string | null;
+  /**
+   * Created At
+   */
+  created_at: string;
+  /**
+   * Event
+   */
+  event?: 'metadata';
+  payload: MetadataPayload;
+};
+
+export type RunEvent =
+  | ({
+      event: 'metadata';
+    } & MetadataRunEvent)
+  | ({
+      event: 'messages';
+    } & MessagesRunEvent)
+  | ({
+      event: 'custom';
+    } & CustomRunEvent)
+  | ({
+      event: 'interrupt';
+    } & InterruptRunEvent)
+  | ({
+      event: 'error';
+    } & ErrorRunEvent)
+  | ({
+      event: 'end';
+    } & EndRunEvent);
+
 export type HealthCheckApiSystemHealthGetData = {
   body?: never;
   path?: never;
@@ -13072,8 +13432,11 @@ export type StreamRunEventsApiAgentRunsRunIdEventsGetResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: RunEvent;
 };
+
+export type StreamRunEventsApiAgentRunsRunIdEventsGetResponse =
+  StreamRunEventsApiAgentRunsRunIdEventsGetResponses[keyof StreamRunEventsApiAgentRunsRunIdEventsGetResponses];
 
 export type GetThreadActiveRunApiAgentThreadThreadIdActiveRunGetData = {
   body?: never;

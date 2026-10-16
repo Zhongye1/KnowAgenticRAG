@@ -10,12 +10,14 @@ Owner：backend/server/routers/tool_router.py
 
 **工具参数**：元数据只下发拍平后的 `args`（名称/类型/描述），没有必填、枚举与嵌套结构。LLM 生成的工具参数（`tool_calls[].args`）与前端读它的代码之间因此没有任何形状约束，而中继这层信息的契约也表示不了它——`args_schema` 是运行期数据，不是 OpenAPI 类型图里的东西。
 
-**SSE 事件流**：后端用 `format_sse` 拼裸 dict，`text/event-stream` 不进 OpenAPI，前端处理的 15 个事件名全靠约定。`end` 事件的 `status` 一旦改名，代码会落进兜底分支——那里 `sawTerminalEvent` 已置真（不会再回查 run），但 `finalizeRunStream` 不会被调用，界面停在一个没有收尾的运行上却没有任何信号。这是本次最值得修的一处：失败是静默的。
+**SSE 事件流**：后端用 `format_sse` 拼裸 dict，`text/event-stream` 不进 OpenAPI，前端处理的事件名全靠约定。`end` 事件的 `status` 一旦改名，代码会落进兜底分支——那里 `sawTerminalEvent` 已置真（不会再回查 run），但 `finalizeRunStream` 不会被调用，界面停在一个没有收尾的运行上却没有任何信号。这是本次最值得修的一处：失败是静默的。
+
+本记录写作时事件流还没有契约表达；**后续由 [`2026-10-16-run-event-stream-contract.md`](./2026-10-16-run-event-stream-contract.md) 取代了这一部分**：Run 事件流现在有 `RunEvent` 联合、终态取值在产侧按 `Literal` 校验，下面第 2 条决定的 `warnIfUnknownTerminalStatus` 因此改为防部署错配（仍在跑的旧 worker、契约之外的第三方实现）。工具参数那部分仍由本记录拥有。
 
 ## 决策
 
 1. **工具元数据增加 `args_schema`**：`_extract_tool_info` 把工具自身的参数声明统一折成 JSON Schema 后原样透传，不在后端做二次翻译（工具自己声明的 schema 就是事实，翻译一次只多一处漂移点）；`tool_router.ToolItem` 声明 `args_schema: dict[str, Any]`。拍平后的 `args` 保留，界面的一行说明继续用它。折法覆盖三种真实形态：pydantic 模型（`model_json_schema`）、v1 风格的 `.schema()`、裸 dict；都没声明时给空对象。
-2. **SSE 终态守卫**：`run-stream.ts` 的 `end` 兜底分支在收尾前调用 `warnIfUnknownTerminalStatus(status)`，未知或缺失的 status 给一条 `console.warn`。**只告警不抛错**——事件流要前向兼容，后端新增一个状态名不该让整条流断掉，所以这里的目标是"让漂移可见"，不是"拒绝未知输入"。
+2. **SSE 终态守卫**：`run-stream.ts` 的 `end` 兜底分支在收尾前调用 `warnIfUnknownTerminalStatus(status)`，未知或缺失的 status 给一条 `console.warn`。**只告警不抛错**——事件流要前向兼容，后端新增一个状态名不该让整条流断掉，所以这里的目标是"让漂移可见"，不是"拒绝未知输入"。事件流进入契约后这条守卫保留，防的是部署错配。
 
 两条决定的分工：第 1 条由 `server/routers/tool_router.py` 拥有（工具元数据与它的响应契约），第 2 条由 `web/src/features/chat/model/run-stream.ts` 拥有（终态判定与收尾都在那里）；本记录的 Owner 字段只指前者。
 

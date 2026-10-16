@@ -6,6 +6,7 @@ import {
   formDataBodySerializer,
   type Options as Options2,
   type RequestResult,
+  type ServerSentEventsResult,
   type TDataShape,
   urlSearchParamsBodySerializer,
 } from './client';
@@ -673,6 +674,7 @@ import type {
   StreamRequestEventsRouteApiAgentRequestsRequestIdEventsGetResponses,
   StreamRunEventsApiAgentRunsRunIdEventsGetData,
   StreamRunEventsApiAgentRunsRunIdEventsGetErrors,
+  StreamRunEventsApiAgentRunsRunIdEventsGetResponse,
   StreamRunEventsApiAgentRunsRunIdEventsGetResponses,
   StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetData,
   StreamVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigrationsTaskIdEventsGetErrors,
@@ -2042,17 +2044,21 @@ export const cancelAgentRunApiAgentRunsRunIdCancelPost = <
 
 /**
  * Stream Run Events
+ *
+ * 按 Server-Sent Events 推送运行事件；每帧的 `data` 是一个 `RunEvent`，`id` 是续传游标。
  */
 export const streamRunEventsApiAgentRunsRunIdEventsGet = <
   ThrowOnError extends boolean = false,
 >(
-  options: Options<StreamRunEventsApiAgentRunsRunIdEventsGetData, ThrowOnError>,
-): RequestResult<
-  StreamRunEventsApiAgentRunsRunIdEventsGetResponses,
-  StreamRunEventsApiAgentRunsRunIdEventsGetErrors,
-  ThrowOnError
+  options: Options<
+    StreamRunEventsApiAgentRunsRunIdEventsGetData,
+    ThrowOnError,
+    StreamRunEventsApiAgentRunsRunIdEventsGetResponse
+  >,
+): Promise<
+  ServerSentEventsResult<StreamRunEventsApiAgentRunsRunIdEventsGetResponses>
 > =>
-  (options.client ?? client).get<
+  (options.client ?? client).sse.get<
     StreamRunEventsApiAgentRunsRunIdEventsGetResponses,
     StreamRunEventsApiAgentRunsRunIdEventsGetErrors,
     ThrowOnError

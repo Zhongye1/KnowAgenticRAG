@@ -8,6 +8,7 @@ import os
 from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime
 
+from ars.services.run_event_models import RUN_EVENT_MODELS, RUN_EVENT_SCHEMA_VERSION
 from ars.storage.redis import close_async_redis_client, create_arq_redis_pool, get_async_redis_client
 from ars.utils.logging_config import logger
 
@@ -65,14 +66,24 @@ def build_run_event_envelope(
     thread_id: str | None = None,
     created_at: str | None = None,
 ) -> dict:
-    return {
-        "schema_version": 1,
-        "run_id": run_id,
-        "thread_id": thread_id,
-        "event": event_type,
-        "payload": payload or {},
-        "created_at": created_at or datetime.now(tz=UTC).isoformat(),
-    }
+    """构造并校验 run 事件信封；形状由 ``run_event_models`` 拥有。"""
+
+    model = RUN_EVENT_MODELS.get(event_type)
+    if model is None:
+        raise ValueError(f"未知的 Run 事件名：{event_type}")
+
+    # 信封字段全部显式传入，dump 时它们一定出现（含为 null 的 thread_id，以及走默认值的
+    # `event`）；`exclude_unset` 只让 producer 没有赋值的载荷字段保持缺席，
+    # 输出形状因此与建模前一致。
+    envelope = model(
+        schema_version=RUN_EVENT_SCHEMA_VERSION,
+        run_id=run_id,
+        event=event_type,
+        thread_id=thread_id,
+        created_at=created_at or datetime.now(tz=UTC).isoformat(),
+        payload=payload or {},
+    )
+    return envelope.model_dump(exclude_unset=True)
 
 
 def _payload_thread_id(payload: dict | None) -> str | None:

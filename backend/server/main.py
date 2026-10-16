@@ -24,6 +24,7 @@ from server.routers import router
 from server.utils.lifespan import lifespan
 from server.utils.common_utils import setup_logging
 from server.utils.access_log_middleware import AccessLogMiddleware
+from server.utils.openapi_run_events import install_run_event_schema
 
 # 设置日志配置
 setup_logging()
@@ -75,6 +76,8 @@ def _build_cors_options(origins: list[str] | None = None) -> dict[str, object]:
 app = FastAPI(lifespan=lifespan)
 # 所有业务接口统一挂载到 /api，具体分组在 server.routers 中集中注册。
 app.include_router(router, prefix="/api")
+# Run 事件流的模型进 components：FastAPI 不注册手写 responses 里的模型。
+install_run_event_schema(app)
 
 # CORS 设置
 app.add_middleware(

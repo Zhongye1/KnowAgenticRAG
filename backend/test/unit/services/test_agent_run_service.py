@@ -12,6 +12,8 @@ from ars.services.input_message_service import (
     build_chat_input_message_from_openai_content,
     restore_chat_input_message,
 )
+from ars.services.run_event_models import RunEvent
+from pydantic import TypeAdapter
 
 
 def _chat_input(content: str, image_content: str | None = None):
@@ -382,6 +384,11 @@ async def test_stream_agent_run_events_emits_error_on_db_error(monkeypatch: pyte
     assert len(chunks) == 1
     assert chunks[0].startswith("event: error")
     assert '"reason": "db_error"' in chunks[0]
+    # 事件流上的每一帧都是同一种信封；服务自身的失败帧也必须能按 `event` 收窄。
+    data = _sse_data(chunks[0])
+    assert data["event"] == "error"
+    assert data["schema_version"] == 1
+    assert data["payload"] == {"message": "运行事件流暂时不可用，请重连", "reason": "db_error"}
 
 
 @pytest.mark.asyncio
@@ -627,6 +634,10 @@ async def test_stream_agent_run_events_compacts_verbose_false(monkeypatch: pytes
 
     metadata_data = _sse_data(chunks[0])
     assert metadata_data["payload"] == {"run_type": "chat", "source": "chat"}
+    # 紧凑信封保留判别键与版本号：浏览器默认走 verbose=false，前端靠 `event` 收窄事件。
+    assert metadata_data["event"] == "metadata"
+    assert metadata_data["schema_version"] == 1
+    assert metadata_data["created_at"]
 
     init_data = _sse_data(chunks[1])
     init_chunk = init_data["payload"]["chunk"]
@@ -655,6 +666,12 @@ async def test_stream_agent_run_events_compacts_verbose_false(monkeypatch: pytes
     assert end_data["payload"]["status"] == "completed"
     assert "request_id" not in end_data["payload"]["chunk"]
     assert "meta" not in end_data["payload"]["chunk"]
+
+    # 浏览器默认走 verbose=false，所以紧凑帧必须满足发布出去的 `RunEvent`：
+    # 顶层 `request_id` 之类被提到信封的字段若不在模型里，这条会失败。
+    adapter = TypeAdapter(RunEvent)
+    for chunk in chunks:
+        adapter.validate_python(_sse_data(chunk))
 
 
 @pytest.mark.asyncio
