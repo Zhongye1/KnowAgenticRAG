@@ -1,11 +1,12 @@
 /**
  * RAG 评估接口（评估数据集与评估运行）。
  *
- * 契约：`backend/server/routers/knowledge_eval_router.py` 的 11 个端点，响应统一是
- * `{message:'success', data}`；`data` 的形状按 `ars/knowledge/eval/service.py` 的三个序列化器
- * （`_dataset_to_dict` / `_dataset_item_to_dict` / `_run_item_to_dict`）与 `list_runs` 手写。
- * 指标键来自 `ars/knowledge/eval/metrics.py`：检索侧 `recall@k`/`f1@k`（k = 1/3/5/10），
- * 答案侧聚合出一个 `answer_correctness`，另有综合 `overall_score`。
+ * 契约：`backend/server/routers/knowledge_eval_router.py` 的端点，响应统一包一层
+ * `{message:'success', data}`；数据集的 `data` 形状直接复用后端响应模型生成的类型
+ * （`EvaluationDatasetItem` / `EvaluationDatasetDetailItem` / `EvaluationDatasetQuestionItem` 等），
+ * 运行侧因界面按更窄的读形状使用而保留手写。指标键来自 `ars/knowledge/eval/metrics.py`：
+ * 检索侧 `recall@k`/`f1@k`（k = 1/3/5/10），答案侧聚合出一个 `answer_correctness`，
+ * 另有综合 `overall_score`。
  *
  * 所有端点都要求管理员（后端 `get_admin_user` + 知识库 read/manage），因此这个分区只在
  * 管理员可见的详情页里出现；前端不做管理员门，授权在后端。
@@ -23,6 +24,19 @@ import {
   uploadEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsUploadPost,
 } from '@/shared/api/generated/sdk.gen';
 import type {
+  EvaluationDatasetDetailItem,
+  EvaluationDatasetDetailResponse,
+  EvaluationDatasetItemResponse,
+  EvaluationDatasetListResponse,
+  EvaluationDatasetQuestionItem,
+  EvaluationDatasetItem as EvaluationDatasetReadItem,
+  EvaluationDeleteResponse,
+  EvaluationGenerationItem,
+  EvaluationGenerationResponse,
+  EvaluationResumeResponse,
+  EvaluationRunCreateData,
+  EvaluationRunCreateResponse,
+  EvaluationRunResultItem,
   GenerateDatasetRequest,
   RunEvaluationRequest,
 } from '@/shared/api/generated/types.gen';
@@ -33,7 +47,12 @@ import { unwrap } from '@/shared/api';
 /** 数据集生成状态；`completed`/`failed` 之外都算还在生成。 */
 export type DatasetBuildStatus = 'pending' | 'running' | 'completed' | 'failed';
 
-/** 数据集的构建元信息（后端 `build_metadata`，字段随生成方式不同）。 */
+/**
+ * 数据集的构建元信息（后端 `build_metadata`）。
+ *
+ * 契约把 `build_metadata` 声明为形状不定的 map，字段随生成方式变化，所以这里保留一份界面
+ * 读取用的窄化形状（已知键的可选投影），不是响应体的契约类型。
+ */
 export type DatasetBuildMetadata = {
   status?: DatasetBuildStatus;
   message?: string;
@@ -49,44 +68,21 @@ export type DatasetBuildMetadata = {
   finished_at?: string | null;
 };
 
-/** 列表与详情共用的数据集投影。 */
-export type EvaluationDataset = {
-  id: string;
-  dataset_id: string;
-  name: string;
-  description: string;
-  kb_id: string;
-  item_count: number;
-  has_gold_chunks: boolean;
-  has_gold_answers: boolean;
-  build_metadata: DatasetBuildMetadata;
-  created_by?: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-};
+/** 列表与详情共用的数据集投影；形状由后端 `EvaluationDatasetItem` 拥有。 */
+export type EvaluationDataset = EvaluationDatasetReadItem;
 
-export type EvaluationDatasetItem = {
-  item_id: string;
-  item_index: number;
-  query: string;
-  gold_chunk_ids: string[];
-  gold_answer?: string | null;
-};
+/** 数据集题目；形状由后端 `EvaluationDatasetQuestionItem` 拥有。 */
+export type EvaluationDatasetItem = EvaluationDatasetQuestionItem;
 
-export type PageInfo = {
-  current_page: number;
-  page_size: number;
-  total_items?: number;
-  total_pages: number;
-  has_next?: boolean;
-  has_prev?: boolean;
-};
+/** 数据集详情（摘要 + 当页题目 + 分页）；形状由后端 `EvaluationDatasetDetailItem` 拥有。 */
+export type EvaluationDatasetDetail = EvaluationDatasetDetailItem;
 
-export type EvaluationDatasetDetail = EvaluationDataset & {
-  items: EvaluationDatasetItem[];
-  pagination: PageInfo;
-};
-
+/**
+ * 评估运行历史条目。
+ *
+ * 这里保留界面读取用的形状，不直接等同契约的 `EvaluationRunItem`：后者把 `dataset_id`
+ * 声明为可空，而界面（`datasetNameOf`）按非空使用；`metrics` 也按数值映射读取。
+ */
 export type EvaluationRun = {
   run_id: string;
   name: string;
@@ -99,14 +95,22 @@ export type EvaluationRun = {
   completed_items: number;
   overall_score?: number | null;
   retrieval_config?: Record<string, unknown>;
+  /** 历史行的指标按数值读取（面板直接展示 `recall@k`），因此这里收窄为数值映射。 */
   metrics: Record<string, number>;
   /** 任务形状的那份响应会把 `task.progress` 原样带出来，任务没进度时是 null。 */
   progress?: number | null;
   message?: string;
 };
 
-export type RunMetrics = Record<string, number>;
+/** 指标映射；契约把 `metrics` 声明为形状不定的 map。 */
+export type RunMetrics = EvaluationRunResultItem['metrics'];
 
+/**
+ * 逐题结果。
+ *
+ * 保留界面读取用的形状：题目可能只有部分字段（例如仅标注检索指标），这里按可选字段读取，
+ * 与契约里除 `query`/`metrics` 外均可空的声明对齐。
+ */
 export type EvaluationRunItem = {
   query: string;
   gold_chunk_ids?: string[] | null;
@@ -116,6 +120,22 @@ export type EvaluationRunItem = {
   metrics: RunMetrics;
 };
 
+/** 数据集详情的分页信息。 */
+export type PageInfo = {
+  current_page: number;
+  page_size: number;
+  total_items?: number;
+  total_pages: number;
+  has_next?: boolean;
+  has_prev?: boolean;
+};
+
+/**
+ * 运行结果（分页 + 可只看失败项）。
+ *
+ * 保留界面读取用的形状：`items` 是下方按可选字段读取的 `EvaluationRunItem`（契约的
+ * `EvaluationRunResultItem` 把 `gold_chunk_ids` 声明为非字符串数组，界面按 `string[]` 用）。
+ */
 export type EvaluationRunResults = {
   run_id: string;
   name?: string;
@@ -145,7 +165,7 @@ export type RunEvaluationPayload = RunEvaluationRequest;
 export const evaluationApi = {
   /** 数据集列表；后端会把仍在生成的行同步一次构建状态。 */
   async listDatasets(kbId: string): Promise<EvaluationDataset[]> {
-    const result = unwrap<{ data?: EvaluationDataset[] }>(
+    const result = unwrap<EvaluationDatasetListResponse>(
       await listEvaluationDatasetsApiEvaluationDatabasesKbIdDatasetsGet({
         path: { kb_id: kbId },
       }),
@@ -160,7 +180,7 @@ export const evaluationApi = {
     options: { page?: number; pageSize?: number } = {},
   ): Promise<EvaluationDatasetDetail> {
     // 后端这批端点都套了一层 {message, data}，unwrap 只剥生成客户端的 {data,error}
-    const result = unwrap<{ data: EvaluationDatasetDetail }>(
+    const result = unwrap<EvaluationDatasetDetailResponse>(
       await getEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsDatasetIdGet({
         path: { kb_id: kbId, dataset_id: datasetId },
         query: {
@@ -177,7 +197,7 @@ export const evaluationApi = {
     kbId: string,
     input: { file: File; name: string; description: string },
   ): Promise<EvaluationDataset> {
-    const uploaded = unwrap<{ data: EvaluationDataset }>(
+    const uploaded = unwrap<EvaluationDatasetItemResponse>(
       await uploadEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsUploadPost(
         {
           path: { kb_id: kbId },
@@ -193,12 +213,12 @@ export const evaluationApi = {
     return uploaded.data;
   },
 
-  /** 用 AI 从知识库生成数据集（后端异步，返回数据集行）。 */
+  /** 用 AI 从知识库生成数据集（后端异步，返回生成任务提交结果：`dataset_id` + `task_id`）。 */
   async generateDataset(
     kbId: string,
     payload: GenerateDatasetPayload,
-  ): Promise<EvaluationDataset> {
-    const generated = unwrap<{ data: EvaluationDataset }>(
+  ): Promise<EvaluationGenerationItem> {
+    const generated = unwrap<EvaluationGenerationResponse>(
       await generateEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsGeneratePost(
         {
           path: { kb_id: kbId },
@@ -233,8 +253,8 @@ export const evaluationApi = {
   async resumeDatasetGeneration(
     kbId: string,
     datasetId: string,
-  ): Promise<{ dataset_id?: string; message?: string }> {
-    return unwrap<{ dataset_id?: string; message?: string }>(
+  ): Promise<EvaluationResumeResponse> {
+    return unwrap<EvaluationResumeResponse>(
       await resumeEvaluationDatasetApiEvaluationDatabasesKbIdDatasetsDatasetIdResumePost(
         {
           path: { kb_id: kbId, dataset_id: datasetId },
@@ -244,7 +264,7 @@ export const evaluationApi = {
   },
 
   async deleteDataset(datasetId: string): Promise<void> {
-    unwrap<unknown>(
+    unwrap<EvaluationDeleteResponse>(
       await deleteEvaluationDatasetApiEvaluationDatasetsDatasetIdDelete({
         path: { dataset_id: datasetId },
       }),
@@ -265,8 +285,8 @@ export const evaluationApi = {
   async runEvaluation(
     kbId: string,
     payload: RunEvaluationPayload,
-  ): Promise<{ run_id: string }> {
-    const result = unwrap<{ data: { run_id: string } }>(
+  ): Promise<EvaluationRunCreateData> {
+    const result = unwrap<EvaluationRunCreateResponse>(
       await runEvaluationApiEvaluationDatabasesKbIdRunsPost({
         path: { kb_id: kbId },
         body: payload,
@@ -295,7 +315,7 @@ export const evaluationApi = {
   },
 
   async deleteRun(kbId: string, runId: string): Promise<void> {
-    unwrap<unknown>(
+    unwrap<EvaluationDeleteResponse>(
       await deleteEvaluationRunApiEvaluationDatabasesKbIdRunsRunIdDelete({
         path: { kb_id: kbId, run_id: runId },
       }),

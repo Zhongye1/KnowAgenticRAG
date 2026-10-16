@@ -21,33 +21,27 @@ import {
   updateUserConfigApiUserConfigPut,
   uploadUserAvatarApiAuthUploadAvatarPost,
 } from '@/shared/api/generated/sdk.gen';
+import type {
+  AvatarUploadResponse,
+  DiscoveryResponse,
+  FirstRunStatusResponse,
+  OidcConfigResponse,
+  OidcLoginUrlResponse,
+  Token,
+  UserConfigResponse,
+  UserResponse,
+} from '@/shared/api/generated/types.gen';
 
 import { parseRemainingSecondsFromDetail } from '../lib/login-lock';
 
 /** 后端在锁定与限速上的状态码，页面据此区分「凭据错误」与「等一会儿再来」。 */
 export const LOGIN_LOCKED_STATUS = 423;
 
-export type CurrentUser = {
-  id: number;
-  uid: string;
-  username: string;
-  phone_number: string | null;
-  avatar: string | null;
-  role: string;
-  department_id: number | null;
-  department_name: string | null;
-  created_at: string;
-  last_login: string | null;
-};
+/** 当前登录用户；契约 `UserResponse`（`/api/auth/me`）。 */
+export type CurrentUser = UserResponse;
 
-export type LoginResult = {
-  access_token: string;
-  token_type: string;
-  user_id: number;
-  uid: string;
-  username: string;
-  role: string;
-};
+/** 登录与初始化管理员的凭据结果；契约 `Token`。 */
+export type LoginResult = Token;
 
 export type InitializeAdminInput = {
   uid: string;
@@ -55,13 +49,8 @@ export type InitializeAdminInput = {
   phone_number?: string | null;
 };
 
-export type OidcConfig = {
-  enabled: boolean;
-  login_url?: string | null;
-  provider_name?: string | null;
-};
-
-export type OidcLoginUrl = { login_url: string };
+/** OIDC 能力探测结果；契约 `OidcConfigResponse`。 */
+export type OidcConfig = OidcConfigResponse;
 
 /**
  * 登录被锁定（HTTP 423）。剩余秒数优先取 `X-Lock-Remaining` 头，
@@ -121,7 +110,7 @@ export async function login(params: {
 
 /** 干净库判定。失败向上抛，调用方按「非首次运行」处理，不擅自进入初始化表单。 */
 export async function checkFirstRun(): Promise<boolean> {
-  const payload = unwrap<{ first_run?: boolean }>(
+  const payload = unwrap<FirstRunStatusResponse>(
     await checkFirstRunApiAuthCheckFirstRunGet(),
   );
   return payload.first_run === true;
@@ -155,8 +144,8 @@ export async function getOidcConfig(): Promise<OidcConfig> {
 
 export async function getOidcLoginUrl(
   redirectPath: string = '/',
-): Promise<OidcLoginUrl> {
-  const payload = unwrap<{ login_url?: string }>(
+): Promise<OidcLoginUrlResponse> {
+  const payload = unwrap<OidcLoginUrlResponse>(
     await getOidcLoginUrlApiAuthOidcLoginUrlGet({
       query: { redirect_path: redirectPath },
     }),
@@ -203,7 +192,7 @@ export async function updateProfile(input: ProfileUpdate): Promise<void> {
 
 /** 上传头像；服务端落库并返回可访问地址，客户端不需要再 PUT profile。 */
 export async function uploadAvatar(file: File): Promise<string> {
-  const payload = unwrap<{ avatar_url?: unknown }>(
+  const payload = unwrap<AvatarUploadResponse>(
     await uploadUserAvatarApiAuthUploadAvatarPost({ body: { file } }),
   );
   const url =
@@ -217,7 +206,7 @@ export async function uploadAvatar(file: File): Promise<string> {
 
 /** 当前用户的配置；服务端没建过记录时 `enable_memory` 按缺省 false 读。 */
 export async function getUserConfig(): Promise<{ enableMemory: boolean }> {
-  const payload = unwrap<{ enable_memory?: unknown }>(
+  const payload = unwrap<UserConfigResponse>(
     await getUserConfigApiUserConfigGet(),
   );
 
@@ -228,7 +217,7 @@ export async function getUserConfig(): Promise<{ enableMemory: boolean }> {
 export async function updateUserConfig(input: {
   enableMemory: boolean;
 }): Promise<{ enableMemory: boolean }> {
-  const payload = unwrap<{ enable_memory?: unknown }>(
+  const payload = unwrap<UserConfigResponse>(
     await updateUserConfigApiUserConfigPut({
       body: { enable_memory: input.enableMemory },
     }),
@@ -237,13 +226,8 @@ export async function updateUserConfig(input: {
   return { enableMemory: payload.enable_memory === true };
 }
 
-/** 能力投影：LITE 模式下 knowledge 为 false，UI 据此降级。 */
-export type Discovery = {
-  name: string;
-  version: string;
-  api_prefix: string;
-  capabilities: { features: { knowledge: boolean } };
-};
+/** 能力投影：LITE 模式下 knowledge 为 false，UI 据此降级；契约 `DiscoveryResponse`。 */
+export type Discovery = DiscoveryResponse;
 
 /**
  * 走契约生成的 SDK：client 实例与拦截器由 `base.ts` 配置，这里只解一层

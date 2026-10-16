@@ -2,7 +2,8 @@
  * 用户管理端点（管理员面）。
  *
  * 只走契约生成的 SDK。写回只带确实要改的字段：后端 `UserUpdate` 是 `extra="forbid"`，
- * 多带字段会被 422 拒绝。分页与用户名校验的响应契约里都有 schema，直接用生成类型。
+ * 多带字段会被 422 拒绝。分页、用户名校验与 UID 可用性检查的响应契约里都有 schema，响应类型
+ * 直接用生成类型；界面用的驼峰 `ManagedUser` 形状由这里归一产出。
  */
 import { unwrap } from '@/shared/api';
 import {
@@ -14,6 +15,8 @@ import {
   validateUsernameAndGenerateUidApiAuthValidateUsernamePost,
 } from '@/shared/api/generated/sdk.gen';
 import type {
+  UidAvailabilityResponse,
+  UidGeneration,
   UserPageResponse,
   UserResponse,
 } from '@/shared/api/generated/types.gen';
@@ -159,7 +162,7 @@ export async function deleteManagedUser(id: number): Promise<void> {
 export async function validateUsernameAndGenerateUid(
   username: string,
 ): Promise<GeneratedUid> {
-  const result = unwrap<{ uid?: unknown; is_available?: unknown }>(
+  const result = unwrap<UidGeneration>(
     await validateUsernameAndGenerateUidApiAuthValidateUsernamePost({
       body: { username },
     }),
@@ -173,7 +176,7 @@ export async function validateUsernameAndGenerateUid(
 
 /** 检查 UID 是否可用；部门创建用它做重名预检。 */
 export async function checkUidAvailable(uid: string): Promise<boolean> {
-  const result = unwrap<{ is_available?: unknown }>(
+  const result = unwrap<UidAvailabilityResponse>(
     await checkUidAvailabilityApiAuthCheckUidUidGet({ path: { uid } }),
   );
 

@@ -50,7 +50,8 @@ Owner：backend/server/routers/__init__.py
 - 生成类型从空 schema 的名称占位变成真实字段（`types.gen.ts` 1664 个类型），`slug`、`backend_id` 这类总是出现的字段生成必填属性，`description` 这类可空字段生成 `string | null`。
 - 后端单元测试从 1557 增至 1801 通过（新增 244 个，多数是各批次的响应契约用例），0 失败。
 - 五类既有测试的假载荷因不被真实序列化覆盖而被补齐（`test_subagent.py`、`test_mcp_router.py`、`test_skill_router.py`、`test_workspace_knowledge_tree.py`、`test_system_router_api.py`），这些假数据的形状从「随手几个键」变成与 `to_dict()`/`serialize()` 一致。
-- 前端只有 agent 切片改读生成类型（`agents-api.ts` 的 `AgentItem`/`AgentBackendItem` 取代 `RawAgent`/`RawAgentBackend`，切片的再导出同步删除）。其余 21 个 `api` 段仍在手写响应类型，且它们的头注释仍写着「后端没有 response_model」这一已失效的理由；这是待完成的收尾工作，不影响本次契约面的正确性。
+- 前端把 26 个 `api` 段的手写响应类型换成了契约生成类型（`Raw*`／`unwrap<{x?: unknown}>`／`Record<string, unknown>` → 后端声明的具名模型），并修掉这批 api 段里 9 处写着「后端没有 response_model」的失效注释（另顺手订正了三处同源的陈旧说法：`shared/api/result.ts`、`features/chat/lib/agent-state-readers.ts`、`features/chat/api/artifacts-api.ts`）。只替换响应体类型，运行期的形状校验、归一与兜底一律保留；UI 投影形状（驼峰字段、界面取值收窄）与请求体类型不属于响应体，继续手写并有注释说明。改完的集中验证是 `pnpm run check-types` 仍 5 个既有错误、`pnpm run test:unit` 仍 `16 failed | 2503 passed`，即对既有测试零影响——类型在运行期被擦除，且这些段仍是查询层的唯一入口。
+- 该批里出现唯一一处运行期值变化：创建 API Key 时原本从 `payload.id` 读 id（后端返回的是 `{api_key, secret}`，所以那一读恒为 undefined、id 恒为 0），换成具名类型后这一行不再通过编译，改为 `payload.api_key.id`。它是被类型替换强制纠正的死读取，且 `id` 没有任何消费者（只有 `secret` 被用），因此不可观测。
 - `response_model_exclude_unset=True` 成为新端点的一份额外约定：漏写不会破坏正确性，只会让响应多出 `null` 键，而契约用例会拦住它。
 - 残留（本次未处理，属改动前既有状态）：另有 48 个端点在整改前就声明了 `response_model` 而没有 `exclude_unset`（`auth_router` 22、`chat_router` 13、`dashboard_router` 9、`auth_dept_router` 4、`user_router` 3、`knowledge_dashboard_router` 1、`mention_router` 1）。它们会把模型里有默认值的字段以 `null` 下发，并裁掉模型未声明的字段（例如 `read_user` 的载荷不含 `department_name`，响应里却出现 `"department_name": null`，同时 `login_failed_count` 等字段被裁掉）。这些行为在本次改动前后一致，且没有契约用例覆盖，因此不把它们纳入"响应体不变"这一主张；给它们补 `exclude_unset` 会**移除**当前下发的 `null` 键，属于破坏 wire 的变更，需要自己的记录与前端同步核读，不在此批顺手处理。
 

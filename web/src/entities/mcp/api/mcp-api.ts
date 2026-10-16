@@ -1,9 +1,10 @@
 /**
  * MCP 服务器端点。
  *
- * 只走契约生成的 SDK。列表与单体的响应都包在 `{success, data}` 里且没有声明响应模型，
- * 字段按不可信数据归一。权限由后端判定：列表对登录用户开放（非管理员拿到的是脱敏子集），
- * 其余端点要求管理员。
+ * 只走契约生成的 SDK，响应体的形状直接复用 `openapi.json` 生成的类型（这些端点已声明响应模型）。
+ * 列表与单体的响应都包在 `{success, data}` 里；`McpServer` / `McpTool` 仍是界面读取用的归一形状，
+ * 由 `toMcpServer` / `toMcpTool` 从契约条目逐项归一出。权限由后端判定：列表对登录用户开放
+ * （非管理员拿到契约声明的脱敏 `McpServerSummaryItem` 分支），其余端点要求管理员。
  */
 import { unwrap } from '@/shared/api';
 import {
@@ -18,6 +19,19 @@ import {
   updateMcpServerRouteApiSystemMcpServersSlugPut,
   updateMcpServerStatusRouteApiSystemMcpServersSlugStatusPut,
 } from '@/shared/api/generated/sdk.gen';
+import type {
+  McpDeleteResponse,
+  McpServerItem,
+  McpServerItemResponse,
+  McpServerListResponse,
+  McpServerSummaryItem,
+  McpStatusResponse,
+  McpTestResponse,
+  McpToolItem,
+  McpToolListResponse,
+  McpToolRefreshResponse,
+  McpToolToggleResponse,
+} from '@/shared/api/generated/types.gen';
 
 /** 一个 MCP 服务器。 */
 export type McpServer = {
@@ -95,7 +109,16 @@ const asRecord = (value: unknown): Record<string, unknown> =>
 const asNumber = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
 
-const toMcpServer = (raw: unknown): McpServer | null => {
+/**
+ * 把契约条目归一成界面形状的 `McpServer`。
+ *
+ * 入参是契约声明的两条分支：管理员拿完整配置 `McpServerItem`，普通用户拿脱敏的
+ * `McpServerSummaryItem`（只有 name/description/icon/enabled/tags）；缺字段由下面的
+ * `asText`/`asRecord` 逐项兜底，脱敏分支因此自然落成空值。
+ */
+const toMcpServer = (
+  raw: McpServerItem | McpServerSummaryItem,
+): McpServer | null => {
   const record = asRecord(raw);
   const slug = asText(record.slug);
   if (!slug) return null;
@@ -149,7 +172,7 @@ const toRequestBody = (
 
 /** 全部 MCP 服务器。 */
 export async function listMcpServers(): Promise<McpServer[]> {
-  const payload = unwrap<{ data?: unknown }>(
+  const payload = unwrap<McpServerListResponse>(
     await getMcpServersApiSystemMcpServersGet(),
   );
   const rows = Array.isArray(payload.data) ? payload.data : [];
@@ -165,7 +188,7 @@ export async function listMcpServers(): Promise<McpServer[]> {
 
 /** 单个 MCP 服务器。 */
 export async function getMcpServer(slug: string): Promise<McpServer | null> {
-  const payload = unwrap<{ data?: unknown }>(
+  const payload = unwrap<McpServerItemResponse>(
     await getMcpServerRouteApiSystemMcpServersSlugGet({ path: { slug } }),
   );
 
@@ -176,7 +199,7 @@ export async function getMcpServer(slug: string): Promise<McpServer | null> {
 export async function createMcpServer(
   input: McpServerCreateInput,
 ): Promise<McpServer | null> {
-  const payload = unwrap<{ data?: unknown }>(
+  const payload = unwrap<McpServerItemResponse>(
     await createMcpServerRouteApiSystemMcpServersPost({
       body: toRequestBody(input) as never,
     }),
@@ -190,7 +213,7 @@ export async function updateMcpServer(
   slug: string,
   input: McpServerUpdateInput,
 ): Promise<McpServer | null> {
-  const payload = unwrap<{ data?: unknown }>(
+  const payload = unwrap<McpServerItemResponse>(
     await updateMcpServerRouteApiSystemMcpServersSlugPut({
       path: { slug },
       body: toRequestBody(input) as never,
@@ -202,7 +225,7 @@ export async function updateMcpServer(
 
 /** 删除 MCP 服务器。 */
 export async function deleteMcpServer(slug: string): Promise<void> {
-  unwrap<unknown>(
+  unwrap<McpDeleteResponse>(
     await deleteMcpServerRouteApiSystemMcpServersSlugDelete({ path: { slug } }),
   );
 }
@@ -212,7 +235,7 @@ export async function setMcpServerEnabled(
   slug: string,
   enabled: boolean,
 ): Promise<{ enabled: boolean; message: string }> {
-  const payload = unwrap<{ enabled?: unknown; message?: unknown }>(
+  const payload = unwrap<McpStatusResponse>(
     await updateMcpServerStatusRouteApiSystemMcpServersSlugStatusPut({
       path: { slug },
       body: { enabled },
@@ -229,7 +252,7 @@ export async function setMcpServerEnabled(
 export async function testMcpServer(
   slug: string,
 ): Promise<{ toolCount: number; message: string }> {
-  const payload = unwrap<{ tool_count?: unknown; message?: unknown }>(
+  const payload = unwrap<McpTestResponse>(
     await testMcpServerApiSystemMcpServersSlugTestPost({ path: { slug } }),
   );
 
@@ -239,7 +262,7 @@ export async function testMcpServer(
   };
 }
 
-const toMcpTool = (raw: unknown): McpTool | null => {
+const toMcpTool = (raw: McpToolItem): McpTool | null => {
   const record = asRecord(raw);
   const name = asText(record.name);
   if (!name) return null;
@@ -265,7 +288,7 @@ const toMcpTool = (raw: unknown): McpTool | null => {
 
 /** MCP 服务器暴露的工具列表（含已禁用的）。 */
 export async function listMcpServerTools(slug: string): Promise<McpTool[]> {
-  const payload = unwrap<{ data?: unknown }>(
+  const payload = unwrap<McpToolListResponse>(
     await getMcpServerToolsApiSystemMcpServersSlugToolsGet({
       path: { slug },
     }),
@@ -285,7 +308,7 @@ export async function listMcpServerTools(slug: string): Promise<McpTool[]> {
 export async function refreshMcpServerTools(
   slug: string,
 ): Promise<{ message: string }> {
-  const payload = unwrap<{ message?: unknown }>(
+  const payload = unwrap<McpToolRefreshResponse>(
     await refreshMcpServerToolsApiSystemMcpServersSlugToolsRefreshPost({
       path: { slug },
     }),
@@ -299,7 +322,7 @@ export async function toggleMcpServerTool(
   slug: string,
   toolName: string,
 ): Promise<{ enabled: boolean; message: string }> {
-  const payload = unwrap<{ enabled?: unknown; message?: unknown }>(
+  const payload = unwrap<McpToolToggleResponse>(
     await toggleMcpServerToolRouteApiSystemMcpServersSlugToolsToolNameTogglePut(
       {
         path: { slug, tool_name: toolName },

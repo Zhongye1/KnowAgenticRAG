@@ -6,7 +6,8 @@
  *
  * 两个列表的投影字段不同，不能混用：`/api/skills` 的 `ResolvedSkill.to_dict()` 有
  * `source_scope` 没有 `dir_path`；`/api/system/skills` 的 ORM `Skill.to_dict()` 有
- * `dir_path` 没有 `source_scope`。端点没有 response schema，类型手写，无分页参数。
+ * `dir_path` 没有 `source_scope`。端点已声明响应模型，wire 形状直接用生成类型（列表项与草稿
+ * 等仍按 UI 需要折一层），无分页参数。
  */
 import {
   confirmPersonalSkillInstallDraftRouteApiSkillsPersonalInstallDraftsDraftIdConfirmPost,
@@ -34,8 +35,37 @@ import {
   updateSkillFileRouteApiSystemSkillsSlugFilePut,
   updateSkillShareConfigRouteApiSystemSkillsSlugShareConfigPut,
 } from '@/shared/api/generated/sdk.gen';
+import type {
+  DepartmentResponse,
+  RemoteSkillListResponse,
+  RemoteSkillSearchResponse,
+  SkillBatchDeleteResponse,
+  SkillBatchOperationResponse,
+  SkillCardItem,
+  SkillCardListResponse,
+  SkillDependencyOptions,
+  SkillDependencyOptionsResponse,
+  SkillDraftResponse,
+  SkillFileContent,
+  SkillFileResponse,
+  SkillInstallResultItem as SkillInstallResult,
+  SkillItemResponse,
+  SkillListResponse,
+  SkillTreeNode as SkillFileNode,
+  SkillTreeResponse,
+  SuccessResponse,
+  UserAccessOption,
+} from '@/shared/api/generated/types.gen';
 import { apiFetch, unwrap } from '@/shared/api';
 import type { ShareConfig } from '@/shared/lib/share-config';
+
+/** wire 形状即契约；以下别名沿用切片既有导出名，供 lib/ui 继续 `import type`。 */
+export type {
+  SkillDependencyOptions,
+  SkillFileContent,
+  SkillFileNode,
+  SkillInstallResult,
+};
 
 /** 访问级别由后端下发（管理员三种，普通用户只有 `user`）。 */
 export type SkillAccessLevel = 'global' | 'department' | 'user';
@@ -100,27 +130,6 @@ export type ManagedSkillList = {
   allowedAccessLevels: SkillAccessLevel[];
 };
 
-/** 技能目录树节点（`_build_tree`）。 */
-export type SkillFileNode = {
-  name: string;
-  path: string;
-  is_dir: boolean;
-  children?: SkillFileNode[];
-};
-
-/** 单个文本文件（`read_skill_file` / `read_personal_skill_file`）。 */
-export type SkillFileContent = {
-  path: string;
-  content: string;
-};
-
-/** 依赖候选（`get_skill_dependency_options`）：工具带展示名，MCP 与 Skill 只有标识。 */
-export type SkillDependencyOptions = {
-  tools: Array<{ slug: string; name: string }>;
-  mcps: string[];
-  skills: string[];
-};
-
 /** 安装草稿里的一项；失败项只有 `slug` 与 `error`。 */
 export type SkillDraftItem = {
   draft_item_id?: string;
@@ -150,27 +159,25 @@ export type SkillDraft = {
   allowed_access_levels: SkillAccessLevel[];
 };
 
-/** 远程仓库里可安装的 Skill（`_parse_available_skills`）。 */
+/**
+ * 远程仓库里可安装的 Skill（`_parse_available_skills`）。
+ *
+ * 展示投影：`description` 只在列表里做过滤/进度文案，缺失按空串处理。
+ */
 export type RemoteSkillOption = {
   name: string;
   description?: string;
 };
 
-/** 全局搜索命中的 Skill（`_parse_search_skills`）。 */
+/**
+ * 全局搜索命中的 Skill（`_parse_search_skills`）。
+ *
+ * 展示投影：`installs` 只用于选中项的进度文案，切片里始终按可选处理。
+ */
 export type RemoteSkillHit = {
   source: string;
   name: string;
   installs?: string;
-};
-
-/** 逐项安装结果（`confirm_*` 的 `data` 数组）。 */
-export type SkillInstallResult = {
-  slug: string;
-  /** 个人安装被占用 slug 时，后端回报请求名与实际名两个字段。 */
-  requested_slug?: string;
-  success: boolean;
-  error?: string;
-  skill?: Record<string, unknown>;
 };
 
 /** 共享范围的可选对象（部门与用户）。 */
@@ -184,14 +191,8 @@ export type SkillShareTargets = {
   }>;
 };
 
-type Envelope<T> = {
-  success: boolean;
-  data?: T;
-  allowed_access_levels?: SkillAccessLevel[];
-};
-
 /** 列表项里后端可能补上的字段都在这里折一次，缺省值按「没有」处理。 */
-const toCard = (raw: Record<string, unknown>): SkillCard =>
+const toCard = (raw: SkillCardItem): SkillCard =>
   ({
     ...raw,
     tool_dependencies: (raw.tool_dependencies as string[]) ?? [],
@@ -206,37 +207,44 @@ const toCard = (raw: Record<string, unknown>): SkillCard =>
 export const skillApi = {
   /** 管理页卡片：个人 + 共享（`GET /api/skills`）。 */
   listSkillCards: async (): Promise<SkillCardList> => {
-    const result = unwrap<Envelope<Record<string, unknown>[]>>(
+    const result = unwrap<SkillCardListResponse>(
       await listSkillCardsRouteApiSkillsGet(),
     );
     return {
       skills: (result.data ?? []).map(toCard),
-      allowedAccessLevels: result.allowed_access_levels ?? ['user'],
+      allowedAccessLevels: (result.allowed_access_levels ?? [
+        'user',
+      ]) as SkillAccessLevel[],
     };
   },
 
   /** 管理投影：详情页要从这里按 slug 找（没有单条 GET）。 */
   listManagedSkills: async (): Promise<ManagedSkillList> => {
-    const result = unwrap<Envelope<ManagedSkill[]>>(
+    const result = unwrap<SkillListResponse>(
       await listSkillsRouteApiSystemSkillsGet(),
     );
     return {
-      skills: (result.data ?? []).map((item) => ({
-        ...item,
-        tool_dependencies: item.tool_dependencies ?? [],
-        mcp_dependencies: item.mcp_dependencies ?? [],
-        skill_dependencies: item.skill_dependencies ?? [],
-        can_manage: item.can_manage === true,
-        effective_permission: item.effective_permission ?? 'none',
-        is_builtin: item.is_builtin === true,
-      })),
-      allowedAccessLevels: result.allowed_access_levels ?? ['user'],
+      skills: (result.data ?? []).map(
+        (item) =>
+          ({
+            ...item,
+            tool_dependencies: item.tool_dependencies ?? [],
+            mcp_dependencies: item.mcp_dependencies ?? [],
+            skill_dependencies: item.skill_dependencies ?? [],
+            can_manage: item.can_manage === true,
+            effective_permission: item.effective_permission ?? 'none',
+            is_builtin: item.is_builtin === true,
+          }) as ManagedSkill,
+      ),
+      allowedAccessLevels: (result.allowed_access_levels ?? [
+        'user',
+      ]) as SkillAccessLevel[],
     };
   },
 
   /** 上传 `.zip` 或 `SKILL.md` → 安装草稿。 */
   prepareUpload: async (file: File): Promise<SkillDraft> =>
-    unwrap<Envelope<SkillDraft>>(
+    unwrap<SkillDraftResponse>(
       await prepareSkillUploadRouteApiSkillsImportPreparePost({
         body: { file },
       }),
@@ -244,13 +252,13 @@ export const skillApi = {
 
   /** 列出一个远程来源里的可安装 Skill。 */
   listRemote: async (source: string): Promise<RemoteSkillOption[]> =>
-    unwrap<Envelope<RemoteSkillOption[]>>(
+    unwrap<RemoteSkillListResponse>(
       await listRemoteSkillsRouteApiSkillsRemoteListPost({ body: { source } }),
     ).data ?? [],
 
   /** 全局搜索 skills.sh 上的开源 Skill。 */
   searchRemote: async (query: string): Promise<RemoteSkillHit[]> =>
-    unwrap<Envelope<RemoteSkillHit[]>>(
+    unwrap<RemoteSkillSearchResponse>(
       await searchRemoteSkillsRouteApiSkillsRemoteSearchPost({
         body: { query },
       }),
@@ -266,7 +274,7 @@ export const skillApi = {
     skills: string[];
     skillDetails?: unknown;
   }): Promise<SkillDraft> =>
-    unwrap<Envelope<SkillDraft>>(
+    unwrap<SkillDraftResponse>(
       await prepareRemoteSkillsRouteApiSkillsRemotePreparePost({
         body: { source: payload.source, skills: payload.skills },
       }),
@@ -277,7 +285,7 @@ export const skillApi = {
     draftId: string,
     payload: { share_config?: ShareConfig | null; slugs?: string[] },
   ): Promise<SkillInstallResult[]> =>
-    unwrap<Envelope<SkillInstallResult[]>>(
+    unwrap<SkillBatchOperationResponse>(
       await confirmSkillInstallDraftRouteApiSkillsInstallDraftsDraftIdConfirmPost(
         {
           path: { draft_id: draftId },
@@ -291,7 +299,7 @@ export const skillApi = {
     draftId: string,
     slugs: string[],
   ): Promise<SkillInstallResult[]> =>
-    unwrap<Envelope<SkillInstallResult[]>>(
+    unwrap<SkillBatchOperationResponse>(
       await confirmPersonalSkillInstallDraftRouteApiSkillsPersonalInstallDraftsDraftIdConfirmPost(
         {
           path: { draft_id: draftId },
@@ -302,7 +310,7 @@ export const skillApi = {
 
   /** 丢弃安装草稿（取消/关闭与失败清理都必须走它，否则草稿留在磁盘上）。 */
   discardDraft: async (draftId: string): Promise<void> => {
-    unwrap<Envelope<never>>(
+    unwrap<SuccessResponse>(
       await discardSkillInstallDraftRouteApiSkillsInstallDraftsDraftIdDelete({
         path: { draft_id: draftId },
       }),
@@ -311,13 +319,13 @@ export const skillApi = {
 
   /** 技能目录树。 */
   getTree: async (slug: string): Promise<SkillFileNode[]> =>
-    unwrap<Envelope<SkillFileNode[]>>(
+    unwrap<SkillTreeResponse>(
       await getSkillTreeRouteApiSystemSkillsSlugTreeGet({ path: { slug } }),
     ).data ?? [],
 
   /** 读共享技能的文本文件。 */
   getFile: async (slug: string, path: string): Promise<SkillFileContent> =>
-    unwrap<Envelope<SkillFileContent>>(
+    unwrap<SkillFileResponse>(
       await getSkillFileRouteApiSystemSkillsSlugFileGet({
         path: { slug },
         query: { path },
@@ -329,7 +337,7 @@ export const skillApi = {
     slug: string,
     path: string,
   ): Promise<SkillFileContent> =>
-    unwrap<Envelope<SkillFileContent>>(
+    unwrap<SkillFileResponse>(
       await readPersonalSkillFileRouteApiSkillsPersonalSlugFileGet({
         path: { slug },
         query: { path },
@@ -341,7 +349,7 @@ export const skillApi = {
     slug: string,
     payload: { path: string; is_dir: boolean; content: string },
   ): Promise<void> => {
-    unwrap<Envelope<never>>(
+    unwrap<SuccessResponse>(
       await createSkillFileRouteApiSystemSkillsSlugFilePost({
         path: { slug },
         body: payload,
@@ -354,7 +362,7 @@ export const skillApi = {
     slug: string,
     payload: { path: string; content: string },
   ): Promise<void> => {
-    unwrap<Envelope<never>>(
+    unwrap<SuccessResponse>(
       await updateSkillFileRouteApiSystemSkillsSlugFilePut({
         path: { slug },
         body: payload,
@@ -364,7 +372,7 @@ export const skillApi = {
 
   /** 删除文件或目录。 */
   deleteNode: async (slug: string, path: string): Promise<void> => {
-    unwrap<Envelope<never>>(
+    unwrap<SuccessResponse>(
       await deleteSkillFileRouteApiSystemSkillsSlugFileDelete({
         path: { slug },
         query: { path },
@@ -376,7 +384,7 @@ export const skillApi = {
   getDependencyOptions: async (
     slug?: string,
   ): Promise<SkillDependencyOptions> =>
-    unwrap<Envelope<SkillDependencyOptions>>(
+    unwrap<SkillDependencyOptionsResponse>(
       await getSkillDependencyOptionsRouteApiSystemSkillsDependencyOptionsGet({
         query: slug ? { slug } : {},
       }),
@@ -391,7 +399,7 @@ export const skillApi = {
       skill_dependencies: string[];
     },
   ): Promise<ManagedSkill> =>
-    unwrap<Envelope<ManagedSkill>>(
+    unwrap<SkillItemResponse>(
       await updateSkillDependenciesRouteApiSystemSkillsSlugDependenciesPut({
         path: { slug },
         body: payload,
@@ -403,7 +411,7 @@ export const skillApi = {
     slug: string,
     shareConfig: ShareConfig,
   ): Promise<ManagedSkill> =>
-    unwrap<Envelope<ManagedSkill>>(
+    unwrap<SkillItemResponse>(
       await updateSkillShareConfigRouteApiSystemSkillsSlugShareConfigPut({
         path: { slug },
         body: { share_config: shareConfig },
@@ -415,7 +423,7 @@ export const skillApi = {
     slug: string,
     enabled: boolean,
   ): Promise<ManagedSkill> =>
-    unwrap<Envelope<ManagedSkill>>(
+    unwrap<SkillItemResponse>(
       await updateSkillEnabledRouteApiSystemSkillsSlugEnabledPut({
         path: { slug },
         body: { enabled },
@@ -437,14 +445,14 @@ export const skillApi = {
 
   /** 删除共享技能（后端拒绝内置技能）。 */
   deleteSkill: async (slug: string): Promise<void> => {
-    unwrap<Envelope<never>>(
+    unwrap<SuccessResponse>(
       await deleteSkillRouteApiSystemSkillsSlugDelete({ path: { slug } }),
     );
   },
 
   /** 删除当前用户的个人技能。 */
   deletePersonalSkill: async (slug: string): Promise<void> => {
-    unwrap<Envelope<never>>(
+    unwrap<SuccessResponse>(
       await deletePersonalSkillRouteApiSkillsPersonalSlugDelete({
         path: { slug },
       }),
@@ -453,7 +461,7 @@ export const skillApi = {
 
   /** 批量删除；逐项结果由后端给（单条失败不影响其余）。 */
   deleteBatch: async (slugs: string[]): Promise<SkillInstallResult[]> =>
-    unwrap<Envelope<SkillInstallResult[]>>(
+    unwrap<SkillBatchDeleteResponse>(
       await deleteSkillsBatchRouteApiSystemSkillsDeleteBatchPost({
         body: { slugs },
       }),
@@ -462,10 +470,8 @@ export const skillApi = {
   /** 共享范围的可选对象；与知识库读同一对端点，但同层切片不能互引，各自读一次。 */
   listShareTargets: async (): Promise<SkillShareTargets> => {
     const [departments, users] = await Promise.all([
-      unwrap<SkillShareTargets['departments']>(
-        await getDepartmentsApiDepartmentsGet(),
-      ),
-      unwrap<SkillShareTargets['users']>(
+      unwrap<DepartmentResponse[]>(await getDepartmentsApiDepartmentsGet()),
+      unwrap<UserAccessOption[]>(
         await readUserAccessOptionsApiAuthUsersAccessOptionsGet(),
       ),
     ]);

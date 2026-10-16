@@ -1,7 +1,9 @@
 /**
  * 项目端点。
  *
- * 与其它 api 段一样只走契约生成物；三个端点都没有声明响应模型，字段按不可信数据处理。
+ * 与其它 api 段一样只走契约生成物；响应形状直接复用生成的
+ * `ListProjectsApiProjectsGetResponse` / `CreateProjectApiProjectsPostResponse` /
+ * `ProjectHistoryCandidatesResponse`，在 `normalize*` 里折成界面形状并仍按不可信数据处理。
  *
  * 创建请求的请求体是 `{request_id, name, workdir: {mode, path}}`，`linked` 模式的路径要去掉
  * 前导斜杠；历史候选的搜索参数名是 `q`。
@@ -12,6 +14,11 @@ import {
   listHistoryCandidatesApiProjectsHistoryCandidatesGet,
   listProjectsApiProjectsGet,
 } from '@/shared/api/generated/sdk.gen';
+import type {
+  CreateProjectApiProjectsPostResponse,
+  ListHistoryCandidatesApiProjectsHistoryCandidatesGetResponse,
+  ListProjectsApiProjectsGetResponse,
+} from '@/shared/api/generated/types.gen';
 
 /** 可选项目；只留界面用得到的字段。 */
 export type ProjectItem = {
@@ -91,7 +98,11 @@ export function normalizeHistoryCandidates(raw: unknown): {
 
 /** 当前用户可选择的项目。 */
 export async function listProjects(): Promise<ProjectItem[]> {
-  return normalizeProjects(unwrap<unknown>(await listProjectsApiProjectsGet()));
+  return normalizeProjects(
+    unwrap<ListProjectsApiProjectsGetResponse>(
+      await listProjectsApiProjectsGet(),
+    ),
+  );
 }
 
 /**
@@ -105,7 +116,7 @@ export async function createLinkedProject(input: {
   /** 绝对路径形式（`/a/b`）；下发时去掉前导斜杠。 */
   path: string;
 }): Promise<ProjectItem> {
-  const response = unwrap<unknown>(
+  const response = unwrap<CreateProjectApiProjectsPostResponse>(
     await createProjectApiProjectsPost({
       body: {
         request_id: input.requestId,
@@ -130,7 +141,7 @@ export async function listHistoryCandidates(
   } = {},
 ): Promise<{ items: HistoryCandidate[]; hasMore: boolean }> {
   return normalizeHistoryCandidates(
-    unwrap<unknown>(
+    unwrap<ListHistoryCandidatesApiProjectsHistoryCandidatesGetResponse>(
       await listHistoryCandidatesApiProjectsHistoryCandidatesGet({
         query: { q: input.query ?? '', limit: input.limit ?? 20 },
       }),

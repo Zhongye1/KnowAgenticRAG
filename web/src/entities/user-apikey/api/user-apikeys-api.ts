@@ -1,8 +1,9 @@
 /**
  * 用户 API Key 端点。
  *
- * 只走契约生成的 SDK，请求与响应契约里都有 schema（`ApiKeyCreate` / `ApiKeyUpdate` /
- * `APIKeyResponse`），直接用生成类型。列表响应没有声明模型，按不可信数据归一。
+ * 只走契约生成的 SDK，请求与响应契约里都有 schema，响应形状直接复用生成类型：列表是
+ * `ApiKeyListResponse`（条目为 `ApiKeyResponse`，不含完整密钥），创建是 `ApiKeyCreateResponse`
+ * （完整密钥只在这一次下发）。列表仍按不可信数据归一成界面的 `ApiKeyItem` 形状。
  */
 import { unwrap } from '@/shared/api';
 import {
@@ -11,6 +12,10 @@ import {
   listApiKeysApiUserApikeyGet,
   updateApiKeyApiUserApikeyApiKeyIdPut,
 } from '@/shared/api/generated/sdk.gen';
+import type {
+  ApiKeyCreateResponse,
+  ApiKeyListResponse,
+} from '@/shared/api/generated/types.gen';
 
 /** 更新载荷；契约 schema `ApiKeyUpdate`（启停用）。 */
 export type ApiKeyUpdate = {
@@ -41,7 +46,7 @@ const asIso = (value: unknown): string | null =>
 
 /** 列表响应按不可信数据归一：缺 id 的条目丢掉。 */
 export async function listApiKeys(): Promise<ApiKeyItem[]> {
-  const payload = unwrap<{ api_keys?: unknown }>(
+  const payload = unwrap<ApiKeyListResponse>(
     await listApiKeysApiUserApikeyGet({ query: { skip: 0, limit: 100 } }),
   );
   const items = Array.isArray((payload as { api_keys?: unknown }).api_keys)
@@ -81,10 +86,10 @@ export async function createApiKey(input: {
     name: input.name,
     ...(input.expiresAt ? { expires_at: input.expiresAt } : {}),
   };
-  const payload = unwrap<Record<string, unknown>>(
+  const payload = unwrap<ApiKeyCreateResponse>(
     await createApiKeyApiUserApikeyPost({ body }),
   );
-  const id = typeof payload.id === 'number' ? payload.id : 0;
+  const id = typeof payload.api_key.id === 'number' ? payload.api_key.id : 0;
   const secret = typeof payload.secret === 'string' ? payload.secret : '';
   if (!secret) {
     throw new Error('创建失败：响应里没有密钥');

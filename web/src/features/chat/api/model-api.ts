@@ -2,10 +2,12 @@
  * 对话页用到的模型列表。
  *
  * 与 `features/knowledge-base` 同做法：在自己的 api 段调契约生成物的 `/models/v2`，只取
- * `model_type: 'chat'`。响应没有声明模型，字段按不可信数据处理。
+ * `model_type: 'chat'`。响应契约已声明为 `V2ModelsResponse`，`data` 按供应商分组；归一仍
+ * 把内容当不可信数据处理（缺 `spec`、重复 key 等）。
  */
 import { unwrap } from '@/shared/api';
 import { getV2ModelsApiSystemModelProvidersModelsV2Get } from '@/shared/api/generated/sdk.gen';
+import type { V2ModelsResponse } from '@/shared/api/generated/types.gen';
 
 /** 一个可选模型；`spec` 是下发给后端的 `provider:model`。 */
 export type ChatModelItem = {
@@ -73,7 +75,7 @@ export function normalizeChatModels(raw: unknown): ChatModelGroup[] {
 
 /** 可选的对话模型，按供应商分组。 */
 export async function listChatModels(): Promise<ChatModelGroup[]> {
-  const response = unwrap<{ data?: unknown }>(
+  const response = unwrap<V2ModelsResponse>(
     await getV2ModelsApiSystemModelProvidersModelsV2Get({
       query: { model_type: 'chat' },
     }),

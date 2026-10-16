@@ -33,7 +33,7 @@ Owner：web/src/entities/agent/api/agents-api.ts
 - 查询参数与缓存条目不再可能漂移：参数写在 options 里，同时进入 key 与 queryFn（生成物的 `queryFn` 从 `queryKey[0]` 取回参数）。
 - 失效语义从"领域根 key"变为"操作名前缀"：`invalidateQueries` 的部分匹配用 `_id` 命中该操作的全部参数变体。生成物默认不填 `tags`，因此按领域整体失效要逐个列出操作名。
 - 试点暴露的一处不一致：`select` 归 observer 层，`queryClient.fetchQuery` 不套用它，只有挂载的 hook 才观察得到。这决定了断言必须走 `renderHook`。
-- 其余 30 个 `api` 段与 21 个仍手写响应类型的模块未动；本记录只提供可复制的形状与已量出的成本（单切片 4 个源文件）。
+- 查询 options 只在智能体切片落地。全仓铺开试过一次（知识库切片 + 技能/MCP/供应商/任务/调试），**已整体回退**：集中跑测试得 `210 failed | 2309 passed`（基线 `16 failed | 2503 passed`）。原因是各切片的组件测试 mock 的是 **api 段对象**（知识库目录里对 `knowledge-api` 14 处、`evaluation-api` 5 处、`graph-api` 4 处、`mindmap-api` 2 处），而生成 options 的 `queryFn` 绕过 api 段直接调 `sdk.gen`，这些桩全部失效；智能体切片之所以没暴露这一点，是因为它的测试本来就 mock `sdk.gen`。铺开的正确处理形状因此是：**key 用生成物、queryFn 仍走 api 段**（`queryFn: () => unwrap(await api.xxx(params))`），这样既消除 key 与参数的漂移，又保住 api 段这个接缝（错误折叠、测试桩点），代价是每个 hook 只换 key。这一形状尚未实施。
 
 ## 验证
 

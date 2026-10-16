@@ -6,10 +6,13 @@
  */
 import { unwrap } from '@/shared/api';
 import { getConfigApiSystemConfigGet } from '@/shared/api/generated/sdk.gen';
+import type { SystemConfigResponse } from '@/shared/api/generated/types.gen';
 
 /** 原始配置；字段按不可信数据处理，取值由 `model/system-config.ts` 负责。 */
 export async function getSystemConfig(): Promise<Record<string, unknown>> {
-  const config = unwrap<unknown>(await getConfigApiSystemConfigGet());
+  const config = unwrap<SystemConfigResponse>(
+    await getConfigApiSystemConfigGet(),
+  );
 
   return typeof config === 'object' && config !== null && !Array.isArray(config)
     ? (config as Record<string, unknown>)

@@ -1,9 +1,10 @@
 /**
  * 知识库管理接口。
  *
- * 契约里这些端点的响应是自由 dict（后端没有 response_model），类型按
- * `backend/server/utils/knowledge_response.py` 的序列化结果与
- * `ars/knowledge/factory.py` 的类型配置手写；改动前先核对那份 Owner。
+ * 响应类型直接复用 `web/openapi.json` 生成的 `types.gen.ts`：这些端点在契约里已声明
+ * 响应模型，字段的必填性与可空性由后端声明，不再按 `knowledge_response.py` 的序列化
+ * 结果手写。少数形态（分块行、类型参数、SSE 帧与下载/预览）契约未表达或比 UI 不变式更宽，
+ * 仍按下方注释各自保留。
  */
 import {
   addDocumentsApiKnowledgeDatabasesKbIdDocumentsPost,
@@ -39,6 +40,33 @@ import {
   getV2ModelsApiSystemModelProvidersModelsV2Get,
   updateDatabaseInfoApiKnowledgeDatabasesKbIdPut,
 } from '@/shared/api/generated/sdk.gen';
+import type {
+  BatchDeleteDocumentsResponse,
+  DepartmentResponse,
+  DocumentListResponse,
+  DocumentSearchItem,
+  DocumentSearchResponse,
+  FileMetaItem,
+  FolderMetaItem,
+  KnowledgeBaseItem,
+  KnowledgeBaseStats,
+  KnowledgeBaseStatsRepairResponse,
+  KnowledgeBaseUpdateResponse,
+  MessageResponse,
+  OcrEngineItem,
+  OcrOptionsResponse,
+  PendingTaskResponse,
+  QueuedTaskResponse,
+  SampleQuestionsGenerateResponse,
+  SampleQuestionsResponse,
+  SupportedFileTypesResponse,
+  UploadFileResponse,
+  UserAccessOption as UserAccessOptionModel,
+  V2ModelItem,
+  V2ModelsResponse,
+  VirtualFolderDetectResponse,
+  VirtualFolderMigrateResponse,
+} from '@/shared/api/generated/types.gen';
 import { apiFetch } from '@/shared/api';
 import { describeFailure, unwrap, unwrapQueuedTask } from '@/shared/api';
 import { processSseResponse } from '@/shared/lib/files';
@@ -47,20 +75,17 @@ import { readFilePreview, type FilePreview } from '../lib/file-preview';
 import type { KnowledgeQueryParams } from '../lib/knowledge-query-params';
 import { parseDownloadFilename } from '../lib/knowledge-files';
 
-/** 知识库统计；字段与后端 `_knowledge_base_stats` 一致。 */
-export type KnowledgeBaseStats = {
-  file_count: number;
-  folder_count: number;
-  row_count: number;
-  total_size: number;
-  chunk_count: number;
-  token_count: number;
-  pending_parse_count: number;
-  pending_index_count: number;
-  processing_count: number;
-};
+/** 知识库统计；契约生成的 `KnowledgeBaseStats`。 */
+export type { KnowledgeBaseStats };
 
-/** 列表与详情共用的知识库投影。 */
+/**
+ * 列表与详情共用的知识库投影；保留手写。
+ *
+ * 契约的 `KnowledgeBaseItem` 把 `embedding_model_spec` / `query_params` / `metadata` /
+ * `status` 等声明为必填，而测试与列表/表单组件按部分字段构造这一投影（例如
+ * `knowledge-form-dialog.test.tsx` 只给 `kb_id`/`name`/`description`/`kb_type`/`stats`）。
+ * 改用生成模型会要求补齐所有构造点，本次不扩大改动面，故继续由这份窄投影拥有。
+ */
 export type KnowledgeBase = {
   kb_id: string;
   name: string;
@@ -98,7 +123,14 @@ export type KnowledgeBaseDetail = KnowledgeBase & {
  */
 export type { ShareConfig, ShareScope } from '@/shared/lib/share-config';
 
-/** 文件表的一行；字段与 `KnowledgeBaseManager._file_record_list_item` 一一对应。 */
+/**
+ * 文件表的一行；保留手写。
+ *
+ * 契约的 `DocumentListItem` 把 `file_type` / `created_at` / `updated_at` / `created_by` /
+ * `created_by_name` / `created_by_avatar` / `parent_id` / `path_prefix` 声明为必填（可空），
+ * 而文件行的组件与测试按部分字段构造这一投影（`file-row-actions.test.tsx` 等只给子集）。
+ * 改用生成模型会要求补齐所有构造点，本次不扩大改动面，故继续由这份投影拥有。
+ */
 export type KnowledgeFileItem = {
   file_id: string;
   filename: string;
@@ -123,80 +155,48 @@ export type KnowledgeFileItem = {
   path_prefix?: string | null;
 };
 
-/** 文件列表的一页：`stats` 只在后端 `include_stats` 打开时出现（默认打开）。 */
-export type KnowledgeFilePage = {
-  items: KnowledgeFileItem[];
-  total: number;
-  page: number;
-  page_size: number;
-  has_more: boolean;
-  parent_id?: string | null;
-  path_prefix?: string | null;
-  recursive?: boolean;
-  stats?: KnowledgeBaseStats;
-};
+/**
+ * 文件列表的一页；契约生成的 `DocumentListResponse`。
+ *
+ * `stats` 只在后端 `include_stats` 打开时出现（默认打开）。
+ */
+export type KnowledgeFilePage = DocumentListResponse;
 
 /**
- * 后台任务的提交结果：`queued` 才是受理，后端提交失败时同样返回 200 但 `status` 是 `failed`。
+ * 后台任务的提交结果；契约生成的 `QueuedTaskResponse`。
+ *
+ * `queued` 才是受理，后端提交失败时同样返回 200 但 `status` 是 `failed`。
  */
-export type KnowledgeTaskResult = {
-  message: string;
-  status: string;
-  task_id?: string | null;
-};
+export type KnowledgeTaskResult = QueuedTaskResponse;
 
-export type KnowledgeDeleteResult = { message: string };
+/** 删除结果；契约生成的 `MessageResponse`。 */
+export type KnowledgeDeleteResult = MessageResponse;
 
-/** 批量删除结果：部分失败时 `failed_items` 非空，全部失败时后端直接返回 400。 */
-export type KnowledgeBatchDeleteResult = {
-  message: string;
-  deleted_count: number;
-  failed_items?: Array<{ doc_id: string; error: string }>;
-};
+/** 批量删除结果；契约生成的 `BatchDeleteDocumentsResponse`（全部成功时不下发 `failed_items`）。 */
+export type KnowledgeBatchDeleteResult = BatchDeleteDocumentsResponse;
 
-/** `POST /files/upload` 的结果；`file_path` 是 MinIO URL，落库时要连同 `content_hash` 一起回传。 */
-export type UploadedKnowledgeFile = {
-  file_path: string;
-  content_hash: string;
-  filename: string;
-  size?: number | null;
-  /** 知识库里已有同名文件时后端会带上这个标记与列表。 */
-  has_same_name?: boolean;
-  same_name_files?: string[];
-  message?: string;
-};
+/** `POST /files/upload` 的结果；契约生成的 `UploadFileResponse`。 */
+export type UploadedKnowledgeFile = UploadFileResponse;
 
-/** OCR 引擎；`supported_extensions` 是该引擎自己能吃的后缀。 */
-export type OcrEngine = {
-  engine_id: string;
-  service_name?: string | null;
-  display_name?: string | null;
-  supported_extensions?: string[] | null;
-};
+/** OCR 引擎；契约生成的 `OcrEngineItem`。 */
+export type OcrEngine = OcrEngineItem;
 
-export type OcrOptions = {
-  default_engine?: string | null;
-  engines: OcrEngine[];
-};
+/** OCR 引擎选项（含默认引擎）；契约生成的 `OcrOptionsResponse`。 */
+export type OcrOptions = OcrOptionsResponse;
 
-/** 部门（共享范围选择用）。 */
-export type DepartmentOption = {
-  id: number;
-  name: string;
-  description?: string | null;
-  user_count?: number | null;
-};
+/** 部门（共享范围选择用）；契约生成的 `DepartmentResponse`。 */
+export type DepartmentOption = DepartmentResponse;
 
-/** 可选用户（共享范围选择用）。 */
-export type UserAccessOption = {
-  uid: string;
-  username: string;
-  role?: string | null;
-  department_id?: number | null;
-  department_name?: string | null;
-};
+/** 可选用户（共享范围选择用）；契约生成的 `UserAccessOption`。 */
+export type UserAccessOption = UserAccessOptionModel;
 
-/** 检索测试命中的一个分块。 */
+/**
+ * 检索测试命中的一个分块；保留手写。
+ *
+ * 契约的 `KnowledgeQueryResultItem.metadata` 是开放 map（`{[key: string]: unknown}`），
+ * `query-test-panel.tsx` 直接把 `metadata.source` / `metadata.file_id` 渲染成文案，
+ * 生成模型会在这里退化成 `unknown`。UI 的窄 metadata 投影继续由这份类型拥有。
+ */
 export type QueryTestChunk = {
   content: string;
   score?: number | null;
@@ -209,7 +209,12 @@ export type QueryTestChunk = {
   } | null;
 };
 
-/** 解析出来的一个分块；字段与 `_get_file_content_from_meta` 一致（后端会剔掉图谱内部字段）。 */
+/**
+ * 解析出来的一个分块；保留手写而非 `DocumentContentLineItem`。
+ *
+ * 契约把 `chunk_order_index` 声明为 `number | null`、`tags` 声明为 `unknown`，而合并分块的
+ * `mergeChunks` 要求 `chunk_order_index` 非空，这里保留更窄的 UI 不变式。
+ */
 export type KnowledgeFileChunk = {
   id: string;
   content: string;
@@ -222,7 +227,12 @@ export type KnowledgeFileChunk = {
   tags?: string[] | null;
 };
 
-/** 文档内容：`lines` 是分块，`content` 是解析后的 Markdown（没有解析结果时后端不给这个键）。 */
+/**
+ * 文档内容：`lines` 是分块，`content` 是解析后的 Markdown（没有解析结果时后端不给这个键）。
+ *
+ * 保留手写而非 `DocumentContentResponse`：`lines` 用上面的窄 `KnowledgeFileChunk`（契约的行
+ * 元素更宽），且调用方按 `lines` 一定有值折叠。
+ */
 export type KnowledgeFileContent = {
   lines: KnowledgeFileChunk[];
   content?: string | null;
@@ -231,50 +241,28 @@ export type KnowledgeFileContent = {
 };
 
 /**
- * 文件名搜索命中；`filename` 是完整相对路径（路径投影的文件带目录前缀），
- * `parent_id` 只在实体目录下才有值，两者一起用于定位（见 `buildSearchHitLocation`）。
+ * 文件名搜索命中；契约生成的 `DocumentSearchItem`。
+ *
+ * `filename` 是完整相对路径（路径投影的文件带目录前缀），`parent_id` 只在实体目录下才有值，
+ * 两者一起用于定位（见 `buildSearchHitLocation`）。
  */
-export type KnowledgeFileSearchItem = {
-  kb_id: string;
-  kb_name?: string | null;
-  file_id: string;
-  filename: string;
-  file_type?: string | null;
-  /** 后端原样透出 `status`，旧数据可能为空。 */
-  status: string | null;
-  created_at?: string | null;
-  updated_at?: string | null;
-  file_size?: number | null;
-  parent_id?: string | null;
-};
+export type KnowledgeFileSearchItem = DocumentSearchItem;
 
-export type KnowledgeFileSearchResult = {
-  files: KnowledgeFileSearchItem[];
-  total: number;
-  offset: number;
-  limit: number;
-  has_more: boolean;
-};
+/** 文件名搜索结果；契约生成的 `DocumentSearchResponse`。 */
+export type KnowledgeFileSearchResult = DocumentSearchResponse;
 
-/** v2 模型列表里的一个模型；`spec` 是 `provider_id:model_id`。 */
-export type ModelSpecItem = {
-  spec: string;
-  model_id: string;
-  display_name?: string | null;
-  dimension?: number | null;
-};
+/** v2 模型列表里的一个模型；契约生成的 `V2ModelItem`（`spec` 是 `provider_id:model_id`）。 */
+export type ModelSpecItem = V2ModelItem;
 
-/** 按 provider 分组的模型；列表页与表单的选择项都从这里来。 */
-export type GroupedModels = Record<
-  string,
-  {
-    provider_id: string;
-    provider_display_name: string;
-    models: ModelSpecItem[];
-  }
->;
+/** 按 provider 分组的模型；契约生成 `V2ModelsResponse['data']`（列表页与表单的选择项都从这里来）。 */
+export type GroupedModels = V2ModelsResponse['data'];
 
-/** 知识库类型的一个创建参数（后端 `create_params.options` 的一项）。 */
+/**
+ * 知识库类型的一个创建参数；契约未表达，保留手写。
+ *
+ * 生成模型 `KnowledgeBaseTypeItem.create_params` 是 `{[key: string]: unknown}`，`options` 里每项
+ * 的形状没有进契约，而 `knowledge-form.ts` 按 `key` / `default` / `type` / `required` 等键读取。
+ */
 export type KnowledgeTypeParam = {
   key: string;
   label?: string;
@@ -287,6 +275,12 @@ export type KnowledgeTypeParam = {
   max?: number;
 };
 
+/**
+ * 知识库类型；保留手写而非 `KnowledgeBaseTypeItem`。
+ *
+ * 生成模型的 `create_params` 是 `{[key: string]: unknown}`，拿不到 `options` 的窄类型；
+ * `knowledge-form.ts` 直接消费 `create_params.options`，因此这里继续拥有更窄的形状。
+ */
 export type KnowledgeTypeInfo = {
   name: string;
   description?: string;
@@ -319,6 +313,10 @@ export const knowledgeApi = {
    * 全部知识库（后端按用户权限过滤；管理员看全部）。
    * 注意：后端把列表异常折成 200 + `{databases: [], message}`，因此「接口失败」在
    * 这里表现为空列表；真正的失败信号要等后端改成非 2xx。
+   *
+   * 响应保留手写的 `{databases?: KnowledgeBase[]}`：列表元素用上面的窄投影
+   * `KnowledgeBase`（原因见其定义处），生成模型的 `KnowledgeBaseListResponse` 只到
+   * `KnowledgeBaseItem` 一级、装不下这份更窄的列表项类型。
    */
   list: async (): Promise<KnowledgeBase[]> => {
     const response = unwrap<{ databases?: KnowledgeBase[] }>(
@@ -341,31 +339,22 @@ export const knowledgeApi = {
 
   /**
    * 修复历史文件缺失的 Chunk/Token 统计，返回修复了几个文件并带回重算后的统计。
-   * 字段按 `ars/knowledge/base.py` 的 `repair_missing_file_stats` 返回值手写。
+   * 契约生成的 `KnowledgeBaseStatsRepairResponse`。
    */
   repairStats: async (
     kbId: string,
-  ): Promise<{
-    stats: KnowledgeBaseStats;
-    updated_chunk_files: number;
-    updated_token_files: number;
-    updated_size_files: number;
-  }> =>
-    unwrap(
+  ): Promise<KnowledgeBaseStatsRepairResponse> =>
+    unwrap<KnowledgeBaseStatsRepairResponse>(
       await repairDatabaseStatsApiKnowledgeDatabasesKbIdStatsRepairPost({
         path: { kb_id: kbId },
       }),
     ),
 
-  /** 检测知识库里是否还有路径型历史记录（虚拟文件夹）。 */
+  /** 检测知识库里是否还有路径型历史记录（虚拟文件夹）；契约生成的 `VirtualFolderDetectResponse`。 */
   detectVirtualFolders: async (
     kbId: string,
-  ): Promise<{
-    has_virtual_folders: boolean;
-    file_count: number;
-    remaining_steps: number;
-  }> =>
-    unwrap(
+  ): Promise<VirtualFolderDetectResponse> =>
+    unwrap<VirtualFolderDetectResponse>(
       await detectVirtualFoldersApiKnowledgeDatabasesKbIdVirtualFoldersDetectGet(
         { path: { kb_id: kbId } },
       ),
@@ -373,12 +362,12 @@ export const knowledgeApi = {
 
   /**
    * 启动虚拟文件夹转换任务；任务与 SSE 连接解耦，断开不取消。
-   * 返回 `task_id`，进度从 `streamVirtualFolderMigration` 读。
+   * 返回 `task_id`，进度从 `streamVirtualFolderMigration` 读；契约生成的 `VirtualFolderMigrateResponse`。
    */
   startVirtualFolderMigration: async (
     kbId: string,
-  ): Promise<{ task_id: string; created: boolean }> =>
-    unwrap(
+  ): Promise<VirtualFolderMigrateResponse> =>
+    unwrap<VirtualFolderMigrateResponse>(
       await startVirtualFolderMigrationApiKnowledgeDatabasesKbIdVirtualFoldersMigratePost(
         { path: { kb_id: kbId } },
       ),
@@ -387,6 +376,8 @@ export const knowledgeApi = {
   /**
    * 逐帧消费虚拟文件夹转换的进度流。后端按「取任务快照 → 发一帧 → 睡 500ms」循环，
    * 到 `success`/`failed`/`cancelled` 收口；断开连接不取消任务。
+   *
+   * SSE 帧契约里没有模型（该路由是非 JSON 的流），快照形状保留手写。
    */
   streamVirtualFolderMigration: async (
     kbId: string,
@@ -409,13 +400,13 @@ export const knowledgeApi = {
     });
   },
 
-  /** 提交全部待解析文件的解析任务。 */
+  /** 提交全部待解析文件的解析任务；契约生成的 `PendingTaskResponse`。 */
   parsePendingDocuments: async (
     kbId: string,
     params: Record<string, unknown> = {},
-  ): Promise<KnowledgeTaskResult> =>
+  ): Promise<PendingTaskResponse> =>
     unwrapQueuedTask(
-      unwrap<KnowledgeTaskResult>(
+      unwrap<PendingTaskResponse>(
         await parsePendingDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePendingPost(
           { path: { kb_id: kbId }, body: { params } },
         ),
@@ -423,13 +414,13 @@ export const knowledgeApi = {
       '任务提交失败。',
     ),
 
-  /** 提交全部待入库文件的入库任务。 */
+  /** 提交全部待入库文件的入库任务；契约生成的 `PendingTaskResponse`。 */
   indexPendingDocuments: async (
     kbId: string,
     params: Record<string, unknown> = {},
-  ): Promise<KnowledgeTaskResult> =>
+  ): Promise<PendingTaskResponse> =>
     unwrapQueuedTask(
-      unwrap<KnowledgeTaskResult>(
+      unwrap<PendingTaskResponse>(
         await indexPendingDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPendingPost(
           { path: { kb_id: kbId }, body: { params } },
         ),
@@ -437,33 +428,38 @@ export const knowledgeApi = {
       '任务提交失败。',
     ),
 
-  /** 新建空文件夹；返回文件夹记录（含 `file_id`），字段按后端 `_serialize_file`。 */
+  /** 新建空文件夹；返回文件夹记录（含 `file_id`），契约生成的 `FolderMetaItem`。 */
   createFolder: async (
     kbId: string,
     folderName: string,
     parentId: string | null,
-  ): Promise<KnowledgeFileItem> =>
-    unwrap<KnowledgeFileItem>(
+  ): Promise<FolderMetaItem> =>
+    unwrap<FolderMetaItem>(
       await createFolderApiKnowledgeDatabasesKbIdFoldersPost({
         path: { kb_id: kbId },
         body: { folder_name: folderName, parent_id: parentId },
       }),
     ),
 
-  /** 重命名文件夹；只对实体文件夹有效，虚拟目录没有实体记录改不了。 */
+  /** 重命名文件夹；只对实体文件夹有效，虚拟目录没有实体记录改不了；契约生成的 `FileMetaItem`。 */
   renameFolder: async (
     kbId: string,
     folderId: string,
     folderName: string,
-  ): Promise<KnowledgeFileItem> =>
-    unwrap<KnowledgeFileItem>(
+  ): Promise<FileMetaItem> =>
+    unwrap<FileMetaItem>(
       await renameFolderApiKnowledgeDatabasesKbIdFoldersFolderIdRenamePut({
         path: { kb_id: kbId, folder_id: folderId },
         body: { folder_name: folderName },
       }),
     ),
 
-  /** 支持的知识库类型与各自的创建参数。 */
+  /**
+   * 支持的知识库类型与各自的创建参数。
+   *
+   * 保留手写响应形状：契约的 `KnowledgeBaseTypesResponse.kb_types` 指向 `KnowledgeBaseTypeItem`，
+   * 其 `create_params` 是 `{[key: string]: unknown}`，装不下 `KnowledgeTypeInfo` 的窄 `options`。
+   */
   listTypes: async (): Promise<Record<string, KnowledgeTypeInfo>> => {
     const response = unwrap<{ kb_types?: Record<string, KnowledgeTypeInfo> }>(
       await getKnowledgeBaseTypesApiKnowledgeTypesGet(),
@@ -488,7 +484,7 @@ export const knowledgeApi = {
       const status = params.status ?? 'all';
       // 只有筛状态时才跨目录；递归查询会忽略父目录与路径前缀
       const recursive = status !== 'all';
-      return unwrap<KnowledgeFilePage>(
+      return unwrap<DocumentListResponse>(
         await listDocumentsApiKnowledgeDatabasesKbIdDocumentsGet({
           path: { kb_id: kbId },
           query: {
@@ -509,37 +505,37 @@ export const knowledgeApi = {
       );
     },
 
-  /** 删除一个文件或文件夹。 */
+  /** 删除一个文件或文件夹；契约生成的 `MessageResponse`。 */
   deleteDocument: async (
     kbId: string,
     docId: string,
-  ): Promise<KnowledgeDeleteResult> =>
-    unwrap<KnowledgeDeleteResult>(
+  ): Promise<MessageResponse> =>
+    unwrap<MessageResponse>(
       await deleteDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdDelete({
         path: { kb_id: kbId, doc_id: docId },
       }),
     ),
 
-  /** 批量删除；调用方按 50 个一批切分，单批失败不会中断其余批次。 */
+  /** 批量删除；调用方按 50 个一批切分，单批失败不会中断其余批次；契约生成的 `BatchDeleteDocumentsResponse`。 */
   batchDeleteDocuments: async (
     kbId: string,
     fileIds: string[],
-  ): Promise<KnowledgeBatchDeleteResult> =>
-    unwrap<KnowledgeBatchDeleteResult>(
+  ): Promise<BatchDeleteDocumentsResponse> =>
+    unwrap<BatchDeleteDocumentsResponse>(
       await batchDeleteDocumentsApiKnowledgeDatabasesKbIdDocumentsBatchDelete({
         path: { kb_id: kbId },
         body: fileIds,
       }),
     ),
 
-  /** 提交解析任务；参数留空表示按知识库自己的分块与 OCR 配置解析。 */
+  /** 提交解析任务；参数留空表示按知识库自己的分块与 OCR 配置解析；契约生成的 `QueuedTaskResponse`。 */
   parseDocuments: async (
     kbId: string,
     fileIds: string[],
     params: Record<string, unknown> = {},
-  ): Promise<KnowledgeTaskResult> =>
+  ): Promise<QueuedTaskResponse> =>
     unwrapQueuedTask(
-      unwrap<KnowledgeTaskResult>(
+      unwrap<QueuedTaskResponse>(
         await parseDocumentsApiKnowledgeDatabasesKbIdDocumentsParsePost({
           path: { kb_id: kbId },
           body: { file_ids: fileIds, params },
@@ -548,14 +544,14 @@ export const knowledgeApi = {
       '任务提交失败。',
     ),
 
-  /** 提交入库任务。 */
+  /** 提交入库任务；契约生成的 `QueuedTaskResponse`。 */
   indexDocuments: async (
     kbId: string,
     fileIds: string[],
     params: Record<string, unknown> = {},
-  ): Promise<KnowledgeTaskResult> =>
+  ): Promise<QueuedTaskResponse> =>
     unwrapQueuedTask(
-      unwrap<KnowledgeTaskResult>(
+      unwrap<QueuedTaskResponse>(
         await indexDocumentsApiKnowledgeDatabasesKbIdDocumentsIndexPost({
           path: { kb_id: kbId },
           body: { file_ids: fileIds, params },
@@ -564,13 +560,13 @@ export const knowledgeApi = {
       '任务提交失败。',
     ),
 
-  /** 移动到另一个目录；`newParentId` 为 `null` 表示移到根目录。 */
+  /** 移动到另一个目录；`newParentId` 为 `null` 表示移到根目录；契约生成的 `FileMetaItem`。 */
   moveDocument: async (
     kbId: string,
     docId: string,
     newParentId: string | null,
-  ): Promise<{ message?: string }> =>
-    unwrap<{ message?: string }>(
+  ): Promise<FileMetaItem> =>
+    unwrap<FileMetaItem>(
       await moveDocumentApiKnowledgeDatabasesKbIdDocumentsDocIdMovePut({
         path: { kb_id: kbId, doc_id: docId },
         body: { new_parent_id: newParentId },
@@ -602,19 +598,19 @@ export const knowledgeApi = {
    * 上传一个文件到知识库的 MinIO 目录。
    *
    * 只写对象存储、不建记录；文件夹上传要把相对路径当文件名传进来（后端据此投影目录）。
-   * 同内容再传一次会拿到 409。
+   * 同内容再传一次会拿到 409。响应是契约生成的 `UploadFileResponse`。
    */
   uploadFile: async (
     kbId: string,
     file: File,
     filename: string,
-  ): Promise<UploadedKnowledgeFile> => {
+  ): Promise<UploadFileResponse> => {
     // 需要改写 multipart 里的文件名（文件夹相对路径）时重建一个 File，字节是共享的
     const body =
       filename && filename !== file.name
         ? new File([file], filename, { type: file.type })
         : file;
-    return unwrap<UploadedKnowledgeFile>(
+    return unwrap<UploadFileResponse>(
       await uploadFileApiKnowledgeFilesUploadPost({
         query: { kb_id: kbId },
         body: { file: body },
@@ -622,17 +618,17 @@ export const knowledgeApi = {
     );
   },
 
-  /** 后端允许上传的文件后缀；拿不到时调用方用兜底白名单。 */
+  /** 后端允许上传的文件后缀；拿不到时调用方用兜底白名单；契约生成的 `SupportedFileTypesResponse`。 */
   listSupportedTypes: async (): Promise<string[]> => {
-    const result = unwrap<{ file_types?: string[] }>(
+    const result = unwrap<SupportedFileTypesResponse>(
       await getSupportedFileTypesApiKnowledgeFilesSupportedTypesGet(),
     );
     return result.file_types ?? [];
   },
 
-  /** OCR 引擎选项（含默认引擎）。 */
-  listOcrOptions: async (): Promise<OcrOptions> => {
-    const result = unwrap<OcrOptions>(
+  /** OCR 引擎选项（含默认引擎）；契约生成的 `OcrOptionsResponse`。 */
+  listOcrOptions: async (): Promise<OcrOptionsResponse> => {
+    const result = unwrap<OcrOptionsResponse>(
       await getOcrEngineOptionsApiSystemOcrOptionsGet(),
     );
     return { ...result, engines: result.engines ?? [] };
@@ -640,15 +636,15 @@ export const knowledgeApi = {
 
   /**
    * 把已上传的对象登记成文档记录，并按 `auto_index` 决定是否连解析与入库一起入队。
-   * 后端受理的是三阶段任务，返回 `task_id`。
+   * 后端受理的是三阶段任务，返回 `task_id`；契约生成的 `QueuedTaskResponse`。
    */
   addDocuments: async (
     kbId: string,
     items: string[],
     params: Record<string, unknown>,
-  ): Promise<KnowledgeTaskResult> =>
+  ): Promise<QueuedTaskResponse> =>
     unwrapQueuedTask(
-      unwrap<KnowledgeTaskResult>(
+      unwrap<QueuedTaskResponse>(
         await addDocumentsApiKnowledgeDatabasesKbIdDocumentsPost({
           path: { kb_id: kbId },
           body: { items, params },
@@ -657,17 +653,23 @@ export const knowledgeApi = {
       '任务提交失败。',
     ),
 
-  /** 部门列表；共享范围按部门选择时用。 */
-  listDepartments: async (): Promise<DepartmentOption[]> =>
-    unwrap<DepartmentOption[]>(await getDepartmentsApiDepartmentsGet()),
+  /** 部门列表；共享范围按部门选择时用；契约生成的 `DepartmentResponse`。 */
+  listDepartments: async (): Promise<DepartmentResponse[]> =>
+    unwrap<DepartmentResponse[]>(await getDepartmentsApiDepartmentsGet()),
 
-  /** 可选用户列表（后端按当前账号可见范围给）。 */
+  /** 可选用户列表（后端按当前账号可见范围给）；契约生成的 `UserAccessOption`。 */
   listUserOptions: async (): Promise<UserAccessOption[]> =>
     unwrap<UserAccessOption[]>(
       await readUserAccessOptionsApiAuthUsersAccessOptionsGet(),
     ),
 
-  /** 知识库类型下发的可配置查询参数。 */
+  /**
+   * 知识库类型下发的可配置查询参数。
+   *
+   * 保留手写响应形状：契约的 `QueryParamsConfigResponse.params.options` 是
+   * `Array<{[key: string]: unknown}>`，而这里要返回 `knowledge-query-params.ts` 里更窄的
+   * `KnowledgeQueryParams`。
+   */
   getQueryParams: async (kbId: string): Promise<KnowledgeQueryParams> => {
     const result = unwrap<{ params?: KnowledgeQueryParams }>(
       await getKnowledgeBaseQueryParamsApiKnowledgeDatabasesKbIdQueryParamsGet({
@@ -681,7 +683,8 @@ export const knowledgeApi = {
    * 检索测试。
    *
    * 成功时后端直接返回命中分块数组；失败时返回 200 + `{status:'failed', message}`，
-   * 这里折成异常，界面才不会把失败画成「没有命中」。
+   * 这里折成异常，界面才不会把失败画成「没有命中」。响应保留手写的窄分块与失败分支，
+   * 因为契约的 `metadata` 是开放 map（见 `QueryTestChunk` 的说明）。
    */
   queryTest: async (
     kbId: string,
@@ -702,9 +705,9 @@ export const knowledgeApi = {
     return result;
   },
 
-  /** 知识库的示例问题（可能为空数组）。 */
+  /** 知识库的示例问题（可能为空数组）；契约生成的 `SampleQuestionsResponse`。 */
   listSampleQuestions: async (kbId: string): Promise<string[]> => {
-    const result = unwrap<{ questions?: string[] }>(
+    const result = unwrap<SampleQuestionsResponse>(
       await getSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsGet({
         path: { kb_id: kbId },
       }),
@@ -716,13 +719,13 @@ export const knowledgeApi = {
    * 生成示例问题。
    *
    * 写操作：后端要求知识库管理权限，界面由 `can_manage` 把关。生成走模型，可能几十秒，
-   * 期间调用方要自己表达「正在生成」。
+   * 期间调用方要自己表达「正在生成」。响应是契约生成的 `SampleQuestionsGenerateResponse`。
    */
   generateSampleQuestions: async (
     kbId: string,
     count = 10,
   ): Promise<string[]> => {
-    const result = unwrap<{ questions?: string[] }>(
+    const result = unwrap<SampleQuestionsGenerateResponse>(
       await generateSampleQuestionsApiKnowledgeDatabasesKbIdSampleQuestionsPost(
         {
           path: { kb_id: kbId },
@@ -737,7 +740,8 @@ export const knowledgeApi = {
    * 文档的分块与解析结果。
    *
    * 后端出错也返回 200 + `{status:'failed'}`，这里折成异常，界面才不会把
-   * 「加载失败」显示成「暂无分块」。
+   * 「加载失败」显示成「暂无分块」。响应用窄的 `KnowledgeFileContent`（见其定义处的说明），
+   * 而不是契约的 `DocumentContentResponse`。
    */
   getFileContent: async (
     kbId: string,
@@ -773,23 +777,23 @@ export const knowledgeApi = {
     return readFilePreview(response, { filename: fallbackFilename });
   },
 
-  /** 按文件名搜索（后端只匹配文件名，不搜内容）。 */
+  /** 按文件名搜索（后端只匹配文件名，不搜内容）；契约生成的 `DocumentSearchResponse`。 */
   searchDocuments: async (
     kbId: string,
     params: { query: string; limit?: number },
-  ): Promise<KnowledgeFileSearchResult> =>
-    unwrap<KnowledgeFileSearchResult>(
+  ): Promise<DocumentSearchResponse> =>
+    unwrap<DocumentSearchResponse>(
       await searchDocumentsApiKnowledgeDatabasesKbIdDocumentsSearchGet({
         path: { kb_id: kbId },
         query: { query: params.query, limit: params.limit ?? 100 },
       }),
     ),
 
-  /** 按类型取模型（知识库表单只需要 `embedding`）。 */
+  /** 按类型取模型（知识库表单只需要 `embedding`）；契约生成的 `V2ModelsResponse['data']`。 */
   listModels: async (
     modelType: 'embedding' | 'chat' | 'rerank' = 'embedding',
   ): Promise<GroupedModels> => {
-    const response = unwrap<{ data?: GroupedModels }>(
+    const response = unwrap<V2ModelsResponse>(
       await getV2ModelsApiSystemModelProvidersModelsV2Get({
         query: { model_type: modelType },
       }),
@@ -799,7 +803,7 @@ export const knowledgeApi = {
 
   create: async (payload: CreateKnowledgeBasePayload): Promise<void> => {
     try {
-      unwrap<unknown>(
+      unwrap<KnowledgeBaseItem>(
         await createDatabaseApiKnowledgeDatabasesPost({ body: payload }),
       );
     } catch (error) {
@@ -812,7 +816,7 @@ export const knowledgeApi = {
     payload: UpdateKnowledgeBasePayload,
   ): Promise<void> => {
     try {
-      unwrap<unknown>(
+      unwrap<KnowledgeBaseUpdateResponse>(
         await updateDatabaseInfoApiKnowledgeDatabasesKbIdPut({
           path: { kb_id: kbId },
           body: payload,
@@ -825,7 +829,7 @@ export const knowledgeApi = {
 
   remove: async (kbId: string): Promise<void> => {
     try {
-      unwrap<unknown>(
+      unwrap<MessageResponse>(
         await deleteDatabaseApiKnowledgeDatabasesKbIdDelete({
           path: { kb_id: kbId },
         }),

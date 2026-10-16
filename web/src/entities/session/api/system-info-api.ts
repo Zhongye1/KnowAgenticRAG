@@ -9,14 +9,12 @@ import {
   getInfoConfigApiSystemInfoGet,
   healthCheckApiSystemHealthGet,
 } from '@/shared/api/generated/sdk.gen';
+import type { HealthResponse } from '@/shared/api/generated/types.gen';
 
 import type { SystemInfoData } from '../lib/system-info';
 
-export type SystemHealth = {
-  status: string;
-  message?: string;
-  version?: string;
-};
+/** 进程 liveness 响应；契约 `HealthResponse`。 */
+export type SystemHealth = HealthResponse;
 
 /** 信息配置读取失败不抛给界面：品牌信息缺失时登录页用默认值继续。 */
 export async function getSystemInfo(): Promise<SystemInfoData> {
