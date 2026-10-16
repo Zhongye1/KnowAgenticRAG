@@ -582,6 +582,7 @@ import type {
   QueryTestApiKnowledgeDatabasesKbIdQueryTestPostErrors,
   QueryTestApiKnowledgeDatabasesKbIdQueryTestPostResponses,
   ReadinessCheckApiSystemReadyGetData,
+  ReadinessCheckApiSystemReadyGetErrors,
   ReadinessCheckApiSystemReadyGetResponses,
   ReadKnowledgeStatsApiDashboardStatsKnowledgeGetData,
   ReadKnowledgeStatsApiDashboardStatsKnowledgeGetErrors,
@@ -826,12 +827,12 @@ export const readinessCheckApiSystemReadyGet = <
   options?: Options<ReadinessCheckApiSystemReadyGetData, ThrowOnError>,
 ): RequestResult<
   ReadinessCheckApiSystemReadyGetResponses,
-  unknown,
+  ReadinessCheckApiSystemReadyGetErrors,
   ThrowOnError
 > =>
   (options?.client ?? client).get<
     ReadinessCheckApiSystemReadyGetResponses,
-    unknown,
+    ReadinessCheckApiSystemReadyGetErrors,
     ThrowOnError
   >({ url: '/api/system/ready', ...options });
 
