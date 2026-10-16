@@ -121,8 +121,8 @@ Steiger 的 19 条规则覆盖了 `.dependency-cruiser.cjs` 中手写的三条 F
   （缺了在测试里点不开下拉）。
 - `features/knowledge-base` 承载知识库管理：列表、新建/编辑表单、详情页的文件表（目录进入与
   面包屑、状态筛选、当前页按列排序、服务端分页、刷新与空态）与文件名搜索弹窗，以及查询层
-  （`api` 段按 `backend/server/utils/knowledge_response.py` 的序列化形状手写类型，因为后端这些
-  端点没有 response_model）。`pages/extensions` 与 `pages/knowledge-base` 是它的消费方。
+  （`api` 段的响应类型仍部分手写；后端已于 2026-10-16 为这些端点声明 `response_model`，
+  改读生成类型是待完成的收尾）。`pages/extensions` 与 `pages/knowledge-base` 是它的消费方。
 - 文件表的目录位置有两种：实体目录用 `parent_id`，虚拟目录（来源路径的投影，没有实体记录）用
   「父目录 id + `path_prefix`」，把虚拟目录当实体目录发给后端会被拒（400）。面包屑每一节都要
   自带这两个字段，否则回到虚拟层时会掉回它的父目录。

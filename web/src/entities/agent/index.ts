@@ -10,12 +10,7 @@ export {
   updateAgent,
   uploadAgentIcon,
 } from './api/agents-api';
-export type {
-  AgentCreatePayload,
-  AgentUpdatePayload,
-  RawAgent,
-  RawAgentBackend,
-} from './api/agents-api';
+export type { AgentCreatePayload, AgentUpdatePayload } from './api/agents-api';
 export {
   toAgent,
   toAgentBackend,
