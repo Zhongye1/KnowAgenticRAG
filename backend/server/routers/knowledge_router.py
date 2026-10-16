@@ -4,11 +4,12 @@ import os
 import textwrap
 import time
 import traceback
+from typing import Any
 from urllib.parse import quote, unquote
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.responses import StreamingResponse
 from ars.config.options import system_options
 from ars.knowledge.base import KBNameConflictError, KBNotFoundError
@@ -137,6 +138,747 @@ media_types = {
 }
 
 
+# =============================================================================
+# === Response models ===
+# =============================================================================
+
+
+class MessageResponse(BaseModel):
+    """只回一条消息的操作结果。"""
+
+    message: str
+
+
+class KnowledgeBaseStats(BaseModel):
+    """知识库聚合文件统计；对齐 `_knowledge_base_stats` 与 `get_kb_file_stats`。"""
+
+    file_count: int
+    folder_count: int
+    row_count: int
+    total_size: int
+    chunk_count: int
+    token_count: int
+    pending_parse_count: int
+    pending_index_count: int
+    processing_count: int
+
+
+class KnowledgeBaseItem(BaseModel):
+    """知识库条目；字段对齐 `serialize_knowledge_base`。
+
+    列表路径只带摘要字段，详情路径额外下发 `mindmap`/`sample_questions`/`files*`，
+    权限派生字段仅在有效权限可知时出现，因此这些键用可选默认值 + `exclude_unset`。
+    """
+
+    kb_id: str
+    name: str
+    description: str | None
+    kb_type: str
+    embedding_model_spec: str | None
+    llm_model_spec: str | None
+    query_params: dict[str, Any]
+    metadata: dict[str, Any]
+    created_by: str | None
+    created_at: str | None
+    status: str
+    stats: KnowledgeBaseStats
+    row_count: int
+    share_config: dict[str, Any]
+    additional_params: dict[str, Any]
+    effective_permission: str | None = None
+    can_manage: bool | None = None
+    mindmap: dict[str, Any] | None = None
+    sample_questions: list[str] | None = None
+    files: dict[str, Any] | None = None
+    files_truncated: bool | None = None
+    files_page_size: int | None = None
+
+
+class KnowledgeBaseListResponse(BaseModel):
+    """知识库列表响应；失败兜底分支只多一个 `message`。"""
+
+    databases: list[KnowledgeBaseItem]
+    message: str | None = None
+
+
+class KnowledgeBaseUpdateResponse(BaseModel):
+    """知识库更新响应。"""
+
+    message: str
+    database: KnowledgeBaseItem
+
+
+class AccessibleDatabaseItem(BaseModel):
+    """可访问知识库摘要（智能体配置用）。"""
+
+    name: str
+    kb_id: str
+    description: str
+    created_by: str | None
+    kb_type: str
+    supports_documents: bool
+
+
+class AccessibleDatabasesResponse(BaseModel):
+    """可访问知识库列表响应；失败兜底分支只多一个 `message`。"""
+
+    databases: list[AccessibleDatabaseItem]
+    message: str | None = None
+
+
+class MindmapDatabaseOverviewItem(BaseModel):
+    """思维导图界面可选知识库概览。"""
+
+    kb_id: str
+    slug: str
+    name: str
+    description: str
+    kb_type: str
+    file_count: int
+
+
+class MindmapDatabasesResponse(BaseModel):
+    """思维导图知识库概览列表。"""
+
+    message: str
+    databases: list[MindmapDatabaseOverviewItem]
+    total: int
+
+
+class MindmapFileItem(BaseModel):
+    """思维导图文件条目；对齐 `build_database_file_list`。"""
+
+    file_id: str
+    filename: str
+    type: str
+    status: str
+    created_at: str
+
+
+class MindmapDatabaseFilesResponse(BaseModel):
+    """思维导图文件列表。"""
+
+    message: str
+    kb_id: str
+    slug: str
+    db_name: str | None
+    files: list[MindmapFileItem]
+    total: int
+    truncated: bool
+
+
+class MindmapGenerateResponse(BaseModel):
+    """思维导图生成结果；全量与增量路径的键集合不同，用可选字段 + `exclude_unset`。"""
+
+    message: str
+    mindmap: dict[str, Any]
+    kb_id: str
+    slug: str
+    db_name: str | None
+    file_count: int | None = None
+    original_file_count: int | None = None
+    truncated: bool | None = None
+    no_ai_needed: bool | None = None
+    no_changes: bool | None = None
+
+
+class MindmapDetailResponse(BaseModel):
+    """知识库已保存的思维导图。"""
+
+    message: str
+    mindmap: dict[str, Any] | None
+    kb_id: str
+    slug: str
+    db_name: str | None
+    mindmap_file_ids: dict[str, str] | None
+    mindmap_metadata: dict[str, Any] | None
+
+
+class MindmapDiffAddedFile(BaseModel):
+    """思维导图差异中的新增文件。"""
+
+    file_id: str
+    filename: str
+    type: str
+
+
+class MindmapDiffResponse(BaseModel):
+    """思维导图与知识库文件的差异检测结果。"""
+
+    has_mindmap: bool
+    tracked_files: list[str]
+    current_files: list[str]
+    added_files: list[MindmapDiffAddedFile]
+    removed_file_ids: list[str]
+    unchanged_count: int
+    needs_update: bool
+    current_total: int
+    current_files_truncated: bool
+    kb_id: str
+    slug: str
+    message: str
+
+
+class KnowledgeBaseStatsRepairResponse(BaseModel):
+    """知识库统计修复结果。"""
+
+    status: str
+    stats: KnowledgeBaseStats
+    scanned_files: int
+    scanned_indexed_files: int
+    skipped_unindexed_files: int
+    scanned_token_files: int
+    updated_files: int
+    updated_chunk_files: int
+    updated_token_files: int
+    updated_size_files: int
+
+
+class GraphBuildConfigItem(BaseModel):
+    """图谱抽取配置；未更新过时不下发 `updated_at`/`updated_by`。"""
+
+    locked: bool
+    extractor_type: str | None
+    extractor_options: dict[str, Any]
+    created_at: str | None
+    created_by: str | None
+    updated_at: str | None = None
+    updated_by: str | None = None
+
+
+class GraphBuildStatusResponse(BaseModel):
+    """图谱构建状态。"""
+
+    kb_id: str
+    kb_type: str
+    configured: bool
+    locked: bool
+    config: GraphBuildConfigItem | None
+    total_chunks: int
+    pending_chunks: int
+    indexed_chunks: int
+    structured_chunks: int
+    extraction_counts: dict[str, int]
+    vector_counts: dict[str, int]
+    entity_count: int
+    relationship_count: int
+    build_task_status: str | None
+    build_task_progress: int
+
+
+class GraphBuildConfigResponse(BaseModel):
+    """图谱抽取配置锁定结果。"""
+
+    message: str
+    status: str
+    config: GraphBuildConfigItem
+
+
+class GraphBuildTaskResponse(BaseModel):
+    """图谱构建/修复任务受理结果。"""
+
+    message: str
+    status: str
+    task_id: str
+
+
+class GraphBuildFailedChunkSample(BaseModel):
+    """图谱抽取失败的 Chunk 样例。"""
+
+    chunk_id: str
+    file_id: str
+    chunk_index: int
+    content: str
+    details: dict[str, Any]
+
+
+class GraphBuildFailedChunksResponse(BaseModel):
+    """图谱抽取失败样例列表。"""
+
+    kb_id: str
+    samples: list[GraphBuildFailedChunkSample]
+
+
+class GraphBuildResetResponse(BaseModel):
+    """图谱构建重置结果。"""
+
+    message: str
+    status: str
+    reset_chunks: int
+    clear_extraction_result: bool
+    clear_config: bool
+
+
+class GraphBuildReconcileResponse(BaseModel):
+    """图谱向量索引修复任务受理结果。"""
+
+    message: str
+    status: str
+    task_id: str
+    mode: str
+
+
+class DocumentListItem(BaseModel):
+    """文档列表条目；对齐 `KnowledgeBaseManager._file_record_list_item`。"""
+
+    file_id: str
+    filename: str
+    file_type: str | None
+    status: str
+    created_at: str | None
+    updated_at: str | None
+    file_size: int
+    chunk_count: int
+    token_count: int
+    created_by: str | None
+    created_by_name: str | None
+    created_by_avatar: str | None
+    is_folder: bool
+    parent_id: str | None
+    has_children: bool
+    children_count: int
+    has_original_file: bool
+    has_parsed_markdown: bool
+    is_virtual_folder: bool
+    path_prefix: str | None
+
+
+class DocumentListResponse(BaseModel):
+    """文档分页列表响应；`stats` 仅在请求统计时下发。"""
+
+    items: list[DocumentListItem]
+    total: int
+    page: int
+    page_size: int
+    has_more: bool
+    parent_id: str | None
+    path_prefix: str
+    recursive: bool
+    stats: KnowledgeBaseStats | None = None
+
+
+class DocumentSearchItem(BaseModel):
+    """跨库文件名搜索条目；`is_folder`/`parent_id` 由调用方开关决定是否下发。"""
+
+    kb_id: str
+    kb_name: str | None
+    file_id: str
+    filename: str
+    file_type: str | None
+    status: str
+    created_at: str | None
+    updated_at: str | None
+    file_size: int | None
+    is_folder: bool | None = None
+    parent_id: str | None = None
+
+
+class DocumentSearchResponse(BaseModel):
+    """文件名搜索结果。"""
+
+    files: list[DocumentSearchItem]
+    total: int
+    offset: int
+    limit: int
+    has_more: bool
+
+
+class DocumentExistsResponse(BaseModel):
+    """文档存在性检查结果。"""
+
+    kb_id: str
+    filename: str
+    exists: bool
+
+
+class QueuedTaskResponse(BaseModel):
+    """任务受理结果；提交失败时只回 message/status。"""
+
+    message: str
+    status: str
+    task_id: str | None = None
+
+
+class PendingTaskResponse(BaseModel):
+    """按状态批量任务受理结果；没有待处理文档时不带 `task_id`/`queued_count`。"""
+
+    message: str
+    status: str
+    task_id: str | None = None
+    queued_count: int | None = None
+
+
+class AddedDocumentItem(BaseModel):
+    """已添加的文档记录。"""
+
+    index: int
+    item: str
+    file_id: str
+    status: str | None
+    file_meta: dict[str, Any] | None = None
+
+
+class FailedDocumentItem(BaseModel):
+    """添加失败的文档记录。"""
+
+    index: int
+    item: str
+    status: str
+    error: str
+    error_type: str
+
+
+class AddUploadedDocumentsResponse(BaseModel):
+    """同步添加已上传文档的结果。"""
+
+    message: str
+    status: str
+    items: list[AddedDocumentItem]
+    failed_items: list[FailedDocumentItem]
+    added: int
+    failed: int
+
+
+class FileMetaItem(BaseModel):
+    """文件/文件夹元数据；对齐 `KnowledgeBase._file_record_to_meta`。"""
+
+    file_id: str
+    kb_id: str
+    parent_id: str | None
+    filename: str | None
+    file_type: str | None
+    path: str | None
+    markdown_file: str | None
+    status: str | None
+    content_hash: str | None
+    size: int | None
+    chunk_count: int
+    token_count: int
+    content_type: str | None
+    processing_params: dict[str, Any] | None
+    is_folder: bool
+    error: str | None
+    created_by: str | None
+    updated_by: str | None
+    created_at: str | None
+    updated_at: str | None
+    original_filename: str | None
+    minio_url: str | None
+
+
+class DocumentLineItem(BaseModel):
+    """文档 Chunk 行（`get_file_info` 的原始行，含内部图谱字段）。"""
+
+    id: str
+    content: str
+    chunk_order_index: int | None
+    start_char_pos: int | None
+    end_char_pos: int | None
+    start_token_pos: int | None
+    end_token_pos: int | None
+    graph_indexed: bool | None
+    ent_ids: Any
+    tags: Any
+    extraction_result: Any
+
+
+class DocumentContentLineItem(BaseModel):
+    """文档内容行；`/content` 已剔除 `ent_ids`/`extraction_result` 等内部图谱字段。"""
+
+    id: str
+    content: str
+    chunk_order_index: int | None
+    start_char_pos: int | None
+    end_char_pos: int | None
+    start_token_pos: int | None
+    end_token_pos: int | None
+    graph_indexed: bool | None
+    tags: Any
+
+
+class DocumentInfoResponse(BaseModel):
+    """文档完整信息；读取失败兜底分支只回 message/status。"""
+
+    meta: FileMetaItem | None = None
+    lines: list[DocumentLineItem] | None = None
+    content: str | None = None
+    message: str | None = None
+    status: str | None = None
+
+
+class DocumentBasicResponse(BaseModel):
+    """文档基本信息；读取失败兜底分支只回 message/status。"""
+
+    meta: FileMetaItem | None = None
+    message: str | None = None
+    status: str | None = None
+
+
+class DocumentContentResponse(BaseModel):
+    """文档内容（chunks 与可选 markdown）；读取失败兜底分支只回 message/status。"""
+
+    lines: list[DocumentContentLineItem] | None = None
+    content: str | None = None
+    message: str | None = None
+    status: str | None = None
+
+
+class FailedDeleteItem(BaseModel):
+    """批量删除中失败的文件。"""
+
+    doc_id: str
+    error: str
+
+
+class BatchDeleteDocumentsResponse(BaseModel):
+    """批量删除结果；全部成功时不下发 `failed_items`。"""
+
+    message: str
+    deleted_count: int
+    failed_items: list[FailedDeleteItem] | None = None
+
+
+class KnowledgeQueryResultItem(BaseModel):
+    """检索结果条目；携带打分/融合等动态派生键，用 `extra="allow"` 原样透传。"""
+
+    model_config = ConfigDict(extra="allow")
+
+    content: str
+    metadata: dict[str, Any]
+    score: float | None = None
+    distance: float | None = None
+    bm25_score: float | None = None
+    hybrid_score: float | None = None
+    rerank_score: float | None = None
+    fusion_score: float | None = None
+    fusion_sources: list[str] | None = None
+    graph_score: float | None = None
+
+
+class KnowledgeQueryResponse(BaseModel):
+    """知识库查询结果；失败兜底分支只回 message/status。"""
+
+    result: list[KnowledgeQueryResultItem] | None = None
+    status: str
+    message: str | None = None
+
+
+class KnowledgeQueryTestFailedResponse(BaseModel):
+    """查询测试失败的兜底结果。"""
+
+    message: str
+    status: str
+
+
+KnowledgeQueryTestResponse = list[KnowledgeQueryResultItem] | KnowledgeQueryTestFailedResponse
+
+
+class UpdateQueryParamsResponse(BaseModel):
+    """更新查询参数结果。"""
+
+    message: str
+    data: dict[str, Any]
+
+
+class QueryParamsConfigItem(BaseModel):
+    """知识库查询参数定义（`type` 与 `options` 由知识库类型给出）。"""
+
+    type: str
+    options: list[dict[str, Any]]
+
+
+class QueryParamsConfigResponse(BaseModel):
+    """查询参数定义响应。"""
+
+    params: QueryParamsConfigItem
+    message: str
+
+
+class SampleQuestionsGenerateResponse(BaseModel):
+    """AI 生成测试问题结果。"""
+
+    message: str
+    questions: list[str]
+    count: int
+    kb_id: str
+    db_name: str | None
+
+
+class SampleQuestionsResponse(BaseModel):
+    """已保存的测试问题列表。"""
+
+    message: str
+    questions: list[str]
+    count: int
+    kb_id: str
+
+
+class FolderMetaItem(BaseModel):
+    """新建文件夹元数据；对齐 `KnowledgeBase.create_folder`。"""
+
+    file_id: str
+    filename: str
+    is_folder: bool
+    parent_id: str | None
+    kb_id: str
+    created_at: str
+    status: str
+    path: str
+    file_type: str
+    created_by: str | None
+
+
+class VirtualFolderDetectResponse(BaseModel):
+    """历史虚拟文件夹检测结果。"""
+
+    has_virtual_folders: bool
+    file_count: int
+    remaining_steps: int
+
+
+class VirtualFolderMigrateResponse(BaseModel):
+    """历史虚拟文件夹迁移任务受理结果。"""
+
+    task_id: str
+    created: bool
+
+
+class SameNameFileItem(BaseModel):
+    """同名文件摘要；对齐 `get_same_name_files`。"""
+
+    file_id: str
+    filename: str
+    size: int
+    created_at: str
+    content_hash: str
+
+
+class FetchUrlResponse(BaseModel):
+    """URL 抓取并上传 MinIO 的结果。"""
+
+    status: str
+    file_path: str
+    minio_url: str
+    content_hash: str
+    filename: str
+    final_url: str
+    size: int
+    has_same_name: bool
+    same_name_files: list[SameNameFileItem]
+
+
+class WorkspaceImportItem(BaseModel):
+    """单个工作区文件导入结果。"""
+
+    message: str
+    file_path: str
+    minio_path: str
+    kb_id: str
+    content_hash: str
+    filename: str
+    original_filename: str
+    size: int
+    minio_filename: str
+    object_name: str
+    bucket_name: str
+    workspace_path: str
+    same_name_files: list[SameNameFileItem]
+    has_same_name: bool
+
+
+class WorkspaceImportResponse(BaseModel):
+    """工作区文件导入结果。"""
+
+    status: str
+    items: list[WorkspaceImportItem]
+
+
+class UploadFileResponse(BaseModel):
+    """文件上传结果。"""
+
+    message: str
+    file_path: str
+    minio_path: str
+    kb_id: str | None
+    content_hash: str
+    filename: str
+    original_filename: str
+    size: int
+    minio_filename: str
+    object_name: str
+    bucket_name: str
+    same_name_files: list[SameNameFileItem]
+    has_same_name: bool
+
+
+class SupportedFileTypesResponse(BaseModel):
+    """支持的文件类型。"""
+
+    message: str
+    file_types: list[str]
+
+
+class MarkdownParseResponse(BaseModel):
+    """文件解析为 markdown 的结果。"""
+
+    markdown_content: str
+    message: str
+
+
+class KnowledgeBaseTypeItem(BaseModel):
+    """知识库类型描述；对齐 `KnowledgeBaseFactory.get_available_types`。"""
+
+    name: str
+    description: str
+    requires_embedding_model: bool
+    supports_documents: bool
+    create_params: dict[str, Any]
+
+
+class KnowledgeBaseTypesResponse(BaseModel):
+    """知识库类型列表；失败兜底分支 `kb_types` 为空对象。"""
+
+    kb_types: dict[str, KnowledgeBaseTypeItem]
+    message: str
+
+
+class ChunkPresetItem(BaseModel):
+    """分块预设选项。"""
+
+    value: str
+    label: str
+    description: str
+
+
+class ChunkPresetsResponse(BaseModel):
+    """分块策略列表。"""
+
+    chunk_presets: list[ChunkPresetItem]
+    message: str
+
+
+class KnowledgeStatistics(BaseModel):
+    """知识库统计；失败兜底分支为空对象，故各键带默认值。"""
+
+    total_databases: int = 0
+    kb_types: dict[str, int] = Field(default_factory=dict)
+    total_files: int = 0
+
+
+class KnowledgeStatisticsResponse(BaseModel):
+    """知识库统计响应。"""
+
+    stats: KnowledgeStatistics
+    message: str
+
+
+class GenerateDescriptionResponse(BaseModel):
+    """AI 生成的知识库描述。"""
+
+    description: str
+    status: str
+
+
 async def _delete_document_storage_objects(kb_id: str, doc_id: str, file_path: str) -> None:
     minio_client = get_minio_client()
 
@@ -236,7 +978,7 @@ async def _has_running_graph_build_task(kb_id: str) -> bool:
 # =============================================================================
 
 
-@knowledge.get("/databases")
+@knowledge.get("/databases", response_model=KnowledgeBaseListResponse, response_model_exclude_unset=True)
 async def get_databases(current_user: User = Depends(get_admin_user)):
     """获取所有知识库（根据用户权限过滤）"""
     try:
@@ -246,7 +988,7 @@ async def get_databases(current_user: User = Depends(get_admin_user)):
         return {"message": f"获取数据库列表失败 {e}", "databases": []}
 
 
-@knowledge.post("/databases")
+@knowledge.post("/databases", response_model=KnowledgeBaseItem, response_model_exclude_unset=True)
 async def create_database(
     database_name: str = Body(...),
     description: str = Body(...),
@@ -293,7 +1035,11 @@ async def create_database(
         raise HTTPException(status_code=400, detail=f"创建数据库失败: {e}")
 
 
-@knowledge.get("/databases/accessible")
+@knowledge.get(
+    "/databases/accessible",
+    response_model=AccessibleDatabasesResponse,
+    response_model_exclude_unset=True,
+)
 async def get_accessible_databases(current_user: User = Depends(get_required_user)):
     """获取当前用户有权访问的知识库列表（用于智能体配置）"""
     try:
@@ -317,7 +1063,11 @@ async def get_accessible_databases(current_user: User = Depends(get_required_use
         return {"message": f"获取可访问知识库列表失败: {str(e)}", "databases": []}
 
 
-@knowledge.get("/mindmap/databases")
+@knowledge.get(
+    "/mindmap/databases",
+    response_model=MindmapDatabasesResponse,
+    response_model_exclude_unset=True,
+)
 async def get_mindmap_databases(current_user: User = Depends(get_admin_user)):
     """获取所有知识库的概览信息，用于思维导图界面选择。"""
     try:
@@ -329,7 +1079,11 @@ async def get_mindmap_databases(current_user: User = Depends(get_admin_user)):
         raise HTTPException(status_code=500, detail=f"获取知识库列表失败: {str(e)}")
 
 
-@knowledge.get("/databases/{kb_id}/mindmap/files")
+@knowledge.get(
+    "/databases/{kb_id}/mindmap/files",
+    response_model=MindmapDatabaseFilesResponse,
+    response_model_exclude_unset=True,
+)
 async def get_database_mindmap_files(kb_id: str, current_user: User = Depends(require_knowledge_base_read)):
     """获取指定知识库的所有文件列表。"""
     try:
@@ -341,7 +1095,11 @@ async def get_database_mindmap_files(kb_id: str, current_user: User = Depends(re
         raise HTTPException(status_code=500, detail=f"获取文件列表失败: {str(e)}")
 
 
-@knowledge.post("/databases/{kb_id}/mindmap/generate")
+@knowledge.post(
+    "/databases/{kb_id}/mindmap/generate",
+    response_model=MindmapGenerateResponse,
+    response_model_exclude_unset=True,
+)
 async def generate_mindmap(
     kb_id: str,
     file_ids: list[str] | None = Body(default=None, description="选择的文件ID列表"),
@@ -359,7 +1117,11 @@ async def generate_mindmap(
         raise HTTPException(status_code=500, detail=f"生成思维导图失败: {str(e)}")
 
 
-@knowledge.get("/databases/{kb_id}/mindmap")
+@knowledge.get(
+    "/databases/{kb_id}/mindmap",
+    response_model=MindmapDetailResponse,
+    response_model_exclude_unset=True,
+)
 async def get_database_mindmap(kb_id: str, current_user: User = Depends(require_knowledge_base_read)):
     """获取知识库关联的思维导图。"""
     try:
@@ -371,7 +1133,11 @@ async def get_database_mindmap(kb_id: str, current_user: User = Depends(require_
         raise HTTPException(status_code=500, detail=f"获取知识库思维导图失败: {str(e)}")
 
 
-@knowledge.get("/databases/{kb_id}/mindmap/diff")
+@knowledge.get(
+    "/databases/{kb_id}/mindmap/diff",
+    response_model=MindmapDiffResponse,
+    response_model_exclude_unset=True,
+)
 async def get_mindmap_diff_route(kb_id: str, current_user: User = Depends(require_knowledge_base_read)):
     """检测思维导图与知识库文件的变更差异。"""
     try:
@@ -383,7 +1149,7 @@ async def get_mindmap_diff_route(kb_id: str, current_user: User = Depends(requir
         raise HTTPException(status_code=500, detail=f"检测思维导图变更失败: {str(e)}")
 
 
-@knowledge.get("/databases/{kb_id}")
+@knowledge.get("/databases/{kb_id}", response_model=KnowledgeBaseItem, response_model_exclude_unset=True)
 async def get_database_info(
     kb_id: str,
     include_files: bool = Query(False, description="是否包含全量文件列表，默认关闭以避免大知识库响应过大"),
@@ -401,7 +1167,11 @@ async def get_database_info(
     )
 
 
-@knowledge.post("/databases/{kb_id}/stats/repair")
+@knowledge.post(
+    "/databases/{kb_id}/stats/repair",
+    response_model=KnowledgeBaseStatsRepairResponse,
+    response_model_exclude_unset=True,
+)
 async def repair_database_stats(kb_id: str, current_user: User = Depends(require_knowledge_base_manage)):
     """修复知识库历史文件缺失的 Chunk/Token 统计。"""
     await _ensure_database_supports_documents(kb_id, "统计修复")
@@ -414,7 +1184,7 @@ async def repair_database_stats(kb_id: str, current_user: User = Depends(require
         raise HTTPException(status_code=500, detail=f"修复知识库统计失败: {e}")
 
 
-@knowledge.put("/databases/{kb_id}")
+@knowledge.put("/databases/{kb_id}", response_model=KnowledgeBaseUpdateResponse, response_model_exclude_unset=True)
 async def update_database_info(
     kb_id: str,
     data: UpdateDatabaseRequest,
@@ -447,7 +1217,7 @@ async def update_database_info(
         raise HTTPException(status_code=400, detail=f"更新数据库失败: {e}")
 
 
-@knowledge.delete("/databases/{kb_id}")
+@knowledge.delete("/databases/{kb_id}", response_model=MessageResponse, response_model_exclude_unset=True)
 async def delete_database(kb_id: str, current_user: User = Depends(require_knowledge_base_manage)):
     """删除知识库"""
     logger.debug(f"Delete database {kb_id}")
@@ -465,7 +1235,11 @@ async def delete_database(kb_id: str, current_user: User = Depends(require_knowl
         raise HTTPException(status_code=400, detail=f"删除数据库失败: {e}")
 
 
-@knowledge.get("/databases/{kb_id}/graph-build/status")
+@knowledge.get(
+    "/databases/{kb_id}/graph-build/status",
+    response_model=GraphBuildStatusResponse,
+    response_model_exclude_unset=True,
+)
 async def get_graph_build_status(kb_id: str, current_user: User = Depends(require_knowledge_base_read)):
     try:
         return await MilvusGraphService().get_status(kb_id, tasker=tasker)
@@ -476,7 +1250,11 @@ async def get_graph_build_status(kb_id: str, current_user: User = Depends(requir
         raise HTTPException(status_code=500, detail=f"获取图谱构建状态失败: {e}")
 
 
-@knowledge.post("/databases/{kb_id}/graph-build/config")
+@knowledge.post(
+    "/databases/{kb_id}/graph-build/config",
+    response_model=GraphBuildConfigResponse,
+    response_model_exclude_unset=True,
+)
 async def configure_graph_build(
     kb_id: str,
     data: dict = Body(...),
@@ -498,7 +1276,11 @@ async def configure_graph_build(
         raise HTTPException(status_code=500, detail=f"配置图谱构建失败: {e}")
 
 
-@knowledge.post("/databases/{kb_id}/graph-build/index")
+@knowledge.post(
+    "/databases/{kb_id}/graph-build/index",
+    response_model=GraphBuildTaskResponse,
+    response_model_exclude_unset=True,
+)
 async def index_graph_build(
     kb_id: str,
     current_user: User = Depends(require_knowledge_base_manage),
@@ -547,7 +1329,11 @@ async def index_graph_build(
         raise HTTPException(status_code=500, detail=f"提交图谱构建任务失败: {e}")
 
 
-@knowledge.get("/databases/{kb_id}/graph-build/failed-chunks")
+@knowledge.get(
+    "/databases/{kb_id}/graph-build/failed-chunks",
+    response_model=GraphBuildFailedChunksResponse,
+    response_model_exclude_unset=True,
+)
 async def get_graph_build_failed_chunks(
     kb_id: str,
     limit: int = 10,
@@ -562,7 +1348,11 @@ async def get_graph_build_failed_chunks(
         raise HTTPException(status_code=500, detail=f"获取图谱抽取失败 Chunk 样例失败: {e}")
 
 
-@knowledge.post("/databases/{kb_id}/graph-build/reset")
+@knowledge.post(
+    "/databases/{kb_id}/graph-build/reset",
+    response_model=GraphBuildResetResponse,
+    response_model_exclude_unset=True,
+)
 async def reset_graph_build(
     kb_id: str,
     data: dict | None = Body(default=None),
@@ -587,7 +1377,11 @@ async def reset_graph_build(
         raise HTTPException(status_code=500, detail=f"重置图谱构建状态失败: {e}")
 
 
-@knowledge.post("/databases/{kb_id}/graph-build/reconcile")
+@knowledge.post(
+    "/databases/{kb_id}/graph-build/reconcile",
+    response_model=GraphBuildReconcileResponse,
+    response_model_exclude_unset=True,
+)
 async def reconcile_graph_build(
     kb_id: str,
     data: dict | None = Body(default=None),
@@ -641,7 +1435,7 @@ async def reconcile_graph_build(
         raise HTTPException(status_code=500, detail=f"提交图谱向量索引修复任务失败: {e}")
 
 
-@knowledge.get("/databases/{kb_id}/export")
+@knowledge.get("/databases/{kb_id}/export", response_class=FileResponse)
 async def export_database(
     kb_id: str,
     format: str = Query("csv", enum=["csv", "xlsx", "md", "txt"]),
@@ -674,7 +1468,11 @@ async def export_database(
 # =============================================================================
 
 
-@knowledge.get("/databases/{kb_id}/documents")
+@knowledge.get(
+    "/databases/{kb_id}/documents",
+    response_model=DocumentListResponse,
+    response_model_exclude_unset=True,
+)
 async def list_documents(
     kb_id: str,
     parent_id: str | None = Query(None, description="父文件夹 ID，空值表示根目录"),
@@ -701,7 +1499,11 @@ async def list_documents(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@knowledge.get("/databases/{kb_id}/documents/search")
+@knowledge.get(
+    "/databases/{kb_id}/documents/search",
+    response_model=DocumentSearchResponse,
+    response_model_exclude_unset=True,
+)
 async def search_documents(
     kb_id: str,
     query: str = Query("", description="文件名关键词，仅匹配文件名不匹配内容"),
@@ -728,7 +1530,11 @@ async def search_documents(
     )
 
 
-@knowledge.get("/databases/{kb_id}/documents/exists")
+@knowledge.get(
+    "/databases/{kb_id}/documents/exists",
+    response_model=DocumentExistsResponse,
+    response_model_exclude_unset=True,
+)
 async def document_file_exists(
     kb_id: str,
     filename: str = Query(..., min_length=1, description="知识库文件展示名或相对路径"),
@@ -746,7 +1552,11 @@ async def document_file_exists(
     return {"kb_id": kb_id, "filename": normalized_filename, "exists": exists}
 
 
-@knowledge.post("/databases/{kb_id}/documents")
+@knowledge.post(
+    "/databases/{kb_id}/documents",
+    response_model=QueuedTaskResponse,
+    response_model_exclude_unset=True,
+)
 async def add_documents(
     kb_id: str,
     items: list[str] = Body(...),
@@ -932,7 +1742,11 @@ async def add_documents(
         raise HTTPException(status_code=500, detail=f"Failed to enqueue task: {e}")
 
 
-@knowledge.post("/databases/{kb_id}/documents/add")
+@knowledge.post(
+    "/databases/{kb_id}/documents/add",
+    response_model=AddUploadedDocumentsResponse,
+    response_model_exclude_unset=True,
+)
 async def add_uploaded_documents(
     kb_id: str,
     payload: AddUploadedDocumentsRequest,
@@ -1422,7 +2236,11 @@ async def _enqueue_index_pending_task(
         return {"message": f"提交失败: {e}", "status": "failed"}
 
 
-@knowledge.post("/databases/{kb_id}/documents/parse")
+@knowledge.post(
+    "/databases/{kb_id}/documents/parse",
+    response_model=QueuedTaskResponse,
+    response_model_exclude_unset=True,
+)
 async def parse_documents(
     kb_id: str,
     payload: ParseDocumentsRequest | list[str] = Body(...),
@@ -1441,7 +2259,11 @@ async def parse_documents(
     return await _enqueue_parse_task(kb_id, file_ids, current_user.uid, db_info, params=params)
 
 
-@knowledge.post("/databases/{kb_id}/documents/parse-pending")
+@knowledge.post(
+    "/databases/{kb_id}/documents/parse-pending",
+    response_model=PendingTaskResponse,
+    response_model_exclude_unset=True,
+)
 async def parse_pending_documents(
     kb_id: str,
     payload: PendingParseDocumentsRequest | None = None,
@@ -1454,7 +2276,11 @@ async def parse_pending_documents(
     return await _enqueue_parse_pending_task(kb_id, current_user.uid, db_info, params=params)
 
 
-@knowledge.post("/databases/{kb_id}/documents/index")
+@knowledge.post(
+    "/databases/{kb_id}/documents/index",
+    response_model=QueuedTaskResponse,
+    response_model_exclude_unset=True,
+)
 async def index_documents(
     kb_id: str,
     file_ids: list[str] = Body(...),
@@ -1469,7 +2295,11 @@ async def index_documents(
     return await _enqueue_index_task(kb_id, file_ids, params, current_user.uid, db_info)
 
 
-@knowledge.post("/databases/{kb_id}/documents/index-pending")
+@knowledge.post(
+    "/databases/{kb_id}/documents/index-pending",
+    response_model=PendingTaskResponse,
+    response_model_exclude_unset=True,
+)
 async def index_pending_documents(
     kb_id: str,
     payload: PendingIndexDocumentsRequest | None = None,
@@ -1482,7 +2312,11 @@ async def index_pending_documents(
     return await _enqueue_index_pending_task(kb_id, params, current_user.uid, db_info)
 
 
-@knowledge.get("/databases/{kb_id}/documents/{doc_id}")
+@knowledge.get(
+    "/databases/{kb_id}/documents/{doc_id}",
+    response_model=DocumentInfoResponse,
+    response_model_exclude_unset=True,
+)
 async def get_document_info(kb_id: str, doc_id: str, current_user: User = Depends(require_knowledge_base_read)):
     """获取文档详细信息（包含基本信息和内容信息）"""
     logger.debug(f"GET document {doc_id} info in {kb_id}")
@@ -1496,7 +2330,11 @@ async def get_document_info(kb_id: str, doc_id: str, current_user: User = Depend
         return {"message": "Failed to get file info", "status": "failed"}
 
 
-@knowledge.get("/databases/{kb_id}/documents/{doc_id}/basic")
+@knowledge.get(
+    "/databases/{kb_id}/documents/{doc_id}/basic",
+    response_model=DocumentBasicResponse,
+    response_model_exclude_unset=True,
+)
 async def get_document_basic_info(kb_id: str, doc_id: str, current_user: User = Depends(require_knowledge_base_read)):
     """获取文档基本信息（仅元数据）"""
     logger.debug(f"GET document {doc_id} basic info in {kb_id}")
@@ -1510,7 +2348,11 @@ async def get_document_basic_info(kb_id: str, doc_id: str, current_user: User = 
         return {"message": "Failed to get file basic info", "status": "failed"}
 
 
-@knowledge.get("/databases/{kb_id}/documents/{doc_id}/content")
+@knowledge.get(
+    "/databases/{kb_id}/documents/{doc_id}/content",
+    response_model=DocumentContentResponse,
+    response_model_exclude_unset=True,
+)
 async def get_document_content(kb_id: str, doc_id: str, current_user: User = Depends(require_knowledge_base_read)):
     """获取文档内容信息（chunks和lines）"""
     logger.debug(f"GET document {doc_id} content in {kb_id}")
@@ -1529,7 +2371,11 @@ async def get_document_content(kb_id: str, doc_id: str, current_user: User = Dep
         return {"message": "Failed to get file content", "status": "failed"}
 
 
-@knowledge.delete("/databases/{kb_id}/documents/batch")
+@knowledge.delete(
+    "/databases/{kb_id}/documents/batch",
+    response_model=BatchDeleteDocumentsResponse,
+    response_model_exclude_unset=True,
+)
 async def batch_delete_documents(
     kb_id: str, file_ids: list[str] = Body(...), current_user: User = Depends(require_knowledge_base_manage)
 ):
@@ -1583,7 +2429,11 @@ async def batch_delete_documents(
     return {"message": f"批量删除成功: 已删除 {deleted_count} 个文件", "deleted_count": deleted_count}
 
 
-@knowledge.delete("/databases/{kb_id}/documents/{doc_id}")
+@knowledge.delete(
+    "/databases/{kb_id}/documents/{doc_id}",
+    response_model=MessageResponse,
+    response_model_exclude_unset=True,
+)
 async def delete_document(kb_id: str, doc_id: str, current_user: User = Depends(require_knowledge_base_manage)):
     """删除文档或文件夹"""
     logger.debug(f"DELETE document {doc_id} info in {kb_id}")
@@ -1613,7 +2463,7 @@ async def delete_document(kb_id: str, doc_id: str, current_user: User = Depends(
         raise HTTPException(status_code=400, detail=f"删除文档失败: {e}")
 
 
-@knowledge.get("/databases/{kb_id}/documents/{doc_id}/download")
+@knowledge.get("/databases/{kb_id}/documents/{doc_id}/download", response_class=StreamingResponse)
 async def download_document(kb_id: str, doc_id: str, current_user: User = Depends(require_knowledge_base_read)):
     """下载原始文件"""
     logger.debug(f"Download document {doc_id} from {kb_id}")
@@ -1698,7 +2548,7 @@ async def download_document(kb_id: str, doc_id: str, current_user: User = Depend
         raise HTTPException(status_code=500, detail=f"下载失败: {e}")
 
 
-@knowledge.get("/databases/{kb_id}/images/{object_path:path}")
+@knowledge.get("/databases/{kb_id}/images/{object_path:path}", response_class=StreamingResponse)
 async def get_kb_image(kb_id: str, object_path: str, current_user: User = Depends(require_knowledge_base_read)):
     """经鉴权代理读取知识库图片（图片存放在私有 bucket，禁止匿名访问）"""
     if not object_path.startswith("kb-images/"):
@@ -1742,7 +2592,11 @@ async def get_kb_image(kb_id: str, object_path: str, current_user: User = Depend
 # =============================================================================
 
 
-@knowledge.post("/databases/{kb_id}/query")
+@knowledge.post(
+    "/databases/{kb_id}/query",
+    response_model=KnowledgeQueryResponse,
+    response_model_exclude_unset=True,
+)
 async def query_knowledge_base(
     kb_id: str,
     query: str = Body(...),
@@ -1759,7 +2613,11 @@ async def query_knowledge_base(
         return {"message": f"知识库查询失败: {e}", "status": "failed"}
 
 
-@knowledge.post("/databases/{kb_id}/query-test")
+@knowledge.post(
+    "/databases/{kb_id}/query-test",
+    response_model=KnowledgeQueryTestResponse,
+    response_model_exclude_unset=True,
+)
 async def query_test(
     kb_id: str,
     query: str = Body(...),
@@ -1776,7 +2634,11 @@ async def query_test(
         return {"message": f"测试查询失败: {e}", "status": "failed"}
 
 
-@knowledge.put("/databases/{kb_id}/query-params")
+@knowledge.put(
+    "/databases/{kb_id}/query-params",
+    response_model=UpdateQueryParamsResponse,
+    response_model_exclude_unset=True,
+)
 async def update_knowledge_base_query_params(
     kb_id: str, params: dict = Body(...), current_user: User = Depends(require_knowledge_base_manage)
 ):
@@ -1797,7 +2659,11 @@ async def update_knowledge_base_query_params(
         raise HTTPException(status_code=500, detail=f"更新查询参数失败: {str(e)}")
 
 
-@knowledge.get("/databases/{kb_id}/query-params")
+@knowledge.get(
+    "/databases/{kb_id}/query-params",
+    response_model=QueryParamsConfigResponse,
+    response_model_exclude_unset=True,
+)
 async def get_knowledge_base_query_params(kb_id: str, current_user: User = Depends(require_knowledge_base_read)):
     """获取知识库类型特定的查询参数"""
     try:
@@ -1814,7 +2680,11 @@ async def get_knowledge_base_query_params(kb_id: str, current_user: User = Depen
 # =============================================================================
 
 
-@knowledge.post("/databases/{kb_id}/sample-questions")
+@knowledge.post(
+    "/databases/{kb_id}/sample-questions",
+    response_model=SampleQuestionsGenerateResponse,
+    response_model_exclude_unset=True,
+)
 async def generate_sample_questions(
     kb_id: str,
     request_body: dict = Body(...),
@@ -1831,7 +2701,11 @@ async def generate_sample_questions(
         raise HTTPException(status_code=500, detail=f"生成问题失败: {str(e)}")
 
 
-@knowledge.get("/databases/{kb_id}/sample-questions")
+@knowledge.get(
+    "/databases/{kb_id}/sample-questions",
+    response_model=SampleQuestionsResponse,
+    response_model_exclude_unset=True,
+)
 async def get_sample_questions(kb_id: str, current_user: User = Depends(require_knowledge_base_read)):
     """获取知识库的测试问题。"""
     try:
@@ -1848,7 +2722,7 @@ async def get_sample_questions(kb_id: str, current_user: User = Depends(require_
 # =============================================================================
 
 
-@knowledge.post("/databases/{kb_id}/folders")
+@knowledge.post("/databases/{kb_id}/folders", response_model=FolderMetaItem, response_model_exclude_unset=True)
 async def create_folder(
     kb_id: str,
     folder_name: str = Body(..., embed=True),
@@ -1866,7 +2740,11 @@ async def create_folder(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@knowledge.get("/databases/{kb_id}/virtual-folders/detect")
+@knowledge.get(
+    "/databases/{kb_id}/virtual-folders/detect",
+    response_model=VirtualFolderDetectResponse,
+    response_model_exclude_unset=True,
+)
 async def detect_virtual_folders(
     kb_id: str,
     current_user: User = Depends(require_knowledge_base_read),
@@ -1876,7 +2754,11 @@ async def detect_virtual_folders(
     return await knowledge_folder_service.detect_virtual_folder_data(kb_id)
 
 
-@knowledge.post("/databases/{kb_id}/virtual-folders/migrate")
+@knowledge.post(
+    "/databases/{kb_id}/virtual-folders/migrate",
+    response_model=VirtualFolderMigrateResponse,
+    response_model_exclude_unset=True,
+)
 async def start_virtual_folder_migration(
     kb_id: str,
     current_user: User = Depends(require_knowledge_base_manage),
@@ -1902,7 +2784,10 @@ async def start_virtual_folder_migration(
     return {"task_id": task.id, "created": created}
 
 
-@knowledge.get("/databases/{kb_id}/virtual-folders/migrations/{task_id}/events")
+@knowledge.get(
+    "/databases/{kb_id}/virtual-folders/migrations/{task_id}/events",
+    response_class=StreamingResponse,
+)
 async def stream_virtual_folder_migration(
     kb_id: str,
     task_id: str,
@@ -1931,7 +2816,11 @@ async def stream_virtual_folder_migration(
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
-@knowledge.put("/databases/{kb_id}/folders/{folder_id}/rename")
+@knowledge.put(
+    "/databases/{kb_id}/folders/{folder_id}/rename",
+    response_model=FileMetaItem,
+    response_model_exclude_unset=True,
+)
 async def rename_folder(
     kb_id: str,
     folder_id: str,
@@ -1951,7 +2840,11 @@ async def rename_folder(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@knowledge.put("/databases/{kb_id}/documents/{doc_id}/move")
+@knowledge.put(
+    "/databases/{kb_id}/documents/{doc_id}/move",
+    response_model=FileMetaItem,
+    response_model_exclude_unset=True,
+)
 async def move_document(
     kb_id: str,
     doc_id: str,
@@ -1972,7 +2865,7 @@ async def move_document(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@knowledge.post("/files/fetch-url")
+@knowledge.post("/files/fetch-url", response_model=FetchUrlResponse, response_model_exclude_unset=True)
 async def fetch_url(
     url: str = Body(..., embed=True),
     kb_id: str | None = Body(None, embed=True),
@@ -2043,7 +2936,11 @@ async def fetch_url(
         raise HTTPException(status_code=500, detail=f"Failed to fetch URL: {str(e)}")
 
 
-@knowledge.post("/files/import-workspace")
+@knowledge.post(
+    "/files/import-workspace",
+    response_model=WorkspaceImportResponse,
+    response_model_exclude_unset=True,
+)
 async def import_workspace_files(
     payload: WorkspaceImportRequest,
     current_user: User = Depends(get_admin_user),
@@ -2106,7 +3003,7 @@ async def import_workspace_files(
     return {"status": "success", "items": results}
 
 
-@knowledge.post("/files/upload")
+@knowledge.post("/files/upload", response_model=UploadFileResponse, response_model_exclude_unset=True)
 async def upload_file(
     file: UploadFile = File(...),
     kb_id: str | None = Query(None),
@@ -2181,13 +3078,17 @@ async def upload_file(
     }
 
 
-@knowledge.get("/files/supported-types")
+@knowledge.get(
+    "/files/supported-types",
+    response_model=SupportedFileTypesResponse,
+    response_model_exclude_unset=True,
+)
 async def get_supported_file_types(current_user: User = Depends(get_admin_user)):
     """获取当前支持的文件类型"""
     return {"message": "success", "file_types": sorted(SUPPORTED_FILE_EXTENSIONS)}
 
 
-@knowledge.post("/files/markdown")
+@knowledge.post("/files/markdown", response_model=MarkdownParseResponse, response_model_exclude_unset=True)
 async def mark_it_down(file: UploadFile = File(...), current_user: User = Depends(get_admin_user)):
     """调用统一 Parser 将文件解析为 markdown，需要管理员权限"""
     import tempfile
@@ -2229,7 +3130,7 @@ async def mark_it_down(file: UploadFile = File(...), current_user: User = Depend
 # =============================================================================
 
 
-@knowledge.get("/types")
+@knowledge.get("/types", response_model=KnowledgeBaseTypesResponse, response_model_exclude_unset=True)
 async def get_knowledge_base_types(current_user: User = Depends(get_admin_user)):
     """获取支持的知识库类型"""
     try:
@@ -2240,13 +3141,13 @@ async def get_knowledge_base_types(current_user: User = Depends(get_admin_user))
         return {"message": f"获取知识库类型失败 {e}", "kb_types": {}}
 
 
-@knowledge.get("/chunk-presets")
+@knowledge.get("/chunk-presets", response_model=ChunkPresetsResponse, response_model_exclude_unset=True)
 async def get_knowledge_chunk_presets(current_user: User = Depends(get_admin_user)):
     """获取支持的知识库分块策略"""
     return {"chunk_presets": get_chunk_preset_options(), "message": "success"}
 
 
-@knowledge.get("/stats")
+@knowledge.get("/stats", response_model=KnowledgeStatisticsResponse, response_model_exclude_unset=True)
 async def get_knowledge_base_statistics(current_user: User = Depends(get_admin_user)):
     """获取知识库统计信息"""
     try:
@@ -2262,7 +3163,11 @@ async def get_knowledge_base_statistics(current_user: User = Depends(get_admin_u
 # =============================================================================
 
 
-@knowledge.post("/generate-description")
+@knowledge.post(
+    "/generate-description",
+    response_model=GenerateDescriptionResponse,
+    response_model_exclude_unset=True,
+)
 async def generate_description(
     name: str = Body(..., description="知识库名称"),
     current_description: str = Body("", description="当前描述（可选，用于优化）"),
