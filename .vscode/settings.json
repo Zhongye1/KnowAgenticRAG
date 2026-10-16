@@ -1,0 +1,7 @@
+{
+    "python.defaultInterpreterPath": "backend/.venv/bin/",
+    "python.analysis.extraPaths": [
+        "backend",
+        "backend/package"
+    ]
+}
