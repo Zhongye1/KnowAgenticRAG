@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -66,6 +66,258 @@ class AgentUpdate(BaseModel):
     is_subagent: bool | None = None
 
 
+class AgentItem(BaseModel):
+    """智能体条目；字段对齐 `AgentRepository.serialize` 与 `Agent.to_dict()` 的实际输出。
+
+    `configurable_items` 只在请求了可配置项时才下发（详情、创建、更新、置默认），
+    列表不带它，所以路由用 `response_model_exclude_unset=True` 保持响应体逐键不变。
+    """
+
+    id: int
+    slug: str
+    agent_id: str
+    backend_id: str
+    name: str
+    description: str | None
+    icon: str | None
+    pics: list[str]
+    config_json: dict[str, Any]
+    share_config: dict[str, Any] | None
+    is_default: bool
+    is_subagent: bool
+    created_by: str | None
+    updated_by: str | None
+    created_at: str | None
+    updated_at: str | None
+    can_manage: bool
+    effective_permission: str
+    is_builtin: bool
+    permission_locked: bool
+    capabilities: list[Any]
+    metadata: dict[str, Any]
+    configurable_items: dict[str, Any] = Field(default_factory=dict)
+
+
+class AgentItemResponse(BaseModel):
+    """单个智能体的响应。"""
+
+    agent: AgentItem
+
+
+class AgentListResponse(BaseModel):
+    """智能体列表响应。"""
+
+    agents: list[AgentItem]
+
+
+class AgentDeleteResponse(BaseModel):
+    """智能体删除结果。"""
+
+    success: bool
+
+
+class AgentBackendItem(BaseModel):
+    """智能体后端条目；字段对齐 `BaseAgent.get_info()` 与 `_backend_info()` 的输出。
+
+    `get_info()` 始终返回 `configurable_items`（列表请求时为空 dict），`_backend_info()`
+    再补上 `type` 并把 `id` 改名为 `backend_id`，因此这些键总是出现。
+    """
+
+    backend_id: str
+    type: Literal["agent_backend"]
+    name: str
+    description: str
+    metadata: dict[str, Any]
+    configurable_items: dict[str, Any]
+    capabilities: list[str]
+
+
+class AgentBackendListResponse(BaseModel):
+    """智能体后端列表响应。"""
+
+    backends: list[AgentBackendItem]
+
+
+class AgentRunCreateResponse(BaseModel):
+    """Chat / Resume 提交结果。
+
+    Resume 路径回 `_build_run_response()`（只有运行基本字段），普通 Chat 回
+    `submit_run_command()` 的入队结果（多出排队字段，且 run_id/stream_url 可能为 null）。
+    两种形状共用本模型，路由用 `response_model_exclude_unset=True` 保持逐键一致。
+    """
+
+    run_id: str | None
+    thread_id: str
+    status: str
+    request_id: str
+    stream_url: str | None
+    queue_policy: str | None = None
+    queue_position: int | None = None
+    message_id: int | None = None
+    request_events_url: str | None = None
+
+
+class AgentRequestItem(BaseModel):
+    """请求条目；字段对齐 `AgentRunRequest.to_dict()`。"""
+
+    request_id: str
+    uid: str
+    agent_slug: str
+    thread_id: str
+    source: str
+    channel: str
+    external_id: str | None
+    origin_metadata: dict[str, Any]
+    queue_policy: str
+    status: str
+    input_message_id: int
+    dispatched_run_id: str | None
+    error_message: str | None
+    created_at: str
+    dispatched_at: str | None
+    updated_at: str
+
+
+class AgentRequestResponse(BaseModel):
+    """单个请求响应。"""
+
+    request: AgentRequestItem
+
+
+class AgentThreadRequestItem(AgentRequestItem):
+    """队列请求条目：请求投影再加上消息内容与 FIFO 位置（`get_thread_queue_snapshot`）。"""
+
+    content: str
+    queue_position: int
+
+
+class AgentRequestQueueState(BaseModel):
+    """线程队列状态；字段对齐 `_get_queue_state()` 返回的 metadata。"""
+
+    status: str
+    paused_reason: str | None
+    blocking_run_id: str | None
+    can_continue: bool
+
+
+class AgentThreadRequestsResponse(BaseModel):
+    """线程队列快照响应。"""
+
+    requests: list[AgentThreadRequestItem]
+    queue: AgentRequestQueueState
+
+
+class AgentThreadContinueResponse(BaseModel):
+    """手动继续队列的派发结果。"""
+
+    status: Literal["dispatched"]
+    request_id: str
+    run_id: str
+
+
+class AgentRequestCancelResponse(BaseModel):
+    """排队请求取消结果。"""
+
+    request_id: str
+    status: str
+
+
+class AgentRequestSteerResponse(BaseModel):
+    """排队请求升级为引导的结果。"""
+
+    request_id: str
+    thread_id: str
+    status: str
+    queue_policy: str
+    queue_position: int | None
+    request_events_url: str
+
+
+class AgentRunItem(BaseModel):
+    """运行任务条目；字段对齐 `AgentRun.to_dict()`。"""
+
+    id: str
+    conversation_thread_id: str
+    runtime_scope_id: str
+    runtime_cleanup_pending: bool
+    agent_slug: str
+    uid: str
+    status: str
+    request_id: str
+    source: str
+    channel: str
+    external_id: str | None
+    origin_metadata: dict[str, Any]
+    conversation_id: int | None
+    created_by_run_id: str | None
+    subagent_thread_relation_id: int | None
+    run_type: str
+    input_message_id: int | None
+    output_message_id: int | None
+    last_event_id: str | None
+    input_payload: dict[str, Any]
+    token_usage: dict[str, Any]
+    error_type: str | None
+    error_message: str | None
+    manifest: dict[str, Any] | None
+    manifest_fingerprint: str | None
+    started_at: str | None
+    finished_at: str | None
+    created_at: str | None
+    updated_at: str | None
+
+
+class AgentRunResponse(BaseModel):
+    """单个运行任务响应。"""
+
+    run: AgentRunItem
+
+
+class AgentActiveRunResponse(BaseModel):
+    """线程当前待关注运行响应；线程没有活跃运行时 `run` 为 null。"""
+
+    run: AgentRunItem | None
+
+
+class AgentRunResultError(BaseModel):
+    """运行失败的分类与消息。"""
+
+    type: str | None
+    message: str | None
+
+
+class AgentRunResultResponse(BaseModel):
+    """运行最终结果。
+
+    Run 不存在时载荷只有 `status/output/agent_run_id/error`，正常结果也不会带 `error`，
+    因此路由用 `response_model_exclude_unset=True`。
+    """
+
+    status: str
+    output: str
+    agent_run_id: str
+    agent_slug: str | None = None
+    thread_id: str | None = None
+    conversation_id: int | None = None
+    request_id: str | None = None
+    final_message_id: int | None = None
+    langfuse_trace_id: str | None = None
+    token_usage: dict[str, Any] = Field(default_factory=dict)
+    error: AgentRunResultError | None = None
+
+
+class AgentRunLangfuseResponse(BaseModel):
+    """Langfuse 跳转地址。
+
+    可用时回 `url`，不可用时只回 `reason`，因此路由用 `response_model_exclude_unset=True`。
+    """
+
+    run_id: str
+    available: bool
+    url: str | None = None
+    reason: str | None = None
+
+
 class AgentRunCreate(BaseModel):
     query: str | None = Field(None, description="用户输入的问题")
     agent_slug: str = Field(..., description="智能体 slug")
@@ -113,13 +365,13 @@ async def _serialize_agent(
     return data
 
 
-@agent_router.get("/backends")
+@agent_router.get("/backends", response_model=AgentBackendListResponse, response_model_exclude_unset=True)
 async def list_agent_backends(current_user: User = Depends(get_required_user)):
     infos = await agent_manager.get_agents_info(include_configurable_items=False)
     return {"backends": [_backend_info(info) for info in infos]}
 
 
-@agent_router.get("/backends/{backend_id}")
+@agent_router.get("/backends/{backend_id}", response_model=AgentBackendItem, response_model_exclude_unset=True)
 async def get_agent_backend(
     backend_id: str,
     current_user: User = Depends(get_required_user),
@@ -131,7 +383,7 @@ async def get_agent_backend(
     return _backend_info(await backend.get_info(user_role=current_user.role, db=db, user=current_user))
 
 
-@agent_router.get("")
+@agent_router.get("", response_model=AgentListResponse, response_model_exclude_unset=True)
 async def list_agents(
     include_subagents: bool = Query(False),
     current_user: User = Depends(get_required_user),
@@ -145,7 +397,7 @@ async def list_agents(
     return {"agents": agents}
 
 
-@agent_router.get("/default")
+@agent_router.get("/default", response_model=AgentItemResponse, response_model_exclude_unset=True)
 async def get_default_agent(current_user: User = Depends(get_required_user), db: AsyncSession = Depends(get_db)):
     repo = AgentRepository(db)
     item = await repo.ensure_default_agent()
@@ -154,7 +406,7 @@ async def get_default_agent(current_user: User = Depends(get_required_user), db:
     return {"agent": await _serialize_agent(repo, item, current_user, include_configurable_items=True)}
 
 
-@agent_router.post("")
+@agent_router.post("", response_model=AgentItemResponse, response_model_exclude_unset=True)
 async def create_agent(
     payload: AgentCreate, current_user: User = Depends(get_required_user), db: AsyncSession = Depends(get_db)
 ):
@@ -184,7 +436,7 @@ async def create_agent(
     return {"agent": await _serialize_agent(repo, item, current_user, include_configurable_items=True)}
 
 
-@agent_router.get("/{agent_id}")
+@agent_router.get("/{agent_id}", response_model=AgentItemResponse, response_model_exclude_unset=True)
 async def get_agent(agent_id: str, current_user: User = Depends(get_required_user), db: AsyncSession = Depends(get_db)):
     repo = AgentRepository(db)
     agent_slug = agent_id  # 兼容既有路径参数名；这里实际是 Agent.slug。
@@ -194,7 +446,7 @@ async def get_agent(agent_id: str, current_user: User = Depends(get_required_use
     return {"agent": await _serialize_agent(repo, item, current_user, include_configurable_items=True)}
 
 
-@agent_router.put("/{agent_id}")
+@agent_router.put("/{agent_id}", response_model=AgentItemResponse, response_model_exclude_unset=True)
 async def update_agent(
     agent_id: str,
     payload: AgentUpdate,
@@ -235,7 +487,7 @@ async def update_agent(
     return {"agent": await _serialize_agent(repo, updated, current_user, include_configurable_items=True)}
 
 
-@agent_router.delete("/{agent_id}")
+@agent_router.delete("/{agent_id}", response_model=AgentDeleteResponse, response_model_exclude_unset=True)
 async def delete_agent(
     agent_id: str, current_user: User = Depends(get_required_user), db: AsyncSession = Depends(get_db)
 ):
@@ -252,7 +504,7 @@ async def delete_agent(
     return {"success": True}
 
 
-@agent_router.post("/{agent_id}/set_default")
+@agent_router.post("/{agent_id}/set_default", response_model=AgentItemResponse, response_model_exclude_unset=True)
 async def set_agent_default(
     agent_id: str,
     current_user: User = Depends(get_admin_user),
@@ -270,7 +522,7 @@ async def set_agent_default(
     return {"agent": await _serialize_agent(repo, updated, current_user, include_configurable_items=True)}
 
 
-@agent_router.post("/runs")
+@agent_router.post("/runs", response_model=AgentRunCreateResponse, response_model_exclude_unset=True)
 async def create_agent_run(
     payload: AgentRunCreate,
     current_user: User = Depends(get_required_user),
@@ -320,7 +572,7 @@ async def create_agent_run(
     )
 
 
-@agent_router.get("/requests/{request_id}")
+@agent_router.get("/requests/{request_id}", response_model=AgentRequestResponse, response_model_exclude_unset=True)
 async def get_request(
     request_id: str,
     current_user: User = Depends(get_required_user),
@@ -332,7 +584,11 @@ async def get_request(
     return {"request": result}
 
 
-@agent_router.get("/thread/{thread_id}/requests")
+@agent_router.get(
+    "/thread/{thread_id}/requests",
+    response_model=AgentThreadRequestsResponse,
+    response_model_exclude_unset=True,
+)
 async def list_thread_requests(
     thread_id: str,
     current_user: User = Depends(get_required_user),
@@ -347,7 +603,11 @@ async def list_thread_requests(
     )
 
 
-@agent_router.post("/thread/{thread_id}/requests/continue")
+@agent_router.post(
+    "/thread/{thread_id}/requests/continue",
+    response_model=AgentThreadContinueResponse,
+    response_model_exclude_unset=True,
+)
 async def continue_thread_requests(
     thread_id: str,
     current_user: User = Depends(get_required_user),
@@ -364,7 +624,11 @@ async def continue_thread_requests(
     return {"status": "dispatched", "request_id": dispatch.request_id, "run_id": dispatch.run_id}
 
 
-@agent_router.post("/requests/{request_id}/cancel")
+@agent_router.post(
+    "/requests/{request_id}/cancel",
+    response_model=AgentRequestCancelResponse,
+    response_model_exclude_unset=True,
+)
 async def cancel_request(
     request_id: str,
     current_user: User = Depends(get_required_user),
@@ -375,7 +639,11 @@ async def cancel_request(
     return {"request_id": request_id, "status": status}
 
 
-@agent_router.post("/requests/{request_id}/steer")
+@agent_router.post(
+    "/requests/{request_id}/steer",
+    response_model=AgentRequestSteerResponse,
+    response_model_exclude_unset=True,
+)
 async def steer_request(
     request_id: str,
     current_user: User = Depends(get_required_user),
@@ -393,7 +661,7 @@ async def steer_request(
     }
 
 
-@agent_router.get("/requests/{request_id}/events")
+@agent_router.get("/requests/{request_id}/events", response_class=StreamingResponse)
 async def stream_request_events_route(
     request_id: str,
     current_user: User = Depends(get_required_user),
@@ -409,35 +677,43 @@ async def stream_request_events_route(
     )
 
 
-@agent_router.get("/runs/{run_id}")
+@agent_router.get("/runs/{run_id}", response_model=AgentRunResponse, response_model_exclude_unset=True)
 async def get_agent_run(
     run_id: str, current_user: User = Depends(get_required_user), db: AsyncSession = Depends(get_db)
 ):
     return await get_agent_run_view(run_id=run_id, current_uid=str(current_user.uid), db=db)
 
 
-@agent_router.get("/runs/{run_id}/result")
+@agent_router.get(
+    "/runs/{run_id}/result",
+    response_model=AgentRunResultResponse,
+    response_model_exclude_unset=True,
+)
 async def get_agent_run_result_route(
     run_id: str, current_user: User = Depends(get_required_user), db: AsyncSession = Depends(get_db)
 ):
     return await get_agent_run_result(run_id=run_id, current_uid=str(current_user.uid), db=db)
 
 
-@agent_router.get("/runs/{run_id}/langfuse")
+@agent_router.get(
+    "/runs/{run_id}/langfuse",
+    response_model=AgentRunLangfuseResponse,
+    response_model_exclude_unset=True,
+)
 async def get_agent_run_langfuse_link_route(
     run_id: str, current_user: User = Depends(get_superadmin_user), db: AsyncSession = Depends(get_db)
 ):
     return await get_agent_run_langfuse_link(run_id=run_id, current_uid=str(current_user.uid), db=db)
 
 
-@agent_router.post("/runs/{run_id}/cancel")
+@agent_router.post("/runs/{run_id}/cancel", response_model=AgentRunResponse, response_model_exclude_unset=True)
 async def cancel_agent_run(
     run_id: str, current_user: User = Depends(get_required_user), db: AsyncSession = Depends(get_db)
 ):
     return await cancel_agent_run_view(run_id=run_id, current_uid=str(current_user.uid), db=db)
 
 
-@agent_router.get("/runs/{run_id}/events")
+@agent_router.get("/runs/{run_id}/events", response_class=StreamingResponse)
 async def stream_run_events(
     run_id: str,
     after_seq: str = "0-0",
@@ -453,7 +729,11 @@ async def stream_run_events(
     )
 
 
-@agent_router.get("/thread/{thread_id}/active_run")
+@agent_router.get(
+    "/thread/{thread_id}/active_run",
+    response_model=AgentActiveRunResponse,
+    response_model_exclude_unset=True,
+)
 async def get_thread_active_run(
     thread_id: str,
     current_user: User = Depends(get_required_user),
