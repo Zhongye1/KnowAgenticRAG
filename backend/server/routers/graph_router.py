@@ -1,4 +1,7 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 
 from server.utils.auth_middleware import get_admin_user
 from server.utils.knowledge_permissions import require_knowledge_base_read
@@ -9,6 +12,98 @@ from ars.storage.postgres.models_business import User
 from ars.utils.logging_config import logger
 
 graph = APIRouter(prefix="/graph", tags=["graph"])
+
+
+class GraphKnowledgeBaseItem(BaseModel):
+    """支持图谱的 Milvus 知识库条目；`metadata` 为完整知识库序列化结果。"""
+
+    id: str
+    name: str
+    type: str
+    description: str | None
+    status: str
+    created_at: str | None
+    metadata: dict[str, Any]
+
+
+class GraphListResponse(BaseModel):
+    """支持图谱能力的知识库列表响应。"""
+
+    success: bool
+    data: list[GraphKnowledgeBaseItem]
+
+
+class GraphNode(BaseModel):
+    """子图节点；字段对齐 `MilvusGraphService._normalize_node`。"""
+
+    id: str
+    name: str
+    original_id: str
+    type: str
+    labels: list[str]
+    properties: dict[str, Any]
+    normalized: dict[str, Any]
+    graph_type: str
+
+
+class GraphEdge(BaseModel):
+    """子图边；字段对齐 `MilvusGraphService._normalize_edge`。"""
+
+    id: str
+    source_id: str
+    target_id: str
+    type: str | None
+    properties: dict[str, Any]
+    normalized: dict[str, Any]
+
+
+class GraphSubgraphData(BaseModel):
+    """子图数据。"""
+
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
+
+
+class GraphSubgraphResponse(BaseModel):
+    """子图查询响应。"""
+
+    success: bool
+    data: GraphSubgraphData
+
+
+class GraphLabelsData(BaseModel):
+    """图谱标签集合。"""
+
+    labels: list[str]
+
+
+class GraphLabelsResponse(BaseModel):
+    """图谱标签响应。"""
+
+    success: bool
+    data: GraphLabelsData
+
+
+class GraphStatsEntityType(BaseModel):
+    """按实体标签聚合的节点统计项。"""
+
+    type: str | None
+    count: int
+
+
+class GraphStatsData(BaseModel):
+    """图谱统计信息；字段对齐 `MilvusGraphService.get_stats`。"""
+
+    total_nodes: int
+    total_edges: int
+    entity_types: list[GraphStatsEntityType]
+
+
+class GraphStatsResponse(BaseModel):
+    """图谱统计响应。"""
+
+    success: bool
+    data: GraphStatsData
 
 
 async def _get_graph_service(kb_id: str) -> MilvusGraphService:
@@ -23,7 +118,7 @@ async def _get_graph_service(kb_id: str) -> MilvusGraphService:
     return MilvusGraphService(kb_id=kb_id)
 
 
-@graph.get("/list")
+@graph.get("/list", response_model=GraphListResponse, response_model_exclude_unset=True)
 async def get_graphs(current_user: User = Depends(get_admin_user)):
     """获取支持图谱能力的 Milvus 知识库列表"""
     try:
@@ -50,7 +145,7 @@ async def get_graphs(current_user: User = Depends(get_admin_user)):
         raise HTTPException(status_code=500, detail=f"Failed to list graphs: {str(e)}")
 
 
-@graph.get("/subgraph")
+@graph.get("/subgraph", response_model=GraphSubgraphResponse, response_model_exclude_unset=True)
 async def get_subgraph(
     kb_id: str = Query(..., description="Milvus 知识库ID"),
     node_label: str = Query("*", description="节点标签或查询关键词"),
@@ -77,7 +172,7 @@ async def get_subgraph(
         raise HTTPException(status_code=500, detail=f"Failed to get subgraph: {str(e)}")
 
 
-@graph.get("/labels")
+@graph.get("/labels", response_model=GraphLabelsResponse, response_model_exclude_unset=True)
 async def get_graph_labels(
     kb_id: str = Query(..., description="Milvus 知识库ID"),
     current_user: User = Depends(require_knowledge_base_read),
@@ -94,7 +189,7 @@ async def get_graph_labels(
         raise HTTPException(status_code=500, detail=f"Failed to get labels: {str(e)}")
 
 
-@graph.get("/stats")
+@graph.get("/stats", response_model=GraphStatsResponse, response_model_exclude_unset=True)
 async def get_graph_stats(
     kb_id: str = Query(..., description="Milvus 知识库ID"),
     current_user: User = Depends(require_knowledge_base_read),

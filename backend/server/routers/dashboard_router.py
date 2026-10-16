@@ -197,7 +197,24 @@ class ThreadAnalyticsResponse(BaseModel):
     status_distribution: dict[str, int]
 
 
-@dashboard.get("/stats")
+class FeedbackSatisfactionStats(BaseModel):
+    """反馈满意度统计；字段对齐 `DashboardRepository.get_basic_stats`。"""
+
+    total_feedbacks: int
+    satisfaction_rate: float
+
+
+class BasicStatsResponse(BaseModel):
+    """Dashboard 基础统计响应。"""
+
+    total_conversations: int
+    active_conversations: int
+    total_messages: int
+    total_users: int
+    feedback_stats: FeedbackSatisfactionStats
+
+
+@dashboard.get("/stats", response_model=BasicStatsResponse, response_model_exclude_unset=True)
 async def get_dashboard_stats(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_superadmin_user),

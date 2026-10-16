@@ -139,6 +139,13 @@ class UidGeneration(BaseModel):
     is_available: bool
 
 
+class UserDeleteResponse(BaseModel):
+    """删除用户的结果。"""
+
+    success: bool
+    message: str
+
+
 class OIDCConfigResponse(BaseModel):
     """OIDC 配置响应"""
 
@@ -197,6 +204,33 @@ class CLIAuthTokenResponse(BaseModel):
     api_key: dict
     secret: str
     user: dict
+
+
+class FirstRunStatusResponse(BaseModel):
+    """首次运行检查结果。"""
+
+    first_run: bool
+
+
+class UidAvailabilityResponse(BaseModel):
+    """uid 可用性检查结果。"""
+
+    uid: str
+    is_available: bool
+
+
+class AvatarUploadResponse(BaseModel):
+    """用户头像上传结果。"""
+
+    success: bool
+    avatar_url: str
+    message: str
+
+
+class OIDCLoginUrlResponse(BaseModel):
+    """OIDC 登录 URL 响应。"""
+
+    login_url: str
 
 
 # =============================================================================
@@ -381,7 +415,7 @@ async def exchange_cli_session_token(data: CLIAuthTokenRequest, db: AsyncSession
 
 
 # 路由：校验是否需要初始化管理员
-@auth.get("/check-first-run")
+@auth.get("/check-first-run", response_model=FirstRunStatusResponse, response_model_exclude_unset=True)
 async def check_first_run():
     is_first_run = await UserRepository().is_first_run()
     return {"first_run": is_first_run}
@@ -814,7 +848,7 @@ async def update_user(
 
 
 # 路由：删除用户（管理员权限）
-@auth.delete("/users/{user_id}", response_model=dict)
+@auth.delete("/users/{user_id}", response_model=UserDeleteResponse, response_model_exclude_unset=True)
 async def delete_user(
     user_id: int,
     request: Request,
@@ -911,7 +945,7 @@ async def validate_username_and_generate_uid(
 
 
 # 路由：检查 uid 是否可用
-@auth.get("/check-uid/{uid}")
+@auth.get("/check-uid/{uid}", response_model=UidAvailabilityResponse, response_model_exclude_unset=True)
 async def check_uid_availability(
     uid: str,
     current_user: User = Depends(get_admin_user),
@@ -922,7 +956,7 @@ async def check_uid_availability(
 
 
 # 路由：上传用户头像
-@auth.post("/upload-avatar")
+@auth.post("/upload-avatar", response_model=AvatarUploadResponse, response_model_exclude_unset=True)
 async def upload_user_avatar(
     file: UploadFile = File(...),
     current_user: User = Depends(get_required_user),
@@ -1015,7 +1049,7 @@ async def get_oidc_config():
     return await get_oidc_config_handler()
 
 
-@auth.get("/oidc/login-url")
+@auth.get("/oidc/login-url", response_model=OIDCLoginUrlResponse, response_model_exclude_unset=True)
 async def get_oidc_login_url(redirect_path: str = "/"):
     """获取 OIDC 登录 URL"""
     return await oidc_login_url_handler(redirect_path)

@@ -7,7 +7,7 @@ Channel 只负责把消息信封转换为统一 Run 提交命令；少量控制�
 from __future__ import annotations
 
 import uuid
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -48,7 +48,56 @@ class ChannelMessageRequest(BaseModel):
     queue_policy: Literal["enqueue", "reject", "steer"] = "steer"
 
 
-@agent_invocation_channel_router.post("/messages")
+class ChannelRunBrief(BaseModel):
+    """Channel 审批创建的 resume run 摘要；字段对齐 `_build_run_response`。"""
+
+    run_id: str
+    thread_id: str
+    status: str
+    request_id: str
+    stream_url: str
+
+
+class ChannelAgentState(BaseModel):
+    """`get_agent_state_view` 的返回结构；仅 `agent_state` 恒有。"""
+
+    agent_state: dict[str, Any]
+    interrupt: dict[str, Any] | None = None
+    parent_thread_id: str | None = None
+    subagent_thread: dict[str, Any] | None = None
+    subagent_run: dict[str, Any] | None = None
+    messages: list[Any] | None = None
+
+
+class ChannelMessageResponse(BaseModel):
+    """Channel 消息响应。
+
+    分三种形状：`/state` 命令回 state，`/approve` 命令回 resume run 摘要，
+    普通消息回 `submit_run_command` 的入队结果（`kind=run`，附 channel）。
+    路由用 `response_model_exclude_unset=True` 保持逐键一致。
+    """
+
+    kind: str
+    channel: str | None = None
+    command: str | None = None
+    thread_id: str | None = None
+    state: ChannelAgentState | None = None
+    run: ChannelRunBrief | None = None
+    request_id: str | None = None
+    status: str | None = None
+    queue_policy: str | None = None
+    queue_position: int | None = None
+    message_id: int | None = None
+    run_id: str | None = None
+    stream_url: str | None = None
+    request_events_url: str | None = None
+
+
+@agent_invocation_channel_router.post(
+    "/messages",
+    response_model=ChannelMessageResponse,
+    response_model_exclude_unset=True,
+)
 async def receive_channel_message(
     payload: ChannelMessageRequest,
     current_user: User = Depends(get_required_user),

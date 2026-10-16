@@ -58,7 +58,62 @@ class AgentCallRunResultRequest(BaseModel):
     agent_slug: str | None = Field(None, description="可选，传入时校验 run 归属")
 
 
-@agent_invocation_call_router.post("/runs")
+class AgentCallUsage(BaseModel):
+    """OpenAI-compatible token 用量。"""
+
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+
+class AgentCallChoiceMessage(BaseModel):
+    """OpenAI choices 中的消息。"""
+
+    role: str
+    content: str
+
+
+class AgentCallChoice(BaseModel):
+    """OpenAI-compatible choices 条目。"""
+
+    index: int
+    messages: list[AgentCallChoiceMessage]
+    finish_reason: str | None
+
+
+class AgentCallError(BaseModel):
+    """运行失败的分类与消息。"""
+
+    type: str | None
+    message: str | None
+
+
+class AgentCallRunResponse(BaseModel):
+    """Agent Call 响应。
+
+    同步/异步的 agent-call 结果回 `_build_agent_call_response`（含 choices/usage），
+    异步未创建 run（无 run_id）或排队被拒时直接回 `submit_run_command` 的入队结果
+    （含排队字段，无 choices/usage）。两种形状共用本模型，路由用
+    `response_model_exclude_unset=True` 保持逐键一致。
+    """
+
+    run_id: str | None
+    thread_id: str | None
+    status: str
+    request_id: str | None
+    agent_slug: str | None = None
+    output: str | None = None
+    choices: list[AgentCallChoice] | None = None
+    usage: AgentCallUsage | None = None
+    error: AgentCallError | None = None
+    queue_policy: str | None = None
+    queue_position: int | None = None
+    message_id: int | None = None
+    stream_url: str | None = None
+    request_events_url: str | None = None
+
+
+@agent_invocation_call_router.post("/runs", response_model=AgentCallRunResponse, response_model_exclude_unset=True)
 async def create_agent_call_run(
     payload: AgentCallRunCreate,
     current_user: User = Depends(get_required_user),
@@ -128,7 +183,11 @@ async def create_agent_call_run(
     return _build_agent_call_response(result)
 
 
-@agent_invocation_call_router.post("/runs/result")
+@agent_invocation_call_router.post(
+    "/runs/result",
+    response_model=AgentCallRunResponse,
+    response_model_exclude_unset=True,
+)
 async def get_agent_call_run_result(
     payload: AgentCallRunResultRequest,
     current_user: User = Depends(get_required_user),

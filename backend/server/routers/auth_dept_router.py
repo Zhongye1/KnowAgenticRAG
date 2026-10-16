@@ -54,6 +54,13 @@ class DepartmentResponse(BaseModel):
     user_count: int = 0
 
 
+class DepartmentDeleteResponse(BaseModel):
+    """删除部门结果。"""
+
+    success: bool
+    message: str
+
+
 # =============================================================================
 # === 部门管理路由 ===
 # =============================================================================
@@ -183,7 +190,12 @@ async def update_department(
     return {**department.to_dict(), "user_count": user_count}
 
 
-@department.delete("/{department_id}", status_code=status.HTTP_200_OK)
+@department.delete(
+    "/{department_id}",
+    response_model=DepartmentDeleteResponse,
+    response_model_exclude_unset=True,
+    status_code=status.HTTP_200_OK,
+)
 async def delete_department(
     department_id: int,
     request: Request,
