@@ -2,26 +2,30 @@
  * 智能体端点。
  *
  * 只走契约生成的 SDK，响应形状直接复用 `openapi.json` 生成的类型：这些端点在契约里
- * 已声明响应模型，字段的必填性与可空性由后端声明，不再手写宽类型兜底。字段读取与归一
- * 仍在 `model/agent-types.ts`，那里继续按不可信数据逐项读取。
+ * 已声明响应模型，字段的必填性与可空性由后端声明，不再手写宽类型兜底。字段的读取与归一
+ * 仍在 `model/agent-types.ts`。
+ *
+ * 列表读取以「契约生成的查询 options」形式对外：query key 与 queryFn 都来自生成物，参数与
+ * 缓存条目因此不会漂移。生成物的接触点必须留在 api 段（`arch:check` 的 `generated-import-boundary`），
+ * 因此 `model/` 只消费这里导出的 options 与 key，不直接引用生成物。
  */
 import { unwrap } from '@/shared/api';
+import {
+  listAgentBackendsApiAgentBackendsGetOptions,
+  listAgentsApiAgentGetOptions,
+  listAgentsApiAgentGetQueryKey,
+} from '@/shared/api/generated/@tanstack/react-query.gen';
 import {
   createAgentApiAgentPost,
   deleteAgentApiAgentAgentIdDelete,
   getAgentApiAgentAgentIdGet,
-  listAgentBackendsApiAgentBackendsGet,
-  listAgentsApiAgentGet,
   updateAgentApiAgentAgentIdPut,
   uploadUserImageApiUserUploadImagePost,
 } from '@/shared/api/generated/sdk.gen';
 import type {
-  AgentBackendItem,
-  AgentBackendListResponse,
   AgentCreate,
   AgentItem,
   AgentItemResponse,
-  AgentListResponse,
   AgentUpdate,
   UserImageUploadResponse,
 } from '@/shared/api/generated/types.gen';
@@ -31,32 +35,23 @@ export type AgentCreatePayload = AgentCreate;
 /** 更新智能体的请求体；契约里有 schema，直接沿用生成类型。 */
 export type AgentUpdatePayload = AgentUpdate;
 
+/** 智能体列表的查询 options；`includeSubagents` 不同的两份缓存由同一份 key 前缀覆盖。 */
+export const agentsListOptions = (includeSubagents: boolean) =>
+  listAgentsApiAgentGetOptions({
+    query: { include_subagents: includeSubagents },
+  });
+
+/** 智能体后端列表的查询 options；只在新建智能体时用到。 */
+export const agentBackendsListOptions = () =>
+  listAgentBackendsApiAgentBackendsGetOptions({});
+
 /**
- * 当前用户可见的智能体。
+ * 智能体列表的 key，用于写入后的失效。
  *
- * `includeSubagents` 打开后连子智能体一起返回：管理面板要按「智能体 / 子智能体」分组，
- * 而对话页的候选列表不要它们（子智能体不是用户可切换的入口）。
+ * 是函数而不是模块级常量：生成 key 会读客户端的 `baseUrl`，在模块顶层求值可能早于
+ * `base.ts` 的装配，固化成一个匹配不上真实缓存的键。
  */
-export async function listAgents(
-  options: { includeSubagents?: boolean } = {},
-): Promise<AgentItem[]> {
-  const data = unwrap<AgentListResponse>(
-    await listAgentsApiAgentGet({
-      query: { include_subagents: options.includeSubagents ?? false },
-    }),
-  );
-
-  return data.agents ?? [];
-}
-
-/** 可选的智能体后端。 */
-export async function listAgentBackends(): Promise<AgentBackendItem[]> {
-  const data = unwrap<AgentBackendListResponse>(
-    await listAgentBackendsApiAgentBackendsGet({}),
-  );
-
-  return data.backends ?? [];
-}
+export const agentsListKey = () => listAgentsApiAgentGetQueryKey();
 
 /**
  * 单个智能体的详情；`configurable_items` 与 `config_json` 只有这个端点下发。

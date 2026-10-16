@@ -4,8 +4,6 @@
 export {
   createAgent,
   getAgentDetail,
-  listAgentBackends,
-  listAgents,
   removeAgent,
   updateAgent,
   uploadAgentIcon,
@@ -18,13 +16,7 @@ export {
   toAgents,
 } from './model/agent-types';
 export type { Agent, AgentBackend } from './model/agent-types';
-export {
-  AGENTS_QUERY_ROOT,
-  agentBackendsQueryKey,
-  agentsQueryKey,
-  useAgentBackends,
-  useAgents,
-} from './model/agent-queries';
+export { useAgentBackends, useAgents } from './model/agent-queries';
 export type { AgentsQuery } from './model/agent-queries';
 export {
   useCreateAgent,
