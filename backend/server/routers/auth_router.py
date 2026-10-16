@@ -1,5 +1,3 @@
-import re
-
 from typing import Literal
 
 from fastapi import APIRouter, Body, Depends, File, HTTPException, Query, Request, UploadFile, status
@@ -31,12 +29,23 @@ from ars.services.login_rate_limit_service import (
 )
 from ars.services.identity_admin_service import (
     IdentityConflictError,
+    create_managed_user,
     SystemAlreadyInitializedError,
     initialize_system_admin,
     list_managed_users_page,
 )
+from ars.services.identity_registration_service import (
+    InvalidRegistrationError,
+    RegistrationClosedError,
+    register_user,
+)
 from ars.services.operation_log_service import log_operation
-from ars.services.user_identity_service import generate_unique_uid, is_valid_phone_number, validate_username
+from ars.services.user_identity_service import (
+    generate_unique_uid,
+    is_valid_phone_number,
+    validate_uid,
+    validate_username,
+)
 from ars.storage.minio import upload_image_to_minio
 from ars.storage.minio.client import normalize_public_minio_url
 from ars.storage.postgres.models_business import User
@@ -125,6 +134,16 @@ class UserAccessOption(BaseModel):
 
 class InitializeAdmin(BaseModel):
     uid: str  # 直接输入用户ID
+    password: str = Field(min_length=8)
+    phone_number: str | None = None
+
+
+class RegisterRequest(BaseModel):
+    """自助注册载荷。公开端点，多余字段直接拒绝而不是忽略。"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    uid: str
     password: str = Field(min_length=8)
     phone_number: str | None = None
 
@@ -424,18 +443,10 @@ async def check_first_run():
 # 路由：初始化管理员账户
 @auth.post("/initialize", response_model=Token)
 async def initialize_admin(admin_data: InitializeAdmin, db: AsyncSession = Depends(get_db)):
-    # 验证用户ID格式（只支持字母数字和下划线）
-    if not re.match(r"^[a-zA-Z0-9_]+$", admin_data.uid):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户ID只能包含字母、数字和下划线",
-        )
-
-    if len(admin_data.uid) < 3 or len(admin_data.uid) > 20:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户ID长度必须在3-20个字符之间",
-        )
+    # 用户ID格式：与注册、部门管理员共用同一份规则（整串匹配，含结尾换行的 `"admin\n"` 也拒）
+    is_valid_uid, uid_message = validate_uid(admin_data.uid)
+    if not is_valid_uid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=uid_message)
 
     # 验证手机号格式（如果提供了）
     if admin_data.phone_number and not is_valid_phone_number(admin_data.phone_number):
@@ -468,6 +479,48 @@ async def initialize_admin(admin_data: InitializeAdmin, db: AsyncSession = Depen
         "phone_number": new_admin.phone_number,
         "avatar": new_admin.avatar,
         "role": new_admin.role,
+    }
+
+
+# 路由：自助注册
+@auth.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
+async def register_account(
+    data: RegisterRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    """建一个普通用户（角色 user、落在自助注册部门）并直接下发凭据。
+
+    公开端点：默认开放注册是当前产品取舍，因此限流与「系统未初始化时拒绝」两条守卫不能去掉。
+    """
+    if data.phone_number and not is_valid_phone_number(data.phone_number):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="手机号格式不正确")
+
+    try:
+        user = await register_user(
+            db,
+            uid=data.uid,
+            password=data.password,
+            phone_number=data.phone_number,
+            request=request,
+        )
+    except RegistrationClosedError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
+    except (InvalidRegistrationError, IdentityConflictError) as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    token_data = {"sub": str(user.id)}
+    access_token = AuthUtils.create_access_token(token_data)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user_id": user.id,
+        "username": user.username,
+        "uid": user.uid,
+        "phone_number": user.phone_number,
+        "avatar": user.avatar,
+        "role": user.role,
     }
 
 
@@ -532,6 +585,9 @@ async def update_profile(
             existing_phone = await user_repository.get_by_phone_excluding(profile_data.phone_number, current_user.id)
             if existing_phone:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="手机号已被其他用户使用")
+            # 撞上别人的登录标识同样要拒：登录先按 uid 解析
+            if await user_repository.get_by_uid_excluding(profile_data.phone_number, current_user.id) is not None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="手机号与已有用户ID冲突")
 
         current_user.phone_number = profile_data.phone_number
         update_details.append(f"手机号: {profile_data.phone_number or '已清空'}")
@@ -570,9 +626,10 @@ async def create_user(
             detail=error_msg,
         )
 
-    # 检查用户名是否已存在
-    users = await user_repo.list_users()
-    if any(u.username == user_data.username for u in users):
+    # 检查用户名是否已存在：精确查询（`update_user` 与 `validate-username` 同口径）。
+    # 以前是翻一页 `list_users()`（默认 100 行）在 Python 里比，用户数超过那一页就漏，
+    # 插库时撞唯一索引、又没有全局处理，管理员看到的是 500。
+    if await user_repo.get_by_username(user_data.username) is not None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户名已存在",
@@ -580,10 +637,18 @@ async def create_user(
 
     # 检查手机号是否已存在（如果提供了）
     if user_data.phone_number:
+        if not is_valid_phone_number(user_data.phone_number):
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="手机号格式不正确")
         if await user_repo.exists_by_phone(user_data.phone_number):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="手机号已存在",
+            )
+        # 手机号也不能撞上别人的登录标识：登录先按 uid 解析，撞上会让对方无法用手机号登录
+        if await user_repo.get_by_uid_excluding(user_data.phone_number) is not None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="手机号与已有用户ID冲突",
             )
 
     # 生成唯一的 uid
@@ -608,24 +673,12 @@ async def create_user(
             detail="管理员只能创建普通用户账户",
         )
 
-    # 部门分配逻辑
+    # 部门分配逻辑：两条分支都落到「创建者所在的部门」，超级管理员可以另外指定
     if current_user.role == "superadmin":
-        # 超级管理员创建用户时，使用指定的部门或默认部门
-        department_id = user_data.department_id
-        if department_id is None:
-            # 获取默认部门
-            dept_repo = DepartmentRepository(db)
-            departments = await dept_repo.list_departments()
-            default_dept = next((d for d in departments if d.name == "默认部门"), None)
-            department_id = default_dept.id if default_dept else None
+        department_id = user_data.department_id or current_user.department_id
     else:
         # 普通管理员创建用户时，自动继承该管理员的部门
         department_id = current_user.department_id
-        if department_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="管理员必须属于部门才能创建用户",
-            )
         # 非超级管理员不能指定部门
         if user_data.department_id is not None:
             raise HTTPException(
@@ -633,16 +686,32 @@ async def create_user(
                 detail="普通管理员不能指定部门",
             )
 
-    new_user = await user_repo.create(
-        {
-            "username": user_data.username,
-            "uid": uid,
-            "phone_number": user_data.phone_number,
-            "password_hash": hashed_password,
-            "role": user_data.role,
-            "department_id": department_id,
-        }
-    )
+    if department_id is None:
+        # 以前这里会去按名字找「默认部门」，找不到就静默写 `department_id = NULL`，造出一个
+        # 每个端点都 400 的账号（`get_required_user` 要求有部门）。改名或删掉默认部门的部署
+        # 正好会踩到，所以改成显式失败：要么显式指定部门，要么让创建者自己属于某个部门。
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="无法确定新用户的部门：请指定部门，或先让当前账号加入一个部门",
+        )
+
+    try:
+        # 落库与唯一约束冲突的折算归服务：路由不碰 SQLAlchemy（见工程信任门禁）
+        new_user = await create_managed_user(
+            db,
+            username=user_data.username,
+            uid=uid,
+            phone_number=user_data.phone_number,
+            password_hash=hashed_password,
+            role=user_data.role,
+            department_id=department_id,
+        )
+    except IdentityConflictError as exc:
+        # 上面的查重是「先读后写」，并发下仍可能同时通过；撞唯一索引时给 400 而不是 500
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
 
     # 记录操作
     await log_operation(
@@ -809,6 +878,14 @@ async def update_user(
         update_details.append("密码已更新")
 
     if user_data.phone_number is not None:
+        # 这里以前完全不校验：格式、唯一性、以及「撞上别人登录标识」都得挡在写库之前
+        if user_data.phone_number:
+            if not is_valid_phone_number(user_data.phone_number):
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="手机号格式不正确")
+            if await user_repository.get_by_phone_excluding(user_data.phone_number, user.id) is not None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="手机号已被其他用户使用")
+            if await user_repository.get_by_uid_excluding(user_data.phone_number, user.id) is not None:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="手机号与已有用户ID冲突")
         user.phone_number = user_data.phone_number
         update_details.append(f"手机号: {user_data.phone_number or '已清空'}")
 

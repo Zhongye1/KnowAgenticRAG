@@ -17,6 +17,7 @@ import {
   getUserConfigApiUserConfigGet,
   initializeAdminApiAuthInitializePost,
   loginForAccessTokenApiAuthTokenPost,
+  registerAccountApiAuthRegisterPost,
   updateProfileApiAuthProfilePut,
   updateUserConfigApiUserConfigPut,
   uploadUserAvatarApiAuthUploadAvatarPost,
@@ -122,6 +123,31 @@ export async function initializeAdmin(
 ): Promise<LoginResult> {
   const token = unwrap<LoginResult>(
     await initializeAdminApiAuthInitializePost({
+      body: {
+        uid: input.uid,
+        password: input.password,
+        phone_number: input.phone_number ?? null,
+      },
+    }),
+  );
+  setAccessToken(token.access_token);
+  return token;
+}
+
+export type RegisterInput = {
+  uid: string;
+  password: string;
+  phone_number?: string | null;
+};
+
+/**
+ * 自助注册（公开端点，201）；成功后与登录同一条凭据路径。
+ *
+ * 后端在系统未初始化、UID/手机号被占用、UID 格式非法时分别给 403/400，detail 直接可展示。
+ */
+export async function register(input: RegisterInput): Promise<LoginResult> {
+  const token = unwrap<LoginResult>(
+    await registerAccountApiAuthRegisterPost({
       body: {
         uid: input.uid,
         password: input.password,

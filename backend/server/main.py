@@ -31,13 +31,19 @@ setup_logging()
 
 RATE_LIMIT_MAX_ATTEMPTS = 10
 RATE_LIMIT_WINDOW_SECONDS = 60
-RATE_LIMIT_ENDPOINTS = {("/api/auth/token", "POST")}
+# 受滑动窗口保护的端点 → 触发限流时的提示文案（登录与注册是两条不同的用户动作）
+RATE_LIMIT_ENDPOINTS = {
+    ("/api/auth/token", "POST"): "登录尝试过于频繁，请稍后再试",
+    ("/api/auth/register", "POST"): "注册尝试过于频繁，请稍后再试",
+}
 DEFAULT_DEVELOPMENT_CORS_ORIGINS = ("http://localhost:5173", "http://127.0.0.1:5173")
 EXPLICIT_CORS_METHODS = ("DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT")
 EXPLICIT_CORS_HEADERS = ("Accept", "Authorization", "Content-Type", "Last-Event-ID", "X-Requested-With")
 
-# In-memory login attempt tracker to reduce brute-force exposure per worker
-_login_attempts: defaultdict[str, deque[float]] = defaultdict(deque)
+# In-memory auth attempt tracker to reduce brute-force exposure per worker。
+# 键是 (客户端 IP, 端点)：登录与注册各记一份，否则一边的失败会把另一边顶到 429，
+# 而任一次成功又会把另一边攒下的失败一起清掉。
+_auth_attempts: defaultdict[tuple[str, str], deque[float]] = defaultdict(deque)
 _attempt_lock = asyncio.Lock()
 
 
@@ -95,17 +101,21 @@ def _extract_client_ip(request: Request) -> str:
     return "unknown"
 
 
-class LoginRateLimitMiddleware(BaseHTTPMiddleware):
+class AuthRateLimitMiddleware(BaseHTTPMiddleware):
+    """对 RATE_LIMIT_ENDPOINTS 里的端点做按 IP 的滑动窗口限流。"""
+
     async def dispatch(self, request: Request, call_next):
         normalized_path = request.url.path.rstrip("/") or "/"
         request_signature = (normalized_path, request.method.upper())
+        rate_limit_message = RATE_LIMIT_ENDPOINTS.get(request_signature)
 
-        if request_signature in RATE_LIMIT_ENDPOINTS:
+        if rate_limit_message is not None:
             client_ip = _extract_client_ip(request)
+            attempt_key = (client_ip, normalized_path)
             now = time.monotonic()
 
             async with _attempt_lock:
-                attempt_history = _login_attempts[client_ip]
+                attempt_history = _auth_attempts[attempt_key]
 
                 while attempt_history and now - attempt_history[0] > RATE_LIMIT_WINDOW_SECONDS:
                     attempt_history.popleft()
@@ -114,7 +124,7 @@ class LoginRateLimitMiddleware(BaseHTTPMiddleware):
                     retry_after = int(max(1, RATE_LIMIT_WINDOW_SECONDS - (now - attempt_history[0])))
                     return JSONResponse(
                         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                        content={"detail": "登录尝试过于频繁，请稍后再试"},
+                        content={"detail": rate_limit_message},
                         headers={"Retry-After": str(retry_after)},
                     )
 
@@ -124,7 +134,7 @@ class LoginRateLimitMiddleware(BaseHTTPMiddleware):
 
             if response.status_code < 400:
                 async with _attempt_lock:
-                    _login_attempts.pop(client_ip, None)
+                    _auth_attempts.pop(attempt_key, None)
 
             return response
 
@@ -134,8 +144,8 @@ class LoginRateLimitMiddleware(BaseHTTPMiddleware):
 # 添加访问日志中间件（记录请求处理时间）
 app.add_middleware(AccessLogMiddleware)
 
-# 添加登录限流中间件
-app.add_middleware(LoginRateLimitMiddleware)
+# 添加鉴权端点限流中间件（登录与注册）
+app.add_middleware(AuthRateLimitMiddleware)
 
 if __name__ == "__main__":
     # uvicorn.run(app, host="0.0.0.0", port=5050, threads=10, workers=10, reload=True)

@@ -618,6 +618,9 @@ import type {
   RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostData,
   RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostErrors,
   RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostResponses,
+  RegisterAccountApiAuthRegisterPostData,
+  RegisterAccountApiAuthRegisterPostErrors,
+  RegisterAccountApiAuthRegisterPostResponses,
   ReloadInfoConfigApiSystemInfoReloadPostData,
   ReloadInfoConfigApiSystemInfoReloadPostErrors,
   ReloadInfoConfigApiSystemInfoReloadPostResponses,
@@ -1253,6 +1256,35 @@ export const initializeAdminApiAuthInitializePost = <
     ThrowOnError
   >({
     url: '/api/auth/initialize',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+  });
+
+/**
+ * Register Account
+ *
+ * 建一个普通用户（角色 user、落在自助注册部门）并直接下发凭据。
+ *
+ * 公开端点：默认开放注册是当前产品取舍，因此限流与「系统未初始化时拒绝」两条守卫不能去掉。
+ */
+export const registerAccountApiAuthRegisterPost = <
+  ThrowOnError extends boolean = false,
+>(
+  options: Options<RegisterAccountApiAuthRegisterPostData, ThrowOnError>,
+): RequestResult<
+  RegisterAccountApiAuthRegisterPostResponses,
+  RegisterAccountApiAuthRegisterPostErrors,
+  ThrowOnError
+> =>
+  (options.client ?? client).post<
+    RegisterAccountApiAuthRegisterPostResponses,
+    RegisterAccountApiAuthRegisterPostErrors,
+    ThrowOnError
+  >({
+    url: '/api/auth/register',
     ...options,
     headers: {
       'Content-Type': 'application/json',

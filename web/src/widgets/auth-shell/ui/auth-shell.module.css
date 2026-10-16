@@ -1,0 +1,284 @@
+/* ============================================================================
+ * 登录与注册共用的视觉外壳：品牌导航、卡片（含图片侧）、表单侧容器与页脚。
+ * 从 `pages/login/ui/login-page.module.css` 迁出，两个页面共用同一份布局。
+ * ========================================================================== */
+
+/* ----------------------------------------------------------------------------
+ * 颜色只用设计 token（--main-* / --gray-* / --color-error-*），不写硬编码值。
+ * -------------------------------------------------------------------------- */
+
+.loginView {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--gray-10);
+  background-image: radial-gradient(var(--gray-200) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* 顶部告警条是绝对定位，出现时给页面留出高度 */
+.hasAlert {
+  padding-top: 60px;
+}
+
+/* ---------- 品牌顶栏 ---------- */
+
+.loginNavbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  padding: 32px 0;
+  z-index: 10;
+}
+
+.navbarContent {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 0 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brandContainer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.brandText {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brandOrg {
+  color: var(--gray-700);
+  font-weight: 600;
+}
+
+.brandSeparator {
+  width: 4px;
+  height: 4px;
+  background-color: var(--gray-400);
+  border-radius: 50%;
+}
+
+.brandMain {
+  color: var(--main-color);
+  font-weight: 600;
+}
+
+.brandLogo {
+  height: 32px;
+  width: auto;
+  object-fit: contain;
+}
+
+/* ---------- 主区：左右分栏卡片 ---------- */
+
+.loginMain {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  padding-top: 80px;
+}
+
+.loginCard {
+  width: 900px;
+  max-width: 95vw;
+  height: 560px;
+  background: var(--gray-0);
+  border-radius: 16px;
+  box-shadow: 0 0 40px var(--shadow-1);
+  display: flex;
+  overflow: hidden;
+}
+
+.cardSide {
+  position: relative;
+}
+
+.cardSideImage {
+  flex: 1.4;
+  background-color: var(--main-10);
+  overflow: hidden;
+}
+
+.loginBgImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.cardSideForm {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.formWrapper {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.formHeader {
+  text-align: left;
+}
+
+.welcomeText {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-500);
+  margin: 0 0 4px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.initTitle {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--main-color);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* ---------- 错误提示 ---------- */
+
+.errorMessage {
+  margin-top: 16px;
+  padding: 10px 12px;
+  background-color: var(--color-error-50);
+  border: 1px solid color-mix(in srgb, var(--color-error-500) 25%, transparent);
+  border-radius: 6px;
+  color: var(--color-error-700);
+  font-size: 13px;
+  text-align: center;
+}
+
+/* ---------- 页脚 ---------- */
+
+.pageFooter {
+  padding: 24px;
+  text-align: center;
+}
+
+.footerLinks {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.footerLinks a {
+  color: var(--gray-500);
+  font-size: 13px;
+}
+
+.footerLinks a:hover {
+  color: var(--main-color);
+}
+
+.footerDivider {
+  color: var(--gray-300);
+  font-size: 12px;
+}
+
+.copyright {
+  font-size: 12px;
+  color: var(--gray-400);
+}
+
+/* ---------- 服务端告警条 ---------- */
+
+.serverStatusAlert {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 12px 20px;
+  background: var(--color-error-500);
+  color: var(--gray-0);
+  z-index: 1000;
+}
+
+.alertContent {
+  display: flex;
+  align-items: center;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+.alertIcon {
+  margin-right: 12px;
+  color: var(--gray-0);
+  flex-shrink: 0;
+}
+
+.alertText {
+  flex: 1;
+}
+
+.alertTitle {
+  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 2px;
+}
+
+.alertMessage {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.alertContent :global(.ant-btn-link) {
+  color: var(--gray-0);
+  border-color: var(--gray-0);
+}
+
+.alertContent :global(.ant-btn-link):hover {
+  color: var(--gray-0);
+  background-color: color-mix(in srgb, var(--gray-0) 10%, transparent);
+}
+
+/* ---------- 响应式 ---------- */
+
+@media (max-width: 768px) {
+  .navbarContent {
+    padding: 0 20px;
+  }
+
+  .loginCard {
+    flex-direction: column;
+    height: auto;
+    max-height: none;
+    width: 100%;
+    margin-top: 20px;
+  }
+
+  .cardSideImage {
+    display: none;
+  }
+
+  .cardSideForm {
+    padding: 40px 20px;
+  }
+}

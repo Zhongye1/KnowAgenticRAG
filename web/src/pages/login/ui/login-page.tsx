@@ -1,5 +1,4 @@
-import { App as AntdApp, Button } from 'antd';
-import { AlertCircle } from 'lucide-react';
+import { App as AntdApp } from 'antd';
 import * as React from 'react';
 import { Navigate, Link, useNavigate, useSearchParams } from 'react-router';
 
@@ -20,6 +19,7 @@ import {
   useUser,
 } from '@/entities/session';
 import { paths } from '@/shared/config';
+import { AuthShell } from '@/widgets/auth-shell';
 
 import {
   InitializeAdminForm,
@@ -179,142 +179,53 @@ export const LoginPage = () => {
     userAgreementUrl: branding.userAgreementUrl,
     privacyPolicyUrl: branding.privacyPolicyUrl,
   };
-  const showFooterLinks = Boolean(
-    branding.userAgreementUrl || branding.privacyPolicyUrl,
-  );
 
   return (
-    <div
-      className={`${styles.loginView} ${healthFailed ? styles.hasAlert : ''}`}
+    <AuthShell
+      branding={branding}
+      health={{
+        failed: healthFailed,
+        message: healthMessage,
+        retrying: health.isFetching,
+        onRetry: () => void health.refetch(),
+      }}
+      title={isFirstRun ? '系统初始化，请创建超级管理员' : '欢迎登录'}
+      titleVariant={isFirstRun ? 'init' : 'default'}
+      error={errorMessage}
+      footer={
+        // 首启态只有初始化表单：那时注册必然被后端拒绝（否则超管就建不出来了）
+        isFirstRun ? null : (
+          <p className={styles.registerHint}>
+            没有账号？
+            <Link to={paths.auth.register.getHref(redirectTo)}>注册</Link>
+          </p>
+        )
+      }
     >
-      {healthFailed ? (
-        <div className={styles.serverStatusAlert}>
-          <div className={styles.alertContent}>
-            <AlertCircle size={20} className={styles.alertIcon} />
-            <div className={styles.alertText}>
-              <div className={styles.alertTitle}>服务端连接失败</div>
-              <div className={styles.alertMessage}>{healthMessage}</div>
-            </div>
-            <Button
-              type="link"
-              size="small"
-              loading={health.isFetching}
-              onClick={() => void health.refetch()}
-            >
-              重试
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
-      <nav className={styles.loginNavbar}>
-        <div className={styles.navbarContent}>
-          <Link to={paths.home.getHref()} className={styles.brandContainer}>
-            {branding.logo ? (
-              <img
-                className={styles.brandLogo}
-                src={branding.logo}
-                alt="logo"
-              />
-            ) : null}
-            <h1 className={styles.brandText}>
-              {branding.orgName ? (
-                <span className={styles.brandOrg}>{branding.orgName}</span>
-              ) : null}
-              {branding.orgName && branding.brandName !== branding.orgName ? (
-                <span className={styles.brandSeparator} />
-              ) : null}
-              {/* <span className={styles.brandMain}>{branding.brandName}</span> */}
-            </h1>
-          </Link>
-        </div>
-      </nav>
-
-      <main className={styles.loginMain}>
-        <div className={styles.loginCard}>
-          <div className={`${styles.cardSide} ${styles.cardSideImage}`}>
-            <img
-              className={styles.loginBgImage}
-              src={branding.loginBg}
-              alt="登录背景"
-            />
-          </div>
-
-          <div className={`${styles.cardSide} ${styles.cardSideForm}`}>
-            <div className={styles.formWrapper}>
-              <header className={styles.formHeader}>
-                {isFirstRun ? (
-                  <h2 className={styles.initTitle}>
-                    系统初始化，请创建超级管理员
-                  </h2>
-                ) : (
-                  <p className={styles.welcomeText}>欢迎登录</p>
-                )}
-              </header>
-
-              <div>
-                {isFirstRun ? (
-                  <InitializeAdminForm
-                    loading={initializeAdmin.isPending}
-                    onSubmit={handleInitialize}
-                    showAgreement={branding.showAgreementConsent}
-                    agreement={agreement}
-                  />
-                ) : (
-                  <LoginForm
-                    loading={login.isPending || firstRun.isLoading}
-                    locked={lock.locked}
-                    lockedLabel={lock.lockedLabel}
-                    onSubmit={handleLogin}
-                    showAgreement={branding.showAgreementConsent}
-                    agreement={agreement}
-                    oidc={{
-                      checking: oidcConfig.isLoading,
-                      enabled: oidcEnabled,
-                      loading: oidcLoginUrl.isPending,
-                      buttonText: oidcButtonText,
-                      onLogin: () => void handleOidcLogin(),
-                    }}
-                  />
-                )}
-
-                {errorMessage ? (
-                  <div className={styles.errorMessage}>{errorMessage}</div>
-                ) : null}
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
-
-      <footer className={styles.pageFooter}>
-        {showFooterLinks ? (
-          <div className={styles.footerLinks}>
-            {branding.userAgreementUrl ? (
-              <a
-                href={branding.userAgreementUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                用户协议
-              </a>
-            ) : null}
-            {branding.userAgreementUrl && branding.privacyPolicyUrl ? (
-              <span className={styles.footerDivider}>|</span>
-            ) : null}
-            {branding.privacyPolicyUrl ? (
-              <a
-                href={branding.privacyPolicyUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                隐私政策
-              </a>
-            ) : null}
-          </div>
-        ) : null}
-        <div className={styles.copyright}>{branding.copyright}</div>
-      </footer>
-    </div>
+      {isFirstRun ? (
+        <InitializeAdminForm
+          loading={initializeAdmin.isPending}
+          onSubmit={handleInitialize}
+          showAgreement={branding.showAgreementConsent}
+          agreement={agreement}
+        />
+      ) : (
+        <LoginForm
+          loading={login.isPending || firstRun.isLoading}
+          locked={lock.locked}
+          lockedLabel={lock.lockedLabel}
+          onSubmit={handleLogin}
+          showAgreement={branding.showAgreementConsent}
+          agreement={agreement}
+          oidc={{
+            checking: oidcConfig.isLoading,
+            enabled: oidcEnabled,
+            loading: oidcLoginUrl.isPending,
+            buttonText: oidcButtonText,
+            onLogin: () => void handleOidcLogin(),
+          }}
+        />
+      )}
+    </AuthShell>
   );
 };

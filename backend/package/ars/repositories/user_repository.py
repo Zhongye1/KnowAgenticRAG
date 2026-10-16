@@ -119,19 +119,18 @@ class UserRepository:
             result = await session.execute(select(User).where(User.phone_number == phone, User.id != exclude_user_id))
             return result.scalar_one_or_none()
 
-    async def list_users(
-        self, skip: int = 0, limit: int = 100, department_id: int | None = None, role: str | None = None
-    ) -> list[User]:
-        """获取用户列表"""
+    async def get_by_uid_excluding(self, uid: str, exclude_user_id: int | None = None) -> User | None:
+        """按登录标识查找除指定用户外的用户。
+
+        手机号侧的唯一性检查要连它一起查：`get_by_login_identifier` 先按 uid 解析，一个手机号
+        撞上别人的 uid 时，那个人就再也无法用手机号登录。
+        """
         async with self._session() as session:
-            query = select(User).where(User.is_deleted == 0)
-            if department_id is not None:
-                query = query.where(User.department_id == department_id)
-            if role is not None:
-                query = query.where(User.role == role)
-            query = query.order_by(User.id.asc()).offset(skip).limit(limit)
+            query = select(User).where(User.uid == uid)
+            if exclude_user_id is not None:
+                query = query.where(User.id != exclude_user_id)
             result = await session.execute(query)
-            return list(result.scalars().all())
+            return result.scalar_one_or_none()
 
     async def list_with_department(
         self, skip: int = 0, limit: int = 100, department_id: int | None = None, role: str | None = None

@@ -13,6 +13,12 @@ export const paths = {
       getHref: (redirectTo?: string | null | undefined) =>
         `/login${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`,
     },
+    /** 自助注册；`redirectTo` 与登录同义，注册成功直接落到目标页。 */
+    register: {
+      path: '/register',
+      getHref: (redirectTo?: string | null | undefined) =>
+        `/register${redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : ''}`,
+    },
     oidcCallback: {
       path: '/auth/oidc/callback',
       getHref: () => '/auth/oidc/callback',

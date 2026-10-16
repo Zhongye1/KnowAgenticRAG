@@ -215,6 +215,7 @@ import {
   reconcileGraphBuildApiKnowledgeDatabasesKbIdGraphBuildReconcilePost,
   refreshMcpServerToolsApiSystemMcpServersSlugToolsRefreshPost,
   refreshModelCacheApiSystemModelProvidersModelsCacheRefreshPost,
+  registerAccountApiAuthRegisterPost,
   reloadInfoConfigApiSystemInfoReloadPost,
   renameFolderApiKnowledgeDatabasesKbIdFoldersFolderIdRenamePut,
   repairDatabaseStatsApiKnowledgeDatabasesKbIdStatsRepairPost,
@@ -873,6 +874,9 @@ import type {
   RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostData,
   RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostError,
   RefreshModelCacheApiSystemModelProvidersModelsCacheRefreshPostResponse,
+  RegisterAccountApiAuthRegisterPostData,
+  RegisterAccountApiAuthRegisterPostError,
+  RegisterAccountApiAuthRegisterPostResponse,
   ReloadInfoConfigApiSystemInfoReloadPostData,
   ReloadInfoConfigApiSystemInfoReloadPostError,
   ReloadInfoConfigApiSystemInfoReloadPostResponse,
@@ -1642,6 +1646,37 @@ export const initializeAdminApiAuthInitializePostMutation = (
   > = {
     mutationFn: async (fnOptions) => {
       const { data } = await initializeAdminApiAuthInitializePost({
+        ...options,
+        ...fnOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+/**
+ * Register Account
+ *
+ * 建一个普通用户（角色 user、落在自助注册部门）并直接下发凭据。
+ *
+ * 公开端点：默认开放注册是当前产品取舍，因此限流与「系统未初始化时拒绝」两条守卫不能去掉。
+ */
+export const registerAccountApiAuthRegisterPostMutation = (
+  options?: Partial<Options<RegisterAccountApiAuthRegisterPostData>>,
+): UseMutationOptions<
+  RegisterAccountApiAuthRegisterPostResponse,
+  RegisterAccountApiAuthRegisterPostError,
+  Options<RegisterAccountApiAuthRegisterPostData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    RegisterAccountApiAuthRegisterPostResponse,
+    RegisterAccountApiAuthRegisterPostError,
+    Options<RegisterAccountApiAuthRegisterPostData>
+  > = {
+    mutationFn: async (fnOptions) => {
+      const { data } = await registerAccountApiAuthRegisterPost({
         ...options,
         ...fnOptions,
         throwOnError: true,

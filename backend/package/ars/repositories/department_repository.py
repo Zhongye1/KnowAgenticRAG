@@ -66,12 +66,6 @@ class DepartmentRepository:
             result = await session.execute(select(Department).where(Department.name == name))
             return result.scalar_one_or_none()
 
-    async def list_departments(self) -> list[Department]:
-        """获取所有部门列表"""
-        async with self._session() as session:
-            result = await session.execute(select(Department).order_by(Department.created_at.desc()))
-            return list(result.scalars().all())
-
     async def list_with_user_count(self) -> list[dict[str, Any]]:
         """获取所有部门列表，包含用户数量"""
         async with self._session() as session:

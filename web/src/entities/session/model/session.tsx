@@ -21,12 +21,14 @@ import {
   getUserConfig as getUserConfigRequest,
   initializeAdmin,
   login as loginRequest,
+  register as registerRequest,
   updateProfile as updateProfileRequest,
   updateUserConfig as updateUserConfigRequest,
   uploadAvatar as uploadAvatarRequest,
   type InitializeAdminInput,
   type LoginResult,
   type ProfileUpdate,
+  type RegisterInput,
 } from '../api/session-api';
 
 /** 身份缓存的 query key；登录、登出与资料写入都围绕它。 */
@@ -130,6 +132,21 @@ export const useInitializeAdmin = (
     onSuccess: (user) => {
       dropCachedIdentity(queryClient);
       queryClient.setQueryData(['first-run'], false);
+      options.onSuccess?.(user);
+    },
+  });
+};
+
+/** 自助注册；成功后与登录共用凭据写入与用户缓存失效路径。 */
+export const useRegister = (
+  options: { onSuccess?: (user: LoginResult) => void } = {},
+) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: RegisterInput) => registerRequest(input),
+    onSuccess: (user) => {
+      dropCachedIdentity(queryClient);
       options.onSuccess?.(user);
     },
   });

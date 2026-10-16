@@ -14,6 +14,7 @@ from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from ars.services import login_rate_limit_service as login_limiter
+from server.main import RATE_LIMIT_MAX_ATTEMPTS
 from ars.storage.postgres.models_business import User as UserModel
 from ars.storage.redis import close_async_redis_client, create_async_redis_client, get_async_redis_client
 from ars.utils.datetime_utils import utc_now_naive
@@ -441,3 +442,151 @@ async def test_locked_user_token_is_rejected(test_client, standard_user):
     profile_response = await test_client.get("/api/auth/me", headers=standard_user["headers"])
     assert profile_response.status_code == 423
     assert "X-Lock-Remaining" in profile_response.headers
+
+
+async def test_register_creates_user_with_usable_credential_on_real_postgres(test_client, admin_headers):
+    """真实 PostgreSQL + 真实 HTTP：注册建号、专属部门按需创建并复用、凭据可用。
+
+    这里必须走真实数据库：专属部门是「按需创建 + 并发撞唯一约束后重查」的路径，
+    内存 SQLite 看不到唯一索引在真库上的行为。
+    """
+    suffix = uuid.uuid4().hex[:8]
+    first_uid = f"reg_{suffix}"
+    second_uid = f"regb_{suffix}"
+    created_ids: list[int] = []
+    # 独占的限流窗口（中间件按 `X-Forwarded-For` 取客户端 IP）：这条用例不该被同 IP 上
+    # 其它用例或手工请求攒下的注册失败挡住
+    headers = {"X-Forwarded-For": f"203.0.113.{uuid.uuid4().int % 254 + 1}"}
+
+    first = await test_client.post(
+        "/api/auth/register", json={"uid": first_uid, "password": "regTest123!"}, headers=headers
+    )
+    assert first.status_code == 201, first.text
+    first_token = first.json()
+    created_ids.append(first_token["user_id"])
+    assert first_token["role"] == "user"
+
+    try:
+        # 凭据可用：/api/auth/me 走 get_required_user，没有部门会 400
+        me = await test_client.get(
+            "/api/auth/me", headers={"Authorization": f"Bearer {first_token['access_token']}"}
+        )
+        assert me.status_code == 200, me.text
+        profile = me.json()
+        assert profile["uid"] == first_uid
+        assert profile["role"] == "user"
+        department_id = profile["department_id"]
+        assert department_id is not None
+
+        # 第二个注册者复用同一个专属部门，不重复建
+        second = await test_client.post(
+            "/api/auth/register",
+            json={"uid": second_uid, "password": "regTest123!"},
+            headers=headers,
+        )
+        assert second.status_code == 201, second.text
+        created_ids.append(second.json()["user_id"])
+        second_me = await test_client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {second.json()['access_token']}"},
+        )
+        assert second_me.status_code == 200, second_me.text
+        assert second_me.json()["department_id"] == department_id
+
+        # 专属部门的名字：/me 的 department_name 就是它（不必借管理员令牌）
+        assert profile["department_name"] == "自助注册"
+
+        # 唯一性在真库上拒绝
+        duplicate = await test_client.post(
+            "/api/auth/register",
+            json={"uid": first_uid, "password": "regTest123!"},
+            headers=headers,
+        )
+        assert duplicate.status_code == 400, duplicate.text
+        assert "已被占用" in duplicate.json()["detail"]
+
+        # 用同账号密码登录（注册时自动登录之外，独立验证一次凭据）
+        login = await test_client.post(
+            "/api/auth/token",
+            data={"username": first_uid, "password": "regTest123!"},
+            headers=headers,
+        )
+        assert login.status_code == 200, login.text
+        assert login.json()["uid"] == first_uid
+    finally:
+        for user_id in created_ids:
+            await _cleanup_user(test_client, admin_headers, user_id)
+
+
+async def test_register_failures_do_not_block_login_from_the_same_ip(test_client):
+    """限流窗口按 (IP, 端点) 分开：注册失败攒满后，同一 IP 的登录仍应放行。
+
+    用独占的 `X-Forwarded-For` 拿一个只属于这条用例的窗口（中间件按该头取客户端 IP）：
+    既不与其它用例共用窗口，也不需要账号、不写库、不用清理。载荷本身非法（UID 带空格），
+    因此每次都是 400 而不会建号。
+    """
+    # TEST-NET-3 里每次运行换一个地址：窗口是 60 秒的进程级状态，固定地址会让
+    # 相邻两次运行互相影响
+    headers = {"X-Forwarded-For": f"203.0.113.{uuid.uuid4().int % 254 + 1}"}
+    payload = {"uid": "a b", "password": "regTest123!"}
+
+    statuses: list[int] = []
+    for _ in range(RATE_LIMIT_MAX_ATTEMPTS + 1):
+        attempt = await test_client.post("/api/auth/register", json=payload, headers=headers)
+        statuses.append(attempt.status_code)
+        if attempt.status_code == 429:
+            break
+
+    assert statuses[-1] == 429, statuses
+    assert set(statuses[:-1]) == {400}, statuses
+
+    blocked = await test_client.post("/api/auth/register", json=payload, headers=headers)
+    assert blocked.json()["detail"] == "注册尝试过于频繁，请稍后再试"
+
+    # 同一 IP 的登录不受注册窗口影响：凭据错是 401，不是 429
+    login = await test_client.post(
+        "/api/auth/token",
+        data={"username": "no-such-user", "password": "wrong-password"},
+        headers=headers,
+    )
+    assert login.status_code == 401, login.text
+
+
+async def test_superadmin_created_user_without_department_lands_in_creators_department(test_client, admin_headers):
+    """超管建号不指定部门时落到自己的部门。
+
+    真库上未必有名为「默认部门」的部门（本项目 dev 库是 研发部/产品部/运营部），旧行为在这种
+    部署上会静默写 `department_id = NULL`，造出一个每个端点都 400 的账号；这里连同「新账号可用」
+    一起验：注册/建号后必须能登录并通过 `get_required_user`。
+    """
+    suffix = uuid.uuid4().hex[:8]
+    created_id: int | None = None
+    try:
+        response = await test_client.post(
+            "/api/auth/users",
+            json={"username": f"dfb{suffix}", "password": "routerTest123!"},
+            headers=admin_headers,
+        )
+        assert response.status_code == 200, response.text
+        created = response.json()
+        created_id = created["id"]
+
+        creator = await test_client.get("/api/auth/me", headers=admin_headers)
+        assert creator.status_code == 200, creator.text
+        assert created["department_id"] is not None
+        assert created["department_id"] == creator.json()["department_id"]
+
+        login = await test_client.post(
+            "/api/auth/token",
+            data={"username": created["uid"], "password": "routerTest123!"},
+        )
+        assert login.status_code == 200, login.text
+        me = await test_client.get(
+            "/api/auth/me",
+            headers={"Authorization": f"Bearer {login.json()['access_token']}"},
+        )
+        assert me.status_code == 200, me.text
+        assert me.json()["department_id"] == created["department_id"]
+    finally:
+        if created_id is not None:
+            await _cleanup_user(test_client, admin_headers, created_id)

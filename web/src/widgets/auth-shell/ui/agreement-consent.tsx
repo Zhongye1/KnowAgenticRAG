@@ -1,6 +1,6 @@
 import { Checkbox } from 'antd';
 
-import styles from './login-page.module.css';
+import styles from './agreement-consent.module.css';
 
 export type AgreementConsentProps = {
   accepted: boolean;

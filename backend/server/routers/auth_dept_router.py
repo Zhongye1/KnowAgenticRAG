@@ -3,8 +3,6 @@
 提供部门的增删改查接口，仅超级管理员可访问
 """
 
-import re
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +12,7 @@ from ars.repositories.department_repository import DepartmentRepository
 from ars.repositories.user_repository import UserRepository
 from ars.services.identity_admin_service import IdentityConflictError, create_department_with_admin
 from ars.services.operation_log_service import log_operation
-from ars.services.user_identity_service import is_valid_phone_number
+from ars.services.user_identity_service import is_valid_phone_number, validate_uid
 from ars.storage.postgres.models_business import User
 
 # 创建路由器
@@ -103,23 +101,22 @@ async def create_department(
 
     # 验证管理员 uid 格式
     admin_uid = department_data.admin_uid
-    if not re.match(r"^[a-zA-Z0-9_]+$", admin_uid):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户ID只能包含字母、数字和下划线",
-        )
-
-    if len(admin_uid) < 3 or len(admin_uid) > 20:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="用户ID长度必须在3-20个字符之间",
-        )
+    is_valid, message = validate_uid(admin_uid)
+    if not is_valid:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
 
     # 检查 uid 是否已存在
     if await user_repo.exists_by_uid(admin_uid):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="用户ID已存在",
+        )
+
+    # uid 也不能撞上别人的手机号：登录先按 uid 解析，撞上会让对方无法用手机号登录
+    if await user_repo.exists_by_phone(admin_uid):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="用户ID与已有手机号冲突",
         )
 
     # 检查手机号是否已存在（如果提供了）
@@ -131,6 +128,11 @@ async def create_department(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="手机号已存在",
+            )
+        if await user_repo.exists_by_uid(admin_phone):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="手机号与已有用户ID冲突",
             )
 
     try:

@@ -2,11 +2,11 @@ import { Button, Form, Input } from 'antd';
 import { Lock } from 'lucide-react';
 
 import { MIN_PASSWORD_LENGTH } from '@/entities/session';
-
 import {
   AgreementConsent,
   type AgreementConsentProps,
-} from './agreement-consent';
+} from '@/widgets/auth-shell';
+
 import styles from './login-page.module.css';
 
 export type InitializeAdminFormValues = {

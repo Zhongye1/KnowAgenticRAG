@@ -7537,6 +7537,26 @@ export type ReadinessResponse = {
 };
 
 /**
+ * RegisterRequest
+ *
+ * 自助注册载荷。公开端点，多余字段直接拒绝而不是忽略。
+ */
+export type RegisterRequest = {
+  /**
+   * Uid
+   */
+  uid: string;
+  /**
+   * Password
+   */
+  password: string;
+  /**
+   * Phone Number
+   */
+  phone_number?: string | null;
+};
+
+/**
  * RemoteModelItem
  *
  * 远端模型条目；`_normalize_remote_model` 会丢掉值为 None 的键。
@@ -12122,6 +12142,33 @@ export type InitializeAdminApiAuthInitializePostResponses = {
 
 export type InitializeAdminApiAuthInitializePostResponse =
   InitializeAdminApiAuthInitializePostResponses[keyof InitializeAdminApiAuthInitializePostResponses];
+
+export type RegisterAccountApiAuthRegisterPostData = {
+  body: RegisterRequest;
+  path?: never;
+  query?: never;
+  url: '/api/auth/register';
+};
+
+export type RegisterAccountApiAuthRegisterPostErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type RegisterAccountApiAuthRegisterPostError =
+  RegisterAccountApiAuthRegisterPostErrors[keyof RegisterAccountApiAuthRegisterPostErrors];
+
+export type RegisterAccountApiAuthRegisterPostResponses = {
+  /**
+   * Successful Response
+   */
+  201: Token;
+};
+
+export type RegisterAccountApiAuthRegisterPostResponse =
+  RegisterAccountApiAuthRegisterPostResponses[keyof RegisterAccountApiAuthRegisterPostResponses];
 
 export type ReadUsersMeApiAuthMeGetData = {
   body?: never;

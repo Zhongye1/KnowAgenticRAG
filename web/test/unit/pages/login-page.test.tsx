@@ -146,6 +146,14 @@ describe('LoginPage', () => {
     expect(screen.queryByText('或使用以下方式登录')).not.toBeInTheDocument();
   });
 
+  it('非首启态给出注册入口，并把当前 redirectTo 带过去', async () => {
+    renderLoginPage('/login?redirectTo=%2Fagent');
+
+    const entry = await screen.findByRole('link', { name: '注册' });
+
+    expect(entry.getAttribute('href')).toBe('/register?redirectTo=%2Fagent');
+  });
+
   it('干净库首次进入时显示初始化超管表单', async () => {
     api.checkFirstRun.mockResolvedValue(true);
     renderLoginPage();
@@ -157,6 +165,8 @@ describe('LoginPage', () => {
       screen.getByRole('button', { name: '创建管理员账户' }),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText('登录账号')).not.toBeInTheDocument();
+    // 首启态不给注册入口：那时注册会被后端拒绝（否则超管就建不出来了）
+    expect(screen.queryByRole('link', { name: '注册' })).not.toBeInTheDocument();
   });
 
   it('服务端健康检查失败时显示告警条，重试会重新请求', async () => {

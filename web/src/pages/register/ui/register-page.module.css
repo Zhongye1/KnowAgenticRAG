@@ -1,0 +1,48 @@
+/* ============================================================================
+ * 注册页表单侧的样式；品牌栏、卡片、页脚等外壳在
+ * `widgets/auth-shell/ui/auth-shell.module.css`。
+ *
+ * 表单内的 antd 覆盖与登录页同口径（输入框内边距与圆角、提交按钮高度），两处各留一份：
+ * 它们只作用于各自的表单，抽到外壳反而会连带影响对方。
+ * ========================================================================== */
+
+.registerForm :global(.ant-input-affix-wrapper) {
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.registerForm :global(.ant-btn) {
+  height: 44px;
+  font-size: 16px;
+  border-radius: 8px;
+}
+
+.registerForm :global(.ant-input-prefix) {
+  margin-right: 8px;
+  color: var(--gray-500);
+}
+
+/* ---------- 协议勾选 ---------- */
+
+.agreementFormItem {
+  margin-bottom: 12px;
+}
+
+/* ---------- 注册表单下方的登录入口 ---------- */
+
+.registerHint {
+  margin: 16px 0 0;
+  font-size: 13px;
+  color: var(--gray-500);
+  text-align: center;
+}
+
+.registerHint a {
+  margin-left: 4px;
+  color: var(--main-color);
+  text-decoration: none;
+}
+
+.registerHint a:hover {
+  text-decoration: underline;
+}

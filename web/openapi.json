@@ -909,6 +909,48 @@
         }
       }
     },
+    "/api/auth/register": {
+      "post": {
+        "tags": [
+          "authentication"
+        ],
+        "summary": "Register Account",
+        "description": "建一个普通用户（角色 user、落在自助注册部门）并直接下发凭据。\n\n公开端点：默认开放注册是当前产品取舍，因此限流与「系统未初始化时拒绝」两条守卫不能去掉。",
+        "operationId": "register_account_api_auth_register_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Token"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/me": {
       "get": {
         "tags": [
@@ -28382,6 +28424,38 @@
         ],
         "title": "ReadinessResponse",
         "description": "接流量就绪事实，`status` 为 ready/not_ready，后者以 503 返回。"
+      },
+      "RegisterRequest": {
+        "properties": {
+          "uid": {
+            "type": "string",
+            "title": "Uid"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "title": "Password"
+          },
+          "phone_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone Number"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "uid",
+          "password"
+        ],
+        "title": "RegisterRequest",
+        "description": "自助注册载荷。公开端点，多余字段直接拒绝而不是忽略。"
       },
       "RemoteModelItem": {
         "properties": {

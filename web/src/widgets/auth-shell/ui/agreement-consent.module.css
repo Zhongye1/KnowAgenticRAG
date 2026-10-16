@@ -1,0 +1,26 @@
+/* ============================================================================
+ * 协议勾选：登录、注册与首启初始化三处共用。
+ * ========================================================================== */
+
+.agreementRow {
+  font-size: 13px;
+  color: var(--gray-600);
+  line-height: 1.6;
+}
+
+.agreementRow :global(.ant-checkbox-wrapper) {
+  display: inline-flex;
+  align-items: flex-start;
+}
+
+.agreementRow :global(.ant-checkbox + span) {
+  padding-inline-start: 8px;
+}
+
+.agreementLink {
+  color: var(--main-color);
+}
+
+.agreementLink:hover {
+  text-decoration: underline;
+}
