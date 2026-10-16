@@ -132,12 +132,13 @@ describe('LoginPage', () => {
     api.getOidcConfig.mockResolvedValue({ enabled: false });
   });
 
-  it('渲染后端配置的品牌与登录表单，未启用 OIDC 时不出现第三方登录区', async () => {
+  it('渲染后端配置的组织名与登录表单，未启用 OIDC 时不出现第三方登录区', async () => {
     renderLoginPage();
 
     expect(await screen.findByText('欢迎登录')).toBeInTheDocument();
     expect(await screen.findByText('KnowAgenticRAG')).toBeInTheDocument();
-    expect(screen.getByText('ARS')).toBeInTheDocument();
+    // 品牌名（后端 `branding.name`）在组件里被注释掉，暂不渲染
+    expect(screen.queryByText('ARS')).not.toBeInTheDocument();
     expect(screen.getByLabelText('登录账号')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: LOGIN_BUTTON }),

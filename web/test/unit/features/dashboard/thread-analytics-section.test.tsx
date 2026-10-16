@@ -143,16 +143,15 @@ describe('会话分析', () => {
     ).toBe('["智能助手"]');
   });
 
-  it('活跃用户榜与状态分布渲染真实行', async () => {
+  it('活跃用户榜渲染真实行；状态分布整段暂不渲染', async () => {
     renderSection();
     const rows = await screen.findAllByTestId('top-user-row');
     expect(rows).toHaveLength(1);
     expect(rows[0].textContent).toContain('张文杰');
     expect(rows[0].textContent).toContain('27');
 
-    const statuses = screen.getByTestId('thread-status-distribution');
-    expect(within(statuses).getByText('进行中')).toBeTruthy();
-    expect(within(statuses).getByText('已归档')).toBeTruthy();
+    // 「会话状态分布」在组件里被整段注释掉；这条断言同时盯住它没有被悄悄渲染回来
+    expect(screen.queryByTestId('thread-status-distribution')).toBeNull();
   });
 
   it('所选周期没有活动时给文案而不是空图', async () => {
@@ -166,7 +165,8 @@ describe('会话分析', () => {
     ).toBeTruthy();
     expect(screen.getByText('所选周期内没有智能体会话。')).toBeTruthy();
     expect(screen.getByText('所选周期内没有活跃用户。')).toBeTruthy();
-    expect(screen.getByText('所选周期内没有会话。')).toBeTruthy();
+    // 「会话状态分布」整段暂不渲染，它的空态文案跟着一起消失
+    expect(screen.queryByText('所选周期内没有会话。')).toBeNull();
   });
 
   it('「反馈列表」按钮触发页面级弹窗', async () => {
