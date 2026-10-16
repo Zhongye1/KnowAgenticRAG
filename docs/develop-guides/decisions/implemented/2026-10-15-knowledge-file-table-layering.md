@@ -2,7 +2,7 @@
 
 状态：implemented
 类型：simplification
-Owner：`web/src/features/knowledge-base/model/use-file-actions.ts` 拥有文件面板的写操作编排（mutation、确认框、通知文案、批量分批、门禁派生）；`web/src/features/knowledge-base/ui/files/table/file-table-columns.tsx` 拥有七列的定义与单元格渲染；`web/src/features/knowledge-base/ui/files/` 的目录分层约定由本记录与 `web/ARCHITECTURE.md` 共同拥有。
+Owner：web/src/features/knowledge-base/model/use-file-actions.ts
 
 ## 问题
 
@@ -14,6 +14,7 @@ Owner：`web/src/features/knowledge-base/model/use-file-actions.ts` 拥有文件
 2. 七列定义抬到 `ui/files/table/file-table-columns.tsx`，做成纯函数 `fileColumns(options)`；`useMemo` 与依赖收集留在持有数据的组件里。
 3. `ui/files/` 按职责分四个子目录：`table/`（容器、行操作、列定义）、`panel/`（面板首行）、`dialogs/`（六个弹窗）、`preview/`（预览与其 PDF 分支）。纯路径移动，文件名不改。
 4. 视图碎片的进一步切分（工具栏、批量条、分页行）不在本批：工具栏与分页在 B1 会被重写，现在切会移动两次。
+5. 分工：`model/use-file-actions.ts` 拥有写操作编排，`ui/files/table/file-table-columns.tsx` 拥有七列定义与单元格渲染，`ui/files/` 的目录分层约定由 `web/ARCHITECTURE.md` 拥有。
 
 ## 替代方案
 
