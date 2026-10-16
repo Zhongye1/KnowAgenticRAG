@@ -9891,6 +9891,9 @@ export type ToolCallStats = {
  * ToolItem
  *
  * 工具元数据条目；字段对齐 `get_tool_metadata` 装配出的形状。
+ *
+ * `args` 是拍平后的说明（名称/类型/描述），够渲染一行；`args_schema` 是工具自身声明的完整
+ * JSON Schema，调用方据此判断必填、枚举与嵌套结构。
  */
 export type ToolItem = {
   /**
@@ -9915,6 +9918,12 @@ export type ToolItem = {
    * Args
    */
   args: Array<ToolArgItem>;
+  /**
+   * Args Schema
+   */
+  args_schema: {
+    [key: string]: unknown;
+  };
   /**
    * Category
    */

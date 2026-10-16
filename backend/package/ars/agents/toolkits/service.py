@@ -6,6 +6,24 @@ from ars.utils import logger
 _metadata_cache: list[dict] = []
 
 
+def _json_schema_of(args_schema: Any) -> dict:
+    """把工具自身的参数声明折成 JSON Schema；没声明时给空对象。
+
+    完整 schema 与拍平后的 `args` 一起下发：`args` 只够渲染一行说明，判断参数是否必填、
+    取值是否落在枚举内、嵌套结构长什么样都需要原始 schema。
+    """
+
+    if not args_schema:
+        return {}
+    if isinstance(args_schema, dict):
+        return args_schema
+    if hasattr(args_schema, "model_json_schema"):
+        return args_schema.model_json_schema()
+    if hasattr(args_schema, "schema"):
+        return args_schema.schema()
+    return {}
+
+
 def _extract_tool_info(tool_obj) -> dict:
     """从 tool_obj 提取基础信息"""
     metadata = getattr(tool_obj, "metadata", {}) or {}
@@ -15,12 +33,12 @@ def _extract_tool_info(tool_obj) -> dict:
         "description": tool_obj.description,
         "metadata": metadata,
         "args": [],
+        "args_schema": {},
     }
 
     if hasattr(tool_obj, "args_schema") and tool_obj.args_schema:
-        schema = tool_obj.args_schema
-        if hasattr(schema, "schema"):
-            schema = schema.schema()
+        schema = _json_schema_of(tool_obj.args_schema)
+        info["args_schema"] = schema
         for arg_name, arg_info in schema.get("properties", {}).items():
             info["args"].append(
                 {

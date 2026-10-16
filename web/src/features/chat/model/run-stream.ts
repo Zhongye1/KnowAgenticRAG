@@ -25,6 +25,29 @@ import { hasPendingInterruptPayload } from '../lib/tool-approval';
 
 const RUN_INTERRUPTED_STATUS = 'interrupted';
 const RUN_TERMINAL_STATUSES = new Set(['completed', 'failed', 'cancelled']);
+
+/**
+ * `end` 事件的 status 落在已知集合之外时给一条告警。
+ *
+ * 事件流的形状不在契约里（后端用 `format_sse` 拼 dict，`text/event-stream` 不进 OpenAPI），
+ * 前端按约定读。约定漂移时默认是**静默降级**：`end` 的 status 改名后代码会落进兜底分支，
+ * 那里 `sawTerminalEvent` 已置真（不会再回查 run），但 `finalizeRunStream` 不会被调用，
+ * 界面停在一个没有收尾的运行上却没有任何信号。把这一步变成显式告警，漂移才有出口。
+ *
+ * 只告警不抛错：事件流要前向兼容，后端新增一个状态名不该让整条流断掉。
+ */
+export const warnIfUnknownTerminalStatus = (status: unknown): void => {
+  const known =
+    typeof status === 'string' &&
+    (status === RUN_INTERRUPTED_STATUS || RUN_TERMINAL_STATUSES.has(status));
+  if (known) return;
+
+  console.warn(
+    '[run-stream] `end` 事件的 status 不在已知终态内，这次运行不会被收尾：',
+    status,
+  );
+};
+
 const ACTIVE_RUN_STORAGE_TTL_MS = 60 * 60 * 1000;
 const ACTIVE_RUN_CLIENT_ID = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
@@ -439,6 +462,7 @@ export function createRunStream(options: RunStreamOptions) {
               status: terminalStatus,
             });
           } else {
+            warnIfUnknownTerminalStatus(terminalStatus);
             touchedThreadIds.forEach((id) => streamSmoother?.flushThread(id));
             runtime.isStreaming = false;
             notifyThreadRuntime(threadId);

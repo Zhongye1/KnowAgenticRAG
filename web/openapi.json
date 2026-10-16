@@ -31917,6 +31917,11 @@
             "type": "array",
             "title": "Args"
           },
+          "args_schema": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Args Schema"
+          },
           "category": {
             "type": "string",
             "title": "Category"
@@ -31940,12 +31945,13 @@
           "description",
           "metadata",
           "args",
+          "args_schema",
           "category",
           "tags",
           "config_guide"
         ],
         "title": "ToolItem",
-        "description": "工具元数据条目；字段对齐 `get_tool_metadata` 装配出的形状。"
+        "description": "工具元数据条目；字段对齐 `get_tool_metadata` 装配出的形状。\n\n`args` 是拍平后的说明（名称/类型/描述），够渲染一行；`args_schema` 是工具自身声明的完整\nJSON Schema，调用方据此判断必填、枚举与嵌套结构。"
       },
       "ToolListResponse": {
         "properties": {

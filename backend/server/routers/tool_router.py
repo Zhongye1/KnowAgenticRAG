@@ -19,13 +19,18 @@ class ToolArgItem(BaseModel):
 
 
 class ToolItem(BaseModel):
-    """工具元数据条目；字段对齐 `get_tool_metadata` 装配出的形状。"""
+    """工具元数据条目；字段对齐 `get_tool_metadata` 装配出的形状。
+
+    `args` 是拍平后的说明（名称/类型/描述），够渲染一行；`args_schema` 是工具自身声明的完整
+    JSON Schema，调用方据此判断必填、枚举与嵌套结构。
+    """
 
     slug: str
     name: str
     description: str
     metadata: dict[str, Any]
     args: list[ToolArgItem]
+    args_schema: dict[str, Any]
     category: str
     tags: list[str]
     config_guide: str

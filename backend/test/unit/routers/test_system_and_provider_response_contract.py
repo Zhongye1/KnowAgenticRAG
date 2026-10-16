@@ -30,6 +30,7 @@ provider_router_module = importlib.import_module("server.routers.model_provider_
 options_module = importlib.import_module("ars.config.options")
 ocr_service_module = importlib.import_module("ars.services.ocr_service")
 provider_cache_module = importlib.import_module("ars.models.providers.cache")
+tool_service = importlib.import_module("ars.agents.toolkits.service")
 
 _FAKE_USER = SimpleNamespace(username="admin", uid="admin", role="admin")
 
@@ -408,10 +409,40 @@ def _tool_item() -> dict[str, Any]:
         "description": "搜索互联网",
         "metadata": {"name": "网络搜索"},
         "args": [{"name": "query", "type": "string", "description": "查询词"}],
+        "args_schema": {
+            "type": "object",
+            "properties": {"query": {"type": "string", "description": "查询词"}},
+            "required": ["query"],
+        },
         "category": "buildin",
         "tags": ["搜索"],
         "config_guide": "需配置 API Key",
     }
+
+
+def test_json_schema_of_normalizes_the_declaration_forms() -> None:
+    """参数声明可能是 pydantic 模型、v1 风格对象或裸 dict，都要折成同一份 JSON Schema。"""
+
+    class Args(BaseModel):
+        query: str
+
+    class V1StyleArgs:
+        """旧声明形态：只有 `.schema()`，没有 `model_json_schema`。"""
+
+        def schema(self) -> dict:
+            return {
+                "type": "object",
+                "properties": {"query": {"type": "string"}},
+                "required": ["query"],
+            }
+
+    assert tool_service._json_schema_of(None) == {}
+    assert tool_service._json_schema_of({}) == {}
+    assert tool_service._json_schema_of({"type": "object"}) == {"type": "object"}
+    assert tool_service._json_schema_of(Args) == Args.model_json_schema()
+    assert tool_service._json_schema_of(Args)["required"] == ["query"]
+    assert tool_service._json_schema_of(V1StyleArgs())["required"] == ["query"]
+    assert tool_service._json_schema_of("unexpected") == {}
 
 
 def test_tools_list_response_equals_payload(monkeypatch: pytest.MonkeyPatch) -> None:
